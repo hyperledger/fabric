@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -35,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/util"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/performance"
 	"github.com/op/go-logging"
@@ -72,6 +74,7 @@ func Main() {
 	initializeLoggingLevel(conf)
 	initializeLocalMsp(conf)
 
+	prettyPrintStruct(conf)
 	Start(fullCmd, conf)
 }
 
@@ -340,4 +343,14 @@ func updateTrustedRoots(srv comm.GRPCServer, rootCASupport *comm.CASupport,
 			logger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
 		}
 	}
+}
+
+func prettyPrintStruct(i interface{}) {
+	params := util.Flatten(i)
+	var buffer bytes.Buffer
+	for i := range params {
+		buffer.WriteString("\n\t")
+		buffer.WriteString(params[i])
+	}
+	logger.Infof("Orderer config values:%s\n", buffer.String())
 }
