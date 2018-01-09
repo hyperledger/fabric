@@ -34,10 +34,8 @@ serial_packages=(
 
 # obtain packages changed since some git refspec
 packages_diff() {
-    local ref="${1:-HEAD}"
-
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
-        grep -Ev '.go$|^vendor/|^build/' | \
+        grep '.go$' | grep -Ev '^vendor/|^build/' | \
         sed 's%/[^/]*$%/%' | sort -u | \
         awk '{print "github.com/hyperledger/fabric/"$1"..."}'
 }
