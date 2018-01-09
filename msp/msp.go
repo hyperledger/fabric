@@ -150,6 +150,9 @@ type Identity interface {
 	//       signer's identity
 	GetOrganizationalUnits() []*OUIdentifier
 
+	// Anonymous returns true if this is an anonymous identity, false otherwise
+	Anonymous() bool
+
 	// Verify a signature over some message using this identity as reference
 	Verify(msg []byte, sig []byte) error
 

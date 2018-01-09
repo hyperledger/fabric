@@ -128,6 +128,10 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 	return res
 }
 
+func (id *identity) Anonymous() bool {
+	return false
+}
+
 // NewSerializedIdentity returns a serialized identity
 // having as content the passed mspID and x509 certificate in PEM format.
 // This method does not check the validity of certificate nor

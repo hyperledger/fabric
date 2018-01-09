@@ -59,6 +59,8 @@ message MSPPrincipal {
         // Organization unit
         IDENTITY  = 2;    // Denotes a principal that consists of a single
         // identity
+        ANONYMITY = 3; // Denotes a principal that can be used to enforce
+        // an identity to be anonymous or nominal.
     }
 
     // Classification describes the way that one should process
@@ -116,6 +118,18 @@ message MSPRole {
     // MSPRoleType defines which of the available, pre-defined MSP-roles
     // an identiy should posess inside the MSP with identifier MSPidentifier
     MSPRoleType role = 2;
+
+}
+
+// MSPIdentityAnonymity can be used to enforce an identity to be anonymous or nominal.
+message MSPIdentityAnonymity {
+
+    enum MSPIdentityAnonymityType {
+        NOMINAL = 0; // Represents a nominal MSP Identity
+        ANONYMOUS = 1; // Represents an anonymous MSP Identity
+    }
+
+    MSPIdentityAnonymityType anonymityType = 1;
 
 }
 

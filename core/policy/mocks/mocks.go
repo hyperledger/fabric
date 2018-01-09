@@ -87,6 +87,10 @@ type MockIdentity struct {
 	msg      []byte
 }
 
+func (id *MockIdentity) Anonymous() bool {
+	panic("implement me")
+}
+
 func (id *MockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
 	fmt.Printf("[SatisfiesPrincipal] id : [%s], [%s]\n", string(id.identity), string(p.Principal))
 	if !bytes.Equal(id.identity, p.Principal) {

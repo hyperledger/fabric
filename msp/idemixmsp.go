@@ -408,6 +408,10 @@ type idemixidentity struct {
 	associationProof *idemix.Signature
 }
 
+func (id *idemixidentity) Anonymous() bool {
+	return false
+}
+
 func newIdemixIdentity(msp *idemixmsp, nym *FP256BN.ECP, role *m.MSPRole, ou *m.OrganizationUnit, proof *idemix.Signature) *idemixidentity {
 	id := &idemixidentity{}
 	id.Nym = nym

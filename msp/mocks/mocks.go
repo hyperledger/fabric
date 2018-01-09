@@ -83,6 +83,10 @@ type MockIdentity struct {
 	ID string
 }
 
+func (m *MockIdentity) Anonymous() bool {
+	panic("implement me")
+}
+
 func (m *MockIdentity) ExpiresAt() time.Time {
 	panic("implement me")
 }

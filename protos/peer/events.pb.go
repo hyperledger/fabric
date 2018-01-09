@@ -93,7 +93,9 @@ func (m *Interest) String() string            { return proto.CompactTextString(m
 func (*Interest) ProtoMessage()               {}
 func (*Interest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
 
-type isInterest_RegInfo interface{ isInterest_RegInfo() }
+type isInterest_RegInfo interface {
+	isInterest_RegInfo()
+}
 
 type Interest_ChaincodeRegInfo struct {
 	ChaincodeRegInfo *ChaincodeReg `protobuf:"bytes,2,opt,name=chaincode_reg_info,json=chaincodeRegInfo,oneof"`
@@ -296,7 +298,9 @@ func (m *FilteredTransaction) String() string            { return proto.CompactT
 func (*FilteredTransaction) ProtoMessage()               {}
 func (*FilteredTransaction) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{6} }
 
-type isFilteredTransaction_Data interface{ isFilteredTransaction_Data() }
+type isFilteredTransaction_Data interface {
+	isFilteredTransaction_Data()
+}
 
 type FilteredTransaction_TransactionActions struct {
 	TransactionActions *FilteredTransactionActions `protobuf:"bytes,4,opt,name=transaction_actions,json=transactionActions,oneof"`
@@ -483,7 +487,9 @@ func (m *Event) String() string            { return proto.CompactTextString(m) }
 func (*Event) ProtoMessage()               {}
 func (*Event) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{10} }
 
-type isEvent_Event interface{ isEvent_Event() }
+type isEvent_Event interface {
+	isEvent_Event()
+}
 
 type Event_Register struct {
 	Register *Register `protobuf:"bytes,1,opt,name=register,oneof"`
@@ -745,7 +751,9 @@ func (m *DeliverResponse) String() string            { return proto.CompactTextS
 func (*DeliverResponse) ProtoMessage()               {}
 func (*DeliverResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{11} }
 
-type isDeliverResponse_Type interface{ isDeliverResponse_Type() }
+type isDeliverResponse_Type interface {
+	isDeliverResponse_Type()
+}
 
 type DeliverResponse_Status struct {
 	Status common.Status `protobuf:"varint,1,opt,name=status,enum=common.Status,oneof"`

@@ -24,6 +24,7 @@ It has these top-level messages:
 	MSPPrincipal
 	OrganizationUnit
 	MSPRole
+	MSPIdentityAnonymity
 */
 package msp
 

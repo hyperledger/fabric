@@ -418,6 +418,7 @@ func TestIdentitiesGetters(t *testing.T) {
 	assert.NotNil(t, idid)
 	mspid := id.GetMSPIdentifier()
 	assert.NotNil(t, mspid)
+	assert.False(t, id.Anonymous())
 }
 
 func TestSignAndVerify(t *testing.T) {

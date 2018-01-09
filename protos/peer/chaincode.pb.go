@@ -32,7 +32,7 @@ var ConfidentialityLevel_value = map[string]int32{
 func (x ConfidentialityLevel) String() string {
 	return proto.EnumName(ConfidentialityLevel_name, int32(x))
 }
-func (ConfidentialityLevel) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (ConfidentialityLevel) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 type ChaincodeSpec_Type int32
 
@@ -62,7 +62,7 @@ var ChaincodeSpec_Type_value = map[string]int32{
 func (x ChaincodeSpec_Type) String() string {
 	return proto.EnumName(ChaincodeSpec_Type_name, int32(x))
 }
-func (ChaincodeSpec_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{2, 0} }
+func (ChaincodeSpec_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{2, 0} }
 
 type ChaincodeDeploymentSpec_ExecutionEnvironment int32
 
@@ -84,7 +84,7 @@ func (x ChaincodeDeploymentSpec_ExecutionEnvironment) String() string {
 	return proto.EnumName(ChaincodeDeploymentSpec_ExecutionEnvironment_name, int32(x))
 }
 func (ChaincodeDeploymentSpec_ExecutionEnvironment) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor1, []int{3, 0}
+	return fileDescriptor2, []int{3, 0}
 }
 
 // ChaincodeID contains the path as specified by the deploy transaction
@@ -107,7 +107,7 @@ type ChaincodeID struct {
 func (m *ChaincodeID) Reset()                    { *m = ChaincodeID{} }
 func (m *ChaincodeID) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeID) ProtoMessage()               {}
-func (*ChaincodeID) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*ChaincodeID) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 func (m *ChaincodeID) GetPath() string {
 	if m != nil {
@@ -141,7 +141,7 @@ type ChaincodeInput struct {
 func (m *ChaincodeInput) Reset()                    { *m = ChaincodeInput{} }
 func (m *ChaincodeInput) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeInput) ProtoMessage()               {}
-func (*ChaincodeInput) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (*ChaincodeInput) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
 
 func (m *ChaincodeInput) GetArgs() [][]byte {
 	if m != nil {
@@ -169,7 +169,7 @@ type ChaincodeSpec struct {
 func (m *ChaincodeSpec) Reset()                    { *m = ChaincodeSpec{} }
 func (m *ChaincodeSpec) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeSpec) ProtoMessage()               {}
-func (*ChaincodeSpec) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+func (*ChaincodeSpec) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{2} }
 
 func (m *ChaincodeSpec) GetType() ChaincodeSpec_Type {
 	if m != nil {
@@ -210,7 +210,7 @@ type ChaincodeDeploymentSpec struct {
 func (m *ChaincodeDeploymentSpec) Reset()                    { *m = ChaincodeDeploymentSpec{} }
 func (m *ChaincodeDeploymentSpec) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeDeploymentSpec) ProtoMessage()               {}
-func (*ChaincodeDeploymentSpec) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+func (*ChaincodeDeploymentSpec) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{3} }
 
 func (m *ChaincodeDeploymentSpec) GetChaincodeSpec() *ChaincodeSpec {
 	if m != nil {
@@ -241,7 +241,7 @@ type ChaincodeInvocationSpec struct {
 func (m *ChaincodeInvocationSpec) Reset()                    { *m = ChaincodeInvocationSpec{} }
 func (m *ChaincodeInvocationSpec) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeInvocationSpec) ProtoMessage()               {}
-func (*ChaincodeInvocationSpec) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+func (*ChaincodeInvocationSpec) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{4} }
 
 func (m *ChaincodeInvocationSpec) GetChaincodeSpec() *ChaincodeSpec {
 	if m != nil {
@@ -258,7 +258,7 @@ type LifecycleEvent struct {
 func (m *LifecycleEvent) Reset()                    { *m = LifecycleEvent{} }
 func (m *LifecycleEvent) String() string            { return proto.CompactTextString(m) }
 func (*LifecycleEvent) ProtoMessage()               {}
-func (*LifecycleEvent) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+func (*LifecycleEvent) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{5} }
 
 func (m *LifecycleEvent) GetChaincodeName() string {
 	if m != nil {
@@ -279,9 +279,9 @@ func init() {
 	proto.RegisterEnum("protos.ChaincodeDeploymentSpec_ExecutionEnvironment", ChaincodeDeploymentSpec_ExecutionEnvironment_name, ChaincodeDeploymentSpec_ExecutionEnvironment_value)
 }
 
-func init() { proto.RegisterFile("peer/chaincode.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("peer/chaincode.proto", fileDescriptor2) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor2 = []byte{
 	// 632 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0x6d, 0x6f, 0xda, 0x3c,
 	0x14, 0x6d, 0x80, 0xbe, 0xdd, 0x50, 0x94, 0xc7, 0x0f, 0xcf, 0x33, 0xd4, 0x4f, 0x2c, 0xd2, 0x34,
