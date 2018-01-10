@@ -293,9 +293,6 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		escc = "escc"
 	} else {
 		escc = cd.Endorsement()
-		if escc == "" { // this should never happen, LSCC always fills this field
-			panic("No ESCC specified in ChaincodeData")
-		}
 	}
 
 	endorserLogger.Debugf("info: escc for chaincode id %s is %s", ccid, escc)
