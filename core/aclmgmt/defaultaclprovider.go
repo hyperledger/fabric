@@ -11,7 +11,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -24,7 +23,8 @@ const (
 	CHANNELWRITERS = policies.ChannelApplicationWriters
 )
 
-//defaultACLProvider if RSCC not provided use the default pre 1.0 implementation
+//defaultACLProvider used if resource-based ACL Provider is not provided or
+//if it does not contain a policy for the named resource
 type defaultACLProvider struct {
 	policyChecker policy.PolicyChecker
 
@@ -129,10 +129,4 @@ func (d *defaultACLProvider) CheckACL(resName string, channelID string, idinfo i
 		aclLogger.Errorf("Unmapped id on checkACL %s", resName)
 		return fmt.Errorf("Unknown id on checkACL %s", resName)
 	}
-}
-
-//GenerateSimulationResults does nothing for default provider currently as it defaults to
-//1.0 behavior
-func (d *defaultACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
-	return nil
 }

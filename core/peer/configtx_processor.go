@@ -93,16 +93,6 @@ func processChannelConfigTx(chainid string, txEnv *common.Envelope, simulator le
 		return persistConf(simulator, resourcesConfigKey, resourceConfigSeed)
 	}
 
-	// TODO RSCC-cleanup: the following 'if' block is for acl to function in the interim
-	// After acl uses the ACLManager/resourceBundle stuff, the following code should be removed
-	if channelConfig.Sequence == 1 && resourceConfigSeed != nil {
-		serializedConfig, err := serialize(resourceConfigSeed)
-		if err != nil {
-			return err
-		}
-		simulator.SetState("rscc", "channel", []byte(chainid))
-		simulator.SetState("rscc", "policy", serializedConfig)
-	}
 	return nil
 }
 

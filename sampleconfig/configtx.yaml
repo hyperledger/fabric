@@ -361,4 +361,14 @@ Capabilities:
         # with experimental build tag.  When set to true, private data
         # collections can be configured upon chaincode instantiation and
         # utilized within chaincode Invokes.
+        # Note that use of this feature with non "experimental" binaries on
+        # the network may cause a fork.
         V1_1_PVTDATA_EXPERIMENTAL: false
+        # V1_1_RESOURCETREE_EXPERIMENTAL is an Application capability to enable the
+        # resources capability. Currently this is needed for defining resource based
+        # access control (RBAC). RBAC helps set fine-grained access control on system
+        # resources such as the endorser and various system chaincodes. Default is V1.0
+        # based access control based on CHANNEL_READERS and CHANNEL_WRITERS
+        # Note that use of this feature with non "experimental" binaries on
+        # the network may cause a fork.
+        V1_1_RESOURCETREE_EXPERIMENTAL: false

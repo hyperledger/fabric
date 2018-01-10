@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package rscc
+package aclmgmt
 
 import (
 	"fmt"
@@ -28,6 +28,10 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+func newPolicyProvider(pEvaluator policyEvaluator) aclmgmtPolicyProvider {
+	return &aclmgmtPolicyProviderImpl{pEvaluator}
+}
 
 // ------- mocks ---------
 
@@ -51,9 +55,9 @@ func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedD
 	return err
 }
 
-func TestRsccPolicyBase(t *testing.T) {
+func TestPolicyBase(t *testing.T) {
 	peval := &mockPolicyEvaluatorImpl{pmap: map[string]string{"res": "pol"}, peval: map[string]error{"pol": nil}}
-	pprov := newRsccPolicyProvider("myc", peval)
+	pprov := newPolicyProvider(peval)
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	err := pprov.CheckACL("pol", sProp)
 	assert.NoError(t, err)
@@ -64,9 +68,9 @@ func TestRsccPolicyBase(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestRsccPolicyBad(t *testing.T) {
+func TestPolicyBad(t *testing.T) {
 	peval := &mockPolicyEvaluatorImpl{pmap: map[string]string{"res": "pol"}, peval: map[string]error{"pol": nil}}
-	pprov := newRsccPolicyProvider("myc", peval)
+	pprov := newPolicyProvider(peval)
 
 	//bad policy
 	err := pprov.CheckACL("pol", []byte("not a signed proposal"))

@@ -34,13 +34,6 @@ func registerACLProvider() *mocks.MockACLProvider {
 	return aclProv
 }
 
-func TestACLProcessor(t *testing.T) {
-	reinit()
-	assert.NotNil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil, false), "Expected non-nil error")
-	RegisterACLProvider(nil)
-	assert.Nil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil, false), "Expected nil error")
-}
-
 func TestPanicOnUnregistered(t *testing.T) {
 	reinit()
 	assert.Panics(t, func() {
@@ -66,17 +59,6 @@ func TestBadResource(t *testing.T) {
 	RegisterACLProvider(nil)
 	err := GetACLProvider().CheckACL("unknownresource", "somechain", &pb.SignedProposal{})
 	assert.Error(t, err, "Expected error")
-}
-
-func TestOverride(t *testing.T) {
-	reinit()
-	RegisterACLProvider(nil)
-	GetACLProvider().(*aclMgmtImpl).aclOverrides[resources.PROPOSE] = func(res, c string, idinfo interface{}) error {
-		return nil
-	}
-	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", &pb.SignedProposal{})
-	assert.NoError(t, err)
-	delete(GetACLProvider().(*aclMgmtImpl).aclOverrides, resources.PROPOSE)
 }
 
 func TestWithProvider(t *testing.T) {

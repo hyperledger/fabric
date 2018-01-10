@@ -110,12 +110,11 @@ func serve(args []string) error {
 
 	logger.Infof("Starting %s", version.GetInfo())
 
-	//aclmgmt initializes a proxy Processor that will be redirected to RSCC provider
-	//or default ACL Provider (for 1.0 behavior if RSCC is not enabled or available)
+	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
+	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
+	aclmgmt.RegisterACLProvider(nil)
 
-	// TODO RSCC-cleanup: remove the commented code (?)
-	// aclmgmt.GetConfigTxProcessor()
-	// txprocessors := customtx.Processors{cb.HeaderType_CONFIG: aclmgmt.GetConfigTxProcessor()}
+	//initialize resource management exit
 	ledgermgmt.Initialize(peer.ConfigTxProcessors)
 
 	// Parameter overrides must be processed before any parameters are
