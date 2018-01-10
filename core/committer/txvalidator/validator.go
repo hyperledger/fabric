@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	coreUtil "github.com/hyperledger/fabric/common/util"
@@ -88,40 +89,6 @@ type vsccValidatorImpl struct {
 type txValidator struct {
 	support Support
 	vscc    vsccValidator
-}
-
-// VSCCInfoLookupFailureError error to indicate inability
-// to obtain VSCC information from LCCC
-type VSCCInfoLookupFailureError struct {
-	reason string
-}
-
-// Error returns reasons which lead to the failure
-func (e VSCCInfoLookupFailureError) Error() string {
-	return e.reason
-}
-
-// VSCCEndorsementPolicyError error to mark transaction
-// failed endrosement policy check
-type VSCCEndorsementPolicyError struct {
-	reason string
-}
-
-// Error returns reasons which lead to the failure
-func (e VSCCEndorsementPolicyError) Error() string {
-	return e.reason
-}
-
-// VSCCExecutionFailureError error to indicate
-// failure during attempt of executing VSCC
-// endorsement policy check
-type VSCCExecutionFailureError struct {
-	reason string
-}
-
-// Error returns reasons which lead to the failure
-func (e VSCCExecutionFailureError) Error() string {
-	return e.reason
 }
 
 var logger *logging.Logger // package-level logger
@@ -383,13 +350,13 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			if err != nil {
 				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 				switch err.(type) {
-				case *VSCCExecutionFailureError:
+				case *errors.VSCCExecutionFailureError:
 					results <- &blockValidationResult{
 						tIdx: tIdx,
 						err:  err,
 					}
 					return
-				case *VSCCInfoLookupFailureError:
+				case *errors.VSCCInfoLookupFailureError:
 					results <- &blockValidationResult{
 						tIdx: tIdx,
 						err:  err,
@@ -798,7 +765,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 			// do VSCC validation
 			if err = v.VSCCValidateTxForCC(envBytes, chdr.TxId, chdr.ChannelId, vscc.ChaincodeName, vscc.ChaincodeVersion, policy); err != nil {
 				switch err.(type) {
-				case *VSCCEndorsementPolicyError:
+				case *errors.VSCCEndorsementPolicyError:
 					return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
 				default:
 					return err, peer.TxValidationCode_INVALID_OTHER_REASON
@@ -829,7 +796,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		// they have to modify VSCC to provide appropriate validation
 		if err = v.VSCCValidateTxForCC(envBytes, chdr.TxId, vscc.ChainID, vscc.ChaincodeName, vscc.ChaincodeVersion, policy); err != nil {
 			switch err.(type) {
-			case *VSCCEndorsementPolicyError:
+			case *errors.VSCCEndorsementPolicyError:
 				return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
 			default:
 				return err, peer.TxValidationCode_INVALID_OTHER_REASON
@@ -847,7 +814,7 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	if err != nil {
 		msg := fmt.Sprintf("Cannot obtain context for txid=%s, err %s", txid, err)
 		logger.Errorf(msg)
-		return &VSCCExecutionFailureError{msg}
+		return &errors.VSCCExecutionFailureError{msg}
 	}
 	defer txsim.Done()
 
@@ -867,11 +834,11 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	if err != nil {
 		msg := fmt.Sprintf("Invoke VSCC failed for transaction txid=%s, error %s", txid, err)
 		logger.Errorf(msg)
-		return &VSCCExecutionFailureError{msg}
+		return &errors.VSCCExecutionFailureError{msg}
 	}
 	if res.Status != shim.OK {
 		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, res.Message)
-		return &VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
+		return &errors.VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
 	}
 
 	return nil
@@ -891,7 +858,7 @@ func (v *vsccValidatorImpl) getCDataForCC(chid, ccid string) (resourcesconfig.Ch
 
 	bytes, err := qe.GetState("lscc", ccid)
 	if err != nil {
-		return nil, &VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
+		return nil, &errors.VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
 	}
 
 	if bytes == nil {
