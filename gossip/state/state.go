@@ -13,6 +13,7 @@ import (
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
+	vsccErrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	common2 "github.com/hyperledger/fabric/gossip/common"
@@ -557,8 +558,11 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 						continue
 					}
 				}
-
 				if err := s.commitBlock(rawBlock, p); err != nil {
+					if executionErr, isExecutionErr := err.(*vsccErrors.VSCCExecutionFailureError); isExecutionErr {
+						logger.Errorf("Failed executing VSCC due to %v. Aborting chain processing", executionErr)
+						return
+					}
 					logger.Panicf("Cannot commit block to the ledger due to %+v", errors.WithStack(err))
 				}
 			}

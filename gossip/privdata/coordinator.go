@@ -153,7 +153,8 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	logger.Debugf("Validating block [%d]", block.Header.Number)
 	err := c.Validator.Validate(block)
 	if err != nil {
-		return errors.WithMessage(err, "Validation failed")
+		logger.Errorf("Validation failed: %+v", err)
+		return err
 	}
 
 	blockAndPvtData := &ledger.BlockAndPvtData{
