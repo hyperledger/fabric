@@ -17,6 +17,9 @@ limitations under the License.
 package msp
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/config"
@@ -33,6 +36,41 @@ func TestGetLocalMspConfig(t *testing.T) {
 func TestGetLocalMspConfigFails(t *testing.T) {
 	_, err := GetLocalMspConfig("/tmp/", nil, "DEFAULT")
 	assert.Error(t, err)
+}
+
+func TestGetPemMaterialFromDirWithFile(t *testing.T) {
+	tempFile, err := ioutil.TempFile("", "fabric-msp-test")
+	assert.NoError(t, err)
+	err = tempFile.Close()
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	_, err = getPemMaterialFromDir(tempFile.Name())
+	assert.Error(t, err)
+}
+
+func TestGetPemMaterialFromDirWithSymlinks(t *testing.T) {
+	mspDir, err := config.GetDevMspDir()
+	assert.NoError(t, err)
+
+	tempDir, err := ioutil.TempDir("", "fabric-msp-test")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	dirSymlinkName := filepath.Join(tempDir, "..data")
+	err = os.Symlink(filepath.Join(mspDir, "signcerts"), dirSymlinkName)
+	assert.NoError(t, err)
+
+	fileSymlinkTarget := filepath.Join("..data", "peer.pem")
+	fileSymlinkName := filepath.Join(tempDir, "peer.pem")
+	err = os.Symlink(fileSymlinkTarget, fileSymlinkName)
+	assert.NoError(t, err)
+
+	pemdataSymlink, err := getPemMaterialFromDir(tempDir)
+	assert.NoError(t, err)
+	expected, err := getPemMaterialFromDir(filepath.Join(mspDir, "signcerts"))
+	assert.NoError(t, err)
+	assert.Equal(t, pemdataSymlink, expected)
 }
 
 func TestReadFileUtils(t *testing.T) {
