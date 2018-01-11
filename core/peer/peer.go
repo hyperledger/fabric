@@ -337,10 +337,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	resConf := &common.Config{ChannelGroup: &common.ConfigGroup{}}
 	if ac != nil && ac.Capabilities().ResourcesTree() {
-		if resConf, err = retrievePersistedResourceConfig(ledger); err != nil {
+		iResConf, err := retrievePersistedResourceConfig(ledger)
+
+		if err != nil {
 			return err
 		}
+
+		if iResConf != nil {
+			resConf = iResConf
+		}
 	}
+
 	rBundle, err := resourcesconfig.NewBundle(cid, resConf, bundle)
 
 	cs.bundleSource = resourcesconfig.NewBundleSource(
