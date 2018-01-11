@@ -52,6 +52,7 @@ It has these top-level messages:
 	FilteredAction
 	SignedEvent
 	Event
+	DeliverResponse
 	PeerID
 	PeerEndpoint
 	SignedProposal

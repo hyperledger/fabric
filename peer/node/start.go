@@ -19,12 +19,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/aclmgmt"
-	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
@@ -46,7 +46,6 @@ import (
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -173,15 +172,15 @@ func serve(args []string) error {
 		grpclog.Fatalf("Failed to create ehub server: %v", err)
 	}
 
-	// create the peer's AtomicBroadcastServer, which supports deliver but not
-	// broadcast
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
-	timeWindow := viper.GetDuration("peer.authentication.timewindow")
-	policyChecker := func(env *cb.Envelope, channelID string) error {
-		return aclmgmt.GetACLProvider().CheckACL(resources.BLOCKEVENT, channelID, env)
+	policyCheckerProvider := func(resourceName string) deliver.PolicyChecker {
+		return func(env *cb.Envelope, channelID string) error {
+			return aclmgmt.GetACLProvider().CheckACL(resourceName, channelID, env)
+		}
 	}
-	abServer := peer.NewAtomicBroadcastServer(timeWindow, mutualTLS, policyChecker)
-	ab.RegisterAtomicBroadcastServer(peerServer.Server(), abServer)
+
+	abServer := peer.NewDeliverEventsServer(mutualTLS, policyCheckerProvider, &peer.DeliverSupportManager{})
+	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// enable the cache of chaincode info
 	ccprovider.EnableCCInfoCache()

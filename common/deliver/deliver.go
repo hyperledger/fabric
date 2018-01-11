@@ -56,7 +56,6 @@ type SupportManager interface {
 
 // Support provides the backing resources needed to support deliver on a chain
 type Support interface {
-
 	// Sequence returns the current config sequence number, can be used to detect config changes
 	Sequence() uint64
 
@@ -76,14 +75,12 @@ type PolicyChecker func(envelope *cb.Envelope, channelID string) error
 
 type deliverHandler struct {
 	sm               SupportManager
-	policyChecker    PolicyChecker
 	timeWindow       time.Duration
 	bindingInspector comm.BindingInspector
 }
 
-// DeliverSupport abstract out minimal subset of API
-// such that it will be sufficient to generalize the
-// implementation of handler.
+//DeliverSupport defines the interface a handler
+// must implement for delivery services
 type DeliverSupport interface {
 	Recv() (*cb.Envelope, error)
 	Context() context.Context
@@ -96,19 +93,21 @@ type DeliverSupport interface {
 // different type of responses
 type DeliverServer struct {
 	DeliverSupport
+	PolicyChecker
 	Send func(msg proto.Message) error
 }
 
 // NewDeliverServer constructing deliver
-func NewDeliverServer(support DeliverSupport, send func(msg proto.Message) error) *DeliverServer {
+func NewDeliverServer(support DeliverSupport, policyChecker PolicyChecker, send func(msg proto.Message) error) *DeliverServer {
 	return &DeliverServer{
 		DeliverSupport: support,
+		PolicyChecker:  policyChecker,
 		Send:           send,
 	}
 }
 
 // NewHandlerImpl creates an implementation of the Handler interface
-func NewHandlerImpl(sm SupportManager, policyChecker PolicyChecker, timeWindow time.Duration, mutualTLS bool) Handler {
+func NewHandlerImpl(sm SupportManager, timeWindow time.Duration, mutualTLS bool) Handler {
 	// function to extract the TLS cert hash from a channel header
 	extract := func(msg proto.Message) []byte {
 		chdr, isChannelHeader := msg.(*cb.ChannelHeader)
@@ -121,12 +120,12 @@ func NewHandlerImpl(sm SupportManager, policyChecker PolicyChecker, timeWindow t
 
 	return &deliverHandler{
 		sm:               sm,
-		policyChecker:    policyChecker,
 		timeWindow:       timeWindow,
 		bindingInspector: bindingInspector,
 	}
 }
 
+// Handle used to handle incoming deliver requests
 func (ds *deliverHandler) Handle(srv *DeliverServer) error {
 	addr := util.ExtractRemoteAddress(srv.Context())
 	logger.Debugf("Starting new deliver loop for %s", addr)
@@ -193,7 +192,7 @@ func (ds *deliverHandler) deliverBlocks(srv *DeliverServer, envelope *cb.Envelop
 
 	}
 
-	accessControl, err := newSessionAC(chain, envelope, ds.policyChecker, chdr.ChannelId, crypto.ExpiresAt)
+	accessControl, err := newSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, crypto.ExpiresAt)
 	if err != nil {
 		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.ChannelId, err)
 		return sendStatusReply(srv, cb.Status_BAD_REQUEST)
