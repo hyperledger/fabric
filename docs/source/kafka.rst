@@ -69,17 +69,14 @@ Additional considerations
 #. **Preferred message size.** In Step 4 above (see `Steps`_ section) you can also set the preferred size of blocks by setting the ``Orderer.Batchsize.PreferredMaxBytes`` key. Kafka offers higher throughput when dealing with relatively small messages; aim for a value no bigger than 1 MiB.
 #. **Using environment variables to override settings.** When using the sample Kafka and Zookeeper Docker images provided with Fabric (see ``images/kafka`` and ``images/zookeeper`` respectively), you can override a Kafka broker or a ZooKeeper server's settings by using environment variables. Replace the dots of the configuration key with underscores — e.g. ``KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false`` will allow you to override the default value of ``unclean.leader.election.enable``. The same applies to the OSNs for their *local* configuration, i.e. what can be set in ``orderer.yaml``. For example ``ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s`` allows you to override the default value for ``Orderer.Kafka.Retry.ShortInterval``.
 
-Supported Kafka versions and upgrading
---------------------------------------
+Kafka Protocol Version Compatibility
+------------------------------------
 
-Fabric uses the `sarama client library <https://github.com/Shopify/sarama>`_ and vendors a version of it that supports the following Kafka client versions:
+Fabric uses the `sarama client library <https://github.com/Shopify/sarama>`_ and vendors a version of it that supports Kafka 0.10 to 1.0, yet is still known to work with older versions.
 
-* ``Version: 0.9.0``
-* ``Version: 0.10.0``
-* ``Version: 0.10.1``
-* ``Version: 0.10.2``
+Using the ``Kafka.Version`` key in ``orderer.yaml``, you can configure which version of the Kafka protocol is used to communicate with the Kafka cluster's brokers. Kafka brokers are backward compatible with older protocol versions. Because of a Kafka broker's backward compatibility with older protocol versions, upgrading your Kafka brokers to a new version does not require an update of the ``Kafka.Version`` key value, but the Kafka cluster might suffer a `performance penalty <https://kafka.apache.org/documentation/#upgrade_11_message_format>`_ while using an older protocol version.
 
-The sample Kafka server image provided by Fabric contains Kafka server version ``0.10.2``. Out of the box, Fabric's ordering service nodes default to configuring their embedded Kafka client to match this version. If you are not using the sample Kafka server image provided by Fabric, ensure that you configure a Kafka client version that is compatible with your Kafka server using the ``Kafka.Version`` key in ``orderer.yaml``.
+The sample Kafka server image provided by Fabric contains Kafka server version ``0.10.2.1``. Out of the box, Fabric's ordering service nodes are configured to use the Kafka protocol messages that correspond to this version. On a production deployment, or if you are simply not using the sample Kafka server images provided by Fabric, consider configuring ``Kafka.Version`` to match your Kafka broker version in order to take advantage of any enhancements (if any) enabled by the corresponding Kafka protocol version.
 
 Debugging
 ---------
