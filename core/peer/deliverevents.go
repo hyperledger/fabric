@@ -181,32 +181,34 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 			return nil, err
 		}
 
-		filteredBlock.Type = common.HeaderType(chdr.Type)
 		filteredBlock.ChannelId = chdr.ChannelId
 
-		if filteredBlock.Type == common.HeaderType_ENDORSER_TRANSACTION {
+		filteredTransaction := &peer.FilteredTransaction{
+			Txid:             chdr.TxId,
+			Type:             common.HeaderType(chdr.Type),
+			TxValidationCode: txsFltr.Flag(txIndex)}
+
+		if filteredTransaction.Type == common.HeaderType_ENDORSER_TRANSACTION {
 			tx, err := utils.GetTransaction(payload.Data)
 			if err != nil {
 				return nil, errors.WithMessage(err, "error unmarshal transaction payload for block event")
 			}
 
-			filteredActionArray, err := transactionActions(tx.Actions).toFilteredActions()
+			filteredTransaction.Data, err = transactionActions(tx.Actions).toFilteredActions()
 			if err != nil {
 				logger.Errorf(err.Error())
 				return nil, err
 			}
-			filteredBlock.FilteredTx = append(filteredBlock.FilteredTx, &peer.FilteredTransaction{
-				Txid:             chdr.TxId,
-				TxValidationCode: txsFltr.Flag(txIndex),
-				FilteredAction:   filteredActionArray})
 		}
+
+		filteredBlock.FilteredTx = append(filteredBlock.FilteredTx, filteredTransaction)
 	}
 
 	return filteredBlock, nil
 }
 
-func (ta transactionActions) toFilteredActions() ([]*peer.FilteredAction, error) {
-	var res []*peer.FilteredAction
+func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_ProposalResponse, error) {
+	proposalResponse := &peer.FilteredProposalResponse{}
 	for _, action := range ta {
 		chaincodeActionPayload, err := utils.GetChaincodeActionPayload(action.Payload)
 		if err != nil {
@@ -229,16 +231,19 @@ func (ta transactionActions) toFilteredActions() ([]*peer.FilteredAction, error)
 		}
 
 		if ccEvent.GetChaincodeId() != "" {
-			res = append(res, &peer.FilteredAction{
+			filteredAction := &peer.FilteredChaincodeAction{
 				CcEvent: &peer.ChaincodeEvent{
 					TxId:        ccEvent.TxId,
 					ChaincodeId: ccEvent.ChaincodeId,
 					EventName:   ccEvent.EventName,
 				},
-			})
+			}
+			proposalResponse.ChaincodeActions = append(proposalResponse.ChaincodeActions, filteredAction)
 		}
 	}
-	return res, nil
+	return &peer.FilteredTransaction_ProposalResponse{
+		ProposalResponse: proposalResponse,
+	}, nil
 }
 
 func dumpStacktraceOnPanic() {

@@ -80,7 +80,6 @@ message Unregister {
 message FilteredBlock {
     string channel_id = 1;
     uint64 number = 2; // The position in the blockchain
-    common.HeaderType type = 3;
     repeated FilteredTransaction filtered_tx = 4;
 }
 
@@ -88,13 +87,22 @@ message FilteredBlock {
 //within a block.
 message FilteredTransaction {
     string txid = 1;
-    TxValidationCode tx_validation_code = 2;
-    repeated FilteredAction filtered_action = 3;
+    common.HeaderType type = 2;
+    TxValidationCode tx_validation_code = 3;
+    oneof Data {
+        FilteredProposalResponse proposal_response = 4;
+    }
 }
 
-//FilteredAction is a minimal set of information about an action within a
+// FilteredProposalResponse reciprocal of TransactionAction
+// message from regular block
+message FilteredProposalResponse {
+    repeated FilteredChaincodeAction chaincodeActions = 1;
+}
+
+//FilteredChaincodeAction is a minimal set of information about an action within a
 //transaction.
-message FilteredAction {
+message FilteredChaincodeAction {
     ChaincodeEvent ccEvent = 1;
 }
 

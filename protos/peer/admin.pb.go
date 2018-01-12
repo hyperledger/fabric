@@ -49,7 +49,8 @@ It has these top-level messages:
 	Unregister
 	FilteredBlock
 	FilteredTransaction
-	FilteredAction
+	FilteredProposalResponse
+	FilteredChaincodeAction
 	SignedEvent
 	Event
 	DeliverResponse

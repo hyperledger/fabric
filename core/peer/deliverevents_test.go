@@ -247,13 +247,17 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 						test.Equal(uint64(0), block.Number)
 						test.Equal(test.channelID, block.ChannelId)
 						test.Equal(1, len(block.FilteredTx))
-						test.Equal(test.txID, block.FilteredTx[0].Txid)
-						test.Equal(peer.TxValidationCode_VALID, block.FilteredTx[0].TxValidationCode)
-						filteredActions := block.FilteredTx[0].FilteredAction
-						test.Equal(1, len(filteredActions))
-						test.Equal(test.eventName, filteredActions[0].CcEvent.EventName)
-						test.Equal(test.txID, filteredActions[0].CcEvent.TxId)
-						test.Equal(test.chaincodeName, filteredActions[0].CcEvent.ChaincodeId)
+						tx := block.FilteredTx[0]
+						test.Equal(test.txID, tx.Txid)
+						test.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
+						test.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
+						proposalResponse := tx.GetProposalResponse()
+						test.NotNil(proposalResponse)
+						chaincodeActions := proposalResponse.ChaincodeActions
+						test.Equal(1, len(chaincodeActions))
+						test.Equal(test.eventName, chaincodeActions[0].CcEvent.EventName)
+						test.Equal(test.txID, chaincodeActions[0].CcEvent.TxId)
+						test.Equal(test.chaincodeName, chaincodeActions[0].CcEvent.ChaincodeId)
 					default:
 						test.FailNow("Unexpected response type")
 					}
