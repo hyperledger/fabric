@@ -1,4 +1,4 @@
-// +build go1.9,linux,cgo
+// +build pluginsenabled,go1.9,linux,cgo
 // +build !ppc64le
 
 /*

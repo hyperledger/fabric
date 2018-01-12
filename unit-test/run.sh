@@ -32,6 +32,11 @@ serial_packages=(
     "github.com/hyperledger/fabric/gossip"
 )
 
+# packages which need to be tested with build tag pluginsenabled
+plugin_packages=(
+    "github.com/hyperledger/fabric/core/scc"
+)
+
 # obtain packages changed since some git refspec
 packages_diff() {
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
@@ -58,6 +63,7 @@ serial_test_packages() {
 # "go test" the provided packages. Packages that are not prsent in the serial package list
 # will be tested in parallel
 run_tests() {
+	echo ${GO_TAGS}
     local parallel=$(parallel_test_packages "$@")
     if [ -n "${parallel}" ]; then
         time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${parallel[@]} -short -timeout=20m
@@ -113,8 +119,10 @@ main() {
         echo "Nothing to test!!!"
     elif [ "${JOB_TYPE}" = "PROFILE" ]; then
         run_tests_with_coverage "${packages[@]}"
+		GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages}"
     else
         run_tests "${packages[@]}"
+		GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${plugin_packages}"
     fi
 }
 
