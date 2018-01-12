@@ -31,7 +31,7 @@ const jsonQueryLimit = "limit"
 const jsonQuerySkip = "skip"
 
 var validOperators = []string{"$and", "$or", "$not", "$nor", "$all", "$elemMatch",
-	"$lt", "$lte", "$eq", "$ne", "$gte", "$gt", "$exits", "$type", "$in", "$nin",
+	"$lt", "$lte", "$eq", "$ne", "$gte", "$gt", "$exists", "$type", "$in", "$nin",
 	"$size", "$mod", "$regex"}
 
 /*
