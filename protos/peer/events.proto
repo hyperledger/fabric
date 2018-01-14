@@ -83,20 +83,20 @@ message FilteredBlock {
     repeated FilteredTransaction filtered_tx = 4;
 }
 
-//FilteredTransaction is a minimal set of information about a transaction
-//within a block.
+// FilteredTransaction is a minimal set of information about a transaction
+// within a block.
 message FilteredTransaction {
     string txid = 1;
     common.HeaderType type = 2;
     TxValidationCode tx_validation_code = 3;
     oneof Data {
-        FilteredProposalResponse proposal_response = 4;
+        FilteredTransactionActions transaction_actions = 4;
     }
 }
 
-// FilteredProposalResponse reciprocal of TransactionAction
+// FilteredTransactionActions is a wrapper for array of TransactionAction
 // message from regular block
-message FilteredProposalResponse {
+message FilteredTransactionActions {
     repeated FilteredChaincodeAction chaincodeActions = 1;
 }
 

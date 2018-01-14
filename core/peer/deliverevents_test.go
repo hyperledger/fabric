@@ -251,9 +251,9 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 						test.Equal(test.txID, tx.Txid)
 						test.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
 						test.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
-						proposalResponse := tx.GetProposalResponse()
-						test.NotNil(proposalResponse)
-						chaincodeActions := proposalResponse.ChaincodeActions
+						transactionActions := tx.GetTransactionActions()
+						test.NotNil(transactionActions)
+						chaincodeActions := transactionActions.ChaincodeActions
 						test.Equal(1, len(chaincodeActions))
 						test.Equal(test.eventName, chaincodeActions[0].CcEvent.EventName)
 						test.Equal(test.txID, chaincodeActions[0].CcEvent.TxId)

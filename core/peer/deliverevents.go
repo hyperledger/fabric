@@ -207,8 +207,8 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 	return filteredBlock, nil
 }
 
-func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_ProposalResponse, error) {
-	proposalResponse := &peer.FilteredProposalResponse{}
+func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_TransactionActions, error) {
+	transactionActions := &peer.FilteredTransactionActions{}
 	for _, action := range ta {
 		chaincodeActionPayload, err := utils.GetChaincodeActionPayload(action.Payload)
 		if err != nil {
@@ -238,11 +238,11 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Prop
 					EventName:   ccEvent.EventName,
 				},
 			}
-			proposalResponse.ChaincodeActions = append(proposalResponse.ChaincodeActions, filteredAction)
+			transactionActions.ChaincodeActions = append(transactionActions.ChaincodeActions, filteredAction)
 		}
 	}
-	return &peer.FilteredTransaction_ProposalResponse{
-		ProposalResponse: proposalResponse,
+	return &peer.FilteredTransaction_TransactionActions{
+		TransactionActions: transactionActions,
 	}, nil
 }
 

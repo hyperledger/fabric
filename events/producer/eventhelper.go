@@ -69,7 +69,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 					}
 
 					filteredTx := &pb.FilteredTransaction{Txid: chdr.TxId, TxValidationCode: txsFltr.Flag(txIndex), Type: headerType}
-					proposalResponse := &pb.FilteredProposalResponse{}
+					transactionActions := &pb.FilteredTransactionActions{}
 					for _, action := range tx.Actions {
 						chaincodeActionPayload, err := utils.GetChaincodeActionPayload(action.Payload)
 						if err != nil {
@@ -97,7 +97,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 							filteredCcEvent.Payload = nil
 							chaincodeAction.CcEvent = filteredCcEvent
 						}
-						proposalResponse.ChaincodeActions = append(proposalResponse.ChaincodeActions, chaincodeAction)
+						transactionActions.ChaincodeActions = append(transactionActions.ChaincodeActions, chaincodeAction)
 
 						// Drop read write set from transaction before sending block event
 						// Performance issue with chaincode deploy txs and causes nodejs grpc
@@ -114,7 +114,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 							return nil, nil, "", fmt.Errorf("error marshalling tx action payload for block event: %s", err)
 						}
 					}
-					filteredTx.Data = &pb.FilteredTransaction_ProposalResponse{ProposalResponse: proposalResponse}
+					filteredTx.Data = &pb.FilteredTransaction_TransactionActions{TransactionActions: transactionActions}
 					filteredTxArray = append(filteredTxArray, filteredTx)
 
 					payload.Data, err = utils.GetBytesTransaction(tx)
