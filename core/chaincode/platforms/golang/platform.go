@@ -426,6 +426,23 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 	tw := tar.NewWriter(gw)
 
 	for _, file := range files {
+
+		// If the file is metadata rather than golang code, remove the leading go code path, for example:
+		// file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
+		// tar file:   META-INF/statedb/couchdb/indexes/indexOwner.json
+		if file.IsMetadata {
+
+			// Ensure META-INF directory can be found, then grab the META-INF relative path to use for packaging
+			if !strings.HasPrefix(file.Name, filepath.Join("src", code.Pkg, "META-INF")) {
+				return nil, fmt.Errorf("Could not find META-INF directory in metadata file %s.", file.Name)
+			}
+			file.Name, err = filepath.Rel(filepath.Join("src", code.Pkg), file.Name)
+			if err != nil {
+				return nil, fmt.Errorf("Could not get relative path for META-INF directory %s. Error:%s", file.Name, err)
+			}
+		}
+
+		logger.Debug("Writing file to chaincode code package tarball:", file.Name)
 		err = cutil.WriteFileToPackage(file.Path, file.Name, tw)
 		if err != nil {
 			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
