@@ -28,9 +28,18 @@ var javaExcludeFileTypes = map[string]bool{
 	".class": true,
 }
 
+// WriteFolderToTarPackage writes source files to a tarball.
+// This utility is used for node js chaincode packaging, but not golang chaincode.
+// Golang chaincode has more sophisticated file packaging, as implemented in golang/platform.go.
 func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) error {
 	fileCount := 0
 	rootDirectory := srcPath
+
+	// trim trailing slash if it was passed
+	if rootDirectory[len(rootDirectory)-1] == '/' {
+		rootDirectory = rootDirectory[:len(rootDirectory)-1]
+	}
+
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
 	//append "/" if necessary
@@ -75,8 +84,14 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 			}
 		}
 
-		newPath := fmt.Sprintf("src%s", path[rootDirLen:])
-		//newPath := path[len(rootDirectory):]
+		var newPath string
+		// if file is metadata, keep the /META-INF directory, e.g: META-INF/statedb/couchdb/indexes/indexOwner.json
+		// otherwise file is source code, put it in /src dir, e.g: src/marbles_chaincode.js
+		if strings.HasPrefix(path, filepath.Join(rootDirectory, "META-INF")) {
+			newPath = path[rootDirLen+1:]
+		} else {
+			newPath = fmt.Sprintf("src%s", path[rootDirLen:])
+		}
 
 		err = WriteFileToPackage(path, newPath, tw)
 		if err != nil {
@@ -120,6 +135,7 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
 //WriteFileToPackage writes a file to the tarball
 func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
+	vmLogger.Debug("Writing file to tarball:", packagepath)
 	fd, err := os.Open(localpath)
 	if err != nil {
 		return fmt.Errorf("%s: %s", localpath, err)

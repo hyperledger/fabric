@@ -143,7 +143,8 @@ func (nodePlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 		return nil, errors.New("ChaincodeSpec's path cannot be empty")
 	}
 
-	if strings.LastIndex(folder, "/") == len(folder)-1 {
+	// trim trailing slash if it exists
+	if folder[len(folder)-1] == '/' {
 		folder = folder[:len(folder)-1]
 	}
 
