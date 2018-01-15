@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/policyprovider"
@@ -395,6 +396,27 @@ func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		return err
 	}
 
+	// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
+	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
+	if err != nil {
+		return err
+	}
+
+	chaincodeDefinition := &cceventmgmt.ChaincodeDefinition{
+		Name:    ccpack.GetChaincodeData().Name,
+		Version: ccpack.GetChaincodeData().Version,
+		Hash:    ccpack.GetId()} // Note - The chaincode 'id' is the hash of chaincode's (CodeHash || MetaDataHash), aka fingerprint
+
+	// HandleChaincodeInstall will apply any statedb artifacts (e.g. couchdb indexes) to
+	// any channel's statedb where the chaincode is already instantiated
+	// Note - this step is done prior to PutChaincodeToLocalStorage() since this step is idempotent and harmless until endorsements start,
+	// that is, if there are errors deploying the indexes the chaincode install can safely be re-attempted later.
+	err = cceventmgmt.GetMgr().HandleChaincodeInstall(chaincodeDefinition, statedbArtifactsTar)
+	if err != nil {
+		return err
+	}
+
+	// Finally, if everything is good above, install the chaincode to local peer file system so that endorsements can start
 	if err = lscc.support.PutChaincodeToLocalStorage(ccpack); err != nil {
 		return err
 	}
