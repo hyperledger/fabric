@@ -97,7 +97,7 @@ message FilteredTransaction {
 // FilteredTransactionActions is a wrapper for array of TransactionAction
 // message from regular block
 message FilteredTransactionActions {
-    repeated FilteredChaincodeAction chaincodeActions = 1;
+    repeated FilteredChaincodeAction chaincode_actions = 1;
 }
 
 //FilteredChaincodeAction is a minimal set of information about an action within a
