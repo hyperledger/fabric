@@ -38,6 +38,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	logging "github.com/op/go-logging"
 )
 
@@ -383,7 +384,6 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 			logger.Debugf("VerifyConnection() dbResponseJSON: %s", dbResponseJSON)
 		}
 	}
-
 	//check to see if the system databases exist
 	//Verifying the existence of the system database accomplishes two steps
 	//1.  Ensures the system databases are created
@@ -464,6 +464,13 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	if dbResponse.Ok == true {
 		logger.Debugf("_ensure_full_commit database %s ", dbclient.DBName)
+	}
+
+	//Check to see if autoWarmIndexes is enabled
+	//If autoWarmIndexes is enabled, indexes will be refreshed after each block's
+	//data has been committed to the state database
+	if ledgerconfig.IsAutoWarmIndexesEnabled() {
+		dbclient.WarmIndexAllIndexes()
 	}
 
 	logger.Debugf("Exiting EnsureFullCommit()")
@@ -1138,6 +1145,66 @@ func (dbclient *CouchDatabase) DeleteIndex(designdoc, indexname string) error {
 		return err
 	}
 	defer closeResponseBody(resp)
+
+	return nil
+
+}
+
+//WarmIndex method provides a function for warming a single index
+func (dbclient *CouchDatabase) WarmIndex(designdoc, indexname string) error {
+
+	logger.Debugf("Entering WarmIndex()  designdoc=%s  indexname=%s", designdoc, indexname)
+
+	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return err
+	}
+
+	//URL to execute the view function associated with the index
+	indexURL.Path = dbclient.DBName + "/_design/" + designdoc + "/_view/" + indexname
+
+	queryParms := indexURL.Query()
+	//Query parameter that allows the execution of the URL to return immediately
+	//The update_after will cause the index update to run after the URL returns
+	queryParms.Add("stale", "update_after")
+	indexURL.RawQuery = queryParms.Encode()
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, indexURL.String(), nil, "", "", maxRetries, true)
+	if err != nil {
+		return err
+	}
+	defer closeResponseBody(resp)
+
+	return nil
+
+}
+
+//WarmIndexAllIndexes method provides a function for warming all indexes for a database
+func (dbclient *CouchDatabase) WarmIndexAllIndexes() error {
+
+	logger.Debugf("Entering WarmIndexAllIndexes()")
+
+	//Retrieve all indexes
+	listResult, err := dbclient.ListIndex()
+	if err != nil {
+		return err
+	}
+
+	//For each index definition, execute an index refresh
+	for _, elem := range *listResult {
+
+		err := dbclient.WarmIndex(elem.DesignDocument, elem.Name)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	logger.Debugf("Exiting WarmIndexAllIndexes()")
 
 	return nil
 

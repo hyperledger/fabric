@@ -111,3 +111,8 @@ func IsQueryReadsHashingEnabled() bool {
 func GetMaxDegreeQueryReadsHashing() uint32 {
 	return 50
 }
+
+//IsAutoWarmIndexesEnabled exposes the autoWarmIndexes variable
+func IsAutoWarmIndexesEnabled() bool {
+	return viper.GetBool("ledger.state.couchDBConfig.autoWarmIndexes")
+}

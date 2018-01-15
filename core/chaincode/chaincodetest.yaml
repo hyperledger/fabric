@@ -450,6 +450,13 @@ ledger:
        queryLimit: 10000
        # Limit on the number of records per CouchDB bulk update batch
        maxBatchUpdateSize: 500
+       # Warm indexes automatically following the processing of an update batch
+       # CouchDB indexes are updated if the index is stale and a query is executed
+       # This can cause delays the first time a query is executed and a large number of
+       # records have been added.
+       # Warming the indexes during batch processing will incrementally keep the index
+       # up to date.
+       autoWarmIndexes: true
 
   history:
     # enableHistoryDatabase - options are true or false
