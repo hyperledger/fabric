@@ -50,5 +50,5 @@ func (p *chaincodeInfoProviderImpl) IsChaincodeDeployed(chainid string, chaincod
 
 // RetrieveChaincodeArtifacts implements function in the interface ChaincodeInfoProvider
 func (p *chaincodeInfoProviderImpl) RetrieveChaincodeArtifacts(chaincodeDefinition *ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error) {
-	return ccprovider.ExtractStatedbArtifactsAsTarbytes(chaincodeDefinition.Name, chaincodeDefinition.Version)
+	return ccprovider.ExtractStatedbArtifactsForChaincode(chaincodeDefinition.Name, chaincodeDefinition.Version)
 }

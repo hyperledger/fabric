@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/mocks/scc/lscc"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
@@ -84,6 +85,11 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 
 //TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
+
+	// Initialize cceventmgmt Mgr
+	// TODO cceventmgmt singleton should be refactored out of peer in the future. See CR 16549 for details.
+	cceventmgmt.Initialize()
+
 	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
