@@ -960,10 +960,13 @@ func TestIndexOperations(t *testing.T) {
 
 	//There should only be one item returned
 	testutil.AssertEquals(t, len(*listResult), 1)
+
+	//Verify the returned definition
 	for _, elem := range *listResult {
 		testutil.AssertEquals(t, elem.DesignDocument, "indexSizeSortDoc")
 		testutil.AssertEquals(t, elem.Name, "indexSizeSortName")
-		testutil.AssertEquals(t, elem.Definition, "{\"fields\":[{\"size\":\"desc\"}]}")
+		//ensure the index defintion is correct,  CouchDB 2.1.1 will also return "partial_filter_selector":{}
+		testutil.AssertEquals(t, strings.Contains(elem.Definition, `"fields":[{"size":"desc"}]`), true)
 	}
 
 	//Create an index definition with no DesignDocument or name
