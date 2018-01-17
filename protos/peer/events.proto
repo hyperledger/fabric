@@ -80,7 +80,7 @@ message Unregister {
 message FilteredBlock {
     string channel_id = 1;
     uint64 number = 2; // The position in the blockchain
-    repeated FilteredTransaction filtered_tx = 4;
+    repeated FilteredTransaction filtered_transactions = 4;
 }
 
 // FilteredTransaction is a minimal set of information about a transaction
@@ -103,7 +103,7 @@ message FilteredTransactionActions {
 //FilteredChaincodeAction is a minimal set of information about an action within a
 //transaction.
 message FilteredChaincodeAction {
-    ChaincodeEvent ccEvent = 1;
+    ChaincodeEvent chaincode_event = 1;
 }
 
 // SignedEvent is used for any communication between consumer and producer
