@@ -253,7 +253,7 @@ func (m *Unregister) GetEvents() []*Interest {
 type FilteredBlock struct {
 	ChannelId  string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId" json:"channel_id,omitempty"`
 	Number     uint64                 `protobuf:"varint,2,opt,name=number" json:"number,omitempty"`
-	FilteredTx []*FilteredTransaction `protobuf:"bytes,4,rep,name=filtered_tx,json=filteredTx" json:"filtered_tx,omitempty"`
+	FilteredTx []*FilteredTransaction `protobuf:"bytes,4,rep,name=filtered_transactions,json=filteredTx" json:"filtered_transactions,omitempty"`
 }
 
 func (m *FilteredBlock) Reset()                    { *m = FilteredBlock{} }
@@ -419,7 +419,7 @@ func (m *FilteredTransactionActions) GetChaincodeActions() []*FilteredChaincodeA
 // FilteredChaincodeAction is a minimal set of information about an action within a
 // transaction.
 type FilteredChaincodeAction struct {
-	CcEvent *ChaincodeEvent `protobuf:"bytes,1,opt,name=ccEvent" json:"ccEvent,omitempty"`
+	CcEvent *ChaincodeEvent `protobuf:"bytes,1,opt,name=chaincode_event,json=chaincodeEvent" json:"chaincode_event,omitempty"`
 }
 
 func (m *FilteredChaincodeAction) Reset()                    { *m = FilteredChaincodeAction{} }
