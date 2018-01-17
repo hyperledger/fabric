@@ -140,6 +140,11 @@ func InitViper(v *viper.Viper, configName string) error {
 	if altPath != "" {
 		// If the user has overridden the path with an envvar, its the only path
 		// we will consider
+
+		if !dirExists(altPath) {
+			return fmt.Errorf("FABRIC_CFG_PATH %s does not exist", altPath)
+		}
+
 		addConfigPath(v, altPath)
 	} else {
 		// If we get here, we should use the default paths in priority order:

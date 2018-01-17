@@ -72,16 +72,17 @@ func main() {
 	mainFlags.String("logging-level", "", "Default logging level and overrides, see core.yaml for full syntax")
 	viper.BindPFlag("logging_level", mainFlags.Lookup("logging-level"))
 
-	err := common.InitConfig(cmdRoot)
-	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error when initializing %s config : %s\n", cmdRoot, err))
-	}
-
 	mainCmd.AddCommand(version.Cmd())
 	mainCmd.AddCommand(node.Cmd())
 	mainCmd.AddCommand(chaincode.Cmd(nil))
 	mainCmd.AddCommand(clilogging.Cmd(nil))
 	mainCmd.AddCommand(channel.Cmd(nil))
+
+	err := common.InitConfig(cmdRoot)
+	if err != nil { // Handle errors reading the config file
+		logger.Errorf("Fatal error when initializing %s config : %s", cmdRoot, err)
+		os.Exit(1)
+	}
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
