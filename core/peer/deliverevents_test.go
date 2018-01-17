@@ -145,79 +145,86 @@ func (*mockDeliverServer) SetTrailer(metadata.MD) {
 	panic("implement me")
 }
 
+type testConfig struct {
+	channelID     string
+	eventName     string
+	chaincodeName string
+	txID          string
+	payload       *common.Payload
+	*assert.Assertions
+}
+
+type testCase struct {
+	name    string
+	prepare func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer)
+}
+
 func TestEventsServer_DeliverFiltered(t *testing.T) {
 	viper.Set("peer.authentication.timewindow", "1s")
-
-	tests := []struct {
-		name          string
-		channelID     string
-		eventName     string
-		chaincodeName string
-		txID          string
-		*assert.Assertions
-		supportManager *mockSupportManager
-		iter           *mockIterator
-		reader         *mockReader
-		chain          *mockChainSupport
-	}{
+	tests := []testCase{
 		{
-			name:           "Testing deliver of the filtered block events",
-			channelID:      "testChainID",
-			eventName:      "testEvent",
-			chaincodeName:  "mycc",
-			txID:           "testID",
-			supportManager: &mockSupportManager{},
-			iter:           &mockIterator{},
-			reader:         &mockReader{},
-			chain:          &mockChainSupport{},
-			Assertions:     assert.New(t),
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			// setup the testing mocks
-			server := NewDeliverEventsServer(false, defaultPolicyCheckerProvider, test.supportManager)
-			// setup mock deliver server
-			deliverServer := &mockDeliverServer{}
-			p := &peer2.Peer{}
+			name: "Testing deliver of the filtered block events",
+			prepare: func(config testConfig) func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer) {
+				return func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer) {
+					wg.Add(2)
+					p := &peer2.Peer{}
+					chaincodeActionPayload, err := createChaincodeAction(config.chaincodeName, config.eventName, config.txID)
+					config.NoError(err)
 
-			wg := sync.WaitGroup{}
-			// we need 2 since we expecting to get the block and the status
-			// response once deliver API is called
-			wg.Add(2)
+					supportManager := createDefaultSupportMamangerMock(config, chaincodeActionPayload)
+					// setup mock deliver server
+					deliverServer := &mockDeliverServer{}
+					deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
 
-			chaincodeActionPayload, err := createChaincodeAction(test.chaincodeName, test.eventName, test.txID)
-			test.NoError(err)
+					deliverServer.On("Recv").Return(&common.Envelope{
+						Payload: utils.MarshalOrPanic(config.payload),
+					}, nil).Run(func(_ mock.Arguments) {
+						// once we are getting new message we need to mock
+						// Recv call to get io.EOF to stop the looping for
+						// next message and we can assert for the DeliverResponse
+						// value we are getting from the deliver server
+						deliverServer.Mock = mock.Mock{}
+						deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
+						deliverServer.On("Recv").Return(&common.Envelope{}, io.EOF)
+						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+							defer wg.Done()
+							response := args.Get(0).(*peer.DeliverResponse)
+							switch response.Type.(type) {
+							case *peer.DeliverResponse_Status:
+								config.Equal(common.Status_SUCCESS, response.GetStatus())
+							case *peer.DeliverResponse_FilteredBlock:
+								block := response.GetFilteredBlock()
+								config.Equal(uint64(0), block.Number)
+								config.Equal(config.channelID, block.ChannelId)
+								config.Equal(1, len(block.FilteredTx))
+								tx := block.FilteredTx[0]
+								config.Equal(config.txID, tx.Txid)
+								config.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
+								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
+								transactionActions := tx.GetTransactionActions()
+								config.NotNil(transactionActions)
+								chaincodeActions := transactionActions.ChaincodeActions
+								config.Equal(1, len(chaincodeActions))
+								config.Equal(config.eventName, chaincodeActions[0].CcEvent.EventName)
+								config.Equal(config.txID, chaincodeActions[0].CcEvent.TxId)
+								config.Equal(config.chaincodeName, chaincodeActions[0].CcEvent.ChaincodeId)
+							default:
+								config.FailNow("Unexpected response type")
+							}
+						}).Return(nil)
+					})
 
-			payload, err := createEndorsement(chaincodeActionPayload, test.channelID, test.txID)
-			test.NoError(err)
-
-			payloadBytes, err := proto.Marshal(payload)
-			test.NoError(err)
-
-			block, err := createTestBlock([]*common.Envelope{{
-				Payload:   payloadBytes,
-				Signature: []byte{}}})
-			test.NoError(err)
-
-			test.iter.On("Next").Return(block, common.Status_SUCCESS)
-
-			test.reader.On("Iterator", mock.Anything).Return(test.iter, uint64(1))
-			test.reader.On("Height").Return(uint64(1))
-
-			test.chain.On("Sequence").Return(uint64(0))
-			test.chain.On("Reader").Return(test.reader)
-
-			test.supportManager.On("GetChain", test.channelID).Return(test.chain, true)
-
-			deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
-
-			deliverServer.On("Recv").Return(&common.Envelope{
-				Payload: utils.MarshalOrPanic(&common.Payload{
+					return supportManager, deliverServer
+				}
+			}(testConfig{
+				channelID:     "testChainID",
+				eventName:     "testEvent",
+				chaincodeName: "mycc",
+				txID:          "testID",
+				payload: &common.Payload{
 					Header: &common.Header{
 						ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
-							ChannelId: test.channelID,
+							ChannelId: "testChainID",
 							Timestamp: util.CreateUtcTimestamp(),
 						}),
 						SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
@@ -227,56 +234,186 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 						Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
 						Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
 					}),
-				}),
-			}, nil).Run(func(_ mock.Arguments) {
-				// once we are getting new message we need to mock
-				// Recv call to get io.EOF to stop the looping for
-				// next message and we can assert for the DeliverResponse
-				// value we are getting from the deliver server
-				deliverServer.Mock = mock.Mock{}
-				deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
-				deliverServer.On("Recv").Return(&common.Envelope{}, io.EOF)
-				deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
-					defer wg.Done()
-					response := args.Get(0).(*peer.DeliverResponse)
-					switch response.Type.(type) {
-					case *peer.DeliverResponse_Status:
-						test.Equal(common.Status_SUCCESS, response.GetStatus())
-					case *peer.DeliverResponse_FilteredBlock:
-						block := response.GetFilteredBlock()
-						test.Equal(uint64(0), block.Number)
-						test.Equal(test.channelID, block.ChannelId)
-						test.Equal(1, len(block.FilteredTx))
-						tx := block.FilteredTx[0]
-						test.Equal(test.txID, tx.Txid)
-						test.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
-						test.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
-						transactionActions := tx.GetTransactionActions()
-						test.NotNil(transactionActions)
-						chaincodeActions := transactionActions.ChaincodeActions
-						test.Equal(1, len(chaincodeActions))
-						test.Equal(test.eventName, chaincodeActions[0].CcEvent.EventName)
-						test.Equal(test.txID, chaincodeActions[0].CcEvent.TxId)
-						test.Equal(test.chaincodeName, chaincodeActions[0].CcEvent.ChaincodeId)
-					default:
-						test.FailNow("Unexpected response type")
-					}
-				}).Return(nil)
+				},
+				Assertions: assert.New(t),
+			}),
+		},
+		{
+			name: "Testing deliver of the filtered block events with nil chaincode action payload",
+			prepare: func(config testConfig) func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer) {
+				return func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer) {
+					wg.Add(2)
+					p := &peer2.Peer{}
+					supportManager := createDefaultSupportMamangerMock(config, nil)
 
-			})
+					// setup mock deliver server
+					deliverServer := &mockDeliverServer{}
+					deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
 
-			err = server.DeliverFiltered(deliverServer)
+					deliverServer.On("Recv").Return(&common.Envelope{
+						Payload: utils.MarshalOrPanic(config.payload),
+					}, nil).Run(func(_ mock.Arguments) {
+						// once we are getting new message we need to mock
+						// Recv call to get io.EOF to stop the looping for
+						// next message and we can assert for the DeliverResponse
+						// value we are getting from the deliver server
+						deliverServer.Mock = mock.Mock{}
+						deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
+						deliverServer.On("Recv").Return(&common.Envelope{}, io.EOF)
+						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+							defer wg.Done()
+							response := args.Get(0).(*peer.DeliverResponse)
+							switch response.Type.(type) {
+							case *peer.DeliverResponse_Status:
+								config.Equal(common.Status_SUCCESS, response.GetStatus())
+							case *peer.DeliverResponse_FilteredBlock:
+								block := response.GetFilteredBlock()
+								config.Equal(uint64(0), block.Number)
+								config.Equal(config.channelID, block.ChannelId)
+								config.Equal(1, len(block.FilteredTx))
+								tx := block.FilteredTx[0]
+								config.Equal(config.txID, tx.Txid)
+								config.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
+								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
+								transactionActions := tx.GetTransactionActions()
+								config.NotNil(transactionActions)
+								chaincodeActions := transactionActions.ChaincodeActions
+								// we expecting to get zero chaincode action,
+								// since provided nil payload
+								config.Equal(0, len(chaincodeActions))
+							default:
+								config.FailNow("Unexpected response type")
+							}
+						}).Return(nil)
+					})
+
+					return supportManager, deliverServer
+				}
+			}(testConfig{
+				channelID:     "testChainID",
+				eventName:     "testEvent",
+				chaincodeName: "mycc",
+				txID:          "testID",
+				payload: &common.Payload{
+					Header: &common.Header{
+						ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+							ChannelId: "testChainID",
+							Timestamp: util.CreateUtcTimestamp(),
+						}),
+						SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
+					},
+					Data: utils.MarshalOrPanic(&orderer.SeekInfo{
+						Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: 0}}},
+						Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
+						Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+					}),
+				},
+				Assertions: assert.New(t),
+			}),
+		},
+		{
+			name: "Testing deliver of the filtered block events with nil payload header",
+			prepare: func(config testConfig) func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer) {
+				return func(wg *sync.WaitGroup) (deliver.SupportManager, peer.Deliver_DeliverServer) {
+					wg.Add(1)
+					p := &peer2.Peer{}
+					supportManager := createDefaultSupportMamangerMock(config, nil)
+
+					// setup mock deliver server
+					deliverServer := &mockDeliverServer{}
+					deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
+
+					deliverServer.On("Recv").Return(&common.Envelope{
+						Payload: utils.MarshalOrPanic(config.payload),
+					}, nil).Run(func(_ mock.Arguments) {
+						// once we are getting new message we need to mock
+						// Recv call to get io.EOF to stop the looping for
+						// next message and we can assert for the DeliverResponse
+						// value we are getting from the deliver server
+						deliverServer.Mock = mock.Mock{}
+						deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), p))
+						deliverServer.On("Recv").Return(&common.Envelope{}, io.EOF)
+						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
+							defer wg.Done()
+							response := args.Get(0).(*peer.DeliverResponse)
+							switch response.Type.(type) {
+							case *peer.DeliverResponse_Status:
+								config.Equal(common.Status_BAD_REQUEST, response.GetStatus())
+							case *peer.DeliverResponse_FilteredBlock:
+								config.FailNow("Unexpected response type")
+							default:
+								config.FailNow("Unexpected response type")
+							}
+						}).Return(nil)
+					})
+
+					return supportManager, deliverServer
+				}
+			}(testConfig{
+				channelID:     "testChainID",
+				eventName:     "testEvent",
+				chaincodeName: "mycc",
+				txID:          "testID",
+				payload: &common.Payload{
+					Header: nil,
+					Data: utils.MarshalOrPanic(&orderer.SeekInfo{
+						Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: 0}}},
+						Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
+						Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+					}),
+				},
+				Assertions: assert.New(t),
+			}),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			wg := &sync.WaitGroup{}
+			supportManager, deliverServer := test.prepare(wg)
+
+			server := NewDeliverEventsServer(false, defaultPolicyCheckerProvider, supportManager)
+			err := server.DeliverFiltered(deliverServer)
 			wg.Wait()
 			// no error expected
-			test.NoError(err)
+			assert.NoError(t, err)
 		})
 	}
 }
+func createDefaultSupportMamangerMock(config testConfig, chaincodeActionPayload *peer.ChaincodeActionPayload) *mockSupportManager {
+	supportManager := &mockSupportManager{}
+	iter := &mockIterator{}
+	reader := &mockReader{}
+	chain := &mockChainSupport{}
 
-func createEndorsement(chaincodeActionPayload *peer.ChaincodeActionPayload, channelID string, txID string) (*common.Payload, error) {
-	chActionBytes, err := proto.Marshal(chaincodeActionPayload)
-	if err != nil {
-		return nil, err
+	payload, err := createEndorsement(config.channelID, config.txID, chaincodeActionPayload)
+	config.NoError(err)
+
+	payloadBytes, err := proto.Marshal(payload)
+	config.NoError(err)
+
+	block, err := createTestBlock([]*common.Envelope{{
+		Payload:   payloadBytes,
+		Signature: []byte{}}})
+	config.NoError(err)
+
+	iter.On("Next").Return(block, common.Status_SUCCESS)
+	reader.On("Iterator", mock.Anything).Return(iter, uint64(1))
+	reader.On("Height").Return(uint64(1))
+	chain.On("Sequence").Return(uint64(0))
+	chain.On("Reader").Return(reader)
+	supportManager.On("GetChain", config.channelID).Return(chain, true)
+
+	return supportManager
+}
+
+func createEndorsement(channelID string, txID string, chaincodeActionPayload *peer.ChaincodeActionPayload) (*common.Payload, error) {
+	var chActionBytes []byte
+	var err error
+	if chaincodeActionPayload != nil {
+		chActionBytes, err = proto.Marshal(chaincodeActionPayload)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// the transaction

@@ -176,6 +176,11 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 			return nil, errors.WithMessage(err, "could not extract payload from envelope")
 		}
 
+		if payload.Header == nil {
+			logger.Debugf("transaction payload header is nil, %d, block num %d",
+				txIndex, block.Header.Number)
+			continue
+		}
 		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
 			return nil, err
@@ -215,6 +220,10 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 			return nil, errors.WithMessage(err, "error unmarshal transaction action payload for block event")
 		}
 
+		if chaincodeActionPayload.Action == nil {
+			logger.Debugf("chaincode action, the payload action is nil, skipping")
+			continue
+		}
 		propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal proposal response payload for block event")

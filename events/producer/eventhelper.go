@@ -53,6 +53,12 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 					return nil, nil, "", fmt.Errorf("could not extract payload from envelope: %s", err)
 				}
 
+				if payload.Header == nil {
+					logger.Debugf("transaction payload header is nil, %d, block num %d",
+						txIndex, block.Header.Number)
+					continue
+				}
+
 				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
 					return nil, nil, "", err
@@ -74,6 +80,10 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 						chaincodeActionPayload, err := utils.GetChaincodeActionPayload(action.Payload)
 						if err != nil {
 							return nil, nil, "", fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
+						}
+						if chaincodeActionPayload.Action == nil {
+							logger.Debugf("chaincode action, the payload action is nil, skipping")
+							continue
 						}
 						propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 						if err != nil {
