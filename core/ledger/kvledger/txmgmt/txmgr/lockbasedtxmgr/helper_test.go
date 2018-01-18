@@ -19,17 +19,24 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 )
 
 func TestPvtdataResultsItr(t *testing.T) {
 	testEnv := testEnvs[0]
-	testEnv.init(t, "test-pvtdata-range-queries")
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns1", "coll1", 0)
+	cs.SetBTL("ns2", "coll1", 0)
+	cs.SetBTL("ns3", "coll1", 0)
+	testEnv.init(t, "test-pvtdata-range-queries", pvtdatapolicy.ConstructBTLPolicy(cs))
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)

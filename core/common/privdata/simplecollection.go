@@ -27,6 +27,10 @@ type SimpleCollection struct {
 	conf         common.StaticCollectionConfig
 }
 
+type SimpleCollectionPersistenceConfigs struct {
+	blockToLive uint64
+}
+
 // CollectionID returns the collection's ID
 func (sc *SimpleCollection) CollectionID() string {
 	return sc.name
@@ -118,4 +122,9 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 	}
 
 	return nil
+}
+
+// BlockToLive return collection's block to live configuration
+func (s *SimpleCollectionPersistenceConfigs) BlockToLive() uint64 {
+	return s.blockToLive
 }

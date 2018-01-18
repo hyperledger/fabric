@@ -19,6 +19,8 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 
 	"github.com/golang/protobuf/proto"
@@ -32,7 +34,7 @@ import (
 )
 
 type testEnv interface {
-	init(t *testing.T, testLedgerID string)
+	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
 	getName() string
 	getTxMgr() txmgr.TxMgr
 	getVDB() privacyenabledstate.DB
@@ -75,14 +77,14 @@ func (env *lockBasedEnv) getName() string {
 	return env.name
 }
 
-func (env *lockBasedEnv) init(t *testing.T, testLedgerID string) {
+func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy) {
 	var err error
 	env.t = t
 	env.testDBEnv.Init(t)
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 	env.testBookkeepingEnv = bookkeeping.NewTestEnv(t)
-	env.txmgr, err = NewLockBasedTxMgr(testLedgerID, env.testDB, nil, env.testBookkeepingEnv.TestProvider)
+	env.txmgr, err = NewLockBasedTxMgr(testLedgerID, env.testDB, nil, btlPolicy, env.testBookkeepingEnv.TestProvider)
 	testutil.AssertNoError(t, err, "")
 }
 

@@ -10,6 +10,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,16 +22,18 @@ type StoreEnv struct {
 	TestStoreProvider Provider
 	TestStore         Store
 	ledgerid          string
+	btlPolicy         pvtdatapolicy.BTLPolicy
 }
 
 // NewTestStoreEnv construct a StoreEnv for testing
-func NewTestStoreEnv(t *testing.T, ledgerid string) *StoreEnv {
+func NewTestStoreEnv(t *testing.T, ledgerid string, btlPolicy pvtdatapolicy.BTLPolicy) *StoreEnv {
 	removeStorePath(t)
 	assert := assert.New(t)
 	testStoreProvider := NewProvider()
 	testStore, err := testStoreProvider.OpenStore(ledgerid)
+	testStore.Init(btlPolicy)
 	assert.NoError(err)
-	return &StoreEnv{t, testStoreProvider, testStore, ledgerid}
+	return &StoreEnv{t, testStoreProvider, testStore, ledgerid, btlPolicy}
 }
 
 // CloseAndReopen closes and opens the store provider
@@ -38,6 +42,7 @@ func (env *StoreEnv) CloseAndReopen() {
 	env.TestStoreProvider.Close()
 	env.TestStoreProvider = NewProvider()
 	env.TestStore, err = env.TestStoreProvider.OpenStore(env.ledgerid)
+	env.TestStore.Init(env.btlPolicy)
 	assert.NoError(env.t, err)
 }
 

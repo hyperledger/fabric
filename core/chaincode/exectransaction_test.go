@@ -343,16 +343,38 @@ func getDeploymentSpec(_ context.Context, spec *pb.ChaincodeSpec) (*pb.Chaincode
 }
 
 //getDeployLSCCSpec gets the spec for the chaincode deployment to be sent to LSCC
-func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeInvocationSpec, error) {
+func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec, ccp *common.CollectionConfigPackage) (*pb.ChaincodeInvocationSpec, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
 	}
 
+	var ccpBytes []byte
+	if ccp != nil {
+		if ccpBytes, err = proto.Marshal(ccp); err != nil {
+			return nil, err
+		}
+	}
 	sysCCVers := util.GetSysCCVersion()
 
+	invokeInput := &pb.ChaincodeInput{Args: [][]byte{
+		[]byte("deploy"), // function name
+		[]byte(chainID),  // chaincode name to deploy
+		b,                // chaincode deployment spec
+	}}
+
+	if ccpBytes != nil {
+		// SignaturePolicyEnvelope, escc, vscc, CollectionConfigPackage
+		invokeInput.Args = append(invokeInput.Args, nil, nil, nil, ccpBytes)
+	}
+
 	//wrap the deployment in an invocation spec to lscc...
-	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
+	lsccSpec := &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_GOLANG,
+			ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers},
+			Input:       invokeInput,
+		}}
 
 	return lsccSpec, nil
 }
@@ -364,12 +386,22 @@ func deploy(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.Chaincode
 	if err != nil {
 		return nil, err
 	}
-
-	return deploy2(ctx, cccid, cdDeploymentSpec, blockNumber, chaincodeSupport)
+	return deploy2(ctx, cccid, cdDeploymentSpec, nil, blockNumber, chaincodeSupport)
 }
 
-func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (b []byte, err error) {
-	cis, err := getDeployLSCCSpec(cccid.ChainID, chaincodeDeploymentSpec)
+func deployWithCollectionConfigs(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeSpec,
+	collectionConfigPkg *common.CollectionConfigPackage, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (b []byte, err error) {
+	// First build and get the deployment spec
+	cdDeploymentSpec, err := getDeploymentSpec(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+	return deploy2(ctx, cccid, cdDeploymentSpec, collectionConfigPkg, blockNumber, chaincodeSupport)
+}
+
+func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec,
+	collectionConfigPkg *common.CollectionConfigPackage, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (b []byte, err error) {
+	cis, err := getDeployLSCCSpec(cccid.ChainID, chaincodeDeploymentSpec, collectionConfigPkg)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating lscc spec : %s\n", err)
 	}

@@ -26,6 +26,8 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +46,7 @@ func TestStore(t *testing.T) {
 	provider := NewProvider()
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
 	defer store.Shutdown()
 
 	assert.NoError(t, err)
@@ -136,6 +139,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	provider := NewProvider()
 	defer provider.Close()
 	store, err := provider.Open(testLedgerid)
+	store.Init(btlPolicyForSampleData())
 	defer store.Shutdown()
 
 	// test that pvtdata store is updated with info from existing block storage
@@ -187,4 +191,11 @@ func samplePvtData(t *testing.T, txNums []uint64) map[uint64]*ledger.TxPvtData {
 		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: pvtWriteSet})
 	}
 	return constructPvtdataMap(pvtData)
+}
+
+func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns-1", "coll-1", 0)
+	cs.SetBTL("ns-1", "coll-2", 0)
+	return pvtdatapolicy.ConstructBTLPolicy(cs)
 }

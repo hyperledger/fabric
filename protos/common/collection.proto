@@ -47,6 +47,10 @@ message StaticCollectionConfig {
     // The maximum number of peers that private data will be sent to
     // upon endorsement. This number has to be bigger than required_peer_count.
     int32 maximum_peer_count = 4;
+    // The number of blocks after which the collection data expires.
+    // For instance if the value is set to 10, a key last modified by block number 100
+    // will be purged at block number 111. A zero value is treated same as MaxUint64
+    uint64 block_to_live = 5;
 }
 
 

@@ -24,11 +24,14 @@ func newExpiryScheduleBuilder(btlPolicy pvtdatapolicy.BTLPolicy) *expirySchedule
 	return &expiryScheduleBuilder{btlPolicy, make(map[expiryInfoKey]*PvtdataKeys)}
 }
 
-func (builder *expiryScheduleBuilder) add(ns, coll, key string, keyHash []byte, versionedValue *statedb.VersionedValue) {
+func (builder *expiryScheduleBuilder) add(ns, coll, key string, keyHash []byte, versionedValue *statedb.VersionedValue) error {
 	committingBlk := versionedValue.Version.BlockNum
-	expiryBlk := builder.btlPolicy.GetExpiringBlock(ns, coll, committingBlk)
+	expiryBlk, err := builder.btlPolicy.GetExpiringBlock(ns, coll, committingBlk)
+	if err != nil {
+		return err
+	}
 	if isDelete(versionedValue) || neverExpires(expiryBlk) {
-		return
+		return nil
 	}
 	expinfoKey := expiryInfoKey{committingBlk: committingBlk, expiryBlk: expiryBlk}
 	pvtdataKeys, ok := builder.scheduleEntries[expinfoKey]
@@ -37,6 +40,7 @@ func (builder *expiryScheduleBuilder) add(ns, coll, key string, keyHash []byte, 
 		builder.scheduleEntries[expinfoKey] = pvtdataKeys
 	}
 	pvtdataKeys.add(ns, coll, key, keyHash)
+	return nil
 }
 
 func isDelete(versionedValue *statedb.VersionedValue) bool {
@@ -59,7 +63,7 @@ func (builder *expiryScheduleBuilder) getExpiryInfo() []*expiryInfo {
 func buildExpirySchedule(
 	btlPolicy pvtdatapolicy.BTLPolicy,
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) []*expiryInfo {
+	hashedUpdates *privacyenabledstate.HashedUpdateBatch) ([]*expiryInfo, error) {
 
 	hashedUpdateKeys := hashedUpdates.ToCompositeKeyMap()
 	expiryScheduleBuilder := newExpiryScheduleBuilder(btlPolicy)
@@ -71,14 +75,18 @@ func buildExpirySchedule(
 	// or because we allow proceeding with the missing private data data
 	for pvtUpdateKey, vv := range pvtUpdates.ToCompositeKeyMap() {
 		keyHash := util.ComputeStringHash(pvtUpdateKey.Key)
-		expiryScheduleBuilder.add(pvtUpdateKey.Namespace, pvtUpdateKey.CollectionName, pvtUpdateKey.Key, keyHash, vv)
+		if err := expiryScheduleBuilder.add(pvtUpdateKey.Namespace, pvtUpdateKey.CollectionName, pvtUpdateKey.Key, keyHash, vv); err != nil {
+			return nil, err
+		}
 		delete(hashedUpdateKeys, privacyenabledstate.HashedCompositeKey{
 			Namespace: pvtUpdateKey.Namespace, CollectionName: pvtUpdateKey.CollectionName, KeyHash: string(keyHash)})
 	}
 
 	// Add entries for the leftover key hashes i.e., the hashes corresponding to which there is not private key is present
 	for hashedUpdateKey, vv := range hashedUpdateKeys {
-		expiryScheduleBuilder.add(hashedUpdateKey.Namespace, hashedUpdateKey.CollectionName, "", []byte(hashedUpdateKey.KeyHash), vv)
+		if err := expiryScheduleBuilder.add(hashedUpdateKey.Namespace, hashedUpdateKey.CollectionName, "", []byte(hashedUpdateKey.KeyHash), vv); err != nil {
+			return nil, err
+		}
 	}
-	return expiryScheduleBuilder.getExpiryInfo()
+	return expiryScheduleBuilder.getExpiryInfo(), nil
 }

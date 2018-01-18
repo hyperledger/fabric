@@ -7,27 +7,26 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/spf13/viper"
 )
 
 func TestBuildExpirySchedule(t *testing.T) {
-	ledgerid := "testledger-BuildExpirySchedule"
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns1.coll1", ledgerid), 1)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns1.coll2", ledgerid), 2)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns2.coll3", ledgerid), 3)
-
-	btlPolicy, _ := pvtdatapolicy.GetBTLPolicy(ledgerid)
-
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns1", "coll1", 1)
+	cs.SetBTL("ns1", "coll2", 2)
+	cs.SetBTL("ns2", "coll3", 3)
+	cs.SetBTL("ns3", "coll4", 0)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
 	updates := privacyenabledstate.NewUpdateBatch()
 	updates.PubUpdates.Put("ns1", "pubkey1", []byte("pubvalue1"), version.NewHeight(1, 1))
 	putPvtUpdates(t, updates, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1"), version.NewHeight(1, 1))
@@ -35,7 +34,8 @@ func TestBuildExpirySchedule(t *testing.T) {
 	putPvtUpdates(t, updates, "ns2", "coll3", "pvtkey3", []byte("pvtvalue3"), version.NewHeight(3, 1))
 	putPvtUpdates(t, updates, "ns3", "coll4", "pvtkey4", []byte("pvtvalue4"), version.NewHeight(4, 1))
 
-	listExpinfo := buildExpirySchedule(btlPolicy, updates.PvtUpdates, updates.HashUpdates)
+	listExpinfo, err := buildExpirySchedule(btlPolicy, updates.PvtUpdates, updates.HashUpdates)
+	testutil.AssertNoError(t, err, "")
 	t.Logf("listExpinfo=%s", spew.Sdump(listExpinfo))
 
 	pvtdataKeys1 := newPvtdataKeys()

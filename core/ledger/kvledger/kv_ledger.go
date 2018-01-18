@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
@@ -44,16 +46,9 @@ func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
 	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB,
 	stateListeners []ledger.StateListener, bookkeeperProvider bookkeeping.Provider) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
-	//Initialize transaction manager using state database
-	var txmgmt txmgr.TxMgr
-	txmgmt, err := lockbasedtxmgr.NewLockBasedTxMgr(ledgerID, versionedDB, stateListeners, bookkeeperProvider)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
 	// id store, blockstore, txmgr (state database), history database
-	l := &kvLedger{ledgerID, blockStore, txmgmt, historyDB, &sync.RWMutex{}}
+	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}}
 
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
 	// this functionality of regiserting for events to ledgermgmt package so that this
@@ -63,12 +58,27 @@ func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
 	if ccEventListener != nil {
 		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
 	}
-
+	btlPolicy := pvtdatapolicy.NewBTLPolicy(l)
+	if err := l.initTxMgr(versionedDB, stateListeners, btlPolicy, bookkeeperProvider); err != nil {
+		return nil, err
+	}
+	l.initBlockStore(btlPolicy)
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
 		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
 	}
 	return l, nil
+}
+
+func (l *kvLedger) initTxMgr(versionedDB privacyenabledstate.DB, stateListeners []ledger.StateListener,
+	btlPolicy pvtdatapolicy.BTLPolicy, bookkeeperProvider bookkeeping.Provider) error {
+	var err error
+	l.txtmgmt, err = lockbasedtxmgr.NewLockBasedTxMgr(l.ledgerID, versionedDB, stateListeners, btlPolicy, bookkeeperProvider)
+	return err
+}
+
+func (l *kvLedger) initBlockStore(btlPolicy pvtdatapolicy.BTLPolicy) {
+	l.blockStore.Init(btlPolicy)
 }
 
 //Recover the state database and history database (if exist)

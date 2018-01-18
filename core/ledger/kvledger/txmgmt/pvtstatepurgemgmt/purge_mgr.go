@@ -54,11 +54,7 @@ type purgeMgr struct {
 }
 
 // InstantiatePurgeMgr instantiates a PurgeMgr.
-func InstantiatePurgeMgr(ledgerid string, db privacyenabledstate.DB, bookkeepingProvider bookkeeping.Provider) (PurgeMgr, error) {
-	btlPolicy, err := pvtdatapolicy.GetBTLPolicy(ledgerid)
-	if err != nil {
-		return nil, err
-	}
+func InstantiatePurgeMgr(ledgerid string, db privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (PurgeMgr, error) {
 	return &purgeMgr{
 		btlPolicy: btlPolicy,
 		db:        db,
@@ -108,7 +104,10 @@ func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
 			pvtUpdates.Delete(ns, coll, key, expiringTxVersion)
 		}
 	}
-	listExpiryInfo := buildExpirySchedule(p.btlPolicy, pvtUpdates, hashedUpdates)
+	listExpiryInfo, err := buildExpirySchedule(p.btlPolicy, pvtUpdates, hashedUpdates)
+	if err != nil {
+		return err
+	}
 	return p.expKeeper.updateBookkeeping(listExpiryInfo, nil)
 }
 

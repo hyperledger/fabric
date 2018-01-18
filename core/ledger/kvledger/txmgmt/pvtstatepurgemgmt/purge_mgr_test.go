@@ -7,15 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 import (
-	"fmt"
 	"os"
 	"testing"
+
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -39,13 +41,15 @@ func TestPergeMgr(t *testing.T) {
 
 func testPergeMgr(t *testing.T, dbEnv privacyenabledstate.TestEnv) {
 	ledgerid := "testledger-perge-mgr"
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns1.coll1", ledgerid), 1)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns1.coll2", ledgerid), 2)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns2.coll3", ledgerid), 4)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns2.coll4", ledgerid), 4)
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns1", "coll1", 1)
+	cs.SetBTL("ns1", "coll2", 2)
+	cs.SetBTL("ns2", "coll3", 4)
+	cs.SetBTL("ns2", "coll4", 4)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
 
 	testHelper := &testHelper{}
-	testHelper.init(t, ledgerid, dbEnv)
+	testHelper.init(t, ledgerid, btlPolicy, dbEnv)
 	defer testHelper.cleanup()
 
 	block1Updates := privacyenabledstate.NewUpdateBatch()
@@ -104,14 +108,14 @@ type testHelper struct {
 	purgeMgr PurgeMgr
 }
 
-func (h *testHelper) init(t *testing.T, ledgerid string, dbEnv privacyenabledstate.TestEnv) {
+func (h *testHelper) init(t *testing.T, ledgerid string, btlPolicy pvtdatapolicy.BTLPolicy, dbEnv privacyenabledstate.TestEnv) {
 	h.t = t
 	h.bookkeepingEnv = bookkeeping.NewTestEnv(t)
 	dbEnv.Init(t)
 	h.dbEnv = dbEnv
 	h.db = h.dbEnv.GetDBHandle(ledgerid)
 	var err error
-	if h.purgeMgr, err = InstantiatePurgeMgr(ledgerid, h.db, h.bookkeepingEnv.TestProvider); err != nil {
+	if h.purgeMgr, err = InstantiatePurgeMgr(ledgerid, h.db, btlPolicy, h.bookkeepingEnv.TestProvider); err != nil {
 		t.Fatalf("err:%s", err)
 	}
 }

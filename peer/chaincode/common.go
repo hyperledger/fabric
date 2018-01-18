@@ -165,6 +165,7 @@ type collectionConfigJson struct {
 	Policy        string `json:"policy"`
 	RequiredCount int32  `json:"requiredPeerCount"`
 	MaxPeerCount  int32  `json:"maxPeerCount"`
+	BlockToLive   uint64 `json:"blockToLive"`
 }
 
 // getCollectionConfig retrieves the collection configuration
@@ -209,6 +210,7 @@ func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
 					MemberOrgsPolicy:  cpc,
 					RequiredPeerCount: cconfitem.RequiredCount,
 					MaximumPeerCount:  cconfitem.MaxPeerCount,
+					BlockToLive:       cconfitem.BlockToLive,
 				},
 			},
 		}

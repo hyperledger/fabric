@@ -331,6 +331,10 @@ func (cs *collectionStore) RetrieveCollectionConfigPackage(common.CollectionCrit
 	panic("implement me")
 }
 
+func (cs *collectionStore) RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+	panic("implement me")
+}
+
 type collectionAccessPolicy struct {
 	cs *collectionStore
 	n  uint64

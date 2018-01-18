@@ -14,10 +14,13 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
 
-func prepareStoreEntries(blockNum uint64, pvtdata []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy) ([]*dataEntry, []*expiryEntry) {
+func prepareStoreEntries(blockNum uint64, pvtdata []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy) ([]*dataEntry, []*expiryEntry, error) {
 	dataEntries := prepareDataEntries(blockNum, pvtdata)
-	expiryEntries := prepareExpiryEntries(blockNum, dataEntries, btlPolicy)
-	return dataEntries, expiryEntries
+	expiryEntries, err := prepareExpiryEntries(blockNum, dataEntries, btlPolicy)
+	if err != nil {
+		return nil, nil, err
+	}
+	return dataEntries, expiryEntries, nil
 }
 
 func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEntry {
@@ -36,10 +39,13 @@ func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEnt
 	return dataEntries
 }
 
-func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, btlPolicy pvtdatapolicy.BTLPolicy) []*expiryEntry {
+func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, btlPolicy pvtdatapolicy.BTLPolicy) ([]*expiryEntry, error) {
 	mapByExpiringBlk := make(map[uint64]*ExpiryData)
 	for _, dataEntry := range dataEntries {
-		expiringBlk := btlPolicy.GetExpiringBlock(dataEntry.key.ns, dataEntry.key.coll, dataEntry.key.blkNum)
+		expiringBlk, err := btlPolicy.GetExpiringBlock(dataEntry.key.ns, dataEntry.key.coll, dataEntry.key.blkNum)
+		if err != nil {
+			return nil, err
+		}
 		if neverExpires(expiringBlk) {
 			continue
 		}
@@ -55,7 +61,7 @@ func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, btlPol
 		expiryKey := &expiryKey{expiringBlk: expiryBlk, committingBlk: committingBlk}
 		expiryEntries = append(expiryEntries, &expiryEntry{key: expiryKey, value: expiryData})
 	}
-	return expiryEntries
+	return expiryEntries, nil
 }
 
 func deriveDataKeys(expiryEntry *expiryEntry) []*dataKey {
@@ -74,8 +80,12 @@ func passesFilter(dataKey *dataKey, filter ledger.PvtNsCollFilter) bool {
 	return filter == nil || filter.Has(dataKey.ns, dataKey.coll)
 }
 
-func isExpired(dataKey *dataKey, btl pvtdatapolicy.BTLPolicy, latestBlkNum uint64) bool {
-	return latestBlkNum >= btl.GetExpiringBlock(dataKey.ns, dataKey.coll, dataKey.blkNum)
+func isExpired(dataKey *dataKey, btl pvtdatapolicy.BTLPolicy, latestBlkNum uint64) (bool, error) {
+	expiringBlk, err := btl.GetExpiringBlock(dataKey.ns, dataKey.coll, dataKey.blkNum)
+	if err != nil {
+		return false, err
+	}
+	return latestBlkNum >= expiringBlk, nil
 }
 
 func neverExpires(expiringBlkNum uint64) bool {

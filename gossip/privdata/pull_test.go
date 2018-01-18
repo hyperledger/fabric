@@ -63,6 +63,10 @@ func (cs mockCollectionStore) RetrieveCollectionConfigPackage(fcommon.Collection
 	panic("implement me")
 }
 
+func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(fcommon.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+	panic("implement me")
+}
+
 type mockCollectionAccess struct {
 	cs *mockCollectionStore
 }

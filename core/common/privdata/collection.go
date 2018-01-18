@@ -49,6 +49,14 @@ type CollectionAccessPolicy interface {
 	MemberOrgs() []string
 }
 
+// CollectionPersistenceConfigs encapsulates configurations related to persistece of a collection
+type CollectionPersistenceConfigs interface {
+	// BlockToLive returns the number of blocks after which the collection data expires.
+	// For instance if the value is set to 10, a key last modified by block number 100
+	// will be purged at block number 111. A zero value is treated same as MaxUint64
+	BlockToLive() uint64
+}
+
 // Filter defines a rule that filters peers according to data signed by them.
 // The Identity in the SignedData is a SerializedIdentity of a peer.
 // The Data is a message the peer signed, and the Signature is the corresponding
@@ -71,9 +79,12 @@ type CollectionStore interface {
 	// GetCollectionAccessPolicy retrieves a collection's access policy
 	RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error)
 
-	// RetrieveCollectionConfigPackage retrieves the configuration
-	// for the collection with the supplied criteria
+	// RetrieveCollectionConfigPackage retrieves the whole configuration package
+	// for the chaincode with the supplied criteria
 	RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error)
+
+	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
+	RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (CollectionPersistenceConfigs, error)
 }
 
 const (

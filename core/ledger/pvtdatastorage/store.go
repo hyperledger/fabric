@@ -8,6 +8,7 @@ package pvtdatastorage
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 )
 
 // Provider provides handle to specific 'Store' that in turn manages
@@ -28,6 +29,8 @@ type Provider interface {
 // on whether the block was written successfully or not. The store implementation
 // is expected to survive a server crash between the call to `Prepare` and `Commit`/`Rollback`
 type Store interface {
+	// Init initializes the store. This function is expected to be invoked before using the store
+	Init(btlPolicy pvtdatapolicy.BTLPolicy)
 	// InitLastCommittedBlockHeight sets the last commited block height into the pvt data store
 	// This function is used in a special case where the peer is started up with the blockchain
 	// from an earlier version of a peer when the pvt data feature (and hence this store) was not

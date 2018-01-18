@@ -71,11 +71,7 @@ func NewProvider() Provider {
 // OpenStore returns a handle to a store
 func (p *provider) OpenStore(ledgerid string) (Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
-	btlPolicy, err := pvtdatapolicy.GetBTLPolicy(ledgerid)
-	if err != nil {
-		return nil, err
-	}
-	s := &store{db: dbHandle, ledgerid: ledgerid, btlPolicy: btlPolicy}
+	s := &store{db: dbHandle, ledgerid: ledgerid}
 	if err := s.initState(); err != nil {
 		return nil, err
 	}
@@ -101,6 +97,10 @@ func (s *store) initState() error {
 	return nil
 }
 
+func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
+	s.btlPolicy = btlPolicy
+}
+
 // Prepare implements the function in the interface `Store`
 func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
 	if s.batchPending {
@@ -115,7 +115,10 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
 	batch := leveldbhelper.NewUpdateBatch()
 	var err error
 	var keyBytes, valBytes []byte
-	dataEntries, expiryEntries := prepareStoreEntries(blockNum, pvtData, s.btlPolicy)
+	dataEntries, expiryEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy)
+	if err != nil {
+		return err
+	}
 	for _, dataEntry := range dataEntries {
 		keyBytes = encodeDataKey(dataEntry.key)
 		if valBytes, err = encodeDataValue(dataEntry.value); err != nil {
@@ -196,7 +199,11 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 		dataKeyBytes := itr.Key()
 		dataValueBytes := itr.Value()
 		dataKey := decodeDatakey(dataKeyBytes)
-		if isExpired(dataKey, s.btlPolicy, s.lastCommittedBlock) || !passesFilter(dataKey, filter) {
+		expired, err := isExpired(dataKey, s.btlPolicy, s.lastCommittedBlock)
+		if err != nil {
+			return nil, err
+		}
+		if expired || !passesFilter(dataKey, filter) {
 			continue
 		}
 		dataValue, err := decodeDataValue(dataValueBytes)

@@ -29,7 +29,7 @@ func TestStateListener(t *testing.T) {
 	ml3.InterestedInNamespacesStub = func() []string { return []string{"ns4"} }
 
 	testEnv := testEnvsMap[levelDBtestEnvName]
-	testEnv.init(t, testLedgerid)
+	testEnv.init(t, testLedgerid, nil)
 	defer testEnv.cleanup()
 	txmgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	txmgr.stateListeners = []ledger.StateListener{ml1, ml2, ml3}
