@@ -30,7 +30,7 @@ var (
 			"bar": dummyPolicy,
 		},
 		Groups: map[string]*cb.ConfigGroup{
-			"subGroup": &cb.ConfigGroup{
+			"subGroup": {
 				Policies: map[string]*cb.ConfigPolicy{
 					"other": dummyPolicy,
 				},
@@ -48,9 +48,9 @@ func TestGreenPeerPoliciesPath(t *testing.T) {
 func TestPeerPolicieesWithValues(t *testing.T) {
 	_, err := newPeerPoliciesGroup(&cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			"bar": &cb.ConfigGroup{
+			"bar": {
 				Values: map[string]*cb.ConfigValue{
-					"foo": &cb.ConfigValue{},
+					"foo": {},
 				},
 			},
 		},

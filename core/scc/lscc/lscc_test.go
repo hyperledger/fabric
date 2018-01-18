@@ -71,7 +71,7 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 
 		scc.support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = cccdspack
 		scc.support.(*lscc.MockSupport).GetChaincodeFromLocalStorageErr = nil
-		scc.support.(*lscc.MockSupport).GetChaincodesFromLocalStorageRv = &pb.ChaincodeQueryResponse{Chaincodes: []*pb.ChaincodeInfo{&pb.ChaincodeInfo{}}}
+		scc.support.(*lscc.MockSupport).GetChaincodesFromLocalStorageRv = &pb.ChaincodeQueryResponse{Chaincodes: []*pb.ChaincodeInfo{{}}}
 		scc.support.(*lscc.MockSupport).GetChaincodesFromLocalStorageErr = nil
 	} else {
 		scc.support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = nil

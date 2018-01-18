@@ -51,7 +51,7 @@ func TestBundleFailure(t *testing.T) {
 		Config: &cb.Config{
 			ChannelGroup: &cb.ConfigGroup{
 				Groups: map[string]*cb.ConfigGroup{
-					"badsubgroup": &cb.ConfigGroup{},
+					"badsubgroup": {},
 				},
 			},
 		},
