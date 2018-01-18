@@ -207,7 +207,7 @@ func TestPrevalidation(t *testing.T) {
 		err := preValidate(nil)
 
 		assert.Error(t, err)
-		assert.Regexp(t, "config cannot be nil", err.Error())
+		assert.Regexp(t, "channelconfig Config cannot be nil", err.Error())
 	})
 
 	t.Run("NilChannelGroup", func(t *testing.T) {

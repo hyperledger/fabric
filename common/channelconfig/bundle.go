@@ -216,7 +216,7 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 
 func preValidate(config *cb.Config) error {
 	if config == nil {
-		return errors.New("config cannot be nil")
+		return errors.New("channelconfig Config cannot be nil")
 	}
 
 	if config.ChannelGroup == nil {
