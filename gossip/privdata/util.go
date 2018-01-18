@@ -31,17 +31,25 @@ type blockFactory struct {
 }
 
 func (bf *blockFactory) AddTxn(txID string, nsName string, hash []byte, collections ...string) *blockFactory {
-	return bf.AddTxnWithEndorsement(txID, nsName, hash, "", collections...)
+	return bf.AddTxnWithEndorsement(txID, nsName, hash, "", true, collections...)
 }
 
-func (bf *blockFactory) AddTxnWithEndorsement(txID string, nsName string, hash []byte, org string, collections ...string) *blockFactory {
+func (bf *blockFactory) AddReadOnlyTxn(txID string, nsName string, hash []byte, collections ...string) *blockFactory {
+	return bf.AddTxnWithEndorsement(txID, nsName, hash, "", false, collections...)
+}
+
+func (bf *blockFactory) AddTxnWithEndorsement(txID string, nsName string, hash []byte, org string, hasWrites bool, collections ...string) *blockFactory {
 	txn := &peer.Transaction{
 		Actions: []*peer.TransactionAction{
 			{},
 		},
 	}
+	nsRWSet := sampleNsRwSet(nsName, hash, collections...)
+	if !hasWrites {
+		nsRWSet = sampleReadOnlyNsRwSet(nsName, hash, collections...)
+	}
 	txrws := rwsetutil.TxRwSet{
-		NsRwSets: []*rwsetutil.NsRwSet{sampleNsRwSet(nsName, hash, collections...)},
+		NsRwSets: []*rwsetutil.NsRwSet{nsRWSet},
 	}
 
 	b, err := txrws.ToProtoBytes()
@@ -167,7 +175,17 @@ func sampleNsRwSet(ns string, hash []byte, collections ...string) *rwsetutil.NsR
 		KvRwSet: sampleKvRwSet(),
 	}
 	for _, col := range collections {
-		nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet(col, hash))
+		nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet(col, hash, true))
+	}
+	return nsRwSet
+}
+
+func sampleReadOnlyNsRwSet(ns string, hash []byte, collections ...string) *rwsetutil.NsRwSet {
+	nsRwSet := &rwsetutil.NsRwSet{NameSpace: ns,
+		KvRwSet: sampleKvRwSet(),
+	}
+	for _, col := range collections {
+		nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet(col, hash, false))
 	}
 	return nsRwSet
 }
@@ -188,7 +206,7 @@ func sampleKvRwSet() *kvrwset.KVRWSet {
 	}
 }
 
-func sampleCollHashedRwSet(collectionName string, hash []byte) *rwsetutil.CollHashedRwSet {
+func sampleCollHashedRwSet(collectionName string, hash []byte, hasWrites bool) *rwsetutil.CollHashedRwSet {
 	collHashedRwSet := &rwsetutil.CollHashedRwSet{
 		CollectionName: collectionName,
 		HashedRwSet: &kvrwset.HashedRWSet{
@@ -196,12 +214,14 @@ func sampleCollHashedRwSet(collectionName string, hash []byte) *rwsetutil.CollHa
 				{KeyHash: []byte("Key-1-hash"), Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 				{KeyHash: []byte("Key-2-hash"), Version: &kvrwset.Version{BlockNum: 2, TxNum: 3}},
 			},
-			HashedWrites: []*kvrwset.KVWriteHash{
-				{KeyHash: []byte("Key-3-hash"), ValueHash: []byte("value-3-hash"), IsDelete: false},
-				{KeyHash: []byte("Key-4-hash"), ValueHash: []byte("value-4-hash"), IsDelete: true},
-			},
 		},
 		PvtRwSetHash: hash,
+	}
+	if hasWrites {
+		collHashedRwSet.HashedRwSet.HashedWrites = []*kvrwset.KVWriteHash{
+			{KeyHash: []byte("Key-3-hash"), ValueHash: []byte("value-3-hash"), IsDelete: false},
+			{KeyHash: []byte("Key-4-hash"), ValueHash: []byte("value-4-hash"), IsDelete: true},
+		}
 	}
 	return collHashedRwSet
 }
