@@ -161,7 +161,7 @@ func (provider *VersionedDBProvider) Close() {
 type VersionedDB struct {
 	couchInstance *couchdb.CouchInstance
 	metadataDB    *couchdb.CouchDatabase            // A database per channel to store metadata such as savepoint.
-	dbName        string                            // The name of the channel database.
+	chainName     string                            // The name of the chain/channel.
 	namespaceDBs  map[string]*couchdb.CouchDatabase // One database per deployed chaincode.
 	//TODO: Decide whether to split committedDataCache into multiple cahces, i.e., one per namespace.
 	committedDataCache *CommittedVersions // Used as a local cache during bulk processing of a block.
@@ -171,8 +171,10 @@ type VersionedDB struct {
 // newVersionedDB constructs an instance of VersionedDB
 func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*VersionedDB, error) {
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
+	chainName := dbName
 
-	dbName = dbName + "_"
+	dbName = couchdb.ConstructMetadataDBName(dbName)
+
 	metadataDB, err := couchdb.CreateCouchDatabase(*couchInstance, dbName)
 	if err != nil {
 		return nil, err
@@ -183,33 +185,32 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*Versi
 
 	committedDataCache := &CommittedVersions{committedVersions: versionMap, revisionNumbers: revMap}
 
-	return &VersionedDB{couchInstance, metadataDB, dbName, namespaceDBMap, committedDataCache, sync.RWMutex{}}, nil
+	return &VersionedDB{couchInstance, metadataDB, chainName, namespaceDBMap, committedDataCache, sync.RWMutex{}}, nil
 }
 
 // getNamespaceDBHandle gets the handle to a named chaincode database
 func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchdb.CouchDatabase, error) {
 
-	// TODO: lower casing the namespace will be handled more appropriately when
-	// we address the additional name mapping logic specified in FAB-7130.
-	namespaceDBName := vdb.dbName + strings.ToLower(namespace)
 	vdb.mux.RLock()
-	db := vdb.namespaceDBs[namespaceDBName]
+	db := vdb.namespaceDBs[namespace]
 	vdb.mux.RUnlock()
 
 	if db != nil {
 		return db, nil
 	}
 
+	namespaceDBName := couchdb.ConstructNamespaceDBName(vdb.chainName, namespace)
+
 	vdb.mux.Lock()
 	defer vdb.mux.Unlock()
-	db = vdb.namespaceDBs[namespaceDBName]
+	db = vdb.namespaceDBs[namespace]
 	if db == nil {
 		var err error
 		db, err = couchdb.CreateCouchDatabase(*vdb.couchInstance, namespaceDBName)
 		if err != nil {
 			return nil, err
 		}
-		vdb.namespaceDBs[namespaceDBName] = db
+		vdb.namespaceDBs[namespace] = db
 	}
 	return db, nil
 }
@@ -560,7 +561,7 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 			}
 
 			logger.Debugf("Channel [%s]: namespace=[%s] key=[%#v], prior revision=[%s], isDelete=[%t]",
-				vdb.dbName, ns, key, revision, isDelete)
+				vdb.chainName, ns, key, revision, isDelete)
 
 			if isDelete {
 				// this is a deleted record.  Set the _deleted property to true
@@ -922,6 +923,7 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height, namespaces []str
 	var err error
 	var savepointDoc couchSavepointData
 	// ensure full commit to flush all changes on updated namespaces until now to disk
+	// namespace also includes empty namespace which is nothing but metadataDB
 	for _, ns := range namespaces {
 		// TODO: Ensure full commit can be parallelized to improve performance
 		db, err := vdb.getNamespaceDBHandle(ns)
@@ -935,6 +937,7 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height, namespaces []str
 			return errors.New("Failed to perform full commit")
 		}
 	}
+
 	// construct savepoint document
 	savepointDoc.BlockNum = height.BlockNum
 	savepointDoc.TxNum = height.TxNum
@@ -952,12 +955,10 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height, namespaces []str
 		return err
 	}
 
-	dbResponse, err := vdb.metadataDB.EnsureFullCommit()
-
-	if err != nil || dbResponse.Ok != true {
-		logger.Errorf("Failed to perform full commit\n")
-		return errors.New("Failed to perform full commit")
-	}
+	// Note: Ensure full commit on metadataDB after storing the savepoint is not necessary
+	// as CouchDB syncs states to disk periodically (every 1 second). If peer fails before
+	// syncing the savepoint to disk, ledger recovery process kicks in to ensure consistency
+	// between CouchDB and block store on peer restart
 
 	return nil
 }
