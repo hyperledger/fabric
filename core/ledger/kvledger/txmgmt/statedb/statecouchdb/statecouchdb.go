@@ -395,8 +395,7 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	// Get the querylimit from core.yaml
 	queryLimit := ledgerconfig.GetQueryLimit()
 
-	// TODO: Remove namespace from wrapper query
-	queryString, err := ApplyQueryWrapper(namespace, query, queryLimit, 0)
+	queryString, err := ApplyQueryWrapper(query, queryLimit, 0)
 	if err != nil {
 		logger.Debugf("Error calling ApplyQueryWrapper(): %s\n", err.Error())
 		return nil, err
@@ -565,15 +564,13 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 			if isDelete {
 				// this is a deleted record.  Set the _deleted property to true
 				//couchDoc.JSONValue = createCouchdbDocJSON(string(compositeKey), revision, nil, ns, vv.Version, true)
-				//TODO: Remove ns/chaincodeID from json doc
-				couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, ns, vv.Version, true)
+				couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, vv.Version, true)
 
 			} else {
 
 				if couchdb.IsJSON(string(vv.Value)) {
 					// Handle as json
-					//TODO: Remove ns from json doc
-					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, vv.Value, ns, vv.Version, false)
+					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, vv.Value, vv.Version, false)
 
 				} else { // if value is not json, handle as a couchdb attachment
 
@@ -584,8 +581,7 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 					attachments := append([]*couchdb.AttachmentInfo{}, attachment)
 
 					couchDoc.Attachments = attachments
-					//TODO: Remove ns from json doc
-					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, ns, vv.Version, false)
+					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, vv.Version, false)
 
 				}
 			}
@@ -835,11 +831,10 @@ func (vdb *VersionedDB) ClearCachedVersions() {
 // _id - couchdb document ID, need for all couchdb batch operations
 // _rev - couchdb document revision, needed for updating or deleting existing documents
 // _deleted - flag using in batch operations for deleting a couchdb document
-// chaincodeID - chain code ID, added to header, used to scope couchdb queries
 // version - version, added to header, used for state validation
 // data wrapper - JSON from the chaincode goes here
 // The return value is the CouchDoc.JSONValue with the header fields populated
-func createCouchdbDocJSON(id, revision string, value []byte, chaincodeID string, version *version.Height, deleted bool) []byte {
+func createCouchdbDocJSON(id, revision string, value []byte, version *version.Height, deleted bool) []byte {
 
 	// create a version mapping
 	jsonMap := map[string]interface{}{"version": fmt.Sprintf("%v:%v", version.BlockNum, version.TxNum)}
@@ -857,10 +852,6 @@ func createCouchdbDocJSON(id, revision string, value []byte, chaincodeID string,
 		jsonMap["_deleted"] = true
 
 	} else {
-
-		// TODO: Remove chaincodeID from header
-		// add the chaincodeID
-		jsonMap["chaincodeid"] = chaincodeID
 
 		// Add the wrapped data if the value is not null
 		if value != nil {
