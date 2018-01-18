@@ -21,7 +21,7 @@ func TestApplicationV10(t *testing.T) {
 
 func TestApplicationV11(t *testing.T) {
 	op := NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationV1_1: &cb.Capability{},
+		ApplicationV1_1: {},
 	})
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.ForbidDuplicateTXIdInBlock())

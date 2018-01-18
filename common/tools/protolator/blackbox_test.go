@@ -79,17 +79,17 @@ func TestResourcesConfig(t *testing.T) {
 		Type: int32(cb.ConfigType_RESOURCE),
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				"Chaincodes": &cb.ConfigGroup{
+				"Chaincodes": {
 					Groups: map[string]*cb.ConfigGroup{
-						"cc1": &cb.ConfigGroup{
+						"cc1": {
 							Values: map[string]*cb.ConfigValue{
-								"ChaincodeIdentifier": &cb.ConfigValue{
+								"ChaincodeIdentifier": {
 									Value: utils.MarshalOrPanic(&pb.ChaincodeIdentifier{
 										Hash:    []byte("somehashvalue"),
 										Version: "aversionstring",
 									}),
 								},
-								"ChaincodeValidation": &cb.ConfigValue{
+								"ChaincodeValidation": {
 									Value: utils.MarshalOrPanic(
 										&pb.ChaincodeValidation{
 											Name: "vscc",
@@ -98,7 +98,7 @@ func TestResourcesConfig(t *testing.T) {
 											}),
 										}),
 								},
-								"ChaincodeEndorsement": &cb.ConfigValue{
+								"ChaincodeEndorsement": {
 									Value: utils.MarshalOrPanic(&pb.ChaincodeEndorsement{
 										Name: "escc",
 									}),
@@ -107,17 +107,17 @@ func TestResourcesConfig(t *testing.T) {
 						},
 					},
 				},
-				"APIs": &cb.ConfigGroup{
+				"APIs": {
 					Values: map[string]*cb.ConfigValue{
-						"Test": &cb.ConfigValue{
+						"Test": {
 							Value: utils.MarshalOrPanic(&pb.APIResource{PolicyRef: "Foo"}),
 						},
-						"Another": &cb.ConfigValue{
+						"Another": {
 							Value: utils.MarshalOrPanic(&pb.APIResource{PolicyRef: "Bar"}),
 						},
 					},
 				},
-				"PeerPolicies": &cb.ConfigGroup{},
+				"PeerPolicies": {},
 			},
 		},
 	}

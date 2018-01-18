@@ -29,19 +29,19 @@ var (
 
 var sampleChaincodeGroup = &cb.ConfigGroup{
 	Values: map[string]*cb.ConfigValue{
-		"ChaincodeIdentifier": &cb.ConfigValue{
+		"ChaincodeIdentifier": {
 			Value: utils.MarshalOrPanic(&pb.ChaincodeIdentifier{
 				Version: sampleChaincodeVersion,
 				Hash:    sampleChaincodeHash,
 			}),
 		},
-		"ChaincodeValidation": &cb.ConfigValue{
+		"ChaincodeValidation": {
 			Value: utils.MarshalOrPanic(&pb.ChaincodeValidation{
 				Name:     sampleChaincodeValidationName,
 				Argument: sampleChaincodeValidationArg,
 			}),
 		},
-		"ChaincodeEndorsement": &cb.ConfigValue{
+		"ChaincodeEndorsement": {
 			Value: utils.MarshalOrPanic(&pb.ChaincodeEndorsement{
 				Name: sampleChaincodeEndorsementName,
 			}),
@@ -68,7 +68,7 @@ func TestGreenChaincodePath(t *testing.T) {
 func TestBadSubgroupsChaincodeGroup(t *testing.T) {
 	ccg, err := newChaincodeGroup("bar", &cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			"subGroup": &cb.ConfigGroup{},
+			"subGroup": {},
 		},
 	})
 
