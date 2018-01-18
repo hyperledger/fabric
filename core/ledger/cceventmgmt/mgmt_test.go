@@ -81,7 +81,7 @@ func TestLSCCListener(t *testing.T) {
 	sampleChaincodeDataBytes, err := proto.Marshal(sampleChaincodeData)
 	assert.NoError(t, err, "")
 	lsccStateListener.HandleStateUpdates(channelName, []*kvrwset.KVWrite{
-		&kvrwset.KVWrite{Key: cc1Def.Name, Value: sampleChaincodeDataBytes},
+		{Key: cc1Def.Name, Value: sampleChaincodeDataBytes},
 	})
 	assert.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, cc1DBArtifactsTar})
 }

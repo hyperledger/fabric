@@ -29,7 +29,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	assert.NoError(t, err)
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
-	gb.Data = &common.BlockData{Data: [][]byte{[]byte{123}}}
+	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlags(len(gb.Data.Data))
 	_, err = preprocessProtoBlock(nil, gb, false)
@@ -70,7 +70,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	var blockNum uint64 = 15
 	txid := "testtxid1234"
 	gb = testutil.ConstructBlockWithTxid(t, blockNum, []byte{123},
-		[][]byte{[]byte{123}}, []string{txid}, false)
+		[][]byte{{123}}, []string{txid}, false)
 	flags = lutils.NewTxValidationFlags(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_HEADER_EXTENSION)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags

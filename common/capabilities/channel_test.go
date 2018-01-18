@@ -23,7 +23,7 @@ func TestChannelV10(t *testing.T) {
 
 func TestChannelV11(t *testing.T) {
 	op := NewChannelProvider(map[string]*cb.Capability{
-		ChannelV1_1: &cb.Capability{},
+		ChannelV1_1: {},
 	})
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.MSPVersion() == msp.MSPv1_1)

@@ -32,7 +32,7 @@ func TestSatisfied(t *testing.T) {
 
 func TestNotSatisfied(t *testing.T) {
 	capsMap := map[string]*cb.Capability{
-		"FakeCapability": &cb.Capability{},
+		"FakeCapability": {},
 	}
 	for _, provider := range []*registry{
 		NewChannelProvider(capsMap).registry,
