@@ -26,12 +26,12 @@ const (
 
 var sampleAPIsGroup = &cb.ConfigGroup{
 	Values: map[string]*cb.ConfigValue{
-		sampleAPI1Name: &cb.ConfigValue{
+		sampleAPI1Name: {
 			Value: utils.MarshalOrPanic(&pb.APIResource{
 				PolicyRef: sampleAPI1PolicyRef,
 			}),
 		},
-		sampleAPI2Name: &cb.ConfigValue{
+		sampleAPI2Name: {
 			Value: utils.MarshalOrPanic(&pb.APIResource{
 				PolicyRef: sampleAPI2PolicyRef,
 			}),
@@ -57,7 +57,7 @@ func TestGreenAPIsPath(t *testing.T) {
 func TestBadSubgroupsAPIsGroup(t *testing.T) {
 	ccg, err := newAPIsGroup(&cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			"subGroup": &cb.ConfigGroup{},
+			"subGroup": {},
 		},
 	})
 

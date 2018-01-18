@@ -83,7 +83,7 @@ func TestStateListener(t *testing.T) {
 	assert.NoError(t, lgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blk3}))
 	assert.Equal(t, channelid, mockListener.channelName)
 	assert.Equal(t, []*kvrwset.KVWrite{
-		&kvrwset.KVWrite{Key: "key4", Value: []byte("value4")},
+		{Key: "key4", Value: []byte("value4")},
 	}, mockListener.kvWrites)
 }
 

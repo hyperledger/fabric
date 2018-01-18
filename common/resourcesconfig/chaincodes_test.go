@@ -43,7 +43,7 @@ func TestGreenChaincodesPath(t *testing.T) {
 func TestChaincodesWithValues(t *testing.T) {
 	ccsg, err := newChaincodesGroup(&cb.ConfigGroup{
 		Values: map[string]*cb.ConfigValue{
-			"foo": &cb.ConfigValue{},
+			"foo": {},
 		},
 	})
 

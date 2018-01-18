@@ -736,7 +736,7 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 	// Call the batch retrieve if there is one or more keys to retrieve
 	if len(missingKeys) > 0 {
 
-		for namespace, _ := range missingKeys {
+		for namespace := range missingKeys {
 			// TODO: For each namespace, we need to parallely load missing keys into the cache
 			// The following codes need be moved to goroutine and introduce RWlock for cache.
 

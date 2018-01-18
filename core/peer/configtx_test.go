@@ -193,7 +193,7 @@ func (h *testHelper) sampleResourceConfig(version uint64, entries ...string) *co
 		ChannelGroup: &common.ConfigGroup{
 			Version: version,
 			Groups: map[string]*common.ConfigGroup{
-				resourcesconfig.ChaincodesGroupKey: &common.ConfigGroup{
+				resourcesconfig.ChaincodesGroupKey: {
 					Groups:    ccGroups,
 					ModPolicy: modPolicy,
 				},
@@ -295,7 +295,7 @@ func (h *testHelper) computeDeltaResConfTx(t *testing.T, chainid string, source,
 	sigHeader, err := localmsp.NewSigner().NewSignatureHeader()
 	assert.NoError(t, err)
 
-	confUpdateEnv.Signatures = []*common.ConfigSignature{&common.ConfigSignature{
+	confUpdateEnv.Signatures = []*common.ConfigSignature{{
 		SignatureHeader: utils.MarshalOrPanic(sigHeader)}}
 
 	sigs, err := localmsp.NewSigner().Sign(util.ConcatenateBytes(confUpdateEnv.Signatures[0].SignatureHeader, confUpdateEnv.ConfigUpdate))
