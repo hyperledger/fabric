@@ -41,8 +41,6 @@ All fields in the selector must have "data." prepended to the field names
 Fields listed in fields key will have "data." prepended
 Fields in the sort key will have "data." prepended
 
-- The query will be scoped to the chaincodeid
-
 - limit be added to the query and is based on config
 - skip is defaulted to 0 and is currently not used, this is for future paging implementation
 
@@ -56,12 +54,12 @@ Source Query:
 "sort": ["size", "color"]}
 
 Result Wrapped Query:
-{"selector":{"$and":[{"chaincodeid":"marble"},{"data.owner":{"$eq":"tom"}}]},
+{"selector":{"data.owner":{"$eq":"tom"}},
 "fields": ["data.owner","data.asset_name","data.color","data.size","_id","version"],
 "sort":["data.size","data.color"],"limit":10,"skip":0}
 
 */
-func ApplyQueryWrapper(namespace, queryString string, queryLimit, querySkip int) (string, error) {
+func ApplyQueryWrapper(queryString string, queryLimit, querySkip int) (string, error) {
 
 	//create a generic map for the query json
 	jsonQueryMap := make(map[string]interface{})
@@ -77,24 +75,15 @@ func ApplyQueryWrapper(namespace, queryString string, queryLimit, querySkip int)
 	//traverse through the json query and wrap any field names
 	processAndWrapQuery(jsonQueryMap)
 
-	//if "fields" are specified in the query, then add the "_id", "version" and "chaincodeid" fields
+	//if "fields" are specified in the query, then add the "_id", and "version"fields
 	if jsonValue, ok := jsonQueryMap[jsonQueryFields]; ok {
 		//check to see if this is an interface map
 		if reflect.TypeOf(jsonValue).String() == "[]interface {}" {
 
-			//Add the "_id", "version" and "chaincodeid" fields,  these are needed by default
+			//Add the "_id", and "version" fields,  these are needed by default
 			jsonQueryMap[jsonQueryFields] = append(jsonValue.([]interface{}),
-				"_id", "version", "chaincodeid")
+				"_id", "version")
 		}
-	}
-
-	//Check to see if the "selector" is specified in the query
-	if jsonValue, ok := jsonQueryMap[jsonQuerySelector]; ok {
-		//if the "selector" is found, then add the "$and" clause and the namespace filter
-		setNamespaceInSelector(namespace, jsonValue, jsonQueryMap)
-	} else {
-		//if the "selector" is not found, then add a default namespace filter
-		setDefaultNamespaceInSelector(namespace, jsonQueryMap)
 	}
 
 	//Add limit
@@ -110,48 +99,6 @@ func ApplyQueryWrapper(namespace, queryString string, queryLimit, querySkip int)
 
 	return string(editedQuery), nil
 
-}
-
-//setNamespaceInSelector adds an additional hierarchy in the "selector"
-//{"owner": {"$eq": "tom"}}
-//would be mapped as (assuming a namespace of "marble"):
-//{"$and":[{"chaincodeid":"marble"},{"data.owner":{"$eq":"tom"}}]}
-func setNamespaceInSelector(namespace, jsonValue interface{},
-	jsonQueryMap map[string]interface{}) {
-
-	//create a array to store the parts of the query
-	var queryParts = make([]interface{}, 0)
-
-	//Add the namespace filter to filter on the chaincodeid
-	namespaceFilter := make(map[string]interface{})
-	namespaceFilter["chaincodeid"] = namespace
-
-	//Add the context filter and the existing selector value
-	queryParts = append(queryParts, namespaceFilter, jsonValue)
-
-	//Create a new mapping for the new query structure
-	mappedSelector := make(map[string]interface{})
-
-	//Specify the "$and" operator for the parts of the query
-	mappedSelector["$and"] = queryParts
-
-	//Set the new mapped selector to the query selector
-	jsonQueryMap[jsonQuerySelector] = mappedSelector
-
-}
-
-//setDefaultNamespaceInSelector adds an default namespace filter in "selector"
-//If no selector is specified, the following is mapped to the "selector"
-//assuming a namespace of "marble"
-//{"chaincodeid":"marble"}
-func setDefaultNamespaceInSelector(namespace string, jsonQueryMap map[string]interface{}) {
-
-	//Add the context filter to filter on the chaincodeid
-	namespaceFilter := make(map[string]interface{})
-	namespaceFilter["chaincodeid"] = namespace
-
-	//Set the new mapped selector to the query selector
-	jsonQueryMap[jsonQuerySelector] = namespaceFilter
 }
 
 func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
