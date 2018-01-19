@@ -121,14 +121,15 @@ basic-checks: license spelling linter
 
 desk-check: license spelling linter verify behave
 
+# Pull thirdparty docker images based on the latest baseimage release version
 .PHONY: docker-thirdparty
 docker-thirdparty:
-	docker pull $(DOCKER_NS)/fabric-couchdb:$(PREV_TAG)
-	docker tag $(DOCKER_NS)/fabric-couchdb:$(PREV_TAG) $(DOCKER_NS)/fabric-couchdb
-	docker pull $(DOCKER_NS)/fabric-zookeeper:$(PREV_TAG)
-	docker tag $(DOCKER_NS)/fabric-zookeeper:$(PREV_TAG) $(DOCKER_NS)/fabric-zookeeper
-	docker pull $(DOCKER_NS)/fabric-kafka:$(PREV_TAG)
-	docker tag $(DOCKER_NS)/fabric-kafka:$(PREV_TAG) $(DOCKER_NS)/fabric-kafka
+	docker pull $(DOCKER_NS)/fabric-couchdb:$(BASE_DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-couchdb:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-couchdb
+	docker pull $(DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-zookeeper
+	docker pull $(DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-kafka
 
 .PHONY: spelling
 spelling:
