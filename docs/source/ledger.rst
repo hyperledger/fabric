@@ -147,13 +147,6 @@ Below is the ``stateDatabase`` section from *core.yaml*:
          requestTimeout: 35s
          # Limit on the number of records to return per query
          queryLimit: 10000
-         # Warm indexes automatically following the processing of an update batch
-         # CouchDB indexes are updated if the index is stale and a query is executed
-         # This can cause delays the first time a query is executed and a large number of
-         # records have been added.
-         # Warming the indexes during batch processing will incrementally keep the index
-         # up to date.
-         autoWarmIndexes: true
 
 CouchDB hosted in docker containers supplied with Hyperledger Fabric have the
 capability of setting the CouchDB username and password with environment
