@@ -276,9 +276,25 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundle(cid, chanConf)
-	if err != nil {
-		return err
+	var bundle *channelconfig.Bundle
+
+	if chanConf != nil {
+		bundle, err = channelconfig.NewBundle(cid, chanConf)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Config was only stored in the statedb starting with v1.1 binaries
+		// so if the config is not found there, extract it manually from the config block
+		envelopeConfig, err := utils.ExtractEnvelope(cb, 0)
+		if err != nil {
+			return err
+		}
+
+		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	capabilitiesSupportedOrPanic(bundle)
