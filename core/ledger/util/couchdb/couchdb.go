@@ -296,7 +296,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 		json.NewDecoder(resp.Body).Decode(&dbResponse)
 
 		if dbResponse.Ok == true {
-			logger.Debugf("Created database %s ", dbclient.DBName)
+			logger.Infof("Created state database %s", dbclient.DBName)
 		}
 
 		logger.Debugf("Exiting CreateDatabaseIfNotExist()")
@@ -1119,6 +1119,8 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) error {
 		return err
 	}
 	defer closeResponseBody(resp)
+
+	logger.Infof("Created CouchDB index in state database %s", dbclient.DBName)
 
 	return nil
 

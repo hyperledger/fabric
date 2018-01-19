@@ -78,18 +78,6 @@ const (
 
 	allowedCharsChaincodeName = "[A-Za-z0-9_-]+"
 	allowedCharsVersion       = "[A-Za-z0-9_.+-]+"
-
-	// Collecion-specific constants
-
-	// collectionSeparator is the separator used to build the KVS
-	// key storing the collections of a chaincode; note that we are
-	// using as separator a character which is illegal for either the
-	// name or the version of a chaincode so there cannot be any
-	// collisions when chosing the name
-	collectionSeparator = "~"
-	// collectionSuffix is the suffix of the KVS key storing the
-	// collections of a chaincode
-	collectionSuffix = "collection"
 )
 
 // Support contains functions that LSCC requires to execute its tasks
@@ -420,6 +408,8 @@ func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 	if err = lscc.support.PutChaincodeToLocalStorage(ccpack); err != nil {
 		return err
 	}
+
+	logger.Infof("Installed Chaincode [%s] Version [%s] to peer", ccpack.GetChaincodeData().Name, ccpack.GetChaincodeData().Version)
 
 	return nil
 }

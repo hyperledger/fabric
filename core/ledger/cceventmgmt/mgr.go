@@ -72,7 +72,7 @@ func (m *Mgr) Register(ledgerid string, l ChaincodeLifecycleEventListener) {
 // the deployed chaincode. So, in function `HandleChaincodeInstall`, we explicitly check for chaincode deployed
 // in this stored `chaincodeDefinitions`
 func (m *Mgr) HandleChaincodeDeploy(chainid string, chaincodeDefinitions []*ChaincodeDefinition) error {
-	logger.Debugf("HandleChaincodeDeploy() - chainid=%s, chaincodeDefinition=%s", chainid, chaincodeDefinitions)
+	logger.Debugf("Channel [%s]: Handling chaincode deploy event for chaincode [%s]", chainid, chaincodeDefinitions)
 	// Read lock to allow concurrent deploy on multiple channels but to synchronize concurrent `chaincode insall` operation
 	m.rwlock.RLock()
 	defer m.rwlock.RUnlock()
@@ -84,14 +84,15 @@ func (m *Mgr) HandleChaincodeDeploy(chainid string, chaincodeDefinitions []*Chai
 			return err
 		}
 		if !installed {
-			logger.Infof("Chaincode [%s] is not installed hence not creating statedb indexes", chaincodeDefinition)
+			logger.Infof("Channel [%s]: Chaincode [%s] is not installed hence no need to create chaincode artifacts for endorsement",
+				chainid, chaincodeDefinition)
 			continue
 		}
 		if err := m.invokeHandler(chainid, chaincodeDefinition, dbArtifacts); err != nil {
-			logger.Warningf("Error while invoking a listener for handling chaincode install event: %s", err)
+			logger.Warningf("Channel [%s]: Error while invoking a listener for handling chaincode install event: %s", chainid, err)
 			return err
 		}
-		logger.Infof("Created statedb indexes successfully for Chaincode [%s] on channel [%s]", chaincodeDefinition, chainid)
+		logger.Debugf("Channel [%s]: Handled chaincode deploy event for chaincode [%s]", chainid, chaincodeDefinitions)
 	}
 	return nil
 }
@@ -103,25 +104,26 @@ func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, d
 	m.rwlock.Lock()
 	defer m.rwlock.Unlock()
 	for chainid := range m.ccLifecycleListeners {
-		logger.Infof("Handling chaincode install event for chain = %s", chainid)
+		logger.Debugf("Channel [%s]: Handling chaincode install event for chaincode [%s]", chainid, chaincodeDefinition)
 		var deployed bool
 		var err error
 		deployed = m.isChaincodePresentInLatestDeploys(chainid, chaincodeDefinition)
 		if !deployed {
 			if deployed, err = m.infoProvider.IsChaincodeDeployed(chainid, chaincodeDefinition); err != nil {
-				logger.Warningf("Error while getting the deployment status of chaincode: %s", err)
+				logger.Warningf("Channel [%s]: Error while getting the deployment status of chaincode: %s", chainid, err)
 				return err
 			}
 		}
 		if !deployed {
-			logger.Info("chaincode [%s] is not deployed hence ignoring the install event", chaincodeDefinition)
+			logger.Debugf("Channel [%s]: Chaincode [%s] is not deployed on channel hence not creating chaincode artifacts.",
+				chainid, chaincodeDefinition)
 			continue
 		}
 		if err := m.invokeHandler(chainid, chaincodeDefinition, dbArtifacts); err != nil {
-			logger.Warningf("Error while invoking a listener for handling chaincode install event: %s", err)
+			logger.Warningf("Channel [%s]: Error while invoking a listener for handling chaincode install event: %s", chainid, err)
 			return err
 		}
-		logger.Infof("Created statedb indexes successfully for Chaincode [%s] on channel [%s]", chaincodeDefinition, chainid)
+		logger.Debugf("Channel [%s]: Handled chaincode install event for chaincode [%s]", chainid, chaincodeDefinition)
 	}
 	return nil
 }

@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"strings"
+
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -77,7 +79,7 @@ type CollectionStore interface {
 const (
 	// Collecion-specific constants
 
-	// collectionSeparator is the separator used to build the KVS
+	// CollectionSeparator is the separator used to build the KVS
 	// key storing the collections of a chaincode; note that we are
 	// using as separator a character which is illegal for either the
 	// name or the version of a chaincode so there cannot be any
@@ -91,4 +93,9 @@ const (
 // BuildCollectionKVSKey returns the KVS key string for a chaincode, given its name and version
 func BuildCollectionKVSKey(ccname string) string {
 	return ccname + collectionSeparator + collectionSuffix
+}
+
+// IsCollectionConfigKey detects if a key is a collection key
+func IsCollectionConfigKey(key string) bool {
+	return strings.Contains(key, collectionSeparator)
 }

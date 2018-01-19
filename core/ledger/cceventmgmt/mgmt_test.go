@@ -66,24 +66,57 @@ func TestCCEventMgmt(t *testing.T) {
 
 func TestLSCCListener(t *testing.T) {
 	channelName := "testChannel"
-	cc1Def := &ChaincodeDefinition{Name: "testChaincode", Version: "v1", Hash: []byte("hash_testChaincode")}
-	cc1DBArtifactsTar := []byte("cc1DBArtifacts")
-	// cc1 is installed but not deployed
+
+	cc1Def := &ChaincodeDefinition{Name: "testChaincode1", Version: "v1", Hash: []byte("hash_testChaincode")}
+	cc2Def := &ChaincodeDefinition{Name: "testChaincode2", Version: "v1", Hash: []byte("hash_testChaincode")}
+	cc3Def := &ChaincodeDefinition{Name: "testChaincode~collection", Version: "v1", Hash: []byte("hash_testChaincode")}
+
+	ccDBArtifactsTar := []byte("ccDBArtifacts")
+
+	// cc1, cc2, cc3 installed but not deployed
 	mockProvider := newMockProvider()
-	mockProvider.setChaincodeInstalled(cc1Def, cc1DBArtifactsTar)
+	mockProvider.setChaincodeInstalled(cc1Def, ccDBArtifactsTar)
+	mockProvider.setChaincodeInstalled(cc2Def, ccDBArtifactsTar)
+	mockProvider.setChaincodeInstalled(cc3Def, ccDBArtifactsTar)
+
 	setEventMgrForTest(newMgr(mockProvider))
 	defer clearEventMgrForTest()
 	handler1 := &mockHandler{}
 	GetMgr().Register(channelName, handler1)
 	lsccStateListener := &KVLedgerLSCCStateListener{}
 
-	sampleChaincodeData := &ccprovider.ChaincodeData{Name: cc1Def.Name, Version: cc1Def.Version, Id: cc1Def.Hash}
-	sampleChaincodeDataBytes, err := proto.Marshal(sampleChaincodeData)
-	assert.NoError(t, err, "")
-	lsccStateListener.HandleStateUpdates(channelName, []*kvrwset.KVWrite{
-		{Key: cc1Def.Name, Value: sampleChaincodeDataBytes},
+	// test1 regular deploy lscc event gets sent to handler
+	t.Run("DeployEvent", func(t *testing.T) {
+		sampleChaincodeData1 := &ccprovider.ChaincodeData{Name: cc1Def.Name, Version: cc1Def.Version, Id: cc1Def.Hash}
+		sampleChaincodeDataBytes1, err := proto.Marshal(sampleChaincodeData1)
+		assert.NoError(t, err, "")
+		lsccStateListener.HandleStateUpdates(channelName, []*kvrwset.KVWrite{
+			{Key: cc1Def.Name, Value: sampleChaincodeDataBytes1},
+		})
+		assert.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, ccDBArtifactsTar})
 	})
-	assert.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, cc1DBArtifactsTar})
+
+	// test2 delete lscc event NOT sent to handler
+	t.Run("DeleteEvent", func(t *testing.T) {
+		sampleChaincodeData2 := &ccprovider.ChaincodeData{Name: cc2Def.Name, Version: cc2Def.Version, Id: cc2Def.Hash}
+		sampleChaincodeDataBytes2, err := proto.Marshal(sampleChaincodeData2)
+		assert.NoError(t, err, "")
+		lsccStateListener.HandleStateUpdates(channelName, []*kvrwset.KVWrite{
+			{Key: cc2Def.Name, Value: sampleChaincodeDataBytes2, IsDelete: true},
+		})
+		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc2Def, ccDBArtifactsTar})
+	})
+
+	// test3 collection lscc event (with tilda separator in chaincode key) NOT sent to handler
+	t.Run("CollectionEvent", func(t *testing.T) {
+		sampleChaincodeData3 := &ccprovider.ChaincodeData{Name: cc3Def.Name, Version: cc3Def.Version, Id: cc3Def.Hash}
+		sampleChaincodeDataBytes3, err := proto.Marshal(sampleChaincodeData3)
+		assert.NoError(t, err, "")
+		lsccStateListener.HandleStateUpdates(channelName, []*kvrwset.KVWrite{
+			{Key: cc3Def.Name, Value: sampleChaincodeDataBytes3},
+		})
+		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc3Def, ccDBArtifactsTar})
+	})
 }
 
 type mockProvider struct {
