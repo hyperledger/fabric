@@ -72,6 +72,7 @@ Business:
    endorsement-policies
    error-handling
    logging-control
+   peer-commands
 
 .. toctree::
    :maxdepth: 2
