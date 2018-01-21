@@ -9,7 +9,7 @@
 set -e
 set -x
 
-DEVENV_REVISION=`(cd /hyperledger/devenv; git rev-parse --short HEAD)`
+DEVENV_REVISION=`(cd /hyperledger/fabric/devenv; git rev-parse --short HEAD)`
 
 # Install WARNING before we start provisioning so that it
 # will remain active.  We will remove the warning after
@@ -81,12 +81,12 @@ curl -sL $GO_URL | (cd $GOROOT && tar --strip-components 1 -xz)
 # ----------------------------------------------------------------
 # Install nvm and Node.js
 # ----------------------------------------------------------------
-runuser -l ubuntu -c '/hyperledger/devenv/install_nvm.sh'
+runuser -l ubuntu -c '/hyperledger/fabric/devenv/install_nvm.sh'
 
 # ----------------------------------------------------------------
 # Install Behave
 # ----------------------------------------------------------------
-/hyperledger/scripts/install_behave.sh
+/hyperledger/fabric/scripts/install_behave.sh
 
 # ----------------------------------------------------------------
 # Install Java
@@ -116,12 +116,12 @@ make clean gotools
 sudo chown -R ubuntu:ubuntu $GOPATH
 
 # Update limits.conf to increase nofiles for LevelDB and network connections
-sudo cp /hyperledger/devenv/limits.conf /etc/security/limits.conf
+sudo cp /hyperledger/fabric/devenv/limits.conf /etc/security/limits.conf
 
 # Configure vagrant specific environment
 cat <<EOF >/etc/profile.d/vagrant-devenv.sh
 # Expose the devenv/tools in the $PATH
-export PATH=\$PATH:/hyperledger/devenv/tools:/hyperledger/build/bin
+export PATH=\$PATH:/hyperledger/fabric/devenv/tools:/hyperledger/fabric/build/bin
 export VAGRANT=1
 export CGO_CFLAGS=" "
 EOF
