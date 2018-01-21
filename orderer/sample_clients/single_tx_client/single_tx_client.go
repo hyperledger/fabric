@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -42,7 +43,7 @@ var NEEDED_SENT = 1
 func main() {
 	logger.Info("Creating an Atomic Broadcast GRPC connection.")
 	timeout := 4 * time.Second
-	clientconn, err := grpc.Dial(":7101", grpc.WithBlock(), grpc.WithTimeout(timeout), grpc.WithInsecure())
+	clientconn, err := grpc.Dial(":7050", grpc.WithBlock(), grpc.WithTimeout(timeout), grpc.WithInsecure())
 	if err != nil {
 		logger.Errorf("Failed to connect to GRPC: %s", err)
 		return
@@ -108,32 +109,37 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{
-				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
-				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+				Start: &ab.SeekPosition{Type: &ab.SeekPosition_Newest{
+					Newest: &ab.SeekNewest{}}},
+				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
 				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 			}),
 		}),
 	})
 
 	logger.Info("{Update Receiver} Listening to ledger updates.")
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
 		m, inerr := dstream.Recv()
 		if inerr != nil {
 			errorch <- fmt.Errorf("Failed to receive consensus: %s", inerr)
 			return
 		}
-		b := m.Type.(*ab.DeliverResponse_Block)
-		logger.Info("{Update Receiver} Received a ledger update.")
-		for i, tx := range b.Block.Data.Data {
-			pl := &cb.Payload{}
-			e := &cb.Envelope{}
-			merr1 := proto.Unmarshal(tx, e)
-			merr2 := proto.Unmarshal(e.Payload, pl)
-			if merr1 == nil && merr2 == nil {
-				logger.Infof("{Update Receiver} %d - %v", i+1, pl.Data)
+		switch b := m.Type.(type) {
+		case *ab.DeliverResponse_Status:
+			fmt.Println("Got status ", b)
+		case *ab.DeliverResponse_Block:
+			logger.Info("{Update Receiver} Received a ledger update.")
+			for i, tx := range b.Block.Data.Data {
+				pl := &cb.Payload{}
+				e := &cb.Envelope{}
+				merr1 := proto.Unmarshal(tx, e)
+				merr2 := proto.Unmarshal(e.Payload, pl)
+				if merr1 == nil && merr2 == nil {
+					logger.Infof("{Update Receiver} %d - %v", i+1, pl.Data)
+				}
 			}
+			resultch <- UPDATE
 		}
-		resultch <- UPDATE
 	}
 	logger.Info("{Update Receiver} Exiting...")
 }

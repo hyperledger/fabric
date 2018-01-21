@@ -77,21 +77,34 @@ func TestKafkaVersionDecode(t *testing.T) {
 		expected    sarama.KafkaVersion
 		errExpected bool
 	}{
+		{"0.8", sarama.KafkaVersion{}, true},
 		{"0.8.2.0", sarama.V0_8_2_0, false},
 		{"0.8.2.1", sarama.V0_8_2_1, false},
 		{"0.8.2.2", sarama.V0_8_2_2, false},
 		{"0.9.0.0", sarama.V0_9_0_0, false},
+		{"0.9", sarama.V0_9_0_0, false},
+		{"0.9.0", sarama.V0_9_0_0, false},
 		{"0.9.0.1", sarama.V0_9_0_1, false},
+		{"0.9.0.3", sarama.V0_9_0_1, false},
 		{"0.10.0.0", sarama.V0_10_0_0, false},
+		{"0.10", sarama.V0_10_0_0, false},
+		{"0.10.0", sarama.V0_10_0_0, false},
 		{"0.10.0.1", sarama.V0_10_0_1, false},
 		{"0.10.1.0", sarama.V0_10_1_0, false},
-		{"Unsupported", sarama.KafkaVersion{}, true},
+		{"0.10.2.0", sarama.V0_10_2_0, false},
+		{"0.10.2.1", sarama.V0_10_2_0, false},
+		{"0.10.2.2", sarama.V0_10_2_0, false},
+		{"0.10.2.3", sarama.V0_10_2_0, false},
+		{"0.11", sarama.KafkaVersion{}, true},
+		{"0.11.0", sarama.KafkaVersion{}, true},
+		{"0.11.0.0", sarama.KafkaVersion{}, true},
+		{"Malformed", sarama.KafkaVersion{}, true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.data, func(t *testing.T) {
 
-			data := fmt.Sprintf("---\nInner:\n    Version: %s", tc.data)
+			data := fmt.Sprintf("---\nInner:\n    Version: '%s'", tc.data)
 			err := config.ReadConfig(bytes.NewReader([]byte(data)))
 			if err != nil {
 				t.Fatalf("Error reading config: %s", err)

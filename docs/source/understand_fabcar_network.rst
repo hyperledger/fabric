@@ -10,8 +10,8 @@ Obscuring the underpinnings of the network to that degree is fine for the
 majority of application developers. They don't necessarily need to know how
 network components actually work in detail in order to create their app.
 
-But for those who do want to know about the fun stuff going on under the covers
-(so to speak), let's go through how applications **connect** to the network and
+But for those who do want to know about the fun stuff going on under the covers,
+let's go through how applications **connect** to the network and
 how they propose **queries** and **updates** on a more granular level, as well
 as point out the differences between a small scale test network like Fabcar and
 how apps will usually end up working in the real world.
@@ -23,10 +23,10 @@ role an application plays.
 Components of the Fabcar Network
 --------------------------------
 
-The Fabcar network consists of one peer node, one ordering node (aka, the
-"orderer"), a couchDB container, and a CLI container. This represents a
-very limited network, without a certificate authority or any other
-peers.
+Fabcar uses the "basic-network" sample as its limited development network. It
+consists of a single peer node configured to use CouchDB as the state database,
+a single "solo" ordering node, a certificate authority (CA) and a CLI container
+for executing commands.
 
 For detailed information on these components and what they do, refer to
 :doc:`build_network`.
@@ -34,7 +34,7 @@ For detailed information on these components and what they do, refer to
 These components are bootstrapped by the ``./startFabric.sh`` script, which
 also:
           * creates a channel and joins the peer to the channel
-          * installs smart contract onto the peer's file system and instantiates it on the channel (instantiate starts a container)
+          * installs the ``fabcar`` smart contract onto the peer's file system and instantiates it on the channel (instantiate starts a container)
           * calls the ``initLedger`` function to populate the channel ledger with 10 unique cars
 
 These operations would typically be done by an organizational or peer admin.
@@ -53,66 +53,58 @@ against is ``dev-peer0.org1.example.com``.
 
 APIs are accessible with an SDK. For purposes of this exercise, we're using the
 `Hyperledger Fabric Node SDK <https://fabric-sdk-node.github.io/>`__ though
-there is also a Java SDK and CLI that can be used to develop applications.
+there is also a Java SDK and CLI that can be used to drive transactions.
 SDKs encapsulate all access to the ledger by allowing an application to
-use smart contracts, run queries, or receive ledger updates. These APIs use
+communicate with smart contracts, run queries, or receive ledger updates. These APIs use
 several different network addresses and are run with a set of input parameters.
 
-Smart contracts are installed and instantiated on a channel through the
-consensus process. The script that launched our simplified Fabcar test network
-bypassed this process by installing and instantiating the smart contracts for
-us on the lone peer in our network.
-
-One crucial aspect of networks missing from Fabcar is the roll a certificate
-authority (CA) plays issuing the certificates that allow users to query,
-transact, and govern a network. This simplification was made because Fabcar is
-really meant to show how applications connect to the network and issue queries
-and updates rather than highlighting the enrollment and governance process.
-
-In future iterations of Fabcar we'll go more into how enrollment works and how
-different kinds of certificates are issued.
+Smart contracts are installed by a peer administrator and then instantiated on a
+channel by an identity fulfilling the chaincode's instantiation policy, which by
+default is comprised of channel administrators.  The instantiation of
+the smart contract follows the same transaction flow as a normal invocation - endorse,
+order, validate, commit - and is a prerequisite to interacting with a chaincode
+container. The script that launched our simplified Fabcar test network took care
+of the installation and instantiation for us.
 
 Query
 ^^^^^
 
-Queries are the simplest kind of invocation: a call and response. Applications
-can query different ledgers at the same time. Those results are returned to
-the application **synchronously**. This does not necessarily ensure that each
-ledger will return exactly the same information (a peer can go down, for
-example, and miss updates). Given that our sample Fabcar network has only one
-peer, that's not really an issue here, but it's an important consideration
-when developing applications in a real world scenario.
+Queries are the simplest kind of invocation: a call and response.  The most common query
+will interrogate the state database for the current value associated
+with a key (``GetState``).  However, the `chaincode shim interface <https://github.com/hyperledger/fabric/blob/release/core/chaincode/shim/interfaces.go>`__
+also allows for different types of ``Get`` calls (e.g. ``GetHistoryForKey`` or ``GetCreator``).
 
-The peers hold the hash chain (the record of updates), while the updates
-themselves are stored in a separate couchDB container (which allows for the
-storage of rich queries, written in JSON).
+In our example, the peer holds a hash chain of all transactions and maintains
+chaincode state through use of a state database, which in our case is a CouchDB container.  CouchDB
+provides the added functionality of rich queries, contingent upon the chaincode data (key/val pairs)
+being modeled as JSON.  When we call the ``GetState`` API in our smart contract, we
+are retrieving the JSON value associated with a car from the CouchDB state database.
 
-Queries are built using a **var request** -- identifying the correct ledger, the
-smart contracts it will use, the search parameters etc -- and then invoking the
-``chain.queryByChaincode`` API to send the query. An API called
-``response_payload`` returns the result to the application.
+Queries are constructed by identifying a peer, a chaincode, a channel and a set of
+inputs (e.g. the key) for an available chaincode function and then utilizing the
+``chain.queryByChaincode`` API to send the query to the peer.  The corresponding
+value to the supplied inputs is returned to the application client as a response.
 
 Updates
 ^^^^^^^
 
-Ledger updates start with an application generating a transaction proposal. A
-request is constructed to identify the channel ID, function, and specific smart
-contract to target for the transaction. The program then calls the
+Ledger updates start with an application generating a transaction proposal. As with
+query, a request is constructed to identify a peer, chaincode, channel, function, and
+set of inputs for the transaction. The program then calls the
 ``channel.SendTransactionProposal`` API to send the transaction proposal to the
 peer(s) for endorsement.
 
-The network (i.e., the endorsing peer) returns a proposal response, which the
+The network (i.e. the endorsing peer(s)) returns a proposal response, which the
 application uses to build and sign a transaction request. This request is sent
 to the ordering service by calling the ``channel.sendTransaction`` API. The
 ordering service bundles the transaction into a block and delivers it to all
-peers on a channel for validation (the Fabcar network has only one endorsing
-peer and one channel).
+peers on a channel for validation (the Fabcar network has only one peer and one channel).
 
 Finally the application uses two event handler APIs: ``eh.setPeerAddr`` to
 connect to the peer's event listener port and ``eh.registerTxEvent`` to
-register events associated with a specific transaction ID. The
-``eh.registerTxEvent`` API registers a callback for the transactionID that
-checks whether ledger was updated or not.
+register for events associated with a specific transaction ID. The
+``eh.registerTxEvent`` API allows the application to be notified about the fate
+of a transaction (i.e. valid or invalid).
 
 For More Information
 --------------------
@@ -120,7 +112,7 @@ For More Information
 To learn more about how a transaction flow works beyond the scope of an
 application, check out :doc:`txflow`.
 
-To get started developing chaincode, read :doc:'chaincode4ade'.
+To get started developing chaincode, read :doc:`chaincode4ade`.
 
 For more information on how endorsement policies work, check out
 :doc:`endorsement-policies`.
