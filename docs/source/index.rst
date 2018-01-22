@@ -44,6 +44,7 @@ Business:
    blockchain
    capabilities
    fabric_model
+   ledger
    usecases
 
 .. toctree::
@@ -84,7 +85,7 @@ Business:
    fabric-sdks
    kafka
    channels
-   ledger
+   couchdb_as_state_database
    readwrite
    gossip
 
