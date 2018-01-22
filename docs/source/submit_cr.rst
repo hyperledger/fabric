@@ -186,6 +186,38 @@ Once installed and configured, you can submit your change with ``git review``.
 
     $ git review
 
+
+Check that your change request is validated by the CI process
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To ensure stability of the code and limit possible regressions, we use
+a Continuous Integration (CI) process based on Jenkins which triggers
+a build on several platforms and runs tests against every change
+request being submitted. It is your responsibility to check that your
+CR passes these tests. No CR will ever be merged if it fails the
+tests and you shouldn't expect anybody to pay attention to your CRs
+until they pass the CI tests.
+
+To check on the status of the CI process, simply look at your CR on
+Gerrit, following the URL that was given to you as the result of the
+push in the previous step. The History section at the bottom of the
+page will display a set of actions taken by "Hyperledger Jobbuilder"
+corresponding to the CI process being executed.
+
+Upon completion, "Hyperledger Jobbuilder" will add to the CR a *+1
+vote* if successful and a *-1 vote* otherwise.
+
+In case of failure, explore the logs linked from the CR History. If
+you spot a problem with your CR and want to modify it, proceed to the
+following section.
+
+If you see nothing wrong with your CR it might be that the CI process
+simply failed for some reason unrelated to your change. In that case
+you may want to restart the CI process by posting a reply to your CR
+with the simple content "reverify".  Check the `CI management page
+<https://github.com/hyperledger/ci-management/blob/master/docs/fabric_ci_process.md>`
+for additional information and options on this.
+
 Modifying your change request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -196,7 +228,8 @@ something affecting CI, you can commit revised changes with
 
    git commit --amend
 
-and then repeat the ``git review`` or full syntax as before.
+and then repeat the ``git review`` or full syntax as before. Then
+check the results of the CI process that gets triggered as a result.
 
 Should you have further questions, please don't hesitate to ask on the mailing
 list or rocket chat.
