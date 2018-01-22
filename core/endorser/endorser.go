@@ -107,8 +107,8 @@ func NewEndorserServer(privDist privateDataDistributor, s Support) pb.EndorserSe
 
 //call specified chaincode (system or user)
 func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*pb.Response, *pb.ChaincodeEvent, error) {
-	endorserLogger.Debugf("Channel [%s]: Entry - txid: %s chaincode: %s version: %s", chainID, txid, cid, version)
-	defer endorserLogger.Debugf("Channel [%s]: Exit - txid: %s", chainID, txid)
+	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s version: %s", chainID, shorttxid(txid), cid, version)
+	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
 	var err error
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
@@ -215,8 +215,8 @@ func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 
 //simulate the proposal by calling the chaincode
 func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (resourcesconfig.ChaincodeDefinition, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
-	endorserLogger.Debugf("Channel [%s]: Entry - txid: %s chaincode: %s", chainID, txid, cid)
-	defer endorserLogger.Debugf("Channel [%s]: Exit - txid: %s", chainID, txid)
+	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), cid)
+	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
 	//we do expect the payload to be a ChaincodeInvocationSpec
 	//if we are supporting other payloads in future, this be glaringly point
 	//as something that should change
@@ -255,7 +255,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	var ccevent *pb.ChaincodeEvent
 	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
 	if err != nil {
-		endorserLogger.Errorf("Channel [%s]: failed to invoke chaincode %s on transaction %s, error: %+v", chainID, cid, txid, err)
+		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", chainID, shorttxid(txid), cid, err)
 		return nil, nil, nil, nil, err
 	}
 
@@ -282,8 +282,8 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 
 //endorse the proposal by calling the ESCC
 func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd resourcesconfig.ChaincodeDefinition) (*pb.ProposalResponse, error) {
-	endorserLogger.Debugf("Channel [%s]: Entry - txid: %s chaincode: %s", chainID, txid, ccid)
-	defer endorserLogger.Debugf("Channel [%s]: Exit - txid: %s", chainID, txid)
+	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), ccid)
+	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
 
 	isSysCC := cd == nil
 	// 1) extract the name of the escc that is requested to endorse this chaincode
@@ -295,7 +295,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		escc = cd.Endorsement()
 	}
 
-	endorserLogger.Debugf("Channel [%s]: escc for chaincode %s is %s", chainID, ccid, escc)
+	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", chainID, shorttxid(txid), ccid, escc)
 
 	// marshalling event bytes
 	var err error
@@ -371,7 +371,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	addr := util.ExtractRemoteAddress(ctx)
 	endorserLogger.Debug("Entering: Got request from", addr)
-	defer endorserLogger.Debugf("Exit: request from", addr)
+	defer endorserLogger.Debug("Exit: request from", addr)
 	// at first, we check whether the message is valid
 	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
 	if err != nil {
@@ -406,10 +406,10 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		err = errors.New("invalid txID. It must be different from the empty string")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
-	endorserLogger.Debugf("Channel [%s]: processing txid: %s", chainID, txid)
+	endorserLogger.Debugf("[%s][%s] processing txid: %s", chainID, shorttxid(txid), txid)
 	if chainID != "" {
 		// here we handle uniqueness check and ACLs for proposals targeting a chain
-		if _, err := e.s.GetTransactionByID(chainID, txid); err == nil {
+		if _, err = e.s.GetTransactionByID(chainID, txid); err == nil {
 			return nil, errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
 		}
 
@@ -461,7 +461,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 	if res != nil {
 		if res.Status >= shim.ERROR {
-			endorserLogger.Errorf("Channel [%s]: simulateProposal() resulted in chaincode %s response status %d for txid: %s", chainID, hdrExt.ChaincodeId, res.Status, txid)
+			endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, res.Status, txid)
 			var cceventBytes []byte
 			if ccevent != nil {
 				cceventBytes, err = putils.GetBytesChaincodeEvent(ccevent)
@@ -492,7 +492,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		}
 		if pResp != nil {
 			if res.Status >= shim.ERRORTHRESHOLD {
-				endorserLogger.Debugf("Channel [%s]: endorseProposal() resulted in chaincode %s error for txid: %s", chainID, hdrExt.ChaincodeId, txid)
+				endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, txid)
 				return pResp, &chaincodeError{res.Status, res.Message}
 			}
 		}
