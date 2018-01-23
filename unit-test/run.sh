@@ -63,7 +63,7 @@ serial_test_packages() {
 # "go test" the provided packages. Packages that are not prsent in the serial package list
 # will be tested in parallel
 run_tests() {
-	echo ${GO_TAGS}
+    echo ${GO_TAGS}
     local parallel=$(parallel_test_packages "$@")
     if [ -n "${parallel}" ]; then
         time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${parallel[@]} -short -timeout=20m
@@ -80,7 +80,7 @@ run_tests() {
 run_tests_with_coverage() {
     # Initialize profile.cov
     echo "mode: set" > profile.cov
-    for pkg in "$@"; do
+    for pkg in $@; do
         :> profile_tmp.cov
         go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $pkg -timeout=20m
         tail -n +2 profile_tmp.cov >> profile.cov || echo "Unable to append coverage for $pkg"
@@ -119,10 +119,10 @@ main() {
         echo "Nothing to test!!!"
     elif [ "${JOB_TYPE}" = "PROFILE" ]; then
         run_tests_with_coverage "${packages[@]}"
-		GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages}"
+        GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages[@]}"
     else
         run_tests "${packages[@]}"
-		GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${plugin_packages}"
+        GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${plugin_packages[@]}"
     fi
 }
 
