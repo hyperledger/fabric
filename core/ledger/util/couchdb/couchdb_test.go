@@ -1022,6 +1022,9 @@ func TestIndexOperations(t *testing.T) {
 	err = db.CreateIndex(indexDefSize)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
 
+	//Delay for 100ms since CouchDB index list is updated async after index create/drop
+	time.Sleep(100 * time.Millisecond)
+
 	//Execute a query with an index,  this should succeed
 	_, err = db.QueryDocuments(queryString)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while querying with an index"))
