@@ -40,14 +40,14 @@ complex rich queries if needed in the future.
 Using CouchDB from Chaincode
 ----------------------------
 
-Most of the 'chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>'_
+Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>`__
 can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``, ``PutState``,
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
 the state database and model assets as JSON in chaincode, you can perform rich queries against
 the JSON in the state database by using the ``GetQueryResult`` API and passing a CouchDB query string.
-The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html>'_.
+The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html>`__.
 
-The `marbles02 fabric sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>'_
+The `marbles02 fabric sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
 demonstrates use of CouchDB queries from chaincode. It includes a ``getMarblesByOwner()`` function
 that demonstrates parameterized queries by passing an owner id into chaincode. It then queries the
 state data for JSON documents matching the docType of “marble” and the owner id using the JSON query
@@ -60,7 +60,7 @@ syntax:
 Indexes in CouchDB are required in order to make JSON queries efficient and are required for
 any JSON query with a sort. Indexes can be packaged alongside chaincode in a
 ``/META-INF/statedb/couchdb/indexes`` directory. Each index is defined in a text file
-formatted in JSON following the 'CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>'_
+formatted in JSON following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
@@ -68,7 +68,7 @@ fields is provided:
 
   {"index":{"fields":["data.docType","data.owner"]},"ddoc":"indexOwnerDoc", "name":"indexOwner","type":"json"}
 
-The sample index can be found `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/META-INF/statedb/couchdb/indexes/indexOwner.json>'_.
+The sample index can be found `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/META-INF/statedb/couchdb/indexes/indexOwner.json>`__.
 
 .. note:: In 1.1 alpha, the “data” wrapper must be specified for each field referenced
           in the index definition. In subsequent releases the requirement to specify
@@ -79,7 +79,7 @@ installed with the chaincode on a peer. When the chaincode is both installed on 
 instantiated on one of the peer’s channels, the index will automatically be deployed to the peer’s
 channel state database (if it has been configured to use CouchDB). If you the install the chaincode
 first and then instantiate the chaincode on the channel, the index will be deployed at chaincode
-**instantiation*** time. If the chaincode is already instantiated on a channel and you later install the
+**instantiation** time. If the chaincode is already instantiated on a channel and you later install the
 chaincode on a peer, the index will be deployed at chaincode **installation** time.
 
 Upon deployment, the index will automatically be utilized by chaincode queries. CouchDB can automatically
