@@ -246,7 +246,7 @@ Kafka:
 
     # Kafka protocol version used to communicate with the Kafka cluster brokers
     # (defaults to 0.10.2.0 if not specified)
-    Version: 0.10.2.0
+    Version:
 
 ################################################################################
 #
