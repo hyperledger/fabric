@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 python-markdown-math==0.2
 
 alabaster==0.7.8
@@ -12,3 +13,4 @@ six==1.10.0
 snowballstemmer==1.2.1
 Sphinx==1.4.4
 sphinx-rtd-theme==0.1.9
+recommonmark==0.4.0
