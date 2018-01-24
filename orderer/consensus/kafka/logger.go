@@ -44,6 +44,22 @@ func init() {
 	saramaLogger = saramaEventLogger
 }
 
+// init starts a go routine that detects a possible configuration issue
+func init() {
+	listener := saramaLogger.NewListener("insufficient data to decode packet")
+	go func() {
+		for {
+			select {
+			case <-listener:
+				logger.Critical("Unable to decode a Kafka packet. Usually, this " +
+					"indicates that the Kafka.Version specified in the orderer " +
+					"configuration is incorrectly set to a version which is newer than " +
+					"the actual Kafka broker version.")
+			}
+		}
+	}()
+}
+
 // eventLogger adapts a go-logging Logger to the sarama.Logger interface.
 // Additionally, listeners can be registered to be notified when a substring has
 // been logged.
