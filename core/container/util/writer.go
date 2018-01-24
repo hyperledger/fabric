@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	ccmetadata "github.com/hyperledger/fabric/core/common/ccprovider/metadata"
 	"github.com/pkg/errors"
 )
 
@@ -85,11 +86,30 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		}
 
 		var newPath string
+
 		// if file is metadata, keep the /META-INF directory, e.g: META-INF/statedb/couchdb/indexes/indexOwner.json
 		// otherwise file is source code, put it in /src dir, e.g: src/marbles_chaincode.js
 		if strings.HasPrefix(path, filepath.Join(rootDirectory, "META-INF")) {
 			newPath = path[rootDirLen+1:]
-		} else {
+
+			// Split the filename itself from its path
+			_, filename := filepath.Split(newPath)
+
+			// Hidden files are not supported as metadata, therefore ignore them.
+			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
+			if strings.HasPrefix(filename, ".") {
+				vmLogger.Warningf("Ignoring hidden file in metadata directory: %s", newPath)
+				return nil
+			}
+
+			// Validate metadata file for inclusion in tar
+			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
+			err = ccmetadata.ValidateMetadataFile(path, filepath.Dir(newPath))
+			if err != nil {
+				return err
+			}
+
+		} else { // file is not metadata, include in src
 			newPath = fmt.Sprintf("src%s", path[rootDirLen:])
 		}
 
@@ -98,8 +118,6 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 			return fmt.Errorf("Error writing file to package: %s", err)
 		}
 		fileCount++
-
-		vmLogger.Debugf("Writing file %s to tar", newPath)
 
 		return nil
 	}

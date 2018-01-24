@@ -1,0 +1,1 @@
+This test file has a hidden filename, it should be ignored during golang chaincode packaging tests.

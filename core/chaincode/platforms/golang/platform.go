@@ -32,6 +32,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	ccmetadata "github.com/hyperledger/fabric/core/common/ccprovider/metadata"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -428,8 +429,8 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 	for _, file := range files {
 
 		// If the file is metadata rather than golang code, remove the leading go code path, for example:
-		// file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
-		// tar file:   META-INF/statedb/couchdb/indexes/indexOwner.json
+		// original file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
+		// updated file.Name:   META-INF/statedb/couchdb/indexes/indexOwner.json
 		if file.IsMetadata {
 
 			// Ensure META-INF directory can be found, then grab the META-INF relative path to use for packaging
@@ -440,9 +441,25 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 			if err != nil {
 				return nil, fmt.Errorf("Could not get relative path for META-INF directory %s. Error:%s", file.Name, err)
 			}
+
+			// Split the filename itself from its path
+			_, filename := filepath.Split(file.Name)
+
+			// Hidden files are not supported as metadata, therefore ignore them.
+			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
+			if strings.HasPrefix(filename, ".") {
+				logger.Warningf("Ignoring hidden file in metadata directory: %s", file.Name)
+				continue
+			}
+
+			// Validate metadata file for inclusion in tar
+			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
+			err = ccmetadata.ValidateMetadataFile(file.Path, filepath.Dir(file.Name))
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		logger.Debug("Writing file to chaincode code package tarball:", file.Name)
 		err = cutil.WriteFileToPackage(file.Path, file.Name, tw)
 		if err != nil {
 			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
