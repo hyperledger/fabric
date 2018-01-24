@@ -59,8 +59,9 @@ syntax:
 
 Indexes in CouchDB are required in order to make JSON queries efficient and are required for
 any JSON query with a sort. Indexes can be packaged alongside chaincode in a
-``/META-INF/statedb/couchdb/indexes`` directory. Each index is defined in a text file
-formatted in JSON following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__
+``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in its own
+text file with extension ``*.json`` with the index definition formatted in JSON following the
+`CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
