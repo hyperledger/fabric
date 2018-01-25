@@ -89,6 +89,7 @@ Business:
    peer_event_services
    readwrite
    gossip
+   enable_tls
 
 .. toctree::
    :maxdepth: 2
