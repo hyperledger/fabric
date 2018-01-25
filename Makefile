@@ -50,8 +50,8 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-IS_RELEASE = false
-EXPERIMENTAL ?= true
+IS_RELEASE = true
+EXPERIMENTAL ?= false
 
 ifeq ($(EXPERIMENTAL),true)
 GO_TAGS += experimental
