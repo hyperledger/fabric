@@ -42,7 +42,7 @@ Business:
    :caption: Key Concepts
 
    blockchain
-   capabilities
+   functionalities
    fabric_model
    ledger
    usecases
@@ -64,6 +64,7 @@ Business:
    :maxdepth: 2
    :caption: Operations Guide
 
+   upgrade_to_one_point_one
    best_practices
    msp
    configtx
