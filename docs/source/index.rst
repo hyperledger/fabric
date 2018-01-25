@@ -86,6 +86,7 @@ Business:
    kafka
    channels
    couchdb_as_state_database
+   peer_event_services
    readwrite
    gossip
 
