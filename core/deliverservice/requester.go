@@ -74,7 +74,7 @@ func (b *blocksRequester) seekOldest() error {
 	msgVersion := int32(0)
 	epoch := uint64(0)
 	tlsCertHash := b.getTLSCertHash()
-	env, err := utils.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
+	env, err := utils.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_DELIVER_SEEK_INFO, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (b *blocksRequester) seekLatestFromCommitter(height uint64) error {
 	msgVersion := int32(0)
 	epoch := uint64(0)
 	tlsCertHash := b.getTLSCertHash()
-	env, err := utils.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
+	env, err := utils.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_DELIVER_SEEK_INFO, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
 	if err != nil {
 		return err
 	}
