@@ -252,7 +252,7 @@ def getUserRegistration(context, enrollId):
     if 'ordererUsers' in context:
         pass
     else:
-        ordererContext.ordererUsers = {}
+        context.ordererUsers = {}
     if enrollId in context.ordererUsers:
         userRegistration = context.ordererUsers[enrollId]
     else:
