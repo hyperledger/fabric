@@ -40,8 +40,8 @@
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 
-BASE_VERSION = 1.1.0-alpha
-PREV_VERSION = 1.1.0-preview
+BASE_VERSION = 1.1.0-beta
+PREV_VERSION = 1.1.0-alpha
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
 # export PROJECT_NAME=hyperledger/fabric-test
@@ -50,8 +50,8 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-IS_RELEASE = true
-EXPERIMENTAL ?= false
+IS_RELEASE = false
+EXPERIMENTAL ?= true
 
 ifeq ($(EXPERIMENTAL),true)
 GO_TAGS += experimental
