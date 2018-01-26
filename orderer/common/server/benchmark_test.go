@@ -358,7 +358,11 @@ func benchmarkOrderer(
 	multiplex bool,
 ) {
 	// Initialization shared by all orderers
-	conf := config.Load()
+	conf, err := config.Load()
+	if err != nil {
+		t.Fatal("failed to load config")
+	}
+
 	initializeLoggingLevel(conf)
 	initializeLocalMsp(conf)
 	perf.InitializeServerPool(numOfOrderer)

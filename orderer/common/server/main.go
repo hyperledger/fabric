@@ -70,7 +70,11 @@ func Main() {
 		return
 	}
 
-	conf := config.Load()
+	conf, err := config.Load()
+	if err != nil {
+		logger.Error("failed to parse config: ", err)
+		os.Exit(1)
+	}
 	initializeLoggingLevel(conf)
 	initializeLocalMsp(conf)
 

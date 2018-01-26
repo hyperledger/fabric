@@ -30,7 +30,10 @@ func TestCreateLedgerFactory(t *testing.T) {
 		{"FilewithPathUnset", "file", "", "test-prefix", false},
 	}
 
-	conf := config.Load()
+	conf, err := config.Load()
+	if err != nil {
+		t.Fatal("failed to load config")
+	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

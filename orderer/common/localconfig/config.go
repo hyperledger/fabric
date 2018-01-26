@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -249,8 +250,8 @@ var defaults = TopLevel{
 	},
 }
 
-// Load parses the orderer.yaml file and environment, producing a struct suitable for config use
-func Load() *TopLevel {
+// Load parses the orderer.yaml file and environment, producing a struct suitable for config use, returning error on failure
+func Load() (*TopLevel, error) {
 	config := viper.New()
 	cf.InitViper(config, configName)
 
@@ -262,18 +263,18 @@ func Load() *TopLevel {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		logger.Panic("Error reading configuration:", err)
+		return nil, fmt.Errorf("Error reading configuration: %s", err)
 	}
 
 	var uconf TopLevel
 	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
-		logger.Panic("Error unmarshaling config into struct:", err)
+		return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
 	}
 
 	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 
-	return &uconf
+	return &uconf, nil
 }
 
 func (c *TopLevel) completeInitialization(configDir string) {
