@@ -24,7 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
-	errors2 "github.com/hyperledger/fabric/common/errors"
+	commonerrors "github.com/hyperledger/fabric/common/errors"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -609,7 +609,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	// We suppose to get the error which indicates we cannot commit the block
 	assertion.Error(err)
 	// The error exptected to be of type VSCCInfoLookupFailureError
-	assertion.NotNil(err.(*errors2.VSCCInfoLookupFailureError))
+	assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
 }
 
 func TestValidationInvalidEndorsing(t *testing.T) {

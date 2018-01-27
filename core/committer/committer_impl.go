@@ -17,14 +17,13 @@ limitations under the License.
 package committer
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 //--------!!!IMPORTANT!!-!!IMPORTANT!!-!!IMPORTANT!!---------
@@ -70,7 +69,7 @@ func (lc *LedgerCommitter) preCommit(block *common.Block) error {
 	if utils.IsConfigBlock(block) {
 		logger.Debug("Received configuration update, calling CSCC ConfigUpdate")
 		if err := lc.eventer(block); err != nil {
-			return fmt.Errorf("Could not update CSCC with new configuration update due to %s", err)
+			return errors.WithMessage(err, "could not update CSCC with new configuration update")
 		}
 	}
 	return nil
@@ -105,13 +104,13 @@ func (lc *LedgerCommitter) postCommit(block *common.Block) {
 	// create/send block events *after* the block has been committed
 	bevent, fbevent, channelID, err := producer.CreateBlockEvents(block)
 	if err != nil {
-		logger.Errorf("Channel [%s] Error processing block events for block number [%d]: %s", channelID, block.Header.Number, err)
+		logger.Errorf("Channel [%s] Error processing block events for block number [%d]: %+v", channelID, block.Header.Number, err)
 	} else {
 		if err := producer.Send(bevent); err != nil {
-			logger.Errorf("Channel [%s] Error sending block event for block number [%d]: %s", channelID, block.Header.Number, err)
+			logger.Errorf("Channel [%s] Error sending block event for block number [%d]: %+v", channelID, block.Header.Number, err)
 		}
 		if err := producer.Send(fbevent); err != nil {
-			logger.Errorf("Channel [%s] Error sending filtered block event for block number [%d]: %s", channelID, block.Header.Number, err)
+			logger.Errorf("Channel [%s] Error sending filtered block event for block number [%d]: %+v", channelID, block.Header.Number, err)
 		}
 	}
 }
