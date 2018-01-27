@@ -154,18 +154,5 @@ manipulation through the environment is shown below:
 
     CORE_PEER_LOGGING_LEVEL=CRITICAL peer
 
-Logging
--------
-
-Logging utilizes the `go-logging <https://github.com/op/go-logging>`__
-library.
-
-The available log levels in order of increasing verbosity are: *CRITICAL
-\| ERROR \| WARNING \| NOTICE \| INFO \| DEBUG*
-
-See the :doc:`logging-control` document for
-instructions on tweaking the level of log messages to output when running
-the various Hyperledger Fabric components.
-
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
