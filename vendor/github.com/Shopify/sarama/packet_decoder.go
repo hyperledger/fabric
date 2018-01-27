@@ -11,6 +11,7 @@ type packetDecoder interface {
 	getInt64() (int64, error)
 	getVarint() (int64, error)
 	getArrayLength() (int, error)
+	getBool() (bool, error)
 
 	// Collections
 	getBytes() ([]byte, error)
