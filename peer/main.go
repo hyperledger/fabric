@@ -37,10 +37,16 @@ const cmdRoot = "core"
 var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// check for CORE_LOGGING_LEVEL environment variable, which should override
-		// all other log settings. otherwise, this will use the value for from
-		// core.yaml
-		loggingSpec := viper.GetString("logging.level")
+		// check for --logging-level pflag first, which should override all other
+		// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
+		// (environment variable takes priority; otherwise, the value set in
+		// core.yaml)
+		var loggingSpec string
+		if viper.GetString("logging_level") != "" {
+			loggingSpec = viper.GetString("logging_level")
+		} else {
+			loggingSpec = viper.GetString("logging.level")
+		}
 		flogging.InitFromSpec(loggingSpec)
 
 		return nil
