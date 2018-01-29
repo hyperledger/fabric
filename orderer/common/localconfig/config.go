@@ -334,6 +334,10 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("General.LocalMSPID unset, setting to %s", defaults.General.LocalMSPID)
 			c.General.LocalMSPID = defaults.General.LocalMSPID
 
+		case c.General.Authentication.TimeWindow == 0*time.Minute:
+			logger.Infof("General.Authentication.TimeWindow unset, setting to %s", defaults.General.Authentication.TimeWindow)
+			c.General.Authentication.TimeWindow = defaults.General.Authentication.TimeWindow
+
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix
