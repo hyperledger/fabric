@@ -18,12 +18,18 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"reflect"
 
 	"github.com/hyperledger/fabric/common/tools/configtxlator/metadata"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/rest"
+	"github.com/hyperledger/fabric/common/tools/protolator"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -37,6 +43,16 @@ var (
 	hostname = start.Flag("hostname", "The hostname or IP on which the REST server will listen").Default("0.0.0.0").String()
 	port     = start.Flag("port", "The port on which the REST server will listen").Default("7059").Int()
 
+	protoEncode       = app.Command("proto_encode", "Converts a JSON document to protobuf.")
+	protoEncodeType   = protoEncode.Flag("type", "The type of protobuf structure to encode to.  For example, 'common.Config'.").Required().String()
+	protoEncodeSource = protoEncode.Flag("input", "A file containing the JSON document.").Default(os.Stdin.Name()).File()
+	protoEncodeDest   = protoEncode.Flag("output", "A file to write the output to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE, 0600)
+
+	protoDecode       = app.Command("proto_decode", "Converts a proto message to JSON.")
+	protoDecodeType   = protoDecode.Flag("type", "The type of protobuf structure to decode from.  For example, 'common.Config'.").Required().String()
+	protoDecodeSource = protoDecode.Flag("input", "A file containing the proto message.").Default(os.Stdin.Name()).File()
+	protoDecodeDest   = protoDecode.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE, 0600)
+
 	version = app.Command("version", "Show version information")
 )
 
@@ -46,7 +62,21 @@ func main() {
 	// "start" command
 	case start.FullCommand():
 		startServer(fmt.Sprintf("%s:%d", *hostname, *port))
-
+	// "proto_encode" command
+	case protoEncode.FullCommand():
+		defer (*protoEncodeSource).Close()
+		defer (*protoEncodeDest).Close()
+		err := encodeProto(*protoEncodeType, *protoEncodeSource, *protoEncodeDest)
+		if err != nil {
+			app.Fatalf("Error decoding: %s", err)
+		}
+	case protoDecode.FullCommand():
+		defer (*protoDecodeSource).Close()
+		defer (*protoDecodeDest).Close()
+		err := decodeProto(*protoDecodeType, *protoDecodeSource, *protoDecodeDest)
+		if err != nil {
+			app.Fatalf("Error decoding: %s", err)
+		}
 	// "version" command
 	case version.FullCommand():
 		printVersion()
@@ -63,4 +93,54 @@ func startServer(address string) {
 
 func printVersion() {
 	fmt.Println(metadata.GetVersionInfo())
+}
+
+func encodeProto(msgName string, input, output *os.File) error {
+	msgType := proto.MessageType(msgName)
+	if msgType == nil {
+		return errors.Errorf("message of type %s unknown", msgType)
+	}
+	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
+
+	err := protolator.DeepUnmarshalJSON(input, msg)
+	if err != nil {
+		return errors.Wrapf(err, "error decoding input")
+	}
+
+	out, err := proto.Marshal(msg)
+	if err != nil {
+		return errors.Wrapf(err, "error marshaling")
+	}
+
+	_, err = output.Write(out)
+	if err != nil {
+		return errors.Wrapf(err, "error writing output")
+	}
+
+	return nil
+}
+
+func decodeProto(msgName string, input, output *os.File) error {
+	msgType := proto.MessageType(msgName)
+	if msgType == nil {
+		return errors.Errorf("message of type %s unknown", msgType)
+	}
+	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
+
+	in, err := ioutil.ReadAll(input)
+	if err != nil {
+		return errors.Wrapf(err, "error reading input")
+	}
+
+	err = proto.Unmarshal(in, msg)
+	if err != nil {
+		return errors.Wrapf(err, "error unmarshaling")
+	}
+
+	err = protolator.DeepMarshalJSON(output, msg)
+	if err != nil {
+		return errors.Wrapf(err, "error encoding output")
+	}
+
+	return nil
 }
