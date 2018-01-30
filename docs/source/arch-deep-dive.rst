@@ -98,14 +98,17 @@ More formally, state ``s`` is modeled as an element of a mapping
    function ``next: N -> N`` takes an element of ``N`` and returns the
    next version number.
 
-Both ``V`` and ``N`` contain a special element ``\bot``, which is in
-case of ``N`` the lowest element. Initially all keys are mapped to
-``(\bot,\bot)``. For ``s(k)=(v,ver)`` we denote ``v`` by ``s(k).value``,
+Both ``V`` and ``N`` contain a special element |falsum| (empty type), which is
+in case of ``N`` the lowest element. Initially all keys are mapped to 
+(|falsum|, |falsum|). For ``s(k)=(v,ver)`` we denote ``v`` by ``s(k).value``,
 and ``ver`` by ``s(k).version``.
+
+.. |falsum| unicode:: U+22A5
+.. |in| unicode:: U+2208
 
 KVS operations are modeled as follows:
 
--  ``put(k,v)``, for ``k\in K`` and ``v\in V``, takes the blockchain
+-  ``put(k,v)`` for ``k`` |in| ``K`` and ``v`` |in| ``V``, takes the blockchain
    state ``s`` and changes it to ``s'`` such that
    ``s'(k)=(v,next(s(k).version))`` with ``s'(k')=s(k')`` for all
    ``k'!=k``.
