@@ -1232,7 +1232,7 @@ def get_latest_configuration_block(deliverer_stream_helper, channel_id):
         deliverer_stream_helper.seekToRange(chainID=channel_id, start=last_config.index, end=last_config.index)
         blocks = deliverer_stream_helper.getBlocks()
         assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
-        assert len(blocks[0].data.data) == 1, "Expected single transaction for configuration block, instead found {0} transactions".format(len(block.data.data))
+        assert len(blocks[0].data.data) == 1, "Expected single transaction for configuration block, instead found {0} transactions".format(len(blocks.data.data))
         latest_config_block = blocks[0]
     return latest_config_block
 
