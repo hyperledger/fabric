@@ -30,11 +30,16 @@ import (
 
 var logger = flogging.MustGetLogger("statecouchdb")
 
-var binaryWrapper = "valueBytes"
+const binaryWrapper = "valueBytes"
+
+const idField = "_id"
+const revField = "_rev"
+const versionField = "~version"
+const deletedField = "_deleted"
 
 // querySkip is implemented for future use by query paging
 // currently defaulted to 0 and is not used
-var querySkip = 0
+const querySkip = 0
 
 //BatchableDocument defines a document for a batch
 type BatchableDocument struct {
@@ -258,8 +263,11 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 		return nil, nil
 	}
 
-	// remove the data wrapper and return the value and version
-	returnValue, returnVersion := removeDataWrapper(couchDoc.JSONValue, couchDoc.Attachments)
+	// remove the reserved fields from the CouchDB JSON and return the value and version
+	returnValue, returnVersion, err := getValueAndVersionFromDoc(couchDoc.JSONValue, couchDoc.Attachments)
+	if err != nil {
+		return nil, err
+	}
 
 	return &statedb.VersionedValue{Value: returnValue, Version: returnVersion}, nil
 }
@@ -321,7 +329,8 @@ func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Heigh
 	return returnVersion, nil
 }
 
-func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.AttachmentInfo) ([]byte, *version.Height) {
+// remove the reserved fields from CouchDB JSON and return the value and version
+func getValueAndVersionFromDoc(persistedValue []byte, attachments []*couchdb.AttachmentInfo) ([]byte, *version.Height, error) {
 
 	// initialize the return value
 	returnValue := []byte{}
@@ -330,12 +339,28 @@ func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.AttachmentInf
 	jsonResult := make(map[string]interface{})
 
 	// unmarshal the selected json into the generic map
-	decoder := json.NewDecoder(bytes.NewBuffer(wrappedValue))
+	decoder := json.NewDecoder(bytes.NewBuffer(persistedValue))
 	decoder.UseNumber()
-	_ = decoder.Decode(&jsonResult)
+	err := decoder.Decode(&jsonResult)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// verify the version field exists
+	if _, fieldFound := jsonResult[versionField]; !fieldFound {
+		return nil, nil, fmt.Errorf("The version field %s was not found", versionField)
+	}
+
+	// create the return version from the version field in the JSON
+	returnVersion := createVersionHeightFromVersionString(jsonResult[versionField].(string))
+
+	// remove the _id, _rev and version fields
+	delete(jsonResult, idField)
+	delete(jsonResult, revField)
+	delete(jsonResult, versionField)
 
 	// handle binary or json data
-	if jsonResult[dataWrapper] == nil && attachments != nil { // binary attachment
+	if attachments != nil { // binary attachment
 		// get binary data from attachment
 		for _, attachment := range attachments {
 			if attachment.Name == binaryWrapper {
@@ -343,17 +368,16 @@ func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.AttachmentInf
 			}
 		}
 	} else {
-		// place the result json in the data key
-		returnMap := jsonResult[dataWrapper]
 
-		// marshal the mapped data.   this wrappers the result in a key named "data"
-		returnValue, _ = json.Marshal(returnMap)
+		// marshal the returned JSON data.
+		returnValue, err = json.Marshal(jsonResult)
+		if err != nil {
+			return nil, nil, err
+		}
 
 	}
 
-	returnVersion := createVersionHeightFromVersionString(jsonResult["version"].(string))
-
-	return returnValue, returnVersion
+	return returnValue, returnVersion, nil
 
 }
 
@@ -401,9 +425,11 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	// Get the querylimit from core.yaml
 	queryLimit := ledgerconfig.GetQueryLimit()
 
-	queryString, err := ApplyQueryWrapper(query, queryLimit, 0)
+	// Explicit paging not yet supported.
+	// Use queryLimit from config and 0 skip.
+	queryString, err := applyAdditionalQueryOptions(query, queryLimit, 0)
 	if err != nil {
-		logger.Debugf("Error calling ApplyQueryWrapper(): %s\n", err.Error())
+		logger.Debugf("Error calling applyAdditionalQueryOptions(): %s\n", err.Error())
 		return nil, err
 	}
 
@@ -419,6 +445,63 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 
 	logger.Debugf("Exiting ExecuteQuery")
 	return newQueryScanner(namespace, *queryResult), nil
+}
+
+// applyAdditionalQueryOptions will add additional fields to the query required for query processing
+func applyAdditionalQueryOptions(queryString string, queryLimit, querySkip int) (string, error) {
+
+	const jsonQueryFields = "fields"
+	const jsonQueryLimit = "limit"
+	const jsonQuerySkip = "skip"
+
+	//create a generic map for the query json
+	jsonQueryMap := make(map[string]interface{})
+
+	//unmarshal the selector json into the generic map
+	decoder := json.NewDecoder(bytes.NewBuffer([]byte(queryString)))
+	decoder.UseNumber()
+	err := decoder.Decode(&jsonQueryMap)
+	if err != nil {
+		return "", err
+	}
+
+	if fieldsJSONArray, ok := jsonQueryMap[jsonQueryFields]; ok {
+
+		switch fieldsJSONArray.(type) {
+
+		case []interface{}:
+
+			//Add the "_id", and "version" fields,  these are needed by default
+			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray.([]interface{}),
+				idField, versionField)
+
+		default:
+			return "", fmt.Errorf("Fields definition must be an array.")
+
+		}
+
+	}
+
+	// Add limit
+	// This will override any limit passed in the query.
+	// Explicit paging not yet supported.
+	jsonQueryMap[jsonQueryLimit] = queryLimit
+
+	// Add skip of 0.
+	// This will override any skip passed in the query.
+	// Explicit paging not yet supported.
+	jsonQueryMap[jsonQuerySkip] = querySkip
+
+	//Marshal the updated json query
+	editedQuery, err := json.Marshal(jsonQueryMap)
+	if err != nil {
+		return "", err
+	}
+
+	logger.Debugf("Rewritten query: %s", editedQuery)
+
+	return string(editedQuery), nil
+
 }
 
 // ApplyUpdates implements method in VersionedDB interface
@@ -571,6 +654,7 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 
 			// Create a document structure
 			couchDoc := &couchdb.CouchDoc{}
+			var err error
 
 			// retrieve the couchdb revision from the cache
 			// Documents that do not exist in couchdb will not have revision numbers and will
@@ -589,14 +673,19 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 
 			if isDelete {
 				// this is a deleted record.  Set the _deleted property to true
-				//couchDoc.JSONValue = createCouchdbDocJSON(string(compositeKey), revision, nil, ns, vv.Version, true)
-				couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, vv.Version, true)
+				couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, nil, vv.Version, true)
+				if err != nil {
+					return err
+				}
 
 			} else {
 
 				if couchdb.IsJSON(string(vv.Value)) {
 					// Handle as json
-					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, vv.Value, vv.Version, false)
+					couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, vv.Value, vv.Version, false)
+					if err != nil {
+						return err
+					}
 
 				} else { // if value is not json, handle as a couchdb attachment
 
@@ -607,7 +696,10 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 					attachments := append([]*couchdb.AttachmentInfo{}, attachment)
 
 					couchDoc.Attachments = attachments
-					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, vv.Version, false)
+					couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, nil, vv.Version, false)
+					if err != nil {
+						return err
+					}
 
 				}
 			}
@@ -883,43 +975,69 @@ func (vdb *VersionedDB) ClearCachedVersions() {
 // createCouchdbDocJSON adds keys to the CouchDoc.JSON value for the following items:
 // _id - couchdb document ID, need for all couchdb batch operations
 // _rev - couchdb document revision, needed for updating or deleting existing documents
-// _deleted - flag using in batch operations for deleting a couchdb document
-// version - version, added to header, used for state validation
-// data wrapper - JSON from the chaincode goes here
+// _deleted - flag used in batch operations for deleting a couchdb document
+// version - used for state validation
 // The return value is the CouchDoc.JSONValue with the header fields populated
-func createCouchdbDocJSON(id, revision string, value []byte, version *version.Height, deleted bool) []byte {
+func createCouchdbDocJSON(id, revision string, value []byte, version *version.Height, deleted bool) ([]byte, error) {
 
-	// create a version mapping
-	jsonMap := map[string]interface{}{"version": fmt.Sprintf("%v:%v", version.BlockNum, version.TxNum)}
+	// create a new genericMap
+	jsonMap := map[string]interface{}{}
+
+	// if a JSON is provided, then unmarshal the JSON into the return mapping
+	if value != nil {
+		// Unmarshal the value into the return map
+		err := json.Unmarshal(value, &jsonMap)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// verify the version field was not included
+	if _, fieldFound := jsonMap[versionField]; fieldFound {
+		return nil, fmt.Errorf("The reserved field %s was found", versionField)
+	}
+
+	// verify the _id field was not included
+	if _, fieldFound := jsonMap[idField]; fieldFound {
+		return nil, fmt.Errorf("The reserved field %s was found", idField)
+	}
+
+	// verify the revision field was not included
+	if _, fieldFound := jsonMap[revField]; fieldFound {
+		return nil, fmt.Errorf("The reserved field %s was found", revField)
+	}
+
+	// verify the deleted field was not included
+	if _, fieldFound := jsonMap[deletedField]; fieldFound {
+		return nil, fmt.Errorf("The reserved field %s was found", deletedField)
+	}
+
+	// add the version
+	jsonMap[versionField] = fmt.Sprintf("%v:%v", version.BlockNum, version.TxNum)
 
 	// add the ID
-	jsonMap["_id"] = id
+	jsonMap[idField] = id
 
 	// add the revision
 	if revision != "" {
-		jsonMap["_rev"] = revision
+		// add the revision
+		jsonMap[revField] = revision
 	}
 
 	// If this record is to be deleted, set the "_deleted" property to true
 	if deleted {
-		jsonMap["_deleted"] = true
-
-	} else {
-
-		// Add the wrapped data if the value is not null
-		if value != nil {
-
-			// create a new genericMap
-			rawJSON := (*json.RawMessage)(&value)
-
-			// add the rawJSON to the map
-			jsonMap[dataWrapper] = rawJSON
-		}
+		// add the deleted field
+		jsonMap[deletedField] = true
 	}
 
 	// documentJSON represents the JSON document that will be sent in the CouchDB bulk update
-	documentJSON, _ := json.Marshal(jsonMap)
-	return documentJSON
+	documentJSON, err := json.Marshal(jsonMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return documentJSON, nil
+
 }
 
 // removeJSONRevision removes the "_rev" if this is a JSON
@@ -935,7 +1053,7 @@ func removeJSONRevision(jsonValue *[]byte) error {
 	}
 
 	//delete the "_rev" entry
-	delete(jsonMap, "_rev")
+	delete(jsonMap, revField)
 
 	//marshal the updated map back into the byte array
 	*jsonValue, err = json.Marshal(jsonMap)
@@ -1067,8 +1185,11 @@ func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 
 	key := selectedKV.ID
 
-	// remove the data wrapper and return the value and version
-	returnValue, returnVersion := removeDataWrapper(selectedKV.Value, selectedKV.Attachments)
+	// remove the reserved fields from CouchDB JSON and return the value and version
+	returnValue, returnVersion, err := getValueAndVersionFromDoc(selectedKV.Value, selectedKV.Attachments)
+	if err != nil {
+		return nil, err
+	}
 
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
@@ -1101,8 +1222,11 @@ func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
 
 	key := selectedResultRecord.ID
 
-	// remove the data wrapper and return the value and version
-	returnValue, returnVersion := removeDataWrapper(selectedResultRecord.Value, selectedResultRecord.Attachments)
+	// remove the reserved fields from CouchDB JSON and return the value and version
+	returnValue, returnVersion, err := getValueAndVersionFromDoc(selectedResultRecord.Value, selectedResultRecord.Attachments)
+	if err != nil {
+		return nil, err
+	}
 
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
