@@ -334,7 +334,7 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("General.LocalMSPID unset, setting to %s", defaults.General.LocalMSPID)
 			c.General.LocalMSPID = defaults.General.LocalMSPID
 
-		case c.General.Authentication.TimeWindow == 0*time.Minute:
+		case c.General.Authentication.TimeWindow == 0:
 			logger.Infof("General.Authentication.TimeWindow unset, setting to %s", defaults.General.Authentication.TimeWindow)
 			c.General.Authentication.TimeWindow = defaults.General.Authentication.TimeWindow
 
@@ -342,44 +342,44 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix
 
-		case c.Kafka.Retry.ShortInterval == 0*time.Minute:
+		case c.Kafka.Retry.ShortInterval == 0:
 			logger.Infof("Kafka.Retry.ShortInterval unset, setting to %v", defaults.Kafka.Retry.ShortInterval)
 			c.Kafka.Retry.ShortInterval = defaults.Kafka.Retry.ShortInterval
-		case c.Kafka.Retry.ShortTotal == 0*time.Minute:
+		case c.Kafka.Retry.ShortTotal == 0:
 			logger.Infof("Kafka.Retry.ShortTotal unset, setting to %v", defaults.Kafka.Retry.ShortTotal)
 			c.Kafka.Retry.ShortTotal = defaults.Kafka.Retry.ShortTotal
-		case c.Kafka.Retry.LongInterval == 0*time.Minute:
+		case c.Kafka.Retry.LongInterval == 0:
 			logger.Infof("Kafka.Retry.LongInterval unset, setting to %v", defaults.Kafka.Retry.LongInterval)
 			c.Kafka.Retry.LongInterval = defaults.Kafka.Retry.LongInterval
-		case c.Kafka.Retry.LongTotal == 0*time.Minute:
+		case c.Kafka.Retry.LongTotal == 0:
 			logger.Infof("Kafka.Retry.LongTotal unset, setting to %v", defaults.Kafka.Retry.LongTotal)
 			c.Kafka.Retry.LongTotal = defaults.Kafka.Retry.LongTotal
 
-		case c.Kafka.Retry.NetworkTimeouts.DialTimeout == 0*time.Second:
+		case c.Kafka.Retry.NetworkTimeouts.DialTimeout == 0:
 			logger.Infof("Kafka.Retry.NetworkTimeouts.DialTimeout unset, setting to %v", defaults.Kafka.Retry.NetworkTimeouts.DialTimeout)
 			c.Kafka.Retry.NetworkTimeouts.DialTimeout = defaults.Kafka.Retry.NetworkTimeouts.DialTimeout
-		case c.Kafka.Retry.NetworkTimeouts.ReadTimeout == 0*time.Second:
+		case c.Kafka.Retry.NetworkTimeouts.ReadTimeout == 0:
 			logger.Infof("Kafka.Retry.NetworkTimeouts.ReadTimeout unset, setting to %v", defaults.Kafka.Retry.NetworkTimeouts.ReadTimeout)
 			c.Kafka.Retry.NetworkTimeouts.ReadTimeout = defaults.Kafka.Retry.NetworkTimeouts.ReadTimeout
-		case c.Kafka.Retry.NetworkTimeouts.WriteTimeout == 0*time.Second:
+		case c.Kafka.Retry.NetworkTimeouts.WriteTimeout == 0:
 			logger.Infof("Kafka.Retry.NetworkTimeouts.WriteTimeout unset, setting to %v", defaults.Kafka.Retry.NetworkTimeouts.WriteTimeout)
 			c.Kafka.Retry.NetworkTimeouts.WriteTimeout = defaults.Kafka.Retry.NetworkTimeouts.WriteTimeout
 
-		case c.Kafka.Retry.Metadata.RetryBackoff == 0*time.Second:
+		case c.Kafka.Retry.Metadata.RetryBackoff == 0:
 			logger.Infof("Kafka.Retry.Metadata.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Metadata.RetryBackoff)
 			c.Kafka.Retry.Metadata.RetryBackoff = defaults.Kafka.Retry.Metadata.RetryBackoff
 		case c.Kafka.Retry.Metadata.RetryMax == 0:
 			logger.Infof("Kafka.Retry.Metadata.RetryMax unset, setting to %v", defaults.Kafka.Retry.Metadata.RetryMax)
 			c.Kafka.Retry.Metadata.RetryMax = defaults.Kafka.Retry.Metadata.RetryMax
 
-		case c.Kafka.Retry.Producer.RetryBackoff == 0*time.Second:
+		case c.Kafka.Retry.Producer.RetryBackoff == 0:
 			logger.Infof("Kafka.Retry.Producer.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Producer.RetryBackoff)
 			c.Kafka.Retry.Producer.RetryBackoff = defaults.Kafka.Retry.Producer.RetryBackoff
 		case c.Kafka.Retry.Producer.RetryMax == 0:
 			logger.Infof("Kafka.Retry.Producer.RetryMax unset, setting to %v", defaults.Kafka.Retry.Producer.RetryMax)
 			c.Kafka.Retry.Producer.RetryMax = defaults.Kafka.Retry.Producer.RetryMax
 
-		case c.Kafka.Retry.Consumer.RetryBackoff == 0*time.Second:
+		case c.Kafka.Retry.Consumer.RetryBackoff == 0:
 			logger.Infof("Kafka.Retry.Consumer.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Consumer.RetryBackoff)
 			c.Kafka.Retry.Consumer.RetryBackoff = defaults.Kafka.Retry.Consumer.RetryBackoff
 

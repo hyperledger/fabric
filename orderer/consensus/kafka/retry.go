@@ -48,7 +48,7 @@ func (rp *retryProcess) try(interval, total time.Duration) (err error) {
 	// (which would result in panic). The path below is for those test cases
 	// when we cannot avoid the creation of a retriable process but we wish
 	// to terminate it right away.
-	if rp.shortPollingInterval == 0*time.Second {
+	if rp.shortPollingInterval == 0 {
 		return fmt.Errorf("illegal value")
 	}
 

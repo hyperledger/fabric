@@ -132,7 +132,7 @@ func (s *server) Deliver(srv peer.Deliver_DeliverServer) error {
 // filtered block events
 func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerProvider, supportManager deliver.SupportManager) peer.DeliverServer {
 	timeWindow := viper.GetDuration("peer.authentication.timewindow")
-	if timeWindow == 0*time.Minute {
+	if timeWindow == 0 {
 		defaultTimeWindow := 15 * time.Minute
 		logger.Warningf("`peer.authentication.timewindow` not set; defaulting to %s", defaultTimeWindow)
 		timeWindow = defaultTimeWindow
