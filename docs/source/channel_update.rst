@@ -134,11 +134,23 @@ your containers:
 
   docker ps -a
 
-If necessary, relaunch the CLI:
+If necessary, relaunch the CLI. We want to run several commands manually.
+Before relaunching the network, open the ``docker-compose-cli.yaml`` file
+and comment out the script.sh in the CLI container. If left uncommented,
+that script will try to launch the same network again and fail due to conflict.
+Your docker-compose should be modified to look like this:
 
 .. code:: bash
 
-  docker start cli
+  working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+  # command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME}; sleep $TIMEOUT'
+  volumes
+
+After modifying ``docker-compose-cli.yaml``, relaunch the CLI container:
+
+.. code:: bash
+
+  docker-compose -f docker-compose-cli.yaml up -d cli
 
 Now install the ``jq`` tool into the container.  This tool allows us script interactions
 with JSON objects returned by the ``configtxlator`` tool:
