@@ -69,18 +69,18 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	case "newest":
 		block, err = cf.DeliverClient.getNewestBlock()
 	case "config":
-		iBlock, err := cf.DeliverClient.getNewestBlock()
-		if err != nil {
-			return err
+		iBlock, err2 := cf.DeliverClient.getNewestBlock()
+		if err2 != nil {
+			return err2
 		}
-		lc, err := utils.GetLastConfigIndexFromBlock(iBlock)
-		if err != nil {
-			return err
+		lc, err2 := utils.GetLastConfigIndexFromBlock(iBlock)
+		if err2 != nil {
+			return err2
 		}
 		block, err = cf.DeliverClient.getSpecifiedBlock(lc)
 	default:
-		num, err := strconv.Atoi(args[0])
-		if err != nil {
+		num, err2 := strconv.Atoi(args[0])
+		if err2 != nil {
 			return fmt.Errorf("fetch target illegal: %s", args[0])
 		}
 		block, err = cf.DeliverClient.getSpecifiedBlock(uint64(num))
