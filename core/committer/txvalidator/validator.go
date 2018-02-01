@@ -349,7 +349,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			logger.Debug("Validating transaction vscc tx validate")
 			err, cde := v.vscc.VSCCValidateTx(payload, d, env)
 			if err != nil {
-				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
+				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error: %s", txID, err)
 				switch err.(type) {
 				case *commonerrors.VSCCExecutionFailureError:
 					results <- &blockValidationResult{
@@ -834,11 +834,9 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
 		msg := fmt.Sprintf("Invoke VSCC failed for transaction txid=%s, error: %s", txid, err)
-		logger.Errorf(msg)
 		return &commonerrors.VSCCExecutionFailureError{msg}
 	}
 	if res.Status != shim.OK {
-		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, res.Message)
 		return &commonerrors.VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
 	}
 

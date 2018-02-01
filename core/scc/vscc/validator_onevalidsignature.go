@@ -179,7 +179,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 				// Warning: duplicated identities exist, endorsement failure might be cause by this reason
 				return shim.Error(DUPLICATED_IDENTITY_ERROR)
 			}
-			return shim.Error(fmt.Sprintf("VSCC error: policy evaluation failed, err %s", err))
+			return shim.Error(fmt.Sprintf("VSCC error: endorsement policy failure, err: %s", err))
 		}
 
 		hdrExt, err := utils.GetChaincodeHeaderExtension(payl.Header)
