@@ -45,7 +45,6 @@ Business:
    capabilities
    fabric_model
    Identity/Identity.md
-   Membership/Membership.md
    ledger
    usecases
 
