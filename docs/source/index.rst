@@ -42,8 +42,9 @@ Business:
    :caption: Key Concepts
 
    blockchain
-   functionalities
+   capabilities
    fabric_model
+   Identity/Identity.md
    ledger
    usecases
 
@@ -75,8 +76,6 @@ Business:
    error-handling
    logging-control
    peer-commands
-   enable_tls
-   kafka
 
 .. toctree::
    :maxdepth: 2
@@ -86,11 +85,13 @@ Business:
    txflow
    Hyperledger Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
    fabric-sdks
+   kafka
    channels
    couchdb_as_state_database
    peer_event_services
    readwrite
    gossip
+   enable_tls
 
 .. toctree::
    :maxdepth: 2
