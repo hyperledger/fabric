@@ -227,8 +227,10 @@ type IndexResult struct {
 // closeResponseBody discards the body and then closes it to enable returning it to
 // connection pool
 func closeResponseBody(resp *http.Response) {
-	io.Copy(ioutil.Discard, resp.Body) // discard whatever is remaining of body
-	resp.Body.Close()
+	if resp != nil {
+		io.Copy(ioutil.Discard, resp.Body) // discard whatever is remaining of body
+		resp.Body.Close()
+	}
 }
 
 //CreateConnectionDefinition for a new client connection
@@ -685,6 +687,10 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 }
 
 func getRevisionHeader(resp *http.Response) (string, error) {
+
+	if resp == nil {
+		return "", fmt.Errorf("No response was received from CouchDB")
+	}
 
 	revision := resp.Header.Get("Etag")
 
@@ -1436,7 +1442,7 @@ func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method string,
 	//attempt the http request for the max number of retries
 	//In this case, the retry is to catch problems where a client timeout may miss a
 	//successful CouchDB update and cause a document revision conflict on a retry in handleRequest
-	for attempts := 0; attempts < maxRetries; attempts++ {
+	for attempts := 0; attempts <= maxRetries; attempts++ {
 
 		//if the revision was not passed in, or if a revision conflict is detected on prior attempt,
 		//query CouchDB for the document revision
@@ -1479,12 +1485,16 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	//set initial wait duration for retries
 	waitDuration := retryWaitTime * time.Millisecond
 
-	if maxRetries < 1 {
-		return nil, nil, fmt.Errorf("Number of retries must be greater than zero.")
+	if maxRetries < 0 {
+		return nil, nil, fmt.Errorf("Number of retries must be zero or greater.")
 	}
 
 	//attempt the http request for the max number of retries
-	for attempts := 0; attempts < maxRetries; attempts++ {
+	// if maxRetries is 0, the database creation will be attempted once and will
+	//    return an error if unsuccessful
+	// if maxRetries is 3 (default), a maximum of 4 attempts (one attempt with 3 retries)
+	//    will be made with warning entries for unsuccessful attempts
+	for attempts := 0; attempts <= maxRetries; attempts++ {
 
 		//Set up a buffer for the payload data
 		payloadData := new(bytes.Buffer)
@@ -1555,40 +1565,44 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 			break
 		}
 
-		//if this is an unexpected golang http error, log the error and retry
-		if errResp != nil {
+		// If the maxRetries is greater than 0, then log the retry info
+		if maxRetries > 0 {
 
-			//Log the error with the retry count and continue
-			logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Error:%v",
-				waitDuration.String(), attempts+1, errResp.Error())
+			//if this is an unexpected golang http error, log the error and retry
+			if errResp != nil {
 
-			//otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
-		} else {
-			//Read the response body and close it for next attempt
-			jsonError, err := ioutil.ReadAll(resp.Body)
-			closeResponseBody(resp)
-			if err != nil {
-				return nil, nil, err
+				//Log the error with the retry count and continue
+				logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Error:%v",
+					waitDuration.String(), attempts+1, errResp.Error())
+
+				//otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
+			} else {
+				//Read the response body and close it for next attempt
+				jsonError, err := ioutil.ReadAll(resp.Body)
+				closeResponseBody(resp)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				errorBytes := []byte(jsonError)
+				//Unmarshal the response
+				err = json.Unmarshal(errorBytes, &couchDBReturn)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				//Log the 500 error with the retry count and continue
+				logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
+					waitDuration.String(), attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
+
 			}
+			//sleep for specified sleep time, then retry
+			time.Sleep(waitDuration)
 
-			errorBytes := []byte(jsonError)
-
-			//Unmarshal the response
-			err = json.Unmarshal(errorBytes, &couchDBReturn)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			//Log the 500 error with the retry count and continue
-			logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
-				waitDuration.String(), attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
+			//backoff, doubling the retry time for next attempt
+			waitDuration *= 2
 
 		}
-		//sleep for specified sleep time, then retry
-		time.Sleep(waitDuration)
-
-		//backoff, doubling the retry time for next attempt
-		waitDuration *= 2
 
 	} // end retry loop
 
