@@ -125,4 +125,7 @@ Now that you've seen how a PKI can provide verifiable identities through a chain
 
 To learn more about membership, check out the conceptual documentation on [MSPs](./Membership/Membership.md).
 
-[comment]: <> (Licensed under Creative Commons Attribution 4.0 International License https://creativecommons.org/licenses/by/4.0/)
+<!---
+Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+-->
