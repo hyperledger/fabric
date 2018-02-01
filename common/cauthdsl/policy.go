@@ -64,7 +64,7 @@ func (p *policy) Evaluate(signatureSet []*cb.SignedData) error {
 
 	ok := p.evaluator(deduplicate(signatureSet, p.deserializer), make([]bool, len(signatureSet)))
 	if !ok {
-		return errors.New("Failed to authenticate policy")
+		return errors.New("signature set did not satisfy policy")
 	}
 	return nil
 }
