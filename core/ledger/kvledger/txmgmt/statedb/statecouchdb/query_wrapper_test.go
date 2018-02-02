@@ -28,7 +28,7 @@ func TestSimpleQuery(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner":{"$eq":"jerry"}},"limit": 10,"skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -49,7 +49,7 @@ func TestQueryWithOperator(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"$or":[{"owner":{"$eq":"jerry"}},{"owner": {"$eq": "frank"}}]},"limit": 10,"skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -72,7 +72,7 @@ func TestQueryWithImplicitOperatorAndExplicitOperator(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"color":"green","$or":[{"owner":"fred"},{"owner":"mary"}]}}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -97,7 +97,7 @@ func TestQueryWithFields(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner": {"$eq": "tom"}},"fields": ["owner", "asset_name", "color", "size"], "limit": 10, "skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -124,7 +124,7 @@ func TestQueryWithSortFields(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner": {"$eq": "tom"}},"fields": ["owner", "asset_name", "color", "size"], "sort": ["size", "color"], "limit": 10, "skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -151,7 +151,7 @@ func TestQueryWithSortObjects(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner": {"$eq": "tom"}},"fields": ["owner", "asset_name", "color", "size"], "sort": [{"size": "desc"}, {"color": "desc"}], "limit": 10, "skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -191,13 +191,13 @@ func TestQueryLeadingOperator(t *testing.T) {
  }
  }`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
 
 	//$and operator should be unchanged
-	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$and\""), 2)
+	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$and\""), 1)
 
 	//$gte operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$gte\""), 1)
@@ -221,13 +221,13 @@ func TestQueryLeadingAndEmbeddedOperator(t *testing.T) {
 					 ]
 			 }}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
 
 	//$and operator should be unchanged
-	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$and\""), 2)
+	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$and\""), 1)
 
 	//$gte operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$gte\""), 1)
@@ -266,13 +266,13 @@ func TestQueryEmbeddedOperatorAndArrayOfObjects(t *testing.T) {
 	  }
 	}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
 
 	//$and operator should be unchanged
-	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$and\""), 2)
+	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$and\""), 1)
 
 	//$gte operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"$gte\""), 1)
@@ -297,7 +297,7 @@ func TestQueryEmbeddedOperatorAndArrayOfValues(t *testing.T) {
 	  }
 	}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -322,27 +322,12 @@ func TestQueryEmbeddedOperatorAndArrayOfValues(t *testing.T) {
 
 }
 
-//TestQueryNoSelector with no selector specified
-func TestQueryNoSelector(t *testing.T) {
-
-	rawQuery := []byte(`{"fields": ["owner", "asset_name", "color", "size"]}`)
-
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
-
-	//Make sure the query did not throw an exception
-	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
-
-	//check to make sure the default selector is added
-	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"selector\":{\"chaincodeid\":\"ns1\"}"), 1)
-
-}
-
 //TestQueryWithUseDesignDoc tests query with index design doc specified
 func TestQueryWithUseDesignDoc(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner":{"$eq":"jerry"}},"use_index":"_design/testDoc","limit": 10,"skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -357,7 +342,7 @@ func TestQueryWithUseDesignDocAndIndexName(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner":{"$eq":"jerry"}},"use_index":["_design/testDoc","testIndexName"],"limit": 10,"skip": 0}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
@@ -372,7 +357,7 @@ func TestQueryWithLargeInteger(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"$and":[{"size":{"$eq": 1000007}}]}}`)
 
-	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+	wrappedQuery, err := ApplyQueryWrapper(string(rawQuery), 10000, 0)
 
 	//Make sure the query did not throw an exception
 	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")

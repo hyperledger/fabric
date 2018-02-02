@@ -247,6 +247,36 @@ func Test_WriteFolderToTarPackage4(t *testing.T) {
 	assert.True(t, foundIndexArtifact, "should have found statedb index artifact in marbles02 META-INF directory")
 }
 
+// Success case 5: with hidden files in META-INF directory (hidden files get ignored)
+func Test_WriteFolderToTarPackage5(t *testing.T) {
+
+	gopath := os.Getenv("GOPATH")
+	gopath = filepath.SplitList(gopath)[0]
+
+	srcPath := filepath.Join(gopath, "src",
+		"github.com/hyperledger/fabric/test/chaincodes/BadMetadataIgnoreHiddenFile")
+
+	filePath := "META-INF/.hiddenfile"
+
+	tarBytes := createTestTar(t, srcPath, "", nil, nil)
+
+	// Read the files from the archive and check for no hidden files
+	br := bytes.NewReader(tarBytes)
+	gr, err := gzip.NewReader(br)
+	defer gr.Close()
+	assert.NoError(t, err, "Error creating a gzip reader")
+	tr := tar.NewReader(gr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF { // No more entries
+			break
+		}
+		assert.NoError(t, err, "Error getting Next() file in tar")
+		t.Logf("Found file in tar: %s", header.Name)
+		assert.NotEqual(t, filePath, header.Name, "should not have found hidden file META-INF/.hiddenfile")
+	}
+}
+
 func createTestTar(t *testing.T, srcPath string, excludeDir string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) []byte {
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
@@ -275,6 +305,52 @@ func Test_WriteFolderToTarPackageFailure1(t *testing.T) {
 	defer tw.Close()
 	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
 	assert.Contains(t, err.Error(), "no source files found")
+}
+
+// Failure case 2: with invalid chaincode metadata in META-INF directory
+func Test_WriteFolderToTarPackageFailure2(t *testing.T) {
+
+	gopath := os.Getenv("GOPATH")
+	gopath = filepath.SplitList(gopath)[0]
+
+	// Note - go chaincode does not use WriteFolderToTarPackage(),
+	// but we can still use the go example for unit test,
+	// since there are no node chaincode examples in fabric repos
+	srcPath := filepath.Join(gopath, "src",
+		"github.com/hyperledger/fabric/test/chaincodes/BadMetadataInvalidIndex")
+
+	buf := bytes.NewBuffer(nil)
+	gw := gzip.NewWriter(buf)
+	tw := tar.NewWriter(gw)
+
+	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
+	assert.Error(t, err, "Should have received error writing folder to package")
+
+	tw.Close()
+	gw.Close()
+}
+
+// Failure case 3: with unexpected content in META-INF directory
+func Test_WriteFolderToTarPackageFailure3(t *testing.T) {
+
+	gopath := os.Getenv("GOPATH")
+	gopath = filepath.SplitList(gopath)[0]
+
+	// Note - go chaincode does not use WriteFolderToTarPackage(),
+	// but we can still use the go example for unit test,
+	// since there are no node chaincode examples in fabric repos
+	srcPath := filepath.Join(gopath, "src",
+		"github.com/hyperledger/fabric/test/chaincodes/BadMetadataUnexpectedFolderContent")
+
+	buf := bytes.NewBuffer(nil)
+	gw := gzip.NewWriter(buf)
+	tw := tar.NewWriter(gw)
+
+	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
+	assert.Error(t, err, "Should have received error writing folder to package")
+
+	tw.Close()
+	gw.Close()
 }
 
 func Test_WriteJavaProjectToPackage(t *testing.T) {

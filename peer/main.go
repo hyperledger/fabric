@@ -37,10 +37,16 @@ const cmdRoot = "core"
 var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// check for CORE_LOGGING_LEVEL environment variable, which should override
-		// all other log settings. otherwise, this will use the value for from
-		// core.yaml
-		loggingSpec := viper.GetString("logging.level")
+		// check for --logging-level pflag first, which should override all other
+		// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
+		// (environment variable takes priority; otherwise, the value set in
+		// core.yaml)
+		var loggingSpec string
+		if viper.GetString("logging_level") != "" {
+			loggingSpec = viper.GetString("logging_level")
+		} else {
+			loggingSpec = viper.GetString("logging.level")
+		}
 		flogging.InitFromSpec(loggingSpec)
 
 		return nil
@@ -72,16 +78,17 @@ func main() {
 	mainFlags.String("logging-level", "", "Default logging level and overrides, see core.yaml for full syntax")
 	viper.BindPFlag("logging_level", mainFlags.Lookup("logging-level"))
 
-	err := common.InitConfig(cmdRoot)
-	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error when initializing %s config : %s\n", cmdRoot, err))
-	}
-
 	mainCmd.AddCommand(version.Cmd())
 	mainCmd.AddCommand(node.Cmd())
 	mainCmd.AddCommand(chaincode.Cmd(nil))
 	mainCmd.AddCommand(clilogging.Cmd(nil))
 	mainCmd.AddCommand(channel.Cmd(nil))
+
+	err := common.InitConfig(cmdRoot)
+	if err != nil { // Handle errors reading the config file
+		logger.Errorf("Fatal error when initializing %s config : %s", cmdRoot, err)
+		os.Exit(1)
+	}
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 

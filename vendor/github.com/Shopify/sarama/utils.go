@@ -157,9 +157,9 @@ func ParseKafkaVersion(s string) (KafkaVersion, error) {
 	var major, minor, veryMinor, patch uint
 	var err error
 	if s[0] == '0' {
-		err = scanKafkaVersion(s, `^0.\d+.\d+.\d+$`, "0.%d.%d.%d", [3]*uint{&minor, &veryMinor, &patch})
+		err = scanKafkaVersion(s, `^0\.\d+\.\d+\.\d+$`, "0.%d.%d.%d", [3]*uint{&minor, &veryMinor, &patch})
 	} else {
-		err = scanKafkaVersion(s, `^\d+.\d+.\d+$`, "%d.%d.%d", [3]*uint{&major, &minor, &veryMinor})
+		err = scanKafkaVersion(s, `^\d+\.\d+\.\d+$`, "%d.%d.%d", [3]*uint{&major, &minor, &veryMinor})
 	}
 	if err != nil {
 		return minVersion, err

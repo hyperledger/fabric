@@ -70,10 +70,13 @@ func init() {
 
 //InitConfig initializes viper config
 func InitConfig(cmdRoot string) error {
-	config.InitViper(nil, cmdRoot)
+	err := config.InitViper(nil, cmdRoot)
+	if err != nil {
+		return err
+	}
 
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
+	err = viper.ReadInConfig() // Find and read the config file
+	if err != nil {            // Handle errors reading the config file
 		return errors.WithMessage(err, fmt.Sprintf("error when reading %s config file", cmdRoot))
 	}
 

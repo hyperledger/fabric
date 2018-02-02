@@ -1,3 +1,22 @@
+# Deprecation
+Please note that events API available in Hyperledger Fabric v1.0.0 will be deprecated in favour of new
+events delivery API
+
+```proto
+service Deliver {
+    // deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with Payload data as a marshaled orderer.SeekInfo message,
+    // then a stream of block replies is received.
+    rpc Deliver (stream common.Envelope) returns (stream DeliverResponse) {
+    }
+    // deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with Payload data as a marshaled orderer.SeekInfo message,
+    // then a stream of **filtered** block replies is received.
+    rpc DeliverFiltered (stream common.Envelope) returns (stream DeliverResponse) {
+    }
+}
+```
+
+Please explore `eventsclient` example for demonstration of using new APIs. 
+
 # What is block-listener
 block-listener.go connects to a peer in order to receive block and chaincode
 events (if there are chaincode events being sent).

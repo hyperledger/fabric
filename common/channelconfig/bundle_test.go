@@ -207,7 +207,7 @@ func TestPrevalidation(t *testing.T) {
 		err := preValidate(nil)
 
 		assert.Error(t, err)
-		assert.Regexp(t, "config cannot be nil", err.Error())
+		assert.Regexp(t, "channelconfig Config cannot be nil", err.Error())
 	})
 
 	t.Run("NilChannelGroup", func(t *testing.T) {
@@ -221,10 +221,10 @@ func TestPrevalidation(t *testing.T) {
 		err := preValidate(&cb.Config{
 			ChannelGroup: &cb.ConfigGroup{
 				Groups: map[string]*cb.ConfigGroup{
-					OrdererGroupKey: &cb.ConfigGroup{},
+					OrdererGroupKey: {},
 				},
 				Values: map[string]*cb.ConfigValue{
-					CapabilitiesKey: &cb.ConfigValue{},
+					CapabilitiesKey: {},
 				},
 			},
 		})
@@ -237,12 +237,12 @@ func TestPrevalidation(t *testing.T) {
 		err := preValidate(&cb.Config{
 			ChannelGroup: &cb.ConfigGroup{
 				Groups: map[string]*cb.ConfigGroup{
-					ApplicationGroupKey: &cb.ConfigGroup{
+					ApplicationGroupKey: {
 						Values: map[string]*cb.ConfigValue{
-							CapabilitiesKey: &cb.ConfigValue{},
+							CapabilitiesKey: {},
 						},
 					},
-					OrdererGroupKey: &cb.ConfigGroup{},
+					OrdererGroupKey: {},
 				},
 			},
 		})
@@ -255,19 +255,19 @@ func TestPrevalidation(t *testing.T) {
 		err := preValidate(&cb.Config{
 			ChannelGroup: &cb.ConfigGroup{
 				Groups: map[string]*cb.ConfigGroup{
-					ApplicationGroupKey: &cb.ConfigGroup{
+					ApplicationGroupKey: {
 						Values: map[string]*cb.ConfigValue{
-							CapabilitiesKey: &cb.ConfigValue{},
+							CapabilitiesKey: {},
 						},
 					},
-					OrdererGroupKey: &cb.ConfigGroup{
+					OrdererGroupKey: {
 						Values: map[string]*cb.ConfigValue{
-							CapabilitiesKey: &cb.ConfigValue{},
+							CapabilitiesKey: {},
 						},
 					},
 				},
 				Values: map[string]*cb.ConfigValue{
-					CapabilitiesKey: &cb.ConfigValue{},
+					CapabilitiesKey: {},
 				},
 			},
 		})

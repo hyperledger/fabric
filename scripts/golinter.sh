@@ -26,6 +26,15 @@ for i in "${arr[@]}"
 do
     echo ">>>Checking code under $i/"
 
+    echo "Checking with gofmt"
+    OUTPUT="$(gofmt -l -s ./$i)"
+    if [[ $OUTPUT ]]; then
+        echo "The following files contain gofmt errors"
+        echo "$OUTPUT"
+        echo "The gofmt command 'gofmt -l -s -w' must be run for these files"
+        exit 1
+    fi
+
     echo "Checking with goimports"
     OUTPUT="$(goimports -srcdir $GOPATH/src/github.com/hyperledger/fabric -l $i)"
     if [[ $OUTPUT ]]; then

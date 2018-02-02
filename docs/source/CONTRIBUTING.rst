@@ -58,7 +58,7 @@ If it has not been previously reported, create a new JIRA. Please try to provide
 sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
-reviewed. You can also post to the relevant fabric channel in
+reviewed. You can also post to the relevant Hyperledger Fabric channel in
 `Hyperledger Rocket Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
 be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
 and so on...
@@ -86,6 +86,25 @@ then assign the issue to yourself. Please be considerate and rescind the
 assignment if you cannot finish in a reasonable time, or add a comment
 saying that you are still actively working the issue if you need a
 little more time.
+
+Reviewing submitted Change Requests (CRs)
+-----------------------------------------
+
+Another way to contribute and learn about Hyperledgr Fabric is to help the
+maintainers with the review of the CRs that are open. Indeed
+maintainers have the difficult role of having to review all the CRs
+that are being submitted and evaluate whether they should be merged or
+not. You can review the code and/or documentation changes, test the
+changes, and tell the submitters and maintainers what you think. Once
+your review and/or test is complete just reply to the CR with your
+findings, by adding comments and/or voting. A comment saying something
+like "I tried it on system X and it works" or possibly "I got an error
+on system X: xxx " will help the maintainers in their evaluation. As a
+result, maintainers will be able to process CRs faster and everybody
+will gain from it.
+
+Just browse through `the open CRs on Gerrit
+<https://gerrit.hyperledger.org/r/#/q/status:open>`__ to get started.
 
 Making Feature/Enhancement Proposals
 ------------------------------------

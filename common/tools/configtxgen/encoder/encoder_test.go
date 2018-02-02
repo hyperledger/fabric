@@ -225,7 +225,7 @@ func TestNewChannelGroup(t *testing.T) {
 
 	t.Run("Add application unknown MSP", func(t *testing.T) {
 		config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Application = &genesisconfig.Application{Organizations: []*genesisconfig.Organization{&genesisconfig.Organization{Name: "FakeOrg"}}}
+		config.Application = &genesisconfig.Application{Organizations: []*genesisconfig.Organization{{Name: "FakeOrg"}}}
 		group, err := NewChannelGroup(config)
 		assert.Error(t, err)
 		assert.Nil(t, group)
@@ -233,7 +233,7 @@ func TestNewChannelGroup(t *testing.T) {
 
 	t.Run("Add consortiums unknown MSP", func(t *testing.T) {
 		config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Consortiums["fakeorg"] = &genesisconfig.Consortium{Organizations: []*genesisconfig.Organization{&genesisconfig.Organization{Name: "FakeOrg"}}}
+		config.Consortiums["fakeorg"] = &genesisconfig.Consortium{Organizations: []*genesisconfig.Organization{{Name: "FakeOrg"}}}
 		group, err := NewChannelGroup(config)
 		assert.Error(t, err)
 		assert.Nil(t, group)
@@ -241,7 +241,7 @@ func TestNewChannelGroup(t *testing.T) {
 
 	t.Run("Add orderer unknown MSP", func(t *testing.T) {
 		config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
-		config.Orderer = &genesisconfig.Orderer{Organizations: []*genesisconfig.Organization{&genesisconfig.Organization{Name: "FakeOrg"}}}
+		config.Orderer = &genesisconfig.Orderer{Organizations: []*genesisconfig.Organization{{Name: "FakeOrg"}}}
 		group, err := NewChannelGroup(config)
 		assert.Error(t, err)
 		assert.Nil(t, group)

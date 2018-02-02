@@ -78,12 +78,12 @@ const mutualTLS = true
 
 func (a *Adapter) GetInterestedEvents() ([]*pb.Interest, error) {
 	return []*pb.Interest{
-		&pb.Interest{EventType: pb.EventType_BLOCK},
-		&pb.Interest{EventType: pb.EventType_FILTEREDBLOCK},
-		&pb.Interest{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}},
-		&pb.Interest{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
-		&pb.Interest{EventType: pb.EventType_REGISTER, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event3"}}},
-		&pb.Interest{EventType: pb.EventType_REJECTION, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event4"}}},
+		{EventType: pb.EventType_BLOCK},
+		{EventType: pb.EventType_FILTEREDBLOCK},
+		{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}},
+		{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
+		{EventType: pb.EventType_REGISTER, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event3"}}},
+		{EventType: pb.EventType_REJECTION, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event4"}}},
 	}, nil
 }
 
@@ -321,7 +321,7 @@ func TestReceiveCCWildcard(t *testing.T) {
 	var err error
 
 	adapter.count = 1
-	config := &consumer.RegistrationConfig{InterestedEvents: []*pb.Interest{&pb.Interest{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}}, Timestamp: util.CreateUtcTimestamp()}
+	config := &consumer.RegistrationConfig{InterestedEvents: []*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}}, Timestamp: util.CreateUtcTimestamp()}
 	obcEHClient.RegisterAsync(config)
 
 	select {
@@ -375,7 +375,7 @@ func TestFailReceive(t *testing.T) {
 
 func TestUnregister(t *testing.T) {
 	var err error
-	config := &consumer.RegistrationConfig{InterestedEvents: []*pb.Interest{&pb.Interest{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}}, Timestamp: util.CreateUtcTimestamp()}
+	config := &consumer.RegistrationConfig{InterestedEvents: []*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}}, Timestamp: util.CreateUtcTimestamp()}
 	obcEHClient.RegisterAsync(config)
 
 	adapter.count = 1
@@ -399,7 +399,7 @@ func TestUnregister(t *testing.T) {
 		t.Fail()
 		t.Logf("timed out on message")
 	}
-	obcEHClient.UnregisterAsync([]*pb.Interest{&pb.Interest{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}})
+	obcEHClient.UnregisterAsync([]*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}})
 	adapter.count = 1
 	select {
 	case <-adapter.notfy:
@@ -425,7 +425,7 @@ func TestUnregister(t *testing.T) {
 }
 
 func TestRegister_outOfTimeWindow(t *testing.T) {
-	interestedEvent := []*pb.Interest{&pb.Interest{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}}
+	interestedEvent := []*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}}
 	config := &consumer.RegistrationConfig{InterestedEvents: interestedEvent, Timestamp: &timestamp.Timestamp{Seconds: 0}}
 	obcEHClient.RegisterAsync(config)
 

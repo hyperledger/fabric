@@ -17,6 +17,7 @@ package peer
 
 import (
 	"runtime/debug"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/deliver"
@@ -127,10 +128,15 @@ func (s *server) Deliver(srv peer.Deliver_DeliverServer) error {
 	return s.dh.Handle(deliver.NewDeliverServer(srvSupport, s.policyCheckerProvider(resources.BLOCKEVENT), s.sendProducer(srv)))
 }
 
-// NewDeliverEventsServer creates an peer.Deliver server to take to deliver block and filtered block events
+// NewDeliverEventsServer creates a peer.Deliver server to deliver block and
+// filtered block events
 func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerProvider, supportManager deliver.SupportManager) peer.DeliverServer {
 	timeWindow := viper.GetDuration("peer.authentication.timewindow")
-
+	if timeWindow == 0 {
+		defaultTimeWindow := 15 * time.Minute
+		logger.Warningf("`peer.authentication.timewindow` not set; defaulting to %s", defaultTimeWindow)
+		timeWindow = defaultTimeWindow
+	}
 	return &server{
 		dh: deliver.NewHandlerImpl(supportManager, timeWindow, mutualTLS),
 		policyCheckerProvider: policyCheckerProvider,
@@ -176,6 +182,11 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 			return nil, errors.WithMessage(err, "could not extract payload from envelope")
 		}
 
+		if payload.Header == nil {
+			logger.Debugf("transaction payload header is nil, %d, block num %d",
+				txIndex, block.Header.Number)
+			continue
+		}
 		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
 			return nil, err
@@ -215,6 +226,10 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 			return nil, errors.WithMessage(err, "error unmarshal transaction action payload for block event")
 		}
 
+		if chaincodeActionPayload.Action == nil {
+			logger.Debugf("chaincode action, the payload action is nil, skipping")
+			continue
+		}
 		propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal proposal response payload for block event")

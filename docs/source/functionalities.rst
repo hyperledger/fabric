@@ -1,10 +1,10 @@
-Hyperledger Fabric Capabilities
-===============================
+Hyperledger Fabric Functionalities
+==================================
 
-Hyperledger Fabric is a unique implementation of distributed ledger technology
+Hyperledger Fabric is an implementation of distributed ledger technology
 (DLT) that delivers enterprise-ready network security, scalability,
 confidentiality and performance, in a modular blockchain architecture.
-Hyperledger Fabric delivers the following blockchain network capabilities:
+Hyperledger Fabric delivers the following blockchain network functionalities:
 
 Identity management
 -------------------
@@ -14,9 +14,7 @@ identity service that manages user IDs and authenticates all participants on
 the network. Access control lists can be used to provide additional layers of
 permission through authorization of specific network operations. For example, a
 specific user ID could be permitted to invoke a chaincode application, but
-blocked from deploying new chaincode. One truism about Hyperledger Fabric
-networks is that members know each other (identity), but they do not know what
-each other are doing (privacy and confidentiality).
+blocked from deploying new chaincode.
 
 Privacy and confidentiality
 ---------------------------
@@ -68,8 +66,7 @@ identity, ordering (consensus) and encryption, for example, can be plugged in
 to any Hyperledger Fabric network. The result is a universal blockchain
 architecture that any industry or public domain can adopt, with the assurance
 that its networks will be interoperable across market, regulatory and
-geographic boundaries. By contrast, current alternatives to Hyperledger Fabric
-are largely partisan, constrained and industry-specific.
+geographic boundaries.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

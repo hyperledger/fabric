@@ -17,16 +17,28 @@ limitations under the License.
 package couchdb
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hyperledger/fabric/common/util"
 )
 
-var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_-]*`
-var maxLength = 249
+var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_()-]*`
+var maxLength = 238
+
+// To restrict the length of couchDB database name to the
+// allowed length of 249 chars, the string length limit
+// for chain/channel name, namespace/chaincode name, and
+// collection name, which constitutes the database name,
+// is defined.
+var chainNameAllowedLength = 50
+var namespaceNameAllowedLength = 50
+var collectionNameAllowedLength = 50
 
 //CreateCouchInstance creates a CouchDB instance
 func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
@@ -137,6 +149,81 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 
 }
 
+// ConstructMetadataDBName truncates the db name to couchdb allowed length to
+// construct the metadataDBName
+func ConstructMetadataDBName(dbName string) string {
+	if len(dbName) > maxLength {
+		untruncatedDBName := dbName
+		// Truncate the name if the length violates the allowed limit
+		// As the passed dbName is same as chain/channel name, truncate using chainNameAllowedLength
+		dbName = dbName[:chainNameAllowedLength]
+		// For metadataDB (i.e., chain/channel DB), the dbName contains <first 50 chars
+		// (i.e., chainNameAllowedLength) of chainName> + (SHA256 hash of actual chainName)
+		dbName = dbName + "(" + hex.EncodeToString(util.ComputeSHA256([]byte(untruncatedDBName))) + ")"
+		// 50 chars for dbName + 1 char for ( + 64 chars for sha256 + 1 char for ) = 116 chars
+	}
+	return dbName + "_"
+}
+
+// ConstructNamespaceDBName truncates db name to couchdb allowed length to
+// construct the namespaceDBName
+func ConstructNamespaceDBName(chainName, namespace string) string {
+	// replace upper-case in namespace with a escape sequence '$' and the respective lower-case letter
+	escapedNamespace := escapeUpperCase(namespace)
+	namespaceDBName := chainName + "_" + escapedNamespace
+
+	// For namespaceDBName of form 'chainName_namespace', on length limit violation, the truncated
+	// namespaceDBName would contain <first 50 chars (i.e., chainNameAllowedLength) of chainName> + "_" +
+	// <first 50 chars (i.e., namespaceNameAllowedLength) chars of namespace> +
+	// (<SHA256 hash of [chainName_namespace]>)
+	//
+	// For namespaceDBName of form 'chainName_namespace$$collection', on length limit violation, the truncated
+	// namespaceDBName would contain <first 50 chars (i.e., chainNameAllowedLength) of chainName> + "_" +
+	// <first 50 chars (i.e., namespaceNameAllowedLength) of namespace> + "$$" + <first 50 chars
+	// (i.e., collectionNameAllowedLength) of collection> + (<SHA256 hash of [chainName_namespace$$pcollection]>)
+
+	if len(namespaceDBName) > maxLength {
+		// Compute the hash of untruncated namespaceDBName that needs to be appended to
+		// truncated namespaceDBName for maintaining uniqueness
+		hashOfNamespaceDBName := hex.EncodeToString(util.ComputeSHA256([]byte(chainName + "_" + namespace)))
+
+		// As truncated namespaceDBName is of form 'chainName_escapedNamespace', both chainName
+		// and escapedNamespace need to be truncated to defined allowed length.
+		if len(chainName) > chainNameAllowedLength {
+			// Truncate chainName to chainNameAllowedLength
+			chainName = chainName[0:chainNameAllowedLength]
+		}
+		// As escapedNamespace can be of either 'namespace' or 'namespace$$collectionName',
+		// both 'namespace' and 'collectionName' need to be truncated to defined allowed length.
+		// '$$' is used as joiner between namespace and collection name.
+		// Split the escapedNamespace into escaped namespace and escaped collection name if exist.
+		names := strings.Split(escapedNamespace, "$$")
+		namespace := names[0]
+		if len(namespace) > namespaceNameAllowedLength {
+			// Truncate the namespace
+			namespace = namespace[0:namespaceNameAllowedLength]
+		}
+
+		escapedNamespace = namespace
+
+		// Check and truncate the length of collection name if exist
+		if len(names) == 2 {
+			collection := names[1]
+			if len(collection) > collectionNameAllowedLength {
+				// Truncate the escaped collection name
+				collection = collection[0:collectionNameAllowedLength]
+			}
+			// Append truncated collection name to escapedNamespace
+			escapedNamespace = escapedNamespace + "$$" + collection
+		}
+		// Construct and return the namespaceDBName
+		// 50 chars for chainName + 1 char for '_' + 102 chars for escaped namespace + 1 char for '(' + 64 chars
+		// for sha256 hash + 1 char for ')' = 219 chars
+		return chainName + "_" + escapedNamespace + "(" + hashOfNamespaceDBName + ")"
+	}
+	return namespaceDBName
+}
+
 //mapAndValidateDatabaseName checks to see if the database name contains illegal characters
 //CouchDB Rules: Only lowercase characters (a-z), digits (0-9), and any of the characters
 //_, $, (, ), +, -, and / are allowed. Must begin with a letter.
@@ -167,4 +254,12 @@ func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	// So, this translation will not cause collisions
 	databaseName = strings.Replace(databaseName, ".", "$", -1)
 	return databaseName, nil
+}
+
+// escapeUpperCase replaces every upper case letter with a '$' and the respective
+// lower-case letter
+func escapeUpperCase(dbName string) string {
+	re := regexp.MustCompile(`([A-Z])`)
+	dbName = re.ReplaceAllString(dbName, "$$"+"$1")
+	return strings.ToLower(dbName)
 }

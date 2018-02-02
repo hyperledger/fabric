@@ -57,6 +57,9 @@ type VersionedDBProvider struct {
 type CommittedVersions struct {
 	committedVersions map[statedb.CompositeKey]*version.Height
 	revisionNumbers   map[statedb.CompositeKey]string
+	mux               sync.RWMutex
+	// For now, we use one mutex for both versionNo and revisionNo. Having
+	// two mutex might be a overkill.
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
@@ -161,7 +164,7 @@ func (provider *VersionedDBProvider) Close() {
 type VersionedDB struct {
 	couchInstance *couchdb.CouchInstance
 	metadataDB    *couchdb.CouchDatabase            // A database per channel to store metadata such as savepoint.
-	dbName        string                            // The name of the channel database.
+	chainName     string                            // The name of the chain/channel.
 	namespaceDBs  map[string]*couchdb.CouchDatabase // One database per deployed chaincode.
 	//TODO: Decide whether to split committedDataCache into multiple cahces, i.e., one per namespace.
 	committedDataCache *CommittedVersions // Used as a local cache during bulk processing of a block.
@@ -171,8 +174,10 @@ type VersionedDB struct {
 // newVersionedDB constructs an instance of VersionedDB
 func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*VersionedDB, error) {
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
+	chainName := dbName
 
-	dbName = dbName + "_"
+	dbName = couchdb.ConstructMetadataDBName(dbName)
+
 	metadataDB, err := couchdb.CreateCouchDatabase(*couchInstance, dbName)
 	if err != nil {
 		return nil, err
@@ -183,33 +188,32 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*Versi
 
 	committedDataCache := &CommittedVersions{committedVersions: versionMap, revisionNumbers: revMap}
 
-	return &VersionedDB{couchInstance, metadataDB, dbName, namespaceDBMap, committedDataCache, sync.RWMutex{}}, nil
+	return &VersionedDB{couchInstance, metadataDB, chainName, namespaceDBMap, committedDataCache, sync.RWMutex{}}, nil
 }
 
 // getNamespaceDBHandle gets the handle to a named chaincode database
 func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchdb.CouchDatabase, error) {
 
-	// TODO: lower casing the namespace will be handled more appropriately when
-	// we address the additional name mapping logic specified in FAB-7130.
-	namespaceDBName := vdb.dbName + strings.ToLower(namespace)
 	vdb.mux.RLock()
-	db := vdb.namespaceDBs[namespaceDBName]
+	db := vdb.namespaceDBs[namespace]
 	vdb.mux.RUnlock()
 
 	if db != nil {
 		return db, nil
 	}
 
+	namespaceDBName := couchdb.ConstructNamespaceDBName(vdb.chainName, namespace)
+
 	vdb.mux.Lock()
 	defer vdb.mux.Unlock()
-	db = vdb.namespaceDBs[namespaceDBName]
+	db = vdb.namespaceDBs[namespace]
 	if db == nil {
 		var err error
 		db, err = couchdb.CreateCouchDatabase(*vdb.couchInstance, namespaceDBName)
 		if err != nil {
 			return nil, err
 		}
-		vdb.namespaceDBs[namespaceDBName] = db
+		vdb.namespaceDBs[namespace] = db
 	}
 	return db, nil
 }
@@ -270,7 +274,9 @@ func (vdb *VersionedDB) GetCachedVersion(namespace string, key string) (*version
 	// Retrieve the version from committed data cache.
 	// Since the cache was populated based on block readsets,
 	// checks during validation should find the version here
+	vdb.committedDataCache.mux.RLock()
 	version, keyFound := vdb.committedDataCache.committedVersions[compositeKey]
+	vdb.committedDataCache.mux.RUnlock()
 
 	if !keyFound {
 		return nil, false
@@ -395,8 +401,7 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	// Get the querylimit from core.yaml
 	queryLimit := ledgerconfig.GetQueryLimit()
 
-	// TODO: Remove namespace from wrapper query
-	queryString, err := ApplyQueryWrapper(namespace, query, queryLimit, 0)
+	queryString, err := ApplyQueryWrapper(query, queryLimit, 0)
 	if err != nil {
 		logger.Debugf("Error calling ApplyQueryWrapper(): %s\n", err.Error())
 		return nil, err
@@ -420,89 +425,107 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 
 	// STEP 1: GATHER DOCUMENT REVISION NUMBERS REQUIRED FOR THE COUCHDB BULK UPDATE
-	//         ALSO BUILD PROCESS BATCHES OF UPDATE DOCUMENTS BASED ON THE MAX BATCH SIZE
+	//         ALSO BUILD PROCESS BATCHES OF UPDATE DOCUMENTS PER NAMESPACE BASED ON
+	// 	   THE MAX BATCH SIZE
 
-	// initialize a missing key list
-	var missingKeys []*statedb.CompositeKey
-
-	//initialize a processBatch for updating bulk documents
-	processBatch := statedb.NewUpdateBatch()
-
-	//get the max size of the batch from core.yaml
-	maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
-
-	//initialize a counter to track the batch size
-	batchSizeCounter := 0
-
-	// Iterate through the batch passed in and create process batches
-	// using the max batch size
 	namespaces := batch.GetUpdatedNamespaces()
+
+	// Create goroutine wait group.
+	var processBatchGroup sync.WaitGroup
+	processBatchGroup.Add(len(namespaces))
+
+	// Collect error from each goroutine using buffered channel.
+	errResponses := make(chan error, len(namespaces))
+
 	for _, ns := range namespaces {
-		// TODO: Need to run the following code block in a goroutine so that each chaincode batch
-		// can be processed and committed parallely.
-		nsUpdates := batch.GetUpdates(ns)
-		for k, vv := range nsUpdates {
+		// each namespace batch is processed and committed parallely.
+		go func(ns string) {
+			defer processBatchGroup.Done()
 
-			//increment the batch size counter
-			batchSizeCounter++
+			// initialize a missing key list
+			var missingKeys []*statedb.CompositeKey
 
-			compositeKey := statedb.CompositeKey{Namespace: ns, Key: k}
+			//initialize a processBatch for updating bulk documents
+			processBatch := statedb.NewUpdateBatch()
 
-			// Revision numbers are needed for couchdb updates.
-			// vdb.committedDataCache.revisionNumbers is a cache of revision numbers based on ID
-			// Document IDs and revision numbers will already be in the cache for read/writes,
-			// but will be missing in the case of blind writes.
-			// If the key is missing in the cache, then add the key to missingKeys
-			_, keyFound := vdb.committedDataCache.revisionNumbers[compositeKey]
+			//get the max size of the batch from core.yaml
+			maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
 
-			if !keyFound {
-				// Add the key to the missing key list
-				// As there can be no duplicates in UpdateBatch, no need check for duplicates.
-				missingKeys = append(missingKeys, &compositeKey)
-			}
+			//initialize a counter to track the batch size
+			batchSizeCounter := 0
 
-			//add the record to the process batch
-			if vv.Value == nil {
-				processBatch.Delete(ns, k, vv.Version)
-			} else {
-				processBatch.Put(ns, k, vv.Value, vv.Version)
-			}
+			nsUpdates := batch.GetUpdates(ns)
+			for k, vv := range nsUpdates {
 
-			//Check to see if the process batch exceeds the max batch size
-			if batchSizeCounter >= maxBatchSize {
+				//increment the batch size counter
+				batchSizeCounter++
 
-				//STEP 2:  PROCESS EACH BATCH OF UPDATE DOCUMENTS
+				compositeKey := statedb.CompositeKey{Namespace: ns, Key: k}
 
-				err := vdb.processUpdateBatch(processBatch, missingKeys)
-				if err != nil {
-					return err
+				// Revision numbers are needed for couchdb updates.
+				// vdb.committedDataCache.revisionNumbers is a cache of revision numbers based on ID
+				// Document IDs and revision numbers will already be in the cache for read/writes,
+				// but will be missing in the case of blind writes.
+				// If the key is missing in the cache, then add the key to missingKeys
+				vdb.committedDataCache.mux.RLock()
+				_, keyFound := vdb.committedDataCache.revisionNumbers[compositeKey]
+				vdb.committedDataCache.mux.RUnlock()
+
+				if !keyFound {
+					// Add the key to the missing key list
+					// As there can be no duplicates in UpdateBatch, no need check for duplicates.
+					missingKeys = append(missingKeys, &compositeKey)
 				}
 
-				//reset the batch size counter
-				batchSizeCounter = 0
+				//add the record to the process batch
+				if vv.Value == nil {
+					processBatch.Delete(ns, k, vv.Version)
+				} else {
+					processBatch.Put(ns, k, vv.Value, vv.Version)
+				}
 
-				//create a new process batch
-				processBatch = statedb.NewUpdateBatch()
+				//Check to see if the process batch exceeds the max batch size
+				if batchSizeCounter >= maxBatchSize {
 
-				// reset the missing key list
-				missingKeys = []*statedb.CompositeKey{}
+					//STEP 2:  PROCESS EACH BATCH OF UPDATE DOCUMENTS
+
+					err := vdb.processUpdateBatch(processBatch, missingKeys)
+					if err != nil {
+						errResponses <- err
+						return
+					}
+
+					//reset the batch size counter
+					batchSizeCounter = 0
+
+					//create a new process batch
+					processBatch = statedb.NewUpdateBatch()
+
+					// reset the missing key list
+					missingKeys = []*statedb.CompositeKey{}
+				}
 			}
-		}
 
-		//STEP 3:  PROCESS ANY REMAINING DOCUMENTS
-		err := vdb.processUpdateBatch(processBatch, missingKeys)
-		if err != nil {
-			return err
-		}
+			//STEP 3:  PROCESS ANY REMAINING DOCUMENTS
+			err := vdb.processUpdateBatch(processBatch, missingKeys)
+			if err != nil {
+				errResponses <- err
+				return
+			}
+		}(ns)
+	}
 
-		//reset the batch size counter
-		batchSizeCounter = 0
+	// Wait for all goroutines to complete
+	processBatchGroup.Wait()
 
-		//create a new process batch
-		processBatch = statedb.NewUpdateBatch()
-
-		// reset the missing key list
-		missingKeys = []*statedb.CompositeKey{}
+	// Check if any goroutine resulted in error.
+	// We can stop all goroutine as soon as any goutine resulted in error rather than
+	// waiting for all goroutines to complete. As errors are very rare, current sub-optimal
+	// approach (allowing each subroutine to complete) is adequate for now.
+	// TODO: Currently, we are returing only one error. We need to create a new error type
+	// that can encapsulate all the errors and return that type
+	if len(errResponses) > 0 {
+		return <-errResponses
 	}
 
 	// Record a savepoint at a given height
@@ -552,7 +575,9 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 			// retrieve the couchdb revision from the cache
 			// Documents that do not exist in couchdb will not have revision numbers and will
 			// exist in the cache with a revision value of nil
+			vdb.committedDataCache.mux.RLock()
 			revision := vdb.committedDataCache.revisionNumbers[statedb.CompositeKey{Namespace: ns, Key: key}]
+			vdb.committedDataCache.mux.RUnlock()
 
 			var isDelete bool // initialized to false
 			if vv.Value == nil {
@@ -560,20 +585,18 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 			}
 
 			logger.Debugf("Channel [%s]: namespace=[%s] key=[%#v], prior revision=[%s], isDelete=[%t]",
-				vdb.dbName, ns, key, revision, isDelete)
+				vdb.chainName, ns, key, revision, isDelete)
 
 			if isDelete {
 				// this is a deleted record.  Set the _deleted property to true
 				//couchDoc.JSONValue = createCouchdbDocJSON(string(compositeKey), revision, nil, ns, vv.Version, true)
-				//TODO: Remove ns/chaincodeID from json doc
-				couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, ns, vv.Version, true)
+				couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, vv.Version, true)
 
 			} else {
 
 				if couchdb.IsJSON(string(vv.Value)) {
 					// Handle as json
-					//TODO: Remove ns from json doc
-					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, vv.Value, ns, vv.Version, false)
+					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, vv.Value, vv.Version, false)
 
 				} else { // if value is not json, handle as a couchdb attachment
 
@@ -584,8 +607,7 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 					attachments := append([]*couchdb.AttachmentInfo{}, attachment)
 
 					couchDoc.Attachments = attachments
-					//TODO: Remove ns from json doc
-					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, ns, vv.Version, false)
+					couchDoc.JSONValue = createCouchdbDocJSON(key, revision, nil, vv.Version, false)
 
 				}
 			}
@@ -595,7 +617,6 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 
 		}
 
-		//TODO: Run the following in a goroutine so that commit on each namespaceDB can happen parallely
 		if len(batchUpdateMap) > 0 {
 
 			//Add the documents to the batch update array
@@ -702,6 +723,7 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 
 	missingKeys := make(map[string][]string) // for each namespace/chaincode, store the missingKeys
 
+	vdb.committedDataCache.mux.Lock()
 	for _, key := range keys {
 
 		logger.Debugf("Load into version cache: %s~%s", key.Key, key.Namespace)
@@ -729,6 +751,7 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 		}
 
 	}
+	vdb.committedDataCache.mux.Unlock()
 
 	//get the max size of the batch from core.yaml
 	maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
@@ -736,37 +759,61 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 	// Call the batch retrieve if there is one or more keys to retrieve
 	if len(missingKeys) > 0 {
 
-		for namespace, _ := range missingKeys {
-			// TODO: For each namespace, we need to parallely load missing keys into the cache
-			// The following codes need be moved to goroutine and introduce RWlock for cache.
+		// Create goroutine wait group.
+		var batchRetrieveGroup sync.WaitGroup
+		batchRetrieveGroup.Add(len(missingKeys))
 
-			// Initialize the array of keys to be retrieved
-			keysToRetrieve := []string{}
+		// Collect error from each goroutine using buffered channel.
+		errResponses := make(chan error, len(missingKeys))
 
-			// Iterate through the missingKeys and build a batch of keys for batch retrieval
-			for _, key := range missingKeys[namespace] {
+		// For each namespace, we parallely load missing keys into the cache using goroutines
+		for namespace := range missingKeys {
+			go func(namespace string) {
+				defer batchRetrieveGroup.Done()
 
-				keysToRetrieve = append(keysToRetrieve, key)
+				// Initialize the array of keys to be retrieved
+				keysToRetrieve := []string{}
 
-				// check to see if the number of keys is greater than the max batch size
-				if len(keysToRetrieve) >= maxBatchSize {
+				// Iterate through the missingKeys and build a batch of keys for batch retrieval
+				for _, key := range missingKeys[namespace] {
+
+					keysToRetrieve = append(keysToRetrieve, key)
+
+					// check to see if the number of keys is greater than the max batch size
+					if len(keysToRetrieve) >= maxBatchSize {
+						err := vdb.batchRetrieveMetaData(namespace, keysToRetrieve)
+						if err != nil {
+							errResponses <- err
+							return
+						}
+						// reset the array
+						keysToRetrieve = []string{}
+					}
+
+				}
+
+				// If there are any remaining, retrieve the final batch
+				if len(keysToRetrieve) > 0 {
 					err := vdb.batchRetrieveMetaData(namespace, keysToRetrieve)
 					if err != nil {
-						return err
+						errResponses <- err
+						return
 					}
-					// reset the array
-					keysToRetrieve = []string{}
 				}
+			}(namespace)
+		}
 
-			}
+		// Wait for all goroutines to complete
+		batchRetrieveGroup.Wait()
 
-			// If there are any remaining, retrieve the final batch
-			if len(keysToRetrieve) > 0 {
-				err := vdb.batchRetrieveMetaData(namespace, keysToRetrieve)
-				if err != nil {
-					return err
-				}
-			}
+		// Check if any goroutine resulted in error.
+		// We can stop all goroutine as soon as any goutine resulted in error rather than
+		// waiting for all goroutines to complete. As errors are very rare, current sub-optimal
+		// approach (allowing each subroutine to complete) is adequate for now.
+		// TODO: Currently, we are returing only one error. We need to create a new error type
+		// that can encapsulate all the errors and return that type.
+		if len(errResponses) > 0 {
+			return <-errResponses
 		}
 
 	}
@@ -797,8 +844,10 @@ func (vdb *VersionedDB) batchRetrieveMetaData(namespace string, keys []string) e
 		if len(documentMetadata.Version) != 0 {
 			compositeKey := statedb.CompositeKey{Namespace: namespace, Key: documentMetadata.ID}
 
+			vdb.committedDataCache.mux.Lock()
 			versionMap[compositeKey] = createVersionHeightFromVersionString(documentMetadata.Version)
 			revMap[compositeKey] = documentMetadata.Rev
+			vdb.committedDataCache.mux.Unlock()
 		}
 	}
 
@@ -835,11 +884,10 @@ func (vdb *VersionedDB) ClearCachedVersions() {
 // _id - couchdb document ID, need for all couchdb batch operations
 // _rev - couchdb document revision, needed for updating or deleting existing documents
 // _deleted - flag using in batch operations for deleting a couchdb document
-// chaincodeID - chain code ID, added to header, used to scope couchdb queries
 // version - version, added to header, used for state validation
 // data wrapper - JSON from the chaincode goes here
 // The return value is the CouchDoc.JSONValue with the header fields populated
-func createCouchdbDocJSON(id, revision string, value []byte, chaincodeID string, version *version.Height, deleted bool) []byte {
+func createCouchdbDocJSON(id, revision string, value []byte, version *version.Height, deleted bool) []byte {
 
 	// create a version mapping
 	jsonMap := map[string]interface{}{"version": fmt.Sprintf("%v:%v", version.BlockNum, version.TxNum)}
@@ -857,10 +905,6 @@ func createCouchdbDocJSON(id, revision string, value []byte, chaincodeID string,
 		jsonMap["_deleted"] = true
 
 	} else {
-
-		// TODO: Remove chaincodeID from header
-		// add the chaincodeID
-		jsonMap["chaincodeid"] = chaincodeID
 
 		// Add the wrapped data if the value is not null
 		if value != nil {
@@ -922,6 +966,7 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height, namespaces []str
 	var err error
 	var savepointDoc couchSavepointData
 	// ensure full commit to flush all changes on updated namespaces until now to disk
+	// namespace also includes empty namespace which is nothing but metadataDB
 	for _, ns := range namespaces {
 		// TODO: Ensure full commit can be parallelized to improve performance
 		db, err := vdb.getNamespaceDBHandle(ns)
@@ -935,6 +980,7 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height, namespaces []str
 			return errors.New("Failed to perform full commit")
 		}
 	}
+
 	// construct savepoint document
 	savepointDoc.BlockNum = height.BlockNum
 	savepointDoc.TxNum = height.TxNum
@@ -952,12 +998,10 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height, namespaces []str
 		return err
 	}
 
-	dbResponse, err := vdb.metadataDB.EnsureFullCommit()
-
-	if err != nil || dbResponse.Ok != true {
-		logger.Errorf("Failed to perform full commit\n")
-		return errors.New("Failed to perform full commit")
-	}
+	// Note: Ensure full commit on metadataDB after storing the savepoint is not necessary
+	// as CouchDB syncs states to disk periodically (every 1 second). If peer fails before
+	// syncing the savepoint to disk, ledger recovery process kicks in to ensure consistency
+	// between CouchDB and block store on peer restart
 
 	return nil
 }

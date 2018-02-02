@@ -296,7 +296,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 		json.NewDecoder(resp.Body).Decode(&dbResponse)
 
 		if dbResponse.Ok == true {
-			logger.Debugf("Created database %s ", dbclient.DBName)
+			logger.Infof("Created state database %s", dbclient.DBName)
 		}
 
 		logger.Debugf("Exiting CreateDatabaseIfNotExist()")
@@ -470,7 +470,8 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	//If autoWarmIndexes is enabled, indexes will be refreshed after each block's
 	//data has been committed to the state database
 	if ledgerconfig.IsAutoWarmIndexesEnabled() {
-		dbclient.WarmIndexAllIndexes()
+		//Use a go routine to launch WarmIndexAllIndexes(), this will execute as a background process
+		go dbclient.runWarmIndexAllIndexes()
 	}
 
 	logger.Debugf("Exiting EnsureFullCommit()")
@@ -1120,6 +1121,8 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) error {
 	}
 	defer closeResponseBody(resp)
 
+	logger.Infof("Created CouchDB index in state database %s", dbclient.DBName)
+
 	return nil
 
 }
@@ -1180,6 +1183,16 @@ func (dbclient *CouchDatabase) WarmIndex(designdoc, indexname string) error {
 	defer closeResponseBody(resp)
 
 	return nil
+
+}
+
+//runWarmIndexAllIndexes is a wrapper for WarmIndexAllIndexes to catch and report any errors
+func (dbclient *CouchDatabase) runWarmIndexAllIndexes() {
+
+	err := dbclient.WarmIndexAllIndexes()
+	if err != nil {
+		logger.Errorf("Error detected during WarmIndexAllIndexes(): %s", err.Error())
+	}
 
 }
 

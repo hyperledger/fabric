@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -133,5 +135,65 @@ func TestEventListener(t *testing.T) {
 		case <-time.After(shortTimeout):
 			t.Fatalf("timed out waiting for messages (receieved %d messages)", i)
 		}
+	}
+}
+
+func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
+
+	logging.SetLevel(logging.DEBUG, saramaLogID)
+
+	topic := channelNameForTest(t)
+	partition := int32(0)
+
+	var buffer bytes.Buffer
+	logger.SetBackend(logging.AddModuleLevel(
+		logging.MultiLogger(
+			logging.NewBackendFormatter(
+				logging.NewLogBackend(os.Stderr, "", 0),
+				logging.MustStringFormatter("%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"),
+			),
+			logging.NewLogBackend(&buffer, "", 0),
+		),
+	))
+	defer logging.Reset()
+
+	broker := sarama.NewMockBroker(t, 500)
+	defer broker.Close()
+
+	config := sarama.NewConfig()
+	config.ClientID = t.Name()
+	config.Metadata.Retry.Max = 0
+	config.Metadata.Retry.Backoff = 250 * time.Millisecond
+	config.Net.ReadTimeout = 100 * time.Millisecond
+	config.Version = sarama.V0_10_0_0
+
+	broker.SetHandlerByMap(map[string]sarama.MockResponse{
+		"MetadataRequest": sarama.NewMockMetadataResponse(t).
+			SetBroker(broker.Addr(), broker.BrokerID()).
+			SetLeader(topic, partition, broker.BrokerID()),
+		"OffsetRequest": sarama.NewMockOffsetResponse(t).
+			SetOffset(topic, partition, sarama.OffsetNewest, 1000).
+			SetOffset(topic, partition, sarama.OffsetOldest, 0),
+		"FetchRequest": sarama.NewMockFetchResponse(t, 1).
+			SetMessage(topic, partition, 0, sarama.StringEncoder("MSG 00")),
+	})
+
+	consumer, err := sarama.NewConsumer([]string{broker.Addr()}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer consumer.Close()
+
+	partitionConsumer, err := consumer.ConsumePartition(topic, partition, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer partitionConsumer.Close()
+
+	select {
+	case <-partitionConsumer.Messages():
+		t.Fatalf("did not expect to receive message")
+	case <-time.After(shortTimeout):
+		assert.Regexp(t, "Kafka.Version specified in the orderer configuration is incorrectly set", buffer.String())
 	}
 }

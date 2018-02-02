@@ -16,8 +16,8 @@ import (
 
 func TestInitRegistry(t *testing.T) {
 	r := InitRegistry(Config{
-		AuthFilters: []*HandlerConfig{&HandlerConfig{Name: "DefaultAuth"}},
-		Decorators:  []*HandlerConfig{&HandlerConfig{Name: "DefaultDecorator"}},
+		AuthFilters: []*HandlerConfig{{Name: "DefaultAuth"}},
+		Decorators:  []*HandlerConfig{{Name: "DefaultDecorator"}},
 	})
 	assert.NotNil(t, r)
 	authHandlers := r.Lookup(Auth)

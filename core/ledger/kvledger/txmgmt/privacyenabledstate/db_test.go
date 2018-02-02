@@ -312,6 +312,47 @@ func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 	testQueryItr(t, itr, []string{testKey(10)}, []string{"joe", "1000007"})
 }
 
+func TestLongDBNameOnCouchDB(t *testing.T) {
+	for _, env := range testEnvs {
+		_, ok := env.(*CouchDBCommonStorageTestEnv)
+		if !ok {
+			continue
+		}
+		t.Run(env.GetName(), func(t *testing.T) {
+			testLongDBNameOnCouchDB(t, env)
+		})
+	}
+}
+
+func testLongDBNameOnCouchDB(t *testing.T, env TestEnv) {
+	env.Init(t)
+	defer env.Cleanup()
+
+	// Creates metadataDB (i.e., chainDB)
+	// Allowed pattern for chainName: [a-z][a-z0-9.-]
+	db := env.GetDBHandle("w1coaii9ck3l8red6a5cf3rwbe1b4wvbzcrrfl7samu7px8b9gf-4hft7wrgdmzzjj9ure4cbffucaj78nbj9ej.kvl3bus1iq1qir9xlhb8a1wipuksgs3g621elzy1prr658087exwrhp-y4j55o9cld242v--oeh3br1g7m8d6l8jobn.y42cgjt1.u1ik8qxnv4ohh9kr2w2zc8hqir5u4ev23s7jygrg....s7.ohp-5bcxari8nji")
+
+	updates := NewUpdateBatch()
+
+	// Allowed pattern for namespace and collection: [a-zA-Z0-9_-]
+	ns := "wMCnSXiV9YoIqNQyNvFVTdM8XnUtvrOFFIWsKelmP5NEszmNLl8YhtOKbFu3P_NgwgsYF8PsfwjYCD8f1XRpANQLoErDHwLlweryqXeJ6vzT2x0pS_GwSx0m6tBI0zOmHQOq_2De8A87x6zUOPwufC2T6dkidFxiuq8Sey2-5vUo_iNKCij3WTeCnKx78PUIg_U1gp4_0KTvYVtRBRvH0kz5usizBxPaiFu3TPhB9XLviScvdUVSbSYJ0Z"
+	coll := "vWjtfSTXVK8WJus5s6zWoMIciXd7qHRZIusF9SkOS6m8XuHCiJDE9cCRuVerq22Na8qBL2ywDGFpVMIuzfyEXLjeJb0mMuH4cwewT6r1INOTOSYwrikwOLlT_fl0V1L7IQEwUBB8WCvRqSdj6j5-E5aGul_pv_0UeCdwWiyA_GrZmP7ocLzfj2vP8btigrajqdH-irLO2ydEjQUAvf8fiuxru9la402KmKRy457GgI98UHoUdqV3f3FCdR"
+
+	updates.PubUpdates.Put(ns, "key1", []byte("value1"), version.NewHeight(1, 1))
+	updates.PvtUpdates.Put(ns, coll, "key1", []byte("pvt_value"), version.NewHeight(1, 2))
+	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash("key1"), util.ComputeHash([]byte("pvt_value")), version.NewHeight(1, 2))
+
+	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 6))
+
+	vv, err := db.GetState(ns, "key1")
+	assert.NoError(t, err)
+	assert.Equal(t, &statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, vv)
+
+	vv, err = db.GetPrivateData(ns, coll, "key1")
+	assert.NoError(t, err)
+	assert.Equal(t, &statedb.VersionedValue{Value: []byte("pvt_value"), Version: version.NewHeight(1, 2)}, vv)
+}
+
 func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
 	defer itr.Close()
 	for _, expectedKey := range expectedKeys {

@@ -379,13 +379,13 @@ func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *
 				Type: int32(cb.ConfigType_RESOURCE),
 				ChannelGroup: &cb.ConfigGroup{
 					Groups: map[string]*cb.ConfigGroup{
-						resourcesconfig.ChaincodesGroupKey: &cb.ConfigGroup{
+						resourcesconfig.ChaincodesGroupKey: {
 							ModPolicy: defaultModPolicy,
 						},
-						resourcesconfig.PeerPoliciesGroupKey: &cb.ConfigGroup{
+						resourcesconfig.PeerPoliciesGroupKey: {
 							ModPolicy: defaultModPolicy,
 						},
-						resourcesconfig.APIsGroupKey: &cb.ConfigGroup{
+						resourcesconfig.APIsGroupKey: {
 							ModPolicy: defaultModPolicy,
 						},
 					},
@@ -415,7 +415,7 @@ func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner,
 			return nil, errors.Wrap(err, "creating signature header failed")
 		}
 
-		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
+		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{{
 			SignatureHeader: utils.MarshalOrPanic(sigHeader),
 		}}
 

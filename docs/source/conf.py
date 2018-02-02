@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 #
+# SPDX-License-Identifier: Apache-2.0
+#
 # hyperledger-fabricdocs documentation build configuration file, created by
 # sphinx-quickstart on Mon Feb 20 16:11:53 2017.
 #
@@ -43,11 +45,20 @@ extensions = ['sphinx.ext.autodoc',
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
+# recommonmark is a python utility that allows markdown to be used within
+# Sphinx projects.
+# Installed version as per directive in docs/requirement.txt
+from recommonmark.parser import CommonMarkParser
+
+source_parsers = {
+    '.md': CommonMarkParser,
+}
+
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = 'index'

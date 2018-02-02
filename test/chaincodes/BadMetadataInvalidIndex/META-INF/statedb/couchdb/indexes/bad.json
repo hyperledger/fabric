@@ -1,0 +1,1 @@
+This test file is expected to contain a json formatted couchdb index, but does not. It should fail golang chaincode packaging tests.

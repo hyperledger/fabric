@@ -37,7 +37,7 @@ func TestBadPathResourceGroup(t *testing.T) {
 	t.Run("BadValues", func(t *testing.T) {
 		rg, err := newResourceGroup(&cb.ConfigGroup{
 			Values: map[string]*cb.ConfigValue{
-				"foo": &cb.ConfigValue{},
+				"foo": {},
 			},
 		})
 		assert.Nil(t, rg)
@@ -48,7 +48,7 @@ func TestBadPathResourceGroup(t *testing.T) {
 	t.Run("BadSubGroup", func(t *testing.T) {
 		rg, err := newResourceGroup(&cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				"bar": &cb.ConfigGroup{},
+				"bar": {},
 			},
 		})
 		assert.Nil(t, rg)

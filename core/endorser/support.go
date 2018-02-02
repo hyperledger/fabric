@@ -134,3 +134,12 @@ func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd resource
 func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	return peer.GetSupport().GetApplicationConfig(cid)
 }
+
+// shorttxid replicates the chaincode package function to shorten txids.
+// TODO utilize a common shorttxid utility across packages.
+func shorttxid(txid string) string {
+	if len(txid) < 8 {
+		return txid
+	}
+	return txid[0:8]
+}

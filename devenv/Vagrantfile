@@ -25,7 +25,7 @@ set -x
 
 echo "127.0.0.1 couchdb" | tee -a /etc/hosts
 
-cd #{SRCMOUNT}/devenv
+cd #{SRCMOUNT}/fabric/devenv
 ./setup.sh
 
 SCRIPT
@@ -39,16 +39,9 @@ Vagrant.configure('2') do |config|
   config.vm.network :forwarded_port, guest: 7053, host: 7053, id: "peer_event", host_ip: "localhost", auto_correct: true # fabric peer event service
   config.vm.network :forwarded_port, guest: 7054, host: 7054, id: "ca", host_ip: "localhost", auto_correct: true # fabric-ca service
   config.vm.network :forwarded_port, guest: 5984, host: 15984, id: "couchdb", host_ip: "localhost", auto_correct: true # CouchDB service
-  config.vm.synced_folder "..", "#{SRCMOUNT}"
-  config.vm.synced_folder "..", "/opt/gopath/src/github.com/hyperledger/fabric"
-  config.vm.synced_folder ENV.fetch('LOCALDEVDIR', ".."), "#{LOCALDEV}"
-  if File.exist?("../../fabric-ca")
-    config.vm.synced_folder "../../fabric-ca", "/opt/gopath/src/github.com/hyperledger/fabric-ca"
-  end
-  if File.exist?("../../fabric-test")
-    config.vm.synced_folder "../../fabric-test", "/opt/gopath/src/github.com/hyperledger/fabric-test"
-  end
-
+  config.vm.synced_folder "../..", "#{SRCMOUNT}"
+  config.vm.synced_folder "../..", "/opt/gopath/src/github.com/hyperledger"
+  config.vm.synced_folder ENV.fetch('LOCALDEVDIR', "../.."), "#{LOCALDEV}"
   config.vm.provider :virtualbox do |vb|
     vb.name = "hyperledger"
     vb.customize ['modifyvm', :id, '--memory', '4096']

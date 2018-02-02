@@ -40,6 +40,6 @@ func TestUtilsBasic(t *testing.T) {
 	basicTest(t, KafkaBrokersValue([]string{"foo:1", "bar:2"}))
 	basicTest(t, MSPValue(&mspprotos.MSPConfig{}))
 	basicTest(t, CapabilitiesValue(map[string]bool{"foo": true, "bar": false}))
-	basicTest(t, AnchorPeersValue([]*pb.AnchorPeer{&pb.AnchorPeer{}, &pb.AnchorPeer{}}))
+	basicTest(t, AnchorPeersValue([]*pb.AnchorPeer{{}, {}}))
 	basicTest(t, ChannelCreationPolicyValue(&cb.Policy{}))
 }
