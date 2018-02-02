@@ -1,16 +1,22 @@
 Procedure for Upgrading from v1.0.x
 ===================================
 
-At a high level, upgrading a Fabric network can be performed with the following sequence.
+.. note:: When we use the term "upgrade" in this documentation, we're primarily referring
+          to changing the **version** of a component (for example, going from a 1.0.x binary
+          to a 1.1 binary). The term "update", on the other hand, refers not to versions but
+          to **changes**, such as updating a channel configuration or a deployment script.
 
- * Update orderers, peers, and fabric-ca.  These updates may be done in parallel.
- * Update client SDKs.
+At a high level, upgrading a Fabric network to v1.1 can be performed by following these
+steps:
+
+ * Upgrade binaries for orderers, peers, and fabric-ca. These upgrades may be done in parallel.
+ * Upgrade client SDKs.
  * Enable v1.1 channel capability requirements.
- * (Optional) Update the Kafka cluster.
+ * (Optional) Upgrade the Kafka cluster.
 
-While the above represents a best practice of the order in which to perform an update
+While the above represents a best practice of the order in which to perform an upgrade
 from version 1.0.x to version 1.1, it’s worth first understanding the concept of
-“Capability Requirements” to know how and why it’s important to update to new versions
+“Capability Requirements” to know how and why it’s important to upgrade to new versions
 and/or incorporate new components into your network (i.e., the orderer system channel),
 or individual channels.
 
@@ -22,37 +28,45 @@ Since Fabric is a distributed system that will often involve multiple organizati
 that many different versions of Fabric code will exist in the network. Nevertheless,
 this code -- and the machines it lives on -- must process transactions in the same
 way *across the network* so that everyone has the same view of the current network
-state. This means that every network -- and every channel within that network -- must
-have within itself a common set of features to be able to participate in processing
-transactions on a channel. We call this common set of features “Capability Requirements.”
+state.
 
-For example, Fabric v1.1 introduces new MSP role types of “Peer”, “Orderer”, and
-“Client”. However, if a v1.0 peer does not understand these new role types, it will
-not be able to appropriately evaluate an endorsement policy that references them.
-This means that before the new role types may be used, the network must agree to
-enable the v1.1 channel capability requirement. This ensures that all peers come
-to the same decision.
+This means that every network -- and every channel within that network -- must define a
+set of conditions necessary for transactions to be processed properly. For example, Fabric
+v1.1 introduces new MSP role types of "Peer", "Orderer", and "Client". However, if a v1.0
+peer does not understand these new role types, it will not be able to appropriately
+evaluate an endorsement policy that references them. 
 
-Where are Capability Requirements Defined?
-------------------------------------------
+Without this consistency across channels, a component -- the orderer, for example --
+might label a transaction invalid when a *different* orderer that has been upgraded
+to 1.1 binaries judges the transactions as being valid (the opposite could also occur).
+If that happens, a state fork would be created, creating inconsistent ledgers.
+
+Because a state fork must be avoided at all costs (it's one of the worst possible
+things that can happen to your network), Fabric v1.1 introduces what we call
+"Capability Requirements" -- the set of common features the components on a channel must
+have (or recognize) in order for transactions to be processed properly.
+
+
+Defining Capability Requirements
+--------------------------------
 
 Capability requirements are defined per channel in the channel configuration (found
 in the channel’s most recent configuration block). The channel configuration contains
-three locations, each of which defines a capability of a different type.
+three groups, each of which defines a capability of a different type.
 
-* Channel-wide capabilities -- across both peers and orderers -- are located in the
-  root ‘Channel’ group.
+* **Channel:** these capabilities apply to both peer and orderers and are located in
+  the root ``Channel`` group.
 
-* Application specific (peer related) capabilities are located in the "Application" group.
+* **Application:** apply to peers only and are located in the ``Application`` group.
+  
+* **Orderer:** apply to orderers only and are located in the ``Orderer`` group.
 
-* Orderer-specific capabilities are located in the "Orderer" group.
-
-The capabilities are broken into these groups because of their existent administrative
-structure. Updating orderer capabilities is something the ordering orgs would manage
-autonomously from the application orgs. Similarly, updating application capabilities
-is something only the application admins would manage. By splitting the capabilities
-between "Orderer" and "Application", a hypothetical network could run a v1.6 ordering
-service while supporting a v1.3 peer application network.
+The capabilities are broken into these groups in order to align with the existing
+administrative structure. Updating orderer capabilities is something the ordering orgs
+would manage independent of the application orgs. Similarly, updating application
+capabilities is something only the application admins would manage. By splitting the
+capabilities between "Orderer" and "Application", a hypothetical network could run a
+v1.6 ordering service while supporting a v1.3 peer application network.
 
 However, some capabilities cross both the ‘Application’ and ‘Orderer’ groups. As we
 saw earlier, adding a new MSP role type is something both the orderer and application
@@ -69,52 +83,63 @@ group.
           more specific "Orderer" and "Application" group levels.
 
 Now that we’ve shown why capability requirements are important, let’s move on to how
-you actually update your components. We’ll discuss how you update the capabilities a
+you actually upgrade your components. We’ll discuss how you add the capabilities a
 little later.
 
-First, let’s update your orderer.
+First, let’s upgrade your orderers.
 
-Update Orderer Binaries
------------------------
+Upgrade Orderer Binaries
+------------------------
+
+.. note:: Pay CLOSE attention to your orderer upgrades. If they are not done
+          correctly -- specifically, if only some orderers are upgraded and not others
+          -- a **state fork** could be created that will, for lack of a better word,
+          **nuke** your channel. Ledgers will no longer be consistent, and since
+          consistent ledgers are the point of a blockchain network, your channel will,
+          at a minimum, be ruined. You'll have to start over. You don't want this.
 
 Orderer binaries should be upgraded in a rolling fashion (one at a time). For each
 orderer process:
 
 1. Stop the orderer.
 2. Backup the orderer's ledger and MSP.
-3. Update the orderer binary to v1.1.x.
-4. For native deployments, replace the file ‘orderer’ with the one from the release
-   artifacts.
+3. Replace the orderer binary with the one from v1.1.x.
+
+   * For native deployments, replace the file ‘orderer’ with the one from the
+     release artifacts.
+   * For docker deployments, change the deployment scripts to use image version
+     v1.1.x.
 
 .. note:: For Docker deployments, you must set the environment variable
           ``ORDERER_KAFKA_VERSION`` to match your Kafka cluster version, even if it
           was not set before.
 
-5. Update the image version.
-6. Start the orderer.
-7. Verify that the new orderer starts up and synchronizes with the rest of the network.
-8. First, using the peer CLI, use the peer channel fetch newest command to verify that
+4. Start the orderer.
+5. Verify that the new orderer starts up and synchronizes with the rest of the network.
+6. First, using the peer CLI, use the peer channel fetch newest command to verify that
    the orderer has started.
-9. Next, send some transactions to the new orderer, either using the SDK or the CLI.
+7. Next, send some transactions to the new orderer, either using the SDK or the CLI.
    Verify that these transactions successfully commit.
 
 Repeat this process for each orderer.
 
-Update Chaincodes With Vendored Shim
-------------------------------------
+.. note:: We repeat. Pay close attention to your orderer upgrades. State forks are bad.
+
+Upgrade Chaincodes With Vendored Shim
+-------------------------------------
 
 1. For any chaincodes which used Go vendoring to include the chaincode shim, the source
-   code must be updated in one of two ways:
+   code must be modified in one of two ways:
 
    * Remove the vendoring of the shim.
-   * Update the vendored version of the shim to use the v1.1.0 Fabric source.
+   * Change the vendored version of the shim to use the v1.1.0 Fabric source.
 
-2. Re-package the updated chaincode.
+2. Re-package the modified chaincode.
 3. Install the chaincode on all peers which have the original version of the chaincode
    installed. Install with the same name, but specify a new version.
 
-Update Peer Binaries
---------------------
+Upgrade Peer Binaries
+---------------------
 
 Peer binaries should be upgraded in a rolling fashion (one at a time). For each peer
 process:
@@ -124,41 +149,43 @@ process:
 
 If using CouchDB as state database:
 
-1. Stop CouchDB.
-2. Backup CouchDB data directory.
-3. Delete CouchDB data directory.
-4. Install CouchDB 2.1.1 binaries or update the Docker image (CouchDB 2.1.1 pre-configured
-   Docker image is provided alongside Hyperledger Fabric 1.1).
-5. Restart CouchDB.
+a. Stop CouchDB.
+b. Backup CouchDB data directory.
+c. Delete CouchDB data directory.
+d. Install CouchDB 2.1.1 binaries or update deployment scripts to use a new Docker image
+   (CouchDB 2.1.1 pre-configured Docker image is provided alongside Hyperledger Fabric 1.1).
+e. Restart CouchDB.
 
 The reason to delete the CouchDB data directory is that upon startup the 1.1 peer
 will rebuild the CouchDB state databases from the blockchain transactions. Starting
 in 1.1, there will be an internal CouchDB database for each channel_chaincode combination
 (for each chaincode instantiated on each channel that the peer has joined).
 
-Next, remove all Docker chaincode images.
+3. Next, remove all Docker chaincode images.
 
-These can be recognized by the pattern:
+   These can be recognized by the pattern:
 
-``${CORE_PEER_NETWORKID}-${CORE_PEER_ID}-${CC_NAME}-${CC_VERSION}-${CC_HASH}``
+   ``${CORE_PEER_NETWORKID}-${CORE_PEER_ID}-${CC_NAME}-${CC_VERSION}-${CC_HASH}``
 
-for instance:
+   for instance:
 
-``dev-peer1.org2.example.com-mycc-1.0-26c2ef32838554aac4f7ad6f100aca865e87959c9a126e86d764c8d01f8346ab``
+   ``dev-peer1.org2.example.com-mycc-1.0-26c2ef32838554aac4f7ad6f100aca865e87959c9a126e86d764c8d01f8346ab``
 
-Then, update the peer binary to v1.1.x. For native deployments, replace the file ``peer``
-with the one from the release artifacts. For Docker deployments, update the image version.
+4. Replace the old peer binary with the one from v1.1.x.
 
-Now, start the peer, making sure to verify that the peer blockchain syncs with the
-rest of the network and can endorse transactions.
+   * For **native** deployments, replace the file ``peer`` with the one from the release artifacts.
+   * For **Docker** deployments, change the deployment scripts to use image version v1.1.x.
 
-Once peer binaries have been updated, send an upgrade transaction on each channel for
+5. Start the peer, making sure to verify that the peer blockchain syncs with the rest of the
+   network and can endorse transactions.
+
+Once peer binaries have been replaced, send a chaincode upgrade transaction on each channel for
 any chaincodes that were rebuilt to remove the v1.0.x chaincode shim. This upgrade
-transaction should specify the new chaincode version which was selected during Update
+transaction should specify the new chaincode version which was selected during Upgrade
 Chaincodes With Vendored Shim.
 
-Update fabric-ca binary
------------------------
+Upgrade fabric-ca binary
+------------------------
 
 The fabric-ca-server must be upgraded before upgrading the fabric-ca-client.
 
@@ -166,7 +193,7 @@ To upgrade a single instance of fabric-ca-server which uses the sqlite3 database
 
 1. Stop the fabric-ca-server process.
 2. Backup the sqlite3 database file (which is named fabric-ca-server.db by default).
-3. Upgrade to the fabric-ca-server v1.1 binary.
+3. Replace fabric-ca-server with the v1.1 binary.
 4. Launch the fabric-ca-server process.
 5. Verify the fabric-ca-server process is available with the following command where
    ``<host>`` is the hostname on which the server was started:
@@ -184,15 +211,15 @@ To upgrade a cluster of fabric-ca-server instances, do the following one cluster
 at a time. We assume the cluster members are using either a MySQL or Postgres database.
 
 1. Stop the fabric-ca-server process.
-2. Upgrade to the fabric-ca-server v1.1 binary.
+2. Replace fabric-ca-server with the v1.1 binary.
 3. Launch the fabric-ca-server process.
 4. Verify the fabric-ca-server process is available as shown above in step 5.
 
 To upgrade the fabric-ca-client, simply replace the fabric-ca-client v1.0 binary with
 the v1.1 binary.
 
-Update Node SDK Clients
------------------------
+Upgrade Node SDK Clients
+------------------------
 
 **Warning: Upgrade fabric-ca before upgrading Node SDK clients.**
 
@@ -205,7 +232,7 @@ the following commands:
   npm install fabric-ca-client@1.1
 
 These commands install the new version of both the Fabric client and fabric-ca client
-and updates “package.json”.
+and write the new versions “package.json”.
 
 Setting Capabilities
 --------------------
@@ -378,7 +405,7 @@ Upgrading the Kafka Cluster
 
 It is not required, but it is recommended that the Kafka cluster be upgraded and kept
 up to date along with the rest of Fabric. Newer versions of Kafka support older protocol
-versions, so you may update Kafka before or after the result of Fabric.
+versions, so you may upgrade Kafka before or after the result of Fabric.
 
 If your Kafka cluster is older than Kafka v0.11.0, this upgrade is especially recommended
 as it  hardens replication in order to better handle crash faults which can exhibit
