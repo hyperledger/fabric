@@ -44,6 +44,7 @@ Business:
    blockchain
    functionalities
    fabric_model
+   identity/identity.md
    ledger
    usecases
 
