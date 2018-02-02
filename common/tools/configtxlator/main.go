@@ -25,7 +25,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/tools/configtxlator/metadata"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/rest"
+	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/common/tools/protolator"
+	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
@@ -53,6 +55,12 @@ var (
 	protoDecodeSource = protoDecode.Flag("input", "A file containing the proto message.").Default(os.Stdin.Name()).File()
 	protoDecodeDest   = protoDecode.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE, 0600)
 
+	computeUpdate          = app.Command("compute_update", "Takes two marshaled common.Config messages and computes the config update which transitions between the two.")
+	computeUpdateOriginal  = computeUpdate.Flag("original", "The original config message.").File()
+	computeUpdateUpdated   = computeUpdate.Flag("updated", "The updated config message.").File()
+	computeUpdateChannelID = computeUpdate.Flag("channel_id", "The name of the channel for this update.").Required().String()
+	computeUpdateDest      = computeUpdate.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE, 0600)
+
 	version = app.Command("version", "Show version information")
 )
 
@@ -76,6 +84,14 @@ func main() {
 		err := decodeProto(*protoDecodeType, *protoDecodeSource, *protoDecodeDest)
 		if err != nil {
 			app.Fatalf("Error decoding: %s", err)
+		}
+	case computeUpdate.FullCommand():
+		defer (*computeUpdateOriginal).Close()
+		defer (*computeUpdateUpdated).Close()
+		defer (*computeUpdateDest).Close()
+		err := computeUpdt(*computeUpdateOriginal, *computeUpdateUpdated, *computeUpdateDest, *computeUpdateChannelID)
+		if err != nil {
+			app.Fatalf("Error computing update: %s", err)
 		}
 	// "version" command
 	case version.FullCommand():
@@ -140,6 +156,49 @@ func decodeProto(msgName string, input, output *os.File) error {
 	err = protolator.DeepMarshalJSON(output, msg)
 	if err != nil {
 		return errors.Wrapf(err, "error encoding output")
+	}
+
+	return nil
+}
+
+func computeUpdt(original, updated, output *os.File, channelID string) error {
+	origIn, err := ioutil.ReadAll(original)
+	if err != nil {
+		return errors.Wrapf(err, "error reading original config")
+	}
+
+	origConf := &cb.Config{}
+	err = proto.Unmarshal(origIn, origConf)
+	if err != nil {
+		return errors.Wrapf(err, "error unmarshaling original config")
+	}
+
+	updtIn, err := ioutil.ReadAll(updated)
+	if err != nil {
+		return errors.Wrapf(err, "error reading updated config")
+	}
+
+	updtConf := &cb.Config{}
+	err = proto.Unmarshal(updtIn, updtConf)
+	if err != nil {
+		return errors.Wrapf(err, "error unmarshaling updated config")
+	}
+
+	cu, err := update.Compute(origConf, updtConf)
+	if err != nil {
+		return errors.Wrapf(err, "error computing config update")
+	}
+
+	cu.ChannelId = channelID
+
+	outBytes, err := proto.Marshal(cu)
+	if err != nil {
+		return errors.Wrapf(err, "error marshaling computed config update")
+	}
+
+	_, err = output.Write(outBytes)
+	if err != nil {
+		return errors.Wrapf(err, "error writing config update to output")
 	}
 
 	return nil
