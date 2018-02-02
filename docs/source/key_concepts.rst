@@ -9,5 +9,6 @@ Key Concepts
    fabric_model
    identity/identity.md
    membership/membership.md
+   peers/peers.md
    ledger
    usecases
