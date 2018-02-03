@@ -58,7 +58,7 @@ you will extract the platform-specific binaries:
 
 .. note:: You can use the command above for any published version of Hyperledger
           Fabric. Simply replace '1.1.0-preview' with the version identifier
-					of the version you wish to install.
+	  of the version you wish to install.
 
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you
