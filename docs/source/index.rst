@@ -42,9 +42,11 @@ Business:
    :caption: Key Concepts
 
    blockchain
+   identity/identity.md
    functionalities
    fabric_model
    ledger
+   membership/membership.md
    usecases
 
 .. toctree::
