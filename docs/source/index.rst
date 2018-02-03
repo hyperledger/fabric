@@ -42,9 +42,10 @@ Business:
    :caption: Key Concepts
 
    blockchain
-   capabilities
+   functionalities
    fabric_model
    Identity/Identity.md
+   membership/membership.md
    ledger
    usecases
 
