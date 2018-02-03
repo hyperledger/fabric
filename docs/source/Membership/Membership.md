@@ -46,7 +46,7 @@ You can see that the channel and the ledger are really **logical constructs** wh
 
 The split between global and local MSPs reflects the needs of organizations to administer their local resources, such as a peer or orderer nodes, and their global resources, such as ledgers, smart contracts, and consortia, which operate at the channel or network level. It's helpful to think of these MSPs as being at different **levels**, with **MSPs at a higher level relating to network administration concerns** while **MSPs at a lower level handle identity for the administration of private resources**. This tiering is helpful because it supports the mix of both broad and narrow administrative control depending on how the network needs to be constituted. MSPs are mandatory at every level of administration -- they must be defined for the network, channel, peer, orderer and users.
 
-![MSP3](./membership.diagram.2.png)
+![MSP3](./Membership.diagram.2.png)
 
 *MSP Levels. The MSPs for the peer and orderer are local, whereas the MSPs for the channel and network are global. Here, the network is administered by ORG1, but the channel can be managed by ORG1 and ORG2. The peer is managed by ORG2, whereas ORG1 manages the orderer. ORG1 trusts identities from RCA1, whereas ORG2 trusts identities from RCA2. Note that these are administration identities, reflecting who can administer these components. So while ORG1 administers the network, ORG2.MSP does exist in the network definition.*
 
@@ -62,7 +62,7 @@ The split between global and local MSPs reflects the needs of organizations to a
 
 So far, you've seen that the two most important elements of an MSP are the identification of the root and intermediate CAs that are used to used to establish a principal's membership of an organization. There are, however, more elements that are used in conjunction with these two to assist with membership functions.
 
-![MSP4](./membership.diagram.5.png)
+![MSP4](./Membership.diagram.5.png)
 
 *The figure above shows how a local MSP is stored on a local filesystem. Even though global MSPs are not physically structured in exactly this way, it's still a helpful way to think about them.*
 
