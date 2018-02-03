@@ -110,7 +110,7 @@ type QueryResponse struct {
 type DocMetadata struct {
 	ID              string          `json:"_id"`
 	Rev             string          `json:"_rev"`
-	Version         string          `json:"version"`
+	Version         string          `json:"~version"`
 	AttachmentsInfo json.RawMessage `json:"_attachments"`
 }
 
@@ -183,7 +183,7 @@ type BatchRetrieveDocMetadataResponse struct {
 		DocMetadata struct {
 			ID      string `json:"_id"`
 			Rev     string `json:"_rev"`
-			Version string `json:"version"`
+			Version string `json:"~version"`
 		} `json:"doc"`
 	} `json:"rows"`
 }

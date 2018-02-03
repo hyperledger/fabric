@@ -206,6 +206,52 @@ func TestUtilityFunctions(t *testing.T) {
 
 }
 
+// TestInvalidJSONFields tests for invalid JSON fields
+func TestInvalidJSONFields(t *testing.T) {
+
+	env := NewTestVDBEnv(t)
+	env.Cleanup("testinvalidfields_")
+	defer env.Cleanup("testinvalidfields_")
+
+	db, err := env.DBProvider.GetDBHandle("testinvalidfields")
+	testutil.AssertNoError(t, err, "")
+
+	db.Open()
+	defer db.Close()
+
+	batch := statedb.NewUpdateBatch()
+	jsonValue1 := `{"_id":"key1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+
+	savePoint := version.NewHeight(1, 2)
+	err = db.ApplyUpdates(batch, savePoint)
+	testutil.AssertError(t, err, "Invalid field _id should have thrown an error")
+
+	batch = statedb.NewUpdateBatch()
+	jsonValue1 = `{"_rev":"rev1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+
+	savePoint = version.NewHeight(1, 2)
+	err = db.ApplyUpdates(batch, savePoint)
+	testutil.AssertError(t, err, "Invalid field _rev should have thrown an error")
+
+	batch = statedb.NewUpdateBatch()
+	jsonValue1 = `{"_deleted":"true","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+
+	savePoint = version.NewHeight(1, 2)
+	err = db.ApplyUpdates(batch, savePoint)
+	testutil.AssertError(t, err, "Invalid field _deleted should have thrown an error")
+
+	batch = statedb.NewUpdateBatch()
+	jsonValue1 = `{"~version":"v1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+
+	savePoint = version.NewHeight(1, 2)
+	err = db.ApplyUpdates(batch, savePoint)
+	testutil.AssertError(t, err, "Invalid field ~version should have thrown an error")
+}
+
 func TestDebugFunctions(t *testing.T) {
 
 	//Test printCompositeKeys
@@ -282,8 +328,8 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	var files = []struct {
 		Name, Body string
 	}{
-		{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", "{\"index\":{\"fields\":[{\"data.color\":\"desc\"}]},\"ddoc\":\"indexColorSortName\",\"name\":\"indexColorSortName\",\"type\":\"json\"}"},
-		{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", "{\"index\":{\"fields\":[{\"data.size\":\"desc\"}]},\"ddoc\":\"indexSizeSortName\",\"name\":\"indexSizeSortName\",\"type\":\"json\"}"},
+		{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", "{\"index\":{\"fields\":[{\"color\":\"desc\"}]},\"ddoc\":\"indexColorSortName\",\"name\":\"indexColorSortName\",\"type\":\"json\"}"},
+		{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", "{\"index\":{\"fields\":[{\"size\":\"desc\"}]},\"ddoc\":\"indexSizeSortName\",\"name\":\"indexSizeSortName\",\"type\":\"json\"}"},
 	}
 	for _, file := range files {
 		tarHeader := &tar.Header{
