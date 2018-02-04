@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 package main
 
@@ -75,12 +65,13 @@ type UsersSpec struct {
 }
 
 type OrgSpec struct {
-	Name     string       `yaml:"Name"`
-	Domain   string       `yaml:"Domain"`
-	CA       NodeSpec     `yaml:"CA"`
-	Template NodeTemplate `yaml:"Template"`
-	Specs    []NodeSpec   `yaml:"Specs"`
-	Users    UsersSpec    `yaml:"Users"`
+	Name          string       `yaml:"Name"`
+	Domain        string       `yaml:"Domain"`
+	EnableNodeOUs bool         `yaml:"EnableNodeOUs"`
+	CA            NodeSpec     `yaml:"CA"`
+	Template      NodeTemplate `yaml:"Template"`
+	Specs         []NodeSpec   `yaml:"Specs"`
+	Users         UsersSpec    `yaml:"Users"`
 }
 
 type Config struct {
@@ -114,6 +105,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: Org1
     Domain: org1.example.com
+    EnableNodeOUs: false
 
     # ---------------------------------------------------------------------------
     # "CA"
@@ -197,6 +189,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: Org2
     Domain: org2.example.com
+    EnableNodeOUs: false
     Template:
       Count: 1
     Users:
@@ -315,7 +308,7 @@ func extendPeerOrg(orgSpec OrgSpec) {
 	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName)
 	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName)
 
-	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER)
+	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER, orgSpec.EnableNodeOUs)
 
 	adminUser := NodeSpec{
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
@@ -341,7 +334,7 @@ func extendPeerOrg(orgSpec OrgSpec) {
 		users = append(users, user)
 	}
 
-	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT)
+	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT, orgSpec.EnableNodeOUs)
 }
 
 func extendOrdererOrg(orgSpec OrgSpec) {
@@ -360,7 +353,7 @@ func extendOrdererOrg(orgSpec OrgSpec) {
 	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName)
 	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName)
 
-	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER)
+	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER, false)
 
 	adminUser := NodeSpec{
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
@@ -533,13 +526,13 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 
-	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, orgSpec.EnableNodeOUs)
 	if err != nil {
 		fmt.Printf("Error generating MSP for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
 
-	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER)
+	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER, orgSpec.EnableNodeOUs)
 
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
@@ -556,7 +549,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	}
 
 	users = append(users, adminUser)
-	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT)
+	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT, orgSpec.EnableNodeOUs)
 
 	// copy the admin cert to the org's MSP admincerts
 	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
@@ -603,12 +596,12 @@ func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
 
 }
 
-func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA, nodeType int) {
+func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA, nodeType int, nodeOUs bool) {
 
 	for _, node := range nodes {
 		nodeDir := filepath.Join(baseDir, node.CommonName)
 		if _, err := os.Stat(nodeDir); os.IsNotExist(err) {
-			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, nodeType)
+			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, nodeType, nodeOUs)
 			if err != nil {
 				fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
 				os.Exit(1)
@@ -642,13 +635,13 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 
-	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, false)
 	if err != nil {
 		fmt.Printf("Error generating MSP for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
 
-	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER)
+	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER, false)
 
 	adminUser := NodeSpec{
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
@@ -658,7 +651,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	users := []NodeSpec{}
 	// add an admin user
 	users = append(users, adminUser)
-	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT)
+	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT, false)
 
 	// copy the admin cert to the org's MSP admincerts
 	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)

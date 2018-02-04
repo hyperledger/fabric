@@ -1,32 +1,24 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 package msp
 
 import (
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"os"
 	"path/filepath"
 
-	"encoding/hex"
+	"gopkg.in/yaml.v2"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
+	fabricmsp "github.com/hyperledger/fabric/msp"
 )
 
 const (
@@ -35,8 +27,18 @@ const (
 	PEER
 )
 
+const (
+	CLIENTOU = "FabricClient"
+	PEEROU   = "FabricPeer"
+)
+
+var nodeOUMap = map[int]string{
+	CLIENT: CLIENTOU,
+	PEER:   PEEROU,
+}
+
 func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
-	tlsCA *ca.CA, nodeType int) error {
+	tlsCA *ca.CA, nodeType int, nodeOUs bool) error {
 
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
@@ -70,8 +72,12 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 		return err
 	}
 	// generate X509 certificate using signing CA
+	var ous []string
+	if nodeOUs {
+		ous = []string{nodeOUMap[nodeType]}
+	}
 	cert, err := signCA.SignCertificate(filepath.Join(mspDir, "signcerts"),
-		name, []string{}, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+		name, ous, nil, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	if err != nil {
 		return err
 	}
@@ -87,6 +93,11 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 	err = x509Export(filepath.Join(mspDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
 	if err != nil {
 		return err
+	}
+
+	// generate config.yaml if required
+	if nodeOUs && nodeType == PEER {
+		exportConfig(mspDir, "cacerts/"+x509Filename(signCA.Name), true)
 	}
 
 	// the signing identity goes into admincerts.
@@ -117,7 +128,7 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 	}
 	// generate X509 certificate using TLS CA
 	_, err = tlsCA.SignCertificate(filepath.Join(tlsDir),
-		name, sans, tlsPubKey, x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
+		name, nil, sans, tlsPubKey, x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth})
 	if err != nil {
 		return err
@@ -146,7 +157,7 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 	return nil
 }
 
-func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA) error {
+func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA, nodeOUs bool) error {
 
 	// create folder structure and write artifacts to proper locations
 	err := createFolderStructure(baseDir, false)
@@ -163,6 +174,11 @@ func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA) error {
 		}
 	}
 
+	// generate config.yaml if required
+	if nodeOUs {
+		exportConfig(baseDir, "cacerts/"+x509Filename(signCA.Name), true)
+	}
+
 	// create a throwaway cert to act as an admin cert
 	// NOTE: the admincerts folder is going to be
 	// cleared up anyway by copyAdminCert, but
@@ -176,7 +192,7 @@ func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA) error {
 		return err
 	}
 	_, err = signCA.SignCertificate(filepath.Join(baseDir, "admincerts"), signCA.Name,
-		[]string{""}, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+		nil, nil, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	if err != nil {
 		return err
 	}
@@ -231,4 +247,35 @@ func pemExport(path, pemType string, bytes []byte) error {
 	defer file.Close()
 
 	return pem.Encode(file, &pem.Block{Type: pemType, Bytes: bytes})
+}
+
+func exportConfig(mspDir, caFile string, enable bool) error {
+	var config = &fabricmsp.Configuration{
+		NodeOUs: &fabricmsp.NodeOUs{
+			Enable: enable,
+			ClientOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{
+				Certificate:                  caFile,
+				OrganizationalUnitIdentifier: CLIENTOU,
+			},
+			PeerOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{
+				Certificate:                  caFile,
+				OrganizationalUnitIdentifier: PEEROU,
+			},
+		},
+	}
+
+	configBytes, err := yaml.Marshal(config)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(filepath.Join(mspDir, "config.yaml"))
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+	_, err = file.WriteString(string(configBytes))
+
+	return err
 }

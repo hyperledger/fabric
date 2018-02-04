@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 package ca_test
 
@@ -62,7 +52,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 	rootCA, err := ca.NewCA(caDir, testCA3Name, testCA3Name, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
 	assert.NoError(t, err, "Error generating CA")
 
-	cert, err := rootCA.SignCertificate(certDir, testName3, nil, ecPubKey,
+	cert, err := rootCA.SignCertificate(certDir, testName3, nil, nil, ecPubKey,
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.NoError(t, err, "Failed to generate signed certificate")
@@ -128,7 +118,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	rootCA, err := ca.NewCA(caDir, testCA2Name, testCA2Name, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
 	assert.NoError(t, err, "Error generating CA")
 
-	cert, err := rootCA.SignCertificate(certDir, testName, nil, ecPubKey,
+	cert, err := rootCA.SignCertificate(certDir, testName, nil, nil, ecPubKey,
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.NoError(t, err, "Failed to generate signed certificate")
@@ -137,14 +127,21 @@ func TestGenerateSignCertificate(t *testing.T) {
 		cert.KeyUsage)
 	assert.Contains(t, cert.ExtKeyUsage, x509.ExtKeyUsageAny)
 
-	cert, err = rootCA.SignCertificate(certDir, testName, nil, ecPubKey,
+	cert, err = rootCA.SignCertificate(certDir, testName, nil, nil, ecPubKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	assert.NoError(t, err, "Failed to generate signed certificate")
 	assert.Equal(t, 0, len(cert.ExtKeyUsage))
 
+	// make sure ous are correctly set
+	ous := []string{"TestOU", "PeerOU"}
+	cert, err = rootCA.SignCertificate(certDir, testName, ous, nil, ecPubKey,
+		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	assert.Contains(t, cert.Subject.OrganizationalUnit, ous[0])
+	assert.Contains(t, cert.Subject.OrganizationalUnit, ous[1])
+
 	// make sure sans are correctly set
 	sans := []string{testName2, testIP}
-	cert, err = rootCA.SignCertificate(certDir, testName, sans, ecPubKey,
+	cert, err = rootCA.SignCertificate(certDir, testName, nil, sans, ecPubKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	assert.Contains(t, cert.DNSNames, testName2)
 	assert.Contains(t, cert.IPAddresses, net.ParseIP(testIP).To4())
@@ -154,7 +151,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	assert.Equal(t, true, checkForFile(pemFile),
 		"Expected to find file "+pemFile)
 
-	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, ecPubKey,
+	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, nil, ecPubKey,
 		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.Error(t, err, "Bad name should fail")
 
@@ -163,7 +160,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 		Name:     "badCA",
 		SignCert: &x509.Certificate{},
 	}
-	_, err = badCA.SignCertificate(certDir, testName, nil, &ecdsa.PublicKey{},
+	_, err = badCA.SignCertificate(certDir, testName, nil, nil, &ecdsa.PublicKey{},
 		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.Error(t, err, "Empty CA should not be able to sign")
 	cleanup(testDir)
