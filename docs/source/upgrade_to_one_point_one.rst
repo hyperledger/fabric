@@ -34,7 +34,7 @@ This means that every network -- and every channel within that network -- must d
 set of conditions necessary for transactions to be processed properly. For example, Fabric
 v1.1 introduces new MSP role types of "Peer", "Orderer", and "Client". However, if a v1.0
 peer does not understand these new role types, it will not be able to appropriately
-evaluate an endorsement policy that references them. 
+evaluate an endorsement policy that references them.
 
 Without this consistency across channels, a component -- the orderer, for example --
 might label a transaction invalid when a *different* orderer that has been upgraded
@@ -58,7 +58,7 @@ three groups, each of which defines a capability of a different type.
   the root ``Channel`` group.
 
 * **Application:** apply to peers only and are located in the ``Application`` group.
-  
+
 * **Orderer:** apply to orderers only and are located in the ``Orderer`` group.
 
 The capabilities are broken into these groups in order to align with the existing
@@ -110,9 +110,14 @@ orderer process:
    * For docker deployments, change the deployment scripts to use image version
      v1.1.x.
 
-.. note:: For Docker deployments, you must set the environment variable
-          ``ORDERER_KAFKA_VERSION`` to match your Kafka cluster version, even if it
-          was not set before.
+.. note:: You must configure the Kafka protocol version used by the orderer to match
+          your Kafka cluster version, even if it was not set before. For example, if
+          you are using the sample Kafka images provided with Hyperledger Fabric 1.0.x,
+          either set the ``ORDERER_KAFKA_VERSION`` environment variable, or the
+          ``Kafka.Version`` key in the ``orderer.yaml`` to ``0.9.0.1``. If you are unsure
+          about your Kafka cluster version, you can configure the orderer's Kafka protocol
+          version to ``0.9.0.1`` for maximum compatibility and update the setting afterwards
+          when you have determined your Kafka cluster version.
 
 4. Start the orderer.
 5. Verify that the new orderer starts up and synchronizes with the rest of the network.
@@ -405,18 +410,22 @@ Upgrading the Kafka Cluster
 
 It is not required, but it is recommended that the Kafka cluster be upgraded and kept
 up to date along with the rest of Fabric. Newer versions of Kafka support older protocol
-versions, so you may upgrade Kafka before or after the result of Fabric.
+versions, so you may upgrade Kafka before or after the rest of Fabric.
 
 If your Kafka cluster is older than Kafka v0.11.0, this upgrade is especially recommended
-as it  hardens replication in order to better handle crash faults which can exhibit
+as it hardens replication in order to better handle crash faults which can exhibit
 problems such as seen in FAB-7330.
 
-No configuration changes to the orderer are required when the Kafka brokers are upgraded
-to a newer version. Refer to the official Apache Kafka documentation on upgrading Kafka
-from previous versions on how to upgrade the Kafka brokers.
+Refer to the official Apache Kafka documentation on `upgrading Kafka from previous versions
+<https://kafka.apache.org/documentation/#upgrade>`_ to upgrade the Kafka cluster brokers.
 
-Please note that the Kafka cluster might experience a negative performance impact if
-the value of Kafka.Version in the orderer.yaml is older than the Kafka broker version.
+Please note that the Kafka cluster might experience a negative performance impact if the
+orderer is configured to use a Kafka protocol version that is older than the Kafka broker
+version. The Kafka protocol version is set using either the ``Kafka.Version`` key in the
+``orderer.yaml`` file or via the ``ORDERER_KAFKA_VERSION`` environment variable in a
+Docker deployment. Hyperledger Fabric v1.0 provided sample Kafka docker images containing
+Kafka version ``0.9.0.1``. Hyperledger Fabric v1.1 provides sample Kafka docker images containing
+Kafka version ``0.10.2.1``.
 
 Upgrading CouchDB
 -----------------
