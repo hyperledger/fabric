@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -149,17 +148,11 @@ type GossipStateProviderImpl struct {
 	stateTransferActive int32
 }
 
-var logger *logging.Logger // package-level logger
-
-func init() {
-	logger = util.GetLogger(util.LoggingStateModule, "")
-}
+var logger = util.GetLogger(util.LoggingStateModule, "")
 
 // NewGossipStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
 func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources) GossipStateProvider {
-
-	logger := util.GetLogger(util.LoggingStateModule, "")
 
 	gossipChan, _ := services.Accept(func(message interface{}) bool {
 		// Get only data messages
