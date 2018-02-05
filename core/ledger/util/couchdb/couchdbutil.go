@@ -109,7 +109,7 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 	couchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: databaseName}
 
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
-	_, err = couchDBDatabase.CreateDatabaseIfNotExist()
+	err = couchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for dbName: %s  error: %s\n", dbName, err.Error())
 		return nil, err
@@ -123,7 +123,7 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 
 	dbName := "_users"
 	systemCouchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
-	_, err := systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	err := systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
 		return err
@@ -131,7 +131,7 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 
 	dbName = "_replicator"
 	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
-	_, err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
 		return err
@@ -139,7 +139,7 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 
 	dbName = "_global_changes"
 	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
-	_, err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
 		return err

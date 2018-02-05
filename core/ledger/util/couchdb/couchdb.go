@@ -259,57 +259,67 @@ func CreateConnectionDefinition(couchDBAddress, username, password string, maxRe
 }
 
 //CreateDatabaseIfNotExist method provides function to create database
-func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse, error) {
+func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 
 	logger.Debugf("Entering CreateDatabaseIfNotExist()")
 
 	dbInfo, couchDBReturn, err := dbclient.GetDatabaseInfo()
 	if err != nil {
 		if couchDBReturn == nil || couchDBReturn.StatusCode != 404 {
-			return nil, err
+			return err
 		}
 	}
 
-	if dbInfo == nil && couchDBReturn.StatusCode == 404 {
+	//If the dbInfo returns populated and status code is 200, then the database exists
+	if dbInfo != nil && couchDBReturn.StatusCode == 200 {
 
-		logger.Debugf("Database %s does not exist.", dbclient.DBName)
-
-		connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
-		if err != nil {
-			logger.Errorf("URL parse error: %s", err.Error())
-			return nil, err
-		}
-		connectURL.Path = dbclient.DBName
-
-		//get the number of retries
-		maxRetries := dbclient.CouchInstance.conf.MaxRetries
-
-		//process the URL with a PUT, creates the database
-		resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "", maxRetries, true)
-		if err != nil {
-			return nil, err
-		}
-		defer closeResponseBody(resp)
-
-		//Get the response from the create REST call
-		dbResponse := &DBOperationResponse{}
-		json.NewDecoder(resp.Body).Decode(&dbResponse)
-
-		if dbResponse.Ok == true {
-			logger.Infof("Created state database %s", dbclient.DBName)
-		}
+		logger.Debugf("Database %s already exists", dbclient.DBName)
 
 		logger.Debugf("Exiting CreateDatabaseIfNotExist()")
 
-		return dbResponse, nil
-
+		return nil
 	}
 
-	logger.Debugf("Database %s already exists", dbclient.DBName)
+	logger.Debugf("Database %s does not exist.", dbclient.DBName)
+
+	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return err
+	}
+	connectURL.Path = dbclient.DBName
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	//process the URL with a PUT, creates the database
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "", maxRetries, true)
+
+	if err != nil {
+
+		// Check to see if the database exists
+		// Even though handleRequest() returned an error, the
+		// database may have been created and a false error
+		// returned due to a timeout or race condition.
+		// Do a final check to see if the database really got created.
+		dbInfo, couchDBReturn, errDbInfo := dbclient.GetDatabaseInfo()
+		//If there is no error, then the database exists,  return without an error
+		if errDbInfo == nil && dbInfo != nil && couchDBReturn.StatusCode == 200 {
+			logger.Infof("Created state database %s", dbclient.DBName)
+			logger.Debugf("Exiting CreateDatabaseIfNotExist()")
+			return nil
+		}
+
+		return err
+	}
+
+	defer closeResponseBody(resp)
+
+	logger.Infof("Created state database %s", dbclient.DBName)
 
 	logger.Debugf("Exiting CreateDatabaseIfNotExist()")
 
-	return nil, nil
+	return nil
 
 }
 

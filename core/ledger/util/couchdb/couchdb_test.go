@@ -164,7 +164,7 @@ func TestBadCouchDBInstance(t *testing.T) {
 	testutil.AssertError(t, err, "Error should have been thrown with CreateSystemDatabasesIfNotExist and invalid connection")
 
 	//Test CreateDatabaseIfNotExist with bad connection
-	_, err = badDB.CreateDatabaseIfNotExist()
+	err = badDB.CreateDatabaseIfNotExist()
 	testutil.AssertError(t, err, "Error should have been thrown with CreateDatabaseIfNotExist and invalid connection")
 
 	//Test GetDatabaseInfo with bad connection
@@ -242,7 +242,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Save the test document
@@ -269,7 +269,7 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Save the test document
@@ -372,7 +372,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Retrieve the info for the new database and make sure the name matches
@@ -624,7 +624,7 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 		db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
+		errdb := db.CreateDatabaseIfNotExist()
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		//Retrieve the info for the new database and make sure the name matches
@@ -691,7 +691,7 @@ func TestDBBadJSON(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Retrieve the info for the new database and make sure the name matches
@@ -728,7 +728,7 @@ func TestPrefixScan(t *testing.T) {
 		db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
+		errdb := db.CreateDatabaseIfNotExist()
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		//Retrieve the info for the new database and make sure the name matches
@@ -802,7 +802,7 @@ func TestDBSaveAttachment(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Save the test document
@@ -836,7 +836,7 @@ func TestDBDeleteDocument(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Save the test document
@@ -875,7 +875,7 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Save the test document
@@ -926,7 +926,7 @@ func TestIndexOperations(t *testing.T) {
 	db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 	//create a new database
-	_, errdb := db.CreateDatabaseIfNotExist()
+	errdb := db.CreateDatabaseIfNotExist()
 	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 	batchUpdateDocs := []*CouchDoc{}
@@ -1175,7 +1175,7 @@ func TestRichQuery(t *testing.T) {
 			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
-			_, errdb := db.CreateDatabaseIfNotExist()
+			errdb := db.CreateDatabaseIfNotExist()
 			testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 			//Save the test document
@@ -1404,7 +1404,7 @@ func TestBatchBatchOperations(t *testing.T) {
 		db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
+		errdb := db.CreateDatabaseIfNotExist()
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		batchUpdateDocs := []*CouchDoc{}
