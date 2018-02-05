@@ -44,8 +44,11 @@ type service struct {
 func newService(tlsEnabled bool, sup support) *service {
 	s := &service{
 		tlsEnabled: tlsEnabled,
-		auth:       newAuthCache(true, sup),
-		support:    sup,
+		auth: newAuthCache(sup, authCacheConfig{
+			maxCacheSize:        defaultMaxCacheSize,
+			purgeRetentionRatio: defaultRetentionRatio,
+		}),
+		support: sup,
 	}
 	s.dispatchers = map[discovery.QueryType]dispatcher{
 		discovery.ConfigQueryType:         s.configQuery,
