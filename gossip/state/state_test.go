@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -606,9 +607,9 @@ func TestHaltChainProcessing(t *testing.T) {
 		logEntries: make(chan string, 100),
 	}
 	logger.SetBackend(logAsserter)
-	// Restore old logger at the end of the test
+	// Restore old backend at the end of the test
 	defer func() {
-		logger = gutil.GetLogger(gutil.LoggingStateModule, "")
+		logger.SetBackend(defaultBackend())
 	}()
 
 	mc := &mockCommitter{}
@@ -1704,4 +1705,13 @@ func (*logBackend) SetLevel(logging.Level, string) {
 
 func (*logBackend) IsEnabledFor(logging.Level, string) bool {
 	return true
+}
+
+func defaultBackend() logging.LeveledBackend {
+	backend := logging.NewLogBackend(os.Stderr, "", 0)
+	defaultFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+	backendFormatter := logging.NewBackendFormatter(backend, logging.MustStringFormatter(defaultFormat))
+	be := logging.SetBackend(backendFormatter)
+	be.SetLevel(logging.WARNING, "")
+	return be
 }
