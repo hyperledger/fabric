@@ -51,8 +51,9 @@ type ChaincodeStubInterface interface {
 	// Invoke as a byte array
 	GetArgsSlice() ([]byte, error)
 
-	// GetTxID returns the tx_id of the transaction proposal (see ChannelHeader
-	// in protos/common/common.proto)
+	// GetTxID returns the tx_id of the transaction proposal, which is unique per
+	// transaction and per client. See ChannelHeader in protos/common/common.proto
+	// for further details.
 	GetTxID() string
 
 	// GetChannelID returns the channel the proposal is sent to for chaincode to process.
@@ -174,11 +175,15 @@ type ChaincodeStubInterface interface {
 	// be omitted from the transaction and excluded from the ledger.
 	GetTransient() (map[string][]byte, error)
 
-	// GetBinding returns the transaction binding
+	// GetBinding returns the transaction binding, which is used to enofrce a
+	// link between application data (like those stored in the transient field
+	// above) to the proposal itself. This is useful to avoid possible replay
+	// attacks.
 	GetBinding() ([]byte, error)
 
-	// GetDecorations returns additional data (if applicable)
-	// about the proposal that originated from the peer
+	// GetDecorations returns additional data (if applicable) about the proposal
+	// that originated from the peer. This data is set by the decorators of the
+	// peer, which append or mutate the chaincode input passed to the chaincode.
 	GetDecorations() map[string][]byte
 
 	// GetSignedProposal returns the SignedProposal object, which contains all
@@ -187,7 +192,7 @@ type ChaincodeStubInterface interface {
 
 	// GetTxTimestamp returns the timestamp when the transaction was created. This
 	// is taken from the transaction ChannelHeader, therefore it will indicate the
-	// client's timestamp, and will have the same value across all endorsers.
+	// client's timestamp and will have the same value across all endorsers.
 	GetTxTimestamp() (*timestamp.Timestamp, error)
 
 	// SetEvent allows the chaincode to set an event on the response to the
