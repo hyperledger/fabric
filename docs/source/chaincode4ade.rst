@@ -11,10 +11,12 @@ the endorsing peer process. Chaincode initializes and manages the ledger state
 through transactions submitted by applications.
 
 A chaincode typically handles business logic agreed to by members of the
-network, so it similar to a "smart contract". Ledger state created by
-a chaincode is scoped exclusively to that chaincode and can't be accessed
-directly by another chaincode. Given the appropriate permission, a chaincode may
-invoke another chaincode to access its state within the same network.
+network, so it similar to a "smart contract". A chaincode can be invoked to update or query 
+the ledger in a proposal transaction. Given the appropriate permission, a chaincode 
+may invoke another chaincode, either in the same channel or in different channels, to access its state. 
+Note that, if the called chaincode is on a different channel from the calling chaincode,
+only read query is allowed. That is, the called chaincode on a different channel is only a `Query`,
+which does not participate in state validation checks in subsequent commit phase.
 
 In the following sections, we will explore chaincode through the eyes of an
 application developer. We'll present a simple chaincode sample application
