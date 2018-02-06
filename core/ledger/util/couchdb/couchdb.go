@@ -144,8 +144,9 @@ type CouchInstance struct {
 
 //CouchDatabase represents a database within a CouchDB instance
 type CouchDatabase struct {
-	CouchInstance CouchInstance //connection configuration
-	DBName        string
+	CouchInstance    CouchInstance //connection configuration
+	DBName           string
+	IndexWarmCounter int
 }
 
 //DBReturn contains an error reported by CouchDB
@@ -477,11 +478,18 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	}
 
 	//Check to see if autoWarmIndexes is enabled
-	//If autoWarmIndexes is enabled, indexes will be refreshed after each block's
-	//data has been committed to the state database
+	//If autoWarmIndexes is enabled, indexes will be refreshed after the number of blocks
+	//in GetWarmIndexesAfterNBlocks() have been committed to the state database
+	//Check to see if the number of blocks committed exceeds the threshold for index warming
+	//Use a go routine to launch WarmIndexAllIndexes(), this will execute as a background process
 	if ledgerconfig.IsAutoWarmIndexesEnabled() {
-		//Use a go routine to launch WarmIndexAllIndexes(), this will execute as a background process
-		go dbclient.runWarmIndexAllIndexes()
+
+		if dbclient.IndexWarmCounter >= ledgerconfig.GetWarmIndexesAfterNBlocks() {
+			go dbclient.runWarmIndexAllIndexes()
+			dbclient.IndexWarmCounter = 0
+		}
+		dbclient.IndexWarmCounter++
+
 	}
 
 	logger.Debugf("Exiting EnsureFullCommit()")

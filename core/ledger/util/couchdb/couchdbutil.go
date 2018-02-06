@@ -106,7 +106,7 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 		return nil, err
 	}
 
-	couchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: databaseName}
+	couchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: databaseName, IndexWarmCounter: 1}
 
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
 	err = couchDBDatabase.CreateDatabaseIfNotExist()
@@ -122,7 +122,7 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 
 	dbName := "_users"
-	systemCouchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
+	systemCouchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
 	err := systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
@@ -130,7 +130,7 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 	}
 
 	dbName = "_replicator"
-	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
+	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
 	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
@@ -138,7 +138,7 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 	}
 
 	dbName = "_global_changes"
-	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
+	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
 	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())

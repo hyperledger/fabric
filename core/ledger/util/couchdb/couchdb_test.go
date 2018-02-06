@@ -153,7 +153,7 @@ func TestBadCouchDBInstance(t *testing.T) {
 	badCouchDBInstance := CouchInstance{badConnectDef, client}
 
 	//Create a bad CouchDatabase
-	badDB := CouchDatabase{badCouchDBInstance, "baddb"}
+	badDB := CouchDatabase{badCouchDBInstance, "baddb", 1}
 
 	//Test CreateCouchDatabase with bad connection
 	_, err := CreateCouchDatabase(badCouchDBInstance, "baddbtest")

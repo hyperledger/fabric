@@ -44,6 +44,7 @@ const confQueryLimit = "ledger.state.couchDBConfig.queryLimit"
 const confEnableHistoryDatabase = "ledger.history.enableHistoryDatabase"
 const confMaxBatchSize = "ledger.state.couchDBConfig.maxBatchUpdateSize"
 const confAutoWarmIndexes = "ledger.state.couchDBConfig.autoWarmIndexes"
+const confWarmIndexesAfterNBlocks = "ledger.state.couchDBConfig.warmIndexesAfterNBlocks"
 
 // GetRootPath returns the filesystem path.
 // All ledger related contents are expected to be stored under this path
@@ -133,4 +134,14 @@ func IsAutoWarmIndexesEnabled() bool {
 	}
 	return true
 
+}
+
+//GetWarmIndexesAfterNBlocks exposes the warmIndexesAfterNBlocks variable
+func GetWarmIndexesAfterNBlocks() int {
+	warmAfterNBlocks := viper.GetInt(confWarmIndexesAfterNBlocks)
+	// if warmIndexesAfterNBlocks was unset, default to 1
+	if !viper.IsSet(confWarmIndexesAfterNBlocks) {
+		warmAfterNBlocks = 1
+	}
+	return warmAfterNBlocks
 }
