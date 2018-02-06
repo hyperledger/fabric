@@ -428,13 +428,13 @@ func testLimitedTotalConnTime(t *testing.T, bdc blocksDelivererConsumer) {
 		return nil
 	}
 	backoffStrategy := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
-		return 0, elapsedTime.Nanoseconds() < time.Second.Nanoseconds()
+		return time.Millisecond * 500, elapsedTime.Nanoseconds() < time.Second.Nanoseconds()
 	}
 	bc := NewBroadcastClient(cp, clFactory, setup, backoffStrategy)
 	defer bc.Close()
 	err := bdc(bc)
 	assert.Error(t, err)
-	assert.Equal(t, 1, cp.connAttempts)
+	assert.Equal(t, 3, cp.connAttempts)
 	assert.Equal(t, 0, setupInvoked)
 }
 

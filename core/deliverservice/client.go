@@ -80,19 +80,20 @@ func (bc *broadcastClient) Send(msg *common.Envelope) error {
 
 func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{}, error) {
 	attempt := 0
-	start := time.Now()
+	var totalRetryTime time.Duration
 	var backoffDuration time.Duration
 	retry := true
 	for retry && !bc.shouldStop() {
 		attempt++
 		resp, err := bc.doAction(action)
 		if err != nil {
-			backoffDuration, retry = bc.shouldRetry(attempt, time.Since(start))
+			backoffDuration, retry = bc.shouldRetry(attempt, totalRetryTime)
 			if !retry {
 				logger.Warning("Got error:", err, "at", attempt, "attempt. Ceasing to retry")
 				break
 			}
-			logger.Warning("Got error:", err, ",at", attempt, "attempt. Retrying in", backoffDuration)
+			logger.Warning("Got error:", err, ", at", attempt, "attempt. Retrying in", backoffDuration)
+			totalRetryTime += backoffDuration
 			bc.sleep(backoffDuration)
 			continue
 		}
@@ -101,7 +102,7 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 	if bc.shouldStop() {
 		return nil, errors.New("Client is closing")
 	}
-	return nil, fmt.Errorf("Attempts (%d) or elapsed time (%v) exhausted", attempt, time.Since(start))
+	return nil, fmt.Errorf("Attempts (%d) or elapsed time (%v) exhausted", attempt, totalRetryTime)
 }
 
 func (bc *broadcastClient) doAction(action func() (interface{}, error)) (interface{}, error) {
