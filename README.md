@@ -4,14 +4,14 @@ where active development is ongoing. Issue tracking is handled in [Jira](https:/
 
 ## Status
 
-This project is an _Active_ Hyperledger project. For more information on the history of this project see the [Fabric wiki page](https://wiki.hyperledger.org/projects/fabric.md#history). Information on what _Active_ entails can be found in
+This project is an _Active_ Hyperledger project. For more information on the history of this project see the [Fabric wiki page](https://wiki.hyperledger.org/projects/Fabric). Information on what _Active_ entails can be found in
 the [Hyperledger Project Lifecycle document](https://wiki.hyperledger.org/community/project-lifecycle).
 
 [![Build Status](https://jenkins.hyperledger.org/buildStatus/icon?job=fabric-merge-x86_64)](https://jenkins.hyperledger.org/view/fabric/job/fabric-merge-x86_64/)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/955/badge)](https://bestpractices.coreinfrastructure.org/projects/955)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hyperledger/fabric)](https://goreportcard.com/report/github.com/hyperledger/fabric)
 [![GoDoc](https://godoc.org/github.com/hyperledger/fabric?status.svg)](https://godoc.org/github.com/hyperledger/fabric)
-[![Documentation Status](https://readthedocs.org/projects/hyperledger-fabric/badge/?version=latest)](http://hyperledger-fabric.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/hyperledger-fabric/badge/?version=release)](http://hyperledger-fabric.readthedocs.io/en/release/?badge=latest)
 
 ## Hyperledger Fabric
 
@@ -29,11 +29,11 @@ open source architecture; Hyperledger Fabric is your starting point.
 ## Documentation, Getting Started and Developer Guides
 
 Please visit our
-[online documentation](http://hyperledger-fabric.readthedocs.io/en/latest/) for
+[online documentation](http://hyperledger-fabric.readthedocs.io/en/release/) for
 information on getting started using and developing with the fabric, SDK and chaincode.
 
 It's recommended for first-time users to begin by going through the
-[Getting Started](http://hyperledger-fabric.readthedocs.io/en/latest/getting_started.html)
+[Getting Started](http://hyperledger-fabric.readthedocs.io/en/release/getting_started.html)
 section of the documentation in order to gain familiarity with the Hyperledger
 Fabric components and the basic transaction flow.
 
