@@ -237,7 +237,7 @@ type ChaincodeStubInterface interface {
 	// be omitted from the transaction and excluded from the ledger.
 	GetTransient() (map[string][]byte, error)
 
-	// GetBinding returns the transaction binding, which is used to enofrce a
+	// GetBinding returns the transaction binding, which is used to enforce a
 	// link between application data (like those stored in the transient field
 	// above) to the proposal itself. This is useful to avoid possible replay
 	// attacks.
