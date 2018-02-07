@@ -95,12 +95,6 @@ func SignedByMspPeer(mspId string) *cb.SignaturePolicyEnvelope {
 	return signedByFabricEntity(mspId, msp.MSPRole_PEER)
 }
 
-// SignedByMspOrderer creates a SignaturePolicyEnvelope
-// requiring 1 signature from any orderer of the specified MSP
-func SignedByMspOrderer(mspId string) *cb.SignaturePolicyEnvelope {
-	return signedByFabricEntity(mspId, msp.MSPRole_ORDERER)
-}
-
 // SignedByFabricEntity creates a SignaturePolicyEnvelope
 // requiring 1 signature from any fabric entity, having the passed role, of the specified MSP
 func signedByFabricEntity(mspId string, role msp.MSPRole_MSPRoleType) *cb.SignaturePolicyEnvelope {
@@ -173,13 +167,6 @@ func SignedByAnyMember(ids []string) *cb.SignaturePolicyEnvelope {
 // listed in the supplied string array
 func SignedByAnyClient(ids []string) *cb.SignaturePolicyEnvelope {
 	return signedByAnyOfGivenRole(msp.MSPRole_CLIENT, ids)
-}
-
-// SignedByAnyOrderer returns a policy that requires one valid
-// signature from an orderer of any of the orgs whose ids are
-// listed in the supplied string array
-func SignedByAnyOrderer(ids []string) *cb.SignaturePolicyEnvelope {
-	return signedByAnyOfGivenRole(msp.MSPRole_ORDERER, ids)
 }
 
 // SignedByAnyPeer returns a policy that requires one valid

@@ -13,5 +13,3 @@ NodeOUs:
     OrganizationalUnitIdentifier: "OU_client"
   PeerOUIdentifier:
     OrganizationalUnitIdentifier: "OU_peer"
-  OrdererOUIdentifier:
-    OrganizationalUnitIdentifier: "OU_orderer"

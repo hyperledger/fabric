@@ -158,8 +158,6 @@ func secondPass(args ...interface{}) (interface{}, error) {
 				r = msp.MSPRole_CLIENT
 			case "peer":
 				r = msp.MSPRole_PEER
-			case "orderer":
-				r = msp.MSPRole_ORDERER
 			default:
 				return nil, fmt.Errorf("Error parsing role %s", t)
 			}

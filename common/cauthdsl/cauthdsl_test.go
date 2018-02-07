@@ -269,25 +269,3 @@ func TestSignedByMspPeer(t *testing.T) {
 	assert.Equal(t, role.MspIdentifier, "A")
 	assert.Equal(t, role.Role, mb.MSPRole_PEER)
 }
-
-func TestSignedByMspOrderer(t *testing.T) {
-	e := SignedByMspOrderer("A")
-	assert.Equal(t, 1, len(e.Identities))
-
-	role := &mb.MSPRole{}
-	err := proto.Unmarshal(e.Identities[0].Principal, role)
-	assert.NoError(t, err)
-
-	assert.Equal(t, role.MspIdentifier, "A")
-	assert.Equal(t, role.Role, mb.MSPRole_ORDERER)
-
-	e = SignedByAnyOrderer([]string{"A"})
-	assert.Equal(t, 1, len(e.Identities))
-
-	role = &mb.MSPRole{}
-	err = proto.Unmarshal(e.Identities[0].Principal, role)
-	assert.NoError(t, err)
-
-	assert.Equal(t, role.MspIdentifier, "A")
-	assert.Equal(t, role.Role, mb.MSPRole_ORDERER)
-}

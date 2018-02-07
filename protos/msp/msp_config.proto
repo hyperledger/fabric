@@ -193,6 +193,4 @@ message FabricNodeOUs {
     // OU Identifier of the peers
     FabricOUIdentifier peerOUIdentifier = 3;
 
-    // OU Identifier of the orderers
-    FabricOUIdentifier ordererOUIdentifier = 4;
 }

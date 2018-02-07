@@ -180,20 +180,6 @@ func TestSatisfiesPrincipalPeer(t *testing.T) {
 		assert.NoError(t, err)
 	}))
 
-	assert.True(t, t.Run("Check that id is not a orderer", func(t *testing.T) {
-		// Check that id is not a orderer
-		mspID, err := thisMSP.GetIdentifier()
-		assert.NoError(t, err)
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: mspID})
-		assert.NoError(t, err)
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
-		err = id.SatisfiesPrincipal(principal)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "The identity is not a [ORDERER] under this MSP [DEFAULT]")
-	}))
-
 	assert.True(t, t.Run("Check that id is not a client", func(t *testing.T) {
 		// Check that id is not a client
 		mspID, err := thisMSP.GetIdentifier()
@@ -235,20 +221,6 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		assert.NoError(t, err)
 	}))
 
-	assert.True(t, t.Run("Check that id is not a orderer", func(t *testing.T) {
-		// Check that id is not a orderer
-		mspID, err := thisMSP.GetIdentifier()
-		assert.NoError(t, err)
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: mspID})
-		assert.NoError(t, err)
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
-		err = id.SatisfiesPrincipal(principal)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "The identity is not a [ORDERER] under this MSP [DEFAULT]")
-	}))
-
 	assert.True(t, t.Run("Check that id is not a peer", func(t *testing.T) {
 		// Check that id is not a peer
 		mspID, err := thisMSP.GetIdentifier()
@@ -261,60 +233,5 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		err = id.SatisfiesPrincipal(principal)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [DEFAULT]")
-	}))
-}
-
-func TestSatisfiesPrincipalOrderer(t *testing.T) {
-	// testdata/nodeous5:
-	// the configuration enables NodeOUs and admin and signing identity are valid
-	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous5", MSPv1_1)
-	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
-
-	// The default signing identity is an orderer
-	id, err := thisMSP.GetDefaultSigningIdentity()
-	assert.NoError(t, err)
-
-	err = id.Validate()
-	assert.NoError(t, err)
-
-	assert.True(t, t.Run("Check that id is a peer", func(t *testing.T) {
-		// Check that id is a peer
-		mspID, err := thisMSP.GetIdentifier()
-		assert.NoError(t, err)
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: mspID})
-		assert.NoError(t, err)
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
-		err = id.SatisfiesPrincipal(principal)
-		assert.NoError(t, err)
-	}))
-
-	assert.True(t, t.Run("Check that id is not a orderer", func(t *testing.T) {
-		// Check that id is not a orderer
-		mspID, err := thisMSP.GetIdentifier()
-		assert.NoError(t, err)
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: mspID})
-		assert.NoError(t, err)
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
-		err = id.SatisfiesPrincipal(principal)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [DEFAULT]")
-	}))
-
-	assert.True(t, t.Run("Check that id is not a client", func(t *testing.T) {
-		// Check that id is not a client
-		mspID, err := thisMSP.GetIdentifier()
-		assert.NoError(t, err)
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: mspID})
-		assert.NoError(t, err)
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
-		err = id.SatisfiesPrincipal(principal)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "The identity is not a [CLIENT] under this MSP [DEFAULT]")
 	}))
 }

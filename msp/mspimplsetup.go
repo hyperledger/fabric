@@ -252,15 +252,6 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 			msp.peerOU.CertifiersIdentifier = certifiersIdentifier
 		}
 
-		// OrdererOU
-		msp.ordererOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOUs.OrdererOUIdentifier.OrganizationalUnitIdentifier}
-		if len(config.FabricNodeOUs.OrdererOUIdentifier.Certificate) != 0 {
-			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOUs.OrdererOUIdentifier.Certificate)
-			if err != nil {
-				return err
-			}
-			msp.ordererOU.CertifiersIdentifier = certifiersIdentifier
-		}
 	} else {
 		msp.ouEnforcement = false
 	}

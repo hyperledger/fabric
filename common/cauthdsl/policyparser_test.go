@@ -117,26 +117,6 @@ func TestAndClientPeerOrderer(t *testing.T) {
 
 	assert.True(t, reflect.DeepEqual(p1, p2))
 
-	p1, err = FromString("AND('A.peer', 'B.orderer')")
-	assert.NoError(t, err)
-
-	principals = make([]*msp.MSPPrincipal, 0)
-
-	principals = append(principals, &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: "A"})})
-
-	principals = append(principals, &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "B"})})
-
-	p2 = &common.SignaturePolicyEnvelope{
-		Version:    0,
-		Rule:       And(SignedBy(0), SignedBy(1)),
-		Identities: principals,
-	}
-
-	assert.True(t, reflect.DeepEqual(p1, p2))
 }
 
 func TestOr(t *testing.T) {

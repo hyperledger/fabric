@@ -10,6 +10,3 @@ NodeOUs:
   PeerOUIdentifier:
     Certificate: "cacerts/cacert.pem"
     OrganizationalUnitIdentifier: "OU_peer"
-  OrdererOUIdentifier:
-    Certificate: "cacerts/cacert.pem"
-    OrganizationalUnitIdentifier: "OU_orderer"

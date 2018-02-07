@@ -7,8 +7,6 @@ OrganizationalUnitIdentifiers:
     OrganizationalUnitIdentifier: "OU_client"
   - Certificate: "cacerts/cacert.pem"
     OrganizationalUnitIdentifier: "OU_peer"
-  - Certificate: "cacerts/cacert.pem"
-    OrganizationalUnitIdentifier: "OU_orderer"
 
 NodeOUs:
   Enable: true
@@ -16,5 +14,3 @@ NodeOUs:
     OrganizationalUnitIdentifier: "OU_client"
   PeerOUIdentifier:
     OrganizationalUnitIdentifier: "OU_peer"
-  OrdererOUIdentifier:
-    OrganizationalUnitIdentifier: "OU_orderer"

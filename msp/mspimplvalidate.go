@@ -184,8 +184,6 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 			nodeOU = msp.clientOU
 		case msp.peerOU.OrganizationalUnitIdentifier:
 			nodeOU = msp.peerOU
-		case msp.ordererOU.OrganizationalUnitIdentifier:
-			nodeOU = msp.ordererOU
 		default:
 			continue
 		}
