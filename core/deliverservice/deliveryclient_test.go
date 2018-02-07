@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -474,6 +475,56 @@ func TestDeliverServiceShutdown(t *testing.T) {
 	}
 	os.Shutdown()
 	time.Sleep(time.Second)
+}
+
+func TestDeliverServiceShutdownRespawn(t *testing.T) {
+	// Scenario: Launch an ordering service node and let the client pull some blocks.
+	// Then, wait a few seconds, and don't send any blocks.
+	// Afterwards - start a new instance and shut down the old instance.
+	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second)
+	defer func() {
+		viper.Reset()
+	}()
+	defer ensureNoGoroutineLeak(t)()
+
+	osn1 := mocks.NewOrderer(5614, t)
+
+	time.Sleep(time.Second)
+	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
+
+	service, err := NewDeliverService(&Config{
+		Endpoints:   []string{"localhost:5614", "localhost:5615"},
+		Gossip:      gossipServiceAdapter,
+		CryptoSvc:   &mockMCS{},
+		ABCFactory:  DefaultABCFactory,
+		ConnFactory: DefaultConnectionFactory,
+	})
+	assert.NoError(t, err)
+
+	li := &mocks.MockLedgerInfo{Height: uint64(100)}
+	osn1.SetNextExpectedSeek(uint64(100))
+	err = service.StartDeliverForChannel("TEST_CHAINID", li, func() {})
+	assert.NoError(t, err, "can't start delivery")
+
+	// Check that delivery service requests blocks in order
+	go osn1.SendBlock(uint64(100))
+	assertBlockDissemination(100, gossipServiceAdapter.GossipBlockDisseminations, t)
+	go osn1.SendBlock(uint64(101))
+	assertBlockDissemination(101, gossipServiceAdapter.GossipBlockDisseminations, t)
+	atomic.StoreUint64(&li.Height, uint64(102))
+	// Now wait for a few seconds
+	time.Sleep(time.Second * 2)
+	// Now start the new instance
+	osn2 := mocks.NewOrderer(5615, t)
+	// Now stop the old instance
+	osn1.Shutdown()
+	// Send a block from osn2
+	osn2.SetNextExpectedSeek(uint64(102))
+	go osn2.SendBlock(uint64(102))
+	// Ensure it is received
+	assertBlockDissemination(102, gossipServiceAdapter.GossipBlockDisseminations, t)
+	service.Stop()
+	osn2.Shutdown()
 }
 
 func TestDeliverServiceBadConfig(t *testing.T) {
