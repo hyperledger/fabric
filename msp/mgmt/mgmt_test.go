@@ -19,6 +19,8 @@ package mgmt
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,14 +30,14 @@ func TestGetManagerForChains(t *testing.T) {
 	mspMgr1 := GetManagerForChain("test")
 	// ensure MSPManager is set
 	if mspMgr1 == nil {
-		t.FailNow()
+		t.Fatal("mspMgr1 fail")
 	}
 
 	// MSPManager for channel now exists
 	mspMgr2 := GetManagerForChain("test")
 	// ensure MSPManager returned matches the first result
 	if mspMgr2 != mspMgr1 {
-		t.FailNow()
+		t.Fatal("mspMgr2 != mspMgr1 fail")
 	}
 }
 
@@ -80,4 +82,65 @@ func TestUpdateLocalMspCache(t *testing.T) {
 	if firstMsp != secondMsp {
 		t.Fatalf("firstMsp != secondMsp")
 	}
+}
+
+func TestNewMSPMgmtMgr(t *testing.T) {
+	err := LoadMSPSetupForTesting()
+	assert.Nil(t, err)
+
+	// test for nonexistent channel
+	mspMgmtMgr := GetManagerForChain("fake")
+
+	id := GetLocalSigningIdentityOrPanic()
+	assert.NotNil(t, id)
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded, got err %s", err)
+		return
+	}
+
+	idBack, err := mspMgmtMgr.DeserializeIdentity(serializedID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "channel doesn't exist")
+	assert.Nil(t, idBack, "deserialized identity should have been nil")
+
+	// test for existing channel
+	mspMgmtMgr = GetManagerForChain(util.GetTestChainID())
+
+	id = GetLocalSigningIdentityOrPanic()
+	assert.NotNil(t, id)
+
+	serializedID, err = id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded, got err %s", err)
+		return
+	}
+
+	idBack, err = mspMgmtMgr.DeserializeIdentity(serializedID)
+	assert.NoError(t, err)
+	assert.NotNil(t, idBack, "deserialized identity should not have been nil")
+}
+
+func LoadMSPSetupForTesting() error {
+	dir, err := config.GetDevMspDir()
+	if err != nil {
+		return err
+	}
+	conf, err := msp.GetLocalMspConfig(dir, nil, "DEFAULT")
+	if err != nil {
+		return err
+	}
+
+	err = GetLocalMSP().Setup(conf)
+	if err != nil {
+		return err
+	}
+
+	err = GetManagerForChain(util.GetTestChainID()).Setup([]msp.MSP{GetLocalMSP()})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

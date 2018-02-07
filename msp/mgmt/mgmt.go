@@ -77,6 +77,30 @@ var localMsp msp.MSP
 var mspMap map[string]msp.MSPManager = make(map[string]msp.MSPManager)
 var mspLogger = flogging.MustGetLogger("msp")
 
+// TODO - this is a temporary solution to allow the peer to track whether the
+// MSPManager has been setup for a channel, which indicates whether the channel
+// exists or not
+type mspMgmtMgr struct {
+	msp.MSPManager
+	// track whether this MSPManager has been setup successfully
+	up bool
+}
+
+func (mgr *mspMgmtMgr) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	if !mgr.up {
+		return nil, errors.New("channel doesn't exist")
+	}
+	return mgr.MSPManager.DeserializeIdentity(serializedIdentity)
+}
+
+func (mgr *mspMgmtMgr) Setup(msps []msp.MSP) error {
+	err := mgr.MSPManager.Setup(msps)
+	if err == nil {
+		mgr.up = true
+	}
+	return err
+}
+
 // GetManagerForChain returns the msp manager for the supplied
 // chain; if no such manager exists, one is created
 func GetManagerForChain(chainID string) msp.MSPManager {
@@ -85,15 +109,16 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 
 	mspMgr, ok := mspMap[chainID]
 	if !ok {
-		mspLogger.Debugf("Created new msp manager for chain %s", chainID)
-		mspMgr = msp.NewMSPManager()
-		mspMap[chainID] = mspMgr
+		mspLogger.Debugf("Created new msp manager for channel `%s`", chainID)
+		mspMgmtMgr := &mspMgmtMgr{msp.NewMSPManager(), false}
+		mspMap[chainID] = mspMgmtMgr
+		mspMgr = mspMgmtMgr
 	} else {
-		// check for internal mspManagerImpl type. if a different type is found,
-		// it's because a developer has added a new type that implements the
-		// MSPManager interface and should add a case to the logic above to handle
-		// it.
-		if reflect.TypeOf(mspMgr).Elem().Name() != "mspManagerImpl" {
+		// check for internal mspManagerImpl and mspMgmtMgr types. if a different
+		// type is found, it's because a developer has added a new type that
+		// implements the MSPManager interface and should add a case to the logic
+		// above to handle it.
+		if !(reflect.TypeOf(mspMgr).Elem().Name() == "mspManagerImpl" || reflect.TypeOf(mspMgr).Elem().Name() == "mspMgmtMgr") {
 			panic("Found unexpected MSPManager type.")
 		}
 		mspLogger.Debugf("Returning existing manager for channel '%s'", chainID)
@@ -122,7 +147,7 @@ func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
 	m.Lock()
 	defer m.Unlock()
 
-	mspMap[chainID] = manager
+	mspMap[chainID] = &mspMgmtMgr{manager, true}
 }
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
