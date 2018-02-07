@@ -312,7 +312,6 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 
 		return err
 	}
-
 	defer closeResponseBody(resp)
 
 	logger.Infof("Created state database %s", dbclient.DBName)
@@ -343,7 +342,10 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 	defer closeResponseBody(resp)
 
 	dbResponse := &DBInfo{}
-	json.NewDecoder(resp.Body).Decode(&dbResponse)
+	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	if decodeErr != nil {
+		return nil, nil, decodeErr
+	}
 
 	// trace the database info response
 	if logger.IsEnabledFor(logging.DEBUG) {
@@ -382,9 +384,9 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	defer closeResponseBody(resp)
 
 	dbResponse := &ConnectionInfo{}
-	errJSON := json.NewDecoder(resp.Body).Decode(&dbResponse)
-	if errJSON != nil {
-		return nil, nil, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", errJSON.Error())
+	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	if decodeErr != nil {
+		return nil, nil, decodeErr
 	}
 
 	// trace the database info response
@@ -429,7 +431,10 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	defer closeResponseBody(resp)
 
 	dbResponse := &DBOperationResponse{}
-	json.NewDecoder(resp.Body).Decode(&dbResponse)
+	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
 
 	if dbResponse.Ok == true {
 		logger.Debugf("Dropped database %s ", dbclient.DBName)
@@ -470,7 +475,10 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	defer closeResponseBody(resp)
 
 	dbResponse := &DBOperationResponse{}
-	json.NewDecoder(resp.Body).Decode(&dbResponse)
+	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
 
 	if dbResponse.Ok == true {
 		logger.Debugf("_ensure_full_commit database %s ", dbclient.DBName)
@@ -626,7 +634,10 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 		//unmarshal the data into the generic map
 		decoder := json.NewDecoder(bytes.NewBuffer(couchDoc.JSONValue))
 		decoder.UseNumber()
-		decoder.Decode(&genericMap)
+		decodeErr := decoder.Decode(&genericMap)
+		if decodeErr != nil {
+			return *writeBuffer, "", decodeErr
+		}
 
 		//add all key/values to the attachmentJSONMap
 		for jsonKey, jsonValue := range genericMap {
@@ -635,7 +646,11 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 
 	}
 
-	filesForUpload, _ := json.Marshal(attachmentJSONMap)
+	filesForUpload, err := json.Marshal(attachmentJSONMap)
+	if err != nil {
+		return *writeBuffer, "", err
+	}
+
 	logger.Debugf(string(filesForUpload))
 
 	//create the header for the JSON
@@ -1336,7 +1351,10 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		var document = make(map[string]interface{})
 
 		//unmarshal the JSON component of the CouchDoc into the document
-		json.Unmarshal(jsonDocument.JSONValue, &document)
+		err = json.Unmarshal(jsonDocument.JSONValue, &document)
+		if err != nil {
+			return nil, err
+		}
 
 		//iterate through any attachments
 		if len(jsonDocument.Attachments) > 0 {
@@ -1365,7 +1383,6 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	documentMap["docs"] = jsonDocumentMap
 
 	bulkDocsJSON, err := json.Marshal(documentMap)
-
 	if err != nil {
 		return nil, err
 	}
@@ -1557,7 +1574,10 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 			errorBytes := []byte(jsonError)
 
 			//Unmarshal the response
-			json.Unmarshal(errorBytes, &couchDBReturn)
+			err = json.Unmarshal(errorBytes, &couchDBReturn)
+			if err != nil {
+				return nil, nil, err
+			}
 
 			//Log the 500 error with the retry count and continue
 			logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
@@ -1604,7 +1624,10 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		errorBytes := []byte(jsonError)
 
 		//marshal the response
-		json.Unmarshal(errorBytes, &couchDBReturn)
+		err = json.Unmarshal(errorBytes, &couchDBReturn)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		logger.Debugf("Couch DB Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
