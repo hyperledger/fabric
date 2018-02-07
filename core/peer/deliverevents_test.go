@@ -196,8 +196,8 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								block := response.GetFilteredBlock()
 								config.Equal(uint64(0), block.Number)
 								config.Equal(config.channelID, block.ChannelId)
-								config.Equal(1, len(block.FilteredTx))
-								tx := block.FilteredTx[0]
+								config.Equal(1, len(block.FilteredTransactions))
+								tx := block.FilteredTransactions[0]
 								config.Equal(config.txID, tx.Txid)
 								config.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
 								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
@@ -205,9 +205,9 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								config.NotNil(transactionActions)
 								chaincodeActions := transactionActions.ChaincodeActions
 								config.Equal(1, len(chaincodeActions))
-								config.Equal(config.eventName, chaincodeActions[0].CcEvent.EventName)
-								config.Equal(config.txID, chaincodeActions[0].CcEvent.TxId)
-								config.Equal(config.chaincodeName, chaincodeActions[0].CcEvent.ChaincodeId)
+								config.Equal(config.eventName, chaincodeActions[0].ChaincodeEvent.EventName)
+								config.Equal(config.txID, chaincodeActions[0].ChaincodeEvent.TxId)
+								config.Equal(config.chaincodeName, chaincodeActions[0].ChaincodeEvent.ChaincodeId)
 							default:
 								config.FailNow("Unexpected response type")
 							}
@@ -270,8 +270,8 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								block := response.GetFilteredBlock()
 								config.Equal(uint64(0), block.Number)
 								config.Equal(config.channelID, block.ChannelId)
-								config.Equal(1, len(block.FilteredTx))
-								tx := block.FilteredTx[0]
+								config.Equal(1, len(block.FilteredTransactions))
+								tx := block.FilteredTransactions[0]
 								config.Equal(config.txID, tx.Txid)
 								config.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
 								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)

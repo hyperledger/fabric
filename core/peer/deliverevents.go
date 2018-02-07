@@ -212,7 +212,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 			}
 		}
 
-		filteredBlock.FilteredTx = append(filteredBlock.FilteredTx, filteredTransaction)
+		filteredBlock.FilteredTransactions = append(filteredBlock.FilteredTransactions, filteredTransaction)
 	}
 
 	return filteredBlock, nil
@@ -247,7 +247,7 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 
 		if ccEvent.GetChaincodeId() != "" {
 			filteredAction := &peer.FilteredChaincodeAction{
-				CcEvent: &peer.ChaincodeEvent{
+				ChaincodeEvent: &peer.ChaincodeEvent{
 					TxId:        ccEvent.TxId,
 					ChaincodeId: ccEvent.ChaincodeId,
 					EventName:   ccEvent.EventName,

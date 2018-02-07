@@ -105,7 +105,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 							filteredCcEvent := ccEvent
 							// nil out ccevent payload
 							filteredCcEvent.Payload = nil
-							chaincodeAction.CcEvent = filteredCcEvent
+							chaincodeAction.ChaincodeEvent = filteredCcEvent
 						}
 						transactionActions.ChaincodeActions = append(transactionActions.ChaincodeActions, chaincodeAction)
 
@@ -146,7 +146,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 	}
 	filteredBlockForEvent.ChannelId = channelID
 	filteredBlockForEvent.Number = block.Header.Number
-	filteredBlockForEvent.FilteredTx = filteredTxArray
+	filteredBlockForEvent.FilteredTransactions = filteredTxArray
 
 	return CreateBlockEvent(blockForEvent), CreateFilteredBlockEvent(filteredBlockForEvent), channelID, nil
 }
