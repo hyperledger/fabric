@@ -26,20 +26,42 @@ distinguishing it from alternative blockchain solutions. Planning for the
 future of enterprise blockchain requires building on top of a fully-vetted,
 open source architecture; Hyperledger Fabric is your starting point.
 
+## Releases
+
+- [v1.1.0-alpha - January 25, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.1.0-alpha)
+- [v1.0.5 - December 6, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.5)
+- [v1.1.0-preview - November 1, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.1.0-preview)
+- [v1.0.4 - October 31, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.4)
+- [v1.0.3 - October 3, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.3)
+- [v1.0.2 - September 10, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.2)
+- [v1.0.1 - August 10, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.1)
+- [v1.0.0 - July 11, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0)
+- [v1.0.0-rc1 - June 23, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-rc1)
+- [v1.0.0-beta - June 8, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-beta)
+- [v1.0.0-alpha2 - May 14, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha2)
+- [v1.0.0-alpha - March 16, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha)
+- [v0.6.1-preview - October 15, 2016](https://github.com/hyperledger/fabric/releases/tag/v0.6.0-preview)
+- [v0.6.0-preview - September 16, 2016](https://github.com/hyperledger/fabric/releases/tag/v0.6.0-preview)
+
+## Release Roadmap
+
+Please visit the [Hyperledger Fabric wiki](https://wiki.hyperledger.org/projects/fabric/roadmap) for our release roadmap. We plan on a quarterly release cadence following the v1.1.0 release, delivering on a scoped set of themes and select features. Unless specified otherwise, all releases will be upgradable from the prior minor release.
+
 ## Documentation, Getting Started and Developer Guides
 
 Please visit our
-[online documentation](http://hyperledger-fabric.readthedocs.io/en/latest/) for
-information on getting started using and developing with the fabric, SDK and chaincode.
+online documentation for
+information on getting started using and developing with the fabric, SDK and chaincode:
+- [v1.1.0-alpha](http://hyperledger-fabric.readthedocs.io/en/v1.1.0-alpha/)
+- [v1.0.5](http://hyperledger-fabric.readthedocs.io/en/v1.0.5/)
+- [release branch (typically the latest patch for the current release)](http://hyperledger-fabric.readthedocs.io/en/release/)
+- [master branch (development)](http://hyperledger-fabric.readthedocs.io/en/master/)
 
-It's recommended for first-time users to begin by going through the
-[Getting Started](http://hyperledger-fabric.readthedocs.io/en/latest/getting_started.html)
-section of the documentation in order to gain familiarity with the Hyperledger
-Fabric components and the basic transaction flow.
+It's recommended for first-time users to begin by going through the Getting Started section of the documentation in order to gain familiarity with the Hyperledger Fabric components and the basic transaction flow.
 
 ## Contributing
 
-We welcome contributions to the Hyperledger Fabric Project in many forms.
+We welcome contributions to the Hyperledger Fabric project in many forms.
 There’s always plenty to do! Check [the documentation on how to contribute to this project](http://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html)
 for the full details.
 
@@ -51,7 +73,9 @@ for the full details.
 
 [Hyperledger Chat](http://chat.hyperledger.org/channel/fabric)
 
-[Hyperledger Fabric Issue Tracking](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104)
+[Hyperledger Fabric Issue Tracking (JIRA)](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104)
+
+[Hyperledger Fabric Wiki](https://wiki.hyperledger.org/projects/Fabric)
 
 [Hyperledger Wiki](https://wiki.hyperledger.org/)
 
