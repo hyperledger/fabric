@@ -82,8 +82,8 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 func (txmgr *LockBasedTxMgr) invokeNamespaceListeners(batch *privacyenabledstate.UpdateBatch) error {
 	namespaces := batch.PubUpdates.GetUpdatedNamespaces()
 	for _, namespace := range namespaces {
-		listerner := txmgr.stateListeners[namespace]
-		if listerner == nil {
+		listener := txmgr.stateListeners[namespace]
+		if listener == nil {
 			continue
 		}
 		logger.Debugf("Invoking listener for state changes over namespace:%s", namespace)
@@ -92,7 +92,7 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners(batch *privacyenabledstate
 		for key, versionedValue := range updatesMap {
 			kvwrites = append(kvwrites, &kvrwset.KVWrite{Key: key, IsDelete: versionedValue.Value == nil, Value: versionedValue.Value})
 		}
-		if err := listerner.HandleStateUpdates(txmgr.ledgerid, kvwrites); err != nil {
+		if err := listener.HandleStateUpdates(txmgr.ledgerid, kvwrites); err != nil {
 			return err
 		}
 	}
