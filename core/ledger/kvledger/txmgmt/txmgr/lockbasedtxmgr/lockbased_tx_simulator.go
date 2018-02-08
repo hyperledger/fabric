@@ -54,7 +54,7 @@ func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) err
 	if err := s.checkBeforeWrite(); err != nil {
 		return err
 	}
-	if err := s.helper.txmgr.db.ValidateKey(key); err != nil {
+	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
 		return err
 	}
 	s.rwsetBuilder.AddToWriteSet(ns, key, value)
@@ -84,7 +84,7 @@ func (s *lockBasedTxSimulator) SetPrivateData(ns, coll, key string, value []byte
 	if err := s.checkBeforeWrite(); err != nil {
 		return err
 	}
-	if err := s.helper.txmgr.db.ValidateKey(key); err != nil {
+	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
 		return err
 	}
 	s.writePerformed = true

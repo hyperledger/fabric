@@ -127,7 +127,6 @@ func TestUtilityFunctions(t *testing.T) {
 	byteKeySupported := db.BytesKeySuppoted()
 	testutil.AssertEquals(t, byteKeySupported, true)
 
-	// ValidateKey should return nil for a valid key
-	validKey := db.ValidateKey("testKey")
-	testutil.AssertNil(t, validKey)
+	// ValidateKeyValue should return nil for a valid key and value
+	testutil.AssertNoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")
 }

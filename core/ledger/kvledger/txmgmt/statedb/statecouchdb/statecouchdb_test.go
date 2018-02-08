@@ -19,6 +19,7 @@ package statecouchdb
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -196,14 +197,21 @@ func TestUtilityFunctions(t *testing.T) {
 	byteKeySupported := db.BytesKeySuppoted()
 	testutil.AssertEquals(t, byteKeySupported, false)
 
-	// ValidateKey should return nil for a valid key
-	err = db.ValidateKey("testKey")
+	// ValidateKeyValue should return nil for a valid key and value
+	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))
 	testutil.AssertNil(t, err)
 
 	// ValidateKey should return an error for an invalid key
-	err = db.ValidateKey(string([]byte{0xff, 0xfe, 0xfd}))
+	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
 	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
 
+	// ValidateKey should return an error for a json value that already contains one of the reserved fields
+	for _, reservedField := range reservedFields {
+		testVal := fmt.Sprintf(`{"%s":"dummyVal"}`, reservedField)
+		err = db.ValidateKeyValue("testKey", []byte(testVal))
+		testutil.AssertError(t, err, fmt.Sprintf(
+			"ValidateKey should have thrown an error for a json value %s, as contains one of the rserved fields", testVal))
+	}
 }
 
 // TestInvalidJSONFields tests for invalid JSON fields
