@@ -104,7 +104,7 @@ Org3 entities and the network's ordering node.
 Now we're ready to reconfigure...
 
 Start the ``configtxlator`` server
-=================================
+==================================
 
 The update process makes use of the configuration translator tool - ``configtxlator``.
 This tool provides a true stateless REST API, independent of the
@@ -447,7 +447,7 @@ and reissue the ``peer channel join command``:
   peer channel join -b mychannel.block
 
 Upgrade & invoke
-===============
+================
 
 The final piece of the puzzle is to increment the chaincode version and update
 the endorsement policy to include Org3.  Stay in the Org3 CLI container and
