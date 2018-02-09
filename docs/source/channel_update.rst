@@ -1,5 +1,5 @@
-Reconfiguring Your First Network
---------------------------------
+Adding an Org to a Channel
+--------------------------
 
 .. note:: These steps have been verified to work against the version "1.1.0-preview"
           tagged Docker images and corresponding utilities.  Ensure that you
