@@ -48,7 +48,7 @@ the JSON in the state database by using the ``GetQueryResult`` API and passing a
 The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html>`__.
 
 The `marbles02 fabric sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
-demonstrates use of CouchDB queries from chaincode. It includes a ``getMarblesByOwner()`` function
+demonstrates use of CouchDB queries from chaincode. It includes a ``queryMarblesByOwner()`` function
 that demonstrates parameterized queries by passing an owner id into chaincode. It then queries the
 state data for JSON documents matching the docType of “marble” and the owner id using the JSON query
 syntax:
