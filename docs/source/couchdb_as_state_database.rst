@@ -61,7 +61,7 @@ Indexes in CouchDB are required in order to make JSON queries efficient and are 
 any JSON query with a sort. Indexes can be packaged alongside chaincode in a
 ``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in its own
 text file with extension ``*.json`` with the index definition formatted in JSON following the
-`CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__
+`CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__.
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
@@ -75,13 +75,16 @@ The sample index can be found `here <https://github.com/hyperledger/fabric-sampl
           in the index definition. In subsequent releases the requirement to specify
           the “data” wrapper may be lifted.
 
-Any index in the chaincode’s ``META-INF/statedb/couchdb/indexes`` directory will be packaged up and
-installed with the chaincode on a peer. When the chaincode is both installed on a peer and
-instantiated on one of the peer’s channels, the index will automatically be deployed to the peer’s
-channel state database (if it has been configured to use CouchDB). If you the install the chaincode
-first and then instantiate the chaincode on the channel, the index will be deployed at chaincode
-**instantiation** time. If the chaincode is already instantiated on a channel and you later install the
-chaincode on a peer, the index will be deployed at chaincode **installation** time.
+Any index in the chaincode’s ``META-INF/statedb/couchdb/indexes`` directory
+will be packaged up with the chaincode for deployment. When the chaincode is
+both installed on a peer and instantiated on one of the peer’s channels, the
+index will automatically be deployed to the peer’s channel and chaincode
+specific state database (if it has been configured to use CouchDB). If you
+install the chaincode first and then instantiate the chaincode on the channel,
+the index will be deployed at chaincode **instantiation** time. If the
+chaincode is already instantiated on a channel and you later install the
+chaincode on a peer, the index will be deployed at chaincode **installation**
+time.
 
 Upon deployment, the index will automatically be utilized by chaincode queries. CouchDB can automatically
 determine which index to use based on the fields being used in a query. Alternatively, in the
@@ -147,8 +150,11 @@ capability of setting the CouchDB username and password with environment
 variables passed in with the ``COUCHDB_USER`` and ``COUCHDB_PASSWORD`` environment
 variables using Docker Compose scripting.
 
-For CouchDB installations outside of the docker images supplied with Fabric, the
-*local.ini* file must be edited to set the admin username and password.
+For CouchDB installations outside of the docker images supplied with Fabric,
+the
+`local.ini file of that installation
+<http://docs.couchdb.org/en/2.1.1/config/intro.html#configuration-files>`__
+must be edited to set the admin username and password.
 
 Docker compose scripts only set the username and password at the creation of
 the container. The *local.ini* file must be edited if the username or password
