@@ -130,6 +130,8 @@ Repeat this process for each orderer.
 
 .. note:: We repeat. Pay close attention to your orderer upgrades. State forks are bad.
 
+.. _upgrade-vendored-shim:
+
 Upgrade Chaincodes With Vendored Shim
 -------------------------------------
 
