@@ -80,12 +80,12 @@ Node.js Runtime and NPM
 -----------------------
 
 If you will be developing applications for Hyperledger Fabric leveraging the
-Hyperledger Fabric SDK for Node.js, you will need to have version 6.9.x of Node.js
+Hyperledger Fabric SDK for Node.js, you will need to have version 8.9.x of Node.js
 installed.
 
-.. note:: Node.js version 7.x is not supported at this time.
+.. note:: Node.js version 9.x is not supported at this time.
 
-  - `Node.js <https://nodejs.org/en/download/>`__ - version 6.9.x or greater
+  - `Node.js <https://nodejs.org/en/download/>`__ - version 8.9.x or greater
 
 .. note:: Installing Node.js will also install NPM, however it is recommended
           that you confirm the version of NPM installed. You can upgrade
@@ -93,7 +93,7 @@ installed.
 
 .. code:: bash
 
-  npm install npm@3.10.10 -g
+  npm install npm@5.6.0 -g
 
 Python
 ^^^^^^
