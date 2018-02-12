@@ -282,6 +282,15 @@ func updateTrustedRoots(srv comm.GRPCServer, rootCASupport *comm.CASupport,
 		}
 	}
 
+	if cc, ok := cm.ConsortiumsConfig(); ok {
+		for _, consortium := range cc.Consortiums() {
+			//loop through consortium orgs and build map of MSPIDs
+			for _, consortiumOrg := range consortium.Organizations() {
+				appOrgMSPs[consortiumOrg.MSPID()] = struct{}{}
+			}
+		}
+	}
+
 	cid := cm.ConfigtxValidator().ChainID()
 	logger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
