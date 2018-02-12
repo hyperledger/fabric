@@ -103,12 +103,12 @@ Org3 entities and the network's ordering node.
 
 Now we're ready to reconfigure...
 
-Start the ``configtxlator`` server
-==================================
+Prepare the CLI Environment
+===========================
 
 The update process makes use of the configuration translator tool - ``configtxlator``.
-This tool provides a true stateless REST API, independent of the
-SDK, to simplify configuration tasks in Hyperledger Fabric blockchain networks.
+This tool provides a true stateless REST API, independent of the SDK, as well as a CLI,
+to simplify configuration tasks in Hyperledger Fabric blockchain networks.
 The tool converts easily between different equivalent data representations/formats.
 For example, in one mode of tool operation, the tool performs conversions between
 the binary protobuf format to a human-readable JSON textual format, and vice-versa.
@@ -161,20 +161,6 @@ with JSON objects returned by the ``configtxlator`` tool:
 
   apt update && apt install jq
 
-Start the ``configtxlator`` REST server:
-
-.. code:: bash
-
-  # Press enter twice
-
-  configtxlator start &
-
-Set the URL:
-
-.. code:: bash
-
-  CONFIGTXLATOR_URL=http://127.0.0.1:7059
-
 Export the ``ORDERER_CA`` and ``CHANNEL_NAME`` variables:
 
 .. code:: bash
@@ -187,17 +173,17 @@ Check to make sure the variables have been properly set:
 
   echo $ORDERER_CA && echo $CHANNEL_NAME
 
-.. note:: If for any reason you need to restart the CLI container, you will also
-          need to restart the REST server and export the three environment
-          variables - ``CONFIGTXLATOR_URL``, ``ORDERER_CA`` and ``CHANNEL_NAME``.
+
+.. note:: If for any reason you need to restart the CLI container, you will also need to
+          re-export the two environment variables - ``ORDERER_CA`` and ``CHANNEL_NAME``.
           The jq installation will persist, you need not install it a second time.
 
 Form the update objects & reconfigure the channel
 =================================================
 
-Now we have a running REST server within the CLI container and we have exported
-our two key environment variables - ``ORDERER_CA`` & ``CHANNEL_NAME``.  Let's go
-fetch the most recent config block for the channel - ``mychannel``.
+Now we have a CLI container with our two key environment variables - ``ORDERER_CA``
+& ``CHANNEL_NAME`` exported.  Let's go fetch the most recent config block for the
+channel - ``mychannel``.
 
 .. code:: bash
 
@@ -224,27 +210,16 @@ our two organizations - ``Org1`` & ``Org2`` - were defined by means of two
 separate channel update transactions.  As such, we have the following configuration
 sequence: block 0 - genesis; block 1 - Org1 anchor peer update; block 2 - Org2 anchor peer update.
 
-Now we will make use of the ``configtxlator`` server and decode this channel
-configuration block into human-readable and editable JSON format.
+Now we will make use of the ``configtxlator`` tool to decode this channel
+configuration block into human-readable and editable JSON format.  We also
+filter the output object and strip away all of the encapsulating wrappers.
+We are not concerned with the headers, metadata, creator signature, etc., but,
+rather, only with the configuration definition inside the transaction.  We
+accomplish this by means of the ``jq`` tool:
 
 .. code:: bash
 
-  curl -X POST --data-binary @config_block.pb "$CONFIGTXLATOR_URL/protolator/decode/common.Block" | jq . > config_block.json
-
-We are naming the decoded output - ``config_block.json``.  (Again, you are free
-to apply your own naming conventions throughout these steps.)  If you issue an ``ls``
-within the CLI container, you should see our two objects:  the binary protobuf
-channel configuration - ``config_block.pb`` - and the JSON representation of
-this object - ``config_block.json``.
-
-Now we need to scope the ``config_block.json`` object and strip away all of the
-encapsulating wrappers.  We are not concerned with the headers, metadata,
-creator signature, etc., but, rather, only with the configuration definition inside the
-transaction.  We accomplish this by means of the ``jq`` tool:
-
-.. code:: bash
-
-  jq .data.data[0].payload.data.config config_block.json > config.json
+  configtxlator proto_decode --input config_block.pb --type common.Block | jq .data.data[0].payload.data.config config_block.json > config.json
 
 This leaves us with a trimmed down JSON object - ``config.json`` - which
 will serve as the baseline for our config update.  We'll use the ``jq`` tool once
@@ -253,11 +228,11 @@ application groups field, and name the output - ``updated_config.json``.
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ./channel-artifacts/org3.json >& updated_config.json
+  jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ./channel-artifacts/org3.json > modified_config.json
 
 Now, within the CLI container we have two JSON files of interest - ``config.json``
-& ``updated_config.json``.  The initial file contains only Org1 and Org2 material,
-whereas the aptly named "updated config" file contains all three Orgs.  At this
+& ``modified_config.json``.  The initial file contains only Org1 and Org2 material,
+whereas the aptly named "modified config" file contains all three Orgs.  At this
 point it's simply a matter of re-encoding these two JSON files and calculating
 the delta.
 
@@ -265,20 +240,20 @@ First, encode ``config.json`` to ``config.pb``:
 
 .. code:: bash
 
-  curl -X POST --data-binary @config.json "$CONFIGTXLATOR_URL/protolator/encode/common.Config" > config.pb
+  configtxlator proto_encode --input config.json --type common.Config --output config.pb
 
-Next, encode ``updated_config.json`` to ``updated_config.pb``:
+Next, encode ``modified_config.json`` to ``modified_config.pb``:
 
 .. code:: bash
 
-  curl -X POST --data-binary @updated_config.json "$CONFIGTXLATOR_URL/protolator/encode/common.Config" > updated_config.pb
+  configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
 
-Now use the ``configtxlator`` server to calculate the delta between these two
+Now use ``configtxlator`` to calculate the delta between these two
 config protos.  This command will output a new protobuf binary named - ``org3_update.pb``:
 
 .. code:: bash
 
-  curl -X POST -F channel=$CHANNEL_NAME -F "original=@config.pb" -F "updated=@updated_config.pb" "${CONFIGTXLATOR_URL}/configtxlator/compute/update-from-configs" > org3_update.pb
+  configtxlator compute_update --channel_id $CHANNEL_NAME --original config.pb --updated modified_config.pb --output org3_update.pb
 
 This new proto - ``org3_update.pb`` - contains the Org3 definitions and high level pointers to the Org1
 and Org2 material.  We are able to forgo the extensive MSP material and modification
@@ -291,7 +266,7 @@ let's decode this object into editable JSON format and call it ``org3_update.jso
 
 .. code:: bash
 
-  curl -X POST --data-binary @org3_update.pb "$CONFIGTXLATOR_URL/protolator/decode/common.ConfigUpdate" | jq . > org3_update.json
+  configtxlator proto_decode --input org3_update.pb --type common.ConfigUpdate | jq . > org3_update.json
 
 Now, we have a decoded update file - ``org3_update.json`` - that we need to wrap
 in an envelope message.  This step will give us back the header field that we stripped away
@@ -308,7 +283,7 @@ object - ``org3_update_in_envelope.pb``:
 
 .. code:: bash
 
-  curl -X POST --data-binary @org3_update_in_envelope.json "$CONFIGTXLATOR_URL/protolator/encode/common.Envelope" > org3_update_in_envelope.pb
+  configtxlator proto_encode --input org3_update_in_envelope.json --type common.Envelope --output org3_update_in_envelope.pb
 
 Almost done!  We now have a protobuf binary - ``org3_update_in_envelope.pb`` - within
 our CLI container, however we need signatures from the requisite Admin users
