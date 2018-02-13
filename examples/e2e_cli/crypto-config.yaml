@@ -30,6 +30,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: Org1
     Domain: org1.example.com
+    EnableNodeOUs: true
     CA:
         Country: US
         Province: California
@@ -83,6 +84,7 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: Org2
     Domain: org2.example.com
+    EnableNodeOUs: true
     CA:
         Country: US
         Province: California
