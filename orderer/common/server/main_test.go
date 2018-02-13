@@ -79,12 +79,12 @@ func TestInitializeServerConfig(t *testing.T) {
 	conf := &config.TopLevel{
 		General: config.General{
 			TLS: config.TLS{
-				Enabled:           true,
-				ClientAuthEnabled: true,
-				Certificate:       "main.go",
-				PrivateKey:        "main.go",
-				RootCAs:           []string{"main.go"},
-				ClientRootCAs:     []string{"main.go"},
+				Enabled:            true,
+				ClientAuthRequired: true,
+				Certificate:        "main.go",
+				PrivateKey:         "main.go",
+				RootCAs:            []string{"main.go"},
+				ClientRootCAs:      []string{"main.go"},
 			},
 		},
 	}
@@ -131,12 +131,12 @@ func TestInitializeServerConfig(t *testing.T) {
 					&config.TopLevel{
 						General: config.General{
 							TLS: config.TLS{
-								Enabled:           true,
-								ClientAuthEnabled: true,
-								Certificate:       tc.certificate,
-								PrivateKey:        tc.privateKey,
-								RootCAs:           []string{tc.rootCA},
-								ClientRootCAs:     []string{tc.clientCertificate},
+								Enabled:            true,
+								ClientAuthRequired: true,
+								Certificate:        tc.certificate,
+								PrivateKey:         tc.privateKey,
+								RootCAs:            []string{tc.rootCA},
+								ClientRootCAs:      []string{tc.clientCertificate},
 							},
 						},
 					})
@@ -255,8 +255,8 @@ func TestInitializeGrpcServer(t *testing.T) {
 			ListenAddress: host,
 			ListenPort:    uint16(port),
 			TLS: config.TLS{
-				Enabled:           false,
-				ClientAuthEnabled: false,
+				Enabled:            false,
+				ClientAuthRequired: false,
 			},
 		},
 	}
@@ -280,8 +280,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			ListenAddress: "localhost",
 			ListenPort:    uint16(port),
 			TLS: config.TLS{
-				Enabled:           false,
-				ClientAuthEnabled: false,
+				Enabled:            false,
+				ClientAuthRequired: false,
 			},
 		},
 	}
@@ -309,10 +309,10 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			ListenAddress: "localhost",
 			ListenPort:    uint16(port),
 			TLS: config.TLS{
-				Enabled:           true,
-				ClientAuthEnabled: true,
-				PrivateKey:        filepath.Join(".", "testdata", "tls", "server.key"),
-				Certificate:       filepath.Join(".", "testdata", "tls", "server.crt"),
+				Enabled:            true,
+				ClientAuthRequired: true,
+				PrivateKey:         filepath.Join(".", "testdata", "tls", "server.key"),
+				Certificate:        filepath.Join(".", "testdata", "tls", "server.crt"),
 			},
 		},
 	}
