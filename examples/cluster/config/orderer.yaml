@@ -34,7 +34,7 @@ General:
         Certificate: tls/server.crt
         RootCAs:
           - tls/ca.crt
-        ClientAuthEnabled: false
+        ClientAuthRequired: false
         ClientRootCAs:
 
     # Log Level: The level at which to log. This accepts logging specifications

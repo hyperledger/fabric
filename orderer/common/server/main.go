@@ -136,7 +136,7 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 	// secure server config
 	secureOpts := &comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
-		RequireClientCert: conf.General.TLS.ClientAuthEnabled,
+		RequireClientCert: conf.General.TLS.ClientAuthRequired,
 	}
 	// check to see if TLS is enabled
 	if secureOpts.UseTLS {

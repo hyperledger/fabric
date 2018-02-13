@@ -97,12 +97,12 @@ type Keepalive struct {
 
 // TLS contains configuration for TLS connections.
 type TLS struct {
-	Enabled           bool
-	PrivateKey        string
-	Certificate       string
-	RootCAs           []string
-	ClientAuthEnabled bool
-	ClientRootCAs     []string
+	Enabled            bool
+	PrivateKey         string
+	Certificate        string
+	RootCAs            []string
+	ClientAuthRequired bool
+	ClientRootCAs      []string
 }
 
 // Authentication contains configuration parameters related to authenticating
