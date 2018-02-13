@@ -299,23 +299,28 @@ message defined as follows:
 
 ::
 
-    message MSPRole {
-        string msp_identifier = 1;
+   message MSPRole {
+       string msp_identifier = 1;
 
-        enum MSPRoleType {
-            MEMBER = 0; // Represents an MSP Member
-            ADMIN  = 1; // Represents an MSP Admin
-        }
+       enum MSPRoleType {
+           MEMBER = 0; // Represents an MSP Member
+           ADMIN  = 1; // Represents an MSP Admin
+           CLIENT = 2; // Represents an MSP Client
+           PEER = 3; // Represents an MSP Peer
+       }
 
-        MSPRoleType Role = 2;
-    }
+       MSPRoleType role = 2;
+   }
 
 The ``msp_identifier`` is set to the ID of the MSP (as defined by the
-MSPConfig proto in the channel configuration for an org) which will
-evaluate the signature, and the ``Role`` is set to either ``MEMBER`` or
-``ADMIN``. The ``MEMBER`` role will match any certificate issued by the
-MSP, while the ``ADMIN`` role will match only certificates which are
-enumerated as admin certificates in the MSP definition.
+``MSPConfig`` proto in the channel configuration for an org) which will
+evaluate the signature, and the ``Role`` is set to either ``MEMBER``,
+``ADMIN``, ``CLIENT`` or ``PEER``. In particular
+
+1. ``MEMBER`` matches any certificate issued by the MSP.
+2. ``ADMIN`` matches certificates enumerated as admin in the MSP definition.
+3. ``CLIENT`` (``PEER``) matches certificates that carry the client (peer) Organizational unit
+(see `MSP Documentation <http://hyperledger-fabric.readthedocs.io/en/latest/msp.html>`_)
 
 Constructing an ImplicitMetaPolicy
 ----------------------------------
