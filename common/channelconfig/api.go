@@ -133,9 +133,9 @@ type ApplicationCapabilities interface {
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
 type OrdererCapabilities interface {
-	// SetChannelModPolicyDuringCreate specifies whether the v1.0 undesirable behavior of setting the /Channel
-	// group's mod_policy to "" should be fixed or not.
-	SetChannelModPolicyDuringCreate() bool
+	// PredictableChannelTemplate specifies whether the v1.0 undesirable behavior of setting the /Channel
+	// group's mod_policy to "" and copy versions from the orderer system channel config should be fixed or not.
+	PredictableChannelTemplate() bool
 
 	// Resubmission specifies whether the v1.0 non-deterministic commitment of tx should be fixed by re-submitting
 	// the re-validated tx.

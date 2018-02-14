@@ -71,8 +71,8 @@ type OrdererCapabilities struct {
 	// SupportedErr is returned by Supported()
 	SupportedErr error
 
-	// SetChannelModPolicyDuringCreateVal is returned by SetChannelModPolicyDuringCreate()
-	SetChannelModPolicyDuringCreateVal bool
+	// PredictableChannelTemplateVal is returned by PredictableChannelTemplate()
+	PredictableChannelTemplateVal bool
 
 	// ResubmissionVal is returned by Resubmission()
 	ResubmissionVal bool
@@ -86,9 +86,9 @@ func (oc *OrdererCapabilities) Supported() error {
 	return oc.SupportedErr
 }
 
-// SetChannelModPolicyDuringCreate returns SetChannelModPolicyDuringCreateVal
-func (oc *OrdererCapabilities) SetChannelModPolicyDuringCreate() bool {
-	return oc.SetChannelModPolicyDuringCreateVal
+// PredictableChannelTemplate returns PredictableChannelTemplateVal
+func (oc *OrdererCapabilities) PredictableChannelTemplate() bool {
+	return oc.PredictableChannelTemplateVal
 }
 
 // Resubmission returns ResubmissionVal

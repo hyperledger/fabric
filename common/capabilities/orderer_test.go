@@ -17,7 +17,7 @@ import (
 func TestOrdererV10(t *testing.T) {
 	op := NewOrdererProvider(map[string]*cb.Capability{})
 	assert.NoError(t, op.Supported())
-	assert.False(t, op.SetChannelModPolicyDuringCreate())
+	assert.False(t, op.PredictableChannelTemplate())
 }
 
 func TestOrdererV11(t *testing.T) {
@@ -25,5 +25,5 @@ func TestOrdererV11(t *testing.T) {
 		OrdererV1_1: {},
 	})
 	assert.NoError(t, op.Supported())
-	assert.True(t, op.SetChannelModPolicyDuringCreate())
+	assert.True(t, op.PredictableChannelTemplate())
 }
