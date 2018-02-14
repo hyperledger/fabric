@@ -158,10 +158,7 @@ func InitViper(v *viper.Viper, configName string) error {
 		addConfigPath(v, "./")
 
 		// DevConfigPath
-		err := AddDevConfigPath(v)
-		if err != nil {
-			return err
-		}
+		AddDevConfigPath(v)
 
 		// And finally, the official path
 		if dirExists(OfficialPath) {
