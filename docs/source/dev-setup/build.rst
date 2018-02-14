@@ -33,7 +33,7 @@ To run a specific test use the ``-run RE`` flag where RE is a regular
 expression that matches the test case name. To run tests with verbose
 output use the ``-v`` flag. For example, to run the ``TestGetFoo`` test
 case, change to the directory containing the ``foo_test.go`` and
-call/excecute
+call/execute
 
 ::
 
@@ -41,10 +41,10 @@ call/excecute
 
 
 
-Running Node.js Unit Tests
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running Node.js Client SDK Unit Tests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You must also run the Node.js unit tests to insure that the Node.js
+You must also run the Node.js unit tests to ensure that the Node.js
 client SDK is not broken by your changes. To run the Node.js unit tests,
 follow the instructions
 `here <https://github.com/hyperledger/fabric-sdk-node/blob/master/README.md>`__.

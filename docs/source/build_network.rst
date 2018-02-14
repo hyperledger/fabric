@@ -151,7 +151,7 @@ Next, you can bring the network up with one of the following commands:
 
 The above command will compile Golang chaincode images and spin up the corresponding
 containers.  Go is the default chaincode language, however there is also support
-for Node.js chaincode.  If you'd like to run through this tutorial with node
+for `Node.js <https://fabric-shim.github.io/>`__ chaincode.  If you'd like to run through this tutorial with node
 chaincode, pass the following command instead:
 
 .. code:: bash

@@ -107,7 +107,7 @@ chaincode written in Golang:
   ./startFabric.sh
 
 You also have the option of running this tutorial against chaincode written in
-Node.js.  If you'd like to pursue this route, issue the following command instead:
+`Node.js <https://fabric-shim.github.io/>`__.  If you'd like to pursue this route, issue the following command instead:
 
 .. code:: bash
 
