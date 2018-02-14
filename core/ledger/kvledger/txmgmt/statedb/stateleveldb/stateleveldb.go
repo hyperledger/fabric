@@ -68,8 +68,8 @@ func (vdb *versionedDB) Close() {
 	// do nothing because shared db is used
 }
 
-// ValidateKey implements method in VersionedDB interface
-func (vdb *versionedDB) ValidateKey(key string) error {
+// ValidateKeyValue implements method in VersionedDB interface
+func (vdb *versionedDB) ValidateKeyValue(key string, value []byte) error {
 	return nil
 }
 

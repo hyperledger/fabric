@@ -30,12 +30,15 @@ import (
 
 var logger = flogging.MustGetLogger("statecouchdb")
 
-const binaryWrapper = "valueBytes"
+const (
+	binaryWrapper = "valueBytes"
+	idField       = "_id"
+	revField      = "_rev"
+	versionField  = "~version"
+	deletedField  = "_deleted"
+)
 
-const idField = "_id"
-const revField = "_rev"
-const versionField = "~version"
-const deletedField = "_deleted"
+var reservedFields = []string{idField, revField, versionField, deletedField}
 
 // querySkip is implemented for future use by query paging
 // currently defaulted to 0 and is not used
@@ -234,10 +237,17 @@ func (vdb *VersionedDB) Close() {
 	// no need to close db since a shared couch instance is used
 }
 
-// ValidateKey implements method in VersionedDB interface
-func (vdb *VersionedDB) ValidateKey(key string) error {
+// ValidateKeyValue implements method in VersionedDB interface
+func (vdb *VersionedDB) ValidateKeyValue(key string, value []byte) error {
 	if !utf8.ValidString(key) {
 		return fmt.Errorf("Key should be a valid utf8 string: [%x]", key)
+	}
+	var jsonMap map[string]interface{}
+	err := json.Unmarshal([]byte(value), &jsonMap)
+	if err == nil {
+		// the value is a proper json and hence perform a check that this json does not contain reserved field
+		// if error is not nil then the value will be treated as a binary attachement.
+		return checkReservedFieldsNotUsed(jsonMap)
 	}
 	return nil
 }
@@ -992,24 +1002,8 @@ func createCouchdbDocJSON(id, revision string, value []byte, version *version.He
 		}
 	}
 
-	// verify the version field was not included
-	if _, fieldFound := jsonMap[versionField]; fieldFound {
-		return nil, fmt.Errorf("The reserved field %s was found", versionField)
-	}
-
-	// verify the _id field was not included
-	if _, fieldFound := jsonMap[idField]; fieldFound {
-		return nil, fmt.Errorf("The reserved field %s was found", idField)
-	}
-
-	// verify the revision field was not included
-	if _, fieldFound := jsonMap[revField]; fieldFound {
-		return nil, fmt.Errorf("The reserved field %s was found", revField)
-	}
-
-	// verify the deleted field was not included
-	if _, fieldFound := jsonMap[deletedField]; fieldFound {
-		return nil, fmt.Errorf("The reserved field %s was found", deletedField)
+	if err := checkReservedFieldsNotUsed(jsonMap); err != nil {
+		return nil, err
 	}
 
 	// add the version
@@ -1038,6 +1032,16 @@ func createCouchdbDocJSON(id, revision string, value []byte, version *version.He
 
 	return documentJSON, nil
 
+}
+
+// checkReservedFieldsNotUsed verifies that the reserve field was not included
+func checkReservedFieldsNotUsed(jsonMap map[string]interface{}) error {
+	for _, fieldName := range reservedFields {
+		if _, fieldFound := jsonMap[fieldName]; fieldFound {
+			return fmt.Errorf("The reserved field %s was found", fieldName)
+		}
+	}
+	return nil
 }
 
 // removeJSONRevision removes the "_rev" if this is a JSON
