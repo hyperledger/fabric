@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
+	"math/rand"
+
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -41,29 +43,23 @@ func CombineRoutingFilters(filters ...RoutingFilter) RoutingFilter {
 
 // SelectPeers returns a slice of peers that match the routing filter
 func SelectPeers(k int, peerPool []discovery.NetworkMember, filter RoutingFilter) []*comm.RemotePeer {
-	var filteredPeers []*comm.RemotePeer
-	for _, peer := range peerPool {
-		if filter(peer) {
-			filteredPeers = append(filteredPeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()})
+	var res []*comm.RemotePeer
+	rand.Seed(int64(util.RandomUInt64()))
+	// Iterate over the possible candidates in random order
+	for _, index := range rand.Perm(len(peerPool)) {
+		// If we collected K peers, we can stop the iteration.
+		if len(res) == k {
+			break
 		}
-	}
-
-	var indices []int
-	if len(filteredPeers) <= k {
-		indices = make([]int, len(filteredPeers))
-		for i := 0; i < len(filteredPeers); i++ {
-			indices[i] = i
+		peer := peerPool[index]
+		// For each one, check if it is a worthy candidate to be selected
+		if !filter(peer) {
+			continue
 		}
-	} else {
-		indices = util.GetRandomIndices(k, len(filteredPeers)-1)
+		p := &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()}
+		res = append(res, p)
 	}
-
-	var remotePeers []*comm.RemotePeer
-	for _, index := range indices {
-		remotePeers = append(remotePeers, filteredPeers[index])
-	}
-
-	return remotePeers
+	return res
 }
 
 // First returns the first peer that matches the given filter
