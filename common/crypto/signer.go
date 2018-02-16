@@ -1,28 +1,68 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package crypto
 
-import cb "github.com/hyperledger/fabric/protos/common"
+import (
+	cb "github.com/hyperledger/fabric/protos/common"
+)
 
 // LocalSigner is a temporary stub interface which will be implemented by the local MSP
 type LocalSigner interface {
+	SignatureHeaderMaker
+	Signer
+}
+
+// Signer signs messages
+type Signer interface {
+	// Sign a message and return the signature over the digest, or error on failure
+	Sign(message []byte) ([]byte, error)
+}
+
+// IdentitySerializer serializes identities
+type IdentitySerializer interface {
+	// Serialize converts an identity to bytes
+	Serialize() ([]byte, error)
+}
+
+// SignatureHeaderMaker creates a new SignatureHeader
+type SignatureHeaderMaker interface {
 	// NewSignatureHeader creates a SignatureHeader with the correct signing identity and a valid nonce
 	NewSignatureHeader() (*cb.SignatureHeader, error)
+}
 
-	// Sign a message which should embed a signature header created by NewSignatureHeader
-	Sign(message []byte) ([]byte, error)
+// SignatureHeaderCreator creates signature headers
+type SignatureHeaderCreator struct {
+	SignerSupport
+}
+
+// SignerSupport implements the needed support for LocalSigner
+type SignerSupport interface {
+	Signer
+	IdentitySerializer
+}
+
+// NewSignatureHeaderCreator creates new signature headers
+func NewSignatureHeaderCreator(ss SignerSupport) *SignatureHeaderCreator {
+	return &SignatureHeaderCreator{ss}
+}
+
+// NewSignatureHeader creates a SignatureHeader with the correct signing identity and a valid nonce
+func (bs *SignatureHeaderCreator) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	creator, err := bs.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	nonce, err := GetRandomNonce()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.SignatureHeader{
+		Creator: creator,
+		Nonce:   nonce,
+	}, nil
 }

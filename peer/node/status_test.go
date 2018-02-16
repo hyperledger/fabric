@@ -23,6 +23,10 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/msp"
+	common2 "github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/peer/mocks"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -35,14 +39,24 @@ func (tss *testServiceServer) EmptyCall(context.Context, *testpb.Empty) (*testpb
 	return new(testpb.Empty), nil
 }
 
-func TestStatusCmd(t *testing.T) {
+type mockEvaluator struct {
+}
 
+func (*mockEvaluator) Evaluate(signatureSet []*common.SignedData) error {
+	return nil
+}
+
+func TestStatusCmd(t *testing.T) {
+	signer := &mocks.Signer{}
+	common2.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
+		return signer, nil
+	}
 	viper.Set("peer.address", "localhost:7070")
 	peerServer, err := peer.NewPeerServer("localhost:7070", comm.ServerConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create peer server (%s)", err)
 	} else {
-		pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
+		pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer(&mockEvaluator{}))
 		go peerServer.Start()
 		defer peerServer.Stop()
 
@@ -55,6 +69,10 @@ func TestStatusCmd(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
+	signer := &mocks.Signer{}
+	common2.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
+		return signer, nil
+	}
 	var tests = []struct {
 		name          string
 		peerAddress   string
@@ -84,7 +102,7 @@ func TestStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create peer server (%s)", err)
 			} else {
-				pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
+				pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer(&mockEvaluator{}))
 				go peerServer.Start()
 				defer peerServer.Stop()
 				if test.expected {

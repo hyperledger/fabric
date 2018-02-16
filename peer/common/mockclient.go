@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -67,30 +68,37 @@ type mockAdminClient struct {
 	err    error
 }
 
-func (m *mockAdminClient) GetStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
+func (m *mockAdminClient) GetStatus(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
 	return m.status, m.err
 }
 
-func (m *mockAdminClient) StartServer(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
+func (m *mockAdminClient) DumpStackTrace(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*empty.Empty, error) {
+	return &empty.Empty{}, nil
+}
+
+func (m *mockAdminClient) StartServer(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
 	m.status = &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
 	return m.status, m.err
 }
 
-func (m *mockAdminClient) StopServer(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
-	m.status = &pb.ServerStatus{Status: pb.ServerStatus_STOPPED}
-	return m.status, m.err
-}
-
-func (m *mockAdminClient) GetModuleLogLevel(ctx context.Context, in *pb.LogLevelRequest, opts ...grpc.CallOption) (*pb.LogLevelResponse, error) {
-	response := &pb.LogLevelResponse{LogModule: in.LogModule, LogLevel: "INFO"}
+func (m *mockAdminClient) GetModuleLogLevel(ctx context.Context, env *cb.Envelope, opts ...grpc.CallOption) (*pb.LogLevelResponse, error) {
+	op := &pb.AdminOperation{}
+	pl := &cb.Payload{}
+	proto.Unmarshal(env.Payload, pl)
+	proto.Unmarshal(pl.Data, op)
+	response := &pb.LogLevelResponse{LogModule: op.GetLogReq().LogModule, LogLevel: "INFO"}
 	return response, m.err
 }
 
-func (m *mockAdminClient) SetModuleLogLevel(ctx context.Context, in *pb.LogLevelRequest, opts ...grpc.CallOption) (*pb.LogLevelResponse, error) {
-	response := &pb.LogLevelResponse{LogModule: in.LogModule, LogLevel: in.LogLevel}
+func (m *mockAdminClient) SetModuleLogLevel(ctx context.Context, env *cb.Envelope, opts ...grpc.CallOption) (*pb.LogLevelResponse, error) {
+	op := &pb.AdminOperation{}
+	pl := &cb.Payload{}
+	proto.Unmarshal(env.Payload, pl)
+	proto.Unmarshal(pl.Data, op)
+	response := &pb.LogLevelResponse{LogModule: op.GetLogReq().LogModule, LogLevel: op.GetLogReq().LogLevel}
 	return response, m.err
 }
 
-func (m *mockAdminClient) RevertLogLevels(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m *mockAdminClient) RevertLogLevels(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*empty.Empty, error) {
 	return &empty.Empty{}, m.err
 }

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package core
@@ -20,50 +10,124 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/testutil"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	context2 "golang.org/x/net/context"
 )
 
-var adminServer *ServerAdmin
-
 func init() {
-	adminServer = NewAdminServer()
 	testutil.SetupTestConfig()
 }
 
+type mockValidator struct {
+	mock.Mock
+}
+
+func (v *mockValidator) validate(ctx context2.Context, env *common.Envelope) (*pb.AdminOperation, error) {
+	args := v.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.AdminOperation), nil
+}
+
 func TestGetStatus(t *testing.T) {
-	response, err := adminServer.GetStatus(context.Background(), &empty.Empty{})
+	adminServer := NewAdminServer(nil)
+	adminServer.v = &mockValidator{}
+	mv := adminServer.v.(*mockValidator)
+	mv.On("validate").Return(nil, nil).Once()
+	response, err := adminServer.GetStatus(context.Background(), nil)
 	assert.NotNil(t, response, "Response should have been set")
 	assert.Nil(t, err, "Error should have been nil")
 }
 
 func TestStartServer(t *testing.T) {
-	response, err := adminServer.StartServer(context.Background(), &empty.Empty{})
+	adminServer := NewAdminServer(nil)
+	adminServer.v = &mockValidator{}
+	mv := adminServer.v.(*mockValidator)
+	mv.On("validate").Return(nil, nil).Once()
+	response, err := adminServer.StartServer(context.Background(), nil)
 	assert.NotNil(t, response, "Response should have been set")
 	assert.Nil(t, err, "Error should have been nil")
 }
 
+func TestForbidden(t *testing.T) {
+	adminServer := NewAdminServer(nil)
+	adminServer.v = &mockValidator{}
+	mv := adminServer.v.(*mockValidator)
+	mv.On("validate").Return(nil, accessDenied).Times(5)
+
+	ctx := context.Background()
+	status, err := adminServer.GetStatus(ctx, nil)
+	assert.Nil(t, status)
+	assert.Equal(t, accessDenied, err)
+
+	ll, err := adminServer.GetModuleLogLevel(ctx, nil)
+	assert.Nil(t, ll)
+	assert.Equal(t, accessDenied, err)
+
+	llr, err := adminServer.SetModuleLogLevel(ctx, nil)
+	assert.Nil(t, llr)
+	assert.Equal(t, accessDenied, err)
+
+	_, err = adminServer.RevertLogLevels(ctx, nil)
+	assert.Equal(t, accessDenied, err)
+
+	_, err = adminServer.StartServer(ctx, nil)
+	assert.Equal(t, accessDenied, err)
+}
+
 func TestLoggingCalls(t *testing.T) {
+	adminServer := NewAdminServer(nil)
+	adminServer.v = &mockValidator{}
+	mv := adminServer.v.(*mockValidator)
 	flogging.MustGetLogger("test")
 	flogging.SetPeerStartupModulesMap()
 
-	logResponse, err := adminServer.GetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: "test"})
-	assert.NotNil(t, logResponse, "logResponse should have been set")
-	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "logger level should have been the default")
+	wrapLogLevelRequest := func(llr *pb.LogLevelRequest) *pb.AdminOperation {
+		return &pb.AdminOperation{
+			Content: &pb.AdminOperation_LogReq{
+				LogReq: llr,
+			},
+		}
+	}
+
+	for _, llr := range []*pb.LogLevelRequest{{LogModule: "test"}, nil} {
+		mv.On("validate").Return(wrapLogLevelRequest(llr), nil).Once()
+		logResponse, err := adminServer.GetModuleLogLevel(context.Background(), nil)
+		if llr == nil {
+			assert.Nil(t, logResponse)
+			assert.Equal(t, "request is nil", err.Error())
+			continue
+		}
+		assert.NotNil(t, logResponse, "logResponse should have been set")
+		assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "logger level should have been the default")
+		assert.Nil(t, err, "Error should have been nil")
+	}
+
+	for _, llr := range []*pb.LogLevelRequest{{LogModule: "test", LogLevel: "debug"}, nil} {
+		mv.On("validate").Return(wrapLogLevelRequest(llr), nil).Once()
+		logResponse, err := adminServer.SetModuleLogLevel(context.Background(), nil)
+		if llr == nil {
+			assert.Nil(t, logResponse)
+			assert.Equal(t, "request is nil", err.Error())
+			continue
+		}
+		assert.NotNil(t, logResponse, "logResponse should have been set")
+		assert.Equal(t, "DEBUG", logResponse.LogLevel, "logger level should have been set to debug")
+		assert.Nil(t, err, "Error should have been nil")
+	}
+
+	mv.On("validate").Return(nil, nil).Once()
+	_, err := adminServer.RevertLogLevels(context.Background(), nil)
 	assert.Nil(t, err, "Error should have been nil")
 
-	logResponse, err = adminServer.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: "test", LogLevel: "debug"})
-	assert.NotNil(t, logResponse, "logResponse should have been set")
-	assert.Equal(t, "DEBUG", logResponse.LogLevel, "logger level should have been set to debug")
-	assert.Nil(t, err, "Error should have been nil")
-
-	_, err = adminServer.RevertLogLevels(context.Background(), &empty.Empty{})
-	assert.Nil(t, err, "Error should have been nil")
-
-	logResponse, err = adminServer.GetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: "test"})
+	mv.On("validate").Return(wrapLogLevelRequest(&pb.LogLevelRequest{LogModule: "test"}), nil).Once()
+	logResponse, err := adminServer.GetModuleLogLevel(context.Background(), nil)
 	assert.NotNil(t, logResponse, "logResponse should have been set")
 	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "logger level should have been the default")
 	assert.Nil(t, err, "Error should have been nil")
