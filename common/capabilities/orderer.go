@@ -47,9 +47,9 @@ func (cp *OrdererProvider) HasCapability(capability string) bool {
 	}
 }
 
-// SetChannelModPolicyDuringCreate specifies whether the v1.0 undesirable behavior of setting the /Channel
-// group's mod_policy to "" should be fixed or not.
-func (cp *OrdererProvider) SetChannelModPolicyDuringCreate() bool {
+// PredictableChannelTemplate specifies whether the v1.0 undesirable behavior of setting the /Channel
+// group's mod_policy to "" and copying versions from the channel config should be fixed or not.
+func (cp *OrdererProvider) PredictableChannelTemplate() bool {
 	return cp.v11BugFixes
 }
 
