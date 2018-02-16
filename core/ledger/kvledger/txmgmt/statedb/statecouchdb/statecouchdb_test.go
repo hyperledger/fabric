@@ -20,7 +20,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -328,34 +327,13 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	savePoint := version.NewHeight(2, 22)
 	db.ApplyUpdates(batch, savePoint)
 
-	//Create a buffer for the tar file
-	buffer := new(bytes.Buffer)
-	tarWriter := tar.NewWriter(buffer)
-
-	//Add 2 index definitions
-	var files = []struct {
-		Name, Body string
-	}{
-		{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", "{\"index\":{\"fields\":[{\"color\":\"desc\"}]},\"ddoc\":\"indexColorSortName\",\"name\":\"indexColorSortName\",\"type\":\"json\"}"},
-		{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", "{\"index\":{\"fields\":[{\"size\":\"desc\"}]},\"ddoc\":\"indexSizeSortName\",\"name\":\"indexSizeSortName\",\"type\":\"json\"}"},
-	}
-	for _, file := range files {
-		tarHeader := &tar.Header{
-			Name: file.Name,
-			Mode: 0600,
-			Size: int64(len(file.Body)),
-		}
-		err := tarWriter.WriteHeader(tarHeader)
-		testutil.AssertNoError(t, err, "")
-
-		_, err = tarWriter.Write([]byte(file.Body))
-		testutil.AssertNoError(t, err, "")
-
-	}
-	// Make sure to check the error on Close.
-	if err := tarWriter.Close(); err != nil {
-		log.Fatalln(err)
-	}
+	//Create a tar file for test with 2 index definitions
+	dbArtifactsTarBytes := createTarBytesForTest(t,
+		[]*testFile{
+			{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", `{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`},
+			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+		},
+	)
 
 	//Create a query
 	queryString := `{"selector":{"owner":"fred"}}`
@@ -369,38 +347,98 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	_, err = db.ExecuteQuery("ns1", queryString)
 	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
 
-	if handleDefinition, ok := db.(cceventmgmt.ChaincodeLifecycleEventListener); ok {
+	handleDefinition, _ := db.(cceventmgmt.ChaincodeLifecycleEventListener)
 
-		chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: ""}
+	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: ""}
 
-		//Test HandleChaincodeDefinition with a valid tar file
-		err := handleDefinition.HandleChaincodeDeploy(chaincodeDef, buffer.Bytes())
+	//Test HandleChaincodeDefinition with a valid tar file
+	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
+	testutil.AssertNoError(t, err, "")
+
+	//Sleep to allow time for index creation
+	time.Sleep(100 * time.Millisecond)
+	//Create a query with a sort
+	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
+
+	//Query should complete without error
+	_, err = db.ExecuteQuery("ns1", queryString)
+	testutil.AssertNoError(t, err, "")
+
+	//Query namespace "ns2", index is only created in "ns1".  This should return an error.
+	_, err = db.ExecuteQuery("ns2", queryString)
+	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
+
+	//Test HandleChaincodeDefinition with a nil tar file
+	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, nil)
+	testutil.AssertNoError(t, err, "")
+
+	//Test HandleChaincodeDefinition with a bad tar file
+	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, []byte(`This is a really bad tar file`))
+	testutil.AssertNoError(t, err, "Error should not have been thrown for a bad tar file")
+
+	//Test HandleChaincodeDefinition with a nil chaincodeDef
+	err = handleDefinition.HandleChaincodeDeploy(nil, dbArtifactsTarBytes)
+	testutil.AssertError(t, err, "Error should have been thrown for a nil chaincodeDefinition")
+}
+
+func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
+	channelName := "ch1"
+	env := NewTestVDBEnv(t)
+	env.Cleanup(channelName)
+	defer env.Cleanup(channelName)
+	db, err := env.DBProvider.GetDBHandle(channelName)
+	testutil.AssertNoError(t, err, "")
+	db.Open()
+	defer db.Close()
+
+	batch := statedb.NewUpdateBatch()
+	batch.Put("ns1", "key1", []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`), version.NewHeight(1, 1))
+	batch.Put("ns1", "key2", []byte(`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`), version.NewHeight(1, 2))
+	ccEventListener, _ := db.(cceventmgmt.ChaincodeLifecycleEventListener)
+
+	// Create a tar file for test with 2 index definitions - one of them being errorneous
+	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
+	dbArtifactsTarBytes := createTarBytesForTest(t,
+		[]*testFile{
+			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{"META-INF/statedb/couchdb/indexes/badSyntax.json", badSyntaxFileContent},
+		},
+	)
+	// Test HandleChaincodeDefinition with a bad tar file
+	chaincodeName := "ns1"
+	chaincodeVer := "1.0"
+	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: chaincodeName, Hash: []byte("Hash for test chaincode"), Version: chaincodeVer}
+	err = ccEventListener.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
+	testutil.AssertNoError(t, err, "A tar with a bad syntax file should not cause an error")
+	//Sleep to allow time for index creation
+	time.Sleep(100 * time.Millisecond)
+	//Query should complete without error
+	_, err = db.ExecuteQuery("ns1", `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`)
+	testutil.AssertNoError(t, err, "")
+}
+
+type testFile struct {
+	name, body string
+}
+
+func createTarBytesForTest(t *testing.T, testFiles []*testFile) []byte {
+	//Create a buffer for the tar file
+	buffer := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buffer)
+
+	for _, file := range testFiles {
+		tarHeader := &tar.Header{
+			Name: file.name,
+			Mode: 0600,
+			Size: int64(len(file.body)),
+		}
+		err := tarWriter.WriteHeader(tarHeader)
 		testutil.AssertNoError(t, err, "")
 
-		//Test HandleChaincodeDefinition with a nil tar file
-		err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, nil)
+		_, err = tarWriter.Write([]byte(file.body))
 		testutil.AssertNoError(t, err, "")
-
-		//Test HandleChaincodeDefinition with a bad tar file
-		err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, []byte(`This is a really bad tar file`))
-		testutil.AssertError(t, err, "Error should have been thrown for a bad tar file")
-
-		//Test HandleChaincodeDefinition with a nil chaincodeDef
-		err = handleDefinition.HandleChaincodeDeploy(nil, []byte(`This is a really bad tar file`))
-		testutil.AssertError(t, err, "Error should have been thrown for a nil chaincodeDefinition")
-
-		//Sleep to allow time for index creation
-		time.Sleep(100 * time.Millisecond)
-		//Create a query with a sort
-		queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
-
-		//Query should complete without error
-		_, err = db.ExecuteQuery("ns1", queryString)
-		testutil.AssertNoError(t, err, "")
-
-		//Query namespace "ns2", index is only created in "ns1".  This should return an error.
-		_, err = db.ExecuteQuery("ns2", queryString)
-		testutil.AssertError(t, err, "Error should have been thrown for a missing index")
-
 	}
+	// Make sure to check the error on Close.
+	testutil.AssertNoError(t, tarWriter.Close(), "")
+	return buffer.Bytes()
 }

@@ -84,65 +84,59 @@ func NewVersionedDBProvider() (*VersionedDBProvider, error) {
 }
 
 //HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
+// This function delibrately suppresses the errors that occur during the creation of the indexes on couchdb.
+// This is because, in the present code, we do not differentiate between the errors because of couchdb interaction
+// and the errors because of bad index files - the later being unfixable by the admin. Note that the error suppression
+// is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries
+// may be affected, until a new chaincode with fixed indexes is installed and instantiated
 func (vdb *VersionedDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
-
 	logger.Debugf("Entering HandleChaincodeDeploy")
-
 	if chaincodeDefinition == nil {
-		return fmt.Errorf("chaincodeDefinition must not be nil")
+		return fmt.Errorf("chaincodeDefinition found nil while creating couchdb index on chain=%s", vdb.chainName)
 	}
-
 	db, err := vdb.getNamespaceDBHandle(chaincodeDefinition.Name)
 	if err != nil {
 		return err
 	}
-
 	//initialize a reader for the artifacts tar file
 	artifactReader := bytes.NewReader(dbArtifactsTar)
 	tarReader := tar.NewReader(artifactReader)
-
 	for {
-
 		//read the next header from the tar
 		tarHeader, err := tarReader.Next()
-
 		//if the EOF is detected, then exit
 		if err == io.EOF {
 			// end of tar archive
-			break
+			return nil
 		}
 		if err != nil {
-			return err
+			logger.Errorf("Error during reading db artifacts from tar file for chaincode=[%s] on chain=[%s]. Error=%s",
+				chaincodeDefinition, vdb.chainName, err)
+			return nil
 		}
 
 		logger.Debugf("Reading artifact from file: %s", tarHeader.Name)
-
 		//Ensure that this is not a directory
 		if !tarHeader.FileInfo().IsDir() {
-
 			//split the filename into directory and file name
 			dir, file := filepath.Split(tarHeader.Name)
-
 			if dir == "META-INF/statedb/couchdb/indexes/" {
-
-				logger.Debugf("Creating index from file file: %s", file)
-
+				logger.Debugf("Creating index from file: %s", file)
 				//read the tar entry into a byte array
 				indexData, err := ioutil.ReadAll(tarReader)
 				if err != nil {
-					return err
+					logger.Errorf("Error during extracting db artifacts file=[%s] from tar for chaincode=[%s] on chain=[%s]. Error=%s",
+						tarHeader.Name, chaincodeDefinition, vdb.chainName, err)
+					return nil
 				}
-
 				//create the index from the tar entry
-				err = db.CreateIndex(string(indexData))
-				if err != nil {
-					return err
+				if err := db.CreateIndex(string(indexData)); err != nil {
+					logger.Errorf("Error during creation of index from file=[%s] for chaincode=[%s] on chain=[%s]. Error=%s",
+						tarHeader.Name, chaincodeDefinition, vdb.chainName, err)
 				}
 			}
 		}
 	}
-
-	return nil
 }
 
 // GetDBHandle gets the handle to a named database
