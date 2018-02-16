@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	"google.golang.org/grpc"
 
@@ -69,10 +70,14 @@ type argsImpl struct {
 }
 
 func init() {
-	conf = config.Load()
+	conf, err = config.Load()
+	if err != nil {
+		fmt.Println("failed to load config:", err)
+		os.Exit(1)
+	}
 
 	// Load local MSP
-	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil {
 		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
 	}

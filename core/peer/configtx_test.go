@@ -309,9 +309,13 @@ func (h *testHelper) computeDeltaResConfTx(t *testing.T, chainid string, source,
 
 func (h *testHelper) initLocalMSP() {
 	rand.Seed(time.Now().UnixNano())
-	conf := config.Load()
+	conf, err := config.Load()
+	if err != nil {
+		panic(fmt.Errorf("failed to load config: %s", err))
+	}
+
 	// Load local MSP
-	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil {
 		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
 	}

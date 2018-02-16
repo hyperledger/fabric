@@ -95,10 +95,14 @@ func (r *deliverClient) readUntilClose() {
 }
 
 func main() {
-	config := config.Load()
+	config, err := config.Load()
+	if err != nil {
+		fmt.Println("failed to load config:", err)
+		os.Exit(1)
+	}
 
 	// Load local MSP
-	err := mspmgmt.LoadLocalMsp(config.General.LocalMSPDir, config.General.BCCSP, config.General.LocalMSPID)
+	err = mspmgmt.LoadLocalMsp(config.General.LocalMSPDir, config.General.BCCSP, config.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
 		fmt.Println("Failed to initialize local MSP:", err)
 		os.Exit(0)
