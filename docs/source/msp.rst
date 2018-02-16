@@ -117,15 +117,8 @@ and a file:
    CA's certificate
 3. (optional) a folder ``intermediatecerts`` to include PEM files each
    corresponding to an intermediate CA's certificate
-4. (optional) a file ``config.yaml`` to include information on the
-   considered OUs; the latter are defined as pairs of
-   ``<Certificate, OrganizationalUnitIdentifier>`` entries of a yaml array
-   called ``OrganizationalUnitIdentifiers``, where ``Certificate`` represents
-   the relative path to the certificate of the certificate authority (root or
-   intermediate) that should be considered for certifying members of this
-   organizational unit (e.g. ./cacerts/cacert.pem), and
-   ``OrganizationalUnitIdentifier`` represents the actual string as
-   expected to appear in X.509 certificate OU-field (e.g. "COP")
+4. (optional) a file ``config.yaml`` to configure the supported Organizational Units
+   and identity classifications (see respective sections below).
 5. (optional) a folder ``crls`` to include the considered CRLs
 6. a folder ``keystore`` to include a PEM file with the node's signing key;
    we emphasise that currently RSA keys are not supported
@@ -153,6 +146,67 @@ The MSP configuration needs of this block are detailed in the next section.
 the peer or orderer process is restarted. In subsequent releases we aim to
 offer online/dynamic reconfiguration (i.e. without requiring to stop the node
 by using a node managed system chaincode).
+
+Organizational Units
+--------------------
+
+In order to configure the list of Organizational Units that valid members of this MSP should
+include in their X.509 certificate, the ``config.yaml`` file
+needs to specify the organizational unit identifiers. Here is an example:
+
+::
+
+   OrganizationalUnitIdentifiers:
+     - Certificate: "cacerts/cacert1.pem"
+       OrganizationalUnitIdentifier: "commercial"
+     - Certificate: "cacerts/cacert2.pem"
+       OrganizationalUnitIdentifier: "administrators"
+
+The above example declares two organizational unit identifiers: **commercial** and **administrators**.
+An MSP identity is valid if it carries at least one of these organizational unit identifiers.
+The ``Certificate`` field refers to the CA or intermediate CA certificate path
+under which identities, having that specific OU, should be validated.
+The path is relative to the MSP root folder and cannot be empty.
+
+Identity Classification
+-----------------------
+
+The default MSP implementation allows to further classify identities into clients and peers, based on the OUs
+of their x509 certificates.
+An identity should be classified as a **client** if it submits transactions, queries peers, etc.
+An identity should be classified as a **peer** if it endorses or commits transactions.
+In order to define clients and peers of a given MSP, the ``config.yaml`` file
+needs to be set appropriately. Here is an example:
+
+::
+
+   NodeOUs:
+     Enable: true
+     ClientOUIdentifier:
+       Certificate: "cacerts/cacert.pem"
+       OrganizationalUnitIdentifier: "client"
+     PeerOUIdentifier:
+       Certificate: "cacerts/cacert.pem"
+       OrganizationalUnitIdentifier: "peer"
+
+As shown above, the ``NodeOUs.Enable`` is set to ``true``, this enables the identify classification.
+Then, client (peer) identifiers are defined by setting the following properties
+for the ``NodeOUs.ClientOUIdentifier`` (``NodeOUs.PeerOUIdentifier``) key:
+ a. ``OrganizationalUnitIdentifier``: Set this to the value that matches the OU that
+ the x509 certificate of a client (peer) should contain.
+ b. ``Certificate``: Set this to the CA or intermediate CA under which client (peer) identities
+ should be validated. The field is relative to the MSP root folder. It can be empty, meaning
+ that the identity's x509 certificate can be validated under any CA defined in the MSP configuration.
+
+When the classification is enabled, MSP administrators need
+to be clients of that MSP, meaning that their x509 certificates need to carry
+the OU that identifies the clients.
+Notice also that, an identity can be either a client or a peer.
+The two classifications are mutually exclusive. If an identity is neither a client nor a peer,
+the validation will fail.
+
+Finally, notice that for upgraded environments the 1.1 channel capability
+needs to be enabled before identify classification can be used.
 
 Channel MSP setup
 -----------------

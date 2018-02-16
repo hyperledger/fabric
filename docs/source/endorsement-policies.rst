@@ -25,12 +25,14 @@ boolean expressions over principals.
 
 A principal is described in terms of the MSP that is tasked to validate
 the identity of the signer and of the role that the signer has within
-that MSP. Currently, two roles are supported: **member** and **admin**.
+that MSP. Four roles are supported: **member**, **admin**, **client**, and **peer**.
 Principals are described as ``MSP``.\ ``ROLE``, where ``MSP`` is the MSP
-ID that is required, and ``ROLE`` is either one of the two strings
-``member`` and ``admin``. Examples of valid principals are
+ID that is required, and ``ROLE`` is one of the four strings
+``member``, ``admin``, ``client`` and ``peer``. Examples of valid principals are
 ``'Org0.admin'`` (any administrator of the ``Org0`` MSP) or
-``'Org1.member'`` (any member of the ``Org1`` MSP).
+``'Org1.member'`` (any member of the ``Org1`` MSP),
+``'Org1.client'`` (any client of the ``Org1`` MSP), and
+``'Org1.peer'`` (any peer of the ``Org1`` MSP).
 
 The syntax of the language is:
 
@@ -71,6 +73,15 @@ For example:
 This command deploys chaincode ``mycc`` with the policy ``AND('Org1.member',
 'Org2.member')`` which would require that a member of both Org1 and Org2 sign
 the transaction.
+
+Notice that, if the identity classification is enabled (see `MSP Documentation <http://hyperledger-fabric.readthedocs.io/en/latest/msp.html>`_),
+one can use the PEER role to restrict endorsement to only peers.
+
+For example:
+
+::
+
+    peer chaincode instantiate -C <channelid> -n mycc -P "AND('Org1.peer', 'Org2.peer')"
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
