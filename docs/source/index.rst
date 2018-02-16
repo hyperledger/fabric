@@ -97,6 +97,7 @@ Business:
    :caption: Troubleshooting and FAQs
 
    Fabric-FAQ
+   ordering-service-faq
 
 .. toctree::
    :maxdepth: 2
