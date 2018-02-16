@@ -142,8 +142,6 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	}()
 
 	logger.Debugf("Committing updates to state database")
-	txmgr.commitRWLock.Lock()
-	logger.Debugf("Write lock acquired for committing updates to state database")
 	if txmgr.current == nil {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
@@ -153,6 +151,8 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		return err
 	}
 
+	txmgr.commitRWLock.Lock()
+	logger.Debugf("Write lock acquired for committing updates to state database")
 	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
 		return err
