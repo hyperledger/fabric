@@ -85,7 +85,7 @@ Ready to give it a go? Okay then! Execute the following command:
 
 .. code:: bash
 
-  ./byfn.sh generate
+  ./byfn.sh -m generate
 
 You will see a brief description as to what will occur, along with a yes/no command line
 prompt. Respond with a ``y`` or hit the return key to execute the described action.
