@@ -51,7 +51,7 @@ func TestStartCmd(t *testing.T) {
 		assert.NoError(t, cmd.Execute(), "expected to successfully start command")
 	}()
 
-	timer := time.NewTimer(time.Second * 3)
+	timer := time.NewTimer(time.Second * 10)
 	defer timer.Stop()
 
 	// waiting for pid file will be created

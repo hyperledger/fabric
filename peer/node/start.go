@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/viperutil"
-	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/admin"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
@@ -209,7 +209,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Failed creating admin policy: +%v", err)
 	}
-	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer(adminPolicy))
+	pb.RegisterAdminServer(peerServer.Server(), admin.NewAdminServer(adminPolicy))
 
 	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)

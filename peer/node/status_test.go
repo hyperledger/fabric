@@ -19,7 +19,7 @@ package node
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/admin"
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/hyperledger/fabric/core/peer"
@@ -56,7 +56,7 @@ func TestStatusCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create peer server (%s)", err)
 	} else {
-		pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer(&mockEvaluator{}))
+		pb.RegisterAdminServer(peerServer.Server(), admin.NewAdminServer(&mockEvaluator{}))
 		go peerServer.Start()
 		defer peerServer.Stop()
 
@@ -102,7 +102,7 @@ func TestStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create peer server (%s)", err)
 			} else {
-				pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer(&mockEvaluator{}))
+				pb.RegisterAdminServer(peerServer.Server(), admin.NewAdminServer(&mockEvaluator{}))
 				go peerServer.Start()
 				defer peerServer.Stop()
 				if test.expected {
