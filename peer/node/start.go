@@ -201,15 +201,8 @@ func serve(args []string) error {
 
 	logger.Debugf("Running peer")
 
-	// Register the Admin server
-	localMSP := mgmt.GetLocalMSP()
-	mspID := viper.GetString("peer.localMspId")
-	pp := cauthdsl.NewPolicyProvider(localMSP)
-	adminPolicy, _, err := pp.NewPolicy(utils.MarshalOrPanic(cauthdsl.SignedByAnyAdmin([]string{mspID})))
-	if err != nil {
-		logger.Panicf("Failed creating admin policy: +%v", err)
-	}
-	pb.RegisterAdminServer(peerServer.Server(), admin.NewAdminServer(adminPolicy))
+	// Start the Admin server
+	startAdminServer(listenAddr, peerServer.Server())
 
 	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)
@@ -563,6 +556,55 @@ func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, err
 	pb.RegisterEventsServer(grpcServer.Server(), ehServer)
 
 	return grpcServer, nil
+}
+
+func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) bool {
+	// By default, admin listens on the same port as the peer data service
+	if adminListenAddress == "" {
+		return false
+	}
+	_, peerPort, err := net.SplitHostPort(peerListenAddr)
+	if err != nil {
+		logger.Panicf("Failed parsing peer listen address")
+	}
+
+	_, adminPort, err := net.SplitHostPort(adminListenAddress)
+	if err != nil {
+		logger.Panicf("Failed parsing admin listen address")
+	}
+	// Admin service has a separate listener in case it doesn't match the peer's
+	// configured service
+	return adminPort != peerPort
+}
+
+func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
+	adminListenAddress := viper.GetString("peer.adminService.listenAddress")
+	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
+	localMSP := mgmt.GetLocalMSP()
+	mspID := viper.GetString("peer.localMspId")
+	pp := cauthdsl.NewPolicyProvider(localMSP)
+	adminPolicy, _, err := pp.NewPolicy(utils.MarshalOrPanic(cauthdsl.SignedByAnyAdmin([]string{mspID})))
+	if err != nil {
+		logger.Panicf("Failed creating admin policy: +%v", err)
+	}
+	gRPCService := peerServer
+	if separateLsnrForAdmin {
+		logger.Info("Creating gRPC server for admin service on", adminListenAddress)
+		serverConfig, err := peer.GetServerConfig()
+		if err != nil {
+			logger.Fatalf("Error loading secure config for admin service (%s)", err)
+		}
+		adminServer, err := peer.NewPeerServer(adminListenAddress, serverConfig)
+		if err != nil {
+			logger.Fatalf("Failed to create admin server (%s)", err)
+		}
+		gRPCService = adminServer.Server()
+		defer func() {
+			go adminServer.Start()
+		}()
+	}
+
+	pb.RegisterAdminServer(gRPCService, admin.NewAdminServer(adminPolicy))
 }
 
 func initializeEventsServerConfig(mutualTLS bool) *producer.EventsServerConfig {
