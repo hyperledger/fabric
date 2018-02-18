@@ -6,7 +6,7 @@
 #
 
 # current version of fabric released
-export VERSION=${1:-1.0.5}
+export VERSION=${1:-1.0.6}
 # current version of fabric-ca released
 export CA_VERSION=${2:-$VERSION}
 export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')

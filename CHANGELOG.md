@@ -1,3 +1,15 @@
+## v1.0.6
+Sun Feb 18 11:21:04 EST 2018
+
+* [ea2761f](https://github.com/hyperledger/fabric/commit/ea2761f) [FAB-8096](https://jira.hyperledger.org/browse/FAB-8096) Fix README in release branch
+* [0d922fb](https://github.com/hyperledger/fabric/commit/0d922fb) [FAB-8075](https://jira.hyperledger.org/browse/FAB-8075) Peer Deliver client doesn't failover to OSN
+* [c23f6cc](https://github.com/hyperledger/fabric/commit/c23f6cc) [FAB-7884](https://jira.hyperledger.org/browse/FAB-7884) direct couchdb logs to stderr
+* [1f2cc91](https://github.com/hyperledger/fabric/commit/1f2cc91) [FAB-6057](https://jira.hyperledger.org/browse/FAB-6057) typo: block should be blocks
+* [b68b09b](https://github.com/hyperledger/fabric/commit/b68b09b) [FAB-6058](https://jira.hyperledger.org/browse/FAB-6058) context.ordererUsers not initialized
+* [78e18d1](https://github.com/hyperledger/fabric/commit/78e18d1) [FAB-7434](https://jira.hyperledger.org/browse/FAB-7434) Normalize UID/GID in cc packages
+* [a8728bc](https://github.com/hyperledger/fabric/commit/a8728bc) [FAB-7156](https://jira.hyperledger.org/browse/FAB-7156) Fix for an error ignored in commit path
+* [21ea763](https://github.com/hyperledger/fabric/commit/21ea763) [FAB-7284](https://jira.hyperledger.org/browse/FAB-7284) Prepare fabric for v1.0.6 release
+
 ## v1.0.5
 Mon Dec  4 14:54:59 EST 2017
 

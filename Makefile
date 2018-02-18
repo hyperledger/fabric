@@ -38,7 +38,7 @@
 PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION = 1.0.6
 PREV_VERSION = 1.0.5
-IS_RELEASE = false
+IS_RELEASE = true
 
 ifneq ($(IS_RELEASE),true)
 EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
