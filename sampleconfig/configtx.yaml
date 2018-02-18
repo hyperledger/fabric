@@ -277,7 +277,11 @@ Orderer: &OrdererDefaults
     # Orderer Type: The orderer implementation to start.
     # Available types are "solo" and "kafka".
     OrdererType: solo
-
+    
+    # Addresses here is a nonexhaustive list of orderers the peers and clients can 
+    # connect to. Adding/removing nodes from this list has no impact on their 
+    # participation in ordering. 
+    # NOTE: In the solo case, this should be a one-item list.
     Addresses:
         - 127.0.0.1:7050
 

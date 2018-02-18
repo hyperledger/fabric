@@ -92,6 +92,17 @@ Kafka
 ~~~~~
 
 :Question:
+  **How do I remove a node from the ordering service?**
+
+:Answer:
+  This is a two step-process:
+  
+  1. Add the node's certificate to the relevant orderer's MSP CRL to prevent peers/clients from connecting to it. 
+  2. Prevent the node from connecting to the Kafka cluster by leveraging standard Kafka access control measures such as TLS CRLs, or firewalling.
+
+..
+
+:Question:
   **I have never deployed a Kafka/ZK cluster before, and I want to use the
   Kafka-based ordering service. How do I proceed?**
 
