@@ -26,7 +26,12 @@ execute the following commands:
 .. code:: bash
 
   git clone -b master https://github.com/hyperledger/fabric-samples.git
+  git checkout {TAG}　
   cd fabric-samples
+
+.. note:: To ensure the samples are compatible with the version of Fabric binaries you download below, 
+          checkout the samples ``{TAG}`` that matches your Fabric version, for example, v1.1.0-alpha.
+          To see a list of all fabric-samples tags, use command "git tag".
 
 .. _binaries:
 
@@ -58,7 +63,7 @@ you will extract the platform-specific binaries:
 
 .. note:: You can use the command above for any published version of Hyperledger
           Fabric. Simply replace '1.1.0-alpha' with the version identifier
-          of the version you wish to install.
+          of the version you wish to install. 
 
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you
