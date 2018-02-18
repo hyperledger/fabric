@@ -6,13 +6,14 @@
 ---
 ################################################################################
 #
-#   Profiles
+#   PROFILES
 #
-#   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool.  The profiles which specify consortiums
-#   are to be used for generating the orderer genesis block.  With the correct
+#   Different configuration profiles may be encoded here to be specified as
+#   parameters to the configtxgen tool. The profiles which specify consortiums
+#   are to be used for generating the orderer genesis block. With the correct
 #   consortium members defined in the orderer genesis block, channel creation
-#   requests may be generated with only the org member names and a consortium name
+#   requests may be generated with only the org member names and a consortium
+#   name.
 #
 ################################################################################
 Profiles:
@@ -59,9 +60,9 @@ Profiles:
                     - <<: *SampleOrg
                       AdminPrincipal: Role.MEMBER
 
-    # SampleDevModeSoloV1.1 mimics the SampleDevModeSolo definition
-    # but additionally defines the v1.1 only capabilities which do
-    # not allow a mixed v1.0.x v1.1.x network
+    # SampleDevModeSoloV1.1 mimics the SampleDevModeSolo definition but
+    # additionally defines the v1.1 only capabilities which do not allow a
+    # mixed v1.0.x v1.1.x network.
     SampleDevModeSoloV1_1:
         Capabilities:
             <<: *ChannelCapabilities
@@ -105,9 +106,9 @@ Profiles:
                     - <<: *SampleOrg
                       AdminPrincipal: Role.MEMBER
 
-    # SampleDevModeKafkaV1_1 mimics the SampleDevModeKafka definition
-    # but additionally defines the v1.1 only capabilities which do
-    # not allow a mixed v1.0.x v1.1.x network
+    # SampleDevModeKafkaV1_1 mimics the SampleDevModeKafka definition but
+    # additionally defines the v1.1 only capabilities which do not allow a
+    # mixed v1.0.x v1.1.x network.
     SampleDevModeKafkaV1_1:
         Capabilities:
             <<: *ChannelCapabilities
@@ -198,8 +199,8 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
 
-    # SampleEmptyInsecureChannel defines a channel with no members and therefore
-    # no access control.
+    # SampleEmptyInsecureChannel defines a channel with no members and
+    # therefore no access control.
     SampleEmptyInsecureChannel:
         Consortium: SampleConsortium
         Application:
@@ -214,9 +215,9 @@ Profiles:
             Organizations:
                 - *SampleOrg
 
-    # SampleSingleMSPChannelV1_1 defines a channel just as SampleSingleMSPChannel
-    # However, it also defines the capabilities map which makes this channel
-    # incompatible with v1.0.x peers.
+    # SampleSingleMSPChannelV1_1 defines a channel just as
+    # SampleSingleMSPChannel. However, it also defines the capabilities map which
+    # makes this channel incompatible with v1.0.x peers.
     SampleSingleMSPChannelV1_1:
         Consortium: SampleConsortium
         Application:
@@ -227,10 +228,10 @@ Profiles:
 
 ################################################################################
 #
-#   Section: Organizations
+#   ORGANIZATIONS
 #
-#   - This section defines the different organizational identities which will be
-#   referenced later in the configuration.
+#   This section defines the organizational identities that can be referenced
+#   in the configuration profiles.
 #
 ################################################################################
 Organizations:
@@ -238,11 +239,11 @@ Organizations:
     # SampleOrg defines an MSP using the sampleconfig. It should never be used
     # in production but may be used as a template for other definitions.
     - &SampleOrg
-        # DefaultOrg defines the organization which is used in the sampleconfig
-        # of the fabric.git development environment.
+        # Name is the key by which this org will be referenced in channel
+        # configuration transactions.
         Name: SampleOrg
 
-        # ID to load the MSP definition as.
+        # ID is the key by which this org's MSP definition will be referenced.
         ID: DEFAULT
 
         # MSPDir is the filesystem path which contains the MSP configuration.
@@ -254,18 +255,18 @@ Organizations:
         # ADMIN and role type MEMBER respectively.
         AdminPrincipal: Role.ADMIN
 
+        # AnchorPeers defines the location of peers which can be used for
+        # cross-org gossip communication. Note, this value is only encoded in
+        # the genesis block in the Application section context.
         AnchorPeers:
-            # AnchorPeers defines the location of peers which can be used for
-            # cross-org gossip communication. Note, this value is only encoded
-            # in the genesis block in the Application section context.
             - Host: 127.0.0.1
               Port: 7051
 
 ################################################################################
 #
-#   SECTION: Orderer
+#   ORDERER
 #
-#   - This section defines the values to encode into a config transaction or
+#   This section defines the values to encode into a config transaction or
 #   genesis block for orderer related parameters.
 #
 ################################################################################
@@ -290,12 +291,12 @@ Orderer: &OrdererDefaults
 
         # Absolute Max Bytes: The absolute maximum number of bytes allowed for
         # the serialized messages in a batch. If the "kafka" OrdererType is
-        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on the
-        # Kafka brokers to a value that is larger than this one.
+        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on
+        # the Kafka brokers to a value that is larger than this one.
         AbsoluteMaxBytes: 10 MB
 
-        # Preferred Max Bytes: The preferred maximum number of bytes allowed for
-        # the serialized messages in a batch. A message larger than the
+        # Preferred Max Bytes: The preferred maximum number of bytes allowed
+        # for the serialized messages in a batch. A message larger than the
         # preferred max bytes will result in a batch larger than preferred max
         # bytes.
         PreferredMaxBytes: 512 KB
@@ -313,29 +314,29 @@ Orderer: &OrdererDefaults
             - kafka1:9092
             - kafka2:9092
 
-    # Organizations is the list of orgs which are defined as participants on
-    # the orderer side of the network.
+    # Organizations lists the orgs participating on the orderer side of the
+    # network.
     Organizations:
 
 ################################################################################
 #
-#   SECTION: Application
+#   APPLICATION
 #
-#   - This section defines the values to encode into a config transaction or
-#   genesis block for application related parameters.
+#   This section defines the values to encode into a config transaction or
+#   genesis block for application-related parameters.
 #
 ################################################################################
 Application: &ApplicationDefaults
 
-    # Organizations is the list of orgs which are defined as participants on
-    # the application side of the network.
+    # Organizations lists the orgs participating on the application side of the
+    # network.
     Organizations:
 
 ################################################################################
 #
-#   SECTION: Capabilities
+#   CAPABILITIES
 #
-#   - This section defines the capabilities of fabric network. This is a new
+#   This section defines the capabilities of fabric network. This is a new
 #   concept as of v1.1.0 and should not be utilized in mixed networks with
 #   v1.0.x peers and orderers.  Capabilities define features which must be
 #   present in a fabric binary for that binary to safely participate in the
@@ -370,9 +371,9 @@ Capabilities:
         # leave this flag set to true.
         V1_1: true
 
-    # Application capabilities apply only to the peer network, and may be safely
-    # manipulated without concern for upgrading orderers.  Set the value of the
-    # capability to true to require it.
+    # Application capabilities apply only to the peer network, and may be
+    # safely manipulated without concern for upgrading orderers.  Set the value
+    # of the capability to true to require it.
     Application: &ApplicationCapabilities
         # V1.1 for Application is a catchall flag for behavior which has been
         # determined to be desired for all peers running v1.0.x, but the
@@ -384,14 +385,15 @@ Capabilities:
         # with experimental build tag.  When set to true, private data
         # collections can be configured upon chaincode instantiation and
         # utilized within chaincode Invokes.
-        # Note that use of this feature with non "experimental" binaries on
-        # the network may cause a fork.
+        # NOTE: Use of this feature with non "experimental" binaries on the
+        # network may cause a fork.
         V1_1_PVTDATA_EXPERIMENTAL: false
-        # V1_1_RESOURCETREE_EXPERIMENTAL is an Application capability to enable the
-        # resources capability. Currently this is needed for defining resource based
-        # access control (RBAC). RBAC helps set fine-grained access control on system
-        # resources such as the endorser and various system chaincodes. Default is V1.0
-        # based access control based on CHANNEL_READERS and CHANNEL_WRITERS
-        # Note that use of this feature with non "experimental" binaries on
+        # V1_1_RESOURCETREE_EXPERIMENTAL is an Application capability to enable
+        # the resources capability. Currently this is needed for defining
+        # resource-based access control (RBAC). RBAC helps set fine-grained
+        # access control on system resources such as the endorser and various
+        # system chaincodes. Default is v1.0-based access control based on
+        # CHANNEL_READERS and CHANNEL_WRITERS.
+        # NOTE: Use of this feature with non "experimental" binaries on
         # the network may cause a fork.
         V1_1_RESOURCETREE_EXPERIMENTAL: false
