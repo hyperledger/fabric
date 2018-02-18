@@ -427,7 +427,7 @@ version. The Kafka protocol version is set using either the ``Kafka.Version`` ke
 ``orderer.yaml`` file or via the ``ORDERER_KAFKA_VERSION`` environment variable in a
 Docker deployment. Hyperledger Fabric v1.0 provided sample Kafka docker images containing
 Kafka version ``0.9.0.1``. Hyperledger Fabric v1.1 provides sample Kafka docker images containing
-Kafka version ``0.10.2.1``.
+Kafka version ``1.0.0``.
 
 Upgrading CouchDB
 -----------------

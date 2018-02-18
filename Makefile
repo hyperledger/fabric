@@ -42,6 +42,9 @@
 
 BASE_VERSION = 1.1.0-beta
 PREV_VERSION = 1.1.0-alpha
+CHAINTOOL_RELEASE=1.0.1
+BASEIMAGE_RELEASE=0.4.6
+
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
 # export PROJECT_NAME=hyperledger/fabric-test
@@ -68,8 +71,6 @@ PKGNAME = github.com/$(PROJECT_NAME)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
-CHAINTOOL_RELEASE=1.0.1
-BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
 # defined in common/metadata/metadata.go
 METADATA_VAR = Version=$(PROJECT_VERSION)
