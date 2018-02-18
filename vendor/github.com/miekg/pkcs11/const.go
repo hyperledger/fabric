@@ -23,6 +23,18 @@ const (
 	CKO_VENDOR_DEFINED    uint = 0x80000000
 )
 
+const (
+	CKG_MGF1_SHA1         uint = 0x00000001
+	CKG_MGF1_SHA224       uint = 0x00000005
+	CKG_MGF1_SHA256       uint = 0x00000002
+	CKG_MGF1_SHA384       uint = 0x00000003
+	CKG_MGF1_SHA512       uint = 0x00000004
+)
+
+const (
+	CKZ_DATA_SPECIFIED    uint = 0x00000001
+)
+
 // Generated with: awk '/#define CK[AFKMRC]/{ print $2 " = " $3 }' pkcs11t.h | sed -e 's/UL$//g' -e 's/UL)$/)/g'
 
 // All the flag (CKF_), attribute (CKA_), error code (CKR_), key type (CKK_), certificate type (CKC_) and
@@ -86,11 +98,11 @@ const (
 	CKK_SHA512_224_HMAC                  = 0x00000027
 	CKK_SHA512_256_HMAC                  = 0x00000028
 	CKK_SHA512_T_HMAC                    = 0x00000029
-	CKK_SHA_1_HMAC                       = 0x00000040
-	CKK_SHA224_HMAC                      = 0x00000041
-	CKK_SHA256_HMAC                      = 0x00000042
-	CKK_SHA384_HMAC                      = 0x00000043
-	CKK_SHA512_HMAC                      = 0x00000044
+        CKK_SHA_1_HMAC                       = 0x00000028
+        CKK_SHA224_HMAC                      = 0x0000002E
+        CKK_SHA256_HMAC                      = 0x0000002B
+        CKK_SHA384_HMAC                      = 0x0000002C
+        CKK_SHA512_HMAC                      = 0x0000002D
 	CKK_SEED                             = 0x00000050
 	CKK_GOSTR3410                        = 0x00000060
 	CKK_GOSTR3411                        = 0x00000061
@@ -472,6 +484,10 @@ const (
 	CKM_EC_KEY_PAIR_GEN                  = 0x00001040
 	CKM_ECDSA                            = 0x00001041
 	CKM_ECDSA_SHA1                       = 0x00001042
+	CKM_ECDSA_SHA224                     = 0x00001043
+	CKM_ECDSA_SHA256                     = 0x00001044
+	CKM_ECDSA_SHA384                     = 0x00001045
+	CKM_ECDSA_SHA512                     = 0x00001046
 	CKM_ECDH1_DERIVE                     = 0x00001050
 	CKM_ECDH1_COFACTOR_DERIVE            = 0x00001051
 	CKM_ECMQV_DERIVE                     = 0x00001052

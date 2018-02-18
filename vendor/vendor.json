@@ -399,10 +399,10 @@
 			"revisionTime": "2016-04-24T11:30:07Z"
 		},
 		{
-			"checksumSHA1": "yOED17cgEIwsqkhg16Y0xiTHiZ0=",
+			"checksumSHA1": "kfyF+aIibLC33Qn2xeuNuiJ+waU=",
 			"path": "github.com/miekg/pkcs11",
-			"revision": "2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd",
-			"revisionTime": "2016-12-07T19:14:20Z"
+			"revision": "88ac7c418f89b164432a00c46ec7b7612d686b57",
+			"revisionTime": "2018-02-08T12:37:54Z"
 		},
 		{
 			"checksumSHA1": "k8BLoBCJFqzsCFeg0yp0WpakxyM=",

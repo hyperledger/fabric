@@ -5,18 +5,9 @@
 package pkcs11
 
 /*
-#define CK_PTR *
-#ifndef NULL_PTR
-#define NULL_PTR 0
-#endif
-#define CK_DEFINE_FUNCTION(returnType, name) returnType name
-#define CK_DECLARE_FUNCTION(returnType, name) returnType name
-#define CK_DECLARE_FUNCTION_POINTER(returnType, name) returnType (* name)
-#define CK_CALLBACK_FUNCTION(returnType, name) returnType (* name)
-
 #include <stdlib.h>
 #include <string.h>
-#include "pkcs11.h"
+#include "pkcs11go.h"
 
 CK_ULONG Index(CK_ULONG_PTR array, CK_ULONG i)
 {
@@ -196,12 +187,12 @@ func NewAttribute(typ uint, x interface{}) *Attribute {
 }
 
 // cAttribute returns the start address and the length of an attribute list.
-func cAttributeList(a []*Attribute) (arena, C.CK_ATTRIBUTE_PTR, C.CK_ULONG) {
+func cAttributeList(a []*Attribute) (arena, C.ckAttrPtr, C.CK_ULONG) {
 	var arena arena
 	if len(a) == 0 {
 		return nil, nil, 0
 	}
-	pa := make([]C.CK_ATTRIBUTE, len(a))
+	pa := make([]C.ckAttr, len(a))
 	for i := 0; i < len(a); i++ {
 		pa[i]._type = C.CK_ATTRIBUTE_TYPE(a[i].Type)
 		//skip attribute if length is 0 to prevent panic in arena.Allocate
@@ -211,7 +202,7 @@ func cAttributeList(a []*Attribute) (arena, C.CK_ATTRIBUTE_PTR, C.CK_ULONG) {
 
 		pa[i].pValue, pa[i].ulValueLen = arena.Allocate(a[i].Value)
 	}
-	return arena, C.CK_ATTRIBUTE_PTR(&pa[0]), C.CK_ULONG(len(a))
+	return arena, C.ckAttrPtr(&pa[0]), C.CK_ULONG(len(a))
 }
 
 func cDate(t time.Time) []byte {
@@ -245,12 +236,12 @@ func NewMechanism(mech uint, x interface{}) *Mechanism {
 	return m
 }
 
-func cMechanismList(m []*Mechanism) (arena, C.CK_MECHANISM_PTR, C.CK_ULONG) {
+func cMechanismList(m []*Mechanism) (arena, C.ckMechPtr, C.CK_ULONG) {
 	var arena arena
 	if len(m) == 0 {
 		return nil, nil, 0
 	}
-	pm := make([]C.CK_MECHANISM, len(m))
+	pm := make([]C.ckMech, len(m))
 	for i := 0; i < len(m); i++ {
 		pm[i].mechanism = C.CK_MECHANISM_TYPE(m[i].Mechanism)
 		//skip parameter if length is 0 to prevent panic in arena.Allocate
@@ -260,7 +251,7 @@ func cMechanismList(m []*Mechanism) (arena, C.CK_MECHANISM_PTR, C.CK_ULONG) {
 
 		pm[i].pParameter, pm[i].ulParameterLen = arena.Allocate(m[i].Parameter)
 	}
-	return arena, C.CK_MECHANISM_PTR(&pm[0]), C.CK_ULONG(len(m))
+	return arena, C.ckMechPtr(&pm[0]), C.CK_ULONG(len(m))
 }
 
 // MechanismInfo provides information about a particular mechanism.
