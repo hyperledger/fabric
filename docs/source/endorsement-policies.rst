@@ -57,9 +57,11 @@ Specifying endorsement policies for a chaincode
 
 Using this language, a chaincode deployer can request that the
 endorsements for a chaincode be validated against the specified policy.
-NOTE - the default policy requires one signature from a member of the
-``DEFAULT`` MSP). This is used if a policy is not specified in the CLI
-when instantiating chaincode.
+
+.. note:: if not specified at instantiation time, the endorsement policy
+          defaults to "any member of the organizations in the channel".
+          For example, a channel with "Org1" and "Org2" would have a default
+          endorsement policy of "OR('Org1.member', 'Org2.member')".
 
 The policy can be specified at instantiate time using the ``-P`` switch,
 followed by the policy.
@@ -82,6 +84,13 @@ For example:
 ::
 
     peer chaincode instantiate -C <channelid> -n mycc -P "AND('Org1.peer', 'Org2.peer')"
+
+.. note:: A new organization added to the channel after instantiation can query a chaincode
+          (provided the query has appropriate authorization as defined by channel policies
+          and any application level checks enforced by the chaincode) but will not be able
+          to commit a transaction endorsed by it.  The endorsement policy needs to be modified
+          to allow transactions to be committed with endorsements from the new organization
+          (see `Upgrade & invoke <http://hyperledger-fabric.readthedocs.io/en/latest/channel_update.html>`_).
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

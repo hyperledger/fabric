@@ -436,6 +436,12 @@ and reissue the ``peer channel join command``:
 Upgrade & invoke
 ================
 
+The new organization added to the channel can query a chaincode (provided the query has
+appropriate authorization as defined by channel policies and any application level checks
+enforced by the chaincode) but will not be able to commit a transaction.  The endorsement policy
+needs to be modified to allow transactions to be committed with endorsements from the new
+organization.
+
 The final piece of the puzzle is to increment the chaincode version and update
 the endorsement policy to include Org3.  Stay in the Org3 CLI container and
 install the chaincode.  Since we know that an upgrade is coming, we can forgo
