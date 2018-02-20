@@ -86,5 +86,11 @@ func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	}
 
 	defer broadcastClient.Close()
-	return broadcastClient.Send(sCtxEnv)
+	err = broadcastClient.Send(sCtxEnv)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Successfully submitted channel update")
+	return nil
 }
