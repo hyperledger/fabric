@@ -26,8 +26,9 @@ execute the following commands:
 .. code:: bash
 
   git clone -b master https://github.com/hyperledger/fabric-samples.git
-  git checkout {TAG}　
   cd fabric-samples
+  git checkout {TAG}　
+
 
 .. note:: To ensure the samples are compatible with the version of Fabric binaries you download below, 
           checkout the samples ``{TAG}`` that matches your Fabric version, for example, v1.1.0-alpha.
