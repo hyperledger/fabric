@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -33,12 +34,12 @@ import (
 func checkSpec(spec *pb.ChaincodeSpec) error {
 	// Don't allow nil value
 	if spec == nil {
-		return errors.New("expected chaincode specification, nil received")
+		return errors.New("Expected chaincode specification, nil received")
 	}
 
 	platform, err := platforms.Find(spec.Type)
 	if err != nil {
-		return fmt.Errorf("failed to determine platform type: %s", err)
+		return fmt.Errorf("Failed to determine platform type: %s", err)
 	}
 
 	return platform.ValidateSpec(spec)
@@ -55,7 +56,7 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 
 		codePackageBytes, err = container.GetChaincodePackageBytes(spec)
 		if err != nil {
-			err = fmt.Errorf("error getting chaincode package bytes: %s", err)
+			err = fmt.Errorf("Error getting chaincode package bytes: %s", err)
 			return nil, err
 		}
 	}
@@ -73,7 +74,7 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	// Build the spec
 	input := &pb.ChaincodeInput{}
 	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
-		return spec, fmt.Errorf("chaincode argument error: %s", err)
+		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
 
 	chaincodeLang = strings.ToUpper(chaincodeLang)
@@ -82,7 +83,7 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	} else {
 		logger.Debug("java chaincode disabled")
 		if pb.ChaincodeSpec_Type_value[chaincodeLang] == int32(pb.ChaincodeSpec_JAVA) {
-			return nil, fmt.Errorf("java chaincode is work-in-progress and disabled")
+			return nil, fmt.Errorf("Java chaincode is work-in-progress and disabled")
 		}
 	}
 	spec = &pb.ChaincodeSpec{
@@ -93,7 +94,7 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	return spec, nil
 }
 
-func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFactory) (err error) {
+func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *ChaincodeCmdFactory) (err error) {
 	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return err
@@ -116,45 +117,43 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 			logger.Debugf("ESCC invoke result: %v", proposalResp)
 			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
 			if err != nil {
-				return fmt.Errorf("error while unmarshaling proposal response payload: %s", err)
+				return fmt.Errorf("Error while unmarshaling proposal response payload: %s", err)
 			}
 			ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
 			if err != nil {
-				return fmt.Errorf("error while unmarshaling chaincode action: %s", err)
+				return fmt.Errorf("Error while unmarshaling chaincode action: %s", err)
 			}
 			logger.Warningf("Endorsement failure during invoke. chaincode result: %v", ca.Response)
 		} else {
 			logger.Debugf("ESCC invoke result: %v", proposalResp)
 			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
 			if err != nil {
-				return fmt.Errorf("error while unmarshaling proposal response payload: %s", err)
+				return fmt.Errorf("Error while unmarshaling proposal response payload: %s", err)
 			}
 			ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
 			if err != nil {
-				return fmt.Errorf("error while unmarshaling chaincode action: %s", err)
+				return fmt.Errorf("Error while unmarshaling chaincode action: %s", err)
 			}
 			logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
 		}
 	} else {
 		if proposalResp == nil {
-			return fmt.Errorf("error query %s by endorsing: %s", chainFuncName, err)
-		}
-
-		if chaincodeQueryRaw && chaincodeQueryHex {
-			return fmt.Errorf("options --raw (-r) and --hex (-x) are not compatible")
+			return fmt.Errorf("Error query %s by endorsing: %s", chainFuncName, err)
 		}
 
 		if chaincodeQueryRaw {
-			fmt.Println(proposalResp.Response.Payload)
-			return nil
+			if chaincodeQueryHex {
+				return fmt.Errorf("Options --raw (-r) and --hex (-x) are not compatible")
+			}
+			fmt.Print("Query Result (Raw): ")
+			os.Stdout.Write(proposalResp.Response.Payload)
+		} else {
+			if chaincodeQueryHex {
+				fmt.Printf("Query Result: %x\n", proposalResp.Response.Payload)
+			} else {
+				fmt.Printf("Query Result: %s\n", string(proposalResp.Response.Payload))
+			}
 		}
-
-		if chaincodeQueryHex {
-			fmt.Printf("%x\n", proposalResp.Response.Payload)
-			return nil
-		}
-
-		fmt.Println(string(proposalResp.Response.Payload))
 	}
 	return nil
 }
@@ -215,20 +214,20 @@ func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
 		ccarray = append(ccarray, cc)
 	}
 
-	ccp := &pcommon.CollectionConfigPackage{Config: ccarray}
+	ccp := &pcommon.CollectionConfigPackage{ccarray}
 	return proto.Marshal(ccp)
 }
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	//we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
-		return fmt.Errorf("must supply value for %s name parameter", chainFuncName)
+		return fmt.Errorf("Must supply value for %s name parameter.", chainFuncName)
 	}
 
 	if cmd.Name() == instantiateCmdName || cmd.Name() == installCmdName ||
 		cmd.Name() == upgradeCmdName || cmd.Name() == packageCmdName {
 		if chaincodeVersion == common.UndefinedParamValue {
-			return fmt.Errorf("chaincode version is not provided for %s", cmd.Name())
+			return fmt.Errorf("Chaincode version is not provided for %s", cmd.Name())
 		}
 	}
 
@@ -249,7 +248,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	if policy != common.UndefinedParamValue {
 		p, err := cauthdsl.FromString(policy)
 		if err != nil {
-			return fmt.Errorf("invalid policy %s", policy)
+			return fmt.Errorf("Invalid policy %s", policy)
 		}
 		policyMarshalled = putils.MarshalOrPanic(p)
 	}
@@ -271,7 +270,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		var f interface{}
 		err := json.Unmarshal([]byte(chaincodeCtorJSON), &f)
 		if err != nil {
-			return fmt.Errorf("chaincode argument error: %s", err)
+			return fmt.Errorf("Chaincode argument error: %s", err)
 		}
 		m := f.(map[string]interface{})
 		sm := make(map[string]interface{})
@@ -306,13 +305,13 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 	if isEndorserRequired {
 		endorserClient, err = common.GetEndorserClientFnc()
 		if err != nil {
-			return nil, fmt.Errorf("error getting endorser client %s: %s", chainFuncName, err)
+			return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 		}
 	}
 
 	signer, err := common.GetDefaultSignerFnc()
 	if err != nil {
-		return nil, fmt.Errorf("error getting default signer: %s", err)
+		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
 	var broadcastClient common.BroadcastClient
@@ -320,10 +319,10 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 		if len(common.OrderingEndpoint) == 0 {
 			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient)
 			if err != nil {
-				return nil, fmt.Errorf("error getting (%s) orderer endpoint: %s", channelID, err)
+				return nil, fmt.Errorf("Error getting (%s) orderer endpoint: %s", channelID, err)
 			}
 			if len(orderingEndpoints) == 0 {
-				return nil, fmt.Errorf("error no orderer endpoint got for %s", channelID)
+				return nil, fmt.Errorf("Error no orderer endpoint got for %s", channelID)
 			}
 			logger.Infof("Get chain(%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
 			// override viper env
@@ -333,7 +332,7 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 		broadcastClient, err = common.GetBroadcastClientFnc()
 
 		if err != nil {
-			return nil, fmt.Errorf("error getting broadcast client: %s", err)
+			return nil, fmt.Errorf("Error getting broadcast client: %s", err)
 		}
 	}
 	return &ChaincodeCmdFactory{
@@ -368,7 +367,7 @@ func ChaincodeInvokeOrQuery(
 
 	creator, err := signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("error serializing identity for %s: %s", signer.GetIdentifier(), err)
+		return nil, fmt.Errorf("Error serializing identity for %s: %s", signer.GetIdentifier(), err)
 	}
 
 	funcName := "invoke"
@@ -380,7 +379,7 @@ func ChaincodeInvokeOrQuery(
 	var tMap map[string][]byte
 	if transient != "" {
 		if err := json.Unmarshal([]byte(transient), &tMap); err != nil {
-			return nil, fmt.Errorf("error parsing transient string: %s", err)
+			return nil, fmt.Errorf("Error parsing transient string: %s", err)
 		}
 	}
 
@@ -393,13 +392,13 @@ func ChaincodeInvokeOrQuery(
 	var signedProp *pb.SignedProposal
 	signedProp, err = putils.GetSignedProposal(prop, signer)
 	if err != nil {
-		return nil, fmt.Errorf("error creating signed proposal  %s: %s", funcName, err)
+		return nil, fmt.Errorf("Error creating signed proposal  %s: %s", funcName, err)
 	}
 
 	var proposalResp *pb.ProposalResponse
 	proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("error endorsing %s: %s", funcName, err)
+		return nil, fmt.Errorf("Error endorsing %s: %s", funcName, err)
 	}
 
 	if invoke {
@@ -410,12 +409,12 @@ func ChaincodeInvokeOrQuery(
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
 			if err != nil {
-				return proposalResp, fmt.Errorf("could not assemble transaction, err %s", err)
+				return proposalResp, fmt.Errorf("Could not assemble transaction, err %s", err)
 			}
 
 			// send the envelope for ordering
 			if err = bc.Send(env); err != nil {
-				return proposalResp, fmt.Errorf("error sending transaction %s: %s", funcName, err)
+				return proposalResp, fmt.Errorf("Error sending transaction %s: %s", funcName, err)
 			}
 		}
 	}

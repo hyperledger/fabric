@@ -33,7 +33,7 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		Long:      fmt.Sprintf("Get endorsed result of %s function call and print it. It won't generate transaction.", chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return chaincodeQuery(cmd, cf)
+			return chaincodeQuery(cmd, args, cf)
 		},
 	}
 	flagList := []string{
@@ -52,7 +52,7 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	return chaincodeQueryCmd
 }
 
-func chaincodeQuery(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
+func chaincodeQuery(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	if channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -64,5 +64,5 @@ func chaincodeQuery(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 		}
 	}
 
-	return chaincodeInvokeOrQuery(cmd, false, cf)
+	return chaincodeInvokeOrQuery(cmd, args, false, cf)
 }
