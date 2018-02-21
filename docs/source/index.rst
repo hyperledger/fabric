@@ -75,6 +75,7 @@ Business:
    error-handling
    logging-control
    peer-commands
+   cryptogen-commands
    enable_tls
    kafka
 
