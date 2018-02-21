@@ -78,8 +78,6 @@ Fabric uses the `sarama client library <https://github.com/Shopify/sarama>`_ and
 
 Using the ``Kafka.Version`` key in ``orderer.yaml``, you can configure which version of the Kafka protocol is used to communicate with the Kafka cluster's brokers. Kafka brokers are backward compatible with older protocol versions. Because of a Kafka broker's backward compatibility with older protocol versions, upgrading your Kafka brokers to a new version does not require an update of the ``Kafka.Version`` key value, but the Kafka cluster might suffer a `performance penalty <https://kafka.apache.org/documentation/#upgrade_11_message_format>`_ while using an older protocol version.
 
-The sample Kafka server image provided by Fabric contains Kafka server version ``0.10.2.1``. Out of the box, Fabric's ordering service nodes are configured to use the Kafka protocol messages that correspond to this version. On a production deployment, or if you are simply not using the sample Kafka server images provided by Fabric, consider configuring ``Kafka.Version`` to match your Kafka broker version in order to take advantage of any enhancements (if any) enabled by the corresponding Kafka protocol version.
-
 Debugging
 ---------
 
