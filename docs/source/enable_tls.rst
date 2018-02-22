@@ -94,7 +94,7 @@ Configuring TLS for the peer CLI
 --------------------------------
 
 The following environment variables must be set when running peer CLI commands against a
-TLS enabled peer node or orderer:
+TLS enabled peer node:
 
 * ``CORE_PEER_TLS_ENABLED`` = ``true``
 * ``CORE_PEER_TLS_ROOTCERT_FILE`` = fully qualified path of the file that contains cert chain
@@ -106,6 +106,21 @@ must to be set in addition to those above:
 * ``CORE_PEER_TLS_CLIENTAUTHREQUIRED`` = ``true``
 * ``CORE_PEER_TLS_CLIENTCERT_FILE`` = fully qualified path of the client certificate
 * ``CORE_PEER_TLS_CLIENTKEY_FILE`` = fully qualified path of the client private key
+
+When running a command that connects to orderer service, like `peer channel <create|update|fetch>`
+or `peer chaincode <invoke|instantiate>`, following command line arguments must also be specified
+if TLS is enabled on the orderer:
+
+* --tls
+* --cafile <fully qualified path of the file that contains cert chain of the orderer CA>
+
+If TLS client authentication is enabled on the orderer, the following arguments must be specified
+as well:
+
+* --clientauth
+* --keyfile <fully qualified path of the file that contains the client private key>
+* --certfile <fully qualified path of the file that contains the client certificate>
+
 
 Debugging TLS issues
 --------------------
