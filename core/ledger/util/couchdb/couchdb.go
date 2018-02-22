@@ -156,6 +156,13 @@ type DBReturn struct {
 	Reason     string `json:"reason"`
 }
 
+//CreateIndexResponse contains an the index creation response from CouchDB
+type CreateIndexResponse struct {
+	Result string `json:"result"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+}
+
 //AttachmentInfo contains the definition for an attached file for couchdb
 type AttachmentInfo struct {
 	Name            string
@@ -1134,19 +1141,19 @@ func (dbclient *CouchDatabase) ListIndex() (*[]IndexResult, error) {
 }
 
 // CreateIndex method provides a function creating an index
-func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) error {
+func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndexResponse, error) {
 
 	logger.Debugf("Entering CreateIndex()  indexdefinition=%s", indexdefinition)
 
 	//Test to see if this is a valid JSON
 	if IsJSON(indexdefinition) != true {
-		return fmt.Errorf("JSON format is not valid")
+		return nil, fmt.Errorf("JSON format is not valid")
 	}
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
-		return err
+		return nil, err
 	}
 
 	indexURL.Path = dbclient.DBName + "/_index"
@@ -1156,14 +1163,41 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) error {
 
 	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, indexURL.String(), []byte(indexdefinition), "", "", maxRetries, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer closeResponseBody(resp)
 
-	logger.Infof("Created CouchDB index in state database %s", dbclient.DBName)
+	if resp == nil {
+		return nil, fmt.Errorf("An invalid response was received from CouchDB")
+	}
 
-	return nil
+	//Read the response body
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
+	couchDBReturn := &CreateIndexResponse{}
+
+	jsonBytes := []byte(respBody)
+
+	//unmarshal the response
+	err = json.Unmarshal(jsonBytes, &couchDBReturn)
+	if err != nil {
+		return nil, err
+	}
+
+	if couchDBReturn.Result == "created" {
+
+		logger.Infof("Created CouchDB index [%s] in state database [%s] using design document [%s]", couchDBReturn.Name, dbclient.DBName, couchDBReturn.ID)
+
+		return couchDBReturn, nil
+
+	}
+
+	logger.Infof("Updated CouchDB index [%s] in state database [%s] using design document [%s]", couchDBReturn.Name, dbclient.DBName, couchDBReturn.ID)
+
+	return couchDBReturn, nil
 }
 
 // DeleteIndex method provides a function deleting an index

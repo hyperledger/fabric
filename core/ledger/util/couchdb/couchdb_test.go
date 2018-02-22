@@ -216,7 +216,7 @@ func TestBadCouchDBInstance(t *testing.T) {
 	testutil.AssertError(t, err, "Error should have been thrown with ListIndex and invalid connection")
 
 	//Test CreateIndex with bad connection
-	err = badDB.CreateIndex("")
+	_, err = badDB.CreateIndex("")
 	testutil.AssertError(t, err, "Error should have been thrown with CreateIndex and invalid connection")
 
 	//Test DeleteIndex with bad connection
@@ -964,7 +964,7 @@ func TestIndexOperations(t *testing.T) {
 	indexDefSize := "{\"index\":{\"fields\":[{\"size\":\"desc\"}]},\"ddoc\":\"indexSizeSortDoc\", \"name\":\"indexSizeSortName\",\"type\":\"json\"}"
 
 	//Create the index
-	err = db.CreateIndex(indexDefSize)
+	_, err = db.CreateIndex(indexDefSize)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
 
 	//Retrieve the list of indexes
@@ -988,7 +988,7 @@ func TestIndexOperations(t *testing.T) {
 	indexDefColor := "{\"index\":{\"fields\":[{\"color\":\"desc\"}]}}"
 
 	//Create the index
-	err = db.CreateIndex(indexDefColor)
+	_, err = db.CreateIndex(indexDefColor)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
 
 	//Retrieve the list of indexes
@@ -1034,7 +1034,7 @@ func TestIndexOperations(t *testing.T) {
 	testutil.AssertError(t, err, fmt.Sprintf("Error thrown while querying without a valid index"))
 
 	//Create the index
-	err = db.CreateIndex(indexDefSize)
+	_, err = db.CreateIndex(indexDefSize)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
 
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
@@ -1048,8 +1048,21 @@ func TestIndexOperations(t *testing.T) {
 	indexDefSize = "{\"index\":{\"fields\":[{\"data.size\":\"desc\"},{\"data.owner\":\"desc\"}]},\"ddoc\":\"indexSizeOwnerSortDoc\", \"name\":\"indexSizeOwnerSortName\",\"type\":\"json\"}"
 
 	//Create the index
-	err = db.CreateIndex(indexDefSize)
+	dbResp, err := db.CreateIndex(indexDefSize)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
+
+	//verify the response is "created" for an index creation
+	testutil.AssertEquals(t, dbResp.Result, "created")
+
+	//Delay for 100ms since CouchDB index list is updated async after index create/drop
+	time.Sleep(100 * time.Millisecond)
+
+	//Update the index
+	dbResp, err = db.CreateIndex(indexDefSize)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
+
+	//verify the response is "exists" for an update
+	testutil.AssertEquals(t, dbResp.Result, "exists")
 
 	//Retrieve the list of indexes
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
@@ -1064,14 +1077,14 @@ func TestIndexOperations(t *testing.T) {
 	indexDefSize = "{\"index\"{\"fields\":[{\"data.size\":\"desc\"},{\"data.owner\":\"desc\"}]},\"ddoc\":\"indexSizeOwnerSortDoc\", \"name\":\"indexSizeOwnerSortName\",\"type\":\"json\"}"
 
 	//Create the index
-	err = db.CreateIndex(indexDefSize)
+	_, err = db.CreateIndex(indexDefSize)
 	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid index JSON"))
 
 	//Create an invalid index definition with a valid JSON and an invalid index definition
 	indexDefSize = "{\"index\":{\"fields2\":[{\"data.size\":\"desc\"},{\"data.owner\":\"desc\"}]},\"ddoc\":\"indexSizeOwnerSortDoc\", \"name\":\"indexSizeOwnerSortName\",\"type\":\"json\"}"
 
 	//Create the index
-	err = db.CreateIndex(indexDefSize)
+	_, err = db.CreateIndex(indexDefSize)
 	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid index definition"))
 
 }

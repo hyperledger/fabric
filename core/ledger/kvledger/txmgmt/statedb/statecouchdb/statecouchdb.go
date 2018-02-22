@@ -130,7 +130,7 @@ func (vdb *VersionedDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.C
 					return nil
 				}
 				//create the index from the tar entry
-				if err := db.CreateIndex(string(indexData)); err != nil {
+				if _, err := db.CreateIndex(string(indexData)); err != nil {
 					logger.Errorf("Error during creation of index from file=[%s] for chaincode=[%s] on chain=[%s]. Error=%s",
 						tarHeader.Name, chaincodeDefinition, vdb.chainName, err)
 				}
