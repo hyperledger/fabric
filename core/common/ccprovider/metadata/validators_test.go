@@ -45,11 +45,11 @@ func TestBadIndexJSON(t *testing.T) {
 
 	err = ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
 
-	assert.Error(t, err, "Should have received an InvalidFileError")
+	assert.Error(t, err, "Should have received an InvalidIndexContentError")
 
-	// Type assertion on InvalidFileError
-	_, ok := err.(*InvalidFileError)
-	assert.True(t, ok, "Should have received an InvalidFileError")
+	// Type assertion on InvalidIndexContentError
+	_, ok := err.(*InvalidIndexContentError)
+	assert.True(t, ok, "Should have received an InvalidIndexContentError")
 
 	t.Log("SAMPLE ERROR STRING:", err.Error())
 }
@@ -108,6 +108,27 @@ func TestCantReadFile(t *testing.T) {
 
 	err := ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
 	assert.Error(t, err, "Should have received error reading file")
+
+}
+
+func TestBadMetadataExtension(t *testing.T) {
+	testDir := filepath.Join(packageTestDir, "BadMetadataExtension")
+	cleanupDir(testDir)
+	defer cleanupDir(testDir)
+
+	filename := filepath.Join(testDir, "META-INF/statedb/couchdb/indexes", "myIndex.go")
+	filebytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err := writeToFile(filename, filebytes)
+	assert.NoError(t, err, "Error writing to file")
+
+	err = ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
+	assert.Error(t, err, "Should have received an BadExtensionError")
+
+	// Type assertion on BadExtensionError
+	_, ok := err.(*BadExtensionError)
+	assert.True(t, ok, "Should have received an BadExtensionError")
+
 }
 
 func TestIndexValidation(t *testing.T) {
