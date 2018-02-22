@@ -398,25 +398,14 @@ release/%/install: $(PROJECT_FILES)
 		@chmod +x $(@D)/bin/get-docker-images.sh
 
 .PHONY: dist
-dist: dist-clean release
-	cd release/$(MARCH) && tar -czvf hyperledger-fabric-$(MARCH).$(PROJECT_VERSION).tar.gz *
+dist: dist-clean dist/$(MARCH)
 
-dist-all: dist-clean release-all $(patsubst %,dist/%, $(RELEASE_PLATFORMS))
+dist-all: dist-clean $(patsubst %,dist/%, $(RELEASE_PLATFORMS))
 
-dist/windows-amd64:
-	cd release/windows-amd64 && tar -czvf hyperledger-fabric-windows-amd64.$(PROJECT_VERSION).tar.gz *
-
-dist/darwin-amd64:
-	cd release/darwin-amd64 && tar -czvf hyperledger-fabric-darwin-amd64.$(PROJECT_VERSION).tar.gz *
-
-dist/linux-amd64:
-	cd release/linux-amd64 && tar -czvf hyperledger-fabric-linux-amd64.$(PROJECT_VERSION).tar.gz *
-
-dist/linux-ppc64le:
-	cd release/linux-ppc64le && tar -czvf hyperledger-fabric-linux-ppc64le.$(PROJECT_VERSION).tar.gz *
-
-dist/linux-s390x:
-	cd release/linux-s390x && tar -czvf hyperledger-fabric-linux-s390x.$(PROJECT_VERSION).tar.gz *
+dist/%: release/%
+	mkdir -p release/$(@F)/config
+	cp -r sampleconfig/*.yaml release/$(@F)/config
+	cd release/$(@F) && tar -czvf hyperledger-fabric-$(@F).$(PROJECT_VERSION).tar.gz *
 
 .PHONY: protos
 protos: buildenv
