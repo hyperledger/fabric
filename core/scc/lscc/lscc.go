@@ -18,6 +18,7 @@ package lscc
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 
 	"github.com/golang/protobuf/proto"
@@ -27,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	ccmetadata "github.com/hyperledger/fabric/core/common/ccprovider/metadata"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -363,6 +365,32 @@ func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
 	return true
 }
 
+func isValidStatedbArtifactsTar(statedbArtifactsTar []byte) error {
+
+	var dbArtifactsDirFilter = map[string]bool{"META-INF/statedb/couchdb/indexes": true}
+
+	// Extract the metadata files from the archive
+	fileEntries, err := ccprovider.ExtractFileEntries(statedbArtifactsTar, dbArtifactsDirFilter)
+	if err != nil {
+		return err
+	}
+
+	// iterate through the files and validate
+	for _, fileEntry := range fileEntries {
+		indexData := fileEntry.FileContent
+		tarDir, filename := filepath.Split(fileEntry.FileHeader.Name)
+
+		// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
+		// Clean metadata directory to remove trailing slash
+		err = ccmetadata.ValidateMetadataFile(filename, indexData, filepath.Clean(tarDir))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // executeInstall implements the "install" Invoke transaction
 func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte) error {
 	ccpack, err := ccprovider.GetCCPackage(ccbytes)
@@ -388,6 +416,10 @@ func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
 	if err != nil {
 		return err
+	}
+
+	if err = isValidStatedbArtifactsTar(statedbArtifactsTar); err != nil {
+		return InvalidStatedbArtifactsErr(err.Error())
 	}
 
 	chaincodeDefinition := &cceventmgmt.ChaincodeDefinition{

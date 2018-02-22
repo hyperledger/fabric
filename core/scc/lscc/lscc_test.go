@@ -42,7 +42,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createFS bool, scc *lifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
+func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createInvalidIndex bool, createFS bool, scc *lifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
 
 	codePackageBytes := bytes.NewBuffer(nil)
@@ -52,6 +52,14 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 	err := cutil.WriteBytesToPackage("src/garbage.go", []byte(name+path+version), tw)
 	if err != nil {
 		return nil, err
+	}
+
+	// create an invalid couchdb index definition for negative testing
+	if createInvalidIndex {
+		err = cutil.WriteBytesToPackage("META-INF/statedb/couchdb/indexes/badIndex.json", []byte("invalid index definition"), tw)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tw.Close()
@@ -106,21 +114,22 @@ func TestInstall(t *testing.T) {
 
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	testInstall(t, "example02", "0", path, "", "Alice", scc, stub)
-	testInstall(t, "example02-2", "1.0", path, "", "Alice", scc, stub)
-	testInstall(t, "example02.go", "0", path, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub)
-	testInstall(t, "", "0", path, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub)
-	testInstall(t, "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub)
-	testInstall(t, "example02", "0", path, "Authorization for INSTALL has been denied", "Bob", scc, stub)
-	testInstall(t, "example02-2", "1.0-alpha+001", path, "", "Alice", scc, stub)
-	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, "", "Alice", scc, stub)
+	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub)
+	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub)
+	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub)
+	testInstall(t, "", "0", path, false, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub)
+	testInstall(t, "example02", "1{}0", path, false, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub)
+	testInstall(t, "example02", "0", path, true, InvalidStatedbArtifactsErr("").Error(), "Alice", scc, stub)
+	testInstall(t, "example02", "0", path, false, "Authorization for INSTALL has been denied", "Bob", scc, stub)
+	testInstall(t, "example02-2", "1.0-alpha+001", path, false, "", "Alice", scc, stub)
+	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, false, "", "Alice", scc, stub)
 
 	scc.support.(*lscc.MockSupport).PutChaincodeToLocalStorageErr = errors.New("barf")
 
-	testInstall(t, "example02", "0", path, "barf", "Alice", scc, stub)
+	testInstall(t, "example02", "0", path, false, "barf", "Alice", scc, stub)
 }
 
-func testInstall(t *testing.T, ccname string, version string, path string, expectedErrorMsg string, caller string, scc *lifeCycleSysCC, stub *shim.MockStub) {
+func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *lifeCycleSysCC, stub *shim.MockStub) {
 	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
@@ -133,7 +142,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, expec
 		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 
-	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, scc)
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, createInvalidIndex, false, scc)
 	assert.NoError(t, err)
 	b := utils.MarshalOrPanic(cds)
 
@@ -238,7 +247,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 
-	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, install, scc)
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, install, scc)
 	assert.NoError(t, err)
 
 	if forceBlankCCName {
@@ -350,7 +359,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 		scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 	}
 
-	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true, scc)
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, true, scc)
 	assert.NoError(t, err)
 	b := utils.MarshalOrPanic(cds)
 
@@ -365,7 +374,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyErr = saved1
 	scc.support.(*lscc.MockSupport).CheckInstantiationPolicyMap = saved2
 
-	newCds, err := constructDeploymentSpec(newccname, path, newversion, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true, scc)
+	newCds, err := constructDeploymentSpec(newccname, path, newversion, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, true, scc)
 	assert.NoError(t, err)
 	newb := utils.MarshalOrPanic(newCds)
 
@@ -495,13 +504,13 @@ func TestGETINSTALLEDCHAINCODES(t *testing.T) {
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETINSTALLEDCHAINCODES)}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
-	_, err := constructDeploymentSpec("ccname", "path", "version", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, scc)
+	_, err := constructDeploymentSpec("ccname", "path", "version", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, false, scc)
 	assert.NoError(t, err)
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETINSTALLEDCHAINCODES)}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
-	_, err = constructDeploymentSpec("ccname", "path", "version", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true, scc)
+	_, err = constructDeploymentSpec("ccname", "path", "version", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, true, scc)
 	assert.NoError(t, err)
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETINSTALLEDCHAINCODES)}, sProp)

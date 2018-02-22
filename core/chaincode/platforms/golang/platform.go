@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -428,22 +429,21 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 
 	for _, file := range files {
 
+		// file.Path represents os localpath
+		// file.Name represents tar packagepath
+
 		// If the file is metadata rather than golang code, remove the leading go code path, for example:
 		// original file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
 		// updated file.Name:   META-INF/statedb/couchdb/indexes/indexOwner.json
 		if file.IsMetadata {
 
-			// Ensure META-INF directory can be found, then grab the META-INF relative path to use for packaging
-			if !strings.HasPrefix(file.Name, filepath.Join("src", code.Pkg, "META-INF")) {
-				return nil, fmt.Errorf("Could not find META-INF directory in metadata file %s.", file.Name)
-			}
 			file.Name, err = filepath.Rel(filepath.Join("src", code.Pkg), file.Name)
 			if err != nil {
-				return nil, fmt.Errorf("Could not get relative path for META-INF directory %s. Error:%s", file.Name, err)
+				return nil, fmt.Errorf("This error was caused by bad packaging of the metadata.  The file [%s] is marked as MetaFile, however not located under META-INF   Error:[%s]", file.Name, err)
 			}
 
-			// Split the filename itself from its path
-			_, filename := filepath.Split(file.Name)
+			// Split the tar location (file.Name) into a tar package directory and filename
+			packageDir, filename := filepath.Split(file.Name)
 
 			// Hidden files are not supported as metadata, therefore ignore them.
 			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
@@ -452,9 +452,15 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 				continue
 			}
 
+			fileBytes, err := ioutil.ReadFile(file.Path)
+			if err != nil {
+				return nil, err
+			}
+
 			// Validate metadata file for inclusion in tar
 			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
-			err = ccmetadata.ValidateMetadataFile(file.Path, filepath.Dir(file.Name))
+			// Clean metadata directory to remove trailing slash
+			err = ccmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
 			if err != nil {
 				return nil, err
 			}

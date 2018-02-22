@@ -11,12 +11,20 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 )
 
 const (
 	ccPackageStatedbDir = "META-INF/statedb/"
 )
+
+// tarFileEntry encapsulates a file entry and it's contents inside a tar
+type TarFileEntry struct {
+	FileHeader  *tar.Header
+	FileContent []byte
+}
 
 // ExtractStatedbArtifactsAsTarbytes extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
@@ -82,4 +90,36 @@ func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifacts
 	}
 	ccproviderLogger.Debug("Created statedb artifact tar")
 	return statedbTarBuffer.Bytes(), nil
+}
+
+// ExtractFileEntries extract file entries from the given `tarBytes`. A file entry is included in the
+// returned results only if it is located in the dir specified in the `filterDirs` parameter
+func ExtractFileEntries(tarBytes []byte, filterDirs map[string]bool) ([]*TarFileEntry, error) {
+	var fileEntries []*TarFileEntry
+	//initialize a tar reader
+	tarReader := tar.NewReader(bytes.NewReader(tarBytes))
+	for {
+		//read the next header from the tar
+		tarHeader, err := tarReader.Next()
+		//if the EOF is detected, then exit
+		if err == io.EOF {
+			// end of tar archive
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		ccproviderLogger.Debugf("Processing entry from tar: %s", tarHeader.Name)
+		//Ensure that this is a file located in the dir present in the 'filterDirs'
+		if !tarHeader.FileInfo().IsDir() && filterDirs[filepath.Dir(tarHeader.Name)] {
+			ccproviderLogger.Debugf("Selecting file entry from tar: %s", tarHeader.Name)
+			//read the tar entry into a byte array
+			fileContent, err := ioutil.ReadAll(tarReader)
+			if err != nil {
+				return nil, err
+			}
+			fileEntries = append(fileEntries, &TarFileEntry{tarHeader, fileContent})
+		}
+	}
+	return fileEntries, nil
 }

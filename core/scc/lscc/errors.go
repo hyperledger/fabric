@@ -78,6 +78,13 @@ func (f InvalidVersionErr) Error() string {
 	return fmt.Sprintf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_',  '-', '+', and '.'", string(f))
 }
 
+//InvalidStatedbArtifactsErr invalid state database artifacts error
+type InvalidStatedbArtifactsErr string
+
+func (f InvalidStatedbArtifactsErr) Error() string {
+	return fmt.Sprintf("invalid state database artifact: %s", string(f))
+}
+
 //ChaincodeMismatchErr chaincode name from two places don't match
 type ChaincodeMismatchErr string
 
