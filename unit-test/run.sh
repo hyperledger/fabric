@@ -64,14 +64,19 @@ serial_test_packages() {
 # will be tested in parallel
 run_tests() {
     echo ${GO_TAGS}
+    flags="-cover"
+    if [ -n "${VERBOSE}" ]; then
+      flags="-v -cover"
+    fi
+
     local parallel=$(parallel_test_packages "$@")
     if [ -n "${parallel}" ]; then
-        time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${parallel[@]} -short -timeout=20m
+        time go test ${flags} -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${parallel[@]} -short -timeout=20m
     fi
 
     local serial=$(serial_test_packages "$@")
     if [ -n "${serial}" ]; then
-        time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${serial[@]} -short -p 1 -timeout=20m
+        time go test ${flags} -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${serial[@]} -short -p 1 -timeout=20m
     fi
 }
 
