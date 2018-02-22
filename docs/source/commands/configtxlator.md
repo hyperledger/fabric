@@ -1,0 +1,139 @@
+configtxlator
+=============
+
+# peer channel
+
+## Description
+
+The `configtxlator` command allows users to translate between protobuf and JSON
+versions of fabric data structures and create config updates.  The command may
+either start a REST server to expose its functions over HTTP or may be utilized
+directly as a command line tool.
+
+## Syntax
+
+The `configtxlator` tool has four sub-commands.
+
+### configtxlator start
+
+Starts the REST server.
+
+```
+usage: configtxlator start [<flags>]
+
+Start the configtxlator REST server
+
+Flags:
+  --help                Show context-sensitive help (also try --help-long and --help-man).
+  --hostname="0.0.0.0"  The hostname or IP on which the REST server will listen
+  --port=7059           The port on which the REST server will listen
+```
+
+### configtxlator proto_encode
+
+Converts JSON documents into protobuf messages.
+
+```
+usage: configtxlator proto_encode --type=TYPE [<flags>]
+
+Converts a JSON document to protobuf.
+
+Flags:
+  --help                Show context-sensitive help (also try --help-long and --help-man).
+  --type=TYPE           The type of protobuf structure to encode to. For example, 'common.Config'.
+  --input=/dev/stdin    A file containing the JSON document.
+  --output=/dev/stdout  A file to write the output to.
+```
+
+### configtxlator proto_decode
+
+Converts protobuf messages into JSON documents.
+
+```
+usage: configtxlator proto_decode --type=TYPE [<flags>]
+
+Converts a proto message to JSON.
+
+Flags:
+  --help                Show context-sensitive help (also try --help-long and --help-man).
+  --type=TYPE           The type of protobuf structure to decode from. For example, 'common.Config'.
+  --input=/dev/stdin    A file containing the proto message.
+  --output=/dev/stdout  A file to write the JSON document to.
+```
+
+### configtxlator compute_update
+
+Computes a config update based on an original, and modified config.
+
+```
+usage: configtxlator compute_update --channel_id=CHANNEL_ID [<flags>]
+
+Takes two marshaled common.Config messages and computes the config update which transitions between the two.
+
+Flags:
+  --help                   Show context-sensitive help (also try --help-long and --help-man).
+  --original=ORIGINAL      The original config message.
+  --updated=UPDATED        The updated config message.
+  --channel_id=CHANNEL_ID  The name of the channel for this update.
+  --output=/dev/stdout     A file to write the JSON document to.
+```
+
+### configtxlator version
+
+Shows the version.
+
+```
+usage: configtxlator version
+
+Show version information
+
+Flags:
+  --help  Show context-sensitive help (also try --help-long and --help-man).
+```
+
+## Examples
+
+### Decoding
+
+Decode a block named `fabric_block.pb` to JSON and print to stdout.
+
+```
+configtxlator proto_decode --input fabric_block.pb --type common.Block
+```
+
+Alternatively, after starting the REST server, the following curl command
+performs the same operation through the REST API.
+
+```
+curl -X POST --data-binary @fabric_block.pb "${CONFIGTXLATOR_URL}/protolator/decode/common.Block"
+```
+
+### Encoding
+
+Convert a JSON document for a policy from stdin to a file named `policy.pb`.
+
+```
+configtxlator proto_encode --type common.Policy --output policy.pb
+```
+
+Alternatively, after starting the REST server, the following curl command
+performs the same operation through the REST API.
+
+```
+curl -X POST --data-binary /dev/stdin "${CONFIGTXLATOR_URL}/protolator/encode/common.Policy" > policy.pb
+```
+
+### Pipelines
+
+Compute a config update from `original_config.pb` and `modified_config.pb` and decode it to JSON to stdout.
+
+```
+configtxlator compute_update --channel_id testchan --original original_config.pb --updated modified_config.pb | configtxlator proto_decode --type common.ConfigUpdate
+```
+
+Alternatively, after starting the REST server, the following curl commands
+perform the same operations through the REST API.
+
+```
+curl -X POST -F channel=testchan -F "original=@original_config.pb" -F "updated=@modified_config.pb" "${CONFIGTXLATOR_URL}/configtxlator/compute/update-from-configs" | curl -X POST --data-binary /dev/stdin "${CONFIGTXLATOR_URL}/protolator/encode/common.ConfigUpdate"
+```
