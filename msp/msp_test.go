@@ -400,6 +400,11 @@ func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 
 	_, err = mspMgr.DeserializeIdentity(serializedID)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("MSP %s is unknown", sid.Mspid))
+
+	_, err = mspMgr.DeserializeIdentity([]byte("barf"))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not deserialize")
 }
 
 func TestIdentitiesGetters(t *testing.T) {

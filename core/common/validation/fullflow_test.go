@@ -35,13 +35,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getProposal() (*peer.Proposal, error) {
+func getProposal(channel string) (*peer.Proposal, error) {
 	cis := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: getChaincodeID(),
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, signerSerialized)
+	proposal, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channel, cis, signerSerialized)
 	return proposal, err
 }
 
@@ -120,7 +120,7 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 
 func TestGoodPath(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal()
+	prop, err := getProposal(util.GetTestChainID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -194,7 +194,7 @@ func TestGoodPath(t *testing.T) {
 
 func TestTXWithTwoActionsRejected(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal()
+	prop, err := getProposal(util.GetTestChainID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -227,7 +227,7 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 
 func TestBadProp(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal()
+	prop, err := getProposal(util.GetTestChainID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -304,7 +304,7 @@ func corrupt(bytes []byte) {
 
 func TestBadTx(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal()
+	prop, err := getProposal(util.GetTestChainID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -361,7 +361,7 @@ func TestBadTx(t *testing.T) {
 
 func Test2EndorsersAgree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal()
+	prop, err := getProposal(util.GetTestChainID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -404,7 +404,7 @@ func Test2EndorsersAgree(t *testing.T) {
 
 func Test2EndorsersDisagree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal()
+	prop, err := getProposal(util.GetTestChainID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -469,6 +469,7 @@ func TestInvocationsBadArgs(t *testing.T) {
 
 var signer msp.SigningIdentity
 var signerSerialized []byte
+var signerMSPId string
 
 func TestMain(m *testing.M) {
 	// setup crypto algorithms
@@ -486,6 +487,7 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 		return
 	}
+	signerMSPId = signer.GetMSPIdentifier()
 
 	signerSerialized, err = signer.Serialize()
 	if err != nil {
