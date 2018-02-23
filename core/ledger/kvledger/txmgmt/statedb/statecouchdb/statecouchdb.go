@@ -6,20 +6,17 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
-	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -39,6 +36,8 @@ const (
 )
 
 var reservedFields = []string{idField, revField, versionField, deletedField}
+
+var dbArtifactsDirFilter = map[string]bool{"META-INF/statedb/couchdb/indexes": true}
 
 // querySkip is implemented for future use by query paging
 // currently defaulted to 0 and is not used
@@ -98,45 +97,26 @@ func (vdb *VersionedDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.C
 	if err != nil {
 		return err
 	}
-	//initialize a reader for the artifacts tar file
-	artifactReader := bytes.NewReader(dbArtifactsTar)
-	tarReader := tar.NewReader(artifactReader)
-	for {
-		//read the next header from the tar
-		tarHeader, err := tarReader.Next()
-		//if the EOF is detected, then exit
-		if err == io.EOF {
-			// end of tar archive
-			return nil
-		}
-		if err != nil {
-			logger.Errorf("Error during reading db artifacts from tar file for chaincode=[%s] on chain=[%s]. Error=%s",
-				chaincodeDefinition, vdb.chainName, err)
-			return nil
-		}
 
-		logger.Debugf("Reading artifact from file: %s", tarHeader.Name)
-		//Ensure that this is not a directory
-		if !tarHeader.FileInfo().IsDir() {
-			//split the filename into directory and file name
-			dir, file := filepath.Split(tarHeader.Name)
-			if dir == "META-INF/statedb/couchdb/indexes/" {
-				logger.Debugf("Creating index from file: %s", file)
-				//read the tar entry into a byte array
-				indexData, err := ioutil.ReadAll(tarReader)
-				if err != nil {
-					logger.Errorf("Error during extracting db artifacts file=[%s] from tar for chaincode=[%s] on chain=[%s]. Error=%s",
-						tarHeader.Name, chaincodeDefinition, vdb.chainName, err)
-					return nil
-				}
-				//create the index from the tar entry
-				if _, err := db.CreateIndex(string(indexData)); err != nil {
-					logger.Errorf("Error during creation of index from file=[%s] for chaincode=[%s] on chain=[%s]. Error=%s",
-						tarHeader.Name, chaincodeDefinition, vdb.chainName, err)
-				}
-			}
+	fileEntries, err := ccprovider.ExtractFileEntries(dbArtifactsTar, dbArtifactsDirFilter)
+	if err != nil {
+		logger.Errorf("Error during extracting db artifacts from tar for chaincode=[%s] on chain=[%s]. Error=%s",
+			chaincodeDefinition, vdb.chainName, err)
+		return nil
+	}
+
+	for _, fileEntry := range fileEntries {
+		indexData := fileEntry.FileContent
+		filename := fileEntry.FileHeader.Name
+		_, err = db.CreateIndex(string(indexData))
+		if err != nil {
+			logger.Errorf("Error during creation of index from file=[%s] for chaincode=[%s] on chain=[%s]. Error=%s",
+				filename, chaincodeDefinition, vdb.chainName, err)
 		}
 	}
+
+	return nil
+
 }
 
 // GetDBHandle gets the handle to a named database

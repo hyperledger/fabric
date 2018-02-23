@@ -22,13 +22,11 @@ func TestGoodIndexJSON(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	filename := filepath.Join(testDir, "META-INF/statedb/couchdb/indexes", "myIndex.json")
-	filebytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+	fileName := "myIndex.json"
+	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+	metadataType := "META-INF/statedb/couchdb/indexes"
 
-	err := writeToFile(filename, filebytes)
-	assert.NoError(t, err, "Error writing to file")
-
-	err = ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
+	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
 	assert.NoError(t, err, "Error validating a good index")
 }
 
@@ -37,13 +35,11 @@ func TestBadIndexJSON(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	filename := filepath.Join(testDir, "META-INF/statedb/couchdb/indexes", "myIndex.json")
-	filebytes := []byte("invalid json")
+	fileName := "myIndex.json"
+	fileBytes := []byte("invalid json")
+	metadataType := "META-INF/statedb/couchdb/indexes"
 
-	err := writeToFile(filename, filebytes)
-	assert.NoError(t, err, "Error writing to file")
-
-	err = ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
+	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
 
 	assert.Error(t, err, "Should have received an InvalidIndexContentError")
 
@@ -59,14 +55,12 @@ func TestIndexWrongLocation(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
+	fileName := "myIndex.json"
+	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
 	// place the index one directory too high
-	filename := filepath.Join(testDir, "META-INF/statedb/couchdb", "myIndex.json")
-	filebytes := []byte("invalid json")
+	metadataType := "META-INF/statedb/couchdb"
 
-	err := writeToFile(filename, filebytes)
-	assert.NoError(t, err, "Error writing to file")
-
-	err = ValidateMetadataFile(filename, "META-INF/statedb/couchdb")
+	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
 	assert.Error(t, err, "Should have received an UnhandledDirectoryError")
 
 	// Type assertion on UnhandledDirectoryError
@@ -81,13 +75,11 @@ func TestInvalidMetadataType(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	filename := filepath.Join(testDir, "META-INF/statedb/couchdb/indexes", "myIndex.json")
-	filebytes := []byte("invalid json")
+	fileName := "myIndex.json"
+	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+	metadataType := "Invalid metadata type"
 
-	err := writeToFile(filename, filebytes)
-	assert.NoError(t, err, "Error writing to file")
-
-	err = ValidateMetadataFile(filename, "Invalid metadata type")
+	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
 	assert.Error(t, err, "Should have received an UnhandledDirectoryError")
 
 	// Type assertion on UnhandledDirectoryError
@@ -95,34 +87,16 @@ func TestInvalidMetadataType(t *testing.T) {
 	assert.True(t, ok, "Should have received an UnhandledDirectoryError")
 }
 
-func TestCantReadFile(t *testing.T) {
-	testDir := filepath.Join(packageTestDir, "CantReadFile")
-	cleanupDir(testDir)
-	defer cleanupDir(testDir)
-
-	filename := filepath.Join(testDir, "META-INF/statedb/couchdb/indexes", "myIndex.json")
-
-	// Don't write the file - test for can't read file
-	// err := writeToFile(filename, filebytes)
-	// assert.NoError(t, err, "Error writing to file")
-
-	err := ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
-	assert.Error(t, err, "Should have received error reading file")
-
-}
-
 func TestBadMetadataExtension(t *testing.T) {
 	testDir := filepath.Join(packageTestDir, "BadMetadataExtension")
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	filename := filepath.Join(testDir, "META-INF/statedb/couchdb/indexes", "myIndex.go")
-	filebytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+	fileName := "myIndex.go"
+	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+	metadataType := "META-INF/statedb/couchdb/indexes"
 
-	err := writeToFile(filename, filebytes)
-	assert.NoError(t, err, "Error writing to file")
-
-	err = ValidateMetadataFile(filename, "META-INF/statedb/couchdb/indexes")
+	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
 	assert.Error(t, err, "Should have received an BadExtensionError")
 
 	// Type assertion on BadExtensionError
