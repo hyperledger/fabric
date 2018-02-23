@@ -84,6 +84,7 @@ Business:
    commands/peercommand.md
    commands/peerchaincode.md
    commands/peerchannel.md
+   commands/peerversion.md
    commands/peerlogging.md
    commands/peernode.md
    commands/configtxgen.md
