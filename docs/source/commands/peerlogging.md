@@ -1,18 +1,15 @@
-# peer logging
-## Description
+## peer logging
 
 The `peer logging` subcommand allows administrators to dynamically view and
 configure the log levels of a peer.
 
 ## Syntax
 
-The `peer logging` subcommand has the following syntax:
+The `peer logging` command has the following subcommands:
 
-```
-peer logging getlevel
-peer logging setlevel
-peer logging revertlevels
-```
+  * getlevel
+  * setlevel
+  * revertlevels
 
 The different subcommand options (getlevel, setlevel, and revertlevels) relate
 to the different logging operations that are relevant to a peer.
@@ -20,26 +17,75 @@ to the different logging operations that are relevant to a peer.
 Each peer logging subcommand is described together with its options in its own
 section in this topic.
 
-## peer logging getlevel
-
-### Get Level Description
-
-The `peer logging getlevel` command allows administrators to get the current
-level for a logging module.
-
-### Get Level Syntax
-
-The `peer logging getlevel` command has the following syntax:
-
+### peer logging
 ```
-peer logging getlevel <module-name>
+Log levels: getlevel|setlevel|revertlevels.
+
+Usage:
+  peer logging [command]
+
+Available Commands:
+  getlevel     Returns the logging level of the requested module logger.
+  revertlevels Reverts the logging levels to the levels at the end of peer startup.
+  setlevel     Sets the logging level for all modules that match the regular expression.
+
+Flags:
+  -h, --help   help for logging
+
+Global Flags:
+      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
+
+Use "peer logging [command] --help" for more information about a command.
 ```
 
-### Get Level Flags
 
-The `peer logging getlevel` command does not have any command-specific flags.
+### peer logging getlevel
+```
+Returns the logging level of the requested module logger. Note: the module name should exactly match the name that is displayed in the logs.
 
-### Get Level Usage
+Usage:
+  peer logging getlevel <module> [flags]
+
+Flags:
+  -h, --help   help for getlevel
+
+Global Flags:
+      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
+```
+
+
+### peer logging revertlevels
+```
+Reverts the logging levels to the levels at the end of peer startup
+
+Usage:
+  peer logging revertlevels [flags]
+
+Flags:
+  -h, --help   help for revertlevels
+
+Global Flags:
+      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
+```
+
+
+### peer logging setlevel
+```
+Sets the logging level for all modules that match the regular expression.
+
+Usage:
+  peer logging setlevel <module regular expression> <log level> [flags]
+
+Flags:
+  -h, --help   help for setlevel
+
+Global Flags:
+      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
+```
+
+## Example Usage
+
+### peer logging getlevel example
 
 Here is an example of the `peer logging getlevel` command:
 
@@ -52,26 +98,6 @@ Here is an example of the `peer logging getlevel` command:
     2018-02-22 19:10:08.633 UTC [main] main -> INFO 002 Exiting.....
 
     ```
-
-## peer logging setlevel
-
-### Set Level Description
-
-The `peer logging setlevel` command allows administrators to set the current
-level for all logging modules that match the module name regular expression
-provided.
-
-### Set Level Syntax
-
-The `peer logging setlevel` command has the following syntax:
-
-```
-peer logging setlevel <module-name-regular-expression> <log-level>
-```
-
-### Set Level Flags
-
-The `peer logging setlevel` command does not have any command-specific flags.
 
 ### Set Level Usage
 
@@ -98,35 +124,18 @@ Here are some examples of the `peer logging setlevel` command:
     2018-02-22 19:16:46.272 UTC [main] main -> INFO 002 Exiting.....
     ```
 
-## peer logging revertlevels
-
-### Revert Levels Description
-
-The `peer logging revertlevels` command allows administrators to revert the
-log levels of all modules to their level at the time the peer completed its
-startup process.
-
-### Revert Levels Syntax
-
-The `peer logging revertlevels` command has the following syntax:
-
-```
-peer logging revertlevels
-```
-
-### Revert Levels Flags
-
-The `peer logging revertlevels` command does not have any command-specific
-flags.
-
 ### Revert Levels Usage
 
 Here is an example of the `peer logging revertlevels` command:
 
-  * ```
+  * To revert the log levels to the start-up values:
+
+    ```
     peer logging revertlevels
 
     2018-02-22 19:18:38.428 UTC [cli/logging] revertLevels -> INFO 001 Log levels reverted to the levels at the end of peer startup.
     2018-02-22 19:18:38.428 UTC [main] main -> INFO 002 Exiting.....
 
     ```
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

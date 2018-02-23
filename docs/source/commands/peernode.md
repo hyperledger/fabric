@@ -1,68 +1,58 @@
-# peer node
+## peer node
 
-## Description
-
-The `peer node` subcommand allows an administrator to start a peer node or check
+The `peer node` command allows an administrator to start a peer node or check
 the status of a peer node.
 
 ## Syntax
 
-The `peer node` subcommand has the following syntax:
+The `peer node` command has the following subcommands:
 
+  * start
+  * status
+
+### peer node start
 ```
-peer node start [flags]
-peer node status
-```
+Starts a node that interacts with the network.
 
-## peer node start
+Usage:
+  peer node start [flags]
 
-### Start Description
-The `peer node start` command allows administrators to start the peer node process.
+Flags:
+  -h, --help                help for start
+  -o, --orderer string      Ordering service endpoint (default "orderer:7050")
+      --peer-chaincodedev   Whether peer in chaincode development mode
 
-The peer node process can be configured using configuration file *core.yaml*, which
-must be located in the directory specified by the environment variable **FABRIC_CFG_PATH**.
-For docker deployments, *core.yaml* is pre-configured in the peer container **FABRIC_CFG_PATH** directory.
-For native binary deployments, *core.yaml* is included with the release artifact distribution.
-The configuration properties located in *core.yaml* can be overridden using environment variables.
-For example, `peer.mspConfigPath` configuration property can be specified by defining
-**CORE_PEER_MSPCONFIGPATH** environment variable, where **CORE_** is the prefix for the
-environment variables.
-
-### Start Syntax
-The `peer node start` command has the following syntax:
-
-```
-peer node start [flags]
-
+Global Flags:
+      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
 ```
 
-### Start Flags
-The `peer node start` command has the following command specific flag:
 
-* `--peer-chaincodedev`
-
-  starts peer node in chaincode development mode. Normally chaincode containers are started
-  and maintained by peer. However in development mode, chaincode is built and started by the user.
-  This mode is useful during chaincode development phase for iterative development.
-  See more information on development mode in the [chaincode tutorial](../chaincode4ade.html).
-
-The global `peer` command flags also apply as described in the `peer command` [topic](./peercommand.html):
-
-* --logging-level
-
-## peer node status
-
-### Status Description
-The `peer node status` command allows administrators to see the status of the peer node process.
-It will show the status of the peer node process running at the `peer.address` specified in the
-peer configuration, or overridden by **CORE_PEER_ADDRESS** environment variable.
-
-### Status Syntax
-The `peer node status` command has the following syntax:
-
+### peer node status
 ```
-peer node status
+Returns the status of the running node.
+
+Usage:
+  peer node status [flags]
+
+Flags:
+  -h, --help   help for status
+
+Global Flags:
+      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
 ```
 
-### Status Flags
-The `peer node status` command has no command specific flags.
+## Example Usage
+
+### peer node start example
+
+The following command:
+
+```
+peer node start --peer-node-chaincodedev
+```
+
+starts a peer node in chaincode development mode. Normally chaincode containers are started
+and maintained by peer. However in chaincode development mode, chaincode is built and started by the user. This mode is useful during chaincode development phase for iterative development.
+See more information on development mode in the [chaincode tutorial](../chaincode4ade.html).
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

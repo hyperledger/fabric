@@ -1,39 +1,3 @@
-## configtxgen
-
-The `configtxgen` command allows users to create and inspect channel config
-related artifacts.  The content of the generated artifacts is dictated by the
-contents of `configtx.yaml`.
-
-## Syntax
-
-The `configtxgen` tool has no sub-commands, but supports flags which can be set
-to accomplish a number of tasks.
-
-### configtxgen
-```
-Usage of configtxgen:
-  -asOrg string
-    	Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set
-  -channelID string
-    	The channel ID to use in the configtx (default "testchainid")
-  -inspectBlock string
-    	Prints the configuration contained in the block at the specified path
-  -inspectChannelCreateTx string
-    	Prints the configuration contained in the transaction at the specified path
-  -outputAnchorPeersUpdate string
-    	Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)
-  -outputBlock string
-    	The path to write the genesis block to (if set)
-  -outputCreateChannelTx string
-    	The path to write a channel creation configtx to (if set)
-  -printOrg string
-    	Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)
-  -profile string
-    	The profile from configtx.yaml to use for generation. (default "SampleInsecureSolo")
-  -version
-    	Show version information
-```
-
 ## Usage
 
 ### Output a genesis block
