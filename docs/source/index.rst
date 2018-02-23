@@ -68,7 +68,6 @@ Business:
    best_practices
    msp
    configtx
-   configtxlator
    cc-packaging-and-signing
    endorsement-policies
    error-handling
@@ -83,6 +82,7 @@ Business:
    :caption: Command Reference
 
    commands/configtxgen.md
+   commands/configtxlator.md
 
 .. toctree::
    :maxdepth: 2
