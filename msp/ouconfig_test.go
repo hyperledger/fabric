@@ -51,6 +51,8 @@ func TestBadConfigOUCert(t *testing.T) {
 
 	err = thisMSP.Setup(conf)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed adding OU. Certificate [")
+	assert.Contains(t, err.Error(), "] not in root or intermediate certs.")
 }
 
 func TestValidateIntermediateConfigOU(t *testing.T) {
