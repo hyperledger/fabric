@@ -41,19 +41,19 @@ Usage of configtxgen:
 ### Output a genesis block
 
 Write a genesis block to `genesis_block.pb` for channel `orderer-system-channel`
-for profile `SampleSingleMSPSolo`.
+for profile `SampleSingleMSPSoloV1_1`.
 
 ```
-configtxgen -outputBlock genesis_block.pb -profile SampleSingleMSPSolo -channelID orderer-system-channel
+configtxgen -outputBlock genesis_block.pb -profile SampleSingleMSPSoloV1_1 -channelID orderer-system-channel
 ```
 
 ### Output a channel creation tx
 
 Write a channel creation transaction to `create_chan_tx.pb` for profile
-`SampleSingleMSPChannel`.
+`SampleSingleMSPChannelV1_1`.
 
 ```
-configtxgen -outputCreateChannelTx create_chan_tx.pb -profile SampleSingleMSPChannel -channelID application-channel-1
+configtxgen -outputCreateChannelTx create_chan_tx.pb -profile SampleSingleMSPChannelV1_1 -channelID application-channel-1
 ```
 
 ### Inspect a genesis block
@@ -87,9 +87,40 @@ configtxgen -printOrg Org1
 ### Output anchor peer tx
 
 Output a configuration update transaction to `anchor_peer_tx.pb` which sets the
-anchor peers for organization Org1 as defined in profile SampleSingleMSPChannel
-based on `configtx.yaml`.
+anchor peers for organization Org1 as defined in profile
+SampleSingleMSPChannelV1_1 based on `configtx.yaml`.
 
 ```
-configtxgen -outputAnchorPeersUpdate anchor_peer_tx.pb -profile SampleSingleMSPChannel -asOrg Org1
+configtxgen -outputAnchorPeersUpdate anchor_peer_tx.pb -profile SampleSingleMSPChannelV1_1 -asOrg Org1
 ```
+
+## Configuration
+
+The `configtxgen` tool's output is largely controlled by the content of
+`configtx.yaml`.  This file is searched for at `FABRIC_CFG_PATH` and must be
+present for `configtxgen` to operate.
+
+This configuration file may be edited, or, individual properties may be
+overridden by setting environment variables, such as
+`CONFIGTX_ORDERER_ORDERERTYPE=kafka`.
+
+For many `configtxgen` operations, a profile name must be supplied.  Profiles
+are a way to express multiple similar configurations in a single file.  For
+instance, one profile might define a channel with 3 orgs, and another might
+define one with 4 orgs.  To accomplish this without the length of the file
+becoming burdensome, `configtx.yaml` depends on the standard YAML feature of
+anchors and references.  Base parts of the configuration are tagged with an
+anchor like `&OrdererDefaults` and then merged into a profile with a reference
+like `<<: *OrdererDefaults`.  Note, when `configtxgen` is operating under a
+profile, environment variable overrides do not need to include the profile
+prefix and may be referenced relative to the root element of the profile.  For
+instance, do not specify
+`CONFIGTX_PROFILE_SAMPLEINSECURESOLO_ORDERER_ORDERERTYPE`,
+instead simply omit the profile specifics and use the `CONFIGTX` prefix
+followed by the elements relative to the profile name such as
+`CONFIGTX_ORDERER_ORDERERTYPE`.
+
+Refer to the sample `configtx.yaml` shipped with Fabric for all possible
+configuration options.  You may find this file in the `config` directory of
+the release artifacts tar, or you may find it under the `sampleconfig` folder
+if you are building from source.

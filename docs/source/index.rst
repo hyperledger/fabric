@@ -68,8 +68,6 @@ Business:
    best_practices
    msp
    configtx
-   configtxgen
-   configtxlator
    cc-packaging-and-signing
    endorsement-policies
    error-handling
@@ -78,6 +76,13 @@ Business:
    cryptogen-commands
    enable_tls
    kafka
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Command Reference
+
+   commands/configtxgen.md
+   commands/configtxlator.md
 
 .. toctree::
    :maxdepth: 2

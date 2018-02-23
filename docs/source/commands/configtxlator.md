@@ -1,8 +1,6 @@
 configtxlator
 =============
 
-# peer channel
-
 ## Description
 
 The `configtxlator` command allows users to translate between protobuf and JSON
@@ -137,3 +135,20 @@ perform the same operations through the REST API.
 ```
 curl -X POST -F channel=testchan -F "original=@original_config.pb" -F "updated=@modified_config.pb" "${CONFIGTXLATOR_URL}/configtxlator/compute/update-from-configs" | curl -X POST --data-binary /dev/stdin "${CONFIGTXLATOR_URL}/protolator/encode/common.ConfigUpdate"
 ```
+
+## Additional Notes
+
+The tool name is a portmanteau of *configtx* and *translator* and is intended to
+convey that the tool simply converts between different equivalent data
+representations. It does not generate configuration. It does not submit or
+retrieve configuration. It does not modify configuration itself, it simply
+provides some bijective operations between different views of the configtx
+format.
+
+There is no configuration file `configtxlator` nor any authentication or
+authorization facilities included for the REST server.  Because `configtxlator`
+does not have any access to data, key material, or other information which
+might be considered sensitive, there is no risk to the owner of the server in
+exposing it to other clients.  However, because the data sent by a user to
+the REST server might be confidential, the user should either trust the
+administrator of the server, run a local instance, or operate via the CLI.
