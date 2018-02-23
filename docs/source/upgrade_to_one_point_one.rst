@@ -105,19 +105,29 @@ orderer process:
 2. Backup the orderer's ledger and MSP.
 3. Replace the orderer binary with the one from v1.1.x.
 
-   * For native deployments, replace the file ‘orderer’ with the one from the
-     release artifacts.
+   * For native deployments, replace the file ``orderer`` with the one from the
+     release artifacts.  Backup the ``orderer.yaml`` and replace it with the
+     ``orderer.yaml`` file from the release artifacts.  Port any modified
+     variables from the backed up ``orderer.yaml`` to the new one.  Utilizing
+     a utility like ``diff`` may be helpful.
+
+   .. note:: To decrease confusion, the variable ``General.TLS.ClientAuthEnabled``
+      has been renamed to ``General.TLS.ClientAuthRequired`` (just as it is
+      specified in the peer configuration.). If the old name for this variable
+      is still present in the ``orderer.yaml`` file, the new ``orderer`` binary
+      will fail to start.
+
    * For docker deployments, change the deployment scripts to use image version
      v1.1.x.
 
-.. note:: You must configure the Kafka protocol version used by the orderer to match
-          your Kafka cluster version, even if it was not set before. For example, if
-          you are using the sample Kafka images provided with Hyperledger Fabric 1.0.x,
-          either set the ``ORDERER_KAFKA_VERSION`` environment variable, or the
-          ``Kafka.Version`` key in the ``orderer.yaml`` to ``0.9.0.1``. If you are unsure
-          about your Kafka cluster version, you can configure the orderer's Kafka protocol
-          version to ``0.9.0.1`` for maximum compatibility and update the setting afterwards
-          when you have determined your Kafka cluster version.
+   .. note:: You must configure the Kafka protocol version used by the orderer to match
+             your Kafka cluster version, even if it was not set before. For example, if
+             you are using the sample Kafka images provided with Hyperledger Fabric 1.0.x,
+             either set the ``ORDERER_KAFKA_VERSION`` environment variable, or the
+             ``Kafka.Version`` key in the ``orderer.yaml`` to ``0.9.0.1``. If you are unsure
+             about your Kafka cluster version, you can configure the orderer's Kafka protocol
+             version to ``0.9.0.1`` for maximum compatibility and update the setting afterwards
+             when you have determined your Kafka cluster version.
 
 4. Start the orderer.
 5. Verify that the new orderer starts up and synchronizes with the rest of the network.
@@ -180,7 +190,11 @@ in 1.1, there will be an internal CouchDB database for each channel_chaincode co
 
 4. Replace the old peer binary with the one from v1.1.x.
 
-   * For **native** deployments, replace the file ``peer`` with the one from the release artifacts.
+   * For **native** deployments, replace the file ``peer`` with the one from the
+     release artifacts. Backup your ``core.yaml`` and replace it with the one
+     from the release artifacts.  Port any modified variables from the backed up
+     ``core.yaml`` to the new one.  Utilizing a utility like ``diff`` may be
+     helpful.
    * For **Docker** deployments, change the deployment scripts to use image version v1.1.x.
 
 5. Start the peer, making sure to verify that the peer blockchain syncs with the rest of the
