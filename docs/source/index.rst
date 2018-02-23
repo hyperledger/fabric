@@ -65,6 +65,7 @@ Business:
    :caption: Operations Guide
 
    upgrade_to_one_point_one
+   config_update
    best_practices
    msp
    configtx
