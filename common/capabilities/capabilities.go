@@ -44,6 +44,7 @@ func newRegistry(p provider, capabilities map[string]*cb.Capability) *registry {
 func (r *registry) Supported() error {
 	for capabilityName := range r.capabilities {
 		if r.provider.HasCapability(capabilityName) {
+			logger.Debugf("%s capability %s is supported and is enabled", r.provider.Type(), capabilityName)
 			continue
 		}
 
