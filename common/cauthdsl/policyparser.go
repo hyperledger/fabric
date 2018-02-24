@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:]]+)([.])(member|admin|client|peer|orderer)$")
+var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:].-]+)([.])(member|admin|client|peer|orderer)$")
 var regexErr *regexp.Regexp = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 
 // a stub function - it returns the same string as it's passed.
