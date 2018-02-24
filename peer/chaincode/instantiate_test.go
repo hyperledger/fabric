@@ -71,6 +71,12 @@ func TestInstantiateCmd(t *testing.T) {
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -c option",
 		},
+		{
+			name:          "successful with policy",
+			args:          []string{"-P", "OR('MSP.member', 'MSP.WITH.DOTS.member', 'MSP-WITH-DASHES.member')", "-n", "example02", "-v", "anotherversion", "-C", "mychannel", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			errorExpected: false,
+			errMsg:        "Run chaincode instantiate cmd error",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
