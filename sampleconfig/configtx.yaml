@@ -241,9 +241,11 @@ Organizations:
     - &SampleOrg
         # Name is the key by which this org will be referenced in channel
         # configuration transactions.
+        # Name can include alphanumeric characters as well as dots and dashes.
         Name: SampleOrg
 
         # ID is the key by which this org's MSP definition will be referenced.
+        # ID can include alphanumeric characters as well as dots and dashes.
         ID: DEFAULT
 
         # MSPDir is the filesystem path which contains the MSP configuration.
