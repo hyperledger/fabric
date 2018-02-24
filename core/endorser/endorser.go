@@ -96,6 +96,15 @@ type Endorser struct {
 	s                     Support
 }
 
+// validateResult provides the result of endorseProposal verification
+type validateResult struct {
+	prop    *pb.Proposal
+	hdrExt  *pb.ChaincodeHeaderExtension
+	chainID string
+	txid    string
+	resp    *pb.ProposalResponse
+}
+
 // NewEndorserServer creates and returns a new Endorser server instance.
 func NewEndorserServer(privDist privateDataDistributor, s Support) pb.EndorserServer {
 	e := &Endorser{
@@ -288,7 +297,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 	isSysCC := cd == nil
 	// 1) extract the name of the escc that is requested to endorse this chaincode
 	var escc string
-	//ie, not "lscc" or system chaincodes
+	//ie, "lscc" or system chaincodes
 	if isSysCC {
 		escc = "escc"
 	} else {
@@ -367,25 +376,27 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 	return pResp, nil
 }
 
-// ProcessProposal process the Proposal
-func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
-	addr := util.ExtractRemoteAddress(ctx)
-	endorserLogger.Debug("Entering: Got request from", addr)
-	defer endorserLogger.Debug("Exit: request from", addr)
+//preProcess checks the tx proposal headers, uniqueness and ACL
+func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, error) {
+	vr := &validateResult{}
 	// at first, we check whether the message is valid
 	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
+
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+		return vr, err
 	}
 
 	chdr, err := putils.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+		return vr, err
 	}
 
 	shdr, err := putils.GetSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+		return vr, err
 	}
 
 	// block invocations to security-sensitive system chaincodes
@@ -393,7 +404,8 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		endorserLogger.Errorf("Error: an attempt was made by %#v to invoke system chaincode %s",
 			shdr.Creator, hdrExt.ChaincodeId.Name)
 		err = errors.Errorf("chaincode %s cannot be invoked through a proposal", hdrExt.ChaincodeId.Name)
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+		return vr, err
 	}
 
 	chainID := chdr.ChannelId
@@ -404,13 +416,14 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	txid := chdr.TxId
 	if txid == "" {
 		err = errors.New("invalid txID. It must be different from the empty string")
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+		return vr, err
 	}
 	endorserLogger.Debugf("[%s][%s] processing txid: %s", chainID, shorttxid(txid), txid)
 	if chainID != "" {
 		// here we handle uniqueness check and ACLs for proposals targeting a chain
 		if _, err = e.s.GetTransactionByID(chainID, txid); err == nil {
-			return nil, errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
+			return vr, errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
 		}
 
 		// check ACL only for application chaincodes; ACLs
@@ -418,7 +431,8 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		if !e.s.IsSysCC(hdrExt.ChaincodeId.Name) {
 			// check that the proposal complies with the channel's writers
 			if err = e.s.CheckACL(signedProp, chdr, shdr, hdrExt); err != nil {
-				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+				vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+				return vr, err
 			}
 		}
 	} else {
@@ -427,6 +441,25 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// of the chain since by definition there is no chain; they are validated against the local
 		// MSP of the peer instead by the call to ValidateProposalMessage above
 	}
+
+	vr.prop, vr.hdrExt, vr.chainID, vr.txid = prop, hdrExt, chainID, txid
+	return vr, nil
+}
+
+// ProcessProposal process the Proposal
+func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
+	addr := util.ExtractRemoteAddress(ctx)
+	endorserLogger.Debug("Entering: Got request from", addr)
+	defer endorserLogger.Debugf("Exit: request from", addr)
+
+	//0 -- check and validate
+	vr, err := e.preProcess(signedProp)
+	if err != nil {
+		resp := vr.resp
+		return resp, err
+	}
+
+	prop, hdrExt, chainID, txid := vr.prop, vr.hdrExt, vr.chainID, vr.txid
 
 	// obtaining once the tx simulator for this proposal. This will be nil
 	// for chainless proposals
