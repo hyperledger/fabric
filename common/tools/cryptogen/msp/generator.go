@@ -28,8 +28,8 @@ const (
 )
 
 const (
-	CLIENTOU = "FabricClient"
-	PEEROU   = "FabricPeer"
+	CLIENTOU = "client"
+	PEEROU   = "peer"
 )
 
 var nodeOUMap = map[int]string{
