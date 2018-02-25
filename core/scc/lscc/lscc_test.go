@@ -167,7 +167,7 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil)
-	testDeploy(t, "example02", "1.0", path, false, false, false, "cannot get package for chaincode (example02:1.0)-barf", nil, nil)
+	testDeploy(t, "example02", "1.0", path, false, false, false, "cannot get package for chaincode (example02:1.0)", nil, nil)
 	testDeploy(t, "example02", "0", path, true, false, true, EmptyChaincodeNameErr("").Error(), nil, nil)
 	testDeploy(t, "example02", "0", path, false, true, true, EmptyVersionErr("example02").Error(), nil, nil)
 	testDeploy(t, "example02.go", "0", path, false, false, true, InvalidChaincodeNameErr("example02.go").Error(), nil, nil)

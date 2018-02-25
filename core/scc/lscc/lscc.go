@@ -465,7 +465,9 @@ func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(
 
 	ccpack, err := lscc.support.GetChaincodeFromLocalStorage(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get package for chaincode (%s:%s)-%s", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
+		retErrMsg := fmt.Sprintf("cannot get package for chaincode (%s:%s)", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
+		logger.Errorf("%s-err:%s", retErrMsg, err)
+		return nil, fmt.Errorf("%s", retErrMsg)
 	}
 	cd := ccpack.GetChaincodeData()
 
