@@ -37,11 +37,7 @@ peer node start [flags]
 ```
 
 ### Start Flags
-The `peer node start` command has the following command specific flags:
-
-* `-o, --orderer <string>`
-
-  specifies the ordering service endpoint. Default value is "orderer:7050"
+The `peer node start` command has the following command specific flag:
 
 * `--peer-chaincodedev`
 
@@ -50,7 +46,7 @@ The `peer node start` command has the following command specific flags:
   This mode is useful during chaincode development phase for iterative development.
   See more information on development mode in the [chaincode tutorial](../chaincode4ade.html).
 
-The global `peer` command flags also apply as described in the topic [`peer command`](./peercommand.html):
+The global `peer` command flags also apply as described in the `peer command` [topic](./peercommand.html):
 
 * --logging-level
 
