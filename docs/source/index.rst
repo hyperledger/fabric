@@ -73,7 +73,6 @@ Business:
    endorsement-policies
    error-handling
    logging-control
-   peer-commands
    cryptogen-commands
    enable_tls
    kafka
@@ -82,6 +81,9 @@ Business:
    :maxdepth: 2
    :caption: Command Reference
 
+   commands/peercommand.md
+   commands/peerchannel.md
+   commands/peerlogging.md
    commands/configtxgen.md
    commands/configtxlator.md
 
