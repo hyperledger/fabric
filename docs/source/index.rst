@@ -74,7 +74,6 @@ Business:
    endorsement-policies
    error-handling
    logging-control
-   cryptogen-commands
    enable_tls
    kafka
 
@@ -90,6 +89,8 @@ Business:
    commands/peernode.md
    commands/configtxgen.md
    commands/configtxlator.md
+   commands/cryptogen-commands
+   commands/fabric-ca-commands
 
 .. toctree::
    :maxdepth: 2
