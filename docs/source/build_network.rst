@@ -53,7 +53,7 @@ Here's the help text for the ``byfn.sh`` script:
   Usage:
   byfn.sh up|down|restart|generate [-c <channel name>] [-t <timeout>] [-d <delay>] [-f <docker-compose-file>] [-s <dbtype>]
   byfn.sh -h|--help (print this message)
-    <mode> - one of 'up', 'down', 'restart' or 'generate'
+    -m <mode> - one of 'up', 'down', 'restart' or 'generate'
       - 'up' - bring up the network with docker-compose up
       - 'down' - clear the network with docker-compose down
       - 'restart' - restart the network
@@ -69,8 +69,8 @@ Here's the help text for the ``byfn.sh`` script:
     Typically, one would first generate the required certificates and
     genesis block, then bring up the network. e.g.:
 
-	byfn.sh generate -c mychannel
-	byfn.sh up -c mychannel -s couchdb
+	byfn.sh -m generate -c mychannel
+	byfn.sh -m up -c mychannel -s couchdb
 
 If you choose not to supply a channel name, then the
 script will use a default name of ``mychannel``.  The CLI timeout parameter
@@ -85,7 +85,7 @@ Ready to give it a go? Okay then! Execute the following command:
 
 .. code:: bash
 
-  ./byfn.sh generate
+  ./byfn.sh -m generate
 
 You will see a brief description as to what will occur, along with a yes/no command line
 prompt. Respond with a ``y`` or hit the return key to execute the described action.
@@ -147,7 +147,7 @@ Next, you can bring the network up with one of the following commands:
 
 .. code:: bash
 
-  ./byfn.sh up
+  ./byfn.sh -m up
 
 The above command will compile Golang chaincode images and spin up the corresponding
 containers.  Go is the default chaincode language, however there is also support
@@ -159,7 +159,7 @@ chaincode, pass the following command instead:
   # we use the -l flag to specify the chaincode language
   # forgoing the -l flag will default to Golang
 
-  ./byfn.sh up -l node
+  ./byfn.sh -m up -l node
 
 .. note:: View the `Hyperledger Fabric Shim <https://fabric-shim.github.io/ChaincodeStub.html>`__
           documentation for more info on the node.js chaincode shim APIs.
@@ -226,7 +226,7 @@ and four artifacts, and delete the chaincode images from your Docker Registry:
 
 .. code:: bash
 
-  ./byfn.sh down
+  ./byfn.sh -m down
 
 Once again, you will be prompted to continue, respond with a ``y`` or hit the return key:
 
