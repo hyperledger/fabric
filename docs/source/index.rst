@@ -55,7 +55,7 @@ Business:
 
    build_network
    write_first_app
-   channel_update
+   channel_update_tutorial
    chaincode
    chaincode4ade
    chaincode4noah
@@ -113,7 +113,6 @@ Business:
    :caption: Troubleshooting and FAQs
 
    Fabric-FAQ
-   ordering-service-faq
 
 .. toctree::
    :maxdepth: 2
