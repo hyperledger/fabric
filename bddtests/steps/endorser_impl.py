@@ -16,6 +16,8 @@
 import endorser_util
 import bdd_grpc_util
 import bootstrap_util
+from behave import when, then
+
 
 @when(u'user "{userName}" creates a chaincode spec "{ccSpecAlias}" with name "{chaincodeName}" of type "{ccType}" for chaincode "{chaincodePath}" with args')
 def step_impl(context, userName, ccType, chaincodeName, chaincodePath, ccSpecAlias):
