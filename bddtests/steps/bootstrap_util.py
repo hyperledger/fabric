@@ -489,7 +489,8 @@ class BootstrapHelper:
         return rand.bytes(BootstrapHelper.DEFAULT_NONCE_SIZE)
 
     @classmethod
-    def addSignatureToSignedConfigItem(cls, configUpdateEnvelope, (entity, mspId, cert)):
+    def addSignatureToSignedConfigItem(cls, configUpdateEnvelope, entity__mspId__cert):
+        entity, mspId, cert = entity__mspId__cert
         serializedIdentity = identities_pb2.SerializedIdentity(mspid=mspId, id_bytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
         sigHeader = common_dot_common_pb2.SignatureHeader(creator=serializedIdentity.SerializeToString(),
                                                           nonce=BootstrapHelper.getNonce())
