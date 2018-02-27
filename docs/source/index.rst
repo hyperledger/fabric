@@ -44,8 +44,9 @@ Business:
    blockchain
    functionalities
    fabric_model
-   ledger
+   identity/identity.md
    membership/membership.md
+   ledger
    usecases
 
 .. toctree::
