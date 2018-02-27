@@ -736,8 +736,6 @@ def createEnvelopeForMsg(directory, nodeAdminTuple, chainId, msg, typeAsString):
     envelope = common_dot_common_pb2.Envelope(payload=payloadBytes, signature=user.sign(payloadBytes))
     return envelope
 
-    return configEnvelope
-
 
 def createNewConfigUpdateEnvelope(channelConfig, chainId, readset_version=0):
     read_set = common_dot_configtx_pb2.ConfigGroup()
