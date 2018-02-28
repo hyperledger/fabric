@@ -813,6 +813,8 @@ But let's test just to make sure by moving ``10`` from ``a`` to ``b``, as before
 And then querying the value of ``a``, which should reveal a value of ``70``.
 Let’s see:
 
+.. code:: bash
+
   peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
 
 We should see the following:
