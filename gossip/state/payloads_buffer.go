@@ -7,14 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package state
 
 import (
-	"strconv"
 	"sync"
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
-	"github.com/pkg/errors"
 )
 
 // PayloadsBuffer is used to store payloads into which used to
@@ -23,7 +21,7 @@ import (
 // to signal whenever expected block has arrived.
 type PayloadsBuffer interface {
 	// Adds new block into the buffer
-	Push(payload *proto.Payload) error
+	Push(payload *proto.Payload)
 
 	// Returns next expected sequence number
 	Next() uint64
@@ -75,15 +73,15 @@ func (b *PayloadsBufferImpl) Ready() chan struct{} {
 // Push new payload into the buffer structure in case new arrived payload
 // sequence number is below the expected next block number payload will be
 // thrown away and error will be returned.
-func (b *PayloadsBufferImpl) Push(payload *proto.Payload) error {
+func (b *PayloadsBufferImpl) Push(payload *proto.Payload) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
 	seqNum := payload.SeqNum
 
 	if seqNum < b.next || b.buf[seqNum] != nil {
-		return errors.Errorf("Payload with sequence number = %s has been already processed",
-			strconv.FormatUint(payload.SeqNum, 10))
+		logger.Debugf("Payload with sequence number = %d has been already processed", payload.SeqNum)
+		return
 	}
 
 	b.buf[seqNum] = payload
@@ -95,7 +93,6 @@ func (b *PayloadsBufferImpl) Push(payload *proto.Payload) error {
 			b.readyChan <- struct{}{}
 		}()
 	}
-	return nil
 }
 
 // Next function provides the number of the next expected block

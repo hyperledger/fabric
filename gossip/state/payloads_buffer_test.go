@@ -122,8 +122,6 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 	payload, err := randomPayloadWithSeqNum(nextSeqNum)
 	assert.NoError(t, err)
 
-	var errors []error
-
 	ready := int32(0)
 	readyWG := sync.WaitGroup{}
 	readyWG.Add(1)
@@ -136,26 +134,16 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 
 	for i := 0; i < concurrency; i++ {
 		go func() {
+			buffer.Push(payload)
 			startWG.Wait()
-			errors = append(errors, buffer.Push(payload))
 			finishWG.Done()
 		}()
 	}
 	startWG.Done()
 	finishWG.Wait()
 
-	success := 0
-
-	// Only one push attempt expected to succeed
-	for _, err := range errors {
-		if err == nil {
-			success++
-		}
-	}
-
 	readyWG.Wait()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&ready))
-	assert.Equal(t, 1, success)
 	// Buffer size has to be only one
 	assert.Equal(t, 1, buffer.Size())
 }
