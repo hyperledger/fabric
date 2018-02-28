@@ -55,7 +55,7 @@ Business:
 
    build_network
    write_first_app
-   channel_update
+   channel_update_tutorial
    upgrading_your_network_tutorial
    chaincode
    chaincode4ade
@@ -69,10 +69,8 @@ Business:
 
    upgrade_to_one_point_one
    config_update
-   best_practices
    msp
    configtx
-   cc-packaging-and-signing
    endorsement-policies
    error-handling
    logging-control
