@@ -36,6 +36,8 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 )
@@ -484,6 +486,15 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 				writesToNonInvokableSCC = true
 			}
 		}
+	}
+
+	// Verify the header extension and response payload contain the ChaincodeId
+	if hdrExt.ChaincodeId == nil {
+		return errors.New("nil ChaincodeId in header extension"), peer.TxValidationCode_INVALID_OTHER_REASON
+	}
+
+	if respPayload.ChaincodeId == nil {
+		return errors.New("nil ChaincodeId in ChaincodeAction"), peer.TxValidationCode_INVALID_OTHER_REASON
 	}
 
 	// get name and version of the cc we invoked
