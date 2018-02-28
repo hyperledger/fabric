@@ -695,6 +695,15 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		}
 	}
 
+	// Verify the header extension and response payload contain the ChaincodeId
+	if hdrExt.ChaincodeId == nil {
+		return errors.New("nil ChaincodeId in header extension"), peer.TxValidationCode_INVALID_OTHER_REASON
+	}
+
+	if respPayload.ChaincodeId == nil {
+		return errors.New("nil ChaincodeId in ChaincodeAction"), peer.TxValidationCode_INVALID_OTHER_REASON
+	}
+
 	// get name and version of the cc we invoked
 	ccID := hdrExt.ChaincodeId.Name
 	ccVer := respPayload.ChaincodeId.Version
