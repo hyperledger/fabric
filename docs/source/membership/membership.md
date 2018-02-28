@@ -1,7 +1,6 @@
 # Membership
 
-If you've read through the documentation on
-[Identity](./http://hyperledger-fabric.readthedocs.io/en/latest/identity/identity.html)
+If you've read through the documentation on [Identity](../identity/identity.html)
 you've seen how a PKI can provide verifiable identities through a chain
 of trust. Now let's see how these identities can be used to represent the
 trusted members of a blockchain network.
@@ -9,7 +8,7 @@ trusted members of a blockchain network.
 This is where a **Membership Service** Provider (MSP) comes into play --
 **it identifies which Root CAs and Intermediate CAs are trusted to define
 the members of a trust domain, e.g., an organization**, either by
-listing the identities of their members, or by identifying which CAs are authorised to
+listing the identities of their members, or by identifying which CAs are authorized to
 issue valid identities for their members, or -- as will usually be the case --
 through a combination of both.
 
@@ -24,8 +23,7 @@ Peers, orderers and clients also maintain a local MSP instance (also known as **
 MSP**) to authenticate messages of members of their organization outside the context
 of a channel.
 In addition, an MSP can allow for the identification of a list of
-identities that have been revoked (we discussed this in the
-[Identity](./http://hyperledger-fabric.readthedocs.io/en/latest/identity/identity.html)
+identities that have been revoked (we discussed this in the [Identity](../identity/identity.html)
 documentation but will talk about how that process also extends to an MSP).
 
 We'll talk more about local and channel MSPs in a moment. For now let's
@@ -227,11 +225,9 @@ Let's describe these folders in a little more detail and see why they are import
   of the organization, or the organization itself (e.g., if a commercial CA is leveraged
   for the organization's identity management). In the latter case other intermediate CAs,
   lower in the CA hierarchy can be used to represent organization subdivisions.
-  [Here](./http://hyperledger-fabric.readthedocs.io/en/master/msp.html) you
-  may find more information on best practices for MSP configuration.
-  Notice, that it is possible to have a functioning
-  network that does not have any Intermediate CA, in which case this folder would be
-  empty.
+  [Here](../msp.html) you may find more information on best practices for MSP configuration.
+  Notice, that it is possible to have a functioning network that does not have any
+  Intermediate CA, in which case this folder would be empty.
 
   Like the Root CA folder, this folder defines the CAs from which certificates must be
   issued to be considered members of the organization.
@@ -333,9 +329,13 @@ Let's describe these folders in a little more detail and see why they are import
   organization. Similar to membership intermediate CAs, specifying intermediate TLS CAs is
   optional.
 
-  For more information on TLS, click [here](./http://hyperledger-fabric.readthedocs.io/en/latest/enable_tls.html).
+  For more information on TLS, click [here](../enable_tls.html).
 
-If you've read this doc as well as our doc on [Identity](./http://hyperledger-fabric.readthedocs.io/en/latest/identity/identity.html), you should have a pretty good grasp of how identities and membership work in Hyperledger Fabric. You've seen how a PKI and MSPs are used to identify the actors collaborating in a blockchain network. You've learned how certificates, public/private keys, and roots of trust work, in addition to how MSPs are physically and logically structured.
+If you've read this doc as well as our doc on [Identity](../identity/identity.html)), you
+should have a pretty good grasp of how identities and membership work in Hyperledger Fabric.
+You've seen how a PKI and MSPs are used to identify the actors collaborating in a blockchain
+network. You've learned how certificates, public/private keys, and roots of trust work,
+in addition to how MSPs are physically and logically structured.
 
 <!---
 Licensed under Creative Commons Attribution 4.0 International License https://creativecommons.org/licenses/by/4.0/
