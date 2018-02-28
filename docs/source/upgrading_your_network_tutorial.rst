@@ -33,7 +33,7 @@ At a high level, our upgrade tutorial will perform the following steps:
 1. Back up the ledger and MSPs.
 2. Upgrade the orderer binaries to Fabric v1.1.
 3. Upgrade the peer binaries to Fabric v1.1.
-3. Enable v1.1 channel capability requirements.
+4. Enable v1.1 channel capability requirements.
 
 .. note:: In production environments, the orderers and peers can be upgraded
           on a rolling basis simultaneously (in other words, you don't need to
@@ -200,18 +200,21 @@ Once the orderer is down, you'll want to **backup its ledger and MSP**:
 In a production network this process would be repeated for each of the Kafka-based
 orderers in a rolling fashion.
 
-Let’s look at the commands to download an orderer image and restart it.
-
-We will now **download and restart the orderer** with our new fabric image:
+Now **download and restart the orderer** with our new fabric image:
 
 .. code:: bash
 
   docker-compose -f docker-compose-cli.yaml -f docker-compose-persist.yaml up -d --no-deps orderer.example.com
 
+Because our sample uses a "solo" ordering service, there are no other orderers in the
+network that the restarted orderer must sync up to. However, in a production network
+leveraging Kafka, it will be a best practice to issue ``peer channel fetch <blocknumber>``
+after restarting the orderer to verify that it has caught up to the other orderers.
+
 Upgrade the Peer Containers
 ---------------------------
 
-Next, we will upgrade the peer containers to Fabric v1.1. Peer containers should,
+Next, let's look at how to upgrade peer containers to Fabric v1.1. Peer containers should,
 like the orderers, be upgraded in a rolling fashion (one at a time). As mentioned
 during the orderer upgrade, orderers and peers may be upgraded in parallel, but for
 the purposes of this tutorial we’ve separated the processes out. At a high level,
@@ -272,8 +275,8 @@ Now we'll re-launch the peer using the v1.1 image tag:
 
 .. note:: Although, BYFN supports using CouchDB, we opted for a simpler
           implementation in this tutorial. If you are using CouchDB, however,
-          follow the instructions in the Upgrading CouchDB section at this time,
-          and then issue this command instead of the one above:
+          follow the instructions in the **Upgrading CouchDB** section below at
+          this time and then issue this command instead of the one above:
 
 .. code:: bash
 
@@ -833,15 +836,15 @@ Although this is the end of our update tutorial, there are other components that
 exist in production networks that are not supported by the BYFN sample. In this
 section, we’ll talk through the process of updating them.
 
-Fabric-CA Container
+Fabric CA Container
 ~~~~~~~~~~~~~~~~~~~
 
-To learn how to upgrade your Fabric-CA server, click over to the `CA documentation. <http://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#upgrading-the-server>`_
+To learn how to upgrade your Fabric CA server, click over to the `CA documentation. <http://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#upgrading-the-server>`_
 
 Upgrade Node SDK Clients
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note:: Upgrade the Fabric-CA before upgrading Node SDK Clients.
+.. note:: Upgrade Fabric CA before upgrading Node SDK Clients.
 
 Use NPM to upgrade any ``Node.js`` client by executing these commands in the
 root directory of your application:
@@ -916,8 +919,8 @@ time the peer is being upgraded. To upgrade CouchDB:
 
 The reason to delete the CouchDB data directory is that upon startup the v1.1 peer
 will rebuild the CouchDB state databases from the blockchain transactions. Starting
-in v1.1, there will be an internal CouchDB database for each channel_chaincode combination
-(for each chaincode instantiated on each channel that the peer has joined).
+in v1.1, there will be an internal CouchDB database for each ``channel_chaincode``
+combination (for each chaincode instantiated on each channel that the peer has joined).
 
 Upgrade Chaincodes With Vendored Shim
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
