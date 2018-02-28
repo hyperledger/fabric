@@ -836,7 +836,7 @@ section, we’ll talk through the process of updating them.
 Fabric-CA Container
 ~~~~~~~~~~~~~~~~~~~
 
-LINK TO FABRIC CA DOC.
+To learn how to upgrade your Fabric-CA server, click over to the `CA documentation. <http://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#upgrading-the-server>`_
 
 Upgrade Node SDK Clients
 ~~~~~~~~~~~~~~~~~~~~~~~~
