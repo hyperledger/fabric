@@ -91,8 +91,8 @@ FOO Corporation in Detroit, Michigan might have a digital certificate with a
 `SUBJECT` attribute of `C=US, ST=Michigan, L=Detroit, O=FOO Corporation, OU=Accounting, 
 CN=John Doe /UID=123456`. John's certificate is similar to his government identity 
 card -- it provides information about John which he can use to prove key facts about him.
-There are many other attributes in an X.509 certificate, but concentrate on just these
-for now.
+There are many other attributes in an X.509 certificate, but let's concentrate 
+on just these for now.
 
 ![DigitalCertificate](./identity.diagram.8.png)
 
@@ -114,9 +114,10 @@ certificate as a digital identity card that is impossible to change.
 
 ## Authentication \& Public keys and Private Keys
 
-Authentication and message integrity are important concepts of secure communication, 
-requiring tha parties who exchange messages can be ensured of the identity that created 
-a specific message, as well as the message was not modified during its transmission. 
+Authentication and message integrity are important concepts of secure 
+communication. Authentication requires that parties who exchange messages 
+can be assured of the identity that created a specific message. Integrity 
+requires that the message was not modified during its transmission. 
 For example, you might want to be sure you're communicating with the real John 
 Doe than an impersonator. Or if John has sent you a message, you might want to be sure 
 that it hasn't been tampered with by anyone else during transmission.
@@ -129,8 +130,8 @@ Technically speaking, digital signature mechanisms require require for each part
 hold two cryptographically connected keys: a public key that is made widely available, 
 and acts as authentication anchor, and a private key that is used to produce 
 **digital signatures** on messages. Recipients of digitally signed messages can verify 
-their origin and integrity by checking that the attached signature matches the public key
-of the expected sender. 
+the origin and integrity of a received message by checking that the 
+attached signature is valid under the public key of the expected sender. 
 
 **The unique relationship between a private key and the respective public key is the
 cryptographic magic that makes secure communications possible**. The unique 
@@ -140,7 +141,7 @@ only on the same message.
 
 ![AuthenticationKeys](./identity.diagram.9.png)
 
-In th example above, to authenticate his message Joe uses his private key to produce a 
+In the example above, to authenticate his message Joe uses his private key to produce a 
 signature on the message, which he then attaches to the message. The signature
 can be verified by anyone who sees the signed message, using John's public key. 
 
@@ -151,7 +152,7 @@ can be verified by anyone who sees the signed message, using John's public key.
 As you've seen, an actor or a node is able to participate in the blockchain network, 
 via the means of a **digital identity** issued for it by an authority trusted by the
 system. In the most common case, digital identities (or simply **identities**) have
-the form of cryptographically validated digital certificatesi that comply with X.509 
+the form of cryptographically validated digital certificates that comply with X.509 
 standard, and are issued by a Certificate Authority (CA).
 
 CAs are a common part of internet security protocols, and you've probably heard of
@@ -178,7 +179,7 @@ verify them by checking that the certificate could only have been generated
 by the holder of the corresponding private key (the CA). 
 
 In the Blockchain setting, every actor who wishes to interact with the network 
-needs an identity. In this setting,  you might say that **one or more CAs** can be uded 
+needs an identity. In this setting,  you might say that **one or more CAs** can be used 
 to **define the members of an organization's from a
 digital perspective**. It's the CA that provides the basis for an
 organization's actors to have a verifiable digital identity.
@@ -195,7 +196,7 @@ that is issued by any CA in the chain. This ability to track back to the Root
 CA not only allows the function of CAs to scale while still providing security
 -- allowing organizations that consume certificates to use Intermediate CAs with
 confidence -- it limits the exposure of the Root CA, which, if compromised, would
-destroy the entire chain of trust. If an Intermediate CA is compromised, on the
+endanger the entire chain of trust. If an Intermediate CA is compromised, on the
 other hand, there is a much smaller exposure.
 
 ![ChainOfTrust](./identity.diagram.1.png)
@@ -214,7 +215,7 @@ it really does depend on the needs of the network.
 
 It's because CAs are so important that Fabric provides a built-in CA component to
 allow you to create CAs in the blockchain networks you form. This component -- known
-as **fabric-ca** is private root CA provider capable of managing digital identities of
+as **fabric-ca** is a private root CA provider capable of managing digital identities of
 Fabric participants that have the form of X.509 certificates. 
 Because Fabric-CA is a custom CA targetting the Root CA needs of Fabric,
 it is inherently not capable of providing SSL certificates for general/automatic use
@@ -229,11 +230,11 @@ If you're interested, you can read a lot more about fabric-ca
 ## Certificate Revocation Lists
 
 A Certificate Revocation List (CRL) is easy to understand -- it's just a list of 
-certificates that a CA knows to be revoked for one reason or another. If you recall 
+references to certificates that a CA knows to be revoked for one reason or another. If you recall 
 the store scenario, a CRL would be like a list of stolen credit cards.
 
 When a third party wants to verify another party's identity, it first checks the 
-issuing CA's CRL to make sure that the certificate has not been declared invalid. 
+issuing CA's CRL to make sure that the certificate has not been revoked. 
 A verifier doesn't have to check the CRL, but if they don't they run the risk of 
 accepting a compromised identity.
 
