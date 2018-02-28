@@ -25,7 +25,7 @@ pulling the config, translating into a format that humans can read, modifying it
 and then submitting it for approval.
 
 For a more in-depth look at the process for pulling a config and translating it
-into JSON, check out [Adding an Org to a Channel](./channel_config_tutorial.html).
+into JSON, check out [Adding an Org to a Channel](./channel_update_tutorial.html).
 In this doc, we'll be focusing on the different ways you can edit a config and
 the process for getting it signed.
 
