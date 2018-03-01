@@ -67,13 +67,9 @@ fields is provided:
 
 .. code:: bash
 
-  {"index":{"fields":["data.docType","data.owner"]},"ddoc":"indexOwnerDoc", "name":"indexOwner","type":"json"}
+  {"index":{"fields":["docType","owner"]},"ddoc":"indexOwnerDoc", "name":"indexOwner","type":"json"}
 
 The sample index can be found `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/META-INF/statedb/couchdb/indexes/indexOwner.json>`__.
-
-.. note:: In 1.1 alpha, the “data” wrapper must be specified for each field referenced
-          in the index definition. In subsequent releases the requirement to specify
-          the “data” wrapper may be lifted.
 
 Any index in the chaincode’s ``META-INF/statedb/couchdb/indexes`` directory
 will be packaged up with the chaincode for deployment. When the chaincode is

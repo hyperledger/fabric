@@ -40,7 +40,7 @@
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 
-BASE_VERSION = 1.1.0-beta
+BASE_VERSION = 1.1.0-rc1
 PREV_VERSION = 1.1.0-alpha
 CHAINTOOL_RELEASE=1.0.1
 BASEIMAGE_RELEASE=0.4.6
@@ -53,8 +53,8 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-IS_RELEASE = false
-EXPERIMENTAL ?= true
+IS_RELEASE = true
+EXPERIMENTAL ?= false
 
 ifeq ($(EXPERIMENTAL),true)
 GO_TAGS += experimental
