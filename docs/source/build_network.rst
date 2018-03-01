@@ -170,7 +170,7 @@ Respond with a ``y`` or hit the return key:
 .. code:: bash
 
   Starting with channel 'mychannel' and CLI timeout of '10'
-  Continue? [Y/n] 
+  Continue? [Y/n]
   proceeding ...
   Creating network "net_byfn" with the default driver
   Creating peer0.org1.example.com
@@ -196,10 +196,6 @@ completion, it should report the following in your terminal window:
 
 .. code:: bash
 
-    2017-05-16 17:08:01.366 UTC [msp] GetLocalMSP -> DEBU 004 Returning existing local MSP
-    2017-05-16 17:08:01.366 UTC [msp] GetDefaultSigningIdentity -> DEBU 005 Obtaining default signing identity
-    2017-05-16 17:08:01.366 UTC [msp/identity] Sign -> DEBU 006 Sign: plaintext: 0AB1070A6708031A0C08F1E3ECC80510...6D7963631A0A0A0571756572790A0161
-    2017-05-16 17:08:01.367 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: E61DB37F4E8B0D32C9FE10E3936BA9B8CD278FAA1F3320B08712164248285C54
     Query Result: 90
     2017-05-16 17:08:15.158 UTC [main] main -> INFO 008 Exiting.....
     ===================== Query on peer1.org2 on channel 'mychannel' is successful =====================
@@ -247,6 +243,24 @@ Once again, you will be prompted to continue, respond with a ``y`` or hit the re
 If you'd like to learn more about the underlying tooling and bootstrap mechanics,
 continue reading.  In these next sections we'll walk through the various steps
 and requirements to build a fully-functional Hyperledger Fabric network.
+
+.. note:: The manual steps outlined below assume that the ``CORE_LOGGING_LEVEL`` in
+          the CLI container is set to ``DEBUG``. You can set this by modifying
+          the ``docker-compose-cli.yaml`` file in the ``first-network`` directory.
+          e.g.
+
+          .. code::
+
+            cli:
+              container_name: cli
+              image: hyperledger/fabric-tools:$IMAGE_TAG
+              tty: true
+              stdin_open: true
+             environment:
+             - GOPATH=/opt/gopath
+             - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+             - CORE_LOGGING_LEVEL=DEBUG
+             #- CORE_LOGGING_LEVEL=INFO
 
 Crypto Generator
 ----------------

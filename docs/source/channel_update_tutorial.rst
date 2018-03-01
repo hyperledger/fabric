@@ -105,6 +105,24 @@ show you each command for making a channel update and what it does.
 Bring Org3 into the Channel Manually
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note:: The manual steps outlined below assume that the ``CORE_LOGGING_LEVEL`` in
+          the CLI container is set to ``DEBUG``. You can set this by modifying
+          the ``docker-compose-org3.yaml`` file in the ``first-network`` directory.
+          e.g.
+
+          .. code::
+
+          Org3cli:
+              container_name: Org3cli
+              image: hyperledger/fabric-tools:$IMAGE_TAG
+              tty: true
+              stdin_open: true
+              environment:
+                - GOPATH=/opt/gopath
+                - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+                #- CORE_LOGGING_LEVEL=INFO
+                - CORE_LOGGING_LEVEL=DEBUG
+
 If you've used the ``eyfn.sh`` script, you'll need to bring your network down.
 This can be done by issuing:
 
