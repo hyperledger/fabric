@@ -26,7 +26,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-const pkgLogID = "orderer/ledger/fileledger"
+const pkgLogID = "common/ledger/blockledger/file"
 
 var logger *logging.Logger
 
@@ -63,11 +63,16 @@ type fileLedgerIterator struct {
 	commonIterator ledger.ResultsIterator
 }
 
-// Next blocks until there is a new block available, or returns an error if the
-// next block is no longer retrievable
+// Next blocks until there is a new block available, or until Close is called.
+// It returns an error if the next block is no longer retrievable.
 func (i *fileLedgerIterator) Next() (*cb.Block, cb.Status) {
 	result, err := i.commonIterator.Next()
 	if err != nil {
+		logger.Error(err)
+		return nil, cb.Status_SERVICE_UNAVAILABLE
+	}
+	// Cover the case where another thread calls Close on the iterator.
+	if result == nil {
 		return nil, cb.Status_SERVICE_UNAVAILABLE
 	}
 	return result.(*cb.Block), cb.Status_SUCCESS
