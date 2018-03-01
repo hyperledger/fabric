@@ -87,7 +87,7 @@ With a clean environment, launch our v1.0.6 BYFN network using these four comman
 
   ./byfn.sh -m generate
 
-  ./byfn.sh -m up -t 3000 -i 1.0.6 -p
+  ./byfn.sh -m up -t 3000 -i 1.0.6
 
 .. note:: If you have locally built v1.0.6 images, then they will be used by the example.
           If you get errors, consider cleaning up v1.0.6 images and running the example
@@ -204,7 +204,7 @@ Now **download and restart the orderer** with our new fabric image:
 
 .. code:: bash
 
-  docker-compose -f docker-compose-cli.yaml -f docker-compose-persist.yaml up -d --no-deps orderer.example.com
+  docker-compose -f docker-compose-cli.yaml up -d --no-deps orderer.example.com
 
 Because our sample uses a "solo" ordering service, there are no other orderers in the
 network that the restarted orderer must sync up to. However, in a production network
@@ -271,7 +271,7 @@ Now we'll re-launch the peer using the v1.1 image tag:
 
 .. code:: bash
 
-  docker-compose -f docker-compose-cli.yaml -f docker-compose-persist.yaml up -d --no-deps $PEER
+  docker-compose -f docker-compose-cli.yaml up -d --no-deps $PEER
 
 .. note:: Although, BYFN supports using CouchDB, we opted for a simpler
           implementation in this tutorial. If you are using CouchDB, however,
@@ -280,7 +280,7 @@ Now we'll re-launch the peer using the v1.1 image tag:
 
 .. code:: bash
 
-  docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml -f docker-compose-persist.yaml up -d --no-deps $PEER
+  docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml up -d --no-deps $PEER
 
 We'll talk more generally about how to update CouchDB after the tutorial.
 
@@ -293,7 +293,7 @@ move ``10`` from ``a`` to ``b`` using these commands:
 
 .. code:: bash
 
-  docker-compose -f docker-compose-cli.yaml -f docker-compose-persist.yaml up -d --no-deps cli
+  docker-compose -f docker-compose-cli.yaml up -d --no-deps cli
 
   docker exec -it cli bash
 
