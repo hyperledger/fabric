@@ -106,13 +106,13 @@ Bring Org3 into the Channel Manually
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: The manual steps outlined below assume that the ``CORE_LOGGING_LEVEL`` in
-          the CLI container is set to ``DEBUG``. You can set this by modifying
+          the ``Org3cli`` container is set to ``DEBUG``. You can set this by modifying
           the ``docker-compose-org3.yaml`` file in the ``first-network`` directory.
           e.g.
 
           .. code::
 
-          Org3cli:
+            Org3cli:
               container_name: Org3cli
               image: hyperledger/fabric-tools:$IMAGE_TAG
               tty: true
