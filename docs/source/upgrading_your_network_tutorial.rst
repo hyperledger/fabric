@@ -104,14 +104,20 @@ We are now ready to upgrade our network to Hyperledger Fabric v1.1.
 Get the newest samples
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Before completing the rest of the tutorial, it's important to get the v1.1.0
+.. note:: The instructions below pertain to whatever is the most recently
+          published version of v1.1.x, starting with 1.1.0-rc1. Please substitute
+          '1.1.x' with the version identifier of the published release that
+          you are testing. e.g. replace '1.1.x' with '1.1.0-rc1' if you are
+          currently testing the first release candidate.
+
+Before completing the rest of the tutorial, it's important to get the v1.1.x
 version of the samples, you can do this by:
 
 .. code:: bash
 
   git fetch origin
 
-  git checkout v1.1.0
+  git checkout v1.1.x
 
 Want to upgrade now?
 ~~~~~~~~~~~~~~~~~~~~
@@ -124,10 +130,10 @@ To run the script, issue these commands:
 
 .. code:: bash
 
-  # Note, replace '1.1.0' if upgrading to a different version, for example '1.1.0-rc1'.
-  # Don't pass the image flag '-i 1.1.0' if you prefer to default to 'latest' images.
+  # Note, replace '1.1.x' with a specific version, for example '1.1.0-rc1'.
+  # Don't pass the image flag '-i 1.1.x' if you prefer to default to 'latest' images.
 
-  ./byfn.sh upgrade -i 1.1.0
+  ./byfn.sh upgrade -i 1.1.x
 
 If the upgrade is successful, you should see the following:
 
@@ -136,7 +142,7 @@ If the upgrade is successful, you should see the following:
   ===================== All GOOD, End-2-End UPGRADE Scenario execution completed =====================
 
 if you want to upgrade the network manually, simply run ``./byfn.sh -m down`` again
-and perform the steps up to -- but not including -- ``./byfn.sh upgrade -i 1.1.0``.
+and perform the steps up to -- but not including -- ``./byfn.sh upgrade -i 1.1.x``.
 Then proceed to the next section.
 
 .. note:: Many of the commands you'll run in this section will not result in any
@@ -181,10 +187,10 @@ Let’s begin the upgrade process by **bringing down the orderer**:
 
   export LEDGERS_BACKUP=./ledgers-backup
 
-  # Note, replace '1.1.0' if upgrading to a different version, for example '1.1.0-rc1'.
+  # Note, replace '1.1.x' with a specific version, for example '1.1.0-rc1'.
   # Set IMAGE_TAG to 'latest' if you prefer to default to the images tagged 'latest' on your system.
 
-  export IMAGE_TAG=`uname -m`-1.1.0
+  export IMAGE_TAG=`uname -m`-1.1.x
 
 We have created a variable for a directory to put file backups into, and
 exported the ``IMAGE_TAG`` we'd like to move to.
@@ -333,9 +339,9 @@ extra care must be taken when initially enabling capabilities for a channel.
 
 Although Fabric binaries can and should be upgraded in a rolling fashion, **it is
 critical that the ordering admins not attempt to enable v1.1 capabilities until all
-orderer binaries are at v1.1.0+**. If any orderer is executing v1.0.x code, and
-capabilities are enabled for a channel, the blockchain will fork as v1.0.0 orderers
-invalidate the change and v1.1.0+ orderers accept it. This is an exception for the
+orderer binaries are at v1.1.x+**. If any orderer is executing v1.0.x code, and
+capabilities are enabled for a channel, the blockchain will fork as v1.0.x orderers
+invalidate the change and v1.1.x+ orderers accept it. This is an exception for the
 v1.0 to v1.1 upgrade. For future upgrades, such as v1.1 to v1.2, the ordering network
 will handle the upgrade more gracefully and prevent the state fork.
 
