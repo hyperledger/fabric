@@ -487,6 +487,41 @@ Inspect the logs for ``peer0.org1.example.com``:
 Follow the demonstrated process to fetch and decode the new config block if you wish to inspect
 its contents.
 
+Configuring Leader Election
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Newly joining peers are bootstrapped with the genesis block, which does not contain information about the organization
+that is being added in the channel configuration update. Therefore new peers are not able to utilize gossip as
+they cannot verify blocks forwarded by other peers from their own organization until they get the configuration
+transaction which added the organization to the channel. Newly added peers must therefore have one of the following
+configurations so that they receive blocks from the ordering service:
+
+1. Utilize static leader mode and configure the peer to be an organization leader:
+
+::
+
+    export CORE_PEER_GOSSIP_USELEADERELECTION=false
+    export CORE_PEER_GOSSIP_ORGLEADER=true
+
+
+.. note:: This configuration must be the same for all new peers added to the channel.
+
+2. Utilize dynamic leader election:
+
+::
+
+    export CORE_PEER_GOSSIP_USELEADERELECTION=true
+    export CORE_PEER_GOSSIP_ORGLEADER=false
+
+
+.. note:: Because peers of newly added organization won't be able to form membership view, this option will
+          be similar to the static configuration, as each peer will start proclaiming himself to be a leader.
+          However eventually once they get updated with the configuration transaction that adds the
+          organization to the channel, there will be only one active leader for the organization. Therefore it
+          is recommended to leverage this option if you eventually want the organization's peers to utilize
+          leader election.
+
+
 Join Org3 to the Channel
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
