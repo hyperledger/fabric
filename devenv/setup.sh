@@ -93,9 +93,9 @@ runuser -l ubuntu -c '/hyperledger/fabric/devenv/install_nvm.sh'
 # ----------------------------------------------------------------
 apt-get install -y openjdk-8-jdk maven
 
-wget https://services.gradle.org/distributions/gradle-2.12-bin.zip -P /tmp --quiet
-unzip -q /tmp/gradle-2.12-bin.zip -d /opt && rm /tmp/gradle-2.12-bin.zip
-ln -s /opt/gradle-2.12/bin/gradle /usr/bin
+wget https://services.gradle.org/distributions/gradle-4.4.1-bin.zip -P /tmp --quiet
+unzip -q /tmp/gradle-4.4.1-bin.zip -d /opt && rm /tmp/gradle-4.4.1-bin.zip
+ln -s /opt/gradle-4.4.1/bin/gradle /usr/bin
 
 # ----------------------------------------------------------------
 # Misc tasks

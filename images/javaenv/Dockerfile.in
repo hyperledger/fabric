@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 FROM _BASE_NS_/fabric-baseimage:_BASE_TAG_
-RUN curl -sSL https://services.gradle.org/distributions/gradle-2.12-bin.zip > /tmp/gradle-2.12-bin.zip
-RUN unzip -qo /tmp/gradle-2.12-bin.zip -d /opt && rm /tmp/gradle-2.12-bin.zip
-RUN ln -s /opt/gradle-2.12/bin/gradle /usr/bin
+RUN curl -sSL https://services.gradle.org/distributions/gradle-4.4.1-bin.zip > /tmp/gradle-4.4.1-bin.zip
+RUN unzip -qo /tmp/gradle-4.4.1-bin.zip -d /opt && rm /tmp/gradle-4.4.1-bin.zip
+RUN ln -s /opt/gradle-4.4.1/bin/gradle /usr/bin
 ENV MAVEN_VERSION=3.3.9
 ENV USER_HOME_DIR="/root"
 RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
