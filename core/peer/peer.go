@@ -15,15 +15,11 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/file"
-	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
-	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/comm"
@@ -168,14 +164,6 @@ var chains = struct {
 	sync.RWMutex
 	list map[string]*chain
 }{list: make(map[string]*chain)}
-
-//MockInitialize resets chains for test env
-func MockInitialize() {
-	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
-	chains.list = nil
-	chains.list = make(map[string]*chain)
-	chainInitializer = func(string) { return }
-}
 
 var chainInitializer func(string)
 
@@ -434,36 +422,6 @@ func CreateChainFromBlock(cb *common.Block) error {
 	}
 
 	return createChain(cid, l, cb)
-}
-
-// MockCreateChain used for creating a ledger for a chain for tests
-// without having to join
-func MockCreateChain(cid string) error {
-	var ledger ledger.PeerLedger
-	var err error
-
-	if ledger = GetLedger(cid); ledger == nil {
-		gb, _ := configtxtest.MakeGenesisBlock(cid)
-		if ledger, err = ledgermgmt.CreateLedger(gb); err != nil {
-			return err
-		}
-	}
-
-	chains.Lock()
-	defer chains.Unlock()
-
-	chains.list[cid] = &chain{
-		cs: &chainSupport{
-			Resources: &mockchannelconfig.Resources{
-				PolicyManagerVal: &mockpolicies.Manager{
-					Policy: &mockpolicies.Policy{},
-				},
-				ConfigtxValidatorVal: &mockconfigtx.Validator{},
-			},
-			ledger: ledger},
-	}
-
-	return nil
 }
 
 // GetLedger returns the ledger of the chain with chain ID. Note that this
