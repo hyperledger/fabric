@@ -167,11 +167,11 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			"Org1-cert.pem"))
 		viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 		defer os.RemoveAll("/var/hyperledger/test/")
-		err := peer.CreateChainFromBlock(block)
+		err := peer.Default.CreateChainFromBlock(block)
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}
-		t.Logf("Channel %s MSPIDs: (%s)", cid, peer.GetMSPIDs(cid))
+		t.Logf("Channel %s MSPIDs: (%s)", cid, peer.Default.GetMSPIDs(cid))
 	}
 
 	org1CertPool, err := createCertPool([][]byte{org1CA})
@@ -292,14 +292,12 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test %s ...", test.name)
-			_, err := peer.CreatePeerServer(test.listenAddress, test.serverConfig)
+			server, err := peer.NewPeerServer(test.listenAddress, test.serverConfig)
 			if err != nil {
-				t.Fatalf("CreatePeerServer failed with error [%s]", err)
+				t.Fatalf("NewPeerServer failed with error [%s]", err)
 			} else {
-				assert.NoError(t, err, "CreatePeerServer should not have returned an error")
-				// get the server from peer
-				server := peer.GetPeerServer()
-				assert.NotNil(t, server, "GetPeerServer should not return a nil value")
+				assert.NoError(t, err, "NewPeerServer should not have returned an error")
+				assert.NotNil(t, server, "NewPeerServer should have created a server")
 				// register a GRPC test service
 				testpb.RegisterTestServiceServer(server.Server(), &testServiceServer{})
 				go server.Start()

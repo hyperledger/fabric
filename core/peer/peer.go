@@ -505,7 +505,7 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 			trustedRoots = append(trustedRoots, serverConfig.SecOpts.ServerRootCAs...)
 		}
 
-		server := GetPeerServer()
+		server := peerServer
 		// now update the client roots for the peerServer
 		if server != nil {
 			err := server.SetClientRootCAs(trustedRoots)
@@ -675,11 +675,9 @@ func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager
 	return policyManager, policyManager != nil
 }
 
-// CreatePeerServer creates an instance of comm.GRPCServer
+// NewPeerServer creates an instance of comm.GRPCServer
 // This server is used for peer communications
-func CreatePeerServer(listenAddress string,
-	serverConfig comm.ServerConfig) (comm.GRPCServer, error) {
-
+func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (comm.GRPCServer, error) {
 	var err error
 	peerServer, err = comm.NewGRPCServer(listenAddress, serverConfig)
 	if err != nil {
@@ -687,11 +685,6 @@ func CreatePeerServer(listenAddress string,
 		return nil, err
 	}
 	return peerServer, nil
-}
-
-// GetPeerServer returns the peer server instance
-func GetPeerServer() comm.GRPCServer {
-	return peerServer
 }
 
 type collectionSupport struct {

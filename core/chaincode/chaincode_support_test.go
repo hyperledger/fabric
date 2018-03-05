@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -144,7 +145,9 @@ func initMockPeer(chainIDs ...string) error {
 		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
 		GetApplicationConfigBoolRv: true,
 	}
-	peer.RegisterSupportFactory(&cmp.MockSupportFactoryImpl{msi})
+	sysccprovider.RegisterSystemChaincodeProviderFactory(
+		&scc.ProviderFactory{Peer: peer.Default, PeerSupport: msi},
+	)
 
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()

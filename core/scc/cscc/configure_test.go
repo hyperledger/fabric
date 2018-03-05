@@ -36,10 +36,12 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	mockccprovider "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
@@ -96,6 +98,7 @@ func TestMain(m *testing.M) {
 	mockAclProvider = &aclmocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
+	ccprovider.RegisterChaincodeProviderFactory(&mockccprovider.MockCcProviderFactory{})
 	aclmgmt.RegisterACLProvider(mockAclProvider)
 
 	os.Exit(m.Run())
@@ -206,11 +209,21 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	// Init the policy checker
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
-			"mytestchainid": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"mytestchainid": &policymocks.MockChannelPolicyManager{
+				MockPolicy: &policymocks.MockPolicy{
+					Deserializer: &policymocks.MockIdentityDeserializer{
+						Identity: []byte("Alice"),
+						Msg:      []byte("msg1"),
+					},
+				},
+			},
 		},
 	}
 
-	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &policymocks.MockIdentityDeserializer{
+		Identity: []byte("Alice"),
+		Msg:      []byte("msg1"),
+	}
 
 	e.policyChecker = policy.NewPolicyChecker(
 		policyManagerGetter,
@@ -311,7 +324,6 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 }
 
 func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
-
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
 	os.Mkdir("/tmp/hyperledgertest", 0755)
 	defer os.RemoveAll("/tmp/hyperledgertest/")
@@ -338,7 +350,6 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	} else {
 		assert.Contains(t, res.Message, "missing Application configuration group")
 	}
-
 }
 
 func mockConfigBlock() []byte {
