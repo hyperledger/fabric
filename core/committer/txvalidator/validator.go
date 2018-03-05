@@ -56,10 +56,6 @@ type Support interface {
 
 	// Capabilities defines the capabilities for the application portion of this channel
 	Capabilities() channelconfig.ApplicationCapabilities
-
-	// ChaincodeByName returns the definition (and whether they exist)
-	// for a chaincode in a specific channel
-	ChaincodeByName(chainname, ccname string) (resourcesconfig.ChaincodeDefinition, bool)
 }
 
 //Validator interface which defines API to validate block transactions
