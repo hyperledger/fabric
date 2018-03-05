@@ -216,7 +216,7 @@ type mockCCLauncher struct {
 	notfyb   bool
 }
 
-func (ccl *mockCCLauncher) launch(ctxt context.Context, notfy chan bool) (interface{}, error) {
+func (ccl *mockCCLauncher) launch(ctxt context.Context, notfy chan bool) (container.VMCResp, error) {
 	if ccl.execTime != nil {
 		time.Sleep(*ccl.execTime)
 	}

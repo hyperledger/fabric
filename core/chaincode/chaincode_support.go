@@ -429,7 +429,7 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 //a launcher interface to encapsulate chaincode execution. This
 //helps with UT of launchAndWaitForRegister
 type launcherIntf interface {
-	launch(ctxt context.Context, notfy chan bool) (interface{}, error)
+	launch(ctxt context.Context, notfy chan bool) (container.VMCResp, error)
 }
 
 //ccLaucherImpl will use the container launcher mechanism to launch the actual chaincode
@@ -442,11 +442,11 @@ type ccLauncherImpl struct {
 }
 
 //launches the chaincode using the supplied context and notifier
-func (ccl *ccLauncherImpl) launch(ctxt context.Context, notfy chan bool) (interface{}, error) {
+func (ccl *ccLauncherImpl) launch(ctxt context.Context, notfy chan bool) (container.VMCResp, error) {
 	//launch the chaincode
 	args, env, filesToUpload, err := ccl.ccSupport.getLaunchConfigs(ccl.cccid, ccl.cds.ChaincodeSpec.Type)
 	if err != nil {
-		return nil, err
+		return container.VMCResp{}, err
 	}
 
 	canName := ccl.cccid.GetCanonicalName()
@@ -538,9 +538,9 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 		}()
 
 		resp, err := launcher.launch(ctxt, notfy)
-		if err != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
+		if err != nil || resp.Err != nil {
 			if err == nil {
-				err = resp.(container.VMCResp).Err
+				err = resp.Err
 			}
 			err = errors.WithMessage(err, "error starting container")
 			chaincodeSupport.runningChaincodes.Lock()

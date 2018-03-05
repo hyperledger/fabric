@@ -214,13 +214,9 @@ func TestVMCCreateAndStartContainer(t *testing.T) {
 			t.Logf("Error starting container: %s", err)
 			return
 		}
-		vmcresp, ok := r.(VMCResp)
-		if !ok {
-			t.Fatalf("invalid response from VMCProcess")
-		}
-		if vmcresp.Err != nil {
+		if r.Err != nil {
 			t.Fail()
-			t.Logf("docker error starting container: %s", vmcresp.Err)
+			t.Logf("docker error starting container: %s", r.Err)
 			return
 		}
 	}()
