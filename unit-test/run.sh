@@ -84,7 +84,6 @@ run_tests() {
 # profile reports can only be generated one package at a time.
 run_tests_with_coverage() {
     # Initialize profile.cov
-    echo "mode: set" > profile.cov
     for pkg in $@; do
         :> profile_tmp.cov
         go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $pkg -timeout=20m
@@ -123,6 +122,7 @@ main() {
     if [ -z "${packages}" ]; then
         echo "Nothing to test!!!"
     elif [ "${JOB_TYPE}" = "PROFILE" ]; then
+        echo "mode: set" > profile.cov
         run_tests_with_coverage "${packages[@]}"
         GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages[@]}"
     else
