@@ -46,7 +46,6 @@ func (tss *testServiceServer) EmptyCall(context.Context, *testpb.Empty) (*testpb
 
 // createCertPool creates an x509.CertPool from an array of PEM-encoded certificates
 func createCertPool(rootCAs [][]byte) (*x509.CertPool, error) {
-
 	certPool := x509.NewCertPool()
 	for _, rootCA := range rootCAs {
 		if !certPool.AppendCertsFromPEM(rootCA) {
@@ -58,7 +57,6 @@ func createCertPool(rootCAs [][]byte) (*x509.CertPool, error) {
 
 // helper function to invoke the EmptyCall againt the test service
 func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-
 	//add DialOptions
 	dialOptions = append(dialOptions, grpc.WithBlock())
 	ctx := context.Background()
