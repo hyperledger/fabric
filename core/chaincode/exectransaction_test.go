@@ -100,7 +100,8 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 
 	ccStartupTimeout := time.Duration(3) * time.Minute
 	ca, _ := accesscontrol.NewCA()
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca))
+	certGenerator := accesscontrol.NewAuthenticator(ca)
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator))
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})

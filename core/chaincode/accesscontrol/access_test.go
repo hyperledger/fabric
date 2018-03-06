@@ -164,8 +164,8 @@ func TestAccessControl(t *testing.T) {
 
 	ca, _ := NewCA()
 	srv := newCCServer(t, 7052, "example02", true, ca)
-	auth := NewAuthenticator(srv, ca)
-	pb.RegisterChaincodeSupportServer(srv.grpcSrv, auth)
+	auth := NewAuthenticator(ca)
+	pb.RegisterChaincodeSupportServer(srv.grpcSrv, auth.Wrap(srv))
 	go srv.grpcSrv.Serve(srv.l)
 	defer srv.stop()
 
@@ -288,52 +288,6 @@ func TestAccessControl(t *testing.T) {
 	echoMsg = lateCC.recv()
 	assert.Nil(t, echoMsg)
 	logAsserter.assertLastLogContains(t, "with given certificate hash", "not found in registry")
-}
-
-func TestAccessControlNoTLS(t *testing.T) {
-	chaincodeID := &pb.ChaincodeID{Name: "example02"}
-	payload, err := proto.Marshal(chaincodeID)
-	registerMsg := &pb.ChaincodeMessage{
-		Type:    pb.ChaincodeMessage_REGISTER,
-		Payload: payload,
-	}
-	putStateMsg := &pb.ChaincodeMessage{
-		Type: pb.ChaincodeMessage_PUT_STATE,
-	}
-
-	ca, _ := NewCA()
-	s := newCCServer(t, 8052, "example02", false, ca)
-	auth := NewAuthenticator(s, ca)
-	pb.RegisterChaincodeSupportServer(s.grpcSrv, auth)
-	go s.grpcSrv.Serve(s.l)
-	defer s.stop()
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second)
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", 8052), grpc.WithInsecure(), grpc.WithBlock())
-	assert.NoError(t, err)
-	chaincodeSupportClient := pb.NewChaincodeSupportClient(conn)
-	stream, err := chaincodeSupportClient.Register(context.Background())
-	stream.Send(registerMsg)
-	stream.Send(putStateMsg)
-	// Should fail because we haven't disabled security yet
-	echoMsg, err := stream.Recv()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "TLS is active but chaincode")
-	assert.Nil(t, echoMsg)
-	conn.Close()
-
-	auth.DisableAccessCheck()
-	// Now it should work
-	conn, err = grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", 8052), grpc.WithInsecure(), grpc.WithBlock())
-	assert.NoError(t, err)
-	defer conn.Close()
-	chaincodeSupportClient = pb.NewChaincodeSupportClient(conn)
-	stream, err = chaincodeSupportClient.Register(context.Background())
-	stream.Send(registerMsg)
-	stream.Send(putStateMsg)
-	echoMsg, err = stream.Recv()
-	assert.NotNil(t, echoMsg)
-	assert.NoError(t, err)
 }
 
 type logBackend struct {

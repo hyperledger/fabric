@@ -136,30 +136,32 @@ func (chaincodeSupport *ChaincodeSupport) launchStarted(chaincode string) bool {
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
-func NewChaincodeSupport(ccEndpoint string, userrunsCC bool, ccstartuptimeout time.Duration, ca accesscontrol.CA) pb.ChaincodeSupportServer {
+func NewChaincodeSupport(
+	ccEndpoint string,
+	userrunsCC bool,
+	ccstartuptimeout time.Duration,
+	caCert []byte,
+	certGenerator CertGenerator,
+) *ChaincodeSupport {
 	ccprovider.SetChaincodesPath(config.GetPath("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
 
 	theChaincodeSupport = &ChaincodeSupport{
-		ca: ca,
+		caCert:        caCert,
+		certGenerator: certGenerator,
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
 		}, peerNetworkID: pnid, peerID: pid,
 	}
 
-	theChaincodeSupport.auth = accesscontrol.NewAuthenticator(theChaincodeSupport, ca)
 	theChaincodeSupport.peerAddress = ccEndpoint
 	chaincodeLogger.Infof("Chaincode support using peerAddress: %s\n", theChaincodeSupport.peerAddress)
 
 	theChaincodeSupport.userRunsCC = userrunsCC
 	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
-
 	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
-	if !theChaincodeSupport.peerTLS {
-		theChaincodeSupport.auth.DisableAccessCheck()
-	}
 
 	kadef := 0
 	if ka := viper.GetString("chaincode.keepalive"); ka == "" {
@@ -196,7 +198,7 @@ func NewChaincodeSupport(ccEndpoint string, userrunsCC bool, ccstartuptimeout ti
 	theChaincodeSupport.shimLogLevel = getLogLevelFromViper("shim")
 	theChaincodeSupport.logFormat = viper.GetString("chaincode.logging.format")
 
-	return theChaincodeSupport.auth
+	return theChaincodeSupport
 }
 
 // getLogLevelFromViper gets the chaincode container log levels from viper
@@ -213,10 +215,17 @@ func getLogLevelFromViper(module string) string {
 	return levelString
 }
 
+// CertGenerator generates client certificates for chaincode.
+type CertGenerator interface {
+	// Generate returns a certificate and private key and associates
+	// the hash of the certificate with the given chaincode name
+	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
+}
+
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	ca                accesscontrol.CA
-	auth              accesscontrol.Authenticator
+	caCert            []byte
+	certGenerator     CertGenerator
 	runningChaincodes *runningChaincodes
 	peerAddress       string
 	ccStartupTimeout  time.Duration
@@ -358,7 +367,7 @@ func (chaincodeSupport *ChaincodeSupport) getTLSFiles(keyPair *accesscontrol.Cer
 	return map[string][]byte{
 		TLSClientKeyPath:      []byte(keyPair.Key),
 		TLSClientCertPath:     []byte(keyPair.Cert),
-		TLSClientRootCertPath: chaincodeSupport.ca.CertBytes(),
+		TLSClientRootCertPath: chaincodeSupport.caCert,
 	}
 }
 
@@ -379,7 +388,7 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 	// ----------------------------------------------------------------------------
 	var certKeyPair *accesscontrol.CertAndPrivKeyPair
 	if chaincodeSupport.peerTLS {
-		certKeyPair, err = chaincodeSupport.auth.Generate(cccid.GetCanonicalName())
+		certKeyPair, err = chaincodeSupport.certGenerator.Generate(cccid.GetCanonicalName())
 		if err != nil {
 			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", cccid.GetCanonicalName()))
 		}

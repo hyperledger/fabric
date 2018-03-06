@@ -502,6 +502,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
+	tlsEnabled := viper.GetBool("peer.tls.enabled")
 
 	//get chaincode startup timeout
 	ccStartupTimeout := viper.GetDuration("chaincode.startuptimeout")
@@ -512,7 +513,12 @@ func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEndpoint string, ca 
 		logger.Debugf("Chaincode startup timeout value set to %s", ccStartupTimeout)
 	}
 
-	ccSrv := chaincode.NewChaincodeSupport(ccEndpoint, userRunsCC, ccStartupTimeout, ca)
+	authenticator := accesscontrol.NewAuthenticator(ca)
+	chaincodeSupport := chaincode.NewChaincodeSupport(ccEndpoint, userRunsCC, ccStartupTimeout, ca.CertBytes(), authenticator)
+	ccSrv := pb.ChaincodeSupportServer(chaincodeSupport)
+	if tlsEnabled {
+		ccSrv = authenticator.Wrap(ccSrv)
+	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
 	scc.RegisterSysCCs()
