@@ -46,7 +46,7 @@ Business:
    fabric_model
    identity/identity.md
    membership/membership.md
-   ledger
+   ledger/ledger.md
    usecases
 
 .. toctree::

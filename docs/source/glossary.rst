@@ -228,6 +228,8 @@ channel, who then distribute them to other peers within the same member cluster.
 
 Ledger
 ------
+THIS REQUIRES UPDATING
+ADD SMART CONTRACT REFERENCE AND GLOSSARY ITEM
 
 A ledger is a channel's chain and current state data which is maintained by each
 peer on the channel.
