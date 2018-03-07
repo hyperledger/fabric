@@ -491,10 +491,6 @@ func applyAdditionalQueryOptions(queryString string, queryLimit, querySkip int) 
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 
-	// STEP 1: GATHER DOCUMENT REVISION NUMBERS REQUIRED FOR THE COUCHDB BULK UPDATE
-	//         ALSO BUILD PROCESS BATCHES OF UPDATE DOCUMENTS PER NAMESPACE BASED ON
-	// 	   THE MAX BATCH SIZE
-
 	namespaces := batch.GetUpdatedNamespaces()
 
 	// Create goroutine wait group.
@@ -509,72 +505,9 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 		go func(ns string) {
 			defer processBatchGroup.Done()
 
-			// initialize a missing key list
-			var missingKeys []*statedb.CompositeKey
-
-			//initialize a processBatch for updating bulk documents
-			processBatch := statedb.NewUpdateBatch()
-
-			//get the max size of the batch from core.yaml
-			maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
-
-			//initialize a counter to track the batch size
-			batchSizeCounter := 0
-
 			nsUpdates := batch.GetUpdates(ns)
-			for k, vv := range nsUpdates {
 
-				//increment the batch size counter
-				batchSizeCounter++
-
-				compositeKey := statedb.CompositeKey{Namespace: ns, Key: k}
-
-				// Revision numbers are needed for couchdb updates.
-				// vdb.committedDataCache.revisionNumbers is a cache of revision numbers based on ID
-				// Document IDs and revision numbers will already be in the cache for read/writes,
-				// but will be missing in the case of blind writes.
-				// If the key is missing in the cache, then add the key to missingKeys
-				vdb.committedDataCache.mux.RLock()
-				_, keyFound := vdb.committedDataCache.revisionNumbers[compositeKey]
-				vdb.committedDataCache.mux.RUnlock()
-
-				if !keyFound {
-					// Add the key to the missing key list
-					// As there can be no duplicates in UpdateBatch, no need check for duplicates.
-					missingKeys = append(missingKeys, &compositeKey)
-				}
-
-				//add the record to the process batch
-				if vv.Value == nil {
-					processBatch.Delete(ns, k, vv.Version)
-				} else {
-					processBatch.Put(ns, k, vv.Value, vv.Version)
-				}
-
-				//Check to see if the process batch exceeds the max batch size
-				if batchSizeCounter >= maxBatchSize {
-
-					//STEP 2:  PROCESS EACH BATCH OF UPDATE DOCUMENTS
-
-					err := vdb.processUpdateBatch(processBatch, missingKeys)
-					if err != nil {
-						errResponses <- err
-						return
-					}
-
-					//reset the batch size counter
-					batchSizeCounter = 0
-
-					//create a new process batch
-					processBatch = statedb.NewUpdateBatch()
-
-					// reset the missing key list
-					missingKeys = []*statedb.CompositeKey{}
-				}
-			}
-
-			//STEP 3:  PROCESS ANY REMAINING DOCUMENTS
-			err := vdb.processUpdateBatch(processBatch, missingKeys)
+			err := vdb.processNsUpdates(nsUpdates, ns)
 			if err != nil {
 				errResponses <- err
 				return
@@ -605,13 +538,62 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 	return nil
 }
 
-//ProcessUpdateBatch updates a batch
-func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, missingKeys []*statedb.CompositeKey) error {
+// findAndLoadMissingRevisions finds required keys which are not present in the cache. Then, it loads those keys
+// into cache
+func (vdb *VersionedDB) findAndLoadMissingRevisions(nsUpdates map[string]*statedb.VersionedValue, ns string) error {
+	var missingKeys []*statedb.CompositeKey
 
-	// An array of missing keys is passed in to the batch processing
-	// A bulk read will then add the missing revisions to the cache
+	//get the max size of the batch from core.yaml
+	maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
+
+	//initialize a counter to track the batch size
+	batchSizeCounter := 0
+
+	for k := range nsUpdates {
+
+		//increment the batch size counter
+		batchSizeCounter++
+
+		compositeKey := statedb.CompositeKey{Namespace: ns, Key: k}
+
+		// Revision numbers are needed for couchdb updates.
+		// vdb.committedDataCache.revisionNumbers is a cache of revision numbers based on ID
+		// Document IDs and revision numbers will already be in the cache for read/writes,
+		// but will be missing in the case of blind writes.
+		// If the key is missing in the cache, then add the key to missingKeys
+		vdb.committedDataCache.mux.RLock()
+		_, keyFound := vdb.committedDataCache.revisionNumbers[compositeKey]
+		vdb.committedDataCache.mux.RUnlock()
+
+		if !keyFound {
+			// Add the key to the missing key list
+			// As there can be no duplicates in UpdateBatch, no need check for duplicates.
+			missingKeys = append(missingKeys, &compositeKey)
+		}
+
+		//Check to see if the batch exceeds the max batch size
+		if batchSizeCounter >= maxBatchSize {
+
+			if logger.IsEnabledFor(logging.DEBUG) {
+				logger.Debugf("Retrieving keys with unknown revision numbers, keys= %s", printCompositeKeys(missingKeys))
+			}
+
+			// TODO: Loading per batch can be executed in parallel using goroutine.
+			err := vdb.LoadCommittedVersions(missingKeys)
+			if err != nil {
+				return err
+			}
+
+			//reset the batch size counter
+			batchSizeCounter = 0
+
+			// reset the missing key list
+			missingKeys = []*statedb.CompositeKey{}
+		}
+	}
+
+	//process any remaining missing keys
 	if len(missingKeys) > 0 {
-
 		if logger.IsEnabledFor(logging.DEBUG) {
 			logger.Debugf("Retrieving keys with unknown revision numbers, keys= %s", printCompositeKeys(missingKeys))
 		}
@@ -622,155 +604,189 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 		}
 	}
 
-	// STEP 1: CREATE COUCHDB DOCS FROM UPDATE SET THEN DO A BULK UPDATE IN COUCHDB
+	return nil
+}
+
+// commitUpdates commits the valid write set to CouchDB
+func (vdb *VersionedDB) commitUpdates(batchUpdateMap map[string]*BatchableDocument, ns string) error {
+
+	//Add the documents to the batch update array
+	batchUpdateDocs := []*couchdb.CouchDoc{}
+	for _, updateDocument := range batchUpdateMap {
+		batchUpdateDocument := updateDocument
+		batchUpdateDocs = append(batchUpdateDocs, &batchUpdateDocument.CouchDoc)
+	}
+
+	// Do the bulk update into couchdb
+	// Note that this will do retries if the entire bulk update fails or times out
+
+	db, err := vdb.getNamespaceDBHandle(ns)
+	if err != nil {
+		return err
+	}
+	batchUpdateResp, err := db.BatchUpdateDocuments(batchUpdateDocs)
+	if err != nil {
+		return err
+	}
+
+	// IF INDIVIDUAL DOCUMENTS IN THE BULK UPDATE DID NOT SUCCEED, TRY THEM INDIVIDUALLY
+
+	// iterate through the response from CouchDB by document
+	for _, respDoc := range batchUpdateResp {
+
+		// If the document returned an error, retry the individual document
+		if respDoc.Ok != true {
+
+			batchUpdateDocument := batchUpdateMap[respDoc.ID]
+
+			var err error
+
+			//Remove the "_rev" from the JSON before saving
+			//this will allow the CouchDB retry logic to retry revisions without encountering
+			//a mismatch between the "If-Match" and the "_rev" tag in the JSON
+			if batchUpdateDocument.CouchDoc.JSONValue != nil {
+				err = removeJSONRevision(&batchUpdateDocument.CouchDoc.JSONValue)
+				if err != nil {
+					return err
+				}
+			}
+
+			// Check to see if the document was added to the batch as a delete type document
+			if batchUpdateDocument.Deleted {
+
+				//Log the warning message that a retry is being attempted for batch delete issue
+				logger.Warningf("CouchDB batch document delete encountered an problem. Retrying delete for document ID:%s", respDoc.ID)
+
+				// If this is a deleted document, then retry the delete
+				// If the delete fails due to a document not being found (404 error),
+				// the document has already been deleted and the DeleteDoc will not return an error
+				err = db.DeleteDoc(respDoc.ID, "")
+			} else {
+
+				//Log the warning message that a retry is being attempted for batch update issue
+				logger.Warningf("CouchDB batch document update encountered an problem. Retrying update for document ID:%s", respDoc.ID)
+
+				// Save the individual document to couchdb
+				// Note that this will do retries as needed
+				_, err = db.SaveDoc(respDoc.ID, "", &batchUpdateDocument.CouchDoc)
+			}
+
+			// If the single document update or delete returns an error, then throw the error
+			if err != nil {
+
+				errorString := fmt.Sprintf("Error occurred while saving document ID = %v  Error: %s  Reason: %s\n",
+					respDoc.ID, respDoc.Error, respDoc.Reason)
+
+				logger.Errorf(errorString)
+				return fmt.Errorf(errorString)
+
+			}
+		}
+	}
+	return nil
+}
+
+//ProcessNsUpdates commits valid write set belonging to a given namespace
+func (vdb *VersionedDB) processNsUpdates(nsUpdates map[string]*statedb.VersionedValue, ns string) error {
+
+	// find and load missing keys in cache so that revision numbers can be used during updates
+	err := vdb.findAndLoadMissingRevisions(nsUpdates, ns)
+	if err != nil {
+		return err
+	}
+
+	// CREATE COUCHDB DOCS FROM UPDATE SET THEN DO A BULK UPDATE IN COUCHDB
 
 	// Use the batchUpdateMap for tracking couchdb updates by ID
 	// this will be used in case there are retries required
 	batchUpdateMap := make(map[string]*BatchableDocument)
 
-	//TODO: processUpdateBatch is called with updateBatch of a single namespace/chaincode at a time.
-	// Hence, retrieving namespaces from updateBatch and looping over it is not required. Need to remove
-	// only the outer for loop.
-	namespaces := updateBatch.GetUpdatedNamespaces()
-	for _, ns := range namespaces {
-		nsUpdates := updateBatch.GetUpdates(ns)
-		for key, vv := range nsUpdates {
+	//initialize a counter to track the batch size
+	batchSizeCounter := 0
 
-			// Create a document structure
-			couchDoc := &couchdb.CouchDoc{}
-			var err error
+	//get the max size of the batch from core.yaml
+	maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
 
-			// retrieve the couchdb revision from the cache
-			// Documents that do not exist in couchdb will not have revision numbers and will
-			// exist in the cache with a revision value of nil
-			vdb.committedDataCache.mux.RLock()
-			revision := vdb.committedDataCache.revisionNumbers[statedb.CompositeKey{Namespace: ns, Key: key}]
-			vdb.committedDataCache.mux.RUnlock()
+	for key, vv := range nsUpdates {
 
-			var isDelete bool // initialized to false
-			if vv.Value == nil {
-				isDelete = true
+		batchSizeCounter++
+
+		// Create a document structure
+		couchDoc := &couchdb.CouchDoc{}
+		var err error
+
+		// retrieve the couchdb revision from the cache
+		// Documents that do not exist in couchdb will not have revision numbers and will
+		// exist in the cache with a revision value of nil
+		vdb.committedDataCache.mux.RLock()
+		revision := vdb.committedDataCache.revisionNumbers[statedb.CompositeKey{Namespace: ns, Key: key}]
+		vdb.committedDataCache.mux.RUnlock()
+
+		var isDelete bool // initialized to false
+		if vv.Value == nil {
+			isDelete = true
+		}
+
+		logger.Debugf("Channel [%s]: namespace=[%s] key=[%#v], prior revision=[%s], isDelete=[%t]",
+			vdb.chainName, ns, key, revision, isDelete)
+
+		if isDelete {
+			// this is a deleted record.  Set the _deleted property to true
+			couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, nil, vv.Version, true)
+			if err != nil {
+				return err
 			}
 
-			logger.Debugf("Channel [%s]: namespace=[%s] key=[%#v], prior revision=[%s], isDelete=[%t]",
-				vdb.chainName, ns, key, revision, isDelete)
+		} else {
 
-			if isDelete {
-				// this is a deleted record.  Set the _deleted property to true
-				couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, nil, vv.Version, true)
+			if couchdb.IsJSON(string(vv.Value)) {
+				// Handle as json
+				couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, vv.Value, vv.Version, false)
 				if err != nil {
 					return err
 				}
 
-			} else {
+			} else { // if value is not json, handle as a couchdb attachment
 
-				if couchdb.IsJSON(string(vv.Value)) {
-					// Handle as json
-					couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, vv.Value, vv.Version, false)
-					if err != nil {
-						return err
-					}
+				attachment := &couchdb.AttachmentInfo{}
+				attachment.AttachmentBytes = vv.Value
+				attachment.ContentType = "application/octet-stream"
+				attachment.Name = binaryWrapper
+				attachments := append([]*couchdb.AttachmentInfo{}, attachment)
 
-				} else { // if value is not json, handle as a couchdb attachment
-
-					attachment := &couchdb.AttachmentInfo{}
-					attachment.AttachmentBytes = vv.Value
-					attachment.ContentType = "application/octet-stream"
-					attachment.Name = binaryWrapper
-					attachments := append([]*couchdb.AttachmentInfo{}, attachment)
-
-					couchDoc.Attachments = attachments
-					couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, nil, vv.Version, false)
-					if err != nil {
-						return err
-					}
-
+				couchDoc.Attachments = attachments
+				couchDoc.JSONValue, err = createCouchdbDocJSON(key, revision, nil, vv.Version, false)
+				if err != nil {
+					return err
 				}
+
 			}
-
-			// Add the current docment, revision and delete flag to the update map
-			batchUpdateMap[key] = &BatchableDocument{CouchDoc: *couchDoc, Deleted: isDelete}
-
 		}
 
-		if len(batchUpdateMap) > 0 {
+		// Add the current docment, revision and delete flag to the update map
+		batchUpdateMap[key] = &BatchableDocument{CouchDoc: *couchDoc, Deleted: isDelete}
 
-			//Add the documents to the batch update array
-			batchUpdateDocs := []*couchdb.CouchDoc{}
-			for _, updateDocument := range batchUpdateMap {
-				batchUpdateDocument := updateDocument
-				batchUpdateDocs = append(batchUpdateDocs, &batchUpdateDocument.CouchDoc)
-			}
+		if batchSizeCounter >= maxBatchSize {
 
-			// Do the bulk update into couchdb
-			// Note that this will do retries if the entire bulk update fails or times out
-
-			db, err := vdb.getNamespaceDBHandle(ns)
-			if err != nil {
-				return err
-			}
-			batchUpdateResp, err := db.BatchUpdateDocuments(batchUpdateDocs)
+			// TODO: commits per batch can be executed in parallel using goroutine.
+			err := vdb.commitUpdates(batchUpdateMap, ns)
 			if err != nil {
 				return err
 			}
 
-			// STEP 2: IF INDIVIDUAL DOCUMENTS IN THE BULK UPDATE DID NOT SUCCEED, TRY THEM INDIVIDUALLY
+			batchUpdateMap = make(map[string]*BatchableDocument)
 
-			// iterate through the response from CouchDB by document
-			for _, respDoc := range batchUpdateResp {
-
-				// If the document returned an error, retry the individual document
-				if respDoc.Ok != true {
-
-					batchUpdateDocument := batchUpdateMap[respDoc.ID]
-
-					var err error
-
-					//Remove the "_rev" from the JSON before saving
-					//this will allow the CouchDB retry logic to retry revisions without encountering
-					//a mismatch between the "If-Match" and the "_rev" tag in the JSON
-					if batchUpdateDocument.CouchDoc.JSONValue != nil {
-						err = removeJSONRevision(&batchUpdateDocument.CouchDoc.JSONValue)
-						if err != nil {
-							return err
-						}
-					}
-
-					// Check to see if the document was added to the batch as a delete type document
-					if batchUpdateDocument.Deleted {
-
-						//Log the warning message that a retry is being attempted for batch delete issue
-						logger.Warningf("CouchDB batch document delete encountered an problem. Retrying delete for document ID:%s", respDoc.ID)
-
-						// If this is a deleted document, then retry the delete
-						// If the delete fails due to a document not being found (404 error),
-						// the document has already been deleted and the DeleteDoc will not return an error
-						err = db.DeleteDoc(respDoc.ID, "")
-					} else {
-
-						//Log the warning message that a retry is being attempted for batch update issue
-						logger.Warningf("CouchDB batch document update encountered an problem. Retrying update for document ID:%s", respDoc.ID)
-
-						// Save the individual document to couchdb
-						// Note that this will do retries as needed
-						_, err = db.SaveDoc(respDoc.ID, "", &batchUpdateDocument.CouchDoc)
-					}
-
-					// If the single document update or delete returns an error, then throw the error
-					if err != nil {
-
-						errorString := fmt.Sprintf("Error occurred while saving document ID = %v  Error: %s  Reason: %s\n",
-							respDoc.ID, respDoc.Error, respDoc.Reason)
-
-						logger.Errorf(errorString)
-						return fmt.Errorf(errorString)
-
-					}
-				}
-			}
-
+			batchSizeCounter = 0
 		}
 
+	}
+
+	// Process any remaining updates
+	if len(batchUpdateMap) > 0 {
+		err := vdb.commitUpdates(batchUpdateMap, ns)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -843,6 +859,14 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 		errResponses := make(chan error, len(missingKeys))
 
 		// For each namespace, we parallely load missing keys into the cache using goroutines
+		// Note that LoadCommittedVersions() is called during both validation phase and commit phase.
+		// During the validation phase, multiple namespaces and a list of keys per namespace (a.k.a.
+		// read set per namespace) would be passed so that version number and revisions of all keys in
+		// read set can be loaded into the cache if exist. During the commit phase, a goroutine per namespace
+		// (processUpdateBatch()) calls LoadCommittedVersions() to retrieve and load revision numbers
+		// into cache for blind writes (because, revision numbers for blind writes (i.e., without read)
+		// are not retrieved during the validation phase). Hence, during commit time, processUpdateBatch()
+		// will only pass one namespace.
 		for namespace := range missingKeys {
 			go func(namespace string) {
 				defer batchRetrieveGroup.Done()
