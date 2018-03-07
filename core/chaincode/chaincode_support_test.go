@@ -164,7 +164,8 @@ func initMockPeer(chainIDs ...string) error {
 
 	ccStartupTimeout := time.Duration(10) * time.Second
 	ca, _ := accesscontrol.NewCA()
-	NewChaincodeSupport("0.0.0.0:7052", false, ccStartupTimeout, ca)
+	certGenerator := accesscontrol.NewAuthenticator(ca)
+	NewChaincodeSupport("0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
 	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
 
 	// Mock policy checker
@@ -815,11 +816,11 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
-func getLaunchConfigs(t *testing.T, auth accesscontrol.Authenticator) {
+func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
 	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info"}
 
-	//set the authenticator for generating TLS stuff
-	newCCSupport.auth = auth
+	//set the certGenerator for generating TLS stuff
+	newCCSupport.certGenerator = certGenerator
 
 	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", false, nil, nil)
 	args, envs, filesToUpload, err := newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_GOLANG)
@@ -1169,8 +1170,8 @@ func TestCCFramework(t *testing.T) {
 	//call's history result
 	getHistory(t, chainID, ccname, ccSide)
 
-	//just use the previous authhandler for generating TLS key/pair
-	getLaunchConfigs(t, theChaincodeSupport.auth)
+	//just use the previous certGenerator for generating TLS key/pair
+	getLaunchConfigs(t, theChaincodeSupport.certGenerator)
 
 	ccSide.Quit()
 }

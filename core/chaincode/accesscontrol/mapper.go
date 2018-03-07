@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -26,14 +25,12 @@ type certHash string
 type certMapper struct {
 	keyGen KeyGenFunc
 	sync.RWMutex
-	m   map[certHash]string
-	tls bool
+	m map[certHash]string
 }
 
 func newCertMapper(keyGen KeyGenFunc) *certMapper {
 	return &certMapper{
 		keyGen: keyGen,
-		tls:    viper.GetBool("peer.tls.enabled"),
 		m:      make(map[certHash]string),
 	}
 }
