@@ -490,36 +490,49 @@ its contents.
 Configuring Leader Election
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Newly joining peers are bootstrapped with the genesis block, which does not contain information about the organization
-that is being added in the channel configuration update. Therefore new peers are not able to utilize gossip as
-they cannot verify blocks forwarded by other peers from their own organization until they get the configuration
-transaction which added the organization to the channel. Newly added peers must therefore have one of the following
+.. note:: This section is included as a general reference for understanding
+          the leader election settings when adding organizations to a network
+          after the initial channel configuration has completed. This sample
+          defaults to dynamic leader election, which is set for all peers in the
+          network in `peer-base.yaml`.
+
+Newly joining peers are bootstrapped with the genesis block, which does not
+contain information about the organization that is being added in the channel
+configuration update. Therefore new peers are not able to utilize gossip as
+they cannot verify blocks forwarded by other peers from their own organization
+until they get the configuration transaction which added the organization to the
+channel. Newly added peers must therefore have one of the following
 configurations so that they receive blocks from the ordering service:
 
-1. Utilize static leader mode and configure the peer to be an organization leader:
+1. To utilize static leader mode, configure the peer to be an organization
+leader:
 
 ::
 
-    export CORE_PEER_GOSSIP_USELEADERELECTION=false
-    export CORE_PEER_GOSSIP_ORGLEADER=true
+    CORE_PEER_GOSSIP_USELEADERELECTION=false
+    CORE_PEER_GOSSIP_ORGLEADER=true
 
 
-.. note:: This configuration must be the same for all new peers added to the channel.
+.. note:: This configuration must be the same for all new peers added to the
+channel.
 
-2. Utilize dynamic leader election:
+2. To utilize dynamic leader election, configure the peer to use leader
+election:
 
 ::
 
-    export CORE_PEER_GOSSIP_USELEADERELECTION=true
-    export CORE_PEER_GOSSIP_ORGLEADER=false
+    CORE_PEER_GOSSIP_USELEADERELECTION=true
+    CORE_PEER_GOSSIP_ORGLEADER=false
 
 
-.. note:: Because peers of newly added organization won't be able to form membership view, this option will
-          be similar to the static configuration, as each peer will start proclaiming himself to be a leader.
-          However eventually once they get updated with the configuration transaction that adds the
-          organization to the channel, there will be only one active leader for the organization. Therefore it
-          is recommended to leverage this option if you eventually want the organization's peers to utilize
-          leader election.
+.. note:: Because peers of the newly added organization won't be able to form
+          membership view, this option will be similar to the static
+          configuration, as each peer will start proclaiming itself to be a
+          leader. However, once they get updated with the configuration
+          transaction that adds the organization to the channel, there will be
+          only one active leader for the organization. Therefore, it is
+          recommended to leverage this option if you eventually want the
+          organization's peers to utilize leader election.
 
 
 Join Org3 to the Channel
