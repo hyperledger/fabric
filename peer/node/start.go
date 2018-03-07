@@ -147,7 +147,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Fatalf("Error loading secure config for peer (%s)", err)
 	}
-	peerServer, err := peer.CreatePeerServer(listenAddr, serverConfig)
+	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
 	}
@@ -206,7 +206,13 @@ func serve(args []string) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)
 	}
 
-	serverEndorser := endorser.NewEndorserServer(privDataDist, &endorser.SupportImpl{})
+	serverEndorser := endorser.NewEndorserServer(
+		privDataDist,
+		&endorser.SupportImpl{
+			Peer:        peer.Default,
+			PeerSupport: peer.DefaultSupport,
+		},
+	)
 	libConf := library.Config{}
 	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
 		return errors.WithMessage(err, "could not load YAML config")

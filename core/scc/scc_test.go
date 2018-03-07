@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
@@ -33,6 +34,10 @@ func init() {
 	viper.Set("chaincode.system", map[string]string{"lscc": "enable", "a": "enable"})
 	viper.Set("peer.fileSystemPath", os.TempDir())
 	ccprovider.RegisterChaincodeProviderFactory(&ccprovider2.MockCcProviderFactory{})
+}
+
+func newTestProvider() sysccprovider.SystemChaincodeProvider {
+	return (&ProviderFactory{Peer: peer.Default, PeerSupport: peer.DefaultSupport}).NewSystemChaincodeProvider()
 }
 
 func TestDeploy(t *testing.T) {
@@ -60,36 +65,36 @@ func TestDeDeploySysCC(t *testing.T) {
 }
 
 func TestSCCProvider(t *testing.T) {
-	assert.NotNil(t, (&sccProviderFactory{}).NewSystemChaincodeProvider())
+	assert.NotNil(t, (&ProviderFactory{}).NewSystemChaincodeProvider())
 }
 
 func TestIsSysCC(t *testing.T) {
 	assert.True(t, IsSysCC("lscc"))
 	assert.False(t, IsSysCC("noSCC"))
-	assert.True(t, (&sccProviderImpl{}).IsSysCC("lscc"))
-	assert.False(t, (&sccProviderImpl{}).IsSysCC("noSCC"))
+	assert.True(t, (newTestProvider()).IsSysCC("lscc"))
+	assert.False(t, (newTestProvider()).IsSysCC("noSCC"))
 }
 
 func TestIsSysCCAndNotInvokableCC2CC(t *testing.T) {
 	assert.False(t, IsSysCCAndNotInvokableCC2CC("lscc"))
 	assert.True(t, IsSysCC("cscc"))
 	assert.True(t, IsSysCCAndNotInvokableCC2CC("cscc"))
-	assert.True(t, (&sccProviderImpl{}).IsSysCC("cscc"))
-	assert.False(t, (&sccProviderImpl{}).IsSysCCAndNotInvokableCC2CC("lscc"))
-	assert.True(t, (&sccProviderImpl{}).IsSysCCAndNotInvokableCC2CC("cscc"))
+	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
+	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("lscc"))
+	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("cscc"))
 }
 
 func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 	assert.False(t, IsSysCCAndNotInvokableExternal("cscc"))
 	assert.True(t, IsSysCC("cscc"))
 	assert.True(t, IsSysCCAndNotInvokableExternal("vscc"))
-	assert.False(t, (&sccProviderImpl{}).IsSysCCAndNotInvokableExternal("cscc"))
-	assert.True(t, (&sccProviderImpl{}).IsSysCC("cscc"))
-	assert.True(t, (&sccProviderImpl{}).IsSysCCAndNotInvokableExternal("vscc"))
+	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("cscc"))
+	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
+	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("vscc"))
 }
 
 func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
-	qe, err := (&sccProviderImpl{}).GetQueryExecutorForLedger("")
+	qe, err := (newTestProvider()).GetQueryExecutorForLedger("")
 	assert.Nil(t, qe)
 	assert.Error(t, err)
 }

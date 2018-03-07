@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -53,7 +54,6 @@ func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
 
 // Stop terminates delivery service and closes the connection
 func (*mockDeliveryClient) Stop() {
-
 }
 
 type mockDeliveryClientFactory struct {
@@ -63,21 +63,17 @@ func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []s
 	return &mockDeliveryClient{}, nil
 }
 
-func TestCreatePeerServer(t *testing.T) {
-
-	server, err := CreatePeerServer(":4050", comm.ServerConfig{})
-	assert.NoError(t, err, "CreatePeerServer returned unexpected error")
-	assert.Equal(t, "[::]:4050", server.Address(),
-		"CreatePeerServer returned the wrong address")
+func TestNewPeerServer(t *testing.T) {
+	server, err := NewPeerServer(":4050", comm.ServerConfig{})
+	assert.NoError(t, err, "NewPeerServer returned unexpected error")
+	assert.Equal(t, "[::]:4050", server.Address(), "NewPeerServer returned the wrong address")
 	server.Stop()
 
-	_, err = CreatePeerServer("", comm.ServerConfig{})
-	assert.Error(t, err, "expected CreatePeerServer to return error with missing address")
-
+	_, err = NewPeerServer("", comm.ServerConfig{})
+	assert.Error(t, err, "expected NewPeerServer to return error with missing address")
 }
 
 func TestInitChain(t *testing.T) {
-
 	chainId := "testChain"
 	chainInitializer = func(cid string) {
 		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
@@ -108,7 +104,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	// Initialize gossip service
 	grpcServer := grpc.NewServer()
 	socket, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 13611))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	msptesttools.LoadMSPSetupForTesting()
 

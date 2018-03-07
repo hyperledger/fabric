@@ -538,3 +538,13 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	return pResp, nil
 }
+
+// shorttxid replicates the chaincode package function to shorten txids.
+// ~~TODO utilize a common shorttxid utility across packages.~~
+// TODO use a formal type for transaction ID and make it a stringer
+func shorttxid(txid string) string {
+	if len(txid) < 8 {
+		return txid
+	}
+	return txid[0:8]
+}

@@ -26,24 +26,36 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 )
 
-// sccProviderFactory implements the sysccprovider.SystemChaincodeProviderFactory
+// ProviderFactory implements the sysccprovider.SystemChaincodeProviderFactory
 // interface and returns instances of sysccprovider.SystemChaincodeProvider
-type sccProviderFactory struct {
+type ProviderFactory struct {
+	Peer        peer.Operations
+	PeerSupport peer.Support
 }
 
-// NewSystemChaincodeProvider returns pointers to sccProviderFactory as an
+// NewSystemChaincodeProvider returns pointers to ProviderFactory as an
 // implementer of the sysccprovider.SystemChaincodeProvider interface
-func (c *sccProviderFactory) NewSystemChaincodeProvider() sysccprovider.SystemChaincodeProvider {
-	return &sccProviderImpl{}
+func (c *ProviderFactory) NewSystemChaincodeProvider() sysccprovider.SystemChaincodeProvider {
+	return &sccProviderImpl{
+		Peer:        c.Peer,
+		PeerSupport: c.PeerSupport,
+	}
 }
 
 // init is called when this package is loaded. This implementation registers the factory
 func init() {
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&sccProviderFactory{})
+	sysccprovider.RegisterSystemChaincodeProviderFactory(
+		&ProviderFactory{
+			Peer:        peer.Default,
+			PeerSupport: peer.DefaultSupport,
+		},
+	)
 }
 
 // ccProviderImpl is an implementation of the ccprovider.ChaincodeProvider interface
 type sccProviderImpl struct {
+	Peer        peer.Operations
+	PeerSupport peer.Support
 }
 
 // IsSysCC returns true if the supplied chaincode is a system chaincode
@@ -59,7 +71,7 @@ func (c *sccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
 
 // GetQueryExecutorForLedger returns a query executor for the specified channel
 func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
-	l := peer.GetLedger(cid)
+	l := c.Peer.GetLedger(cid)
 	if l == nil {
 		return nil, fmt.Errorf("Could not retrieve ledger for channel %s", cid)
 	}
@@ -77,12 +89,12 @@ func (c *sccProviderImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
 func (c *sccProviderImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
-	return peer.GetSupport().GetApplicationConfig(cid)
+	return c.PeerSupport.GetApplicationConfig(cid)
 }
 
 // Returns the policy manager associated to the passed channel
 // and whether the policy manager exists
 func (c *sccProviderImpl) PolicyManager(channelID string) (policies.Manager, bool) {
-	m := peer.GetPolicyManager(channelID)
+	m := c.Peer.GetPolicyManager(channelID)
 	return m, (m != nil)
 }

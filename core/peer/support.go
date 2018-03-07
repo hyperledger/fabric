@@ -31,10 +31,11 @@ type Support interface {
 }
 
 type supportImpl struct {
+	operations Operations
 }
 
 func (s *supportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
-	cc := GetChannelConfig(cid)
+	cc := s.operations.GetChannelConfig(cid)
 	if cc == nil {
 		return nil, false
 	}
@@ -43,38 +44,10 @@ func (s *supportImpl) GetApplicationConfig(cid string) (channelconfig.Applicatio
 }
 
 func (s *supportImpl) ChaincodeByName(chainname, ccname string) (resourcesconfig.ChaincodeDefinition, bool) {
-	rc := GetResourcesConfig(chainname)
+	rc := s.operations.GetResourcesConfig(chainname)
 	if rc == nil {
 		return nil, false
 	}
 
 	return rc.ChaincodeRegistry().ChaincodeByName(ccname)
-}
-
-type SupportFactoryImpl struct {
-}
-
-func (c *SupportFactoryImpl) NewSupport() Support {
-	return &supportImpl{}
-}
-
-// RegisterSupportFactory should be called to specify
-// which factory should be used to serve GetSupport calls
-func RegisterSupportFactory(ccfact SupportFactory) {
-	supportFactory = ccfact
-}
-
-// GetSupport returns a new Support instance by calling the factory
-func GetSupport() Support {
-	if supportFactory == nil {
-		panic("The factory must be set first via RegisterSupportFactory")
-	}
-	return supportFactory.NewSupport()
-}
-
-// init is called when this package is loaded; this way by default,
-// all calls to GetSupport will be satisfied by SupportFactoryImpl,
-// unless RegisterSupportFactory is called again
-func init() {
-	RegisterSupportFactory(&SupportFactoryImpl{})
 }

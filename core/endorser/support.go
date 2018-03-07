@@ -26,7 +26,10 @@ import (
 
 // SupportImpl provides an implementation of the endorser.Support interface
 // issuing calls to various static methods of the peer
-type SupportImpl struct{}
+type SupportImpl struct {
+	Peer        peer.Operations
+	PeerSupport peer.Support
+}
 
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
 // ia system chaincode and it NOT invokable
@@ -38,7 +41,7 @@ func (s *SupportImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 // a client may obtain more than one such simulator; they are made unique
 // by way of the supplied txid
 func (s *SupportImpl) GetTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
-	lgr := peer.GetLedger(ledgername)
+	lgr := s.Peer.GetLedger(ledgername)
 	if lgr == nil {
 		return nil, errors.Errorf("channel does not exist: %s", ledgername)
 	}
@@ -48,7 +51,7 @@ func (s *SupportImpl) GetTxSimulator(ledgername string, txid string) (ledger.TxS
 // GetHistoryQueryExecutor gives handle to a history query executor for the
 // specified ledger
 func (s *SupportImpl) GetHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {
-	lgr := peer.GetLedger(ledgername)
+	lgr := s.Peer.GetLedger(ledgername)
 	if lgr == nil {
 		return nil, errors.Errorf("channel does not exist: %s", ledgername)
 	}
@@ -57,7 +60,7 @@ func (s *SupportImpl) GetHistoryQueryExecutor(ledgername string) (ledger.History
 
 // GetTransactionByID retrieves a transaction by id
 func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransaction, error) {
-	lgr := peer.GetLedger(chid)
+	lgr := s.Peer.GetLedger(chid)
 	if lgr == nil {
 		return nil, errors.Errorf("failed to look up the ledger for channel %s", chid)
 	}
@@ -68,13 +71,13 @@ func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransa
 	return tx, nil
 }
 
-//IsSysCC returns true if the name matches a system chaincode's
-//system chaincode names are system, chain wide
+// IsSysCC returns true if the name matches a system chaincode's
+// system chaincode names are system, chain wide
 func (s *SupportImpl) IsSysCC(name string) bool {
 	return scc.IsSysCC(name)
 }
 
-//Execute - execute proposal, return original response of chaincode
+// Execute a proposal and return the chaincode response
 func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
 
@@ -105,8 +108,8 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 	return chaincode.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 }
 
-//CheckACL checks the ACL for the resource for the channel using the
-//SignedProposal from which an id can be extracted for testing against a policy
+// CheckACL checks the ACL for the resource for the channel using the
+// SignedProposal from which an id can be extracted for testing against a policy
 func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
 	return aclmgmt.GetACLProvider().CheckACL(resources.PROPOSE, chdr.ChannelId, signedProp)
 }
@@ -132,14 +135,5 @@ func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd resource
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
 func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
-	return peer.GetSupport().GetApplicationConfig(cid)
-}
-
-// shorttxid replicates the chaincode package function to shorten txids.
-// TODO utilize a common shorttxid utility across packages.
-func shorttxid(txid string) string {
-	if len(txid) < 8 {
-		return txid
-	}
-	return txid[0:8]
+	return s.PeerSupport.GetApplicationConfig(cid)
 }
