@@ -60,9 +60,7 @@ func init() {
 }
 
 func (vmc *VMController) newVM(typ string) api.VM {
-	var (
-		v api.VM
-	)
+	var v api.VM
 
 	switch typ {
 	case DOCKER:
@@ -234,15 +232,14 @@ func (di DestroyImageReq) getCCID() ccintf.CCID {
 //context can be cancelled. VMCProcess will try to cancel calling functions if it can
 //For instance docker clients api's such as BuildImage are not cancelable.
 //In all cases VMCProcess will wait for the called go routine to return
-func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (interface{}, error) {
+func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (VMCResp, error) {
 	v := vmcontroller.newVM(vmtype)
-
 	if v == nil {
-		return nil, fmt.Errorf("Unknown VM type %s", vmtype)
+		return VMCResp{}, fmt.Errorf("Unknown VM type %s", vmtype)
 	}
 
 	c := make(chan struct{})
-	var resp interface{}
+	var resp VMCResp
 	go func() {
 		defer close(c)
 
@@ -262,6 +259,6 @@ func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (interface{
 	case <-ctxt.Done():
 		//TODO cancel req.do ... (needed) ?
 		<-c
-		return nil, ctxt.Err()
+		return VMCResp{}, ctxt.Err()
 	}
 }
