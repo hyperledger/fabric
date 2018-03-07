@@ -102,5 +102,6 @@ func TestSelectPeers(t *testing.T) {
 		PKIid:            common.PKIidType("c"),
 	}
 	assert.Len(t, SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, CombineRoutingFilters(a, b)), 2)
+	assert.Len(t, SelectPeers(5, []discovery.NetworkMember{nm1, nm2, nm3}, CombineRoutingFilters(a, b)), 2)
 	assert.Len(t, SelectPeers(1, []discovery.NetworkMember{nm1, nm2, nm3}, CombineRoutingFilters(a, b)), 1)
 }
