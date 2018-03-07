@@ -165,7 +165,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 	cs.Lock()
 	defer cs.Unlock()
 
-	if c, exists := cs.pki2Conn[string(connInfo.Identity)]; exists {
+	if c, exists := cs.pki2Conn[string(connInfo.ID)]; exists {
 		c.close()
 	}
 
