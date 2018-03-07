@@ -1,4 +1,4 @@
-// +build !pluginsenabled !linux ppc64le
+// +build !pluginsenabled !cgo darwin,!go1.10 linux,!go1.9 linux,ppc64le,!go1.10
 
 /*
 Copyright IBM Corp. All Rights Reserved.
