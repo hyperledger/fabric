@@ -77,7 +77,7 @@ reconfiguration).
 
 .. note:: We have a two documents that talk through different aspects of channel
           reconfigurations. First, we have a tutorial that will take you through
-          the process of :doc:`channel_update`. And we also have a document that
+          the process of :doc:`channel_update_tutorial`. And we also have a document that
           talks through :doc:`config_update` which gives an overview of the
           different kinds of updates that are possible as well as a fuller look
           at the signature process.
