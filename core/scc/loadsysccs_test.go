@@ -1,5 +1,5 @@
-// +build pluginsenabled,go1.9,linux,cgo
-// +build !ppc64le
+// +build pluginsenabled,cgo
+// +build darwin,go1.10 linux,go1.10 linux,go1.9,!ppc64le
 
 /*
 Copyright SecureKey Technologies Inc. All Rights Reserved.
@@ -12,13 +12,16 @@ package scc
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -26,11 +29,13 @@ const (
 	pluginName           = "testscc"
 )
 
-var pluginPath = os.TempDir() + "/scc-plugin.so"
-
 func TestLoadSCCPlugin(t *testing.T) {
-	buildExamplePlugin(pluginPath, examplePluginPackage)
-	defer os.Remove(pluginPath)
+	tmpdir, err := ioutil.TempDir("", "scc-plugin")
+	require.NoError(t, err)
+
+	pluginPath := filepath.Join(tmpdir, "scc-plugin.so")
+	buildExamplePlugin(t, pluginPath, examplePluginPackage)
+	defer os.RemoveAll(tmpdir)
 
 	testConfig := fmt.Sprintf(`
   chaincode:
@@ -51,15 +56,13 @@ func TestLoadSCCPlugin(t *testing.T) {
 }
 
 func TestLoadSCCPluginInvalid(t *testing.T) {
-	assert.Panics(t, func() { loadPlugin("/invalid/path.so") },
-		"expected panic with invalid path")
+	assert.Panics(t, func() { loadPlugin("missing.so") }, "expected panic with invalid path")
 }
 
-func buildExamplePlugin(path, pluginPackage string) {
-	cmd := exec.Command("go", "build", "-tags", goBuildTags, "-o", path, "-buildmode=plugin",
-		pluginPackage)
+func buildExamplePlugin(t *testing.T, path, pluginPackage string) {
+	cmd := exec.Command("go", "build", "-tags", goBuildTags, "-o", path, "-buildmode=plugin", pluginPackage)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(fmt.Errorf("Error: %s, Could not build plugin: %s", err, string(output)))
+		t.Fatalf("Error: %s, Could not build plugin: %s", err, output)
 	}
 }
