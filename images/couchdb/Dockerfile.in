@@ -44,7 +44,7 @@ RUN set -x \
     && rm -rf /tmp/tini \
     && rm -rf /tmp/su-exec
 
-ARG COUCHDB_VERSION=2.0.0
+ARG COUCHDB_VERSION=2.1.1
 
 # Download dev dependencies
 RUN set -x \
