@@ -24,10 +24,10 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
-	"github.com/hyperledger/fabric/core/scc/samplesyscc"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -42,6 +42,66 @@ type oldSysCCInfo struct {
 func (osyscc *oldSysCCInfo) reset() {
 	scc.MockResetSysCCs(osyscc.origSystemCC)
 	viper.Set("chaincode.system", osyscc.origSysCCWhitelist)
+}
+
+type SampleSysCC struct{}
+
+func (t *SampleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+	return shim.Success(nil)
+}
+
+func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+	f, args := stub.GetFunctionAndParameters()
+
+	switch f {
+	case "putval":
+		if len(args) != 2 {
+			return shim.Error("need 2 args (key and a value)")
+		}
+
+		// Initialize the chaincode
+		key := args[0]
+		val := args[1]
+
+		_, err := stub.GetState(key)
+		if err != nil {
+			jsonResp := "{\"Error\":\"Failed to get val for " + key + "\"}"
+			return shim.Error(jsonResp)
+		}
+
+		// Write the state to the ledger
+		err = stub.PutState(key, []byte(val))
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		return shim.Success(nil)
+	case "getval":
+		var err error
+
+		if len(args) != 1 {
+			return shim.Error("Incorrect number of arguments. Expecting key to query")
+		}
+
+		key := args[0]
+
+		// Get the state from the ledger
+		valbytes, err := stub.GetState(key)
+		if err != nil {
+			jsonResp := "{\"Error\":\"Failed to get state for " + key + "\"}"
+			return shim.Error(jsonResp)
+		}
+
+		if valbytes == nil {
+			jsonResp := "{\"Error\":\"Nil val for " + key + "\"}"
+			return shim.Error(jsonResp)
+		}
+
+		return shim.Success(valbytes)
+	default:
+		jsonResp := "{\"Error\":\"Unknown function " + f + "\"}"
+		return shim.Error(jsonResp)
+	}
 }
 
 func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
@@ -81,7 +141,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 			Name:      "sample_syscc",
 			Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
 			InitArgs:  [][]byte{},
-			Chaincode: &samplesyscc.SampleSysCC{},
+			Chaincode: &SampleSysCC{},
 		},
 	}
 
