@@ -127,6 +127,23 @@ func (ga *gossipAdapterImpl) GetConf() channel.Config {
 	}
 }
 
+func (ga *gossipAdapterImpl) Sign(msg *proto.GossipMessage) (*proto.SignedGossipMessage, error) {
+	signer := func(msg []byte) ([]byte, error) {
+		return ga.mcs.Sign(msg)
+	}
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: msg,
+	}
+	e, err := sMsg.Sign(signer)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SignedGossipMessage{
+		Envelope:      e,
+		GossipMessage: msg,
+	}, nil
+}
+
 // Gossip gossips a message
 func (ga *gossipAdapterImpl) Gossip(msg *proto.SignedGossipMessage) {
 	ga.gossipServiceImpl.emitter.Add(&emittedGossipMessage{

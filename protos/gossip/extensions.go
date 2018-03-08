@@ -591,8 +591,7 @@ func (msg *StateInfo) LedgerHeight() (uint64, error) {
 	if msg.Properties != nil {
 		return msg.Properties.LedgerHeight, nil
 	}
-	metaState, err := common.FromBytes(msg.Metadata)
-	return metaState.LedgerHeight, err
+	return 0, errors.New("properties undefined")
 }
 
 // Abs returns abs(a-b)

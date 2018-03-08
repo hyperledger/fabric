@@ -193,13 +193,6 @@ func (g *gossipServiceImpl) LeaveChan(chainID common.ChainID) {
 		g.logger.Debug("No such channel", chainID)
 		return
 	}
-	b, _ := (&common.NodeMetastate{}).Bytes()
-	stateInfMsg, err := g.createStateInfoMsg(b, chainID, true)
-	if err != nil {
-		g.logger.Errorf("Failed creating StateInfo message: %+v", errors.WithStack(err))
-		return
-	}
-	gc.UpdateStateInfo(stateInfMsg)
 	gc.LeaveChannel()
 }
 
@@ -768,20 +761,26 @@ func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
 	g.disc.UpdateMetadata(md)
 }
 
-// UpdateChannelMetadata updates the self metadata the peer
-// publishes to other peers about its channel-related state
-func (g *gossipServiceImpl) UpdateChannelMetadata(md []byte, chainID common.ChainID) {
+// UpdateLedgerHeight updates the ledger height the peer
+// publishes to other peers in the channel
+func (g *gossipServiceImpl) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
 	gc := g.chanState.getGossipChannelByChainID(chainID)
 	if gc == nil {
-		g.logger.Debug("No such channel", chainID)
+		g.logger.Warning("No such channel", chainID)
 		return
 	}
-	stateInfMsg, err := g.createStateInfoMsg(md, chainID, false)
-	if err != nil {
-		g.logger.Errorf("Failed creating StateInfo message: %+v", errors.WithStack(err))
+	gc.UpdateLedgerHeight(height)
+}
+
+// UpdateChaincodes updates the chaincodes the peer publishes
+// to other peers in the channel
+func (g *gossipServiceImpl) UpdateChaincodes(chaincodes []*proto.Chaincode, chainID common.ChainID) {
+	gc := g.chanState.getGossipChannelByChainID(chainID)
+	if gc == nil {
+		g.logger.Warning("No such channel", chainID)
 		return
 	}
-	gc.UpdateStateInfo(stateInfMsg)
+	gc.UpdateChaincodes(chaincodes)
 }
 
 // Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
@@ -1152,44 +1151,6 @@ func (g *gossipServiceImpl) connect2BootstrapPeers() {
 		}, identifier)
 	}
 
-}
-
-func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID, leftChannel bool) (*proto.SignedGossipMessage, error) {
-	metaState, err := common.FromBytes(metadata)
-	if err != nil {
-		return nil, err
-	}
-	pkiID := g.comm.GetPKIid()
-	stateInfMsg := &proto.StateInfo{
-		Channel_MAC: channel.GenerateMAC(pkiID, chainID),
-		Metadata:    metadata,
-		PkiId:       g.comm.GetPKIid(),
-		Timestamp: &proto.PeerTime{
-			IncNum: uint64(g.incTime.UnixNano()),
-			SeqNum: uint64(time.Now().UnixNano()),
-		},
-		Properties: &proto.Properties{
-			LedgerHeight: metaState.LedgerHeight,
-		},
-	}
-	if leftChannel {
-		stateInfMsg.Properties.LeftChannel = true
-	}
-	m := &proto.GossipMessage{
-		Nonce: 0,
-		Tag:   proto.GossipMessage_CHAN_OR_ORG,
-		Content: &proto.GossipMessage_StateInfo{
-			StateInfo: stateInfMsg,
-		},
-	}
-	sMsg := &proto.SignedGossipMessage{
-		GossipMessage: m,
-	}
-	signer := func(msg []byte) ([]byte, error) {
-		return g.mcs.Sign(msg)
-	}
-	_, err = sMsg.Sign(signer)
-	return sMsg, errors.WithStack(err)
 }
 
 func (g *gossipServiceImpl) hasExternalEndpoint(PKIID common.PKIidType) bool {

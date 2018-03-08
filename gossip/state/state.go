@@ -63,9 +63,9 @@ type GossipAdapter interface {
 	// can be used to send a reply back to the sender
 	Accept(acceptor common2.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage)
 
-	// UpdateChannelMetadata updates the self metadata the peer
-	// publishes to other peers about its channel-related state
-	UpdateChannelMetadata(metadata []byte, chainID common2.ChainID)
+	// UpdateLedgerHeight updates the ledger height the peer
+	// publishes to other peers in the channel
+	UpdateLedgerHeight(height uint64, chainID common2.ChainID)
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
@@ -225,18 +225,10 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		once: sync.Once{},
 	}
 
-	nodeMetastate := common2.NewNodeMetastate(height - 1)
-
-	logger.Infof("Updating node metadata information, "+
-		"current ledger sequence is at = %d, next expected block is = %d", nodeMetastate.LedgerHeight, s.payloads.Next())
-
-	b, err := nodeMetastate.Bytes()
-	if err == nil {
-		logger.Debug("Updating gossip metadate nodeMetastate", nodeMetastate)
-		services.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
-	} else {
-		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %+v", errors.WithStack(err))
-	}
+	logger.Infof("Updating metadata information, "+
+		"current ledger sequence is at = %d, next expected block is = %d", height-1, s.payloads.Next())
+	logger.Debug("Updating gossip ledger height to", height)
+	services.UpdateLedgerHeight(height, common2.ChainID(s.chainID))
 
 	s.done.Add(4)
 
@@ -577,23 +569,22 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 			s.stopCh <- struct{}{}
 			return
 		case <-time.After(defAntiEntropyInterval):
-			current, err := s.ledger.LedgerHeight()
+			ourHeight, err := s.ledger.LedgerHeight()
 			if err != nil {
 				// Unable to read from ledger continue to the next round
 				logger.Errorf("Cannot obtain ledger height, due to %+v", errors.WithStack(err))
 				continue
 			}
-			if current == 0 {
+			if ourHeight == 0 {
 				logger.Error("Ledger reported block height of 0 but this should be impossible")
 				continue
 			}
-			max := s.maxAvailableLedgerHeight()
-
-			if current-1 >= max {
+			maxHeight := s.maxAvailableLedgerHeight()
+			if ourHeight >= maxHeight {
 				continue
 			}
 
-			s.requestBlocksInRange(uint64(current), uint64(max))
+			s.requestBlocksInRange(uint64(ourHeight), uint64(maxHeight))
 		}
 	}
 }
@@ -603,13 +594,11 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	max := uint64(0)
 	for _, p := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
-		var peerHeight uint64
-		if p.Properties != nil {
-			peerHeight = p.Properties.LedgerHeight
-		} else if nodeMetastate, err := common2.FromBytes(p.Metadata); err == nil {
-			peerHeight = nodeMetastate.LedgerHeight
+		if p.Properties == nil {
+			logger.Debug("Peer", p.PreferredEndpoint(), "doesn't have properties, skipping it")
+			continue
 		}
-
+		peerHeight := p.Properties.LedgerHeight
 		if max < peerHeight {
 			max = peerHeight
 		}
@@ -724,12 +713,7 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 		if peer.Properties != nil {
 			return peer.Properties.LedgerHeight >= height
 		}
-		if nodeMetadata, err := common2.FromBytes(peer.Metadata); err != nil {
-			logger.Errorf("Unable to de-serialize node meta state, error = %+v", errors.WithStack(err))
-		} else if nodeMetadata.LedgerHeight >= height {
-			return true
-		}
-
+		logger.Debug(peer.PreferredEndpoint(), "doesn't have properties")
 		return false
 	}
 }
@@ -777,17 +761,8 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.
 		return err
 	}
 
-	// Update ledger level within node metadata
-	nodeMetastate := common2.NewNodeMetastate(block.Header.Number)
-	// Decode nodeMetastate to byte array
-	b, err := nodeMetastate.Bytes()
-	if err == nil {
-		s.mediator.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
-	} else {
-
-		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %+v", errors.WithStack(err))
-	}
-
+	// Update ledger height
+	s.mediator.UpdateLedgerHeight(block.Header.Number+1, common2.ChainID(s.chainID))
 	logger.Debugf("Channel [%s]: Created block [%d] with %d transaction(s)",
 		s.chainID, block.Header.Number, len(block.Data.Data))
 

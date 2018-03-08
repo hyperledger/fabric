@@ -27,6 +27,17 @@ func (*GossipMock) PeerFilter(channel common.ChainID, messagePredicate api.SubCh
 
 func (g *GossipMock) SuspectPeers(s api.PeerSuspector) {
 	g.Called(s)
+}
+
+// UpdateLedgerHeight updates the ledger height the peer
+// publishes to other peers in the channel
+func (g *GossipMock) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
+
+}
+
+// UpdateChaincodes updates the chaincodes the peer publishes
+// to other peers in the channel
+func (g *GossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID) {
 
 }
 
@@ -49,9 +60,6 @@ func (g *GossipMock) PeersOfChannel(chainID common.ChainID) []discovery.NetworkM
 
 func (g *GossipMock) UpdateMetadata(metadata []byte) {
 	g.Called(metadata)
-}
-
-func (g *GossipMock) UpdateChannelMetadata(metadata []byte, chainID common.ChainID) {
 }
 
 func (g *GossipMock) Gossip(msg *proto.GossipMessage) {

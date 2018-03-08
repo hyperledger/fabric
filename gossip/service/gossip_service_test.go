@@ -114,7 +114,6 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 
 	viper.Set("peer.gossip.useLeaderElection", true)
 	viper.Set("peer.gossip.orgLeader", false)
-
 	n := 10
 	gossips := startPeers(t, n, 20000)
 
@@ -605,11 +604,10 @@ func addPeersToChannel(t *testing.T, n int, portPrefix int, channel string, peer
 
 	wg := sync.WaitGroup{}
 	for _, i := range peerIndexes {
-		metaBytes, _ := gossipCommon.NewNodeMetastate(0).Bytes()
 		wg.Add(1)
 		go func(i int) {
 			peers[i].JoinChan(jcm, gossipCommon.ChainID(channel))
-			peers[i].UpdateChannelMetadata(metaBytes, gossipCommon.ChainID(channel))
+			peers[i].UpdateLedgerHeight(0, gossipCommon.ChainID(channel))
 			wg.Done()
 		}(i)
 	}

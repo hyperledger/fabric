@@ -823,7 +823,6 @@ func leadershipMessage(incNum uint64, seqNum uint64, pkid []byte) *GossipMessage
 func stateInfoMessage(incNum uint64, seqNum uint64, pkid []byte, mac []byte) *GossipMessage_StateInfo {
 	return &GossipMessage_StateInfo{
 		StateInfo: &StateInfo{
-			Metadata: []byte{},
 			Timestamp: &PeerTime{
 				IncNum: incNum,
 				SeqNum: seqNum,

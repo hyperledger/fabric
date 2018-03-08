@@ -38,9 +38,13 @@ type Gossip interface {
 	// the peer publishes to other peers
 	UpdateMetadata(metadata []byte)
 
-	// UpdateChannelMetadata updates the self metadata the peer
-	// publishes to other peers about its channel-related state
-	UpdateChannelMetadata(metadata []byte, chainID common.ChainID)
+	// UpdateLedgerHeight updates the ledger height the peer
+	// publishes to other peers in the channel
+	UpdateLedgerHeight(height uint64, chainID common.ChainID)
+
+	// UpdateChaincodes updates the chaincodes the peer publishes
+	// to other peers in the channel
+	UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID)
 
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
