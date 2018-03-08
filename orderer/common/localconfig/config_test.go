@@ -98,8 +98,6 @@ func TestEnvInnerVar(t *testing.T) {
 	assert.Equal(t, config.Kafka.Retry.ShortInterval, v2, "Environmental override of inner config test 2 did not work")
 }
 
-const DummyPath = "/dummy/path"
-
 func TestKafkaTLSConfig(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -115,9 +113,9 @@ func TestKafkaTLSConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
 			if tc.shouldPanic {
-				assert.Panics(t, func() { uconf.completeInitialization(DummyPath) }, "should panic")
+				assert.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
 			} else {
-				assert.NotPanics(t, func() { uconf.completeInitialization(DummyPath) }, "should not panic")
+				assert.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
 			}
 		})
 	}
@@ -125,11 +123,6 @@ func TestKafkaTLSConfig(t *testing.T) {
 
 func TestSystemChannel(t *testing.T) {
 	conf, _ := Load()
-	assert.Equal(t, genesisconfig.TestChainID, conf.General.SystemChannel, "System channel ID should be '%s' by default", genesisconfig.TestChainID)
-}
-
-func TestProfileConfig(t *testing.T) {
-	uconf := &TopLevel{General: General{Profile: Profile{Enabled: true}}}
-	uconf.completeInitialization(DummyPath)
-	assert.Equal(t, defaults.General.Profile.Address, uconf.General.Profile.Address, "Expected profile address to be filled with default value")
+	assert.Equal(t, genesisconfig.TestChainID, conf.General.SystemChannel,
+		"Expected default system channel ID to be '%s', got '%s' instead", genesisconfig.TestChainID, conf.General.SystemChannel)
 }
