@@ -72,8 +72,10 @@ created above. It retrieves four platform-specific binaries:
 
   * ``cryptogen``,
   * ``configtxgen``,
-  * ``configtxlator``, and
+  * ``configtxlator``,
   * ``peer``
+  * ``orderer`` and
+  * ``fabric-ca-client``
 
 and places them in the ``bin`` sub-directory of the current working
 directory.
