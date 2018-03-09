@@ -121,7 +121,10 @@ The `peer chaincode install` command has the following command-specific flags:
 
   * `-p, --path <string>`
 
-    Path, relative to the GOPATH, to the chaincode that is being installed
+    Path to the chaincode that is being installed. For Golang (-l golang) chaincodes, this
+    is the path relative to the GOPATH. For Node.js (-l node) chaincodes, this is either the
+    absolute path or the relative path from where the install command is being
+    performed
 
   * `-v, --version <string>`
 
@@ -648,7 +651,7 @@ The `peer chaincode upgrade` command has the following command-specific flags:
 
   * `-P, --policy <string>`
 
-    Endorsement policy associated to this chaincode. By default fabric 
+    Endorsement policy associated to this chaincode. By default fabric
     will generate an endorsement policy equivalent to "any member from
     the organizations currently in the channel"
 
