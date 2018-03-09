@@ -121,10 +121,10 @@ The `peer chaincode install` command has the following command-specific flags:
 
   * `-p, --path <string>`
 
-    Path to the chaincode that is being installed. For Golang (-l golang) chaincodes, this
-    is the path relative to the GOPATH. For Node.js (-l node) chaincodes, this is either the
-    absolute path or the relative path from where the install command is being
-    performed
+    Path to the chaincode that is being installed. For Golang (-l golang)
+    chaincodes, this is the path relative to the GOPATH. For Node.js (-l node)
+    chaincodes, this is either the absolute path or the relative path from where
+    the install command is being performed
 
   * `-v, --version <string>`
 
@@ -476,7 +476,10 @@ The `peer chaincode package` command has the following command-specific flags:
 
   * `-p, --path <string>`
 
-    Path, relative to the GOPATH, to the chaincode that is being installed
+    Path to the chaincode that is being packaged. For Golang (-l golang)
+    chaincodes, this is the path relative to the GOPATH. For Node.js (-l node)
+    chaincodes, this is either the absolute path or the relative path from where
+    the package command is being performed
 
   * `-s, --cc-package`
 
