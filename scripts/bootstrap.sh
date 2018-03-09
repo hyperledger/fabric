@@ -47,9 +47,16 @@ dockerCaPull() {
 : ${FABRIC_TAG:="$MARCH-$VERSION"}
 : ${THIRDPARTY_TAG:="$MARCH-$THIRDPARTY_IMAGE_VERSION"}
 
-echo "===> Downloading platform binaries"
+echo "===> Downloading platform specific fabric binaries"
 curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz | tar xz
 
+echo "===> Downloading platform specific fabric-ca-client binary"
+curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric-ca/hyperledger-fabric-ca/${ARCH}-${VERSION}/hyperledger-fabric-ca-${ARCH}-${VERSION}.tar.gz | tar xz
+if [ $? != 0 ]; then
+     echo
+     echo "------> $VERSION fabric-ca-client binary is not available to download  (Avaialble from 1.1.0-rc1) <----"
+     echo
+fi
 echo "===> Pulling fabric Images"
 dockerFabricPull ${FABRIC_TAG}
 
