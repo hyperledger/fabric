@@ -110,7 +110,7 @@ Here's some examples using the different available flags on the `peer` command.
 
   Flags:
         --logging-level string       Default logging level and overrides, see core.yaml for full syntax
-    -v, --version                    Display current version of fabric peer server
+    -v, --version                    Display the build version for this fabric peer
 
   Use "peer [command] --help" for more information about a command.
 
