@@ -8,6 +8,21 @@ First things first, please review the Hyperledger `Code of
 Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
 before participating. It is important that we keep things civil.
 
+.. toctree::
+   :maxdepth: 1
+
+   MAINTAINERS
+   jira_navigation
+   dev-setup/devenv
+   dev-setup/build
+   Gerrit/lf-account
+   Gerrit/gerrit
+   Gerrit/changes
+   Gerrit/reviewing
+   Gerrit/best-practices
+   testing
+   Style-guides/go-style
+
 Install prerequisites
 ---------------------
 
