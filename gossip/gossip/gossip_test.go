@@ -323,7 +323,7 @@ func TestLeaveChannel(t *testing.T) {
 func TestPull(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	portPrefix := 5610
+	portPrefix := 25610
 	t1 := time.Now()
 	// Scenario: Turn off forwarding and use only pull-based gossip.
 	// First phase: Ensure full membership view for all nodes
@@ -428,7 +428,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
 	// Ensure that all peers successfully see each other in the channel
 
-	portPrefix := 8610
+	portPrefix := 28610
 	// Scenario: Spawn 5 peers, and make each of them connect to
 	// the other 2 using join channel.
 	stopped := int32(0)
@@ -492,7 +492,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 func TestMembership(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	portPrefix := 4610
+	portPrefix := 24610
 	t1 := time.Now()
 	// Scenario: spawn 20 nodes and a single bootstrap node and then:
 	// 1) Check full membership views for all nodes but the bootstrap node.
@@ -574,7 +574,7 @@ func TestMembership(t *testing.T) {
 func TestNoMessagesSelfLoop(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	portPrefix := 17610
+	portPrefix := 27610
 
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
@@ -636,7 +636,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 func TestDissemination(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	portPrefix := 3610
+	portPrefix := 23610
 	t1 := time.Now()
 	// Scenario: 20 nodes and a bootstrap node.
 	// The bootstrap node sends 10 messages and we count
@@ -762,7 +762,7 @@ func TestDissemination(t *testing.T) {
 func TestMembershipConvergence(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	portPrefix := 2610
+	portPrefix := 22610
 	// Scenario: Spawn 12 nodes and 3 bootstrap peers
 	// but assign each node to its bootstrap peer group modulo 3.
 	// Then:
@@ -801,7 +801,7 @@ func TestMembershipConvergence(t *testing.T) {
 			if 15 != len(peers[i].Peers()) {
 				return false
 			}
-			if "Connector" != string(metadataOfPeer(peers[i].Peers(), "localhost:2625")) {
+			if "Connector" != string(metadataOfPeer(peers[i].Peers(), "localhost:22625")) {
 				return false
 			}
 		}
@@ -835,7 +835,7 @@ func TestMembershipConvergence(t *testing.T) {
 			if 15 != len(peers[i].Peers()) {
 				return false
 			}
-			if "Connector2" != string(metadataOfPeer(peers[i].Peers(), "localhost:2625")) {
+			if "Connector2" != string(metadataOfPeer(peers[i].Peers(), "localhost:22625")) {
 				return false
 			}
 		}
@@ -865,7 +865,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	// Expected output: g1 should *NOT* respond to g2,
 	// However, g1 should respond to g3 when it sends the message itself.
 
-	portPrefix := 2000
+	portPrefix := 22000
 	g1 := newGossipInstance(portPrefix, 0, 100)
 	g2 := newGossipInstance(portPrefix, 1, 100, 2)
 	g3 := newGossipInstance(portPrefix, 2, 100, 1)
@@ -879,20 +879,20 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
 		msg := o.(proto.ReceivedMessage).GetGossipMessage()
 		// Make sure we get an AliveMessage and it's about g3
-		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte("localhost:2002"))
+		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte("localhost:22002"))
 	}, true)
 	aliveMsg := <-aliveMsgChan
 
 	// Obtain channel for messages from g1 to g2
 	_, g1ToG2 := g2.Accept(func(o interface{}) bool {
 		connInfo := o.(proto.ReceivedMessage).GetConnectionInfo()
-		return bytes.Equal([]byte("localhost:2000"), connInfo.ID)
+		return bytes.Equal([]byte("localhost:22000"), connInfo.ID)
 	}, true)
 
 	// Obtain channel for messages from g1 to g3
 	_, g1ToG3 := g3.Accept(func(o interface{}) bool {
 		connInfo := o.(proto.ReceivedMessage).GetConnectionInfo()
-		return bytes.Equal([]byte("localhost:2000"), connInfo.ID)
+		return bytes.Equal([]byte("localhost:22000"), connInfo.ID)
 	}, true)
 
 	// Now, create a membership request message
@@ -910,7 +910,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 		return sMsg
 	}
 	spoofedMemReq := memRequestSpoofFactory(aliveMsg.GetSourceEnvelope())
-	g2.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:2000", PKIID: common.PKIidType("localhost:2000")})
+	g2.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:22000", PKIID: common.PKIidType("localhost:22000")})
 	select {
 	case <-time.After(time.Second):
 		break
@@ -919,7 +919,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	}
 
 	// Now send the same message from g3 to g1
-	g3.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:2000", PKIID: common.PKIidType("localhost:2000")})
+	g3.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:22000", PKIID: common.PKIidType("localhost:22000")})
 	select {
 	case <-time.After(time.Second):
 		assert.Fail(t, "Didn't receive a message back from g1 on time")
@@ -931,7 +931,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 func TestDataLeakage(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	portPrefix := 1610
+	portPrefix := 21610
 	// Scenario: spawn some nodes and let them all
 	// establish full membership.
 	// Then, have half be in channel A and half be in channel B.
@@ -947,13 +947,13 @@ func TestDataLeakage(t *testing.T) {
 	mcs := &naiveCryptoService{
 		allowedPkiIDS: map[string]struct{}{
 			// Channel A
-			"localhost:1610": {},
-			"localhost:1611": {},
-			"localhost:1612": {},
+			"localhost:21610": {},
+			"localhost:21611": {},
+			"localhost:21612": {},
 			// Channel B
-			"localhost:1615": {},
-			"localhost:1616": {},
-			"localhost:1617": {},
+			"localhost:21615": {},
+			"localhost:21616": {},
+			"localhost:21617": {},
 		},
 	}
 
@@ -1059,7 +1059,7 @@ func TestDisseminateAll2All(t *testing.T) {
 
 	t.Skip()
 	t.Parallel()
-	portPrefix := 6610
+	portPrefix := 26610
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
 
@@ -1127,7 +1127,7 @@ func TestSendByCriteria(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
 
-	portPrefix := 20000
+	portPrefix := 23000
 	g1 := newGossipInstance(portPrefix, 0, 100)
 	g2 := newGossipInstance(portPrefix, 1, 100, 0)
 	g3 := newGossipInstance(portPrefix, 2, 100, 0)

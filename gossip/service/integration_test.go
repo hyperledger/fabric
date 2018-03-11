@@ -104,7 +104,7 @@ func TestLeaderYield(t *testing.T) {
 	viper.Set("peer.gossip.useLeaderElection", true)
 	viper.Set("peer.gossip.orgLeader", false)
 	n := 2
-	portPrefix := 30000
+	portPrefix := 30100
 	gossips := startPeers(t, n, portPrefix)
 	defer stopPeers(gossips)
 	channelName := "channelA"

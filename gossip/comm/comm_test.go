@@ -327,8 +327,8 @@ func TestHandshake(t *testing.T) {
 
 func TestBasic(t *testing.T) {
 	t.Parallel()
-	comm1, _ := newCommInstance(2000, naiveSec)
-	comm2, _ := newCommInstance(3000, naiveSec)
+	comm1, _ := newCommInstance(52000, naiveSec)
+	comm2, _ := newCommInstance(53000, naiveSec)
 	comm1.(*commImpl).SetDialOpts()
 	comm2.(*commImpl).SetDialOpts()
 	defer comm1.Stop()
@@ -342,25 +342,25 @@ func TestBasic(t *testing.T) {
 	}
 	go reader(m1)
 	go reader(m2)
-	comm1.Send(createGossipMsg(), remotePeer(3000))
+	comm1.Send(createGossipMsg(), remotePeer(53000))
 	time.Sleep(time.Second)
-	comm2.Send(createGossipMsg(), remotePeer(2000))
+	comm2.Send(createGossipMsg(), remotePeer(52000))
 	waitForMessages(t, out, 2, "Didn't receive 2 messages")
 }
 
 func TestProdConstructor(t *testing.T) {
 	t.Parallel()
-	srv, lsnr, dialOpts, certs := createGRPCLayer(20000)
+	srv, lsnr, dialOpts, certs := createGRPCLayer(29000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	id := []byte("localhost:20000")
+	id := []byte("localhost:29000")
 	comm1, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
 	go srv.Serve(lsnr)
 
-	srv, lsnr, dialOpts, certs = createGRPCLayer(30000)
+	srv, lsnr, dialOpts, certs = createGRPCLayer(39000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	id = []byte("localhost:30000")
+	id = []byte("localhost:39000")
 	comm2, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
 	go srv.Serve(lsnr)
 	defer comm1.Stop()
@@ -374,9 +374,9 @@ func TestProdConstructor(t *testing.T) {
 	}
 	go reader(m1)
 	go reader(m2)
-	comm1.Send(createGossipMsg(), remotePeer(30000))
+	comm1.Send(createGossipMsg(), remotePeer(39000))
 	time.Sleep(time.Second)
-	comm2.Send(createGossipMsg(), remotePeer(20000))
+	comm2.Send(createGossipMsg(), remotePeer(29000))
 	waitForMessages(t, out, 2, "Didn't receive 2 messages")
 }
 
@@ -545,8 +545,8 @@ func TestNonResponsivePing(t *testing.T) {
 
 func TestResponses(t *testing.T) {
 	t.Parallel()
-	comm1, _ := newCommInstance(8611, naiveSec)
-	comm2, _ := newCommInstance(8612, naiveSec)
+	comm1, _ := newCommInstance(58611, naiveSec)
+	comm2, _ := newCommInstance(58612, naiveSec)
 
 	defer comm1.Stop()
 	defer comm2.Stop()
@@ -569,7 +569,7 @@ func TestResponses(t *testing.T) {
 
 	ticker := time.NewTicker(10 * time.Second)
 	wg.Wait()
-	comm2.Send(msg, remotePeer(8611))
+	comm2.Send(msg, remotePeer(58611))
 
 	select {
 	case <-ticker.C:
@@ -584,8 +584,8 @@ func TestResponses(t *testing.T) {
 
 func TestAccept(t *testing.T) {
 	t.Parallel()
-	comm1, _ := newCommInstance(7611, naiveSec)
-	comm2, _ := newCommInstance(7612, naiveSec)
+	comm1, _ := newCommInstance(57611, naiveSec)
+	comm2, _ := newCommInstance(57612, naiveSec)
 
 	evenNONCESelector := func(m interface{}) bool {
 		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
@@ -616,7 +616,7 @@ func TestAccept(t *testing.T) {
 	go readIntoSlice(&oddResults, oddNONCES)
 
 	for i := 0; i < util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize); i++ {
-		comm2.Send(createGossipMsg(), remotePeer(7611))
+		comm2.Send(createGossipMsg(), remotePeer(57611))
 	}
 
 	waitForMessages(t, out, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize), "Didn't receive all messages sent")
@@ -642,8 +642,8 @@ func TestAccept(t *testing.T) {
 
 func TestReConnections(t *testing.T) {
 	t.Parallel()
-	comm1, _ := newCommInstance(3611, naiveSec)
-	comm2, _ := newCommInstance(3612, naiveSec)
+	comm1, _ := newCommInstance(43611, naiveSec)
+	comm2, _ := newCommInstance(43612, naiveSec)
 
 	reader := func(out chan uint64, in <-chan proto.ReceivedMessage) {
 		for {
@@ -662,19 +662,19 @@ func TestReConnections(t *testing.T) {
 	go reader(out2, comm2.Accept(acceptAll))
 
 	// comm1 connects to comm2
-	comm1.Send(createGossipMsg(), remotePeer(3612))
+	comm1.Send(createGossipMsg(), remotePeer(43612))
 	waitForMessages(t, out2, 1, "Comm2 didn't receive a message from comm1 in a timely manner")
 	time.Sleep(time.Second)
 	// comm2 sends to comm1
-	comm2.Send(createGossipMsg(), remotePeer(3611))
+	comm2.Send(createGossipMsg(), remotePeer(43611))
 	waitForMessages(t, out1, 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 
 	comm1.Stop()
-	comm1, _ = newCommInstance(3611, naiveSec)
+	comm1, _ = newCommInstance(43611, naiveSec)
 	time.Sleep(time.Second)
 	out1 = make(chan uint64, 1)
 	go reader(out1, comm1.Accept(acceptAll))
-	comm2.Send(createGossipMsg(), remotePeer(3611))
+	comm2.Send(createGossipMsg(), remotePeer(43611))
 	waitForMessages(t, out1, 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 }
 
@@ -721,14 +721,14 @@ func TestProbe(t *testing.T) {
 
 func TestPresumedDead(t *testing.T) {
 	t.Parallel()
-	comm1, _ := newCommInstance(4611, naiveSec)
-	comm2, _ := newCommInstance(4612, naiveSec)
+	comm1, _ := newCommInstance(44611, naiveSec)
+	comm2, _ := newCommInstance(44612, naiveSec)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		wg.Wait()
-		comm1.Send(createGossipMsg(), remotePeer(4612))
+		comm1.Send(createGossipMsg(), remotePeer(44612))
 	}()
 
 	ticker := time.NewTicker(time.Duration(10) * time.Second)
@@ -744,7 +744,7 @@ func TestPresumedDead(t *testing.T) {
 	comm2.Stop()
 	go func() {
 		for i := 0; i < 5; i++ {
-			comm1.Send(createGossipMsg(), remotePeer(4612))
+			comm1.Send(createGossipMsg(), remotePeer(44612))
 			time.Sleep(time.Millisecond * 200)
 		}
 	}()
