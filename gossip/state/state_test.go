@@ -12,20 +12,19 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -40,7 +39,6 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -62,6 +60,7 @@ type joinChanMsg struct {
 
 func init() {
 	gutil.SetupTestLogging()
+	factory.InitFactories(nil)
 }
 
 // SequenceNumber returns the sequence number of the block that the message
@@ -232,6 +231,64 @@ func (mc *mockCommitter) GetBlocks(blockSeqs []uint64) []*pcomm.Block {
 func (*mockCommitter) Close() {
 }
 
+type ramLedger struct {
+	ledger map[uint64]*ledger.BlockAndPvtData
+	sync.RWMutex
+}
+
+func (mock *ramLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {
+	mock.RLock()
+	defer mock.RUnlock()
+
+	if block, ok := mock.ledger[blockNum]; !ok {
+		return nil, errors.New(fmt.Sprintf("no block with seq = %d found", blockNum))
+	} else {
+		return block, nil
+	}
+}
+
+func (mock *ramLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+	panic("implement me")
+}
+
+func (mock *ramLedger) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error {
+	mock.Lock()
+	defer mock.Unlock()
+
+	if blockAndPvtdata != nil && blockAndPvtdata.Block != nil {
+		mock.ledger[blockAndPvtdata.Block.Header.Number] = blockAndPvtdata
+		return nil
+	}
+	return errors.New("invalid input parameters for block and private data param")
+}
+
+func (mock *ramLedger) GetBlockchainInfo() (*pcomm.BlockchainInfo, error) {
+	mock.RLock()
+	defer mock.RUnlock()
+
+	currentBlock := mock.ledger[uint64(len(mock.ledger)-1)].Block
+	return &pcomm.BlockchainInfo{
+		Height:            currentBlock.Header.Number + 1,
+		CurrentBlockHash:  currentBlock.Header.Hash(),
+		PreviousBlockHash: currentBlock.Header.PreviousHash,
+	}, nil
+}
+
+func (mock *ramLedger) GetBlockByNumber(blockNumber uint64) (*pcomm.Block, error) {
+	mock.RLock()
+	defer mock.RUnlock()
+
+	if blockAndPvtData, ok := mock.ledger[blockNumber]; !ok {
+		return nil, errors.New(fmt.Sprintf("no block with seq = %d found", blockNumber))
+	} else {
+		return blockAndPvtData.Block, nil
+	}
+}
+
+func (mock *ramLedger) Close() {
+
+}
+
 // Default configuration to be used for gossip and communication modules
 func newGossipConfig(id int, boot ...int) *gossip.Config {
 	port := id + portPrefix
@@ -261,10 +318,15 @@ func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) goss
 }
 
 // Create new instance of KVLedger to be used for testing
-func newCommitter(id int) committer.Committer {
-	cb, _ := test.MakeGenesisBlock(strconv.Itoa(id))
-	ledger, _ := ledgermgmt.CreateLedger(cb)
-	return committer.NewLedgerCommitter(ledger)
+func newCommitter() committer.Committer {
+	cb, _ := test.MakeGenesisBlock("testChain")
+	ldgr := &ramLedger{
+		ledger: make(map[uint64]*ledger.BlockAndPvtData),
+	}
+	ldgr.CommitWithPvtData(&ledger.BlockAndPvtData{
+		Block: cb,
+	})
+	return committer.NewLedgerCommitter(ldgr)
 }
 
 func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor, g gossip.Gossip) *peerNode {
@@ -565,7 +627,6 @@ func TestBlockingEnqueue(t *testing.T) {
 			break
 		}
 		time.Sleep(time.Millisecond * 10)
-		t.Log("got block", receivedBlock)
 	}
 }
 
@@ -792,10 +853,6 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 }
 
 func TestAccessControl(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
 	bootstrapSetSize := 5
 	bootstrapSet := make([]*peerNode, 0)
 
@@ -814,7 +871,7 @@ func TestAccessControl(t *testing.T) {
 	}
 
 	for i := 0; i < bootstrapSetSize; i++ {
-		commit := newCommitter(i)
+		commit := newCommitter()
 		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), commit, blockPullPolicy))
 	}
 
@@ -843,7 +900,7 @@ func TestAccessControl(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standardPeerSetSize; i++ {
-		commit := newCommitter(bootstrapSetSize + i)
+		commit := newCommitter()
 		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, blockPullPolicy))
 	}
 
@@ -885,95 +942,12 @@ func TestAccessControl(t *testing.T) {
 	}, 60*time.Second)
 }
 
-/*// Simple scenario to start first booting node, gossip a message
-// then start second node and verify second node also receives it
-func TestNewGossipStateProvider_GossipingOneMessage(t *testing.T) {
-	bootId := 0
-	ledgerPath := "/tmp/tests/ledger/"
-	defer os.RemoveAll(ledgerPath)
-
-	bootNodeCommitter := newCommitter(bootId, ledgerPath + "node/")
-	defer bootNodeCommitter.Close()
-
-	bootNode := newPeerNode(newGossipConfig(bootId, 100), bootNodeCommitter)
-	defer bootNode.shutdown()
-
-	rawblock := &peer.Block2{}
-	if err := pb.Unmarshal([]byte{}, rawblock); err != nil {
-		t.Fail()
-	}
-
-	if bytes, err := pb.Marshal(rawblock); err == nil {
-		payload := &proto.Payload{1, "", bytes}
-		bootNode.s.AddPayload(payload)
-	} else {
-		t.Fail()
-	}
-
-	waitUntilTrueOrTimeout(t, func() bool {
-		if block := bootNode.s.GetBlock(uint64(1)); block != nil {
-			return true
-		}
-		return false
-	}, 5 * time.Second)
-
-	bootNode.g.Gossip(createDataMsg(uint64(1), []byte{}, ""))
-
-	peerCommitter := newCommitter(1, ledgerPath + "node/")
-	defer peerCommitter.Close()
-
-	peer := newPeerNode(newGossipConfig(1, 100, bootId), peerCommitter)
-	defer peer.shutdown()
-
-	ready := make(chan interface{})
-
-	go func(p *peerNode) {
-		for len(p.g.GetPeers()) != 1 {
-			time.Sleep(100 * time.Millisecond)
-		}
-		ready <- struct{}{}
-	}(peer)
-
-	select {
-	case <-ready:
-		{
-			break
-		}
-	case <-time.After(1 * time.Second):
-		{
-			t.Fail()
-		}
-	}
-
-	// Let sure anti-entropy will have a chance to bring missing block
-	waitUntilTrueOrTimeout(t, func() bool {
-		if block := peer.s.GetBlock(uint64(1)); block != nil {
-			return true
-		}
-		return false
-	}, 2 * defAntiEntropyInterval + 1 * time.Second)
-
-	block := peer.s.GetBlock(uint64(1))
-
-	assert.NotNil(t, block)
-}
-
-func TestNewGossipStateProvider_RepeatGossipingOneMessage(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		TestNewGossipStateProvider_GossipingOneMessage(t)
-	}
-}*/
-
 func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
 	bootstrapSetSize := 5
 	bootstrapSet := make([]*peerNode, 0)
 
 	for i := 0; i < bootstrapSetSize; i++ {
-		commit := newCommitter(i)
+		commit := newCommitter()
 		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), commit, noopPeerIdentityAcceptor))
 	}
 
@@ -1002,7 +976,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standartPeersSize; i++ {
-		commit := newCommitter(bootstrapSetSize + i)
+		commit := newCommitter()
 		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, noopPeerIdentityAcceptor))
 	}
 
@@ -1038,14 +1012,10 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 }
 
 func TestGossipStateProvider_TestStateMessages(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
-	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(0), noopPeerIdentityAcceptor)
+	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(), noopPeerIdentityAcceptor)
 	defer bootPeer.shutdown()
 
-	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(1), noopPeerIdentityAcceptor)
+	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(), noopPeerIdentityAcceptor)
 	defer peer.shutdown()
 
 	naiveStateMsgPredicate := func(message interface{}) bool {
@@ -1110,11 +1080,7 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 // complete missing blocks. Since state transfer messages now batched, it is expected
 // to see _exactly_ two messages with state transfer response.
 func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
-	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(0), noopPeerIdentityAcceptor)
+	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(), noopPeerIdentityAcceptor)
 	defer bootPeer.shutdown()
 
 	msgCount := defAntiEntropyBatchSize + 5
@@ -1133,7 +1099,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 		}
 	}
 
-	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(1), noopPeerIdentityAcceptor)
+	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(), noopPeerIdentityAcceptor)
 	defer peer.shutdown()
 
 	naiveStateMsgPredicate := func(message interface{}) bool {
