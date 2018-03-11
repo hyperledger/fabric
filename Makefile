@@ -6,8 +6,8 @@
 # -------------------------------------------------------------
 # This makefile defines the following targets
 #
-#   - all (default) - builds all targets and runs all tests/checks
-#   - checks - runs all tests/checks
+#   - all (default) - builds all targets and runs all non-integration tests/checks
+#   - checks - runs all non-integration tests/checks
 #   - desk-check - runs linters and verify to test changed packages
 #   - configtxgen - builds a native configtxgen binary
 #   - configtxlator - builds a native configtxlator binary
@@ -116,11 +116,11 @@ include docker-env.mk
 
 all: native docker checks
 
-checks: license spelling linter unit-test behave
+checks: license spelling linter unit-test
 
 basic-checks: license spelling linter
 
-desk-check: license spelling linter verify behave
+desk-check: license spelling linter verify
 
 # Pull thirdparty docker images based on the latest baseimage release version
 .PHONY: docker-thirdparty
