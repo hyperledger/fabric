@@ -663,7 +663,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 			chaincodeSupport.runningChaincodes.Unlock()
 			return cID, cMsg, nil
 		}
-		chaincodeLogger.Debugf("Container not in READY state(%s)...send init/ready", chrte.handler.FSM.Current())
+		chaincodeLogger.Debugf("Container not in READY state(%s)...send init/ready", chrte.handler.state)
 	} else {
 		//chaincode is not up... but is the launch process underway? this is
 		//strictly not necessary as the actual launch process will catch this

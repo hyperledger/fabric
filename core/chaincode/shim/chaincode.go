@@ -283,13 +283,11 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 	go func() {
 		defer close(waitc)
 		msgAvail := make(chan *pb.ChaincodeMessage)
-		var nsInfo *nextStateInfo
 		var in *pb.ChaincodeMessage
 		recv := true
 		for {
 			in = nil
 			err = nil
-			nsInfo = nil
 			if recv {
 				recv = false
 				go func() {
@@ -320,18 +318,11 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 					chaincodeLogger.Debugf("%+v", err)
 					return
 				}
-				chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type.String())
+				chaincodeLogger.Debugf("[%s]Received message %s from peer", shorttxid(in.Txid), in.Type)
 				recv = true
-			case nsInfo = <-handler.nextState:
-				in = nsInfo.msg
-				if in == nil {
-					panic("nil msg")
-				}
-				chaincodeLogger.Debugf("[%s]Move state message %s", shorttxid(in.Txid), in.Type.String())
 			}
 
-			// Call FSM.handleMessage()
-			err = handler.handleMessage(in)
+			err = handler.handleMessage(in, errc)
 			if err != nil {
 				err = errors.WithMessage(err, "error handling message")
 				return
@@ -342,9 +333,6 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 				chaincodeLogger.Debug("Sending KEEPALIVE response")
 				//ignore any errors, maybe next KEEPALIVE will work
 				handler.serialSendAsync(in, nil)
-			} else if nsInfo != nil && nsInfo.sendToCC {
-				chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
-				handler.serialSendAsync(in, errc)
 			}
 		}
 	}()
