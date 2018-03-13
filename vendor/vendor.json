@@ -377,11 +377,6 @@
 			"revisionTime": "2015-09-05T15:45:08-07:00"
 		},
 		{
-			"path": "github.com/looplab/fsm",
-			"revision": "406628531e6e20c817c9ff2260f60b3284b5966a",
-			"revisionTime": "2014-11-27T13:17:14+01:00"
-		},
-		{
 			"path": "github.com/magiconair/properties",
 			"revision": "337395e44efb4affc8bf11971e22acbd4e27a32d",
 			"revisionTime": "2015-07-31T22:42:12+02:00"
