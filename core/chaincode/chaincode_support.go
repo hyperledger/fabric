@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
@@ -309,49 +299,6 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 	delete(chaincodeSupport.runningChaincodes.chaincodeMap, key)
 	chaincodeLogger.Debugf("Deregistered handler with key: %s", key)
 	return nil
-}
-
-// send ready to move to ready state
-func (chaincodeSupport *ChaincodeSupport) sendReady(context context.Context, cccid *ccprovider.CCContext, timeout time.Duration) error {
-	canName := cccid.GetCanonicalName()
-	chaincodeSupport.runningChaincodes.Lock()
-	//if its in the map, there must be a connected stream...nothing to do
-	var chrte *chaincodeRTEnv
-	var ok bool
-	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(canName); !ok {
-		chaincodeSupport.runningChaincodes.Unlock()
-		err := errors.Errorf("handler not found for chaincode %s", canName)
-		chaincodeLogger.Debugf("%+v", err)
-		return err
-	}
-	chaincodeSupport.runningChaincodes.Unlock()
-
-	var notfy chan *pb.ChaincodeMessage
-	var err error
-	if notfy, err = chrte.handler.ready(context, cccid.ChainID, cccid.TxID, cccid.SignedProposal, cccid.Proposal); err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error sending %s", pb.ChaincodeMessage_READY))
-	}
-	if notfy != nil {
-		select {
-		case ccMsg := <-notfy:
-			switch ccMsg.Type {
-			case pb.ChaincodeMessage_ERROR:
-				err = errors.Errorf("error initializing container %s: %s", canName, string(ccMsg.Payload))
-			case pb.ChaincodeMessage_READY:
-				chaincodeLogger.Infof("chaincode %s ready to accept requests", canName)
-			default:
-				//by construction, we cannot (should not) get anything other than ERROR or READY
-				panic(fmt.Sprintf("Invalid ready message %+v", ccMsg))
-			}
-		case <-time.After(timeout):
-			err = errors.New("timeout expired while executing send init message")
-		}
-	}
-
-	//if initOrReady succeeded, our responsibility to delete the context
-	chrte.handler.deleteTxContext(cccid.ChainID, cccid.TxID)
-
-	return err
 }
 
 // returns a map of file path <-> []byte for all files related to TLS
@@ -731,20 +678,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed: %+v", err)
 			return cID, cMsg, err
 		}
-	}
-
-	if err == nil {
-		//launch will set the chaincode in Ready state
-		err = chaincodeSupport.sendReady(context, cccid, chaincodeSupport.ccStartupTimeout)
-		if err != nil {
-			err = errors.WithMessage(err, "failed to init chaincode")
-			chaincodeLogger.Errorf("%+v", err)
-			errIgnore := chaincodeSupport.Stop(context, cccid, cds)
-			if errIgnore != nil {
-				chaincodeLogger.Errorf("stop failed: %+v", errIgnore)
-			}
-		}
-		chaincodeLogger.Debug("sending init completed")
 	}
 
 	chaincodeLogger.Debug("LaunchChaincode complete")
