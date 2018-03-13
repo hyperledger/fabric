@@ -1232,6 +1232,45 @@ func TestMemRespDisclosurePol(t *testing.T) {
 	assert.NotZero(t, d2.sentMsgCount())
 }
 
+func TestMembersByID(t *testing.T) {
+	members := Members{
+		{PKIid: common.PKIidType("p0"), Endpoint: "p0"},
+		{PKIid: common.PKIidType("p1"), Endpoint: "p1"},
+	}
+	byID := members.ByID()
+	assert.Len(t, byID, 2)
+	assert.Equal(t, "p0", byID["p0"].Endpoint)
+	assert.Equal(t, "p1", byID["p1"].Endpoint)
+}
+
+func TestFilter(t *testing.T) {
+	members := Members{
+		{PKIid: common.PKIidType("p0"), Endpoint: "p0", Properties: &proto.Properties{
+			Chaincodes: []*proto.Chaincode{{Name: "cc", Version: "1.0"}},
+		}},
+		{PKIid: common.PKIidType("p1"), Endpoint: "p1", Properties: &proto.Properties{
+			Chaincodes: []*proto.Chaincode{{Name: "cc", Version: "2.0"}},
+		}},
+	}
+	res := members.Filter(func(member NetworkMember) bool {
+		cc := member.Properties.Chaincodes[0]
+		return cc.Version == "2.0" && cc.Name == "cc"
+	})
+	assert.Equal(t, Members{members[1]}, res)
+}
+
+func TestMembersIntersect(t *testing.T) {
+	members1 := Members{
+		{PKIid: common.PKIidType("p0"), Endpoint: "p0"},
+		{PKIid: common.PKIidType("p1"), Endpoint: "p1"},
+	}
+	members2 := Members{
+		{PKIid: common.PKIidType("p1"), Endpoint: "p1"},
+		{PKIid: common.PKIidType("p2"), Endpoint: "p2"},
+	}
+	assert.Equal(t, Members{{PKIid: common.PKIidType("p1"), Endpoint: "p1"}}, members1.Intersect(members2))
+}
+
 func waitUntilOrFail(t *testing.T, pred func() bool) {
 	waitUntilTimeoutOrFail(t, pred, timeout)
 }
