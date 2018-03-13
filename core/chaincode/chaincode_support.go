@@ -30,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
@@ -335,17 +334,14 @@ func (chaincodeSupport *ChaincodeSupport) sendReady(context context.Context, ccc
 	if notfy != nil {
 		select {
 		case ccMsg := <-notfy:
-			if ccMsg.Type == pb.ChaincodeMessage_ERROR {
+			switch ccMsg.Type {
+			case pb.ChaincodeMessage_ERROR:
 				err = errors.Errorf("error initializing container %s: %s", canName, string(ccMsg.Payload))
-			}
-			if ccMsg.Type == pb.ChaincodeMessage_COMPLETED {
-				res := &pb.Response{}
-				_ = proto.Unmarshal(ccMsg.Payload, res)
-				if res.Status != shim.OK {
-					err = errors.Errorf("error initializing container %s: %s", canName, string(res.Message))
-				}
-				// TODO
-				// return res so that endorser can anylyze it.
+			case pb.ChaincodeMessage_READY:
+				chaincodeLogger.Infof("chaincode %s ready to accept requests", canName)
+			default:
+				//by construction, we cannot (should not) get anything other than ERROR or READY
+				panic(fmt.Sprintf("Invalid ready message %+v", ccMsg))
 			}
 		case <-time.After(timeout):
 			err = errors.New("timeout expired while executing send init message")
@@ -656,14 +652,9 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 			chaincodeLogger.Debugf("%+v", err)
 			return cID, cMsg, err
 		}
-		if chrte.handler.isRunning() {
-			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
-				chaincodeLogger.Debugf("chaincode is running(no need to launch) : %s", canName)
-			}
-			chaincodeSupport.runningChaincodes.Unlock()
-			return cID, cMsg, nil
-		}
-		chaincodeLogger.Debugf("Container not in READY state(%s)...send init/ready", chrte.handler.state)
+		chaincodeLogger.Debugf("chaincode is running(no need to launch) : %s", canName)
+		chaincodeSupport.runningChaincodes.Unlock()
+		return cID, cMsg, nil
 	} else {
 		//chaincode is not up... but is the launch process underway? this is
 		//strictly not necessary as the actual launch process will catch this
