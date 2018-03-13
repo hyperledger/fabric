@@ -707,7 +707,7 @@ func (handler *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) e
 		return nil
 	}
 
-	return errors.Errorf("[%s]Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
+	return errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
 }
 
 //handle established state
@@ -716,7 +716,7 @@ func (handler *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan er
 		handler.state = "ready"
 		return nil
 	}
-	return errors.Errorf("[%s]Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
+	return errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
 }
 
 //handle created state
@@ -725,7 +725,7 @@ func (handler *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error)
 		handler.state = "established"
 		return nil
 	}
-	return errors.Errorf("[%s]Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
+	return errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
 }
 
 // handleMessage message handles loop for shim side of chaincode/peer stream.
@@ -746,7 +746,7 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error)
 	case "created":
 		err = handler.handleCreated(msg, errc)
 	default:
-		err = errors.Errorf("[%s]Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
+		err = errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
 	}
 
 	if err != nil {
