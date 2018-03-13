@@ -1,4 +1,4 @@
-// Copyright 2013-2014 Frank Schroeder. All rights reserved.
+// Copyright 2017 Frank Schroeder. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -102,6 +102,16 @@
 //   v = p.GetString("key", "def")
 //   v = p.GetDuration("key", 999)
 //
+// As an alterantive properties may be applied with the standard
+// library's flag implementation at any time.
+//
+//   # Standard configuration
+//   v = flag.Int("key", 999, "help message")
+//   flag.Parse()
+//
+//   # Merge p into the flag set
+//   p.MustFlag(flag.CommandLine)
+//
 // Properties provides several MustXXX() convenience functions
 // which will terminate the app if an error occurs. The behavior
 // of the failure is configurable and the default is to call
@@ -124,6 +134,17 @@
 //
 //   # Will write to stdout and then exit
 //   p := properties.MustLoadFile("config.properties")
+//
+// Properties can also be loaded into a struct via the `Decode`
+// method, e.g.
+//
+//   type S struct {
+//       A string        `properties:"a,default=foo"`
+//       D time.Duration `properties:"timeout,default=5s"`
+//       E time.Time     `properties:"expires,layout=2006-01-02,default=2015-01-01"`
+//   }
+//
+// See `Decode()` method for the full documentation.
 //
 // The following documents provide a description of the properties
 // file format.

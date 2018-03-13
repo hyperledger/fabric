@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-amcl/amcl"
+	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/idemix"
 	m "github.com/hyperledger/fabric/protos/msp"
-	"github.com/milagro-crypto/amcl/version3/go/amcl"
-	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 

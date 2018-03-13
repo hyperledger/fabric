@@ -38,12 +38,6 @@ func DecodeHookExec(
 	raw DecodeHookFunc,
 	from reflect.Type, to reflect.Type,
 	data interface{}) (interface{}, error) {
-	// Build our arguments that reflect expects
-	argVals := make([]reflect.Value, 3)
-	argVals[0] = reflect.ValueOf(from)
-	argVals[1] = reflect.ValueOf(to)
-	argVals[2] = reflect.ValueOf(data)
-
 	switch f := typedDecodeHook(raw).(type) {
 	case DecodeHookFuncType:
 		return f(from, to, data)
@@ -72,7 +66,10 @@ func ComposeDecodeHookFunc(fs ...DecodeHookFunc) DecodeHookFunc {
 			}
 
 			// Modify the from kind to be correct with the new data
-			f = reflect.ValueOf(data).Type()
+			f = nil
+			if val := reflect.ValueOf(data); val.IsValid() {
+				f = val.Type()
+			}
 		}
 
 		return data, nil
@@ -118,6 +115,30 @@ func StringToTimeDurationHookFunc() DecodeHookFunc {
 	}
 }
 
+// StringToTimeHookFunc returns a DecodeHookFunc that converts
+// strings to time.Time.
+func StringToTimeHookFunc(layout string) DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+		if t != reflect.TypeOf(time.Time{}) {
+			return data, nil
+		}
+
+		// Convert it by parsing
+		return time.Parse(layout, data.(string))
+	}
+}
+
+// WeaklyTypedHook is a DecodeHookFunc which adds support for weak typing to
+// the decoder.
+//
+// Note that this is significantly different from the WeaklyTypedInput option
+// of the DecoderConfig.
 func WeaklyTypedHook(
 	f reflect.Kind,
 	t reflect.Kind,
@@ -129,9 +150,8 @@ func WeaklyTypedHook(
 		case reflect.Bool:
 			if dataVal.Bool() {
 				return "1", nil
-			} else {
-				return "0", nil
 			}
+			return "0", nil
 		case reflect.Float32:
 			return strconv.FormatFloat(dataVal.Float(), 'f', -1, 64), nil
 		case reflect.Int:

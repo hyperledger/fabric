@@ -67,7 +67,8 @@ var planAdditive precedent
 var planBitwise precedent
 var planShift precedent
 var planComparator precedent
-var planLogical precedent
+var planLogicalAnd precedent
+var planLogicalOr precedent
 var planTernary precedent
 var planSeparator precedent
 
@@ -77,61 +78,67 @@ func init() {
 	// they simply need different type checks, symbols, and recursive precedents.
 	// While not all precedent phases are listed here, most can be represented this way.
 	planPrefix = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    PREFIX_SYMBOLS,
+		validSymbols:    prefixSymbols,
 		validKinds:      []TokenKind{PREFIX},
-		typeErrorFormat: TYPEERROR_PREFIX,
+		typeErrorFormat: prefixErrorFormat,
 		nextRight:       planFunction,
 	})
 	planExponential = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    EXPONENTIAL_SYMBOLS,
+		validSymbols:    exponentialSymbolsS,
 		validKinds:      []TokenKind{MODIFIER},
-		typeErrorFormat: TYPEERROR_MODIFIER,
+		typeErrorFormat: modifierErrorFormat,
 		next:            planFunction,
 	})
 	planMultiplicative = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    MULTIPLICATIVE_SYMBOLS,
+		validSymbols:    multiplicativeSymbols,
 		validKinds:      []TokenKind{MODIFIER},
-		typeErrorFormat: TYPEERROR_MODIFIER,
+		typeErrorFormat: modifierErrorFormat,
 		next:            planExponential,
 	})
 	planAdditive = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    ADDITIVE_SYMBOLS,
+		validSymbols:    additiveSymbols,
 		validKinds:      []TokenKind{MODIFIER},
-		typeErrorFormat: TYPEERROR_MODIFIER,
+		typeErrorFormat: modifierErrorFormat,
 		next:            planMultiplicative,
 	})
 	planShift = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    BITWISE_SHIFT_SYMBOLS,
+		validSymbols:    bitwiseShiftSymbols,
 		validKinds:      []TokenKind{MODIFIER},
-		typeErrorFormat: TYPEERROR_MODIFIER,
+		typeErrorFormat: modifierErrorFormat,
 		next:            planAdditive,
 	})
 	planBitwise = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    BITWISE_SYMBOLS,
+		validSymbols:    bitwiseSymbols,
 		validKinds:      []TokenKind{MODIFIER},
-		typeErrorFormat: TYPEERROR_MODIFIER,
+		typeErrorFormat: modifierErrorFormat,
 		next:            planShift,
 	})
 	planComparator = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    COMPARATOR_SYMBOLS,
+		validSymbols:    comparatorSymbols,
 		validKinds:      []TokenKind{COMPARATOR},
-		typeErrorFormat: TYPEERROR_COMPARATOR,
+		typeErrorFormat: comparatorErrorFormat,
 		next:            planBitwise,
 	})
-	planLogical = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    LOGICAL_SYMBOLS,
+	planLogicalAnd = makePrecedentFromPlanner(&precedencePlanner{
+		validSymbols:    map[string]OperatorSymbol{"&&": AND},
 		validKinds:      []TokenKind{LOGICALOP},
-		typeErrorFormat: TYPEERROR_LOGICAL,
+		typeErrorFormat: logicalErrorFormat,
 		next:            planComparator,
 	})
+	planLogicalOr = makePrecedentFromPlanner(&precedencePlanner{
+		validSymbols:    map[string]OperatorSymbol{"||": OR},
+		validKinds:      []TokenKind{LOGICALOP},
+		typeErrorFormat: logicalErrorFormat,
+		next:            planLogicalAnd,
+	})
 	planTernary = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols:    TERNARY_SYMBOLS,
+		validSymbols:    ternarySymbols,
 		validKinds:      []TokenKind{TERNARY},
-		typeErrorFormat: TYPEERROR_TERNARY,
-		next:            planLogical,
+		typeErrorFormat: ternaryErrorFormat,
+		next:            planLogicalOr,
 	})
 	planSeparator = makePrecedentFromPlanner(&precedencePlanner{
-		validSymbols: SEPARATOR_SYMBOLS,
+		validSymbols: separatorSymbols,
 		validKinds:   []TokenKind{SEPARATOR},
 		next:         planTernary,
 	})
@@ -378,7 +385,7 @@ func planValue(stream *tokenStream) (*evaluationStage, error) {
 	}
 
 	if operator == nil {
-		errorMsg := fmt.Sprintf("Unable to plan token kind: '%s', value: '%v'", GetTokenKindString(token.Kind), token.Value)
+		errorMsg := fmt.Sprintf("Unable to plan token kind: '%s', value: '%v'", token.Kind.String(), token.Value)
 		return nil, errors.New(errorMsg)
 	}
 
@@ -502,7 +509,7 @@ func reorderStages(rootStage *evaluationStage) {
 	// traverse every rightStage until we find multiples in a row of the same precedence.
 	var identicalPrecedences []*evaluationStage
 	var currentStage, nextStage *evaluationStage
-	var precedence, currentPrecedence OperatorPrecedence
+	var precedence, currentPrecedence operatorPrecedence
 
 	nextStage = rootStage
 	precedence = findOperatorPrecedenceForSymbol(rootStage.symbol)
@@ -518,12 +525,6 @@ func reorderStages(rootStage *evaluationStage) {
 		}
 
 		currentPrecedence = findOperatorPrecedenceForSymbol(currentStage.symbol)
-
-		// do not reorder some operators, since they aren't actually "in a row" in the sense that this reordering works with.
-		switch currentPrecedence {
-		case LOGICAL_PRECEDENCE:
-			continue
-		}
 
 		if currentPrecedence == precedence {
 			identicalPrecedences = append(identicalPrecedences, currentStage)
@@ -654,6 +655,10 @@ func elideStage(root *evaluationStage) *evaluationStage {
 
 	err = typeCheck(root.rightTypeCheck, rightValue, root.symbol, root.typeErrorFormat)
 	if err != nil {
+		return root
+	}
+
+	if root.typeCheck != nil && !root.typeCheck(leftValue, rightValue) {
 		return root
 	}
 

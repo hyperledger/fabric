@@ -13,7 +13,7 @@ import (
 )
 
 // Current version
-const Version = "1.0.18"
+const Version = "1.0.22"
 
 const (
 	// Default refresh rate - 200ms
@@ -37,16 +37,17 @@ func New(total int) *ProgressBar {
 // Create new progress bar object using int64 as total
 func New64(total int64) *ProgressBar {
 	pb := &ProgressBar{
-		Total:         total,
-		RefreshRate:   DEFAULT_REFRESH_RATE,
-		ShowPercent:   true,
-		ShowCounters:  true,
-		ShowBar:       true,
-		ShowTimeLeft:  true,
-		ShowFinalTime: true,
-		Units:         U_NO,
-		ManualUpdate:  false,
-		finish:        make(chan struct{}),
+		Total:           total,
+		RefreshRate:     DEFAULT_REFRESH_RATE,
+		ShowPercent:     true,
+		ShowCounters:    true,
+		ShowBar:         true,
+		ShowTimeLeft:    true,
+		ShowElapsedTime: false,
+		ShowFinalTime:   true,
+		Units:           U_NO,
+		ManualUpdate:    false,
+		finish:          make(chan struct{}),
 	}
 	return pb.Format(FORMAT)
 }
@@ -72,7 +73,7 @@ type ProgressBar struct {
 	RefreshRate                      time.Duration
 	ShowPercent, ShowCounters        bool
 	ShowSpeed, ShowTimeLeft, ShowBar bool
-	ShowFinalTime                    bool
+	ShowFinalTime, ShowElapsedTime   bool
 	Output                           io.Writer
 	Callback                         Callback
 	NotPrint                         bool
@@ -274,7 +275,7 @@ func (pb *ProgressBar) NewProxyReader(r io.Reader) *Reader {
 func (pb *ProgressBar) write(current int64) {
 	width := pb.GetWidth()
 
-	var percentBox, countersBox, timeLeftBox, speedBox, barBox, end, out string
+	var percentBox, countersBox, timeLeftBox, timeSpentBox, speedBox, barBox, end, out string
 
 	// percents
 	if pb.ShowPercent {
@@ -305,6 +306,11 @@ func (pb *ProgressBar) write(current int64) {
 	lastChangeTime := pb.changeTime
 	fromChange := lastChangeTime.Sub(pb.startTime)
 	pb.mu.Unlock()
+
+	if pb.ShowElapsedTime {
+		timeSpentBox = fmt.Sprintf(" %s ", (fromStart/time.Second)*time.Second)
+	}
+
 	select {
 	case <-pb.finish:
 		if pb.ShowFinalTime {
@@ -342,7 +348,7 @@ func (pb *ProgressBar) write(current int64) {
 		speedBox = " " + Format(int64(speed)).To(pb.Units).Width(pb.UnitsWidth).PerSec().String()
 	}
 
-	barWidth := escapeAwareRuneCountInString(countersBox + pb.BarStart + pb.BarEnd + percentBox + timeLeftBox + speedBox + pb.prefix + pb.postfix)
+	barWidth := escapeAwareRuneCountInString(countersBox + pb.BarStart + pb.BarEnd + percentBox + timeSpentBox + timeLeftBox + speedBox + pb.prefix + pb.postfix)
 	// bar
 	if pb.ShowBar {
 		size := width - barWidth
@@ -387,7 +393,7 @@ func (pb *ProgressBar) write(current int64) {
 	}
 
 	// check len
-	out = pb.prefix + countersBox + barBox + percentBox + speedBox + timeLeftBox + pb.postfix
+	out = pb.prefix + timeSpentBox + countersBox + barBox + percentBox + speedBox + timeLeftBox + pb.postfix
 	if cl := escapeAwareRuneCountInString(out); cl < width {
 		end = strings.Repeat(" ", width-cl)
 	}
@@ -466,11 +472,4 @@ func (pb *ProgressBar) refresher() {
 			pb.Update()
 		}
 	}
-}
-
-type window struct {
-	Row    uint16
-	Col    uint16
-	Xpixel uint16
-	Ypixel uint16
 }

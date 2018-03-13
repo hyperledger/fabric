@@ -47,31 +47,32 @@ const (
 	SEPARATE
 )
 
-type OperatorPrecedence int
+type operatorPrecedence int
 
 const (
-	NOOP_PRECEDENCE OperatorPrecedence = iota
-	VALUE_PRECEDENCE
-	FUNCTIONAL_PRECEDENCE
-	PREFIX_PRECEDENCE
-	EXPONENTIAL_PRECEDENCE
-	ADDITIVE_PRECEDENCE
-	BITWISE_PRECEDENCE
-	BITWISE_SHIFTPRECEDENCE
-	MULTIPLICATIVE_PRECEDENCE
-	COMPARATOR_PRECEDENCE
-	TERNARY_PRECEDENCE
-	LOGICAL_PRECEDENCE
-	SEPARATE_PRECEDENCE
+	noopPrecedence operatorPrecedence = iota
+	valuePrecedence
+	functionalPrecedence
+	prefixPrecedence
+	exponentialPrecedence
+	additivePrecedence
+	bitwisePrecedence
+	bitwiseShiftPrecedence
+	multiplicativePrecedence
+	comparatorPrecedence
+	ternaryPrecedence
+	logicalAndPrecedence
+	logicalOrPrecedence
+	separatePrecedence
 )
 
-func findOperatorPrecedenceForSymbol(symbol OperatorSymbol) OperatorPrecedence {
+func findOperatorPrecedenceForSymbol(symbol OperatorSymbol) operatorPrecedence {
 
 	switch symbol {
 	case NOOP:
-		return NOOP_PRECEDENCE
+		return noopPrecedence
 	case VALUE:
-		return VALUE_PRECEDENCE
+		return valuePrecedence
 	case EQ:
 		fallthrough
 	case NEQ:
@@ -89,52 +90,52 @@ func findOperatorPrecedenceForSymbol(symbol OperatorSymbol) OperatorPrecedence {
 	case NREQ:
 		fallthrough
 	case IN:
-		return COMPARATOR_PRECEDENCE
+		return comparatorPrecedence
 	case AND:
-		fallthrough
+		return logicalAndPrecedence
 	case OR:
-		return LOGICAL_PRECEDENCE
+		return logicalOrPrecedence
 	case BITWISE_AND:
 		fallthrough
 	case BITWISE_OR:
 		fallthrough
 	case BITWISE_XOR:
-		return BITWISE_PRECEDENCE
+		return bitwisePrecedence
 	case BITWISE_LSHIFT:
 		fallthrough
 	case BITWISE_RSHIFT:
-		return BITWISE_SHIFTPRECEDENCE
+		return bitwiseShiftPrecedence
 	case PLUS:
 		fallthrough
 	case MINUS:
-		return ADDITIVE_PRECEDENCE
+		return additivePrecedence
 	case MULTIPLY:
 		fallthrough
 	case DIVIDE:
 		fallthrough
 	case MODULUS:
-		return MULTIPLICATIVE_PRECEDENCE
+		return multiplicativePrecedence
 	case EXPONENT:
-		return EXPONENTIAL_PRECEDENCE
+		return exponentialPrecedence
 	case BITWISE_NOT:
 		fallthrough
 	case NEGATE:
 		fallthrough
 	case INVERT:
-		return PREFIX_PRECEDENCE
+		return prefixPrecedence
 	case COALESCE:
 		fallthrough
 	case TERNARY_TRUE:
 		fallthrough
 	case TERNARY_FALSE:
-		return TERNARY_PRECEDENCE
+		return ternaryPrecedence
 	case FUNCTIONAL:
-		return FUNCTIONAL_PRECEDENCE
+		return functionalPrecedence
 	case SEPARATE:
-		return SEPARATE_PRECEDENCE
+		return separatePrecedence
 	}
 
-	return VALUE_PRECEDENCE
+	return valuePrecedence
 }
 
 /*
@@ -142,7 +143,7 @@ func findOperatorPrecedenceForSymbol(symbol OperatorSymbol) OperatorPrecedence {
 	Used during parsing of expressions to determine if a symbol is, in fact, a comparator.
 	Also used during evaluation to determine exactly which comparator is being used.
 */
-var COMPARATOR_SYMBOLS = map[string]OperatorSymbol{
+var comparatorSymbols = map[string]OperatorSymbol{
 	"==": EQ,
 	"!=": NEQ,
 	">":  GT,
@@ -154,51 +155,51 @@ var COMPARATOR_SYMBOLS = map[string]OperatorSymbol{
 	"in": IN,
 }
 
-var LOGICAL_SYMBOLS = map[string]OperatorSymbol{
+var logicalSymbols = map[string]OperatorSymbol{
 	"&&": AND,
 	"||": OR,
 }
 
-var BITWISE_SYMBOLS = map[string]OperatorSymbol{
+var bitwiseSymbols = map[string]OperatorSymbol{
 	"^": BITWISE_XOR,
 	"&": BITWISE_AND,
 	"|": BITWISE_OR,
 }
 
-var BITWISE_SHIFT_SYMBOLS = map[string]OperatorSymbol{
+var bitwiseShiftSymbols = map[string]OperatorSymbol{
 	">>": BITWISE_RSHIFT,
 	"<<": BITWISE_LSHIFT,
 }
 
-var ADDITIVE_SYMBOLS = map[string]OperatorSymbol{
+var additiveSymbols = map[string]OperatorSymbol{
 	"+": PLUS,
 	"-": MINUS,
 }
 
-var MULTIPLICATIVE_SYMBOLS = map[string]OperatorSymbol{
+var multiplicativeSymbols = map[string]OperatorSymbol{
 	"*": MULTIPLY,
 	"/": DIVIDE,
 	"%": MODULUS,
 }
 
-var EXPONENTIAL_SYMBOLS = map[string]OperatorSymbol{
+var exponentialSymbolsS = map[string]OperatorSymbol{
 	"**": EXPONENT,
 }
 
-var PREFIX_SYMBOLS = map[string]OperatorSymbol{
+var prefixSymbols = map[string]OperatorSymbol{
 	"-": NEGATE,
 	"!": INVERT,
 	"~": BITWISE_NOT,
 }
 
-var TERNARY_SYMBOLS = map[string]OperatorSymbol{
+var ternarySymbols = map[string]OperatorSymbol{
 	"?":  TERNARY_TRUE,
 	":":  TERNARY_FALSE,
 	"??": COALESCE,
 }
 
-// this is defined separately from ADDITIVE_SYMBOLS et al because it's needed for parsing, not stage planning.
-var MODIFIER_SYMBOLS = map[string]OperatorSymbol{
+// this is defined separately from additiveSymbols et al because it's needed for parsing, not stage planning.
+var modifierSymbols = map[string]OperatorSymbol{
 	"+":  PLUS,
 	"-":  MINUS,
 	"*":  MULTIPLY,
@@ -212,40 +213,8 @@ var MODIFIER_SYMBOLS = map[string]OperatorSymbol{
 	"<<": BITWISE_LSHIFT,
 }
 
-var SEPARATOR_SYMBOLS = map[string]OperatorSymbol{
+var separatorSymbols = map[string]OperatorSymbol{
 	",": SEPARATE,
-}
-
-var ADDITIVE_MODIFIERS = []OperatorSymbol{
-	PLUS, MINUS,
-}
-
-var BITWISE_MODIFIERS = []OperatorSymbol{
-	BITWISE_AND, BITWISE_OR, BITWISE_XOR,
-}
-
-var BITWISE_SHIFT_MODIFIERS = []OperatorSymbol{
-	BITWISE_LSHIFT, BITWISE_RSHIFT,
-}
-
-var MULTIPLICATIVE_MODIFIERS = []OperatorSymbol{
-	MULTIPLY, DIVIDE, MODULUS,
-}
-
-var EXPONENTIAL_MODIFIERS = []OperatorSymbol{
-	EXPONENT,
-}
-
-var PREFIX_MODIFIERS = []OperatorSymbol{
-	NEGATE, INVERT, BITWISE_NOT,
-}
-
-var NUMERIC_COMPARATORS = []OperatorSymbol{
-	GT, GTE, LT, LTE,
-}
-
-var STRING_COMPARATORS = []OperatorSymbol{
-	REQ, NREQ,
 }
 
 /*

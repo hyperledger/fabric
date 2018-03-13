@@ -52,12 +52,33 @@ func (r *Route) Match(req *http.Request, match *RouteMatch) bool {
 	if r.buildOnly || r.err != nil {
 		return false
 	}
+
+	var matchErr error
+
 	// Match everything.
 	for _, m := range r.matchers {
 		if matched := m.Match(req, match); !matched {
+			if _, ok := m.(methodMatcher); ok {
+				matchErr = ErrMethodMismatch
+				continue
+			}
+			matchErr = nil
 			return false
 		}
 	}
+
+	if matchErr != nil {
+		match.MatchErr = matchErr
+		return false
+	}
+
+	if match.MatchErr == ErrMethodMismatch {
+		// We found a route which matches request method, clear MatchErr
+		match.MatchErr = nil
+		// Then override the mis-matched handler
+		match.Handler = r.handler
+	}
+
 	// Yay, we have a match. Let's collect some info about it.
 	if match.Route == nil {
 		match.Route = r
@@ -68,6 +89,7 @@ func (r *Route) Match(req *http.Request, match *RouteMatch) bool {
 	if match.Vars == nil {
 		match.Vars = make(map[string]string)
 	}
+
 	// Set variables.
 	if r.regexp != nil {
 		r.regexp.setMatch(req, match, r)
@@ -149,12 +171,12 @@ func (r *Route) addMatcher(m matcher) *Route {
 }
 
 // addRegexpMatcher adds a host or path matcher and builder to a route.
-func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery bool) error {
+func (r *Route) addRegexpMatcher(tpl string, typ regexpType) error {
 	if r.err != nil {
 		return r.err
 	}
 	r.regexp = r.getRegexpGroup()
-	if !matchHost && !matchQuery {
+	if typ == regexpTypePath || typ == regexpTypePrefix {
 		if len(tpl) > 0 && tpl[0] != '/' {
 			return fmt.Errorf("mux: path must start with a slash, got %q", tpl)
 		}
@@ -162,7 +184,10 @@ func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery 
 			tpl = strings.TrimRight(r.regexp.path.template, "/") + tpl
 		}
 	}
-	rr, err := newRouteRegexp(tpl, matchHost, matchPrefix, matchQuery, r.strictSlash, r.useEncodedPath)
+	rr, err := newRouteRegexp(tpl, typ, routeRegexpOptions{
+		strictSlash:    r.strictSlash,
+		useEncodedPath: r.useEncodedPath,
+	})
 	if err != nil {
 		return err
 	}
@@ -171,7 +196,7 @@ func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery 
 			return err
 		}
 	}
-	if matchHost {
+	if typ == regexpTypeHost {
 		if r.regexp.path != nil {
 			if err = uniqueVars(rr.varsN, r.regexp.path.varsN); err != nil {
 				return err
@@ -184,7 +209,7 @@ func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery 
 				return err
 			}
 		}
-		if matchQuery {
+		if typ == regexpTypeQuery {
 			r.regexp.queries = append(r.regexp.queries, rr)
 		} else {
 			r.regexp.path = rr
@@ -236,7 +261,8 @@ func (m headerRegexMatcher) Match(r *http.Request, match *RouteMatch) bool {
 //               "X-Requested-With", "XMLHttpRequest")
 //
 // The above route will only match if both the request header matches both regular expressions.
-// It the value is an empty string, it will match any value if the key is set.
+// If the value is an empty string, it will match any value if the key is set.
+// Use the start and end of string anchors (^ and $) to match an exact value.
 func (r *Route) HeadersRegexp(pairs ...string) *Route {
 	if r.err == nil {
 		var headers map[string]*regexp.Regexp
@@ -266,7 +292,7 @@ func (r *Route) HeadersRegexp(pairs ...string) *Route {
 // Variable names must be unique in a given route. They can be retrieved
 // calling mux.Vars(request).
 func (r *Route) Host(tpl string) *Route {
-	r.err = r.addRegexpMatcher(tpl, true, false, false)
+	r.err = r.addRegexpMatcher(tpl, regexpTypeHost)
 	return r
 }
 
@@ -326,7 +352,7 @@ func (r *Route) Methods(methods ...string) *Route {
 // Variable names must be unique in a given route. They can be retrieved
 // calling mux.Vars(request).
 func (r *Route) Path(tpl string) *Route {
-	r.err = r.addRegexpMatcher(tpl, false, false, false)
+	r.err = r.addRegexpMatcher(tpl, regexpTypePath)
 	return r
 }
 
@@ -342,7 +368,7 @@ func (r *Route) Path(tpl string) *Route {
 // Also note that the setting of Router.StrictSlash() has no effect on routes
 // with a PathPrefix matcher.
 func (r *Route) PathPrefix(tpl string) *Route {
-	r.err = r.addRegexpMatcher(tpl, false, true, false)
+	r.err = r.addRegexpMatcher(tpl, regexpTypePrefix)
 	return r
 }
 
@@ -373,7 +399,7 @@ func (r *Route) Queries(pairs ...string) *Route {
 		return nil
 	}
 	for i := 0; i < length; i += 2 {
-		if r.err = r.addRegexpMatcher(pairs[i]+"="+pairs[i+1], false, false, true); r.err != nil {
+		if r.err = r.addRegexpMatcher(pairs[i]+"="+pairs[i+1], regexpTypeQuery); r.err != nil {
 			return r
 		}
 	}
@@ -482,13 +508,14 @@ func (r *Route) URL(pairs ...string) (*url.URL, error) {
 		return nil, err
 	}
 	var scheme, host, path string
+	queries := make([]string, 0, len(r.regexp.queries))
 	if r.regexp.host != nil {
 		if host, err = r.regexp.host.url(values); err != nil {
 			return nil, err
 		}
 		scheme = "http"
-		if r.buildScheme != "" {
-			scheme = r.buildScheme
+		if s := r.getBuildScheme(); s != "" {
+			scheme = s
 		}
 	}
 	if r.regexp.path != nil {
@@ -496,10 +523,18 @@ func (r *Route) URL(pairs ...string) (*url.URL, error) {
 			return nil, err
 		}
 	}
+	for _, q := range r.regexp.queries {
+		var query string
+		if query, err = q.url(values); err != nil {
+			return nil, err
+		}
+		queries = append(queries, query)
+	}
 	return &url.URL{
-		Scheme: scheme,
-		Host:   host,
-		Path:   path,
+		Scheme:   scheme,
+		Host:     host,
+		Path:     path,
+		RawQuery: strings.Join(queries, "&"),
 	}, nil
 }
 
@@ -525,8 +560,8 @@ func (r *Route) URLHost(pairs ...string) (*url.URL, error) {
 		Scheme: "http",
 		Host:   host,
 	}
-	if r.buildScheme != "" {
-		u.Scheme = r.buildScheme
+	if s := r.getBuildScheme(); s != "" {
+		u.Scheme = s
 	}
 	return u, nil
 }
@@ -581,6 +616,44 @@ func (r *Route) GetPathRegexp() (string, error) {
 		return "", errors.New("mux: route does not have a path")
 	}
 	return r.regexp.path.regexp.String(), nil
+}
+
+// GetQueriesRegexp returns the expanded regular expressions used to match the
+// route queries.
+// This is useful for building simple REST API documentation and for instrumentation
+// against third-party services.
+// An empty list will be returned if the route does not have queries.
+func (r *Route) GetQueriesRegexp() ([]string, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.regexp == nil || r.regexp.queries == nil {
+		return nil, errors.New("mux: route doesn't have queries")
+	}
+	var queries []string
+	for _, query := range r.regexp.queries {
+		queries = append(queries, query.regexp.String())
+	}
+	return queries, nil
+}
+
+// GetQueriesTemplates returns the templates used to build the
+// query matching.
+// This is useful for building simple REST API documentation and for instrumentation
+// against third-party services.
+// An empty list will be returned if the route does not define queries.
+func (r *Route) GetQueriesTemplates() ([]string, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.regexp == nil || r.regexp.queries == nil {
+		return nil, errors.New("mux: route doesn't have queries")
+	}
+	var queries []string
+	for _, query := range r.regexp.queries {
+		queries = append(queries, query.template)
+	}
+	return queries, nil
 }
 
 // GetMethods returns the methods the route matches against
@@ -640,9 +713,20 @@ func (r *Route) buildVars(m map[string]string) map[string]string {
 
 // parentRoute allows routes to know about parent host and path definitions.
 type parentRoute interface {
+	getBuildScheme() string
 	getNamedRoutes() map[string]*Route
 	getRegexpGroup() *routeRegexpGroup
 	buildVars(map[string]string) map[string]string
+}
+
+func (r *Route) getBuildScheme() string {
+	if r.buildScheme != "" {
+		return r.buildScheme
+	}
+	if r.parent != nil {
+		return r.parent.getBuildScheme()
+	}
+	return ""
 }
 
 // getNamedRoutes returns the map where named routes are registered.

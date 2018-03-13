@@ -18,14 +18,13 @@ OBJDIR ?= build
 TMP_GOPATH=$(OBJDIR)/gopath
 GOBIN=$(abspath $(TMP_GOPATH)/bin)
 
-GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml misspell
+GOTOOLS = dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell
 GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
 
 # go tool->path mapping
-go.fqp.govendor  := github.com/kardianos/govendor
+go.fqp.dep       := github.com/golang/dep/cmd/dep
 go.fqp.golint    := github.com/golang/lint/golint
 go.fqp.goimports := golang.org/x/tools/cmd/goimports
-go.fqp.ginkgo    := github.com/onsi/ginkgo/ginkgo
 go.fqp.gocov     := github.com/axw/gocov/...
 go.fqp.misspell  := github.com/client9/misspell/cmd/misspell
 go.fqp.gocov-xml:= github.com/AlekSi/gocov-xml
@@ -41,6 +40,13 @@ gotool.protoc-gen-go:
 	@mkdir -p $(TMP_GOPATH)/src/github.com/golang/protobuf/
 	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/* $(TMP_GOPATH)/src/github.com/golang/protobuf
 	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/golang/protobuf/protoc-gen-go
+
+# Special override for ginkgo since we want to use the version vendored with the project
+gotool.ginkgo:
+	@echo "Building github.com/onsi/ginkgo/ginkgo -> ginkgo"
+	@mkdir -p $(TMP_GOPATH)/src/github.com/onsi/ginkgo/ginkgo/
+	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/onsi/ginkgo/* $(TMP_GOPATH)/src/github.com/onsi/ginkgo
+	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/onsi/ginkgo/ginkgo
 
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:

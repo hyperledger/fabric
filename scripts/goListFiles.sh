@@ -7,7 +7,7 @@
 
 
 find_golang_src() {
-    find $1 -name "*.go" -or -name "*.h" -or -name "*.c"
+    find $1 -name "*.go" -or -name "*.h" -or -name "*.c" -or -name "*.s"
 }
 
 list_deps() {

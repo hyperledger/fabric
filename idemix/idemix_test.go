@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
+	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/stretchr/testify/assert"
 )
 

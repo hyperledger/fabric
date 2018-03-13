@@ -17,6 +17,24 @@ type lexerState struct {
 var validLexerStates = []lexerState{
 
 	lexerState{
+		kind: UNKNOWN,
+		isEOF: false,
+		isNullable: true,
+		validNextKinds: []TokenKind{
+
+			PREFIX,
+			NUMERIC,
+			BOOLEAN,
+			VARIABLE,
+			PATTERN,
+			FUNCTION,
+			STRING,
+			TIME,
+			CLAUSE,
+		},
+	},
+
+	lexerState{
 
 		kind:       CLAUSE,
 		isEOF:      false,
@@ -287,8 +305,13 @@ func checkExpressionSyntax(tokens []ExpressionToken) error {
 
 		if !state.canTransitionTo(token.Kind) {
 
-			firstStateName := fmt.Sprintf("%s [%v]", GetTokenKindString(state.kind), lastToken.Value)
-			nextStateName := fmt.Sprintf("%s [%v]", GetTokenKindString(token.Kind), token.Value)
+			// call out a specific error for tokens looking like they want to be functions.
+			if lastToken.Kind == VARIABLE && token.Kind == CLAUSE {
+				return errors.New("Undefined function " + lastToken.Value.(string))
+			}
+
+			firstStateName := fmt.Sprintf("%s [%v]", state.kind.String(), lastToken.Value)
+			nextStateName := fmt.Sprintf("%s [%v]", token.Kind.String(), token.Value)
 
 			return errors.New("Cannot transition token types from " + firstStateName + " to " + nextStateName)
 		}
@@ -300,7 +323,7 @@ func checkExpressionSyntax(tokens []ExpressionToken) error {
 
 		if !state.isNullable && token.Value == nil {
 
-			errorMsg := fmt.Sprintf("Token kind '%v' cannot have a nil value", GetTokenKindString(token.Kind))
+			errorMsg := fmt.Sprintf("Token kind '%v' cannot have a nil value", token.Kind.String())
 			return errors.New(errorMsg)
 		}
 
@@ -322,6 +345,6 @@ func getLexerStateForToken(kind TokenKind) (lexerState, error) {
 		}
 	}
 
-	errorMsg := fmt.Sprintf("No lexer state found for token kind '%v'\n", GetTokenKindString(kind))
+	errorMsg := fmt.Sprintf("No lexer state found for token kind '%v'\n", kind.String())
 	return validLexerStates[0], errors.New(errorMsg)
 }

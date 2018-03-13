@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"reflect"
 )
 
 const (
-	TYPEERROR_LOGICAL    string = "Value '%v' cannot be used with the logical operator '%v', it is not a bool"
-	TYPEERROR_MODIFIER   string = "Value '%v' cannot be used with the modifier '%v', it is not a number"
-	TYPEERROR_COMPARATOR string = "Value '%v' cannot be used with the comparator '%v', it is not a number"
-	TYPEERROR_TERNARY    string = "Value '%v' cannot be used with the ternary operator '%v', it is not a bool"
-	TYPEERROR_PREFIX     string = "Value '%v' cannot be used with the prefix '%v'"
+	logicalErrorFormat    string = "Value '%v' cannot be used with the logical operator '%v', it is not a bool"
+	modifierErrorFormat   string = "Value '%v' cannot be used with the modifier '%v', it is not a number"
+	comparatorErrorFormat string = "Value '%v' cannot be used with the comparator '%v', it is not a number"
+	ternaryErrorFormat    string = "Value '%v' cannot be used with the ternary operator '%v', it is not a bool"
+	prefixErrorFormat     string = "Value '%v' cannot be used with the prefix '%v'"
 )
 
 type evaluationOperator func(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
@@ -60,6 +61,24 @@ func (this *evaluationStage) setToNonStage(other evaluationStage) {
 	this.rightTypeCheck = other.rightTypeCheck
 	this.typeCheck = other.typeCheck
 	this.typeErrorFormat = other.typeErrorFormat
+}
+
+func (this *evaluationStage) isShortCircuitable() bool {
+
+	switch this.symbol {
+		case AND:
+			fallthrough
+		case OR:
+			fallthrough
+		case TERNARY_TRUE: 
+			fallthrough
+		case TERNARY_FALSE:
+			fallthrough
+		case COALESCE:
+			return true
+	}
+
+	return false
 }
 
 func noopStageRight(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
@@ -115,10 +134,10 @@ func ltStage(left interface{}, right interface{}, parameters Parameters) (interf
 	return boolIface(left.(float64) < right.(float64)), nil
 }
 func equalStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
-	return boolIface(left == right), nil
+	return boolIface(reflect.DeepEqual(left, right)), nil
 }
 func notEqualStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
-	return boolIface(left != right), nil
+	return boolIface(!reflect.DeepEqual(left, right)), nil
 }
 func andStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
 	return boolIface(left.(bool) && right.(bool)), nil

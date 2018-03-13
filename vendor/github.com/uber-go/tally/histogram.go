@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -125,6 +125,7 @@ func (v DurationBuckets) AsDurations() []time.Duration {
 func BucketPairs(buckets Buckets) []BucketPair {
 	if buckets == nil || buckets.Len() < 1 {
 		return []BucketPair{
+
 			bucketPair{
 				lowerBoundValue:    -math.MaxFloat64,
 				upperBoundValue:    math.MaxFloat64,
@@ -134,32 +135,12 @@ func BucketPairs(buckets Buckets) []BucketPair {
 		}
 	}
 
-	if durationBuckets, ok := buckets.(DurationBuckets); ok {
-		// If using duration buckets separating negative times and
-		// positive times is very much desirable as depending on the
-		// reporter will create buckets "-infinity,0" and "0,{first_bucket}"
-		// instead of just "-infinity,{first_bucket}" which for time
-		// durations is not desirable nor pragmatic
-		hasZero := false
-		for _, b := range buckets.AsDurations() {
-			if b == 0 {
-				hasZero = true
-				break
-			}
-		}
-		if !hasZero {
-			buckets = append(DurationBuckets{0}, durationBuckets...)
-		}
-	}
-
-	// Sort before iterating to create pairs
-	sort.Sort(buckets)
-
 	var (
-		asValueBuckets    = buckets.AsValues()
-		asDurationBuckets = buckets.AsDurations()
+		asValueBuckets    = copyAndSortValues(buckets.AsValues())
+		asDurationBuckets = copyAndSortDurations(buckets.AsDurations())
 		pairs             = make([]BucketPair, 0, buckets.Len()+2)
 	)
+
 	pairs = append(pairs, bucketPair{
 		lowerBoundValue:    -math.MaxFloat64,
 		upperBoundValue:    asValueBuckets[0],
@@ -169,6 +150,7 @@ func BucketPairs(buckets Buckets) []BucketPair {
 
 	prevValueBucket, prevDurationBucket :=
 		asValueBuckets[0], asDurationBuckets[0]
+
 	for i := 1; i < buckets.Len(); i++ {
 		pairs = append(pairs, bucketPair{
 			lowerBoundValue:    prevValueBucket,
@@ -188,6 +170,24 @@ func BucketPairs(buckets Buckets) []BucketPair {
 	})
 
 	return pairs
+}
+
+func copyAndSortValues(values []float64) []float64 {
+	valuesCopy := make([]float64, len(values))
+	for i := range values {
+		valuesCopy[i] = values[i]
+	}
+	sort.Sort(ValueBuckets(valuesCopy))
+	return valuesCopy
+}
+
+func copyAndSortDurations(durations []time.Duration) []time.Duration {
+	durationsCopy := make([]time.Duration, len(durations))
+	for i := range durations {
+		durationsCopy[i] = durations[i]
+	}
+	sort.Sort(DurationBuckets(durationsCopy))
+	return durationsCopy
 }
 
 type bucketPair struct {

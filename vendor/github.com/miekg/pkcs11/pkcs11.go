@@ -849,13 +849,13 @@ func (c *Ctx) Destroy() {
 	c.ctx = nil
 }
 
-/* Initialize initializes the Cryptoki library. */
+// Initialize initializes the Cryptoki library. */
 func (c *Ctx) Initialize() error {
 	e := C.Initialize(c.ctx)
 	return toError(e)
 }
 
-/* Finalize indicates that an application is done with the Cryptoki library. */
+// Finalize indicates that an application is done with the Cryptoki library. */
 func (c *Ctx) Finalize() error {
 	if c.ctx == nil {
 		return toError(CKR_CRYPTOKI_NOT_INITIALIZED)
@@ -864,7 +864,7 @@ func (c *Ctx) Finalize() error {
 	return toError(e)
 }
 
-/* GetInfo returns general information about Cryptoki. */
+// GetInfo returns general information about Cryptoki. */
 func (c *Ctx) GetInfo() (Info, error) {
 	var p C.ckInfo
 	e := C.GetInfo(c.ctx, &p)
@@ -878,7 +878,7 @@ func (c *Ctx) GetInfo() (Info, error) {
 	return i, toError(e)
 }
 
-/* GetSlotList obtains a list of slots in the system. */
+// GetSlotList obtains a list of slots in the system. */
 func (c *Ctx) GetSlotList(tokenPresent bool) ([]uint, error) {
 	var (
 		slotList C.CK_ULONG_PTR
@@ -892,7 +892,7 @@ func (c *Ctx) GetSlotList(tokenPresent bool) ([]uint, error) {
 	return l, nil
 }
 
-/* GetSlotInfo obtains information about a particular slot in the system. */
+// GetSlotInfo obtains information about a particular slot in the system. */
 func (c *Ctx) GetSlotInfo(slotID uint) (SlotInfo, error) {
 	var csi C.CK_SLOT_INFO
 	e := C.GetSlotInfo(c.ctx, C.CK_ULONG(slotID), &csi)
@@ -934,7 +934,7 @@ func (c *Ctx) GetTokenInfo(slotID uint) (TokenInfo, error) {
 	return s, toError(e)
 }
 
-/* GetMechanismList obtains a list of mechanism types supported by a token. */
+// GetMechanismList obtains a list of mechanism types supported by a token. */
 func (c *Ctx) GetMechanismList(slotID uint) ([]*Mechanism, error) {
 	var (
 		mech    C.CK_ULONG_PTR // in pkcs#11 we're all CK_ULONGs \o/
@@ -984,7 +984,7 @@ func (c *Ctx) InitToken(slotID uint, pin string, label string) error {
 	return toError(e)
 }
 
-/* InitPIN initializes the normal user's PIN. */
+// InitPIN initializes the normal user's PIN.
 func (c *Ctx) InitPIN(sh SessionHandle, pin string) error {
 	p := C.CString(pin)
 	defer C.free(unsafe.Pointer(p))
@@ -992,7 +992,7 @@ func (c *Ctx) InitPIN(sh SessionHandle, pin string) error {
 	return toError(e)
 }
 
-/* SetPIN modifies the PIN of the user who is logged in. */
+// SetPIN modifies the PIN of the user who is logged in.
 func (c *Ctx) SetPIN(sh SessionHandle, oldpin string, newpin string) error {
 	old := C.CString(oldpin)
 	defer C.free(unsafe.Pointer(old))
@@ -1002,14 +1002,14 @@ func (c *Ctx) SetPIN(sh SessionHandle, oldpin string, newpin string) error {
 	return toError(e)
 }
 
-/* OpenSession opens a session between an application and a token. */
+// OpenSession opens a session between an application and a token.
 func (c *Ctx) OpenSession(slotID uint, flags uint) (SessionHandle, error) {
 	var s C.CK_SESSION_HANDLE
 	e := C.OpenSession(c.ctx, C.CK_ULONG(slotID), C.CK_ULONG(flags), C.CK_SESSION_HANDLE_PTR(&s))
 	return SessionHandle(s), toError(e)
 }
 
-/* CloseSession closes a session between an application and a token. */
+// CloseSession closes a session between an application and a token.
 func (c *Ctx) CloseSession(sh SessionHandle) error {
 	if c.ctx == nil {
 		return toError(CKR_CRYPTOKI_NOT_INITIALIZED)
@@ -1018,7 +1018,7 @@ func (c *Ctx) CloseSession(sh SessionHandle) error {
 	return toError(e)
 }
 
-/* CloseAllSessions closes all sessions with a token. */
+// CloseAllSessions closes all sessions with a token.
 func (c *Ctx) CloseAllSessions(slotID uint) error {
 	if c.ctx == nil {
 		return toError(CKR_CRYPTOKI_NOT_INITIALIZED)
@@ -1027,7 +1027,7 @@ func (c *Ctx) CloseAllSessions(slotID uint) error {
 	return toError(e)
 }
 
-/* GetSessionInfo obtains information about the session. */
+// GetSessionInfo obtains information about the session.
 func (c *Ctx) GetSessionInfo(sh SessionHandle) (SessionInfo, error) {
 	var csi C.CK_SESSION_INFO
 	e := C.GetSessionInfo(c.ctx, C.CK_SESSION_HANDLE(sh), &csi)
@@ -1039,7 +1039,7 @@ func (c *Ctx) GetSessionInfo(sh SessionHandle) (SessionInfo, error) {
 	return s, toError(e)
 }
 
-/* GetOperationState obtains the state of the cryptographic operation in a session. */
+// GetOperationState obtains the state of the cryptographic operation in a session.
 func (c *Ctx) GetOperationState(sh SessionHandle) ([]byte, error) {
 	var (
 		state    C.CK_BYTE_PTR
@@ -1054,14 +1054,14 @@ func (c *Ctx) GetOperationState(sh SessionHandle) ([]byte, error) {
 	return b, nil
 }
 
-/* SetOperationState restores the state of the cryptographic operation in a session. */
+// SetOperationState restores the state of the cryptographic operation in a session.
 func (c *Ctx) SetOperationState(sh SessionHandle, state []byte, encryptKey, authKey ObjectHandle) error {
 	e := C.SetOperationState(c.ctx, C.CK_SESSION_HANDLE(sh), C.CK_BYTE_PTR(unsafe.Pointer(&state[0])),
 		C.CK_ULONG(len(state)), C.CK_OBJECT_HANDLE(encryptKey), C.CK_OBJECT_HANDLE(authKey))
 	return toError(e)
 }
 
-/* Login logs a user into a token. */
+// Login logs a user into a token.
 func (c *Ctx) Login(sh SessionHandle, userType uint, pin string) error {
 	p := C.CString(pin)
 	defer C.free(unsafe.Pointer(p))
@@ -1069,7 +1069,7 @@ func (c *Ctx) Login(sh SessionHandle, userType uint, pin string) error {
 	return toError(e)
 }
 
-/* Logout logs a user out from a token. */
+// Logout logs a user out from a token.
 func (c *Ctx) Logout(sh SessionHandle) error {
 	if c.ctx == nil {
 		return toError(CKR_CRYPTOKI_NOT_INITIALIZED)
@@ -1078,7 +1078,7 @@ func (c *Ctx) Logout(sh SessionHandle) error {
 	return toError(e)
 }
 
-/* CreateObject creates a new object. */
+// CreateObject creates a new object.
 func (c *Ctx) CreateObject(sh SessionHandle, temp []*Attribute) (ObjectHandle, error) {
 	var obj C.CK_OBJECT_HANDLE
 	arena, t, tcount := cAttributeList(temp)
@@ -1091,7 +1091,7 @@ func (c *Ctx) CreateObject(sh SessionHandle, temp []*Attribute) (ObjectHandle, e
 	return 0, e1
 }
 
-/* CopyObject copies an object, creating a new object for the copy. */
+// CopyObject copies an object, creating a new object for the copy.
 func (c *Ctx) CopyObject(sh SessionHandle, o ObjectHandle, temp []*Attribute) (ObjectHandle, error) {
 	var obj C.CK_OBJECT_HANDLE
 	arena, t, tcount := cAttributeList(temp)
@@ -1105,20 +1105,20 @@ func (c *Ctx) CopyObject(sh SessionHandle, o ObjectHandle, temp []*Attribute) (O
 	return 0, e1
 }
 
-/* DestroyObject destroys an object. */
+// DestroyObject destroys an object.
 func (c *Ctx) DestroyObject(sh SessionHandle, oh ObjectHandle) error {
 	e := C.DestroyObject(c.ctx, C.CK_SESSION_HANDLE(sh), C.CK_OBJECT_HANDLE(oh))
 	return toError(e)
 }
 
-/* GetObjectSize gets the size of an object in bytes. */
+// GetObjectSize gets the size of an object in bytes.
 func (c *Ctx) GetObjectSize(sh SessionHandle, oh ObjectHandle) (uint, error) {
 	var size C.CK_ULONG
 	e := C.GetObjectSize(c.ctx, C.CK_SESSION_HANDLE(sh), C.CK_OBJECT_HANDLE(oh), &size)
 	return uint(size), toError(e)
 }
 
-/* GetAttributeValue obtains the value of one or more object attributes. */
+// GetAttributeValue obtains the value of one or more object attributes.
 func (c *Ctx) GetAttributeValue(sh SessionHandle, o ObjectHandle, a []*Attribute) ([]*Attribute, error) {
 	// copy the attribute list and make all the values nil, so that
 	// the C function can (allocate) fill them in
@@ -1143,7 +1143,7 @@ func (c *Ctx) GetAttributeValue(sh SessionHandle, o ObjectHandle, a []*Attribute
 	return a1, nil
 }
 
-/* SetAttributeValue modifies the value of one or more object attributes */
+// SetAttributeValue modifies the value of one or more object attributes
 func (c *Ctx) SetAttributeValue(sh SessionHandle, o ObjectHandle, a []*Attribute) error {
 	arena, pa, palen := cAttributeList(a)
 	defer arena.Free()
@@ -1183,13 +1183,13 @@ func (c *Ctx) FindObjects(sh SessionHandle, max int) ([]ObjectHandle, bool, erro
 	return o, ulCount > C.CK_ULONG(max), nil
 }
 
-/* FindObjectsFinal finishes a search for token and session objects. */
+// FindObjectsFinal finishes a search for token and session objects.
 func (c *Ctx) FindObjectsFinal(sh SessionHandle) error {
 	e := C.FindObjectsFinal(c.ctx, C.CK_SESSION_HANDLE(sh))
 	return toError(e)
 }
 
-/* EncryptInit initializes an encryption operation. */
+// EncryptInit initializes an encryption operation.
 func (c *Ctx) EncryptInit(sh SessionHandle, m []*Mechanism, o ObjectHandle) error {
 	arena, mech, _ := cMechanismList(m)
 	defer arena.Free()
@@ -1197,7 +1197,7 @@ func (c *Ctx) EncryptInit(sh SessionHandle, m []*Mechanism, o ObjectHandle) erro
 	return toError(e)
 }
 
-/* Encrypt encrypts single-part data. */
+// Encrypt encrypts single-part data.
 func (c *Ctx) Encrypt(sh SessionHandle, message []byte) ([]byte, error) {
 	var (
 		enc    C.CK_BYTE_PTR
@@ -1212,7 +1212,7 @@ func (c *Ctx) Encrypt(sh SessionHandle, message []byte) ([]byte, error) {
 	return s, nil
 }
 
-/* EncryptUpdate continues a multiple-part encryption operation. */
+// EncryptUpdate continues a multiple-part encryption operation.
 func (c *Ctx) EncryptUpdate(sh SessionHandle, plain []byte) ([]byte, error) {
 	var (
 		part    C.CK_BYTE_PTR
@@ -1242,7 +1242,7 @@ func (c *Ctx) EncryptFinal(sh SessionHandle) ([]byte, error) {
 	return h, nil
 }
 
-/* DecryptInit initializes a decryption operation. */
+// DecryptInit initializes a decryption operation.
 func (c *Ctx) DecryptInit(sh SessionHandle, m []*Mechanism, o ObjectHandle) error {
 	arena, mech, _ := cMechanismList(m)
 	defer arena.Free()
@@ -1250,7 +1250,7 @@ func (c *Ctx) DecryptInit(sh SessionHandle, m []*Mechanism, o ObjectHandle) erro
 	return toError(e)
 }
 
-/* Decrypt decrypts encrypted data in a single part. */
+// Decrypt decrypts encrypted data in a single part.
 func (c *Ctx) Decrypt(sh SessionHandle, cypher []byte) ([]byte, error) {
 	var (
 		plain    C.CK_BYTE_PTR
@@ -1265,7 +1265,7 @@ func (c *Ctx) Decrypt(sh SessionHandle, cypher []byte) ([]byte, error) {
 	return s, nil
 }
 
-/* DecryptUpdate continues a multiple-part decryption operation. */
+// DecryptUpdate continues a multiple-part decryption operation.
 func (c *Ctx) DecryptUpdate(sh SessionHandle, cipher []byte) ([]byte, error) {
 	var (
 		part    C.CK_BYTE_PTR
@@ -1280,7 +1280,7 @@ func (c *Ctx) DecryptUpdate(sh SessionHandle, cipher []byte) ([]byte, error) {
 	return h, nil
 }
 
-/* DecryptFinal finishes a multiple-part decryption operation. */
+// DecryptFinal finishes a multiple-part decryption operation.
 func (c *Ctx) DecryptFinal(sh SessionHandle) ([]byte, error) {
 	var (
 		plain    C.CK_BYTE_PTR
@@ -1295,7 +1295,7 @@ func (c *Ctx) DecryptFinal(sh SessionHandle) ([]byte, error) {
 	return h, nil
 }
 
-/* DigestInit initializes a message-digesting operation. */
+// DigestInit initializes a message-digesting operation.
 func (c *Ctx) DigestInit(sh SessionHandle, m []*Mechanism) error {
 	arena, mech, _ := cMechanismList(m)
 	defer arena.Free()
@@ -1303,7 +1303,7 @@ func (c *Ctx) DigestInit(sh SessionHandle, m []*Mechanism) error {
 	return toError(e)
 }
 
-/* Digest digests message in a single part. */
+// Digest digests message in a single part.
 func (c *Ctx) Digest(sh SessionHandle, message []byte) ([]byte, error) {
 	var (
 		hash    C.CK_BYTE_PTR
@@ -1318,7 +1318,7 @@ func (c *Ctx) Digest(sh SessionHandle, message []byte) ([]byte, error) {
 	return h, nil
 }
 
-/* DigestUpdate continues a multiple-part message-digesting operation. */
+// DigestUpdate continues a multiple-part message-digesting operation.
 func (c *Ctx) DigestUpdate(sh SessionHandle, message []byte) error {
 	e := C.DigestUpdate(c.ctx, C.CK_SESSION_HANDLE(sh), C.CK_BYTE_PTR(unsafe.Pointer(&message[0])), C.CK_ULONG(len(message)))
 	if toError(e) != nil {
@@ -1338,7 +1338,7 @@ func (c *Ctx) DigestKey(sh SessionHandle, key ObjectHandle) error {
 	return nil
 }
 
-/* DigestFinal finishes a multiple-part message-digesting operation. */
+// DigestFinal finishes a multiple-part message-digesting operation.
 func (c *Ctx) DigestFinal(sh SessionHandle) ([]byte, error) {
 	var (
 		hash    C.CK_BYTE_PTR
@@ -1355,8 +1355,7 @@ func (c *Ctx) DigestFinal(sh SessionHandle) ([]byte, error) {
 
 // SignInit initializes a signature (private key encryption)
 // operation, where the signature is (will be) an appendix to
-// the data, and plaintext cannot be recovered from the
-// signature.
+// the data, and plaintext cannot be recovered from the signature.
 func (c *Ctx) SignInit(sh SessionHandle, m []*Mechanism, o ObjectHandle) error {
 	arena, mech, _ := cMechanismList(m) // Only the first is used, but still use a list.
 	defer arena.Free()
@@ -1388,7 +1387,7 @@ func (c *Ctx) SignUpdate(sh SessionHandle, message []byte) error {
 	return toError(e)
 }
 
-/* SignFinal finishes a multiple-part signature operation returning the signature. */
+// SignFinal finishes a multiple-part signature operation returning the signature.
 func (c *Ctx) SignFinal(sh SessionHandle) ([]byte, error) {
 	var (
 		sig    C.CK_BYTE_PTR
@@ -1403,8 +1402,7 @@ func (c *Ctx) SignFinal(sh SessionHandle) ([]byte, error) {
 	return h, nil
 }
 
-// SignRecoverInit initializes a signature operation, where
-// the data can be recovered from the signature.
+// SignRecoverInit initializes a signature operation, where the data can be recovered from the signature.
 func (c *Ctx) SignRecoverInit(sh SessionHandle, m []*Mechanism, key ObjectHandle) error {
 	arena, mech, _ := cMechanismList(m)
 	defer arena.Free()
@@ -1412,8 +1410,7 @@ func (c *Ctx) SignRecoverInit(sh SessionHandle, m []*Mechanism, key ObjectHandle
 	return toError(e)
 }
 
-// SignRecover signs data in a single operation, where the
-// data can be recovered from the signature.
+// SignRecover signs data in a single operation, where the data can be recovered from the signature.
 func (c *Ctx) SignRecover(sh SessionHandle, data []byte) ([]byte, error) {
 	var (
 		sig    C.CK_BYTE_PTR
@@ -1486,8 +1483,7 @@ func (c *Ctx) VerifyRecover(sh SessionHandle, signature []byte) ([]byte, error) 
 	return h, nil
 }
 
-// DigestEncryptUpdate continues a multiple-part digesting
-// and encryption operation.
+// DigestEncryptUpdate continues a multiple-part digesting and encryption operation.
 func (c *Ctx) DigestEncryptUpdate(sh SessionHandle, part []byte) ([]byte, error) {
 	var (
 		enc    C.CK_BYTE_PTR
@@ -1502,7 +1498,7 @@ func (c *Ctx) DigestEncryptUpdate(sh SessionHandle, part []byte) ([]byte, error)
 	return h, nil
 }
 
-/* DecryptDigestUpdate continues a multiple-part decryption and digesting operation. */
+// DecryptDigestUpdate continues a multiple-part decryption and digesting operation.
 func (c *Ctx) DecryptDigestUpdate(sh SessionHandle, cipher []byte) ([]byte, error) {
 	var (
 		part    C.CK_BYTE_PTR
@@ -1517,7 +1513,7 @@ func (c *Ctx) DecryptDigestUpdate(sh SessionHandle, cipher []byte) ([]byte, erro
 	return h, nil
 }
 
-/* SignEncryptUpdate continues a multiple-part signing and encryption operation. */
+// SignEncryptUpdate continues a multiple-part signing and encryption operation.
 func (c *Ctx) SignEncryptUpdate(sh SessionHandle, part []byte) ([]byte, error) {
 	var (
 		enc    C.CK_BYTE_PTR
@@ -1532,7 +1528,7 @@ func (c *Ctx) SignEncryptUpdate(sh SessionHandle, part []byte) ([]byte, error) {
 	return h, nil
 }
 
-/* DecryptVerifyUpdate continues a multiple-part decryption and verify operation. */
+// DecryptVerifyUpdate continues a multiple-part decryption and verify operation.
 func (c *Ctx) DecryptVerifyUpdate(sh SessionHandle, cipher []byte) ([]byte, error) {
 	var (
 		part    C.CK_BYTE_PTR
@@ -1547,7 +1543,7 @@ func (c *Ctx) DecryptVerifyUpdate(sh SessionHandle, cipher []byte) ([]byte, erro
 	return h, nil
 }
 
-/* GenerateKey generates a secret key, creating a new key object. */
+// GenerateKey generates a secret key, creating a new key object.
 func (c *Ctx) GenerateKey(sh SessionHandle, m []*Mechanism, temp []*Attribute) (ObjectHandle, error) {
 	var key C.CK_OBJECT_HANDLE
 	attrarena, t, tcount := cAttributeList(temp)
@@ -1562,7 +1558,7 @@ func (c *Ctx) GenerateKey(sh SessionHandle, m []*Mechanism, temp []*Attribute) (
 	return 0, e1
 }
 
-/* GenerateKeyPair generates a public-key/private-key pair creating new key objects. */
+// GenerateKeyPair generates a public-key/private-key pair creating new key objects.
 func (c *Ctx) GenerateKeyPair(sh SessionHandle, m []*Mechanism, public, private []*Attribute) (ObjectHandle, ObjectHandle, error) {
 	var (
 		pubkey  C.CK_OBJECT_HANDLE
@@ -1582,7 +1578,7 @@ func (c *Ctx) GenerateKeyPair(sh SessionHandle, m []*Mechanism, public, private 
 	return 0, 0, e1
 }
 
-/* WrapKey wraps (i.e., encrypts) a key. */
+// WrapKey wraps (i.e., encrypts) a key.
 func (c *Ctx) WrapKey(sh SessionHandle, m []*Mechanism, wrappingkey, key ObjectHandle) ([]byte, error) {
 	var (
 		wrappedkey    C.CK_BYTE_PTR
@@ -1599,7 +1595,7 @@ func (c *Ctx) WrapKey(sh SessionHandle, m []*Mechanism, wrappingkey, key ObjectH
 	return h, nil
 }
 
-/* UnwrapKey unwraps (decrypts) a wrapped key, creating a new key object. */
+// UnwrapKey unwraps (decrypts) a wrapped key, creating a new key object.
 func (c *Ctx) UnwrapKey(sh SessionHandle, m []*Mechanism, unwrappingkey ObjectHandle, wrappedkey []byte, a []*Attribute) (ObjectHandle, error) {
 	var key C.CK_OBJECT_HANDLE
 	attrarena, ac, aclen := cAttributeList(a)
@@ -1628,7 +1624,7 @@ func (c *Ctx) SeedRandom(sh SessionHandle, seed []byte) error {
 	return toError(e)
 }
 
-/* GenerateRandom generates random data. */
+// GenerateRandom generates random data.
 func (c *Ctx) GenerateRandom(sh SessionHandle, length int) ([]byte, error) {
 	var rand C.CK_BYTE_PTR
 	e := C.GenerateRandom(c.ctx, C.CK_SESSION_HANDLE(sh), &rand, C.CK_ULONG(length))

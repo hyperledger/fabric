@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	"github.com/milagro-crypto/amcl/version3/go/amcl"
-	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
+	"github.com/hyperledger/fabric-amcl/amcl"
+	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
