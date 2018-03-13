@@ -99,7 +99,7 @@ PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^bddtests | grep -v ^docs | grep -v _test.go$ | grep -v .md$ | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
-	grep -v ^LICENSE )
+	grep -v ^LICENSE | grep -v ^vendor | grep -v ^gotools )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
 IMAGES = peer orderer ccenv javaenv buildenv testenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x

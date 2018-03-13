@@ -32,7 +32,7 @@ const (
 	GetTokenKindString returns a string that describes the given TokenKind.
 	e.g., when passed the NUMERIC TokenKind, this returns the string "NUMERIC".
 */
-func GetTokenKindString(kind TokenKind) string {
+func (kind TokenKind) String() string {
 
 	switch kind {
 

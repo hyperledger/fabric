@@ -21,6 +21,7 @@ excluded_packages=(
     "github.com/hyperledger/fabric/core/mocks"
     "github.com/hyperledger/fabric/core/testutil"
     "github.com/hyperledger/fabric/examples"
+    "github.com/hyperledger/fabric/gotools"
     "github.com/hyperledger/fabric/orderer/mocks"
     "github.com/hyperledger/fabric/orderer/sample_clients"
     "github.com/hyperledger/fabric/test"
@@ -35,7 +36,7 @@ plugin_packages=(
 # obtain packages changed since some git refspec
 packages_diff() {
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
-        grep '.go$' | grep -Ev '^vendor/|^build/' | \
+        grep '.go$' | grep -Ev '^vendor/|^build/|^gotools/' | \
         sed 's%/[^/]*$%/%' | sort -u | \
         awk '{print "github.com/hyperledger/fabric/"$1"..."}'
 }

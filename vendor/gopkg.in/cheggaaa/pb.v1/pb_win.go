@@ -102,7 +102,7 @@ var echoLockMutex sync.Mutex
 
 var oldState word
 
-func lockEcho() (quit chan int, err error) {
+func lockEcho() (shutdownCh chan struct{}, err error) {
 	echoLockMutex.Lock()
 	defer echoLockMutex.Unlock()
 	if echoLocked {

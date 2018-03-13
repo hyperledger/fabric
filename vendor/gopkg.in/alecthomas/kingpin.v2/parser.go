@@ -153,6 +153,10 @@ func (p *ParseContext) EOL() bool {
 	return p.Peek().Type == TokenEOL
 }
 
+func (p *ParseContext) Error() bool {
+	return p.Peek().Type == TokenError
+}
+
 // Next token in the parse context.
 func (p *ParseContext) Next() *Token {
 	if len(p.peek) > 0 {
@@ -216,11 +220,9 @@ func (p *ParseContext) Next() *Token {
 			return &Token{p.argi, TokenError, err.Error()}
 		}
 		if len(p.args) == 0 {
-			p.args = append(p.args, expanded...)
-		} else if p.argi >= len(p.args) {
-			p.args = append(p.args[:p.argi-1], expanded...)
+			p.args = expanded
 		} else {
-			p.args = append(p.args[:p.argi-1], append(expanded, p.args[p.argi+1:]...)...)
+			p.args = append(expanded, p.args...)
 		}
 		return p.Next()
 	}
@@ -268,9 +270,12 @@ func (p *ParseContext) matchedCmd(cmd *CmdClause) {
 
 // Expand arguments from a file. Lines starting with # will be treated as comments.
 func ExpandArgsFromFile(filename string) (out []string, err error) {
+	if filename == "" {
+		return nil, fmt.Errorf("expected @ file to expand arguments from")
+	}
 	r, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open arguments file %q: %s", filename, err)
 	}
 	defer r.Close()
 	scanner := bufio.NewScanner(r)
@@ -282,6 +287,9 @@ func ExpandArgsFromFile(filename string) (out []string, err error) {
 		out = append(out, line)
 	}
 	err = scanner.Err()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read arguments from %q: %s", filename, err)
+	}
 	return
 }
 
@@ -293,7 +301,7 @@ func parse(context *ParseContext, app *Application) (err error) {
 	ignoreDefault := context.ignoreDefault
 
 loop:
-	for !context.EOL() {
+	for !context.EOL() && !context.Error() {
 		token := context.Peek()
 
 		switch token.Type {
@@ -365,6 +373,10 @@ loop:
 		} else {
 			break
 		}
+	}
+
+	if context.Error() {
+		return fmt.Errorf("%s", context.Peek().Value)
 	}
 
 	if !context.EOL() {

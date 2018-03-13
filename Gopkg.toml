@@ -1,0 +1,164 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+required = [
+	"github.com/onsi/ginkgo",
+	"github.com/onsi/gomega",
+	"github.com/golang/protobuf/protoc-gen-go"
+]
+
+[[constraint]]
+  name = "github.com/DATA-DOG/godog"
+  version = "0.7.4"
+
+[[constraint]]
+  name = "github.com/Knetic/govaluate"
+  version = "3.0.0"
+
+[[constraint]]
+  name = "github.com/Shopify/sarama"
+  version = "1.16.0"
+
+[[constraint]]
+  name = "github.com/cactus/go-statsd-client"
+  version = "3.1.1"
+
+[[constraint]]
+  name = "github.com/davecgh/go-spew"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/docker/docker"
+  version = "1.13.1"
+
+[[constraint]]
+  name = "github.com/fsouza/go-dockerclient"
+  version = "docker-1.9/go-1.4"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang/groupcache"
+
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  revision = "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4"
+
+[[constraint]]
+  name = "github.com/gorilla/mux"
+  version = "1.6.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-version"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hyperledger/fabric-amcl"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kr/pretty"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/miekg/pkcs11"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/mapstructure"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/op/go-logging"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.1"
+
+[[constraint]]
+  name = "github.com/spf13/pflag"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  revision = "1967d93db724f4a5c0e101307e96d82ff520a067"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/syndtr/goleveldb"
+
+[[constraint]]
+  name = "github.com/uber-go/tally"
+  version = "3.3.2"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/sync"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "=1.5.2"
+
+[[constraint]]
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  version = "2.2.6"
+
+[[constraint]]
+  name = "gopkg.in/cheggaaa/pb.v1"
+  version = "1.0.22"
+
+[[constraint]]
+  name = "gopkg.in/yaml.v2"
+  revision = "a3f3340b5840cee44f372bddb5880fcbc419b46a"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+  [[prune.project]]
+      name = "github.com/onsi/ginkgo"
+      unused-packages = false

@@ -30,10 +30,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/docker/docker/opts"
-	"github.com/docker/docker/pkg/homedir"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/hashicorp/go-cleanhttp"
+	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/opts"
+	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/homedir"
+	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/stdcopy"
+	"github.com/fsouza/go-dockerclient/external/github.com/hashicorp/go-cleanhttp"
 )
 
 const userAgent = "go-dockerclient"
@@ -49,8 +49,8 @@ var (
 	ErrInactivityTimeout = errors.New("inactivity time exceeded timeout")
 
 	apiVersion112, _ = NewAPIVersion("1.12")
+
 	apiVersion119, _ = NewAPIVersion("1.19")
-	apiVersion124, _ = NewAPIVersion("1.24")
 )
 
 // APIVersion is an internal representation of a version of the Remote API.
@@ -144,9 +144,6 @@ type Client struct {
 	serverAPIVersion    APIVersion
 	expectedAPIVersion  APIVersion
 	unixHTTPClient      *http.Client
-
-	// A timeout to use when using both the unixHTTPClient and HTTPClient
-	timeout time.Duration
 }
 
 // NewClient returns a Client instance ready for communication with the given
@@ -319,12 +316,6 @@ func NewVersionedTLSClientFromBytes(endpoint string, certPEMBlock, keyPEMBlock, 
 	}, nil
 }
 
-// SetTimeout takes a timeout and applies it to subsequent requests to the
-// docker engine
-func (c *Client) SetTimeout(t time.Duration) {
-	c.timeout = t
-}
-
 func (c *Client) checkAPIVersion() error {
 	serverAPIVersionString, err := c.getServerAPIVersionString()
 	if err != nil {
@@ -414,12 +405,6 @@ func (c *Client) do(method, path string, doOptions doOptions) (*http.Response, e
 	} else {
 		u = c.getURL(path)
 	}
-
-	// If the user has provided a timeout, apply it.
-	if c.timeout != 0 {
-		httpClient.Timeout = c.timeout
-	}
-
 	req, err := http.NewRequest(method, u, params)
 	if err != nil {
 		return nil, err
@@ -813,10 +798,12 @@ func (c *Client) unixClient() *http.Client {
 		return c.unixHTTPClient
 	}
 	socketPath := c.endpointURL.Path
-	tr := cleanhttp.DefaultTransport()
-	tr.Dial = func(network, addr string) (net.Conn, error) {
-		return c.Dialer.Dial("unix", socketPath)
+	tr := &http.Transport{
+		Dial: func(network, addr string) (net.Conn, error) {
+			return c.Dialer.Dial("unix", socketPath)
+		},
 	}
+	cleanhttp.SetTransportFinalizer(tr)
 	c.unixHTTPClient = &http.Client{Transport: tr}
 	return c.unixHTTPClient
 }

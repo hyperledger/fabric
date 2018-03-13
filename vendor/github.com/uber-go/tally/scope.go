@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Uber Technologies, Inc.
+// Copyright (c) 2018 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -64,6 +64,7 @@ type scope struct {
 	cachedReporter CachedStatsReporter
 	baseReporter   BaseStatsReporter
 	defaultBuckets Buckets
+	sanitizer      Sanitizer
 
 	registry *scopeRegistry
 	status   scopeStatus
@@ -94,12 +95,13 @@ var scopeRegistryKey = KeyForPrefixedStringMap
 
 // ScopeOptions is a set of options to construct a scope.
 type ScopeOptions struct {
-	Tags           map[string]string
-	Prefix         string
-	Reporter       StatsReporter
-	CachedReporter CachedStatsReporter
-	Separator      string
-	DefaultBuckets Buckets
+	Tags            map[string]string
+	Prefix          string
+	Reporter        StatsReporter
+	CachedReporter  CachedStatsReporter
+	Separator       string
+	DefaultBuckets  Buckets
+	SanitizeOptions *SanitizeOptions
 }
 
 // NewRootScope creates a new root Scope with a set of options and
@@ -121,6 +123,11 @@ func NewTestScope(
 }
 
 func newRootScope(opts ScopeOptions, interval time.Duration) *scope {
+	sanitizer := NewNoOpSanitizer()
+	if o := opts.SanitizeOptions; o != nil {
+		sanitizer = NewSanitizer(*o)
+	}
+
 	if opts.Tags == nil {
 		opts.Tags = make(map[string]string)
 	}
@@ -140,15 +147,13 @@ func newRootScope(opts ScopeOptions, interval time.Duration) *scope {
 	}
 
 	s := &scope{
-		separator: opts.Separator,
-		prefix:    opts.Prefix,
-		// NB(r): Take a copy of the tags on creation
-		// so that it cannot be modified after set.
-		tags:           copyStringMap(opts.Tags),
+		separator:      sanitizer.Name(opts.Separator),
+		prefix:         sanitizer.Name(opts.Prefix),
 		reporter:       opts.Reporter,
 		cachedReporter: opts.CachedReporter,
 		baseReporter:   baseReporter,
 		defaultBuckets: opts.DefaultBuckets,
+		sanitizer:      sanitizer,
 
 		registry: &scopeRegistry{
 			subscopes: make(map[string]*scope),
@@ -163,6 +168,10 @@ func newRootScope(opts ScopeOptions, interval time.Duration) *scope {
 		timers:     make(map[string]*timer),
 		histograms: make(map[string]*histogram),
 	}
+
+	// NB(r): Take a copy of the tags on creation
+	// so that it cannot be modified after set.
+	s.tags = s.copyAndSanitizeMap(opts.Tags)
 
 	// Register the root scope
 	s.registry.subscopes[scopeRegistryKey(s.prefix, s.tags)] = s
@@ -268,6 +277,7 @@ func (s *scope) reportRegistryWithLock() {
 }
 
 func (s *scope) Counter(name string) Counter {
+	name = s.sanitizer.Name(name)
 	s.cm.RLock()
 	val, ok := s.counters[name]
 	s.cm.RUnlock()
@@ -290,6 +300,7 @@ func (s *scope) Counter(name string) Counter {
 }
 
 func (s *scope) Gauge(name string) Gauge {
+	name = s.sanitizer.Name(name)
 	s.gm.RLock()
 	val, ok := s.gauges[name]
 	s.gm.RUnlock()
@@ -312,6 +323,7 @@ func (s *scope) Gauge(name string) Gauge {
 }
 
 func (s *scope) Timer(name string) Timer {
+	name = s.sanitizer.Name(name)
 	s.tm.RLock()
 	val, ok := s.timers[name]
 	s.tm.RUnlock()
@@ -336,6 +348,8 @@ func (s *scope) Timer(name string) Timer {
 }
 
 func (s *scope) Histogram(name string, b Buckets) Histogram {
+	name = s.sanitizer.Name(name)
+
 	if b == nil {
 		b = s.defaultBuckets
 	}
@@ -364,16 +378,18 @@ func (s *scope) Histogram(name string, b Buckets) Histogram {
 }
 
 func (s *scope) Tagged(tags map[string]string) Scope {
+	tags = s.copyAndSanitizeMap(tags)
 	return s.subscope(s.prefix, tags)
 }
 
 func (s *scope) SubScope(prefix string) Scope {
+	prefix = s.sanitizer.Name(prefix)
 	return s.subscope(s.fullyQualifiedName(prefix), nil)
 }
 
-func (s *scope) subscope(prefix string, tags map[string]string) Scope {
-	tags = mergeRightTags(s.tags, tags)
-	key := scopeRegistryKey(prefix, tags)
+func (s *scope) subscope(prefix string, immutableTags map[string]string) Scope {
+	immutableTags = mergeRightTags(s.tags, immutableTags)
+	key := scopeRegistryKey(prefix, immutableTags)
 
 	s.registry.RLock()
 	existing, ok := s.registry.subscopes[key]
@@ -394,13 +410,14 @@ func (s *scope) subscope(prefix string, tags map[string]string) Scope {
 	subscope := &scope{
 		separator: s.separator,
 		prefix:    prefix,
-		// NB(r): Take a copy of the tags on creation
-		// so that it cannot be modified after set.
-		tags:           copyStringMap(tags),
+		// NB(prateek): don't need to copy the tags here,
+		// we assume the map provided is immutable.
+		tags:           immutableTags,
 		reporter:       s.reporter,
 		cachedReporter: s.cachedReporter,
 		baseReporter:   s.baseReporter,
 		defaultBuckets: s.defaultBuckets,
+		sanitizer:      s.sanitizer,
 		registry:       s.registry,
 
 		counters:   make(map[string]*counter),
@@ -504,11 +521,29 @@ func (s *scope) Close() error {
 	return nil
 }
 
+// NB(prateek): We assume concatenation of sanitized inputs is
+// sanitized. If that stops being true, then we need to sanitize the
+// output of this function.
 func (s *scope) fullyQualifiedName(name string) string {
 	if len(s.prefix) == 0 {
 		return name
 	}
+	// NB: we don't need to sanitize the output of this function as we
+	// sanitize all the the inputs (prefix, separator, name); and the
+	// output we're creating is a concatenation of the sanitized inputs.
+	// If we change the concatenation to involve other inputs or characters,
+	// we'll need to sanitize them too.
 	return fmt.Sprintf("%s%s%s", s.prefix, s.separator, name)
+}
+
+func (s *scope) copyAndSanitizeMap(tags map[string]string) map[string]string {
+	result := make(map[string]string, len(tags))
+	for k, v := range tags {
+		k = s.sanitizer.Key(k)
+		v = s.sanitizer.Value(v)
+		result[k] = v
+	}
+	return result
 }
 
 // TestScope is a metrics collector that has no reporting, ensuring that
@@ -604,14 +639,6 @@ func mergeRightTags(tagsLeft, tagsRight map[string]string) map[string]string {
 		result[k] = v
 	}
 	for k, v := range tagsRight {
-		result[k] = v
-	}
-	return result
-}
-
-func copyStringMap(stringMap map[string]string) map[string]string {
-	result := make(map[string]string, len(stringMap))
-	for k, v := range stringMap {
 		result[k] = v
 	}
 	return result

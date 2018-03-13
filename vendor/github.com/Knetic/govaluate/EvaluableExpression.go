@@ -6,6 +6,7 @@ import (
 )
 
 const isoDateFormat string = "2006-01-02T15:04:05.999999999Z0700"
+const shortCircuitHolder int = -1
 
 var DUMMY_PARAMETERS = MapParameters(map[string]interface{}{})
 
@@ -170,7 +171,33 @@ func (this EvaluableExpression) evaluateStage(stage *evaluationStage, parameters
 		}
 	}
 
-	if stage.rightStage != nil {
+	if stage.isShortCircuitable() {
+		switch stage.symbol {
+			case AND:
+				if left == false {
+					return false, nil
+				}
+			case OR:
+				if left == true {
+					return true, nil
+				}
+			case COALESCE:
+				if left != nil {
+					return left, nil
+				}
+			
+			case TERNARY_TRUE:
+				if left == false {
+					right = shortCircuitHolder
+				}
+			case TERNARY_FALSE:
+				if left != nil {
+					right = shortCircuitHolder
+				}
+		}
+	}
+
+	if right != shortCircuitHolder && stage.rightStage != nil {
 		right, err = this.evaluateStage(stage.rightStage, parameters)
 		if err != nil {
 			return nil, err
