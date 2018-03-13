@@ -8,7 +8,6 @@ unit-tests:
   links:
     - couchdb
   environment:
-    - GO_LDFLAGS
     - GO_TAGS
     - OUTPUT
     - TEST_PKGS=${TEST_PKGS}
