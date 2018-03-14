@@ -96,7 +96,7 @@ Here's some examples using the different available flags on the `peer` command.
     -o, --orderer string                      Ordering service endpoint
         --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
         --tls                                 Use TLS when communicating with the orderer endpoint
-    -v, --version                             Display current version of fabric peer server
+    -v, --version                             Display the build version for this fabric peer
 
   ```
   This shows brief help syntax for the `peer channel join` command.
