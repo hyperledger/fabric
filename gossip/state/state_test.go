@@ -44,16 +44,16 @@ import (
 )
 
 var (
-	portPrefix = 28000
+	portStartRange = 28000
+
+	orgID = []byte("ORG1")
+
+	noopPeerIdentityAcceptor = func(identity api.PeerIdentityType) error {
+		return nil
+	}
 )
 
-var orgID = []byte("ORG1")
-
 type peerIdentityAcceptor func(identity api.PeerIdentityType) error
-
-var noopPeerIdentityAcceptor = func(identity api.PeerIdentityType) error {
-	return nil
-}
 
 type joinChanMsg struct {
 }
@@ -144,7 +144,7 @@ func (*cryptoServiceMock) ValidateIdentity(peerIdentity api.PeerIdentityType) er
 	return nil
 }
 
-func bootPeers(ids ...int) []string {
+func bootPeers(portPrefix int, ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
 		peers = append(peers, fmt.Sprintf("localhost:%d", id+portPrefix))
@@ -290,11 +290,11 @@ func (mock *ramLedger) Close() {
 }
 
 // Default configuration to be used for gossip and communication modules
-func newGossipConfig(id int, boot ...int) *gossip.Config {
+func newGossipConfig(portPrefix, id int, boot ...int) *gossip.Config {
 	port := id + portPrefix
 	return &gossip.Config{
 		BindPort:                   port,
-		BootstrapPeers:             bootPeers(boot...),
+		BootstrapPeers:             bootPeers(portPrefix, boot...),
 		ID:                         fmt.Sprintf("p%d", id),
 		MaxBlockCountToStore:       0,
 		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
@@ -373,12 +373,14 @@ func newPeerNode(config *gossip.Config, committer committer.Committer, acceptor 
 }
 
 func TestNilDirectMsg(t *testing.T) {
+	t.Parallel()
 	mc := &mockCommitter{}
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
-	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	portPrefix := portStartRange + 50
+	p := newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 	defer p.shutdown()
 	p.s.handleStateRequest(nil)
 	p.s.directMessage(nil)
@@ -390,12 +392,14 @@ func TestNilDirectMsg(t *testing.T) {
 }
 
 func TestNilAddPayload(t *testing.T) {
+	t.Parallel()
 	mc := &mockCommitter{}
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
-	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	portPrefix := portStartRange + 100
+	p := newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 	defer p.shutdown()
 	err := p.s.AddPayload(nil)
 	assert.Error(t, err)
@@ -403,12 +407,14 @@ func TestNilAddPayload(t *testing.T) {
 }
 
 func TestAddPayloadLedgerUnavailable(t *testing.T) {
+	t.Parallel()
 	mc := &mockCommitter{}
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
-	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	portPrefix := portStartRange + 150
+	p := newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 	defer p.shutdown()
 	// Simulate a problem in the ledger
 	failedLedger := mock.Mock{}
@@ -433,7 +439,7 @@ func TestLargeBlockGap(t *testing.T) {
 	// than itself (500 blocks higher).
 	// The peer needs to ask blocks in a way such that the size of the payload buffer
 	// never rises above a certain threshold.
-
+	t.Parallel()
 	mc := &mockCommitter{}
 	blocksPassedToLedger := make(chan uint64, 200)
 	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
@@ -481,7 +487,8 @@ func TestLargeBlockGap(t *testing.T) {
 			SignedGossipMessage: sMsg,
 		}
 	})
-	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	portPrefix := portStartRange + 200
+	p := newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 	defer p.shutdown()
 
 	// Process blocks at a speed of 20 Millisecond for each block.
@@ -504,7 +511,7 @@ func TestOverPopulation(t *testing.T) {
 	// with a gap in between, and ensure that the payload buffer
 	// rejects blocks starting if the distance between the ledger height to the latest
 	// block it contains is bigger than defMaxBlockDistance.
-
+	t.Parallel()
 	mc := &mockCommitter{}
 	blocksPassedToLedger := make(chan uint64, 10)
 	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
@@ -514,7 +521,8 @@ func TestOverPopulation(t *testing.T) {
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
-	p := newPeerNode(newGossipConfig(0), mc, noopPeerIdentityAcceptor)
+	portPrefix := portStartRange + 250
+	p := newPeerNode(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor)
 	defer p.shutdown()
 
 	// Add some blocks in a sequential manner and make sure it works
@@ -567,6 +575,7 @@ func TestBlockingEnqueue(t *testing.T) {
 	// Scenario: In parallel, get blocks from gossip and from the orderer.
 	// The blocks from the orderer we get are X2 times the amount of blocks from gossip.
 	// The blocks we get from gossip are random indices, to maximize disruption.
+	t.Parallel()
 	mc := &mockCommitter{}
 	blocksPassedToLedger := make(chan uint64, 10)
 	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
@@ -576,7 +585,8 @@ func TestBlockingEnqueue(t *testing.T) {
 	g := &mocks.GossipMock{}
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
-	p := newPeerNode(newGossipConfig(0), mc, noopPeerIdentityAcceptor)
+	portPrefix := portStartRange + 300
+	p := newPeerNode(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor)
 	defer p.shutdown()
 
 	numBlocksReceived := 500
@@ -631,6 +641,7 @@ func TestBlockingEnqueue(t *testing.T) {
 }
 
 func TestHaltChainProcessing(t *testing.T) {
+	t.Parallel()
 	gossipChannel := func(c chan *proto.GossipMessage) <-chan *proto.GossipMessage {
 		return c
 	}
@@ -687,13 +698,16 @@ func TestHaltChainProcessing(t *testing.T) {
 	v.On("Validate").Return(&errors2.VSCCExecutionFailureError{
 		Reason: "foobar",
 	}).Once()
-	newPeerNodeWithGossipWithValidator(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g, v)
+	portPrefix := portStartRange + 350
+	newPeerNodeWithGossipWithValidator(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g, v)
 	gossipMsgs <- newBlockMsg(1)
 	logAsserter.assertLastLogContains(t, "Got error while committing")
 	logAsserter.assertLastLogContains(t, "foobar", "Aborting chain processing")
 }
 
 func TestFailures(t *testing.T) {
+	t.Parallel()
+	portPrefix := portStartRange + 400
 	mc := &mockCommitter{}
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(0), nil)
 	g := &mocks.GossipMock{}
@@ -701,15 +715,16 @@ func TestFailures(t *testing.T) {
 	g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
 	g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{})
 	assert.Panics(t, func() {
-		newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+		newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 	})
 	// Reprogram mock
 	mc.Mock = mock.Mock{}
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), errors.New("Failed accessing ledger"))
-	assert.Nil(t, newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g))
+	assert.Nil(t, newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g))
 }
 
 func TestGossipReception(t *testing.T) {
+	t.Parallel()
 	signalChan := make(chan struct{})
 	rawblock := &pcomm.Block{
 		Header: &pcomm.BlockHeader{
@@ -766,7 +781,8 @@ func TestGossipReception(t *testing.T) {
 		receivedChan <- struct{}{}
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
-	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	portPrefix := portStartRange + 450
+	p := newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 	defer p.shutdown()
 	select {
 	case <-receivedChan:
@@ -781,6 +797,7 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 	// either set both metadata properly, or only the properties, or none, or both.
 	// Ensure the logic handles all of the 4 possible cases as needed
 
+	t.Parallel()
 	// Returns whether the given networkMember was selected or not
 	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember, wg *sync.WaitGroup) bool {
 		var wasGivenNetworkMemberSelected int32
@@ -811,7 +828,8 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 		})
 		mc := &mockCommitter{}
 		mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
-		p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+		portPrefix := portStartRange + 500
+		p := newPeerNodeWithGossip(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g)
 		defer p.shutdown()
 		select {
 		case <-time.After(time.Second * 20):
@@ -853,6 +871,7 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 }
 
 func TestAccessControl(t *testing.T) {
+	t.Parallel()
 	bootstrapSetSize := 5
 	bootstrapSet := make([]*peerNode, 0)
 
@@ -862,6 +881,7 @@ func TestAccessControl(t *testing.T) {
 		"localhost:5618": {},
 		"localhost:5621": {},
 	}
+	portPrefix := portStartRange + 600
 
 	blockPullPolicy := func(identity api.PeerIdentityType) error {
 		if _, isAuthorized := authorizedPeers[string(identity)]; isAuthorized {
@@ -869,10 +889,9 @@ func TestAccessControl(t *testing.T) {
 		}
 		return errors.New("Not authorized")
 	}
-
 	for i := 0; i < bootstrapSetSize; i++ {
 		commit := newCommitter()
-		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), commit, blockPullPolicy))
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(portPrefix, i), commit, blockPullPolicy))
 	}
 
 	defer func() {
@@ -901,7 +920,7 @@ func TestAccessControl(t *testing.T) {
 
 	for i := 0; i < standardPeerSetSize; i++ {
 		commit := newCommitter()
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, blockPullPolicy))
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(portPrefix, bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, blockPullPolicy))
 	}
 
 	defer func() {
@@ -943,12 +962,14 @@ func TestAccessControl(t *testing.T) {
 }
 
 func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
+	t.Parallel()
 	bootstrapSetSize := 5
 	bootstrapSet := make([]*peerNode, 0)
+	portPrefix := portStartRange + 650
 
 	for i := 0; i < bootstrapSetSize; i++ {
 		commit := newCommitter()
-		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), commit, noopPeerIdentityAcceptor))
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(portPrefix, i), commit, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -977,7 +998,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	for i := 0; i < standartPeersSize; i++ {
 		commit := newCommitter()
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, noopPeerIdentityAcceptor))
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(portPrefix, bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -1012,10 +1033,12 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 }
 
 func TestGossipStateProvider_TestStateMessages(t *testing.T) {
-	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(), noopPeerIdentityAcceptor)
+	t.Parallel()
+	portPrefix := portStartRange + 700
+	bootPeer := newPeerNode(newGossipConfig(portPrefix, 0), newCommitter(), noopPeerIdentityAcceptor)
 	defer bootPeer.shutdown()
 
-	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(), noopPeerIdentityAcceptor)
+	peer := newPeerNode(newGossipConfig(portPrefix, 1, 0), newCommitter(), noopPeerIdentityAcceptor)
 	defer peer.shutdown()
 
 	naiveStateMsgPredicate := func(message interface{}) bool {
@@ -1080,7 +1103,9 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 // complete missing blocks. Since state transfer messages now batched, it is expected
 // to see _exactly_ two messages with state transfer response.
 func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
-	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(), noopPeerIdentityAcceptor)
+	t.Parallel()
+	portPrefix := portStartRange + 750
+	bootPeer := newPeerNode(newGossipConfig(portPrefix, 0), newCommitter(), noopPeerIdentityAcceptor)
 	defer bootPeer.shutdown()
 
 	msgCount := defAntiEntropyBatchSize + 5
@@ -1099,7 +1124,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 		}
 	}
 
-	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(), noopPeerIdentityAcceptor)
+	peer := newPeerNode(newGossipConfig(portPrefix, 1, 0), newCommitter(), noopPeerIdentityAcceptor)
 	defer peer.shutdown()
 
 	naiveStateMsgPredicate := func(message interface{}) bool {
@@ -1238,6 +1263,7 @@ type testData struct {
 }
 
 func TestTransferOfPrivateRWSet(t *testing.T) {
+	t.Parallel()
 	chainID := "testChainID"
 
 	// First gossip instance
@@ -1462,7 +1488,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	   Test going to check that block from one peer will be replicated into second one and
 	   have identical content.
 	*/
-
+	t.Parallel()
 	chainID := "testChainID"
 
 	// Initialize peer
