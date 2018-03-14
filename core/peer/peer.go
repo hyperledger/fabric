@@ -44,7 +44,7 @@ import (
 
 var peerLogger = flogging.MustGetLogger("peer")
 
-var peerServer comm.GRPCServer
+var peerServer *comm.GRPCServer
 
 var configTxProcessor = newConfigTxProcessor()
 var ConfigTxProcessors = customtx.Processors{
@@ -677,7 +677,7 @@ func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager
 
 // NewPeerServer creates an instance of comm.GRPCServer
 // This server is used for peer communications
-func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (comm.GRPCServer, error) {
+func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
 	var err error
 	peerServer, err = comm.NewGRPCServer(listenAddress, serverConfig)
 	if err != nil {
