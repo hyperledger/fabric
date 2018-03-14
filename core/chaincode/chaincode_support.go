@@ -542,10 +542,12 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 			if err == nil {
 				err = resp.(container.VMCResp).Err
 			}
+
+			//if the launch was successful and leads to proper registration,
+			//this error could be ignored in the select below. On the other
+			//hand the error might be triggered for select in which case
+			//the launch will be cleaned up
 			err = errors.WithMessage(err, "error starting container")
-			chaincodeSupport.runningChaincodes.Lock()
-			delete(chaincodeSupport.runningChaincodes.chaincodeMap, canName)
-			chaincodeSupport.runningChaincodes.Unlock()
 		}
 	}()
 
