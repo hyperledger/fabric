@@ -56,7 +56,7 @@ var (
 )
 
 type commonClient struct {
-	comm.GRPCClient
+	*comm.GRPCClient
 	address string
 	sn      string
 }

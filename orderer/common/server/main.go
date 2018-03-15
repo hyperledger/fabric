@@ -222,7 +222,7 @@ func initializeBootstrapChannel(conf *config.TopLevel, lf blockledger.Factory) {
 	}
 }
 
-func initializeGrpcServer(conf *config.TopLevel, serverConfig comm.ServerConfig) comm.GRPCServer {
+func initializeGrpcServer(conf *config.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
 		logger.Fatal("Failed to listen:", err)
@@ -262,7 +262,7 @@ func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalS
 	return multichannel.NewRegistrar(lf, consenters, signer, callbacks...)
 }
 
-func updateTrustedRoots(srv comm.GRPCServer, rootCASupport *comm.CASupport,
+func updateTrustedRoots(srv *comm.GRPCServer, rootCASupport *comm.CASupport,
 	cm channelconfig.Resources) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()

@@ -353,7 +353,7 @@ func serve(args []string) error {
 }
 
 //create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
-func createChaincodeServer(ca accesscontrol.CA, peerHostname string) (srv comm.GRPCServer, ccEndpoint string, err error) {
+func createChaincodeServer(ca accesscontrol.CA, peerHostname string) (srv *comm.GRPCServer, ccEndpoint string, err error) {
 	// before potentially setting chaincodeListenAddress, compute chaincode endpoint at first
 	ccEndpoint, err = computeChaincodeEndpoint(peerHostname)
 	if err != nil {
@@ -499,7 +499,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -525,7 +525,7 @@ func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEndpoint string, ca 
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 }
 
-func createEventHubServer(serverConfig comm.ServerConfig) (comm.GRPCServer, error) {
+func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
 	var lis net.Listener
 	var err error
 	lis, err = net.Listen("tcp", viper.GetString("peer.events.address"))

@@ -136,7 +136,7 @@ func TestBindingInspector(t *testing.T) {
 
 type inspectingServer struct {
 	addr string
-	comm.GRPCServer
+	*comm.GRPCServer
 	lastContext atomic.Value
 	inspector   comm.BindingInspector
 }
