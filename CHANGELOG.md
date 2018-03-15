@@ -1,3 +1,26 @@
+## v1.1.0
+Thu Mar 15 13:49:03 EDT 2018
+
+* [2112633](https://github.com/hyperledger/fabric/commit/2112633) [FAB-8883](https://jira.hyperledger.org/browse/FAB-8883) Prepare for Fabric v1.1.0 release
+* [a495a88](https://github.com/hyperledger/fabric/commit/a495a88) [FAB-7895](https://jira.hyperledger.org/browse/FAB-7895): New topic (Concept) : Peers
+* [27fd3e5](https://github.com/hyperledger/fabric/commit/27fd3e5) [FAB-8854](https://jira.hyperledger.org/browse/FAB-8854) Fix link in fabric ca commands page
+* [d16ce12](https://github.com/hyperledger/fabric/commit/d16ce12) [FAB-8844](https://jira.hyperledger.org/browse/FAB-8844) correct handling of launch errors
+* [bf53291](https://github.com/hyperledger/fabric/commit/bf53291) [FAB-8728](https://jira.hyperledger.org/browse/FAB-8728) Typo in peerchannel.md
+* [e7ed520](https://github.com/hyperledger/fabric/commit/e7ed520) [FAB-8748](https://jira.hyperledger.org/browse/FAB-8748) Get fabric-ca-client binary from bootstrap.sh
+* [4bf4f24](https://github.com/hyperledger/fabric/commit/4bf4f24) [FAB-8763](https://jira.hyperledger.org/browse/FAB-8763) Clarify CLI cc package doc for node cc
+* [15ec7d1](https://github.com/hyperledger/fabric/commit/15ec7d1) [FAB-8666](https://jira.hyperledger.org/browse/FAB-8666) refactor fabric docs TOC
+* [08d817c](https://github.com/hyperledger/fabric/commit/08d817c) [FAB-8731](https://jira.hyperledger.org/browse/FAB-8731) Clarify CLI cc install doc for node cc
+* [5533049](https://github.com/hyperledger/fabric/commit/5533049) [FAB-8738](https://jira.hyperledger.org/browse/FAB-8738) Document Reserved Field Names in CouchDB
+* [fdff463](https://github.com/hyperledger/fabric/commit/fdff463) [FAB-8700](https://jira.hyperledger.org/browse/FAB-8700) Clarify channel update tutorial leader elec
+* [9105134](https://github.com/hyperledger/fabric/commit/9105134) [FAB-8698](https://jira.hyperledger.org/browse/FAB-8698) - Fix broken link
+* [8292ed4](https://github.com/hyperledger/fabric/commit/8292ed4) [FAB-8688](https://jira.hyperledger.org/browse/FAB-8688) Gossip onConnect() references wrong field
+* [8793c73](https://github.com/hyperledger/fabric/commit/8793c73) [FAB-8240](https://jira.hyperledger.org/browse/FAB-8240) Document Orderer.Addresses config setting
+* [7a5a16e](https://github.com/hyperledger/fabric/commit/7a5a16e) [FAB-8647](https://jira.hyperledger.org/browse/FAB-8647): explain limitation of adding new org
+* [f78e0ab](https://github.com/hyperledger/fabric/commit/f78e0ab) [FAB-8416](https://jira.hyperledger.org/browse/FAB-8416) add leader election section
+* [7ba1ffe](https://github.com/hyperledger/fabric/commit/7ba1ffe) [FAB-8628](https://jira.hyperledger.org/browse/FAB-8628) fix code coverage report issue
+* [1334e63](https://github.com/hyperledger/fabric/commit/1334e63) [FAB-8636](https://jira.hyperledger.org/browse/FAB-8636) clarify release tag to use for tutorial
+* [5b0a846](https://github.com/hyperledger/fabric/commit/5b0a846) [FAB-8284](https://jira.hyperledger.org/browse/FAB-8284) Prepare Fabric for next release
+
 ## v1.1.0-rc1
 Thu Mar  1 12:37:41 EST 2018
 
