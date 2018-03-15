@@ -6,7 +6,7 @@
 #
 
 # current version of fabric released
-export VERSION=${1:-1.0.4}
+export VERSION=${1:-1.1.0}
 # current version of fabric-ca released
 export CA_VERSION=${2:-$VERSION}
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
@@ -57,15 +57,26 @@ if [ $? != 0 ]; then
      echo "------> $VERSION fabric-ca-client binary is not available to download  (Avaialble from 1.1.0-rc1) <----"
      echo
 fi
-echo "===> Pulling fabric Images"
-dockerFabricPull ${FABRIC_TAG}
 
-echo "===> Pulling fabric ca Image"
-dockerCaPull ${CA_TAG}
+which docker >& /dev/null
+NODOCKER=$?
 
-echo "===> Pulling thirdparty docker images"
-dockerThirdPartyImagesPull ${THIRDPARTY_TAG}
+if [ "${NODOCKER}" == 0 ]; then
 
-echo
-echo "===> List out hyperledger docker images"
-docker images | grep hyperledger*
+	echo "===> Pulling fabric Images"
+	dockerFabricPull ${FABRIC_TAG}
+
+	echo "===> Pulling fabric ca Image"
+	dockerCaPull ${CA_TAG}
+
+	echo "===> Pulling thirdparty docker images"
+	dockerThirdPartyImagesPull ${THIRDPARTY_TAG}
+	echo
+
+	echo "===> List out hyperledger docker images"
+	docker images | grep hyperledger*
+else
+	echo "========================================================="
+	echo "Docker not installed, bypassing download of Fabric images"
+	echo "========================================================="
+fi
