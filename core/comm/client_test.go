@@ -220,7 +220,7 @@ func TestNewConnection(t *testing.T) {
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testServerCert}},
 			success:  false,
-			errorMsg: "certificate signed by unknown authority",
+			errorMsg: "context deadline exceeded",
 		},
 		{
 			name:       "client TLS / server TLS missing client cert",
@@ -237,7 +237,7 @@ func TestNewConnection(t *testing.T) {
 				Certificates: []tls.Certificate{testServerCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert},
 			success:  false,
-			errorMsg: "bad certificate",
+			errorMsg: "context deadline exceeded",
 		},
 		{
 			name:       "client TLS / server TLS client cert",

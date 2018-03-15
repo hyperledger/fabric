@@ -29,7 +29,6 @@ import (
 var connNumber = 0
 
 func newConnection() *grpc.ClientConn {
-	connNumber++
 	// The balancer is in order to check connection leaks.
 	// When grpc.ClientConn.Close() is called, it calls the balancer's Close()
 	// method which decrements the connNumber
@@ -41,6 +40,7 @@ type balancer struct {
 }
 
 func (*balancer) Start(target string, config grpc.BalancerConfig) error {
+	connNumber++
 	return nil
 }
 

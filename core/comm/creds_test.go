@@ -17,6 +17,7 @@ import (
 )
 
 func TestCreds(t *testing.T) {
+	t.Parallel()
 	var creds credentials.TransportCredentials
 	creds = comm.NewServerTransportCredentials(&tls.Config{})
 	_, _, err := creds.ClientHandshake(nil, "", nil)

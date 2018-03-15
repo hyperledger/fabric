@@ -89,5 +89,5 @@ func TestTLSCA(t *testing.T) {
 	assert.NoError(t, err)
 	err = probeTLS(kp)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "tls: bad certificate")
+	assert.Contains(t, err.Error(), "context deadline exceeded")
 }

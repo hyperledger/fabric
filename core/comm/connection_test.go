@@ -282,6 +282,7 @@ func newServer(org string, port int) *srv {
 		panic(fmt.Errorf("Failed listening on port %d: %v", port, err))
 	}
 	gSrv, err := NewGRPCServerFromListener(l, ServerConfig{
+		ConnectionTimeout: 250 * time.Millisecond,
 		SecOpts: &SecureOptions{
 			Certificate: certs["server.crt"],
 			Key:         certs["server.key"],
@@ -338,14 +339,14 @@ func testInvoke(t *testing.T, channelID string, s *srv, shouldSucceed bool) {
 	assert.NoError(t, err)
 	endpoint := fmt.Sprintf("localhost:%d", s.port)
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second*3)
+	ctx, _ = context.WithTimeout(ctx, 1*time.Second)
 	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(creds), grpc.WithBlock())
 	if shouldSucceed {
 		assert.NoError(t, err)
 		defer conn.Close()
 	} else {
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "certificate signed by unknown authority")
+		assert.Contains(t, err.Error(), "context deadline exceeded")
 		return
 	}
 	client := testpb.NewTestServiceClient(conn)

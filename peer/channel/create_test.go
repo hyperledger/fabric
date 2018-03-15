@@ -52,7 +52,6 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 	if err != nil {
 		panic(err)
 	}
-	go srv.Serve(lsnr)
 	o := &timeoutOrderer{Server: srv,
 		Listener:         lsnr,
 		t:                t,
@@ -61,6 +60,7 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 		counter:          int(1),
 	}
 	orderer.RegisterAtomicBroadcastServer(srv, o)
+	go srv.Serve(lsnr)
 	return o
 }
 
