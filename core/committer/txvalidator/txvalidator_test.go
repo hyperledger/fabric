@@ -81,27 +81,6 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	for i := 0; i < nBlocks; i++ {
 		assert.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
 	}
-
-	/*
-
-		a better way of testing this without all of the mocking was
-		implemented in validator_test.go
-
-		newMockVsccValidator := &validator.MockVsccValidator{
-			CIns:     upgradeChaincodeIns,
-			RespPayl: prespPaylBytes,
-		}
-		newTxValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, newMockVsccValidator}
-
-		// generate new block
-		newBlock := testutil.ConstructBlock(t, 2, block.Header.Hash(), [][]byte{simRes}, true) // contains one tx with chaincode version v1
-
-		newTxValidator.Validate(newBlock)
-
-		// tx should be invalided because of chaincode upgrade
-		txsfltr = util.TxValidationFlags(newBlock.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-		assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_EXPIRED_CHAINCODE))
-	*/
 }
 
 func TestDetectTXIdDuplicates(t *testing.T) {

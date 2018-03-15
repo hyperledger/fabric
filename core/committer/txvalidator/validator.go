@@ -69,7 +69,7 @@ type Validator interface {
 // and vscc execution, in order to increase
 // testability of txValidator
 type vsccValidator interface {
-	VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (error, peer.TxValidationCode)
+	VSCCValidateTx(payload *common.Payload, envBytes []byte) (error, peer.TxValidationCode)
 }
 
 // vsccValidator implementation which used to call
@@ -343,7 +343,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 
 			// Validate tx with vscc and policy
 			logger.Debug("Validating transaction vscc tx validate")
-			err, cde := v.vscc.VSCCValidateTx(payload, d, env)
+			err, cde := v.vscc.VSCCValidateTx(payload, d)
 			if err != nil {
 				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error: %s", txID, err)
 				switch err.(type) {
@@ -641,9 +641,9 @@ func (v *vsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	return false
 }
 
-func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (error, peer.TxValidationCode) {
-	logger.Debugf("VSCCValidateTx starts for env %p envbytes %p", env, envBytes)
-	defer logger.Debugf("VSCCValidateTx completes for env %p envbytes %p", env, envBytes)
+func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) (error, peer.TxValidationCode) {
+	logger.Debugf("VSCCValidateTx starts for bytes %p", envBytes)
+	defer logger.Debugf("VSCCValidateTx completes env bytes %p", envBytes)
 
 	// get header extensions so we have the chaincode ID
 	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
