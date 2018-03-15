@@ -107,7 +107,7 @@ Get the newest samples
 .. note:: The instructions below pertain to whatever is the most recently
           published version of v1.1.x, starting with 1.1.0-rc1. Please substitute
           '1.1.x' with the version identifier of the published release that
-          you are testing. e.g. replace '1.1.x' with '1.1.0-rc1' if you are
+          you are testing. e.g. replace '1.1.x' with '1.1.0' if you are
           currently testing the first release candidate.
 
 Before completing the rest of the tutorial, it's important to get the v1.1.x
@@ -130,7 +130,7 @@ To run the script, issue these commands:
 
 .. code:: bash
 
-  # Note, replace '1.1.x' with a specific version, for example '1.1.0-rc1'.
+  # Note, replace '1.1.x' with a specific version, for example '1.1.0'.
   # Don't pass the image flag '-i 1.1.x' if you prefer to default to 'latest' images.
 
   ./byfn.sh upgrade -i 1.1.x
@@ -187,7 +187,7 @@ Let’s begin the upgrade process by **bringing down the orderer**:
 
   export LEDGERS_BACKUP=./ledgers-backup
 
-  # Note, replace '1.1.x' with a specific version, for example '1.1.0-rc1'.
+  # Note, replace '1.1.x' with a specific version, for example '1.1.0'.
   # Set IMAGE_TAG to 'latest' if you prefer to default to the images tagged 'latest' on your system.
 
   export IMAGE_TAG=`uname -m`-1.1.x

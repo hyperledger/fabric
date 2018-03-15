@@ -30,7 +30,7 @@ execute the following commands:
   git checkout {TAG}　
 
 .. note:: To ensure the samples are compatible with the version of Fabric binaries you download below,
-          checkout the samples ``{TAG}`` that matches your Fabric version, for example, v1.1.0-rc1.
+          checkout the samples ``{TAG}`` that matches your Fabric version, for example, v1.1.0.
           To see a list of all fabric-samples tags, use command "git tag".
 
 .. _binaries:
@@ -49,7 +49,7 @@ you will extract the platform-specific binaries:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0-rc1
+  curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
@@ -62,7 +62,7 @@ you will extract the platform-specific binaries:
 	  https://github.com/hyperledger/fabric/blob/master/scripts/bootstrap.sh
 
 .. note:: You can use the command above for any published version of Hyperledger
-          Fabric. Simply replace '1.1.0-rc1' with the version identifier
+          Fabric. Simply replace '1.1.0' with the version identifier
           of the version you wish to install.
 
 The command above downloads and executes a bash script

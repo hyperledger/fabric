@@ -154,7 +154,7 @@ on its chain.
 
 Differences in Most Recent Releases
 -----------------------------------
-Q. As part of the v1.0.0 release, what are the highlight differences between v0.6 and v1.0?
+Q. Where can I find what  are the highlighted differences between releases?
 
 A. The differences between any subsequent releases are provided together with the
 `Release Notes <http://hyperledger-fabric.readthedocs.io/en/latest/releases.html>`__.

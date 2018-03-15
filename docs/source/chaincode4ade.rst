@@ -429,14 +429,16 @@ should see something similar to following:
 
   docker images
   REPOSITORY                     TAG                                  IMAGE ID            CREATED             SIZE
-  hyperledger/fabric-tools       latest                               e09f38f8928d        4 hours ago         1.32 GB
-  hyperledger/fabric-tools       x86_64-1.0.0                         e09f38f8928d        4 hours ago         1.32 GB
-  hyperledger/fabric-orderer     latest                               0df93ba35a25        4 hours ago         179 MB
-  hyperledger/fabric-orderer     x86_64-1.0.0                         0df93ba35a25        4 hours ago         179 MB
-  hyperledger/fabric-peer        latest                               533aec3f5a01        4 hours ago         182 MB
-  hyperledger/fabric-peer        x86_64-1.0.0                         533aec3f5a01        4 hours ago         182 MB
-  hyperledger/fabric-ccenv       latest                               4b70698a71d3        4 hours ago         1.29 GB
-  hyperledger/fabric-ccenv       x86_64-1.0.0                         4b70698a71d3        4 hours ago         1.29 GB
+  hyperledger/fabric-tools       latest                           b7bfddf508bc        About an hour ago   1.46GB
+  hyperledger/fabric-tools       x86_64-1.1.0                     b7bfddf508bc        About an hour ago   1.46GB
+  hyperledger/fabric-orderer     latest                           ce0c810df36a        About an hour ago   180MB
+  hyperledger/fabric-orderer     x86_64-1.1.0                     ce0c810df36a        About an hour ago   180MB
+  hyperledger/fabric-peer        latest                           b023f9be0771        About an hour ago   187MB
+  hyperledger/fabric-peer        x86_64-1.1.0                     b023f9be0771        About an hour ago   187MB
+  hyperledger/fabric-javaenv     latest                           82098abb1a17        About an hour ago   1.52GB
+  hyperledger/fabric-javaenv     x86_64-1.1.0                     82098abb1a17        About an hour ago   1.52GB
+  hyperledger/fabric-ccenv       latest                           c8b4909d8d46        About an hour ago   1.39GB
+  hyperledger/fabric-ccenv       x86_64-1.1.0                     c8b4909d8d46        About an hour ago   1.39GB
 
 .. note:: If you retrieved the images through the :ref:`binaries`,
           then you will see additional images listed.  However, we are only concerned with
