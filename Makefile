@@ -57,6 +57,8 @@ endif
 IS_RELEASE = false
 EXPERIMENTAL ?= true
 
+BUILD_DIR ?= .build
+
 ifeq ($(EXPERIMENTAL),true)
 GO_TAGS += experimental
 endif
@@ -143,44 +145,44 @@ license:
 
 .PHONY: gotools
 gotools:
-	mkdir -p build/bin
-	cd gotools && $(MAKE) install BINDIR=$(GOPATH)/bin
+	mkdir -p $(BUILD_DIR)/bin
+	cd gotools && $(MAKE) install BINDIR=$(GOPATH)/bin OBJDIR=$(abspath $(BUILD_DIR)/gotools)
 
 .PHONY: gotools-clean
 gotools-clean:
-	cd gotools && $(MAKE) clean
+	cd gotools && $(MAKE) clean OBJDIR=$(abspath $(BUILD_DIR)/gotools)
 
 # This is a legacy target left to satisfy existing CI scripts
 membersrvc-image:
 	@echo "membersrvc has been removed from this build"
 
 .PHONY: peer
-peer: build/bin/peer
-peer-docker: build/image/peer/$(DUMMY)
+peer: $(BUILD_DIR)/bin/peer
+peer-docker: $(BUILD_DIR)/image/peer/$(DUMMY)
 
 .PHONY: orderer
-orderer: build/bin/orderer
-orderer-docker: build/image/orderer/$(DUMMY)
+orderer: $(BUILD_DIR)/bin/orderer
+orderer-docker: $(BUILD_DIR)/image/orderer/$(DUMMY)
 
 .PHONY: configtxgen
 configtxgen: GO_TAGS+= nopkcs11
 configtxgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
-configtxgen: build/bin/configtxgen
+configtxgen: $(BUILD_DIR)/bin/configtxgen
 
 configtxlator: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
-configtxlator: build/bin/configtxlator
+configtxlator: $(BUILD_DIR)/bin/configtxlator
 
 cryptogen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
-cryptogen: build/bin/cryptogen
+cryptogen: $(BUILD_DIR)/bin/cryptogen
 
-tools-docker: build/image/tools/$(DUMMY)
+tools-docker: $(BUILD_DIR)/image/tools/$(DUMMY)
 
-javaenv: build/image/javaenv/$(DUMMY)
+javaenv: $(BUILD_DIR)/image/javaenv/$(DUMMY)
 
-buildenv: build/image/buildenv/$(DUMMY)
+buildenv: $(BUILD_DIR)/image/buildenv/$(DUMMY)
 
-build/image/testenv/$(DUMMY): build/image/buildenv/$(DUMMY)
-testenv: build/image/testenv/$(DUMMY)
+$(BUILD_DIR)/image/testenv/$(DUMMY): $(BUILD_DIR)/image/buildenv/$(DUMMY)
+testenv: $(BUILD_DIR)/image/testenv/$(DUMMY)
 
 unit-test: unit-test-clean peer-docker testenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
@@ -200,16 +202,16 @@ profile: unit-test-clean peer-docker testenv
 test-cmd:
 	@echo "go test -tags \"$(GO_TAGS)\""
 
-docker: docker-thirdparty $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
+docker: docker-thirdparty $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
 
 native: peer orderer configtxgen cryptogen configtxlator
 
-behave-deps: docker peer build/bin/block-listener configtxgen cryptogen
+behave-deps: docker peer $(BUILD_DIR)/bin/block-listener configtxgen cryptogen
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
 
-behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
+behave-peer-chaincode: $(BUILD_DIR)/bin/peer peer-docker orderer-docker
 	@cd peer/chaincode && behave
 
 linter: check-deps buildenv
@@ -220,7 +222,7 @@ check-deps: buildenv
 	@echo "DEP: Checking for dependency issues.."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/check_deps.sh
 
-%/chaintool: Makefile
+$(BUILD_DIR)/%/chaintool: Makefile
 	@echo "Installing chaintool"
 	@mkdir -p $(@D)
 	curl -fL $(CHAINTOOL_URL) > $@
@@ -228,26 +230,26 @@ check-deps: buildenv
 
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
-build/docker/bin/%: $(PROJECT_FILES)
-	$(eval TARGET = ${patsubst build/docker/bin/%,%,${@}})
+$(BUILD_DIR)/docker/bin/%: $(PROJECT_FILES)
+	$(eval TARGET = ${patsubst $(BUILD_DIR)/docker/bin/%,%,${@}})
 	@echo "Building $@"
-	@mkdir -p build/docker/bin build/docker/$(TARGET)/pkg
+	@mkdir -p $(BUILD_DIR)/docker/bin $(BUILD_DIR)/docker/$(TARGET)/pkg
 	@$(DRUN) \
-		-v $(abspath build/docker/bin):/opt/gopath/bin \
-		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
+		-v $(abspath $(BUILD_DIR)/docker/bin):/opt/gopath/bin \
+		-v $(abspath $(BUILD_DIR)/docker/$(TARGET)/pkg):/opt/gopath/pkg \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		go install -tags "$(GO_TAGS)" -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
-build/bin:
+$(BUILD_DIR)/bin:
 	mkdir -p $@
 
 changelog:
 	./scripts/changelog.sh v$(PREV_VERSION) v$(BASE_VERSION)
 
-build/docker/gotools/bin/protoc-gen-go: build/docker/gotools
+$(BUILD_DIR)/docker/gotools/bin/protoc-gen-go: $(BUILD_DIR)/docker/gotools
 
-build/docker/gotools: gotools/Makefile
+$(BUILD_DIR)/docker/gotools: gotools/Makefile
 	@mkdir -p $@/bin $@/obj
 	@$(DRUN) \
 		-v $(abspath $@):/opt/gotools \
@@ -256,10 +258,10 @@ build/docker/gotools: gotools/Makefile
 		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
 
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
-build/bin/peer: build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
-build/image/peer/$(DUMMY): build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
+$(BUILD_DIR)/bin/peer: $(BUILD_DIR)/image/ccenv/$(DUMMY) $(BUILD_DIR)/image/javaenv/$(DUMMY)
+$(BUILD_DIR)/image/peer/$(DUMMY): $(BUILD_DIR)/image/ccenv/$(DUMMY) $(BUILD_DIR)/image/javaenv/$(DUMMY)
 
-build/bin/%: $(PROJECT_FILES)
+$(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
 	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
@@ -267,35 +269,35 @@ build/bin/%: $(PROJECT_FILES)
 	@touch $@
 
 # payload definitions'
-build/image/ccenv/payload:      build/docker/gotools/bin/protoc-gen-go \
-				build/bin/chaintool \
-				build/goshim.tar.bz2
-build/image/javaenv/payload:    build/javashim.tar.bz2 \
-				build/protos.tar.bz2 \
+$(BUILD_DIR)/image/ccenv/payload:      $(BUILD_DIR)/docker/gotools/bin/protoc-gen-go \
+				$(BUILD_DIR)/bin/chaintool \
+				$(BUILD_DIR)/goshim.tar.bz2
+$(BUILD_DIR)/image/javaenv/payload:    $(BUILD_DIR)/javashim.tar.bz2 \
+				$(BUILD_DIR)/protos.tar.bz2 \
 				settings.gradle
-build/image/peer/payload:       build/docker/bin/peer \
-				build/sampleconfig.tar.bz2
-build/image/orderer/payload:    build/docker/bin/orderer \
-				build/sampleconfig.tar.bz2
-build/image/buildenv/payload:   build/gotools.tar.bz2 \
-				build/docker/gotools/bin/protoc-gen-go
-build/image/testenv/payload:    build/docker/bin/orderer \
-				build/docker/bin/peer \
-				build/sampleconfig.tar.bz2 \
+$(BUILD_DIR)/image/peer/payload:       $(BUILD_DIR)/docker/bin/peer \
+				$(BUILD_DIR)/sampleconfig.tar.bz2
+$(BUILD_DIR)/image/orderer/payload:    $(BUILD_DIR)/docker/bin/orderer \
+				$(BUILD_DIR)/sampleconfig.tar.bz2
+$(BUILD_DIR)/image/buildenv/payload:   $(BUILD_DIR)/gotools.tar.bz2 \
+				$(BUILD_DIR)/docker/gotools/bin/protoc-gen-go
+$(BUILD_DIR)/image/testenv/payload:    $(BUILD_DIR)/docker/bin/orderer \
+				$(BUILD_DIR)/docker/bin/peer \
+				$(BUILD_DIR)/sampleconfig.tar.bz2 \
 				images/testenv/install-softhsm2.sh
-build/image/tools/payload:      build/docker/bin/cryptogen \
-	                        build/docker/bin/configtxgen \
-	                        build/docker/bin/configtxlator \
-				build/docker/bin/peer \
-				build/sampleconfig.tar.bz2
+$(BUILD_DIR)/image/tools/payload:      $(BUILD_DIR)/docker/bin/cryptogen \
+	                        $(BUILD_DIR)/docker/bin/configtxgen \
+	                        $(BUILD_DIR)/docker/bin/configtxlator \
+				$(BUILD_DIR)/docker/bin/peer \
+				$(BUILD_DIR)/sampleconfig.tar.bz2
 
-build/image/%/payload:
+$(BUILD_DIR)/image/%/payload:
 	mkdir -p $@
 	cp $^ $@
 
-.PRECIOUS: build/image/%/Dockerfile
+.PRECIOUS: $(BUILD_DIR)/image/%/Dockerfile
 
-build/image/%/Dockerfile: images/%/Dockerfile.in
+$(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
 	@cat $< \
 		| sed -e 's/_BASE_NS_/$(BASE_DOCKER_NS)/g' \
 		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
@@ -305,28 +307,28 @@ build/image/%/Dockerfile: images/%/Dockerfile.in
 	@echo LABEL $(BASE_DOCKER_LABEL).version=$(PROJECT_VERSION) \\>>$@
 	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
 
-build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
-	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
+$(BUILD_DIR)/image/%/$(DUMMY): Makefile $(BUILD_DIR)/image/%/payload $(BUILD_DIR)/image/%/Dockerfile
+	$(eval TARGET = ${patsubst $(BUILD_DIR)/image/%/$(DUMMY),%,${@}})
 	@echo "Building docker $(TARGET)-image"
 	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) $(@D)
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-latest
 	@touch $@
 
-build/gotools.tar.bz2: build/docker/gotools
+$(BUILD_DIR)/gotools.tar.bz2: $(BUILD_DIR)/docker/gotools
 	(cd $</bin && tar -jc *) > $@
 
-build/goshim.tar.bz2: $(GOSHIM_DEPS)
+$(BUILD_DIR)/goshim.tar.bz2: $(GOSHIM_DEPS)
 	@echo "Creating $@"
 	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
 
-build/sampleconfig.tar.bz2: $(shell find sampleconfig -type f)
+$(BUILD_DIR)/sampleconfig.tar.bz2: $(shell find sampleconfig -type f)
 	(cd sampleconfig && tar -jc *) > $@
 
-build/javashim.tar.bz2: $(JAVASHIM_DEPS)
-build/protos.tar.bz2: $(PROTOS)
+$(BUILD_DIR)/javashim.tar.bz2: $(JAVASHIM_DEPS)
+$(BUILD_DIR)/protos.tar.bz2: $(PROTOS)
 
-build/%.tar.bz2:
+$(BUILD_DIR)/%.tar.bz2:
 	@echo "Creating $@"
 	@tar -jc $^ > $@
 
@@ -420,13 +422,13 @@ protos: buildenv
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
 	-docker images -q $(DOCKER_NS)/fabric-$(TARGET) | xargs -I '{}' docker rmi -f '{}'
-	-@rm -rf build/image/$(TARGET) ||:
+	-@rm -rf $(BUILD_DIR)/image/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 
 .PHONY: clean
 clean: docker-clean unit-test-clean release-clean
-	-@rm -rf build ||:
+	-@rm -rf $(BUILD_DIR) ||:
 
 .PHONY: clean-all
 clean-all: clean gotools-clean dist-clean
