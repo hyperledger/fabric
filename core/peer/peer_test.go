@@ -9,7 +9,6 @@ package peer
 import (
 	"fmt"
 	"net"
-	"os"
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -27,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -82,7 +80,8 @@ func TestInitChain(t *testing.T) {
 }
 
 func TestInitialize(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
+	cleanup := setupPeerFS(t)
+	defer cleanup()
 
 	// we mock this because we can't import the chaincode package lest we create an import cycle
 	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
@@ -92,8 +91,9 @@ func TestInitialize(t *testing.T) {
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
-	defer os.RemoveAll("/var/hyperledger/test/")
+	cleanup := setupPeerFS(t)
+	defer cleanup()
+
 	testChainID := "mytestchainid"
 	block, err := configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
