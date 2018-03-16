@@ -152,61 +152,53 @@ func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
 func GetLocalMSP() msp.MSP {
-	var lclMsp msp.MSP
-	var created bool = false
-	{
-		// determine the type of MSP (by default, we'll use bccspMSP)
-		mspType := viper.GetString("peer.localMspType")
-		if mspType == "" {
-			mspType = msp.ProviderTypeToString(msp.FABRIC)
-		}
+	m.Lock()
+	defer m.Unlock()
 
-		// based on the MSP type, generate the new opts
-		var newOpts msp.NewOpts
-		switch mspType {
-		case msp.ProviderTypeToString(msp.FABRIC):
-			newOpts = &msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}}
-		case msp.ProviderTypeToString(msp.IDEMIX):
-			newOpts = &msp.IdemixNewOpts{msp.NewBaseOpts{Version: msp.MSPv1_1}}
-		default:
-			panic("msp type " + mspType + " unknown")
-		}
-
-		m.Lock()
-		defer m.Unlock()
-
-		lclMsp = localMsp
-		if lclMsp == nil {
-			var err error
-			created = true
-
-			mspInst, err := msp.New(newOpts)
-			if err != nil {
-				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
-			}
-
-			switch mspType {
-			case msp.ProviderTypeToString(msp.FABRIC):
-				lclMsp, err = cache.New(mspInst)
-				if err != nil {
-					mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
-				}
-			case msp.ProviderTypeToString(msp.IDEMIX):
-				lclMsp = mspInst
-			default:
-				panic("msp type " + mspType + " unknown")
-			}
-			localMsp = lclMsp
-		}
+	if localMsp != nil {
+		return localMsp
 	}
 
-	if created {
-		mspLogger.Debugf("Created new local MSP")
-	} else {
-		mspLogger.Debugf("Returning existing local MSP")
+	localMsp = loadLocaMSP()
+
+	return localMsp
+}
+
+func loadLocaMSP() msp.MSP {
+	// determine the type of MSP (by default, we'll use bccspMSP)
+	mspType := viper.GetString("peer.localMspType")
+	if mspType == "" {
+		mspType = msp.ProviderTypeToString(msp.FABRIC)
 	}
 
-	return lclMsp
+	var mspOpts = map[string]msp.NewOpts{
+		msp.ProviderTypeToString(msp.FABRIC): &msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}},
+		msp.ProviderTypeToString(msp.IDEMIX): &msp.IdemixNewOpts{msp.NewBaseOpts{Version: msp.MSPv1_1}},
+	}
+	newOpts, found := mspOpts[mspType]
+	if !found {
+		mspLogger.Panicf("msp type " + mspType + " unknown")
+	}
+
+	mspInst, err := msp.New(newOpts)
+	if err != nil {
+		mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
+	}
+	switch mspType {
+	case msp.ProviderTypeToString(msp.FABRIC):
+		mspInst, err = cache.New(mspInst)
+		if err != nil {
+			mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
+		}
+	case msp.ProviderTypeToString(msp.IDEMIX):
+		// Do nothing
+	default:
+		panic("msp type " + mspType + " unknown")
+	}
+
+	mspLogger.Debugf("Created new local MSP")
+
+	return mspInst
 }
 
 // GetIdentityDeserializer returns the IdentityDeserializer for the given chain
