@@ -607,6 +607,8 @@ and reissue the ``peer channel join command``:
 
   peer channel join -b mychannel.block
 
+.. _upgrade-and-invoke:
+
 Upgrade and Invoke Chaincode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
