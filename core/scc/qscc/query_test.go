@@ -17,6 +17,7 @@ package qscc
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTestLedger(chainid string, path string) (*shim.MockStub, error) {
@@ -58,11 +60,18 @@ func resetProvider(res, chainid string, prop *peer2.SignedProposal, retErr error
 	return prop
 }
 
+func tempDir(t *testing.T, stem string) string {
+	path, err := ioutil.TempDir("", "qscc-"+stem)
+	require.NoError(t, err)
+	return path
+}
+
 func TestQueryGetChainInfo(t *testing.T) {
 	chainid := "mytestchainid1"
-	path := "/var/hyperledger/test1/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test1")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -83,9 +92,10 @@ func TestQueryGetChainInfo(t *testing.T) {
 
 func TestQueryGetTransactionByID(t *testing.T) {
 	chainid := "mytestchainid2"
-	path := "/var/hyperledger/test2/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test2")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -107,9 +117,10 @@ func TestQueryGetTransactionByID(t *testing.T) {
 
 func TestQueryGetBlockByNumber(t *testing.T) {
 	chainid := "mytestchainid3"
-	path := "/var/hyperledger/test3/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test3")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -133,9 +144,10 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 
 func TestQueryGetBlockByHash(t *testing.T) {
 	chainid := "mytestchainid4"
-	path := "/var/hyperledger/test4/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test4")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -152,9 +164,10 @@ func TestQueryGetBlockByHash(t *testing.T) {
 
 func TestQueryGetBlockByTxID(t *testing.T) {
 	chainid := "mytestchainid5"
-	path := "/var/hyperledger/test5/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test5")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -167,9 +180,10 @@ func TestQueryGetBlockByTxID(t *testing.T) {
 
 func TestFailingAccessControl(t *testing.T) {
 	chainid := "mytestchainid6"
-	path := "/var/hyperledger/test6/"
-	_, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test6")
 	defer os.RemoveAll(path)
+
+	_, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -239,9 +253,10 @@ func TestFailingAccessControl(t *testing.T) {
 
 func TestQueryNonexistentFunction(t *testing.T) {
 	chainid := "mytestchainid7"
-	path := "/var/hyperledger/test7/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test7")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -256,9 +271,10 @@ func TestQueryNonexistentFunction(t *testing.T) {
 // that contains two transactions
 func TestQueryGeneratedBlock(t *testing.T) {
 	chainid := "mytestchainid8"
-	path := "/var/hyperledger/test8/"
-	stub, err := setupTestLedger(chainid, path)
+	path := tempDir(t, "test8")
 	defer os.RemoveAll(path)
+
+	stub, err := setupTestLedger(chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
