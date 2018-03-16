@@ -24,7 +24,7 @@ Feature: Endorser
         And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
           | vp0  |
 
-        When user "binhn" creates a chaincode spec "cc_spec" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
+        When user "binhn" creates a chaincode spec "cc_spec" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd" with args
              | funcName | arg1 |  arg2 | arg3 | arg4 |
              |   init   |  a   |  100  |  b   |  200 |
         And user "binhn" creates a deployment spec "cc_deploy_spec" using chaincode spec "cc_spec" and devops on peer "vp0"
@@ -49,7 +49,7 @@ Feature: Endorser
         And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
           | vp0  |
 
-        When user "binhn" creates a chaincode spec of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" aliased as "cc_spec" with args
+        When user "binhn" creates a chaincode spec of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd" aliased as "cc_spec" with args
              | funcName | arg1 |  arg2 | arg3 | arg4 |
              |   init   |  a   |  100  |  b   |  200 |
         And user "binhn" sets ESCC to "my_escc" for chaincode spec "cc_spec"
@@ -72,7 +72,7 @@ Feature: Endorser
         And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
           | vp0  |
 
-        When user "binhn" creates a chaincode spec of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" aliased as "cc_spec" with args
+        When user "binhn" creates a chaincode spec of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd" aliased as "cc_spec" with args
              | funcName | arg1 |  arg2 | arg3 | arg4 |
              |   init   |  a   |  100  |  b   |  200 |
         And user "binhn" sets VSCC to "my_vscc" for chaincode spec "cc_spec"

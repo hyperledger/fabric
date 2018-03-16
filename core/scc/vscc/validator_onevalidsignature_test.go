@@ -821,7 +821,7 @@ func TestAlreadyDeployed(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "1"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	ppath := lccctestpath + "/" + ccname + "." + ccver
 
@@ -1160,7 +1160,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "1"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	ppath := lccctestpath + "/" + ccname + "." + ccver
 
@@ -1241,7 +1241,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "1"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	ppath := lccctestpath + "/" + ccname + "." + ccver
 
@@ -1320,7 +1320,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "1"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	ppath := lccctestpath + "/" + ccname + "." + ccver
 
@@ -1421,7 +1421,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 
 	ccname := "mycc"
 	ccver := "1"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 	ppath := lccctestpath + "/" + ccname + "." + ccver
 
 	os.Remove(ppath)
@@ -1515,7 +1515,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "1"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	ppath := lccctestpath + "/" + ccname + "." + ccver
 

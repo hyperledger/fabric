@@ -51,7 +51,7 @@ def step_impl(context, path, args):
 @when(u'a user deploys chaincode')
 def step_impl(context):
     deploy_impl(context,
-                "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+                "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd",
                 '["init", "a", "100" , "b", "200"]',
                 "mycc",
                 "peer0.org1.example.com",

@@ -66,7 +66,7 @@ func TestBadVersion(t *testing.T) {
 	cmd, _ := initInstallTest(fsPath, t)
 	defer cleanupInstallTest(fsPath)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err == nil {
@@ -181,7 +181,7 @@ func installEx02() error {
 	cmd := installCmd(mockCF)
 	addFlags(cmd)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion"}
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd", "-v", "anotherversion"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {

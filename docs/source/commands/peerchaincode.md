@@ -138,7 +138,7 @@ Here are some examples of the `peer chaincode install` command:
   * To install chaincode named `mycc` at version `1.0`:
 
     ```
-    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd
 
     .
     .
@@ -411,7 +411,7 @@ Here are some examples of the `peer chaincode list ` command:
   peer chaincode list --installed
 
   Get installed chaincodes on peer:
-  Name: mycc, Version: 1.0, Path: github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02, Id: 8cc2730fdafd0b28ef734eac12b29df5fc98ad98bdb1b7e0ef96265c3d893d61
+  Name: mycc, Version: 1.0, Path: github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd, Id: 8cc2730fdafd0b28ef734eac12b29df5fc98ad98bdb1b7e0ef96265c3d893d61
   2018-02-22 17:07:13.476 UTC [main] main -> INFO 001 Exiting.....
 
   ```
@@ -426,7 +426,7 @@ Here are some examples of the `peer chaincode list ` command:
   peer chaincode list --instantiated -C mychannel
 
   Get instantiated chaincodes on channel mychannel:
-  Name: mycc, Version: 1.0, Path: github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02, Escc: escc, Vscc: vscc
+  Name: mycc, Version: 1.0, Path: github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd, Escc: escc, Vscc: vscc
   2018-02-22 17:07:42.969 UTC [main] main -> INFO 001 Exiting.....
 
   ```
@@ -510,7 +510,7 @@ deployment spec, signs the package using the local MSP, and outputs it as
 `ccpack.out`:
 
 * ```
-  peer chaincode package ccpack.out -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v 1.1 -s -S
+  peer chaincode package ccpack.out -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd -v 1.1 -s -S
 
   .
   .

@@ -53,7 +53,7 @@ func TestVM_BuildImage_ChaincodeLocal(t *testing.T) {
 		return
 	}
 	// Build the spec
-	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
+	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/example01/cmd"
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}

@@ -150,12 +150,12 @@ def getEndorserStubs(context, composeServices, directory, nodeAdminTuple):
     return stubs
 
 def getExample02ChaincodeSpec():
-    return getChaincodeSpec("GOLANG", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "example02", ["init","a","100","b","200"])
+    return getChaincodeSpec("GOLANG", "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd", "example02", ["init","a","100","b","200"])
 
 
 
 def _createDeploymentSpecAsFile(ccSpec, outputPath):
-    '''peer chaincode package -n myCC -c '{"Args":["init","a","100","b","200"]}' -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 --logging-level=DEBUG test.file'''
+    '''peer chaincode package -n myCC -c '{"Args":["init","a","100","b","200"]}' -p github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd --logging-level=DEBUG test.file'''
     myEnv = os.environ.copy()
     myEnv['CORE_PEER_MSPCONFIGPATH'] = "./../sampleconfig/msp"
     nameArgs = ["-n", ccSpec.chaincode_id.name]

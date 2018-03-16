@@ -139,7 +139,7 @@ func Test_DeploymentPayload(t *testing.T) {
 	platform := &Platform{}
 	spec := &pb.ChaincodeSpec{
 		ChaincodeId: &pb.ChaincodeID{
-			Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+			Path: "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd",
 		},
 	}
 
