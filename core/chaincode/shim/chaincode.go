@@ -291,8 +291,8 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			if recv {
 				recv = false
 				go func() {
-					var in2 *pb.ChaincodeMessage
-					in2, err = stream.Recv()
+					in2, err := stream.Recv()
+					errc <- err
 					msgAvail <- in2
 				}()
 			}
