@@ -400,7 +400,7 @@ directory, so we need to provide the relative path to where the tool resides.
 
 .. code:: bash
 
-    ../bin/cryptogen generate --config=./crypto-config.yaml
+    ../../bin/cryptogen generate --config=./crypto-config.yaml
 
 You should see the following in your terminal:
 
@@ -424,7 +424,7 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
 .. code:: bash
 
-    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+    ../../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 You should see an output similar to the following in your terminal:
 
