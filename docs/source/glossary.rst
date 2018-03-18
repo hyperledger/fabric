@@ -219,7 +219,7 @@ Leading Peer
 ------------
 
 Each Member_ can own multiple peers on each channel that
-it subscribes to. One of these peers is serves as the leading peer for the channel,
+it subscribes to. One of these peers serves as the leading peer for the channel,
 in order to communicate with the network ordering service on behalf of the
 member. The ordering service "delivers" blocks to the leading peer(s) on a
 channel, who then distribute them to other peers within the same member cluster.
