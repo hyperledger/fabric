@@ -22,7 +22,7 @@ Maintainers
 +---------------------------+---------------------+------------------+----------------+-------------------------------------+
 | Jim Zhang                 | jimthematrix        | jimthematrix     | jimthematrix   | jim\_the\_matrix@hotmail.com        |
 +---------------------------+---------------------+------------------+----------------+-------------------------------------+
-| Jonathan Levi             | JonathanLevi        | JonathanLevi     | JonathanLevi   | jonathan@hacera.com                 |
+| Jonathan Levi             | JonathanLevi        | hacera           | JonathanLevi   | jonathan@hacera.com                 |
 +---------------------------+---------------------+------------------+----------------+-------------------------------------+
 | Keith Smith               | smithbk             | smithbk          | smithbk        | bksmith@us.ibm.com                  |
 +---------------------------+---------------------+------------------+----------------+-------------------------------------+
