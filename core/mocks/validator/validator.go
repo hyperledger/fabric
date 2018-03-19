@@ -40,6 +40,6 @@ type MockVsccValidator struct {
 }
 
 // VSCCValidateTx does nothing
-func (v *MockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (error, peer.TxValidationCode) {
+func (v *MockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte) (error, peer.TxValidationCode) {
 	return nil, peer.TxValidationCode_VALID
 }
