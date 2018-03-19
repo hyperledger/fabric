@@ -92,6 +92,10 @@ func (g *gossipMock) LeaveChan(chainID common.ChainID) {
 	panic("implement me")
 }
 
+func (g *gossipMock) IdentityInfo() api.PeerIdentitySet {
+	panic("implement me")
+}
+
 func (*gossipMock) Stop() {
 	panic("implement me")
 }

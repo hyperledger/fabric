@@ -91,7 +91,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	g.idMapper = identity.NewIdentityMapper(mcs, selfIdentity, func(pkiID common.PKIidType, identity api.PeerIdentityType) {
 		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
 		g.certPuller.Remove(string(pkiID))
-	})
+	}, secAdvisor)
 
 	if s == nil {
 		g.comm, err = createCommWithServer(conf.BindPort, g.idMapper, selfIdentity, secureDialOpts)
@@ -602,6 +602,11 @@ func (g *gossipServiceImpl) removeSelfLoop(msg *emittedGossipMessage, peers []*c
 		}
 	}
 	return result
+}
+
+// IdentityInfo returns information known peer identities
+func (g *gossipServiceImpl) IdentityInfo() api.PeerIdentitySet {
+	return g.idMapper.IdentityInfo()
 }
 
 // SendByCriteria sends a given message to all peers that match the given SendCriteria

@@ -77,6 +77,11 @@ func (g *GossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (
 func (g *GossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
 }
 
+// IdentityInfo returns information known peer identities
+func (g *GossipMock) IdentityInfo() api.PeerIdentitySet {
+	panic("not implemented")
+}
+
 func (g *GossipMock) Stop() {
 
 }

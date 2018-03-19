@@ -126,6 +126,10 @@ type naiveCryptoService struct {
 	revokedPkiIDS map[string]struct{}
 }
 
+func (cs *naiveCryptoService) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
+	return nil
+}
+
 func (*naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
 	if exp, exists := expirationTimes[string(peerIdentity)]; exists {
 		return exp, nil
