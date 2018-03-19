@@ -40,6 +40,14 @@ type gossipMock struct {
 	mock.Mock
 }
 
+func (g *gossipMock) SelfChannelInfo(common.ChainID) *proto.SignedGossipMessage {
+	panic("implement me")
+}
+
+func (g *gossipMock) SelfMembershipInfo() discovery.NetworkMember {
+	panic("implement me")
+}
+
 func (*gossipMock) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
 	panic("implement me")
 }

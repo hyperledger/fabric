@@ -545,6 +545,21 @@ func TestInitiateSync(t *testing.T) {
 	stopInstances(t, instances)
 }
 
+func TestSelf(t *testing.T) {
+	t.Parallel()
+	inst := createDiscoveryInstance(13463, "d1", []string{})
+	defer inst.Stop()
+	env := inst.Self().Envelope
+	sMsg, err := env.ToGossipMessage()
+	assert.NoError(t, err)
+	member := sMsg.GetAliveMsg().Membership
+	assert.Equal(t, "localhost:13463", member.Endpoint)
+	assert.Equal(t, []byte("localhost:13463"), member.PkiId)
+
+	assert.Equal(t, "localhost:13463", inst.Self().Endpoint)
+	assert.Equal(t, common.PKIidType("localhost:13463"), inst.Self().PKIid)
+}
+
 func TestExpiration(t *testing.T) {
 	t.Parallel()
 	nodeNum := 5
@@ -974,7 +989,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 	// Creating Alive messages
 	for i := 0; i < peersNum; i++ {
-		aliveMsg, _ := instances[i].discoveryImpl().createAliveMessage(true)
+		aliveMsg, _ := instances[i].discoveryImpl().createSignedAliveMessage(true)
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 
@@ -1042,7 +1057,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 				return k == i
 			},
 			func(k int) {
-				aliveMsg, _ := instances[k].discoveryImpl().createAliveMessage(true)
+				aliveMsg, _ := instances[k].discoveryImpl().createSignedAliveMessage(true)
 				memResp := instances[k].discoveryImpl().createMembershipResponse(aliveMsg, peerToResponse)
 				memRespMsgs[i] = append(memRespMsgs[i], memResp)
 			})
@@ -1050,7 +1065,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// Re-creating Alive msgs with highest seq_num, to make sure Alive msgs in memReq and memResp are older
 	for i := 0; i < peersNum; i++ {
-		aliveMsg, _ := instances[i].discoveryImpl().createAliveMessage(true)
+		aliveMsg, _ := instances[i].discoveryImpl().createSignedAliveMessage(true)
 		newAliveMsgs = append(newAliveMsgs, aliveMsg)
 	}
 
@@ -1183,7 +1198,7 @@ func TestAliveMsgStore(t *testing.T) {
 	}
 	// Creating Alive messages
 	for i := 0; i < peersNum; i++ {
-		aliveMsg, _ := instances[i].discoveryImpl().createAliveMessage(true)
+		aliveMsg, _ := instances[i].discoveryImpl().createSignedAliveMessage(true)
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 

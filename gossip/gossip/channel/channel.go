@@ -45,6 +45,9 @@ type Config struct {
 // GossipChannel defines an object that deals with all channel-related messages
 type GossipChannel interface {
 
+	// Self returns a StateInfoMessage about the peer
+	Self() *proto.SignedGossipMessage
+
 	// GetPeers returns a list of peers with metadata as published by them
 	GetPeers() []discovery.NetworkMember
 
@@ -287,6 +290,13 @@ func (gc *gossipChannel) periodicalInvocation(fn func(), c <-chan time.Time) {
 	}
 }
 
+// Self returns a StateInfoMessage about the peer
+func (gc *gossipChannel) Self() *proto.SignedGossipMessage {
+	gc.RLock()
+	defer gc.RUnlock()
+	return gc.stateInfoMsg
+}
+
 // LeaveChannel makes the peer leave the channel
 func (gc *gossipChannel) LeaveChannel() {
 	gc.Lock()
@@ -309,7 +319,7 @@ func (gc *gossipChannel) hasLeftChannel() bool {
 
 // GetPeers returns a list of peers with metadata as published by them
 func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
-	members := []discovery.NetworkMember{}
+	var members []discovery.NetworkMember
 	if gc.hasLeftChannel() {
 		return members
 	}
@@ -327,6 +337,7 @@ func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
 			continue
 		}
 		member.Properties = stateInf.GetStateInfo().Properties
+		member.Envelope = stateInf.Envelope
 		members = append(members, member)
 	}
 	return members

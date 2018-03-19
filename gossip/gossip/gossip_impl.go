@@ -727,6 +727,20 @@ func (g *gossipServiceImpl) PeersOfChannel(channel common.ChainID) []discovery.N
 	return gc.GetPeers()
 }
 
+// SelfMembershipInfo returns the peer's membership information
+func (g *gossipServiceImpl) SelfMembershipInfo() discovery.NetworkMember {
+	return g.disc.Self()
+}
+
+// SelfChannelInfo returns the peer's latest StateInfo message of a given channel
+func (g *gossipServiceImpl) SelfChannelInfo(chain common.ChainID) *proto.SignedGossipMessage {
+	ch := g.chanState.getGossipChannelByChainID(chain)
+	if ch == nil {
+		return nil
+	}
+	return ch.Self()
+}
+
 // PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
 // only peer identities that match the given criteria, and that they published their channel participation
 func (g *gossipServiceImpl) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
