@@ -197,7 +197,7 @@ profile: unit-test-clean peer-docker testenv
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
 test-cmd:
-	@echo "go test -tags \"$(GO_TAGS)\" -ldflags \"$(GO_LDFLAGS)\""
+	@echo "go test -tags \"$(GO_TAGS)\"
 
 docker: docker-thirdparty $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 
@@ -305,6 +305,7 @@ build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
 	@echo "Building docker $(TARGET)-image"
 	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) $(@D)
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-latest
 	@touch $@
 
 build/gotools.tar.bz2: build/docker/gotools

@@ -57,7 +57,7 @@ run_tests() {
 
     local parallel="$@"
     if [ -n "${parallel}" ]; then
-        time go test ${flags} -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ${parallel[@]} -short -timeout=20m
+        time go test ${flags} -tags "$GO_TAGS" ${parallel[@]} -short -timeout=20m
     fi
 }
 
@@ -67,7 +67,7 @@ run_tests_with_coverage() {
     # Initialize profile.cov
     for pkg in $@; do
         :> profile_tmp.cov
-        go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $pkg -timeout=20m
+        go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" $pkg -timeout=20m
         tail -n +2 profile_tmp.cov >> profile.cov || echo "Unable to append coverage for $pkg"
     done
 
