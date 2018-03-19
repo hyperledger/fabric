@@ -51,6 +51,9 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	if getInstantiatedChaincodes && channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
+	// Parsing of the command line is done so silence cmd usage
+	cmd.SilenceUsage = true
+
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(true, false)

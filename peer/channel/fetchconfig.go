@@ -45,20 +45,21 @@ func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
+	if len(args) == 0 {
+		return fmt.Errorf("fetch target required, oldest, newest, config, or a number")
+	}
+	if len(args) > 2 {
+		return fmt.Errorf("trailing args detected")
+	}
+	// Parsing of the command line is done so silence cmd usage
+	cmd.SilenceUsage = true
+
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
 		if err != nil {
 			return err
 		}
-	}
-
-	if len(args) == 0 {
-		return fmt.Errorf("fetch target required, oldest, newest, config, or a number")
-	}
-
-	if len(args) > 2 {
-		return fmt.Errorf("trailing args detected")
 	}
 
 	var block *cb.Block

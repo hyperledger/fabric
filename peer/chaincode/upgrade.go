@@ -60,9 +60,6 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 
 //upgrade the command via Endorser
 func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
-	if channelID == "" {
-		return nil, errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
-	}
 	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return nil, err
@@ -112,6 +109,12 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 // chaincodeUpgrade upgrades the chaincode. On success, the new chaincode
 // version is printed to STDOUT
 func chaincodeUpgrade(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+	if channelID == "" {
+		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
+	}
+	// Parsing of the command line is done so silence cmd usage
+	cmd.SilenceUsage = true
+
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(true, true)

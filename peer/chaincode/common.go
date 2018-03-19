@@ -68,6 +68,8 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
 	if err := checkChaincodeCmdParams(cmd); err != nil {
+		// unset usage silence because it's a command line usage error
+		cmd.SilenceUsage = false
 		return spec, err
 	}
 
@@ -219,7 +221,7 @@ func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
 }
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
-	//we need chaincode name for everything, including deploy
+	// we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
 		return fmt.Errorf("Must supply value for %s name parameter.", chainFuncName)
 	}

@@ -29,6 +29,11 @@ var nodeStatusCmd = &cobra.Command{
 	Short: "Returns status of the node.",
 	Long:  `Returns the status of the running node.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 0 {
+			return fmt.Errorf("trailing args detected: %s", args)
+		}
+		// Parsing of the command line is done so silence cmd usage
+		cmd.SilenceUsage = true
 		return status()
 	},
 }

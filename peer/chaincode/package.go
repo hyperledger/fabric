@@ -153,6 +153,8 @@ func chaincodePackage(cmd *cobra.Command, args []string, cdsFact ccDepSpecFactor
 	if cdsFact == nil {
 		return fmt.Errorf("Error chaincode deployment spec factory not specified")
 	}
+	// Parsing of the command line is done so silence cmd usage
+	cmd.SilenceUsage = true
 
 	var err error
 	if cf == nil {

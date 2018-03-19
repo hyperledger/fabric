@@ -148,6 +148,9 @@ func getPackageFromFile(ccpackfile string) (proto.Message, *pb.ChaincodeDeployme
 
 // chaincodeInstall installs the chaincode. If remoteinstall, does it via a lscc call
 func chaincodeInstall(cmd *cobra.Command, ccpackfile string, cf *ChaincodeCmdFactory) error {
+	// Parsing of the command line is done so silence cmd usage
+	cmd.SilenceUsage = true
+
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(true, false)
