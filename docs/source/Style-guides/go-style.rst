@@ -26,32 +26,13 @@ generate/update the respective ``.pb.go`` files.
 Adding or updating Go packages
 ------------------------------
 
-Hyperledger Fabric uses Govendor for package
+Hyperledger Fabric uses Go Vendoring for package
 management. This means that all required packages reside in the
 ``$GOPATH/src/github.com/hyperledger/fabric/vendor`` folder. Go will use
 packages in this folder instead of the GOPATH when the ``go install`` or
 ``go build`` commands are executed. To manage the packages in the
 ``vendor`` folder, we use
-`Govendor <https://github.com/kardianos/govendor>`__, which is installed
-in the Vagrant environment. The following commands can be used for
-package management:
-
-::
-
-      # Add external packages.
-      govendor add +external
-
-      # Add a specific package.
-      govendor add github.com/kardianos/osext
-
-      # Update vendor packages.
-      govendor update +vendor
-
-      # Revert back to normal GOPATH packages.
-      govendor remove +vendor
-
-      # List package.
-      govendor list
+`dep <https://golang.github.io/dep/>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
