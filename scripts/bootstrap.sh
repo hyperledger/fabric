@@ -5,9 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# current version of fabric released
-export VERSION=${1:-1.0.4}
-# current version of fabric-ca released
+# if version not passed in, default to latest released version
+export VERSION=${1:-1.1.0}
+# if ca version not passed in, default to latest released version
 export CA_VERSION=${2:-$VERSION}
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
 export THIRDPARTY_IMAGE_VERSION=0.4.6
