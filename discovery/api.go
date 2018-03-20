@@ -39,4 +39,7 @@ type support interface {
 
 	// Config returns the channel's configuration
 	Config(channel string) (*discovery2.ConfigResult, error)
+
+	// ConfigSequence returns the configuration sequence of the a given channel
+	ConfigSequence(channel string) uint64
 }

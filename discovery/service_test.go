@@ -336,6 +336,10 @@ type mockSupport struct {
 	mock.Mock
 }
 
+func (ms *mockSupport) ConfigSequence(channel string) uint64 {
+	return 0
+}
+
 func (ms *mockSupport) IdentityInfo() api.PeerIdentitySet {
 	return ms.Called().Get(0).(api.PeerIdentitySet)
 }
