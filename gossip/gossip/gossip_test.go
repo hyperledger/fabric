@@ -1420,6 +1420,18 @@ var clientConn = func(g goroutine) bool {
 	return searchInStackTrace("resetTransport", g.stack)
 }
 
+var resolver = func(g goroutine) bool {
+	return searchInStackTrace("ccResolverWrapper", g.stack)
+}
+
+var balancer = func(g goroutine) bool {
+	return searchInStackTrace("ccBalancerWrapper", g.stack)
+}
+
+var clientStream = func(g goroutine) bool {
+	return searchInStackTrace("ClientStream", g.stack)
+}
+
 var testingg = func(g goroutine) bool {
 	if len(g.stack) == 0 {
 		return false
@@ -1439,8 +1451,19 @@ func anyOfPredicates(predicates ...goroutinePredicate) goroutinePredicate {
 }
 
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return !anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest,
-		clientConn, connectionLeak, connectionLeak2, tRunner)(gr)
+	return !anyOfPredicates(
+		runTests,
+		goExit,
+		testingg,
+		waitForTestCompl,
+		gossipTest,
+		clientConn,
+		connectionLeak,
+		connectionLeak2,
+		tRunner,
+		resolver,
+		balancer,
+		clientStream)(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {

@@ -172,7 +172,7 @@ func TestAccessControl(t *testing.T) {
 	// Create an attacker without a TLS certificate
 	_, err = newClient(t, 7052, nil, ca.CertBytes())
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "tls: bad certificate")
+	assert.Contains(t, err.Error(), "context deadline exceeded")
 
 	// Create an attacker with its own TLS certificate
 	maliciousCA, _ := NewCA()
@@ -181,7 +181,7 @@ func TestAccessControl(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = newClient(t, 7052, &cert, ca.CertBytes())
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "tls: bad certificate")
+	assert.Contains(t, err.Error(), "context deadline exceeded")
 
 	// Create a chaincode for example01 that tries to impersonate example02
 	kp, err := auth.Generate("example01")

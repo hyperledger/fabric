@@ -14,6 +14,7 @@ import (
 )
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	// check the defaults
 	assert.EqualValues(t, maxRecvMsgSize, MaxRecvMsgSize())
 	assert.EqualValues(t, maxSendMsgSize, MaxSendMsgSize())

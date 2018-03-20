@@ -40,10 +40,15 @@ var (
 		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
 	}
+	// default connection timeout
+	DefaultConnectionTimeout = 5 * time.Second
 )
 
 // ServerConfig defines the parameters for configuring a GRPCServer instance
 type ServerConfig struct {
+	// ConnectionTimeout specifies the timeout for connection establishment
+	// for all new connections
+	ConnectionTimeout time.Duration
 	// SecOpts defines the security parameters
 	SecOpts *SecureOptions
 	// KaOpts defines the keepalive parameters

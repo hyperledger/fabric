@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -45,7 +44,14 @@ const (
 	// http://http2.github.io/http2-spec/#SettingValues
 	http2InitHeaderTableSize = 4096
 	// http2IOBufSize specifies the buffer size for sending frames.
-	http2IOBufSize = 32 * 1024
+	defaultWriteBufSize = 32 * 1024
+	defaultReadBufSize  = 32 * 1024
+	// baseContentType is the base content-type for gRPC.  This is a valid
+	// content-type on it's own, but can also include a content-subtype such as
+	// "proto" as a suffix after "+" or ";".  See
+	// https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests
+	// for more details.
+	baseContentType = "application/grpc"
 )
 
 var (
@@ -111,7 +117,10 @@ type decodeState struct {
 	timeout    time.Duration
 	method     string
 	// key-value metadata map from the peer.
-	mdata map[string][]string
+	mdata          map[string][]string
+	statsTags      []byte
+	statsTrace     []byte
+	contentSubtype string
 }
 
 // isReservedHeader checks whether hdr belongs to HTTP2 headers
@@ -147,17 +156,44 @@ func isWhitelistedPseudoHeader(hdr string) bool {
 	}
 }
 
-func validContentType(t string) bool {
-	e := "application/grpc"
-	if !strings.HasPrefix(t, e) {
-		return false
+// contentSubtype returns the content-subtype for the given content-type.  The
+// given content-type must be a valid content-type that starts with
+// "application/grpc". A content-subtype will follow "application/grpc" after a
+// "+" or ";". See
+// https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests for
+// more details.
+//
+// If contentType is not a valid content-type for gRPC, the boolean
+// will be false, otherwise true. If content-type == "application/grpc",
+// "application/grpc+", or "application/grpc;", the boolean will be true,
+// but no content-subtype will be returned.
+//
+// contentType is assumed to be lowercase already.
+func contentSubtype(contentType string) (string, bool) {
+	if contentType == baseContentType {
+		return "", true
 	}
-	// Support variations on the content-type
-	// (e.g. "application/grpc+blah", "application/grpc;blah").
-	if len(t) > len(e) && t[len(e)] != '+' && t[len(e)] != ';' {
-		return false
+	if !strings.HasPrefix(contentType, baseContentType) {
+		return "", false
 	}
-	return true
+	// guaranteed since != baseContentType and has baseContentType prefix
+	switch contentType[len(baseContentType)] {
+	case '+', ';':
+		// this will return true for "application/grpc+" or "application/grpc;"
+		// which the previous validContentType function tested to be valid, so we
+		// just say that no content-subtype is specified in this case
+		return contentType[len(baseContentType)+1:], true
+	default:
+		return "", false
+	}
+}
+
+// contentSubtype is assumed to be lowercase
+func contentType(contentSubtype string) string {
+	if contentSubtype == "" {
+		return baseContentType
+	}
+	return baseContentType + "+" + contentSubtype
 }
 
 func (d *decodeState) status() *status.Status {
@@ -235,12 +271,26 @@ func (d *decodeState) decodeResponseHeader(frame *http2.MetaHeadersFrame) error 
 
 }
 
+func (d *decodeState) addMetadata(k, v string) {
+	if d.mdata == nil {
+		d.mdata = make(map[string][]string)
+	}
+	d.mdata[k] = append(d.mdata[k], v)
+}
+
 func (d *decodeState) processHeaderField(f hpack.HeaderField) error {
 	switch f.Name {
 	case "content-type":
-		if !validContentType(f.Value) {
+		contentSubtype, validContentType := contentSubtype(f.Value)
+		if !validContentType {
 			return streamErrorf(codes.FailedPrecondition, "transport: received the unexpected content-type %q", f.Value)
 		}
+		d.contentSubtype = contentSubtype
+		// TODO: do we want to propagate the whole content-type in the metadata,
+		// or come up with a way to just propagate the content-subtype if it was set?
+		// ie {"content-type": "application/grpc+proto"} or {"content-subtype": "proto"}
+		// in the metadata?
+		d.addMetadata(f.Name, f.Value)
 	case "grpc-encoding":
 		d.encoding = f.Value
 	case "grpc-status":
@@ -275,18 +325,30 @@ func (d *decodeState) processHeaderField(f hpack.HeaderField) error {
 			return streamErrorf(codes.Internal, "transport: malformed http-status: %v", err)
 		}
 		d.httpStatus = &code
-	default:
-		if !isReservedHeader(f.Name) || isWhitelistedPseudoHeader(f.Name) {
-			if d.mdata == nil {
-				d.mdata = make(map[string][]string)
-			}
-			v, err := decodeMetadataHeader(f.Name, f.Value)
-			if err != nil {
-				errorf("Failed to decode metadata header (%q, %q): %v", f.Name, f.Value, err)
-				return nil
-			}
-			d.mdata[f.Name] = append(d.mdata[f.Name], v)
+	case "grpc-tags-bin":
+		v, err := decodeBinHeader(f.Value)
+		if err != nil {
+			return streamErrorf(codes.Internal, "transport: malformed grpc-tags-bin: %v", err)
 		}
+		d.statsTags = v
+		d.addMetadata(f.Name, string(v))
+	case "grpc-trace-bin":
+		v, err := decodeBinHeader(f.Value)
+		if err != nil {
+			return streamErrorf(codes.Internal, "transport: malformed grpc-trace-bin: %v", err)
+		}
+		d.statsTrace = v
+		d.addMetadata(f.Name, string(v))
+	default:
+		if isReservedHeader(f.Name) && !isWhitelistedPseudoHeader(f.Name) {
+			break
+		}
+		v, err := decodeMetadataHeader(f.Name, f.Value)
+		if err != nil {
+			errorf("Failed to decode metadata header (%q, %q): %v", f.Name, f.Value, err)
+			return nil
+		}
+		d.addMetadata(f.Name, string(v))
 	}
 	return nil
 }
@@ -454,10 +516,10 @@ type framer struct {
 	fr         *http2.Framer
 }
 
-func newFramer(conn net.Conn) *framer {
+func newFramer(conn net.Conn, writeBufferSize, readBufferSize int) *framer {
 	f := &framer{
-		reader: bufio.NewReaderSize(conn, http2IOBufSize),
-		writer: bufio.NewWriterSize(conn, http2IOBufSize),
+		reader: bufio.NewReaderSize(conn, readBufferSize),
+		writer: bufio.NewWriterSize(conn, writeBufferSize),
 	}
 	f.fr = http2.NewFramer(f.writer, f.reader)
 	// Opt-in to Frame reuse API on framer to reduce garbage.
@@ -465,133 +527,4 @@ func newFramer(conn net.Conn) *framer {
 	f.fr.SetReuseFrames()
 	f.fr.ReadMetaHeaders = hpack.NewDecoder(http2InitHeaderTableSize, nil)
 	return f
-}
-
-func (f *framer) adjustNumWriters(i int32) int32 {
-	return atomic.AddInt32(&f.numWriters, i)
-}
-
-// The following writeXXX functions can only be called when the caller gets
-// unblocked from writableChan channel (i.e., owns the privilege to write).
-
-func (f *framer) writeContinuation(forceFlush bool, streamID uint32, endHeaders bool, headerBlockFragment []byte) error {
-	if err := f.fr.WriteContinuation(streamID, endHeaders, headerBlockFragment); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeData(forceFlush bool, streamID uint32, endStream bool, data []byte) error {
-	if err := f.fr.WriteData(streamID, endStream, data); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeGoAway(forceFlush bool, maxStreamID uint32, code http2.ErrCode, debugData []byte) error {
-	if err := f.fr.WriteGoAway(maxStreamID, code, debugData); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeHeaders(forceFlush bool, p http2.HeadersFrameParam) error {
-	if err := f.fr.WriteHeaders(p); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writePing(forceFlush, ack bool, data [8]byte) error {
-	if err := f.fr.WritePing(ack, data); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writePriority(forceFlush bool, streamID uint32, p http2.PriorityParam) error {
-	if err := f.fr.WritePriority(streamID, p); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writePushPromise(forceFlush bool, p http2.PushPromiseParam) error {
-	if err := f.fr.WritePushPromise(p); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeRSTStream(forceFlush bool, streamID uint32, code http2.ErrCode) error {
-	if err := f.fr.WriteRSTStream(streamID, code); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeSettings(forceFlush bool, settings ...http2.Setting) error {
-	if err := f.fr.WriteSettings(settings...); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeSettingsAck(forceFlush bool) error {
-	if err := f.fr.WriteSettingsAck(); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) writeWindowUpdate(forceFlush bool, streamID, incr uint32) error {
-	if err := f.fr.WriteWindowUpdate(streamID, incr); err != nil {
-		return err
-	}
-	if forceFlush {
-		return f.writer.Flush()
-	}
-	return nil
-}
-
-func (f *framer) flushWrite() error {
-	return f.writer.Flush()
-}
-
-func (f *framer) readFrame() (http2.Frame, error) {
-	return f.fr.ReadFrame()
-}
-
-func (f *framer) errorDetail() error {
-	return f.fr.ErrorDetail()
 }
