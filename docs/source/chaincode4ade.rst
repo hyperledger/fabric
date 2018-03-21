@@ -484,7 +484,7 @@ Now run the chaincode:
 
 .. code:: bash
 
-  CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./sacc
+  CORE_PEER_ADDRESS=peer:7051 CORE_CHAINCODE_ID_NAME=mycc:0 ./sacc
 
 The chaincode is started with peer and chaincode logs indicating successful registration with the peer.
 Note that at this stage the chaincode is not associated with any channel. This is done in subsequent steps
@@ -514,7 +514,7 @@ Now issue an invoke to change the value of "a" to "20".
 
   peer chaincode invoke -n mycc -c '{"Args":["set", "a", "20"]}' -C myc
 
-Finally, query ``a``.  We should see a value of ``20``.
+Finally, query ``a``.  We should see a value of ``20``. Notice that func ``query`` does not exist in ``Invoke``. However, anything different than ``set`` is assumed to be ``get`` in the chaincode example.
 
 .. code:: bash
 
