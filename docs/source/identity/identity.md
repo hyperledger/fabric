@@ -83,16 +83,16 @@ Let's quickly describe these PKI basics, and if you want to know more details,
 A digital certificate is a document which holds a set of attributes relating to a
 party. The most common type of certificate is the one compliant with the [X.509 standard](https://en.wikipedia.org/wiki/X.509),
 which allows the encoding of a party's identifying details in its structure.
-For example, John Doe of Accounting division in FOO Corporation in Detroit, Michigan
-might have a digital certificate with a `SUBJECT` attribute of `C=US, ST=Michigan,
-L=Detroit, O=FOO Corporation, OU=Accounting, CN=John Doe /UID=123456`. John's certificate
-is similar to his government identity card -- it provides information about John
+For example, Mary Morris in the Manufacturing Division of Mitchell Cars in Detroit, Michigan
+might have a digital certificate with a `SUBJECT` attribute of `C=US`, `ST=Michigan`,
+`L=Detroit`, `O=Mitchell Cars`, `OU=Manufacturing`, `CN=Mary Morris /UID=123456`. Mary's certificate
+is similar to her government identity card -- it provides information about Mary
 which he can use to prove key facts about him. There are many other attributes in
 an X.509 certificate, but let's concentrate on just these for now.
 
 ![DigitalCertificate](./identity.diagram.8.png)
 
-*A digital certificate describing a party called Mary Morris. John is the `SUBJECT` of the
+*A digital certificate describing a party called Mary Morris. Mary is the `SUBJECT` of the
 certificate, and the highlighted `SUBJECT` text shows key facts about Mary. The
 certificate also holds many more pieces of information, as you can see. Most importantly,
 Mary's public key is distributed within her certificate, whereas her private signing key
