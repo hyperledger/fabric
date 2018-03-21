@@ -53,28 +53,18 @@ const (
 	SampleInsecureSoloProfile = "SampleInsecureSolo"
 	// SampleDevModeSoloProfile references the sample profile which requires only basic membership for admin privileges and uses solo for ordering.
 	SampleDevModeSoloProfile = "SampleDevModeSolo"
-	// SampleDevModeSoloProfileV11 references the sample profile which requires only basic membership for admin privileges and uses solo for ordering, but has v1.1 capabilities enabled
-	SampleDevModeSoloV11Profile = "SampleDevModeSoloV1_1"
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
-	// SampleSingleMSPSoloV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses solo for ordering.
-	SampleSingleMSPSoloV11Profile = "SampleSingleMSPSoloV1_1"
 
 	// SampleInsecureKafkaProfile references the sample profile which does not include any MSPs and uses Kafka for ordering.
 	SampleInsecureKafkaProfile = "SampleInsecureKafka"
 	// SampleDevModeKafkaProfile references the sample profile which requires only basic membership for admin privileges and uses Kafka for ordering.
 	SampleDevModeKafkaProfile = "SampleDevModeKafka"
-	// SampleDevModeKafkaProfileV11 references the sample profile which requires only basic membership for admin privileges and uses Kafka for ordering, but has v1.1 capabilities enabled.
-	SampleDevModeKafkaV11Profile = "SampleDevModeKafkaV1_1"
 	// SampleSingleMSPKafkaProfile references the sample profile which includes only the sample MSP and uses Kafka for ordering.
 	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
-	// SampleSingleMSPKafkaV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses Kafka for ordering.
-	SampleSingleMSPKafkaV11Profile = "SampleSingleMSPKafkaV1_1"
 
 	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
-	// SampleSingleMSPChannelV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities and is used to create a channel
-	SampleSingleMSPChannelV11Profile = "SampleSingleMSPChannelV1_1"
 
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"
@@ -91,6 +81,7 @@ const (
 type TopLevel struct {
 	Profiles      map[string]*Profile        `yaml:"Profiles"`
 	Organizations []*Organization            `yaml:"Organizations"`
+	Channel       *Profile                   `yaml:"Channel"`
 	Application   *Application               `yaml:"Application"`
 	Orderer       *Orderer                   `yaml:"Orderer"`
 	Capabilities  map[string]map[string]bool `yaml:"Capabilities"`

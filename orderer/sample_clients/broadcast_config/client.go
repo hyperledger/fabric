@@ -70,6 +70,7 @@ type argsImpl struct {
 }
 
 func init() {
+	var err error
 	conf, err = config.Load()
 	if err != nil {
 		fmt.Println("failed to load config:", err)
