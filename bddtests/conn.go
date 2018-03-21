@@ -27,7 +27,7 @@ import (
 func NewGrpcClient(peerAddress string) (*grpc.ClientConn, error) {
 	var tmpConn *grpc.ClientConn
 	var err error
-	tmpConn, err = comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
+	tmpConn, err = comm.NewClientConnectionWithAddress(peerAddress, true, false, nil, nil)
 	if err != nil {
 		fmt.Printf("error connection to server at host:port = %s\n", peerAddress)
 	}
