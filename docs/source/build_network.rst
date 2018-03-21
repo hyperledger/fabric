@@ -497,12 +497,6 @@ First let's start your network:
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
 
-The CLI container will stick around idle for 1000 seconds. If it's gone when you need it you can restart it with a simple command:
-
-.. code:: bash
-
-    docker start cli
-
 .. _peerenvvars:
 
 Environment variables
