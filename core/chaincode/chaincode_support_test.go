@@ -823,7 +823,7 @@ func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
 	newCCSupport.certGenerator = certGenerator
 
 	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", false, nil, nil)
-	args, envs, filesToUpload, err := newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_GOLANG)
+	args, envs, filesToUpload, err := newCCSupport.getLaunchConfigs(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG)
 	if err != nil {
 		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
 	}
@@ -847,7 +847,7 @@ func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
 		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 3 elements for filesToUpload, but got %v", len(filesToUpload))
 	}
 
-	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_NODE)
+	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext.GetCanonicalName(), pb.ChaincodeSpec_NODE)
 	if len(args) != 3 {
 		t.Fatalf("calling getLaunchConfigs() for node chaincode should have returned an array of 3 elements for Args, but got %v", args)
 	}
@@ -857,7 +857,7 @@ func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
 	}
 
 	newCCSupport.peerTLS = false
-	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_GOLANG)
+	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG)
 	if len(envs) != 4 {
 		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 4 elements for Envs, but got %v", envs)
 	}

@@ -315,8 +315,7 @@ func (chaincodeSupport *ChaincodeSupport) getTLSFiles(keyPair *accesscontrol.Cer
 }
 
 //get args and env given chaincodeID
-func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, filesToUpload map[string][]byte, err error) {
-	canName := cccid.GetCanonicalName()
+func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(canName string, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, filesToUpload map[string][]byte, err error) {
 	envs = []string{"CORE_CHAINCODE_ID_NAME=" + canName}
 
 	// ----------------------------------------------------------------------------
@@ -331,9 +330,9 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 	// ----------------------------------------------------------------------------
 	var certKeyPair *accesscontrol.CertAndPrivKeyPair
 	if chaincodeSupport.peerTLS {
-		certKeyPair, err = chaincodeSupport.certGenerator.Generate(cccid.GetCanonicalName())
+		certKeyPair, err = chaincodeSupport.certGenerator.Generate(canName)
 		if err != nil {
-			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", cccid.GetCanonicalName()))
+			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", canName))
 		}
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
 		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
@@ -378,51 +377,61 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 
 //---------- Begin - launchAndWaitForRegister related functionality --------
 
-//a launcher interface to encapsulate chaincode execution. This
-//helps with UT of launchAndWaitForRegister
+// launcherIntf encapsulate chaincode execution. This helps with UT of
+// launchAndWaitForRegister.
 type launcherIntf interface {
-	launch(ctxt context.Context, notfy chan bool) (container.VMCResp, error)
+	launch(ctxt context.Context, notfiy chan bool) (container.VMCResp, error)
 }
 
 //ccLaucherImpl will use the container launcher mechanism to launch the actual chaincode
 type ccLauncherImpl struct {
-	ctxt      context.Context
-	ccSupport *ChaincodeSupport
-	cccid     *ccprovider.CCContext
-	cds       *pb.ChaincodeDeploymentSpec
-	builder   api.BuildSpecFactory
+	support       *ChaincodeSupport
+	canonicalName string
+	version       string
+	cds           *pb.ChaincodeDeploymentSpec
+	builder       api.BuildSpecFactory
 }
 
 //launches the chaincode using the supplied context and notifier
-func (ccl *ccLauncherImpl) launch(ctxt context.Context, notfy chan bool) (container.VMCResp, error) {
-	//launch the chaincode
-	args, env, filesToUpload, err := ccl.ccSupport.getLaunchConfigs(ccl.cccid, ccl.cds.ChaincodeSpec.Type)
+func (ccl *ccLauncherImpl) launch(ctxt context.Context, notify chan bool) (container.VMCResp, error) {
+	// launch the chaincode
+	args, env, filesToUpload, err := ccl.support.getLaunchConfigs(ccl.canonicalName, ccl.cds.ChaincodeSpec.Type)
 	if err != nil {
 		return container.VMCResp{}, err
 	}
 
-	canName := ccl.cccid.GetCanonicalName()
-
-	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", canName, ccl.ccSupport.peerNetworkID, ccl.ccSupport.peerID)
+	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", ccl.canonicalName, ccl.support.peerNetworkID, ccl.support.peerID)
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
 
-	//set up the shadow handler JIT before container launch to
-	//reduce window of when an external chaincode can sneak in
-	//and use the launching context and make it its own
+	// set up the shadow handler JIT before container launch to
+	// reduce window of when an external chaincode can sneak in
+	// and use the launching context and make it its own
 	preLaunchFunc := func() error {
-		ccl.ccSupport.preLaunchSetup(canName, notfy)
+		ccl.support.preLaunchSetup(ccl.canonicalName, notify)
 		return nil
 	}
 
-	ccid := ccintf.CCID{ChaincodeSpec: ccl.cds.ChaincodeSpec, NetworkID: ccl.ccSupport.peerNetworkID, PeerID: ccl.ccSupport.peerID, Version: ccl.cccid.Version}
-	sir := container.StartImageReq{CCID: ccid, Builder: ccl.builder, Args: args, Env: env, FilesToUpload: filesToUpload, PrelaunchFunc: preLaunchFunc}
-	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), ccl.ccSupport)
+	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), ccl.support)
+	sir := container.StartImageReq{
+		CCID: ccintf.CCID{
+			ChaincodeSpec: ccl.cds.ChaincodeSpec,
+			NetworkID:     ccl.support.peerNetworkID,
+			PeerID:        ccl.support.peerID,
+			Version:       ccl.version,
+		},
+		Builder:       ccl.builder,
+		Args:          args,
+		Env:           env,
+		FilesToUpload: filesToUpload,
+		PrelaunchFunc: preLaunchFunc,
+	}
+	vmtype, err := ccl.support.getVMType(ccl.cds)
+	if err != nil {
+		return container.VMCResp{}, err
+	}
 
-	vmtype, _ := ccl.ccSupport.getVMType(ccl.cds)
-	resp, err := container.VMCProcess(ipcCtxt, vmtype, sir)
-
-	return resp, err
+	return container.VMCProcess(ipcCtxt, vmtype, sir)
 }
 
 //launchAndWaitForRegister will launch container if not already running. Use
@@ -673,9 +682,16 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 			}
 		}
 
-		builder := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
-
-		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, &ccLauncherImpl{context, chaincodeSupport, cccid, cds, builder})
+		launcher := &ccLauncherImpl{
+			support:       chaincodeSupport,
+			canonicalName: cccid.GetCanonicalName(),
+			version:       cccid.Version,
+			cds:           cds,
+			builder: func() (io.Reader, error) {
+				return platforms.GenerateDockerBuild(cds)
+			},
+		}
+		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, launcher)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed: %+v", err)
 			return cID, cMsg, err
