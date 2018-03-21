@@ -13,7 +13,6 @@ excluded_packages=(
     "github.com/hyperledger/fabric/build/"
     "github.com/hyperledger/fabric/common/ledger/testutil"
     "github.com/hyperledger/fabric/common/mocks"
-    "github.com/hyperledger/fabric/core/chaincode/platforms/car/test" # until FAB-7629 is resolved
     "github.com/hyperledger/fabric/core/deliverservice/mocks"
     "github.com/hyperledger/fabric/core/ledger/kvledger/example"
     "github.com/hyperledger/fabric/core/ledger/kvledger/marble_example"
