@@ -43,3 +43,10 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 	})
 	assert.True(t, op.PrivateChannelData())
 }
+
+func TestChaincodeLifecycleExperimental(t *testing.T) {
+	op := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationChaincodeLifecycleExperimental: {},
+	})
+	assert.True(t, op.MetadataLifecycle())
+}

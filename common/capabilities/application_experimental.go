@@ -20,6 +20,8 @@ func (ap *ApplicationProvider) HasCapability(capability string) bool {
 		return true
 	case ApplicationResourcesTreeExperimental:
 		return true
+	case ApplicationChaincodeLifecycleExperimental:
+		return true
 	default:
 		return false
 	}
