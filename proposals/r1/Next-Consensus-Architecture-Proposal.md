@@ -1,3 +1,6 @@
+*This document was written in early 2016 and remains here for reference. As of 2018 the architecture is described in the paper [Hyperledger Fabric: A Distributed Operating System for Permissioned Blockchains](https://arxiv.org/abs/1801.10228).*
+
+
 Authors: Elli Androulaki, Christian Cachin, Konstantinos Christidis, Chet Murthy, Binh Nguyen, and Marko Vukolić
 
 This page documents the architecture of a blockchain infrastructure with the roles of a blockchain node separated into roles of *peers* (who maintain state/ledger) and *orderers* (who consent on the order of transactions included in the ledger). In common blockchain architectures (including Hyperledger Fabric v0.6 and earlier) these roles are unified (cf. *validating peer* in Hyperledger Fabric v0.6). The architecture also introduces *endorsing peers* (endorsers), as special type of peers responsible for simulating execution and *endorsing* transactions (roughly corresponding to executing transactions in HL Fabric 0.6).
