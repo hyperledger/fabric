@@ -48,11 +48,9 @@ func TestConfigParsing(t *testing.T) {
 	for _, profile := range []string{
 		genesisconfig.SampleInsecureSoloProfile,
 		genesisconfig.SampleSingleMSPSoloProfile,
-		genesisconfig.SampleSingleMSPSoloV11Profile,
 		genesisconfig.SampleDevModeSoloProfile,
 		genesisconfig.SampleInsecureKafkaProfile,
 		genesisconfig.SampleSingleMSPKafkaProfile,
-		genesisconfig.SampleSingleMSPKafkaV11Profile,
 		genesisconfig.SampleDevModeKafkaProfile,
 	} {
 		t.Run(profile, func(t *testing.T) {
@@ -93,6 +91,7 @@ func TestGoodChannelCreateConfigUpdate(t *testing.T) {
 func TestChannelCreateWithResources(t *testing.T) {
 	t.Run("AtV1.0", func(t *testing.T) {
 		createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+		createConfig.Application.Capabilities = nil
 
 		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
 		assert.NoError(t, err)
@@ -101,7 +100,7 @@ func TestChannelCreateWithResources(t *testing.T) {
 	})
 
 	t.Run("AtV1.1", func(t *testing.T) {
-		createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
+		createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		createConfig.Application.Capabilities[capabilities.ApplicationResourcesTreeExperimental] = true
 
 		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
@@ -151,7 +150,7 @@ func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
 	mspmgmt.LoadDevMsp()
 	signer := localmsp.NewSigner()
 
-	cct, err := MakeChannelCreationTransaction(channelID, signer, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile))
+	cct, err := MakeChannelCreationTransaction(channelID, signer, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
 	assert.NoError(t, err, "Making chain creation tx")
 
 	assert.NotEmpty(t, cct.Signature, "Should have signature")
@@ -191,14 +190,14 @@ func TestMakeChannelCreationTransactionNoSigner(t *testing.T) {
 
 func TestNewApplicationGroup(t *testing.T) {
 	t.Run("Application with capabilities", func(t *testing.T) {
-		config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
+		config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		group, err := NewApplicationGroup(config.Application)
 		assert.NoError(t, err)
 		assert.NotNil(t, group)
 	})
 
 	t.Run("Application unknown MSP", func(t *testing.T) {
-		config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
+		config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		config.Application.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
 		group, err := NewApplicationGroup(config.Application)
 		assert.Error(t, err)

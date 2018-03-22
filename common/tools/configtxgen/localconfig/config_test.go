@@ -21,14 +21,9 @@ func TestLoadProfile(t *testing.T) {
 	pNames := []string{
 		SampleDevModeKafkaProfile,
 		SampleDevModeSoloProfile,
-		SampleInsecureKafkaProfile,
-		SampleInsecureSoloProfile,
 		SampleSingleMSPChannelProfile,
-		SampleSingleMSPChannelV11Profile,
 		SampleSingleMSPKafkaProfile,
-		SampleSingleMSPKafkaV11Profile,
 		SampleSingleMSPSoloProfile,
-		SampleSingleMSPSoloV11Profile,
 	}
 	for _, pName := range pNames {
 		t.Run(pName, func(t *testing.T) {

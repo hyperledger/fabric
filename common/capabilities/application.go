@@ -16,6 +16,9 @@ const (
 	// ApplicationV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 application capabilities.
 	ApplicationV1_1 = "V1_1"
 
+	// ApplicationV1_2 is the capabilties string for standard new non-backwards compatible fabric v1.2 application capabilities.
+	ApplicationV1_2 = "V1_2"
+
 	// ApplicationPvtDataExperimental is the capabilties string for private data using the experimental feature of collections/sideDB.
 	ApplicationPvtDataExperimental = "V1_1_PVTDATA_EXPERIMENTAL"
 
@@ -27,6 +30,7 @@ const (
 type ApplicationProvider struct {
 	*registry
 	v11                          bool
+	v12                          bool
 	v11PvtDataExperimental       bool
 	v11ResourcesTreeExperimental bool
 }
@@ -36,6 +40,7 @@ func NewApplicationProvider(capabilities map[string]*cb.Capability) *Application
 	ap := &ApplicationProvider{}
 	ap.registry = newRegistry(ap, capabilities)
 	_, ap.v11 = capabilities[ApplicationV1_1]
+	_, ap.v12 = capabilities[ApplicationV1_2]
 	_, ap.v11PvtDataExperimental = capabilities[ApplicationPvtDataExperimental]
 	_, ap.v11ResourcesTreeExperimental = capabilities[ApplicationResourcesTreeExperimental]
 	return ap
@@ -54,7 +59,7 @@ func (ap *ApplicationProvider) ResourcesTree() bool {
 // ForbidDuplicateTXIdInBlock specifies whether two transactions with the same TXId are permitted
 // in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
 func (ap *ApplicationProvider) ForbidDuplicateTXIdInBlock() bool {
-	return ap.v11
+	return ap.v11 || ap.v12
 }
 
 // PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
@@ -65,5 +70,5 @@ func (ap *ApplicationProvider) PrivateChannelData() bool {
 // V1_1Validation returns true is this channel is configured to perform stricter validation
 // of transactions (as introduced in v1.1).
 func (ap *ApplicationProvider) V1_1Validation() bool {
-	return ap.v11
+	return ap.v11 || ap.v12
 }
