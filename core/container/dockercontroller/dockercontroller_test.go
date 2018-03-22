@@ -131,7 +131,7 @@ func Test_Start(t *testing.T) {
 	err = dvm.Start(ctx, ccid, args, env, files, nil, nil)
 	testerr(t, err, false)
 
-	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
+	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/example01/cmd"
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}

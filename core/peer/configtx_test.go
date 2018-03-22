@@ -8,6 +8,7 @@ package peer
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -34,7 +35,16 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func setupPeerFS(t *testing.T) (cleanup func()) {
+	tempDir, err := ioutil.TempDir("", "peer-fs")
+	require.NoError(t, err)
+
+	viper.Set("peer.fileSystemPath", tempDir)
+	return func() { os.RemoveAll(tempDir) }
+}
 
 func TestConfigTxSerializeDeserialize(t *testing.T) {
 	helper := &testHelper{}
@@ -74,8 +84,8 @@ func TestConfigTxExtractFullConfigFromSeedTx(t *testing.T) {
 
 func TestConfigTxCreateLedger(t *testing.T) {
 	helper := &testHelper{}
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
-	defer os.RemoveAll("/var/hyperledger/test/")
+	cleanup := setupPeerFS(t)
+	defer cleanup()
 
 	chainid := "testchain1"
 	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
@@ -99,8 +109,8 @@ func TestConfigTxCreateLedger(t *testing.T) {
 
 func TestConfigTxUpdateResConfig(t *testing.T) {
 	helper := &testHelper{}
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
-	defer os.RemoveAll("/var/hyperledger/test/")
+	cleanup := setupPeerFS(t)
+	defer cleanup()
 	chainid := "testchain1"
 	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
 	defer ledgermgmt.CleanupTestEnv()
@@ -163,8 +173,8 @@ func TestConfigTxUpdateResConfig(t *testing.T) {
 }
 
 func TestGenesisBlockCreateLedger(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
-	defer os.RemoveAll("/var/hyperledger/test/")
+	cleanup := setupPeerFS(t)
+	defer cleanup()
 
 	b, err := configtxtest.MakeGenesisBlock("testchain")
 	assert.NoError(t, err)

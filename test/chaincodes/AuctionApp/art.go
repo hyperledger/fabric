@@ -243,7 +243,7 @@ func main() {
 	// Start the shim -- running the fabric
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {
-		fmt.Println("Error starting Item Fun Application chaincode: %s", err)
+		fmt.Printf("Error starting Item Fun Application chaincode: %s\n", err)
 	}
 
 }
@@ -359,7 +359,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, function stri
 			return (response)
 		}
 	} else {
-		fmt.Println("Invoke() Invalid recType : ", args, "\n")
+		fmt.Println("Invoke() Invalid recType : ", args)
 		error_str := "Invoke() : Invalid recType : " + args[0]
 		return shim.Error(error_str)
 	}
@@ -565,7 +565,7 @@ func GetAuctionRequest(stub shim.ChaincodeStubInterface, function string, args [
 		return shim.Error(jsonResp)
 	}
 
-	fmt.Println("GetAuctionRequest() : Response : Successful - \n")
+	fmt.Println("GetAuctionRequest() : Response : Successful - ")
 	return shim.Success(Avalbytes)
 }
 
@@ -715,7 +715,7 @@ func PostItem(stub shim.ChaincodeStubInterface, function string, args []string) 
 
 	itemObject, err := CreateItemObject(args[0:])
 	if err != nil {
-		fmt.Println("PostItem(): Cannot create item object \n")
+		fmt.Println("PostItem(): Cannot create item object ")
 		return shim.Error("PostItem(): Cannot create item object")
 	}
 
@@ -741,14 +741,14 @@ func PostItem(stub shim.ChaincodeStubInterface, function string, args []string) 
 		keys := []string{args[0]}
 		err = UpdateObject(stub, "Item", keys, buff)
 		if err != nil {
-			fmt.Println("PostItem() : write error while inserting record\n")
+			fmt.Println("PostItem() : write error while inserting record")
 			return shim.Error("PostItem() : write error while inserting record : " + err.Error())
 		}
 
 		// Put an entry into the Item History Table
 		response := PostItemLog(stub, itemObject, "INITIAL", "DEFAULT", args[12])
 		if response.Status != shim.OK {
-			fmt.Println("PostItemLog() : write error while inserting record\n")
+			fmt.Println("PostItemLog() : write error while inserting record")
 			return shim.Error("PostItemLog() : write error while inserting record : Error : " + err.Error())
 		}
 
@@ -757,7 +757,7 @@ func PostItem(stub shim.ChaincodeStubInterface, function string, args []string) 
 		keys = []string{"2016", args[6], args[0]}
 		err = UpdateObject(stub, "ItemCat", keys, buff)
 		if err != nil {
-			fmt.Println("PostItem() : Write error while inserting record into ItemCat \n")
+			fmt.Println("PostItem() : Write error while inserting record into ItemCat ")
 			return shim.Error("PostItem() : Write error while inserting record into ItemCat :   Error : " + err.Error())
 		}
 	}
@@ -795,7 +795,7 @@ func CreateItemObject(args []string) (ItemObject, error) {
 	if _, err := os.Stat(imagePath); err == nil {
 		fmt.Println(imagePath, "  exists!")
 	} else {
-		fmt.Println("CreateItemObject(): Cannot find or load Picture File = %s :  %s\n", imagePath, err)
+		fmt.Printf("CreateItemObject(): Cannot find or load Picture File = %s :  %s\n", imagePath, err)
 		return myItem, errors.New("CreateItemObject(): ART Picture File not found " + imagePath)
 	}
 
@@ -879,7 +879,7 @@ func TransferItem(stub shim.ChaincodeStubInterface, function string, args []stri
 	var err error
 
 	if len(args) < 6 {
-		fmt.Println("TransferItem() : Requires 6 arguments Item#, Owner#, Key#, newOwnerID#, XFER \n")
+		fmt.Println("TransferItem() : Requires 6 arguments Item#, Owner#, Key#, newOwnerID#, XFER ")
 		return shim.Error("TransferItem() : Requires 6 arguments Item#, Owner#, Key#, newOwnerID#, XFER")
 	}
 
@@ -946,7 +946,7 @@ func TransferItem(stub shim.ChaincodeStubInterface, function string, args []stri
 
 	response = PostItemLog(stub, myItem, "Transfer", args[1], args[5])
 	if response.Status != shim.OK {
-		fmt.Println("TransferItem() : PostItemLog() write error while inserting record\n")
+		fmt.Println("TransferItem() : PostItemLog() write error while inserting record")
 		return shim.Error(err.Error())
 	}
 
@@ -1040,7 +1040,7 @@ func PostItemLog(stub shim.ChaincodeStubInterface, item ItemObject, status strin
 		keys := []string{iLog.ItemID, iLog.Status, iLog.AuctionedBy, currentDateTime}
 		err = UpdateObject(stub, "ItemHistory", keys, buff)
 		if err != nil {
-			fmt.Println("PostItemLog() : write error while inserting record\n")
+			fmt.Println("PostItemLog() : write error while inserting record")
 			return shim.Error(err.Error())
 		}
 	}
@@ -1101,7 +1101,7 @@ func PostAuctionRequest(stub shim.ChaincodeStubInterface, function string, args 
 		keys := []string{args[0]}
 		err = UpdateObject(stub, "Auction", keys, buff)
 		if err != nil {
-			fmt.Println("PostAuctionRequest() : write error while inserting record\n")
+			fmt.Println("PostAuctionRequest() : write error while inserting record")
 			return shim.Error(err.Error())
 		}
 
@@ -1111,7 +1111,7 @@ func PostAuctionRequest(stub shim.ChaincodeStubInterface, function string, args 
 		io, err := JSONtoAR(itemObject)
 		response := PostItemLog(stub, io, "ReadyForAuc", ar.AuctionHouseID, ar.TimeStamp)
 		if response.Status != shim.OK {
-			fmt.Println("PostItemLog() : write error while inserting record\n")
+			fmt.Println("PostItemLog() : write error while inserting record")
 			return shim.Error(err.Error())
 		}
 
@@ -1122,7 +1122,7 @@ func PostAuctionRequest(stub shim.ChaincodeStubInterface, function string, args 
 		keys = []string{"2016", args[0]}
 		err = UpdateObject(stub, "AucInit", keys, buff)
 		if err != nil {
-			fmt.Println("PostAuctionRequest() : write error while inserting record into AucInit\n")
+			fmt.Println("PostAuctionRequest() : write error while inserting record into AucInit")
 			return shim.Error(err.Error())
 		}
 
@@ -1211,7 +1211,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 	// Post an Item Log
 	itemObject, err := JSONtoAR(lastUpdatedItemOBCObject)
 	if err != nil {
-		fmt.Println("PostTransaction() : Conversion error JSON to ItemRecord\n")
+		fmt.Println("PostTransaction() : Conversion error JSON to ItemRecord")
 		return shim.Error(err.Error())
 	}
 
@@ -1221,7 +1221,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 
 	response = PostItemLog(stub, itemObject, "NA", "DEFAULT", args[5])
 	if response.Status != shim.OK {
-		fmt.Println("PostTransaction() : write error while inserting item log record\n")
+		fmt.Println("PostTransaction() : write error while inserting item log record")
 		return shim.Error(err.Error())
 	}
 
@@ -1238,11 +1238,11 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 	keys := []string{args[0], args[3]}
 	err = UpdateObject(stub, "Trans", keys, buff)
 	if err != nil {
-		fmt.Println("PostTransaction() : write error while inserting record\n")
+		fmt.Println("PostTransaction() : write error while inserting record")
 		return shim.Error(err.Error())
 	}
 
-	fmt.Println("PostTransaction() : Posted Transaction Record Successfully\n")
+	fmt.Println("PostTransaction() : Posted Transaction Record Successfully")
 
 	// Returns New Key. To get Transaction Details, run GetTransaction
 
@@ -1366,7 +1366,7 @@ func PostBid(stub shim.ChaincodeStubInterface, function string, args []string) p
 		keys := []string{args[0], args[2]}
 		err = UpdateObject(stub, "Bid", keys, buff)
 		if err != nil {
-			fmt.Println("PostBid() : write error while inserting record\n")
+			fmt.Println("PostBid() : write error while inserting record")
 			return shim.Error(err.Error())
 		}
 	}
@@ -2234,7 +2234,7 @@ func OpenAuctionForBids(stub shim.ChaincodeStubInterface, function string, args 
 	// Add the Auction to Open Bucket
 	err = UpdateObject(stub, "AucOpen", keys, buff)
 	if err != nil {
-		fmt.Println("OpenAuctionForBids() : write error while inserting record into AucInit\n")
+		fmt.Println("OpenAuctionForBids() : write error while inserting record into AucInit")
 		return shim.Error(err.Error())
 	}
 
@@ -2494,7 +2494,7 @@ func UpdateAuctionStatus(stub shim.ChaincodeStubInterface, tableName string, ar 
 	keys := []string{ar.AuctionID}
 	err = ReplaceObject(stub, "Auction", keys, buff)
 	if err != nil {
-		fmt.Println("UpdateAuctionStatus() : write error while inserting record\n")
+		fmt.Println("UpdateAuctionStatus() : write error while inserting record")
 		return shim.Error(err.Error())
 	}
 	return shim.Success(buff)
@@ -2526,7 +2526,7 @@ func ProcessQueryResult(stub shim.ChaincodeStubInterface, Avalbytes []byte, args
 
 		ar, err := JSONtoAR(Avalbytes) //
 		if err != nil {
-			fmt.Println("ProcessRequestType(): Cannot create itemObject \n")
+			fmt.Println("ProcessRequestType(): Cannot create itemObject ")
 			return err
 		}
 		// Decrypt Image and Save Image in a file
@@ -2595,6 +2595,5 @@ func ProcessQueryResult(stub shim.ChaincodeStubInterface, Avalbytes []byte, args
 	default:
 		return errors.New("Unknown")
 	}
-	return nil
 
 }

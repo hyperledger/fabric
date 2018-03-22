@@ -21,7 +21,7 @@ Feature: Peer Service
 Scenario Outline: FAB-3505: Test chaincode example02 deploy, invoke, and query
   Given I have a bootstrapped fabric network of type <type>
   And I wait "<waitTime>" seconds
-  When a user deploys chaincode at path "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with ["init","a","1000","b","2000"] with name "mycc"
+  When a user deploys chaincode at path "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd" with ["init","a","1000","b","2000"] with name "mycc"
   And I wait "5" seconds
   Then the chaincode is deployed
   When a user queries on the chaincode named "mycc" with args ["query","a"]

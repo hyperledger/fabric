@@ -27,7 +27,7 @@ do
     echo ">>>Checking code under $i/"
 
     echo "Checking with gofmt"
-    OUTPUT="$(gofmt -l -s ./$i)"
+    OUTPUT="$(gofmt -l -s ./$i | grep -v testdata/ || true)"
     if [[ $OUTPUT ]]; then
         echo "The following files contain gofmt errors"
         echo "$OUTPUT"
@@ -36,7 +36,7 @@ do
     fi
 
     echo "Checking with goimports"
-    OUTPUT="$(goimports -srcdir $GOPATH/src/github.com/hyperledger/fabric -l $i)"
+    OUTPUT="$(goimports -srcdir $GOPATH/src/github.com/hyperledger/fabric -l $i | grep -v testdata/ || true )"
     if [[ $OUTPUT ]]; then
         echo "The following files contain goimports errors"
         echo $OUTPUT

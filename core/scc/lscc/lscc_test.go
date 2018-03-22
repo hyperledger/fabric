@@ -112,7 +112,7 @@ func TestInstall(t *testing.T) {
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(INSTALL)}, nil)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub)
 	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub)
@@ -163,7 +163,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 }
 
 func TestDeploy(t *testing.T) {
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil)
@@ -303,7 +303,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 
 // TestUpgrade tests the upgrade function with various inputs for basic use cases
 func TestUpgrade(t *testing.T) {
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", nil, nil)
 	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error(), nil, nil)

@@ -69,7 +69,7 @@ installChaincode () {
                 do
                         PEER=$i
                         setGlobals $PEER
-                        peer chaincode install -n $CHAINCODE_NAME$ch -v 1 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 >>$LOG_FILE
+                        peer chaincode install -n $CHAINCODE_NAME$ch -v 1 -p github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd >>$LOG_FILE
                         res=$?
                         verifyResult $res "Chaincode '$CHAINCODE_NAME$ch' installation on remote peer PEER$PEER has Failed"
                         echo "===================== Chaincode '$CHAINCODE_NAME$ch' is installed on PEER$PEER successfully===================== " >>$LOG_FILE

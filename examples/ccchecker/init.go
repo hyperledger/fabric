@@ -82,7 +82,7 @@ func initMSP(mainFlags *pflag.FlagSet) {
 	mainFlags.StringVarP(&mspMgrConfigDir, "mspcfgdir", "m", defaultMspDir, "Path to MSP dir")
 	mainFlags.StringVarP(&mspID, "mspid", "i", "DEFAULT", "MSP ID")
 
-	err = common.InitCrypto(mspMgrConfigDir, mspID)
+	err = common.InitCrypto(mspMgrConfigDir, mspID, "bccsp")
 	if err != nil {
 		panic(err.Error())
 	}

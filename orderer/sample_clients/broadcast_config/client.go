@@ -31,9 +31,6 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
-var conf *config.TopLevel
-var genConf *genesisconfig.Profile
-
 type broadcastClient struct {
 	ab.AtomicBroadcast_BroadcastClient
 }
@@ -69,7 +66,11 @@ type argsImpl struct {
 	chainID        string
 }
 
+var conf *config.TopLevel
+var genConf *genesisconfig.Profile
+
 func init() {
+	var err error
 	conf, err = config.Load()
 	if err != nil {
 		fmt.Println("failed to load config:", err)

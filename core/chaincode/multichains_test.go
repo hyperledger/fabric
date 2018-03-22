@@ -39,7 +39,7 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 
 	var ctxt = context.Background()
 
-	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	url := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url, Version: "0"}
 
 	args := []string{"a", "b", "10"}

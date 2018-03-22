@@ -23,6 +23,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testerr(err error, succ bool) error {
@@ -139,7 +140,7 @@ func Test_DeploymentPayload(t *testing.T) {
 	platform := &Platform{}
 	spec := &pb.ChaincodeSpec{
 		ChaincodeId: &pb.ChaincodeID{
-			Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+			Path: "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd",
 		},
 	}
 
@@ -257,32 +258,52 @@ func TestValidateSpec(t *testing.T) {
 	}
 }
 
+func updateGopath(t *testing.T, path string) func() {
+	initialGopath, set := os.LookupEnv("GOPATH")
+
+	if path == "" {
+		err := os.Unsetenv("GOPATH")
+		require.NoError(t, err)
+	} else {
+		err := os.Setenv("GOPATH", path)
+		require.NoError(t, err)
+	}
+
+	if !set {
+		return func() { os.Unsetenv("GOPATH") }
+	}
+	return func() { os.Setenv("GOPATH", initialGopath) }
+}
+
 func TestGetDeploymentPayload(t *testing.T) {
-	emptyDir := fmt.Sprintf("pkg%d", os.Getpid())
-	os.Mkdir(emptyDir, os.ModePerm)
-	defer os.Remove(emptyDir)
+	defaultGopath := os.Getenv("GOPATH")
+	testdataPath, err := filepath.Abs("testdata")
+	require.NoError(t, err)
 
 	platform := &Platform{}
 
 	var tests = []struct {
-		spec *pb.ChaincodeSpec
-		succ bool
+		gopath string
+		spec   *pb.ChaincodeSpec
+		succ   bool
 	}{
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/bad/go/map"}}, succ: false},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/test/chaincodes/BadImport"}}, succ: false},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/test/chaincodes/BadMetadataInvalidIndex"}}, succ: false},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/test/chaincodes/BadMetadataUnexpectedFolderContent"}}, succ: false},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/test/chaincodes/BadMetadataIgnoreHiddenFile"}}, succ: true},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/" + emptyDir}}, succ: false},
+		{gopath: defaultGopath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
+		{gopath: defaultGopath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/bad/go/map"}}, succ: false},
+		{gopath: testdataPath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "chaincodes/BadImport"}}, succ: false},
+		{gopath: testdataPath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "chaincodes/BadMetadataInvalidIndex"}}, succ: false},
+		{gopath: testdataPath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "chaincodes/BadMetadataUnexpectedFolderContent"}}, succ: false},
+		{gopath: testdataPath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "chaincodes/BadMetadataIgnoreHiddenFile"}}, succ: true},
+		{gopath: testdataPath, spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "chaincodes/empty/"}}, succ: false},
 	}
 
 	for _, tst := range tests {
+		reset := updateGopath(t, tst.gopath)
 		_, err := platform.GetDeploymentPayload(tst.spec)
 		t.Log(err)
 		if err = testerr(err, tst.succ); err != nil {
 			t.Errorf("Error validating chaincode spec: %s, %s", tst.spec.ChaincodeId.Path, err)
 		}
+		reset()
 	}
 }
 

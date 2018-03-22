@@ -75,7 +75,7 @@ Scenario: FAB-3851: Message Payloads Greater than 1MB
 Scenario: FAB-4686: Test taking down all kafka brokers and bringing back last 3
     Given I have a bootstrapped fabric network of type kafka
     And I wait "60" seconds
-    When a user deploys chaincode at path "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with ["init","a","1000","b","2000"] with name "mycc"
+    When a user deploys chaincode at path "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd" with ["init","a","1000","b","2000"] with name "mycc"
     And I wait "30" seconds
     Then the chaincode is deployed
     When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
