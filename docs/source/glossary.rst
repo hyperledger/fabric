@@ -237,8 +237,16 @@ peer on the channel.
 Member
 ------
 
-A legally separate entity that owns a unique root certificate for the network.
-Network components such as peer nodes and application clients will be linked to a member.
+Also known as "organizations", members in a blockchain network, similar to the
+members of any group, form the structure of the network. A member can be as large
+as a multi-national corporation or as small as an individual. Members are enrolled
+into the network with a certificate that grants them permissions to use the
+network as either a service provider (for example, issuing certificates,
+validating/ordering transactions) or as a consumer. The former provides
+foundational blockchain services that include transaction validation,
+transaction ordering, and certificate management services. Consumer members use
+the network to invoke transactions against the distributed ledger. Members can
+have multiple Peers.
 
 .. _MSP:
 
@@ -276,6 +284,12 @@ first-come-first-serve basis for all channel's on the network.  The ordering ser
 designed to support pluggable implementations beyond the out-of-the-box SOLO and Kafka varieties.
 The ordering service is a common binding for the overall network; it contains the cryptographic
 identity material tied to each Member_.
+
+.. _Organization:
+
+Organization
+-----------------
+See Member.
 
 .. _Peer:
 
