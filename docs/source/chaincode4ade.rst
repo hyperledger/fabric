@@ -4,18 +4,18 @@ Chaincode for Developers
 What is Chaincode?
 ------------------
 
-Chaincode is a program, written in `Go <https://golang.org>`_, `node.js <https://nodejs.org>`_,
+Chaincode is a program, written in `Go <https://golang.org>`_ or `node.js <https://nodejs.org>`_,
 that implements a prescribed interface. Eventually, other programming languages such as Java,
 will be supported. Chaincode runs in a secured Docker container isolated from
 the endorsing peer process. Chaincode initializes and manages the ledger state
 through transactions submitted by applications.
 
 A chaincode typically handles business logic agreed to by members of the
-network, so it similar to a "smart contract". A chaincode can be invoked to update or query 
+network, so it is similar to a "smart contract". A chaincode can be invoked to update or query 
 the ledger in a proposal transaction. Given the appropriate permission, a chaincode 
 may invoke another chaincode, either in the same channel or in different channels, to access its state. 
 Note that, if the called chaincode is on a different channel from the calling chaincode,
-only read query is allowed. That is, the called chaincode on a different channel is only a `Query`,
+only read queries are allowed. That is, the called chaincode on a different channel is only a `Query`,
 which does not participate in state validation checks in subsequent commit phase.
 
 In the following sections, we will explore chaincode through the eyes of an
@@ -58,7 +58,7 @@ Our application is a basic sample chaincode to create assets
 Choosing a Location for the Code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you haven't been doing programming in Go, you may want to make sure that
+If you haven't been programming in Go, you may want to make sure that
 you have :ref:`Golang` installed and your system properly configured.
 
 Now, you will want to create a directory for your chaincode application as a
