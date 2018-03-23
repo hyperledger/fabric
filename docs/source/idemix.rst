@@ -193,7 +193,7 @@ security proofs.
 Identity Mixer code for Hyperledger
 -----------------------------------
 
-Identity Mixer contribution to the Hyperledger fabric will consist of the
+Identity Mixer contribution to the Hyperledger Fabric will consist of the
   following packages:
   - a core Identity Mixer crypto package that
   implements creating issuer keys, issuing credentials, and generating
@@ -214,7 +214,7 @@ Overview of the current (MVP) contribution and features
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The MVP part of the Identity Mixer contribution
-to the Hyperledger fabric consists of the following packages:
+to the Hyperledger Fabric consists of the following packages:
 
 * a core Identity Mixer crypto package (in Go lang) that implements basic cryptographic algorithms (key generation, signing, verification, zero-knowledge proofs);
 * a membership service provider (MSP) implementation for signing and verifying the transactions using the Identity Mixer crypto package;
@@ -231,7 +231,7 @@ The first version of the Identity Mixer crypto library provides the following fu
 Dependencies
 ~~~~~~~~~~~~
 
-Identity Mixer implementation in GO for the Hyperledger fabric requires
+Identity Mixer implementation in GO for the Hyperledger Fabric requires
 only one additional dependency - a `fork <https://github.com/manudrijvers/amcl/go>`__ from the `Miracl
 crypto library <https://github.com/miracl/amcl/tree/master/go>`__ - both
 are licensed under Apache v2.0.
