@@ -52,6 +52,12 @@ type EncrypterEntity interface {
 	Encrypter
 }
 
+// SignerEntity is an entity which is capable of signing
+type SignerEntity interface {
+	Entity
+	Signer
+}
+
 // EncrypterSignerEntity is an entity which is capable of performing
 // encryption and of generating signatures
 type EncrypterSignerEntity interface {
