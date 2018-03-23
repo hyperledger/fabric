@@ -26,6 +26,7 @@ type MockApplicationCapabilities struct {
 	ResourcesTreeRv              bool
 	PrivateChannelDataRv         bool
 	V1_1ValidationRv             bool
+	MetadataLifecycleRv          bool
 }
 
 func (mac *MockApplicationCapabilities) Supported() error {
@@ -46,4 +47,8 @@ func (mac *MockApplicationCapabilities) PrivateChannelData() bool {
 
 func (mac *MockApplicationCapabilities) V1_1Validation() bool {
 	return mac.V1_1ValidationRv
+}
+
+func (mac *MockApplicationCapabilities) MetadataLifecycle() bool {
+	return mac.MetadataLifecycleRv
 }

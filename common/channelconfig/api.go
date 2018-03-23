@@ -129,6 +129,11 @@ type ApplicationCapabilities interface {
 	// V1_1Validation returns true is this channel is configured to perform stricter validation
 	// of transactions (as introduced in v1.1).
 	V1_1Validation() bool
+
+	// MetadataLifecycle indicates whether the peer should use the deprecated and problematic
+	// v1.0/v1.1 lifecycle, or whether it should use the newer per channel peer local chaincode
+	// metadata package approach planned for release with Fabric v1.2
+	MetadataLifecycle() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
