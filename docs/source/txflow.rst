@@ -57,11 +57,11 @@ made to the ledger at this point. The set of these values, along with the
 endorsing peer’s signature is passed back as a “proposal response” to the SDK
 which parses the payload for the application to consume.
 
-*{The MSP is a peer component that allows them to verify
-transaction requests arriving from clients and to sign transaction results(endorsements).
-The Writing policy is defined at channel creation time, and determines
-which user is entitled to submit a transaction to that channel.}*
-
+.. note:: The MSP is a peer component that allows peers to verify
+          transaction requests arriving from clients and to sign transaction
+          results (endorsements). The writing policy is defined at channel
+          creation time and determines which users are entitled to submit a
+          transaction to that channel.
 
 .. image:: images/step3.png
 
@@ -109,8 +109,6 @@ notify the client application that the transaction (invocation) has been
 immutably appended to the chain, as well as notification of whether the
 transaction was validated or invalidated.
 
-**Note**: See the :ref:`swimlane` diagram to better understand the server side flow and the
-protobuffers.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
