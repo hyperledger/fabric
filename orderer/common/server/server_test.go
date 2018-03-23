@@ -137,7 +137,7 @@ func TestBroadcastMsgTrace(t *testing.T) {
 func TestDeliverMsgTrace(t *testing.T) {
 	testMsgTrace(func(dir string, msg *cb.Envelope) recvr {
 		return &deliverMsgTracer{
-			DeliverSupport: &mockDeliverSrv{
+			Receiver: &mockDeliverSrv{
 				msg: msg,
 			},
 			msgTracer: msgTracer{
