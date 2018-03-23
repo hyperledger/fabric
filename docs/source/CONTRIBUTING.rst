@@ -105,7 +105,7 @@ little more time.
 Reviewing submitted Change Requests (CRs)
 -----------------------------------------
 
-Another way to contribute and learn about Hyperledgr Fabric is to help the
+Another way to contribute and learn about Hyperledger Fabric is to help the
 maintainers with the review of the CRs that are open. Indeed
 maintainers have the difficult role of having to review all the CRs
 that are being submitted and evaluate whether they should be merged or
