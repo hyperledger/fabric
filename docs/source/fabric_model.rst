@@ -44,10 +44,10 @@ Chaincode
 ---------
 
 Chaincode is software defining an asset or assets, and the transaction instructions for
-modifying the asset(s).  In other words, it's the business logic.  Chaincode enforces the rules for reading
-or altering key value pairs or other state database information. Chaincode functions execute against
+modifying the asset(s); in other words, it's the business logic.  Chaincode enforces the rules for reading
+or altering key-value pairs or other state database information. Chaincode functions execute against
 the ledger's current state database and are initiated through a transaction proposal. Chaincode execution
-results in a set of key value writes (write set) that can be submitted to the network and applied to
+results in a set of key-value writes (write set) that can be submitted to the network and applied to
 the ledger on all peers.
 
 .. _Ledger-Features:
@@ -74,7 +74,7 @@ channel. Each peer maintains a copy of the ledger for each channel of which they
 - Prior to appending a block, a versioning check is performed to ensure that states for assets that were read have not changed since chaincode execution time
 - There is immutability once a transaction is validated and committed
 - A channel's ledger contains a configuration block defining policies, access control lists, and other pertinent information
-- Channel's contain :ref:`MSP` instances allowing for crypto materials to be derived from different certificate authorities
+- Channels contain :ref:`MSP` instances allowing for crypto materials to be derived from different certificate authorities
 
 See the :doc:`ledger` topic for a deeper dive on the databases, storage structure, and "query-ability."
 
@@ -85,9 +85,9 @@ Privacy through Channels
 
 Hyperledger Fabric employs an immutable ledger on a per-channel basis, as well as
 chaincodes that can manipulate and modify the current state of assets (i.e. update
-key value pairs).  A ledger exists in the scope of a channel - it can be shared
+key-value pairs).  A ledger exists in the scope of a channel - it can be shared
 across the entire network (assuming every participant is operating on one common
-channel) - or it can be privatized to only include a specific set of participants.
+channel) - or it can be privatized to include only a specific set of participants.
 
 In the latter scenario, these participants would create a separate channel and
 thereby isolate/segregate their transactions and ledger.  In order to solve
@@ -99,8 +99,8 @@ a peer, it will not be able to properly interface with the ledger).
 To further obfuscate the data, values within chaincode can be encrypted
 (in part or in total) using common cryptographic algorithms such as AES before
 sending transactions to the ordering service and appending blocks to the ledger.
-Once encrypted data has been written to the ledger, it can only be decrypted by
-a user in possession of the corresponding key that was used to generate the cipher text.  
+Once encrypted data has been written to the ledger, it can be decrypted only by
+a user in possession of the corresponding key that was used to generate the cipher text.
 For further details on chaincode encryption, see the :doc:`chaincode4ade` topic.
 
 .. _Security-Membership-Services:
@@ -133,7 +133,7 @@ transaction flow, from proposal and endorsement, to ordering, validation and com
 In a nutshell, consensus is defined as the full-circle verification of the correctness of
 a set of transactions comprising a block.
 
-Consensus is ultimately achieved when the order and results of a block's
+Consensus is achieved ultimately when the order and results of a block's
 transactions have met the explicit policy criteria checks. These checks and balances
 take place during the lifecycle of a transaction, and include the usage of
 endorsement policies to dictate which specific members must endorse a certain
@@ -150,10 +150,10 @@ executed against non-static variables.
 In addition to the multitude of endorsement, validity and versioning checks that
 take place, there are also ongoing identity verifications happening in all
 directions of the transaction flow.  Access control lists are implemented on
-hierarchal layers of the network (ordering service down to channels), and
+hierarchical layers of the network (ordering service down to channels), and
 payloads are repeatedly signed, verified and authenticated as a transaction proposal passes
 through the different architectural components.  To conclude, consensus is not
-merely limited to the agreed upon order of a batch of transactions, but rather,
+merely limited to the agreed upon order of a batch of transactions; rather,
 it is an overarching characterization that is achieved as a byproduct of the ongoing
 verifications that take place during a transaction's journey from proposal to
 commitment.
