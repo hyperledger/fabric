@@ -11,7 +11,7 @@ it from alternative blockchain solutions. Planning for the future of enterprise
 blockchain requires building on top of a fully vetted, open-source architecture;
 Hyperledger Fabric is your starting point.
 
-We recommended first-time users begin by going through the rest of the
+We recommend first-time users begin by going through the rest of the
 introduction below in order to gain familiarity with how blockchains work
 and with the specific features and components of Hyperledger Fabric.
 
@@ -41,7 +41,7 @@ simple to determine the provenance of information because participants can be
 sure information has not been changed after the fact. It’s why blockchains
 are sometimes described as **systems of proof**.
 
- **Smart Contracts**
+**Smart Contracts**
 
 To support the consistent update of information – and to enable a whole host of
 ledger functions (transacting, querying, etc) – a blockchain network uses **smart
@@ -61,7 +61,7 @@ automatically when the item is received.
 **Consensus**
 
 The process of keeping the ledger transactions synchronized across the network –
-to ensure that ledgers only update when transactions are approved by the appropriate
+to ensure that ledgers update only when transactions are approved by the appropriate
 participants, and that when ledgers do update, they update with the
 same transactions in the same order – is called **consensus**.
 
@@ -79,7 +79,7 @@ Why is a Blockchain useful?
 
 The transactional networks of today are little more than slightly updated
 versions of networks that have existed since business records have been kept.
-The members of a **Business Network** transact with each other, but they maintain
+The members of a **business network** transact with each other, but they maintain
 separate records of their transactions. And the things they’re transacting –
 whether it’s Flemish tapestries in the 16th century or the securities of today
 – must have their provenance established each time they’re sold to ensure that
@@ -105,7 +105,7 @@ though the needs of visibility and trust are clear.
 
 **The Blockchain Difference**
 
-What if instead of the rat’s nest of inefficiencies represented by the “modern”
+What if, instead of the rat’s nest of inefficiencies represented by the “modern”
 system of transactions, business networks had standard methods for establishing
 identity on the network, executing transactions, and storing data? What
 if establishing the provenance of an asset could be determined by looking
@@ -116,7 +116,7 @@ That business network would look more like this:
 
 .. image:: images/future_net.png
 
-This is a blockchain network. Every participant in it has their own replicated
+This is a blockchain network, wherein every participant has their own replicated
 copy of the ledger. In addition to ledger information being shared, the processes
 which update the ledger are also shared. Unlike today’s systems, where a
 participant’s **private** programs are used to update their **private** ledgers,
@@ -148,10 +148,10 @@ Where Hyperledger Fabric breaks from some other blockchain systems is that
 it is **private** and **permissioned**. Rather than an open permissionless system
 that allows unknown identities to participate in the network (requiring protocols
 like Proof of Work to validate transactions and secure the network), the members
-of a Hyperledger Fabric network enroll through a **Membership Service Provider (MSP)**.
+of a Hyperledger Fabric network enroll through a trusted **Membership Service Provider (MSP)**.
 
 Hyperledger Fabric also offers several pluggable options. Ledger data can be
-stored in multiple formats, consensus mechanisms can be switched in and out,
+stored in multiple formats, consensus mechanisms can be swapped in and out,
 and different MSPs are supported.
 
 Hyperledger Fabric also offers the ability to create **channels**, allowing a group of
@@ -170,8 +170,8 @@ every Hyperledger Fabric network they belong to.
 
 The world state component describes the state of the ledger at a given point
 in time. It’s the database of the ledger. The transaction log component records
-all transactions which have resulted in the current value of the world state.
-It’s the update history for the world state. The ledger, then, is a combination
+all transactions which have resulted in the current value of the world state;
+it’s the update history for the world state. The ledger, then, is a combination
 of the world state database and the transaction log history.
 
 The ledger has a replaceable data store for the world state. By default, this
@@ -183,8 +183,8 @@ being used by the blockchain network.
 
 Hyperledger Fabric smart contracts are written in **chaincode** and are invoked
 by an application external to the blockchain when that
-application needs to interact with the ledger. In most cases chaincode only
-interacts with the database component of the ledger, the world state (querying
+application needs to interact with the ledger. In most cases, chaincode interacts
+only with the database component of the ledger, the world state (querying
 it, for example), and not the transaction log.
 
 Chaincode can be implemented in several programming languages. The currently
