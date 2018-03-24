@@ -18,7 +18,7 @@ limitations under the License.
 ///////////////////////////////////////////////////////////////////////
 // Author : IT People - Mohan Venkataraman - table API for v1.0
 // Purpose: Explore the Hyperledger/fabric and understand
-// how to write an chain code, application/chain code boundaries
+// how to write a chaincode, application/chaincode boundaries
 // The code is not the best as it has just hammered out in a day or two
 // Feedback and updates are appreciated
 ///////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ var Objects = []string{"PARTY", "CASHTXN", "User", "UserCat", "Item", "ItemCat",
 // This information is used to dynamically Create, Update
 // Replace , and Query the Ledger
 // In this model all attributes in a table are strings
-// The chain code does both validation
+// The chaincode does both validation
 // A dummy key like 2016 in some cases is used for a query to get all rows
 //
 //              "User":        1, Key: UserID
