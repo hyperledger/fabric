@@ -97,6 +97,8 @@ identities will be rejected.
 The key difference here between local and channel MSPs is not how they function,
 but their **scope**.
 
+<a name="msp2img"></a>
+
 ![MSP2](./membership.diagram.4.png)
 
 *Local and channel MSPs. The trust domain (e.g., organization) of each
@@ -119,7 +121,7 @@ the channel or the network.
 
 You may find it helpful to see how local and channel MSPs are used by seeing
 what happens when a blockchain administrator installs and instantiates a smart
-contract, as shown in the [diagram above](MSP2).
+contract, as shown in the [diagram above](#msp2img).
 
 An administrator `B` connects to the peer with an identity issued by `RCA1`
 and stored in their local MSP. When `B` tries to install a smart contract on

@@ -76,7 +76,7 @@ This command deploys chaincode ``mycc`` with the policy ``AND('Org1.member',
 'Org2.member')`` which would require that a member of both Org1 and Org2 sign
 the transaction.
 
-Notice that, if the identity classification is enabled (see `MSP Documentation <http://hyperledger-fabric.readthedocs.io/en/latest/msp.html>`_),
+Notice that, if the identity classification is enabled (see :doc:`msp`),
 one can use the PEER role to restrict endorsement to only peers.
 
 For example:
@@ -90,7 +90,7 @@ For example:
           and any application level checks enforced by the chaincode) but will not be able
           to commit a transaction endorsed by it.  The endorsement policy needs to be modified
           to allow transactions to be committed with endorsements from the new organization
-          (see `Upgrade & invoke <http://hyperledger-fabric.readthedocs.io/en/latest/channel_update.html>`_).
+          (see :ref:`upgrade-and-invoke`).
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

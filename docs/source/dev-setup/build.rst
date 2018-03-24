@@ -56,7 +56,7 @@ Running Behave BDD Tests
 Vagrant environment. See the :doc:`development environment <devenv>` setup instructions
 if you have not already set up your Vagrant environment.
 
-`Behave <http://pythonhosted.org/behave/>`__ tests will setup networks
+`Behave <https://pypi.python.org/pypi/behave>`__ tests will setup networks
 of peers with different security and consensus configurations and verify
 that transactions run properly. To run these tests
 
