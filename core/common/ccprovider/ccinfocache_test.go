@@ -178,11 +178,11 @@ func TestCCInfoFSPeerInstance(t *testing.T) {
 	err = PutChaincodeIntoFS(ds)
 	assert.NoError(t, err)
 
-	// Get all installed chaincodes, it should not return 0 chain codes
+	// Get all installed chaincodes, it should not return 0 chaincodes
 	resp, err := GetInstalledChaincodes()
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.NotZero(t, len(resp.Chaincodes), "GetInstalledChaincodes should not have returned 0 chain codes")
+	assert.NotZero(t, len(resp.Chaincodes), "GetInstalledChaincodes should not have returned 0 chaincodes")
 
 	//get chaincode data
 	_, err = GetChaincodeData(ccname, ccver)
@@ -200,14 +200,14 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	// Set the above created directory as the chain code install path
+	// Set the above created directory as the chaincode install path
 	SetChaincodesPath(dir)
 	err = ioutil.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0777)
 	assert.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(resp.Chaincodes),
-		"Expected 0 chain codes but GetInstalledChaincodes returned %s chain codes", len(resp.Chaincodes))
+		"Expected 0 chaincodes but GetInstalledChaincodes returned %s chaincodes", len(resp.Chaincodes))
 }
 
 func TestNewCCContext(t *testing.T) {

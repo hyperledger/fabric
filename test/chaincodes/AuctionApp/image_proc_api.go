@@ -18,7 +18,7 @@ limitations under the License.
 ///////////////////////////////////////////////////////////////////////
 // Author : IT People - Mohan Venkataraman - image API
 // Purpose: Explore the Hyperledger/fabric and understand
-// how to write an chain code, application/chain code boundaries
+// how to write a chaincode, application/chaincode boundaries
 // The code is not the best as it has just hammered out in a day or two
 // Feedback and updates are appreciated
 ///////////////////////////////////////////////////////////////////////

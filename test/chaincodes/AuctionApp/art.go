@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 ///////////////////////////////////////////////////////////////////////
 // Author : IT People - Mohan Venkataraman - Auction API for v1.0
 // Purpose: Explore the Hyperledger/fabric and understand
-// how to write an chain code, application/chain code boundaries
+// how to write a chaincode, application/chaincode boundaries
 // The code is not the best as it has just hammered out in a day or two
 // Feedback and updates are appreciated
 ///////////////////////////////////////////////////////////////////////
@@ -638,7 +638,7 @@ func GetTransaction(stub shim.ChaincodeStubInterface, function string, args []st
 // registered
 // There are different types of users - Traders (TRD), Auction Houses (AH)
 // Shippers (SHP), Insurance Companies (INS), Banks (BNK)
-// While this version of the chain code does not enforce strict validation
+// While this version of the chaincode does not enforce strict validation
 // the business process recommends validating each persona for the service
 // they provide or their participation on the auction blockchain, future enhancements will do that
 // ./peer chaincode invoke -l golang -n mycc -c '{"Function": "PostUser", "Args":["100", "USER", "Ashley Hart", "TRD",  "Morrisville Parkway, #216, Morrisville, NC 27560", "9198063535", "ashley@itpeople.com", "SUNTRUST", "00017102345", "0234678"]}'
