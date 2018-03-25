@@ -40,12 +40,18 @@ bookmark those links now.
 Hyperledger Fabric SDKs
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Hyperledger Fabric intends to offer a number of SDKs for a wide variety of
-programming languages. The first two delivered SDKs are the Node.js and Java
-SDKs. We hope to provide Python, REST and Go SDKs in a subsequent release.
+Hyperledger Fabric offers a number of SDKs to support various programming
+languages. There are two officially released SDKs for Node.js and Java:
 
-  * `Hyperledger Fabric Node SDK documentation <https://fabric-sdk-node.github.io/>`__.
-  * `Hyperledger Fabric Java SDK documentation <https://github.com/hyperledger/fabric-sdk-java>`__.
+  * `Hyperledger Fabric Node SDK <https://github.com/hyperledger/fabric-sdk-node>`__ and `Node SDK documentation <https://fabric-sdk-node.github.io/>`__.
+  * `Hyperledger Fabric Java SDK <https://github.com/hyperledger/fabric-sdk-java>`__.
+
+In addition, there are three more SDKs that have not yet been officially released
+(for Python, Go and REST), but they are still available for downloading and testing:
+
+  * `Hyperledger Fabric Python SDK <https://github.com/hyperledger/fabric-sdk-py>`__.
+  * `Hyperledger Fabric Go SDK <https://github.com/hyperledger/fabric-sdk-go>`__.
+  * `Hyperledger Fabric REST SDK <https://github.com/hyperledger/fabric-sdk-rest>`__.
 
 Hyperledger Fabric CA
 ^^^^^^^^^^^^^^^^^^^^^

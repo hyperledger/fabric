@@ -325,8 +325,11 @@ for developers to write and test chaincode applications. The SDK is fully
 configurable and extensible through a standard interface. Components, including
 cryptographic algorithms for signatures, logging frameworks and state stores,
 are easily swapped in and out of the SDK. The SDK provides APIs for transaction
-processing, membership services, node traversal and event handling. The SDK
-comes in multiple flavors: Node.js, Java. and Python.
+processing, membership services, node traversal and event handling.
+
+Currently, the two officially supported SDKs are for Node.js and Java, while three
+more -- Python, Go and REST -- are not yet official but can still be downloaded
+and tested.
 
 .. _State-DB:
 
