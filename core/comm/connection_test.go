@@ -137,7 +137,6 @@ func TestClientConnections(t *testing.T) {
 
 // utility function to load up our test root certificates from testdata/certs
 func loadRootCAs() [][]byte {
-
 	rootCAs := [][]byte{}
 	for i := 1; i <= numOrgs; i++ {
 		root, err := ioutil.ReadFile(fmt.Sprintf(orgCACert, i))
@@ -157,7 +156,7 @@ func loadRootCAs() [][]byte {
 }
 
 func TestCASupport(t *testing.T) {
-
+	t.Parallel()
 	rootCAs := loadRootCAs()
 	t.Logf("loaded %d root certificates", len(rootCAs))
 	if len(rootCAs) != 6 {
@@ -190,7 +189,7 @@ func TestCASupport(t *testing.T) {
 }
 
 func TestCredentialSupport(t *testing.T) {
-
+	t.Parallel()
 	rootCAs := loadRootCAs()
 	t.Logf("loaded %d root certificates", len(rootCAs))
 	if len(rootCAs) != 6 {
@@ -303,6 +302,7 @@ func newServer(org string, port int) *srv {
 }
 
 func TestImpersonation(t *testing.T) {
+	t.Parallel()
 	// Scenario: We have 2 organizations: orgA, orgB
 	// and each of them are in their respected channels- A, B.
 	// The test would obtain credentials.TransportCredentials by calling GetDeliverServiceCredentials.

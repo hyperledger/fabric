@@ -26,7 +26,7 @@ import (
 
 var caPEM, certPEM, keyPEM, serverKey, serverPEM []byte
 var testClientCert, testServerCert tls.Certificate
-var testTimeout = 10 * time.Second // conservative
+var testTimeout = 1 * time.Second // conservative
 
 type echoServer struct{}
 
