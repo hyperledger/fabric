@@ -4,9 +4,9 @@ CouchDB as the State Database
 State Database options
 ----------------------
 
-State database options include LevelDB and CouchDB. LevelDB is the default key/value state
+State database options include LevelDB and CouchDB. LevelDB is the default key-value state
 database embedded in the peer process. CouchDB is an optional alternative external state database.
-Like the LevelDB key/value store, CouchDB can store any binary data that is modeled in chaincode
+Like the LevelDB key-value store, CouchDB can store any binary data that is modeled in chaincode
 (CouchDB attachment functionality is used internally for non-JSON binary data). But as a JSON
 document store, CouchDB additionally enables rich query against the chaincode data, when chaincode
 values (e.g. assets) are modeled as JSON data.
