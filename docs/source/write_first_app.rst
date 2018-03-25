@@ -188,7 +188,7 @@ Querying the Ledger
 -------------------
 
 Queries are how you read data from the ledger. This data is stored as a series
-of key/value pairs, and you can query for the value of a single key, multiple
+of key-value pairs, and you can query for the value of a single key, multiple
 keys, or -- if the ledger is written in a rich data storage format like JSON --
 perform complex searches against it (looking for all assets that contain
 certain keywords, for example).
@@ -235,7 +235,7 @@ It should return something like this:
 
 These are the 10 cars. A black Tesla Model S owned by Adriana, a red Ford Mustang
 owned by Brad, a violet Fiat Punto owned by Pari, and so on. The ledger is
-key/value based and in our implementation the key is ``CAR0`` through ``CAR9``.
+key-value based and, in our implementation, the key is ``CAR0`` through ``CAR9``.
 This will become particularly important in a moment.
 
 Let's take a closer look at this program.  Use an editor (e.g. atom or visual studio)
