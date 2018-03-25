@@ -195,3 +195,46 @@ func TestNewAES256EncrypterECDSASignerEntity(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, v)
 }
+
+var sKey1 string = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIBTmjidNauw8j2e8feT7PXBZhwUTeBb76mz4FHEKs6agoAoGCCqGSM49
+AwEHoUQDQgAEtgO7R2qvnqLym75fCDRNjS685g7Eeynbk5fx0Jp7iKuH/Cc4yEmV
+Fa9u0qqfXf5CybF/yhd9ZJ2l3tD+QgadAg==
+-----END EC PRIVATE KEY-----`
+var pKey1 string = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtgO7R2qvnqLym75fCDRNjS685g7E
+eynbk5fx0Jp7iKuH/Cc4yEmVFa9u0qqfXf5CybF/yhd9ZJ2l3tD+QgadAg==
+-----END PUBLIC KEY-----`
+
+func TestNewECDSASignVerify(t *testing.T) {
+	factory.InitFactories(nil)
+
+	ePvt, err := NewECDSASignerEntity("SIGNER", factory.GetDefault(), []byte(sKey1))
+	assert.NoError(t, err)
+	assert.NotNil(t, ePvt)
+
+	ePub, err := NewECDSAVerifierEntity("SIGNER", factory.GetDefault(), []byte(pKey1))
+	assert.NoError(t, err)
+	assert.NotNil(t, ePub)
+
+	msg := []byte("MSG")
+
+	sig, err := ePvt.Sign(msg)
+	assert.NoError(t, err)
+	valid, err := ePub.Verify(sig, msg)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+	valid, err = ePvt.Verify(sig, msg)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+	ePub1, err := ePvt.Public()
+	assert.NoError(t, err)
+	assert.NotNil(t, ePub1)
+	ePub1.(SignerEntity).Verify(sig, msg)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	assert.True(t, ePvt.Equals(ePub))
+	assert.True(t, ePvt.Equals(ePub1))
+	assert.True(t, ePub.Equals(ePub1))
+}
