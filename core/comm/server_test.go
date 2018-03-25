@@ -109,13 +109,6 @@ func (tss *testServiceServer) EmptyCall(context.Context, *testpb.Empty) (*testpb
 
 //invoke the EmptyCall RPC
 func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-
-	//add DialOptions
-	dialOptions = append(
-		dialOptions,
-		grpc.WithDefaultCallOptions(grpc.FailFast(true)),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithBlock())
 	ctx := context.Background()
 	ctx, _ = context.WithTimeout(ctx, timeout)
 	//create GRPC client conn
@@ -650,7 +643,8 @@ func TestNewSecureGRPCServer(t *testing.T) {
 						RootCAs:    certPool,
 						MinVersion: tlsVersion,
 						MaxVersion: tlsVersion,
-					}))})
+					})),
+					grpc.WithBlock()})
 			t.Logf("TLSVersion [%d] failed with [%s]", tlsVersion, err)
 			assert.Error(t, err, "Should not have been able to connect with TLS version < 1.2")
 			assert.Contains(t, err.Error(), "context deadline exceeded")
@@ -1386,8 +1380,8 @@ func TestKeepaliveNoClientResponse(t *testing.T) {
 	t.Parallel()
 	// set up GRPCServer instance
 	kap := &comm.KeepaliveOptions{
-		ServerInterval: time.Duration(2) * time.Second,
-		ServerTimeout:  time.Duration(1) * time.Second,
+		ServerInterval: 2 * time.Second,
+		ServerTimeout:  1 * time.Second,
 	}
 	testAddress := "localhost:9400"
 	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{KaOpts: kap})
@@ -1417,8 +1411,8 @@ func TestKeepaliveClientResponse(t *testing.T) {
 	t.Parallel()
 	// set up GRPCServer instance
 	kap := &comm.KeepaliveOptions{
-		ServerInterval: time.Duration(2) * time.Second,
-		ServerTimeout:  time.Duration(1) * time.Second,
+		ServerInterval: 1 * time.Second,
+		ServerTimeout:  1 * time.Second,
 	}
 	testAddress := "localhost:9401"
 	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{KaOpts: kap})
@@ -1427,16 +1421,22 @@ func TestKeepaliveClientResponse(t *testing.T) {
 	defer srv.Stop()
 
 	// test that connection does not close with response to ping
-	clientTransport, err := transport.NewClientTransport(
+	connectCtx, cancel := context.WithDeadline(
 		context.Background(),
+		time.Now().Add(1*time.Second))
+	clientTransport, err := transport.NewClientTransport(
+		connectCtx,
 		context.Background(),
 		transport.TargetInfo{Addr: testAddress},
 		transport.ConnectOptions{},
 		func() {})
+	if err != nil {
+		cancel()
+	}
 	assert.NoError(t, err, "Unexpected error creating client transport")
 	defer clientTransport.Close()
 	// sleep past keepalive timeout
-	time.Sleep(4 * time.Second)
+	time.Sleep(1500 * time.Millisecond)
 	// try to create a stream
 	_, err = clientTransport.NewStream(context.Background(), &transport.CallHdr{})
 	assert.NoError(t, err, "Unexpected error creating stream")
@@ -1480,7 +1480,8 @@ func TestUpdateTLSCert(t *testing.T) {
 		_, err = invokeEmptyCall("localhost:8333",
 			[]grpc.DialOption{grpc.WithTransportCredentials(
 				credentials.NewTLS(&tls.Config{
-					RootCAs: certPool}))})
+					RootCAs: certPool})),
+				grpc.WithBlock()})
 		return err
 	}
 
