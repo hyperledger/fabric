@@ -63,7 +63,7 @@ Authorities who issue digital certificates to parties (e.g., users of a service,
 provider), who then use them to authenticate themselves in the messages they exchange
 with their environment. A CA's Certificate Revocation List (CRL) constitutes a reference
 for the certificates that are no longer valid. Revocation of a certificate can happen fora number of reasons. For example, a certificate may be revoked because the cryptographic
-private material associated to the certificate has been exposed.
+private material associated to the certificate has been exposed.*
 
 Although a blockchain network is more than a communications network, it relies on the
 PKI standard to ensure secure communication between various network participants, and to
@@ -126,7 +126,7 @@ Traditional authentication mechanisms rely on **digital signature mechanisms**, 
 as the name suggests, allow a party to digitally **sign** its messages. Digital
 signatures also provide guarantees on the integrity of the signed message.
 
-Technically speaking, digital signature mechanisms require require for each party to
+Technically speaking, digital signature mechanisms require for each party to
 hold two cryptographically connected keys: a public key that is made widely available,
 and acts as authentication anchor, and a private key that is used to produce
 **digital signatures** on messages. Recipients of digitally signed messages can verify
