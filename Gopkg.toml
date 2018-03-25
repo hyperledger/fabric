@@ -31,10 +31,6 @@ required = [
 ]
 
 [[constraint]]
-  name = "github.com/DATA-DOG/godog"
-  version = "0.7.4"
-
-[[constraint]]
   name = "github.com/Knetic/govaluate"
   version = "3.0.0"
 
