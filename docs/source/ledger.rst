@@ -38,7 +38,7 @@ therefore be regenerated from the chain at any time. The state database will aut
 recovered (or generated if needed) upon peer startup, before transactions are accepted.
 
 State database options include LevelDB and CouchDB. LevelDB is the default state database
-embedded in the peer process and stores chaincode data as key/value pairs. CouchDB is an optional
+embedded in the peer process and stores chaincode data as key-value pairs. CouchDB is an optional
 alternative external state database that provides addition query support when your chaincode data
 is modeled as JSON, permitting rich queries of the JSON content. See
 :doc:`couchdb_as_state_database` for more information on CouchDB.
@@ -49,7 +49,7 @@ Transaction Flow
 At a high level, the transaction flow consists of a transaction proposal sent by an application
 client to specific endorsing peers.  The endorsing peers verify the client signature, and execute
 a chaincode function to simulate the transaction. The output is the chaincode results,
-a set of key/value versions that were read in the chaincode (read set), and the set of keys/values
+a set of key-value versions that were read in the chaincode (read set), and the set of keys/values
 that were written in chaincode (write set). The proposal response gets sent back to the client
 along with an endorsement signature.
 

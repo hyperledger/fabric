@@ -81,7 +81,7 @@ support for cross-chaincode transactions (post-v1 feature).*
 ^^^^^^^^^^^^
 
 The latest state of the blockchain (or, simply, *state*) is modeled as a
-versioned key/value store (KVS), where keys are names and values are
+versioned key-value store (KVS), where keys are names and values are
 arbitrary blobs. These entries are manipulated by the chaincodes
 (applications) running on the blockchain through ``put`` and ``get``
 KVS-operations. The state is stored persistently and updates to the
@@ -467,11 +467,11 @@ As a result of the execution, the endorsing peer computes *read version
 dependencies* (``readset``) and *state updates* (``writeset``), also
 called *MVCC+postimage info* in DB language.
 
-Recall that the state consists of key/value (k/v) pairs. All k/v entries
-are versioned, that is, every entry contains ordered version
-information, which is incremented every time when the value stored under
+Recall that the state consists of key-value pairs. All key-value entries
+are versioned; that is, every entry contains ordered version
+information, which is incremented each time the value stored under
 a key is updated. The peer that interprets the transaction records all
-k/v pairs accessed by the chaincode, either for reading or for writing,
+key-value pairs accessed by the chaincode, either for reading or for writing,
 but the peer does not yet update its state. More specifically:
 
 -  Given state ``s`` before an endorsing peer executes a transaction,
