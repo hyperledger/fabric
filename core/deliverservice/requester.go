@@ -37,7 +37,7 @@ type blocksRequester struct {
 func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.LedgerInfo) error {
 	height, err := ledgerInfoProvider.LedgerHeight()
 	if err != nil {
-		logger.Errorf("Can't get legder height for channel %s from committer [%s]", b.chainID, err)
+		logger.Errorf("Can't get ledger height for channel %s from committer [%s]", b.chainID, err)
 		return err
 	}
 
