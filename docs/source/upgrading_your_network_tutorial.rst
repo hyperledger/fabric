@@ -229,7 +229,7 @@ we will perform the following steps:
 1. Stop the peer.
 2. Back up the peer’s ledger and MSP.
 3. Remove chaincode containers and images.
-4. Restart the peer with with latest image.
+4. Restart the peer with latest image.
 5. Verify upgrade completion.
 
 We have four peers running in our network. We will perform this process once for

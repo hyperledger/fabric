@@ -301,7 +301,7 @@ as orderers).
 
 There is limited support for such requirements.
 
-One way to allow for this separation is to to create a separate intermediate
+One way to allow for this separation is to create a separate intermediate
 CA for each node type - one for clients and one for peers/orderers; and
 configure two different MSPs - one for clients and one for peers/orderers.
 Channels this organization should be accessing would need to include

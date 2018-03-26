@@ -407,7 +407,7 @@ Note that policies higher in the hierarchy are all defined as
 ``SignaturePolicy``\ s. This set of defaults works nicely because the
 ``ImplicitMetaPolicies`` do not need to be redefined as the number of
 organizations change, and the individual organizations may pick their
-own rules and thresholds for what is means to be a a Reader, Writer, and
+own rules and thresholds for what is means to be a Reader, Writer, and
 Admin.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
