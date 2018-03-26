@@ -1,8 +1,19 @@
+# Copyright IBM Corp All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 required = [
-	"github.com/onsi/ginkgo",
-	"github.com/onsi/gomega",
-  "github.com/tedsuo/ifrit",
-	"github.com/golang/protobuf/protoc-gen-go"
+    "github.com/onsi/ginkgo",
+    "github.com/onsi/gomega",
+    "github.com/golang/protobuf/protoc-gen-go"
+]
+
+# Need to ignore directories that are not ignored by default
+ignored = [
+    "github.com/hyperledger/fabric/build",
+    "github.com/hyperledger/fabric/build/*",
+    "github.com/hyperledger/fabric/gotools",
+    "github.com/hyperledger/fabric/gotools/*",
 ]
 
 [[constraint]]
@@ -136,8 +147,4 @@ required = [
 
   [[prune.project]]
       name = "github.com/onsi/gomega"
-      unused-packages = false
-
-  [[prune.project]]
-      name = "github.com/tedsuo/ifrit"
       unused-packages = false
