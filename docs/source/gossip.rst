@@ -1,12 +1,12 @@
 Gossip data dissemination protocol
 ==================================
 
-Hyperledger Fabric optimizes blockchain network performance, security
+Hyperledger Fabric optimizes blockchain network performance, security,
 and scalability by dividing workload across transaction execution
 (endorsing and committing) peers and transaction ordering nodes. This
 decoupling of network operations requires a secure, reliable and
 scalable data dissemination protocol to ensure data integrity and
-consistency. To meet these requirements, Hyperledger Fabric implements a
+consistency. To meet these requirements, Fabric implements a
 **gossip data dissemination protocol**.
 
 Gossip protocol
@@ -14,16 +14,16 @@ Gossip protocol
 
 Peers leverage gossip to broadcast ledger and channel data in a scalable fashion.
 Gossip messaging is continuous, and each peer on a channel is
-constantly receiving current and consistent ledger data, from multiple
+constantly receiving current and consistent ledger data from multiple
 peers. Each gossiped message is signed, thereby allowing Byzantine participants
 sending faked messages to be easily identified and the distribution of the
 message(s) to unwanted targets to be prevented. Peers affected by delays, network
-partitions or other causations resulting in missed blocks, will eventually be
+partitions, or other causes resulting in missed blocks will eventually be
 synced up to the current ledger state by contacting peers in possession of these
 missing blocks.
 
 The gossip-based data dissemination protocol performs three primary functions on
-a Hyperledger Fabric network:
+a Fabric network:
 
 1. Manages peer discovery and channel membership, by continually
    identifying available member peers, and eventually detecting peers that have
@@ -36,12 +36,13 @@ a Hyperledger Fabric network:
 
 Gossip-based broadcasting operates by peers receiving messages from
 other peers on the channel, and then forwarding these messages to a number of
-randomly-selected peers on the channel, where this number is a configurable
-constant. Peers can also exercise a pull mechanism, rather than waiting for
-delivery of a message.  This cycle repeats, with the result of channel
+randomly selected peers on the channel, where this number is a configurable
+constant. Peers can also exercise a pull mechanism rather than waiting for
+delivery of a message. This cycle repeats, with the result of channel
 membership, ledger and state information continually being kept current and in
 sync. For dissemination of new blocks, the **leader** peer on the channel pulls
-the data from the ordering service and initiates gossip dissemination to peers.
+the data from the ordering service and initiates gossip dissemination to peers
+in its own organization.
 
 Leader election
 ---------------
@@ -52,11 +53,11 @@ newly arrived blocks across peers of its own organization. Leveraging leader ele
 provides system with ability to efficiently utilize bandwidth of the ordering
 service. There are two possible operation modes for leader election module:
 
-1. **Static** - system administrator manually configures one peer in the organization
+1. **Static** -- system administrator manually configures one peer in the organization
    to be the leader, e.g. one to maintain open connection with the ordering service.
-2. **Dynamic** - peers execute a leader election procedure to select one peer in an
+2. **Dynamic** -- peers execute a leader election procedure to select one peer in an
    organization to become leader, pull blocks from the ordering service, and disseminate
-   blocks to the other peers in the organization..
+   blocks to the other peers in the organization.
 
 Static leader election
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -75,7 +76,7 @@ within the section of ``core.yaml``:
             useLeaderElection: false
             orgLeader: true
 
-Alternatively these parameters could be configured and overrided with environmental variables:
+Alternatively these parameters could be configured and overridden with environmental variables:
 
 ::
 
@@ -83,10 +84,9 @@ Alternatively these parameters could be configured and overrided with environmen
     export CORE_PEER_GOSSIP_ORGLEADER=true
 
 
-| **Note:**
+.. note:: The following configuration will keep peer in **stand-by** mode, i.e.
+          peer will not try to become a leader:
 
-1. Following configuration will keep peer in **stand-by** mode, i.e. peer will not try
-   to become a leader:
 ::
 
     export CORE_PEER_GOSSIP_USELEADERELECTION=false
@@ -136,12 +136,25 @@ within ``core.yaml``:
             useLeaderElection: true
             orgLeader: false
 
-Alternatively these parameters could be configured and overrided with environmental variables:
+Alternatively these parameters could be configured and overridden with environmental variables:
 
 ::
 
     export CORE_PEER_GOSSIP_USELEADERELECTION=true
     export CORE_PEER_GOSSIP_ORGLEADER=false
+
+Anchor peers
+------------
+
+Anchor peers are used to facilitate gossip communication between peers from
+**different** organizations. In order for cross-org gossip to work, peers from one
+org need to know at least one address of a peer from other orgs (from this peer,
+it can find out about all of the peers in that org). This address is the anchor
+peer, and it's defined in the channel configuration.
+
+Each organization that has a peer will have at least one of its peers (though it
+can be more than one) defined in the channel configuration as the anchor peer.
+Note that the anchor peer does not need to be the same peer as the leader peer.
 
 
 Gossip messaging
@@ -170,18 +183,17 @@ to multiple channels, partitioned messaging prevents blocks from being dissemina
 to peers that are not in the channel by applying message routing policies based
 on peers' channel subscriptions.
 
-| **Notes:**
-| 1. Security of point-to-point messages are handled by the peer TLS layer, and do
-  not require signatures. Peers are authenticated by their certificates,
-  which are assigned by a CA. Although TLS certs are also used, it is
-  the peer certificates that are authenticated in the gossip layer. Ledger blocks
-  are signed by the ordering service, and then delivered to the leader peers on a channel.
-  2. Authentication is governed by the membership service provider for the
-  peer. When the peer connects to the channel for the first time, the
-  TLS session binds with the membership identity. This essentially
-  authenticates each peer to the connecting peer, with respect to
-  membership in the network and channel.
+.. note:: 1. Security of point-to-point messages are handled by the peer TLS layer, and do
+          not require signatures. Peers are authenticated by their certificates,
+          which are assigned by a CA. Although TLS certs are also used, it is
+          the peer certificates that are authenticated in the gossip layer. Ledger blocks
+          are signed by the ordering service, and then delivered to the leader peers on a channel.
+
+          2. Authentication is governed by the membership service provider for the
+          peer. When the peer connects to the channel for the first time, the
+          TLS session binds with the membership identity. This essentially
+          authenticates each peer to the connecting peer, with respect to
+          membership in the network and channel.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
