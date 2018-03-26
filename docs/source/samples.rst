@@ -68,13 +68,13 @@ you will extract the platform-specific binaries:
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you
 will need to set up your network and place them into the cloned repo you
-created above. It retrieves four platform-specific binaries:
+created above. It retrieves six platform-specific binaries:
 
   * ``cryptogen``,
   * ``configtxgen``,
   * ``configtxlator``,
-  * ``peer``
-  * ``orderer`` and
+  * ``peer``,
+  * ``orderer``, and
   * ``fabric-ca-client``
 
 and places them in the ``bin`` sub-directory of the current working
