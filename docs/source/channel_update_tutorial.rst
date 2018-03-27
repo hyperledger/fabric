@@ -514,7 +514,7 @@ leader:
 
 
 .. note:: This configuration must be the same for all new peers added to the
-channel.
+          channel.
 
 2. To utilize dynamic leader election, configure the peer to use leader
 election:
