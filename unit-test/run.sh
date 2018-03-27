@@ -7,24 +7,7 @@
 
 # regexes for packages to exclude from unit test
 excluded_packages=(
-    "github.com/hyperledger/fabric/bccsp/factory" # this package's tests need to be mocked
-    "github.com/hyperledger/fabric/bccsp/mocks"
-    "github.com/hyperledger/fabric/bddtests"
-    "github.com/hyperledger/fabric/build/"
-    "github.com/hyperledger/fabric/common/ledger/testutil"
-    "github.com/hyperledger/fabric/common/mocks"
-    "github.com/hyperledger/fabric/core/deliverservice/mocks"
-    "github.com/hyperledger/fabric/core/ledger/kvledger/example"
-    "github.com/hyperledger/fabric/core/ledger/kvledger/marble_example"
-    "github.com/hyperledger/fabric/core/ledger/testutil"
-    "github.com/hyperledger/fabric/core/mocks"
-    "github.com/hyperledger/fabric/core/testutil"
-    "github.com/hyperledger/fabric/examples"
-    "github.com/hyperledger/fabric/gotools"
-    "github.com/hyperledger/fabric/orderer/mocks"
-    "github.com/hyperledger/fabric/orderer/sample_clients"
-    "github.com/hyperledger/fabric/test"
-    "github.com/hyperledger/fabric/vendor/"
+    "github.com/hyperledger/fabric/examples/plugins/bccsp"
 )
 
 # regexes for packages that must be run serially
