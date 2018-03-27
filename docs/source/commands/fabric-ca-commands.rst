@@ -11,7 +11,7 @@ Fabric-CA Client
 The fabric-ca-client command allows you to manage identities (including attribute management)
 and certificates (including renewal and revocation).
 
-More information on ``fabric-ca-client`` commands can be found `here <https://hyperledger-fabric-ca.readthedocs.io/en/release-1.1/clientcli.html#fabric-ca-client-s-cli>`_.
+More information on ``fabric-ca-client`` commands can be found `here <https://hyperledger-fabric-ca.readthedocs.io/en/release-1.1/clientcli.html#fabric-ca-client-s-cli>`__.
 
 Fabric-CA Server
 ^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ Fabric-CA Server
 The fabric-ca-server command allows you to initialize and start a server process which may host
 one or more certificate authorities.
 
-More information on ``fabric-ca-server`` commands can be found `here <https://hyperledger-fabric-ca.readthedocs.io/en/release-1.1/servercli.html#fabric-ca-server-s-cli>`_.
+More information on ``fabric-ca-server`` commands can be found `here <https://hyperledger-fabric-ca.readthedocs.io/en/release-1.1/servercli.html#fabric-ca-server-s-cli>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
