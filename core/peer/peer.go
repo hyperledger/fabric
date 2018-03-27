@@ -707,11 +707,11 @@ func (*collectionSupport) GetIdentityDeserializer(chainID string) msp.IdentityDe
 //  Deliver service support structs for the peer
 //
 
-// DeliverSupportManager provides access to a channel for performing deliver
-type DeliverSupportManager struct {
+// DeliverChainManager provides access to a channel for performing deliver
+type DeliverChainManager struct {
 }
 
-func (dsm DeliverSupportManager) GetChain(chainID string) (deliver.Support, bool) {
+func (DeliverChainManager) GetChain(chainID string) (deliver.Chain, bool) {
 	channel, ok := chains.list[chainID]
 	if !ok {
 		return nil, ok

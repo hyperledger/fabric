@@ -4,164 +4,133 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package deliver
+package deliver_test
 
 import (
-	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/deliver/mock"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-type mockACSupport struct {
-	mock.Mock
-}
+var _ = Describe("SessionAccessControl", func() {
+	var (
+		fakeChain         *mock.Chain
+		envelope          *cb.Envelope
+		fakePolicyChecker *mock.PolicyChecker
+		expiresAt         deliver.ExpiresAtFunc
+	)
 
-func (s *mockACSupport) ExpiresAt(identityBytes []byte) time.Time {
-	return s.Called().Get(0).(time.Time)
-}
-
-func (s *mockACSupport) Sequence() uint64 {
-	return s.Called().Get(0).(uint64)
-}
-
-func createEnvelope() *common.Envelope {
-	chHdr := utils.MakeChannelHeader(common.HeaderType_DELIVER_SEEK_INFO, 0, "mychannel", 0)
-	siHdr := utils.MakeSignatureHeader(nil, nil)
-	paylBytes := utils.MarshalOrPanic(&common.Payload{
-		Header: utils.MakePayloadHeader(chHdr, siHdr),
-	})
-
-	return &common.Envelope{Payload: paylBytes}
-}
-
-type oneTimeInvoke struct {
-	f       func(*common.Envelope, string) error
-	invoked bool
-}
-
-func (oti *oneTimeInvoke) invokeOnce() func(*common.Envelope, string) error {
-	return func(env *common.Envelope, s string) error {
-		if oti.invoked {
-			panic("already invoked!")
+	BeforeEach(func() {
+		envelope = &cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{},
+			}),
 		}
-		oti.invoked = true
-		return oti.f(env, s)
-	}
-}
 
-func oneTimeFunction(f func(*common.Envelope, string) error) func(*common.Envelope, string) error {
-	oti := &oneTimeInvoke{f: f}
-	return oti.invokeOnce()
-}
-
-func TestOneTimeFunction(t *testing.T) {
-	acceptPolicyChecker := func(envelope *common.Envelope, channelID string) error {
-		return nil
-	}
-	f := oneTimeFunction(acceptPolicyChecker)
-	// First time no panic
-	assert.NotPanics(t, func() {
-		f(nil, "")
+		fakeChain = &mock.Chain{}
+		fakePolicyChecker = &mock.PolicyChecker{}
+		expiresAt = func([]byte) time.Time { return time.Time{} }
 	})
 
-	// Second time we panic
-	assert.Panics(t, func() {
-		f(nil, "")
+	It("evaluates the policy", func() {
+		sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = sac.Evaluate()
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(1))
+		env, cid := fakePolicyChecker.CheckPolicyArgsForCall(0)
+		Expect(env).To(Equal(envelope))
+		Expect(cid).To(Equal("chain-id"))
 	})
-}
 
-func TestAC(t *testing.T) {
-	acceptPolicyChecker := func(envelope *common.Envelope, channelID string) error {
-		return nil
-	}
+	Context("when policy evaluation returns an error", func() {
+		BeforeEach(func() {
+			fakePolicyChecker.CheckPolicyReturns(errors.New("no-access-for-you"))
+		})
 
-	denyPolicyChecker := func(envelope *common.Envelope, channelID string) error {
-		return errors.New("forbidden")
-	}
+		It("returns the evaluation error", func() {
+			sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+			Expect(err).NotTo(HaveOccurred())
 
-	sup := &mockACSupport{}
-	// Scenario I: create empty header
-	ac, err := newSessionAC(sup, &common.Envelope{}, nil, "mychannel", sup.ExpiresAt)
-	assert.Nil(t, ac)
-	assert.Contains(t, err.Error(), "Missing Header")
+			err = sac.Evaluate()
+			Expect(err).To(MatchError("no-access-for-you"))
+		})
+	})
 
-	// Scenario II: Identity has expired.
-	sup = &mockACSupport{}
-	sup.On("ExpiresAt").Return(time.Now().Add(-1 * time.Second)).Once()
-	ac, err = newSessionAC(sup, createEnvelope(), oneTimeFunction(acceptPolicyChecker), "mychannel", sup.ExpiresAt)
-	assert.NotNil(t, ac)
-	assert.NoError(t, err)
-	err = ac.evaluate()
-	assert.Contains(t, err.Error(), "expired")
+	It("caches positive policy evaluation", func() {
+		sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+		Expect(err).NotTo(HaveOccurred())
 
-	// Scenario III: Identity hasn't expired, but is forbidden
-	sup = &mockACSupport{}
-	sup.On("ExpiresAt").Return(time.Now().Add(time.Second)).Once()
-	sup.On("Sequence").Return(uint64(0)).Once()
-	ac, err = newSessionAC(sup, createEnvelope(), oneTimeFunction(denyPolicyChecker), "mychannel", sup.ExpiresAt)
-	assert.NoError(t, err)
-	err = ac.evaluate()
-	assert.Contains(t, err.Error(), "forbidden")
-
-	// Scenario IV: Identity hasn't expired, and is allowed
-	// We actually check 2 sub-cases, the first one is if the identity can expire,
-	// and the second one is if the identity can't expire (i.e an idemix identity currently can't expire)
-	for _, expirationTime := range []time.Time{time.Now().Add(time.Second), {}} {
-		sup = &mockACSupport{}
-		sup.On("ExpiresAt").Return(expirationTime).Once()
-		sup.On("Sequence").Return(uint64(0)).Once()
-		ac, err = newSessionAC(sup, createEnvelope(), oneTimeFunction(acceptPolicyChecker), "mychannel", sup.ExpiresAt)
-		assert.NoError(t, err)
-		err = ac.evaluate()
-		assert.NoError(t, err)
-		// Execute again. We should not evaluate the policy again.
-		// If we do, the test fails with panic because the function can be invoked only once
-		sup.On("Sequence").Return(uint64(0)).Once()
-		err = ac.evaluate()
-		assert.NoError(t, err)
-	}
-
-	// Scenario V: Identity hasn't expired, and is allowed at first, but afterwards there
-	// is a config change and afterwards it isn't allowed
-	sup = &mockACSupport{}
-	sup.On("ExpiresAt").Return(time.Now().Add(time.Second)).Once()
-	sup.On("Sequence").Return(uint64(0)).Once()
-	sup.On("Sequence").Return(uint64(1)).Once()
-
-	firstInvoke := true
-	policyChecker := func(envelope *common.Envelope, channelID string) error {
-		if firstInvoke {
-			firstInvoke = false
-			return nil
+		for i := 0; i < 5; i++ {
+			err = sac.Evaluate()
+			Expect(err).NotTo(HaveOccurred())
 		}
-		return errors.New("forbidden")
-	}
+		Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(1))
+	})
 
-	ac, err = newSessionAC(sup, createEnvelope(), policyChecker, "mychannel", sup.ExpiresAt)
-	assert.NoError(t, err)
-	err = ac.evaluate() // first time
-	assert.NoError(t, err)
-	err = ac.evaluate() // second time
-	assert.Contains(t, err.Error(), "forbidden")
+	Context("when the config sequence changes", func() {
+		BeforeEach(func() {
+			fakePolicyChecker.CheckPolicyReturnsOnCall(2, errors.New("access-now-denied"))
+		})
 
-	// Scenario VI: Identity hasn't expired at first, but expires at a later time,
-	// and then it shouldn't be allowed to be serviced
-	sup = &mockACSupport{}
-	sup.On("ExpiresAt").Return(time.Now().Add(time.Millisecond * 500)).Once()
-	sup.On("Sequence").Return(uint64(0)).Times(3)
-	ac, err = newSessionAC(sup, createEnvelope(), oneTimeFunction(acceptPolicyChecker), "mychannel", sup.ExpiresAt)
-	assert.NoError(t, err)
-	err = ac.evaluate()
-	assert.NoError(t, err)
-	err = ac.evaluate()
-	assert.NoError(t, err)
-	time.Sleep(time.Second)
-	err = ac.evaluate()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "expired")
-}
+		It("re-evaluates the policy", func() {
+			sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(sac.Evaluate()).To(Succeed())
+			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(1))
+			Expect(sac.Evaluate()).To(Succeed())
+			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(1))
+
+			fakeChain.SequenceReturns(2)
+			Expect(sac.Evaluate()).To(Succeed())
+			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(2))
+			Expect(sac.Evaluate()).To(Succeed())
+			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(2))
+
+			fakeChain.SequenceReturns(3)
+			Expect(sac.Evaluate()).To(MatchError("access-now-denied"))
+			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(3))
+		})
+	})
+
+	Context("when an identity expires", func() {
+		BeforeEach(func() {
+			expiresAt = func([]byte) time.Time {
+				return time.Now().Add(250 * time.Millisecond)
+			}
+		})
+
+		It("returns an identity expired error", func() {
+			sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = sac.Evaluate()
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(sac.Evaluate).Should(MatchError(ContainSubstring("client identity expired")))
+		})
+	})
+
+	Context("when the envelope cannot be represented as signed data", func() {
+		BeforeEach(func() {
+			envelope = &cb.Envelope{}
+		})
+
+		It("returns an error", func() {
+			_, expectedError := envelope.AsSignedData()
+			Expect(expectedError).To(HaveOccurred())
+
+			_, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+			Expect(err).To(Equal(expectedError))
+		})
+	})
+})

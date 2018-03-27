@@ -208,7 +208,7 @@ func TestDeliverSupportManager(t *testing.T) {
 	// reset chains for testing
 	MockInitialize()
 
-	manager := &DeliverSupportManager{}
+	manager := &DeliverChainManager{}
 	chainSupport, ok := manager.GetChain("fake")
 	assert.Nil(t, chainSupport, "chain support should be nil")
 	assert.False(t, ok, "Should not find fake channel")

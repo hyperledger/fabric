@@ -173,13 +173,13 @@ func serve(args []string) error {
 	}
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
-	policyCheckerProvider := func(resourceName string) deliver.PolicyChecker {
+	policyCheckerProvider := func(resourceName string) deliver.PolicyCheckerFunc {
 		return func(env *cb.Envelope, channelID string) error {
 			return aclmgmt.GetACLProvider().CheckACL(resourceName, channelID, env)
 		}
 	}
 
-	abServer := peer.NewDeliverEventsServer(mutualTLS, policyCheckerProvider, &peer.DeliverSupportManager{})
+	abServer := peer.NewDeliverEventsServer(mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{})
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// enable the cache of chaincode info
