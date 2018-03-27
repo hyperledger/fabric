@@ -397,12 +397,6 @@
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/tedsuo/ifrit"
-  packages = ["."]
-  revision = "d787ed1df88a79d9e9b1072738a40500b8ec22ee"
-
-[[projects]]
   name = "github.com/uber-go/tally"
   packages = [
     ".",
@@ -536,6 +530,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d95a27d006fa56b1278f5c40b0b59fd19e1fa28a62707673894caee629bad4cb"
+  inputs-digest = "b0b0b643aaf74f16a90bdcb1c098b91de2efac530ce821431adff4710db5da2c"
   solver-name = "gps-cdcl"
   solver-version = 1

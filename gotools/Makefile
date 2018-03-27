@@ -48,6 +48,15 @@ gotool.ginkgo:
 	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/onsi/ginkgo/* $(TMP_GOPATH)/src/github.com/onsi/ginkgo
 	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/onsi/ginkgo/ginkgo
 
+# Lock to a versioned dep
+gotool.dep: DEP_VERSION ?= "0.4.1"
+gotool.dep:
+	@echo "Getting dep $(DEP_VERSION)"
+	@GOPATH=$(abspath $(TMP_GOPATH)) go get -d github.com/golang/dep
+	@cd $(abspath $(TMP_GOPATH)) git checkout $(DEP_VERSION)
+	@echo "Building github.com/golang/dep -> dep"
+	@GOPATH=$(abspath $(TMP_GOPATH)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
+
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:
 	$(eval TOOL = ${subst gotool.,,${@}})

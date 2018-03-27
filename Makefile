@@ -24,6 +24,7 @@
 #   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
+#   - check-deps - check for vendored dependencies that are no longer used
 #   - license - checks go source files for Apache license header
 #   - native - ensures all native binaries are available
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
@@ -116,11 +117,11 @@ include docker-env.mk
 
 all: native docker checks
 
-checks: license spelling linter unit-test
+checks: basic-checks unit-test
 
 basic-checks: license spelling linter
 
-desk-check: license spelling linter verify
+desk-check: checks verify
 
 # Pull thirdparty docker images based on the latest baseimage release version
 .PHONY: docker-thirdparty
@@ -197,7 +198,7 @@ profile: unit-test-clean peer-docker testenv
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
 test-cmd:
-	@echo "go test -tags \"$(GO_TAGS)\"
+	@echo "go test -tags \"$(GO_TAGS)\""
 
 docker: docker-thirdparty $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 
@@ -211,9 +212,13 @@ behave: behave-deps
 behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
 	@cd peer/chaincode && behave
 
-linter: buildenv
+linter: check-deps buildenv
 	@echo "LINT: Running code checks.."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
+
+check-deps: buildenv
+	@echo "DEP: Checking for dependency issues.."
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/check_deps.sh
 
 %/chaintool: Makefile
 	@echo "Installing chaintool"
