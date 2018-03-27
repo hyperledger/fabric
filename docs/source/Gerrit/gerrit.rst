@@ -5,7 +5,7 @@ Follow these instructions to collaborate on Hyperledger Fabric
 through the Gerrit review system.
 
 Please be sure that you are subscribed to the `mailing
-list <http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__
+list <https://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__
 and of course, you can reach out on
 `chat <https://chat.hyperledger.org/>`__ if you need help.
 

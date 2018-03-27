@@ -5,7 +5,7 @@ Coding Golang
 ~~~~~~~~~~~~~~
 
 We code in Go™ and strictly follow the `best
-practices <http://golang.org/doc/effective_go.html>`__ and will not
+practices <https://golang.org/doc/effective_go.html>`__ and will not
 accept any deviations. You must run the following tools against your Go
 code and fix all errors and warnings: -
 `golint <https://github.com/golang/lint>`__ - `go

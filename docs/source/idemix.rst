@@ -39,7 +39,7 @@ authority(ies) (CA).
 | More details on the concepts and features of the Identity Mixer
   technology are described in the paper `Concepts and Languages for
   Privacy-Preserving Attribute-Based
-  Authentication <http://link.springer.com/chapter/10.1007%2F978-3-642-37282-7_4>`__.
+  Authentication <https://link.springer.com/chapter/10.1007%2F978-3-642-37282-7_4>`__.
 | More information about the Identity Mixer code, demos, and
   publications is available on the `Identity Mixer project home
   page <http://www.research.ibm.com/labs/zurich/idemix>`__.
@@ -182,11 +182,11 @@ All cryptographic building blocks were published at the top conferences and jour
 
 This particular Identity Mixer implementation uses a pairing-based
 signature scheme that was briefly proposed by `Camenisch and
-Lysyanskaya <http://link.springer.com/chapter/10.1007/978-3-540-28628-8_4>`__
+Lysyanskaya <https://link.springer.com/chapter/10.1007/978-3-540-28628-8_4>`__
 and described in detail by `Au et
-al. <http://link.springer.com/chapter/10.1007/11832072_8>`__. We use the
+al. <https://link.springer.com/chapter/10.1007/11832072_8>`__. We use the
 zero-knowledge proof by `Camenisch et
-al. <http://eprint.iacr.org/2016/663.pdf>`__ to prove knowledge of a
+al. <https://eprint.iacr.org/2016/663.pdf>`__ to prove knowledge of a
 signature. Please refer to the papers for the algorithms details and
 security proofs.
 

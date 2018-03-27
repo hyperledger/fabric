@@ -33,7 +33,7 @@ API Documentation
 ^^^^^^^^^^^^^^^^^
 
 The API documentation for Hyperledger Fabric's Golang APIs can be found on
-the godoc site for `Fabric <http://godoc.org/github.com/hyperledger/fabric>`_.
+the godoc site for `Fabric <https://godoc.org/github.com/hyperledger/fabric>`_.
 If you plan on doing any development using these APIs, you may want to
 bookmark those links now.
 

@@ -18,7 +18,7 @@ Docker and Docker Compose
 You will need the following installed on the platform on which you will be
 operating, or developing on (or for), Hyperledger Fabric:
 
-  - MacOSX, \*nix, or Windows 10: `Docker <https://www.docker.com/products/overview>`__
+  - MacOSX, \*nix, or Windows 10: `Docker <https://www.docker.com/get-docker>`__
     Docker version 17.06.2-ce or greater is required.
   - Older versions of Windows: `Docker
     Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ -

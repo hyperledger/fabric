@@ -26,7 +26,7 @@ using the Go `plugin <https://golang.org/pkg/plugin>`_ package.
 A plugin includes a main package with exported symbols and is built with the command
 ``go build -buildmode=plugin``.
 
-Every system chaincode must implement the `Chaincode Interface <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`_
+Every system chaincode must implement the `Chaincode Interface <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`_
 and export a constructor method that matches the signature ``func New() shim.Chaincode`` in the main package.
 An example can be found in the repository at ``examples/plugin/scc``.
 
