@@ -1,3 +1,5 @@
+#SPDX-License-Identifier: Apache-2.0
+
 # Local build binaries
 node-cli/node-cli
 *.pyc
@@ -24,18 +26,12 @@ tags
 .#*
 # Vim file artifacts
 .*.sw*
-# bddtest log files
-*.log
-# bddtest coverage files
-bddtests/coverage
-# bddtest Dockerfile
-bddtests/environments/kafka/Dockerfile
-bddtests/tmp
-bddtests/volumes
-*.cov
 # Makefile dummy artifacts
 .*-dummy
-# go-carpet output files
+# log files
+*.log
+# code coverage
+*.cov
 go-carpet-coverage*
 # Test result xml files
 report.xml
