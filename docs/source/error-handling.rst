@@ -24,9 +24,9 @@ creation functions (errors.New(), errors.Errorf(), errors.WithMessage(),
 errors.Wrap(), errors.Wrapf().
 
 .. note:: See https://godoc.org/github.com/pkg/errors for complete documentation
-of the available error creation function. Also, refer to the General guidelines
-section below for more specific guidelines for using the package for Fabric
-code.
+          of the available error creation function. Also, refer to the General guidelines
+          section below for more specific guidelines for using the package for Fabric
+          code.
 
 Finally, change the formatting directive for any logger or fmt.Printf() calls
 from ``%s`` to ``%+v`` to print the call stack along with the error message.
