@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -88,4 +89,9 @@ func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec
 	}
 
 	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
+}
+
+//GetMetadataProvider fetches metadata provider given deployment spec
+func (carPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider {
+	return &MetadataProvider{}
 }
