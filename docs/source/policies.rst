@@ -315,11 +315,12 @@ message defined as follows:
 The ``msp_identifier`` is set to the ID of the MSP (as defined by the
 ``MSPConfig`` proto in the channel configuration for an org) which will
 evaluate the signature, and the ``Role`` is set to either ``MEMBER``,
-``ADMIN``, ``CLIENT`` or ``PEER``. In particular
+``ADMIN``, ``CLIENT`` or ``PEER``. In particular:
 
 1. ``MEMBER`` matches any certificate issued by the MSP.
 2. ``ADMIN`` matches certificates enumerated as admin in the MSP definition.
-3. ``CLIENT`` (``PEER``) matches certificates that carry the client (peer) Organizational unit
+3. ``CLIENT`` (``PEER``) matches certificates that carry the client (peer) Organizational unit.
+
 (see `MSP Documentation <http://hyperledger-fabric.readthedocs.io/en/latest/msp.html>`_)
 
 Constructing an ImplicitMetaPolicy

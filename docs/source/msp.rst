@@ -192,11 +192,12 @@ needs to be set appropriately. Here is an example:
 As shown above, the ``NodeOUs.Enable`` is set to ``true``, this enables the identify classification.
 Then, client (peer) identifiers are defined by setting the following properties
 for the ``NodeOUs.ClientOUIdentifier`` (``NodeOUs.PeerOUIdentifier``) key:
- a. ``OrganizationalUnitIdentifier``: Set this to the value that matches the OU that
- the x509 certificate of a client (peer) should contain.
- b. ``Certificate``: Set this to the CA or intermediate CA under which client (peer) identities
- should be validated. The field is relative to the MSP root folder. It can be empty, meaning
- that the identity's x509 certificate can be validated under any CA defined in the MSP configuration.
+
+a. ``OrganizationalUnitIdentifier``: Set this to the value that matches the OU that
+   the x509 certificate of a client (peer) should contain.
+b. ``Certificate``: Set this to the CA or intermediate CA under which client (peer) identities
+   should be validated. The field is relative to the MSP root folder. It can be empty, meaning
+   that the identity's x509 certificate can be validated under any CA defined in the MSP configuration.
 
 When the classification is enabled, MSP administrators need
 to be clients of that MSP, meaning that their x509 certificates need to carry
