@@ -33,9 +33,10 @@ For detailed information on these components and what they do, refer to
 
 These components are bootstrapped by the ``./startFabric.sh`` script, which
 also:
-          * creates a channel and joins the peer to the channel
-          * installs the ``fabcar`` smart contract onto the peer's file system and instantiates it on the channel (instantiate starts a container)
-          * calls the ``initLedger`` function to populate the channel ledger with 10 unique cars
+
+* creates a channel and joins the peer to the channel
+* installs the ``fabcar`` smart contract onto the peer's file system and instantiates it on the channel (instantiate starts a container)
+* calls the ``initLedger`` function to populate the channel ledger with 10 unique cars
 
 These operations would typically be done by an organizational or peer admin.
 The script uses the CLI to execute these commands, however there is support in
