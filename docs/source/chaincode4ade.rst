@@ -27,8 +27,8 @@ Chaincode API
 
 Every chaincode program must implement the ``Chaincode interface``:
 
-  - `Go <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`_
-  - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`_
+  - `Go <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`__
+  - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`__
 
 whose methods are called in response to received transactions.
 In particular the ``Init`` method is called when a
@@ -39,8 +39,8 @@ application state. The ``Invoke`` method is called in response to receiving an
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
-  - `Go <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStub>`_
-  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`_
+  - `Go <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStub>`__
+  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`__
 
 which is used to access and modify the ledger, and to make invocations between
 chaincodes.
