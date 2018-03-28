@@ -34,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	ccprovmetadata "github.com/hyperledger/fabric/core/common/ccprovider/metadata"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -461,11 +460,7 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 			// Validate metadata file for inclusion in tar
 			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
 			// Clean metadata directory to remove trailing slash
-			//
-			// NOTE: given we now have a platform specific metadata, it would likely make sense to move
-			// core/common/ccprovider/metadata to this package (core/common/chaincode/platforms/metadata)
-			// in future.
-			err = ccprovmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
+			err = ccmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
 			if err != nil {
 				return nil, err
 			}

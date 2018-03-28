@@ -9,11 +9,12 @@ package ccprovider
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
+
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 )
 
 const (
@@ -47,49 +48,14 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bo
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
 // This function is called during chaincode instantiate/upgrade (from above), and from install, so that statedb artifacts can be created.
 func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifactsTar []byte, err error) {
-
 	cds := ccpackage.GetDepSpec()
-	is := bytes.NewReader(cds.CodePackage)
-	gr, err := gzip.NewReader(is)
+	pform, err := platforms.Find(cds.ChaincodeSpec.Type)
 	if err != nil {
-		ccproviderLogger.Errorf("Failure opening codepackage gzip stream: %s", err)
-		return nil, err
+		ccproviderLogger.Infof("invalid deployment spec (bad platform type:%s)", cds.ChaincodeSpec.Type)
+		return nil, fmt.Errorf("invalid deployment spec")
 	}
-	tr := tar.NewReader(gr)
-	statedbTarBuffer := bytes.NewBuffer(nil)
-	tw := tar.NewWriter(statedbTarBuffer)
-
-	// For each file in the code package tar,
-	// add it to the statedb artifact tar if it has "statedb" in the path
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			// We only get here if there are no more entries to scan
-			break
-		}
-
-		if err != nil {
-			return nil, err
-		}
-		ccproviderLogger.Debugf("header.Name = %s", header.Name)
-		if !strings.HasPrefix(header.Name, ccPackageStatedbDir) {
-			continue
-		}
-		if err = tw.WriteHeader(header); err != nil {
-			ccproviderLogger.Error("Error adding header to statedb tar:", err, header.Name)
-			return nil, err
-		}
-		if _, err := io.Copy(tw, tr); err != nil {
-			ccproviderLogger.Error("Error copying file to statedb tar:", err, header.Name)
-			return nil, err
-		}
-		ccproviderLogger.Debug("Wrote file to statedb tar:", header.Name)
-	}
-	if err = tw.Close(); err != nil {
-		return nil, err
-	}
-	ccproviderLogger.Debug("Created statedb artifact tar")
-	return statedbTarBuffer.Bytes(), nil
+	metaprov := pform.GetMetadataProvider(cds)
+	return metaprov.GetMetadataAsTarEntries()
 }
 
 // ExtractFileEntries extract file entries from the given `tarBytes`. A file entry is included in the
