@@ -170,3 +170,8 @@ func (members Members) Filter(filter func(member NetworkMember) bool) Members {
 	}
 	return res
 }
+
+// HaveExternalEndpoints selects network members that have external endpoints
+func HasExternalEndpoint(member NetworkMember) bool {
+	return member.Endpoint != ""
+}
