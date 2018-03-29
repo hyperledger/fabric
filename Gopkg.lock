@@ -240,6 +240,8 @@
   packages = [
     ".",
     "format",
+    "gbytes",
+    "ghttp",
     "internal/assertion",
     "internal/asyncassertion",
     "internal/oraclematcher",
@@ -391,6 +393,12 @@
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/tedsuo/ifrit"
+  packages = ["."]
+  revision = "d787ed1df88a79d9e9b1072738a40500b8ec22ee"
+
+[[projects]]
   name = "github.com/uber-go/tally"
   packages = [
     ".",
@@ -524,6 +532,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e793257d374c84d0cfefc309fe81e1090672a5e6bd0b5756b016709a6c2737b2"
+  inputs-digest = "a94245196684ab7d950f5a2bb9ef788bb15a6fcee72e69b4673585ec9a29adca"
   solver-name = "gps-cdcl"
   solver-version = 1
