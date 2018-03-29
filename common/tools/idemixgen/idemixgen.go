@@ -35,10 +35,12 @@ const (
 var (
 	app = kingpin.New("idemixgen", "Utility for generating key material to be used with the Identity Mixer MSP in Hyperledger Fabric")
 
-	genIssuerKey    = app.Command("ca-keygen", "Generate CA key material")
-	genSignerConfig = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
-	genCredOU       = genSignerConfig.Flag("org-unit", "The Organizational Unit of the default signer").Short('u').String()
-	genCredIsAdmin  = genSignerConfig.Flag("admin", "Make the default signer admin").Short('a').Bool()
+	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
+	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
+	genCredOU               = genSignerConfig.Flag("org-unit", "The Organizational Unit of the default signer").Short('u').String()
+	genCredIsAdmin          = genSignerConfig.Flag("admin", "Make the default signer admin").Short('a').Bool()
+	genCredEnrollmentId     = genSignerConfig.Flag("enrollmentId", "The enrollment id of the default signer").Short('e').String()
+	genCredRevocationHandle = genSignerConfig.Flag("revocationHandle", "The handle used to revoke this signer").Short('r').Int()
 
 	version = app.Command("version", "Show version information")
 )
@@ -67,7 +69,7 @@ func main() {
 		writeFile(filepath.Join(msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipk)
 
 	case genSignerConfig.FullCommand():
-		config, err := idemixca.GenerateSignerConfig(*genCredIsAdmin, *genCredOU, readIssuerKey())
+		config, err := idemixca.GenerateSignerConfig(*genCredIsAdmin, *genCredOU, *genCredEnrollmentId, *genCredRevocationHandle, readIssuerKey())
 		handleError(err)
 
 		path := msp.IdemixConfigDirUser

@@ -15,17 +15,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GenerateIssuerKey invokes Idemix library to generate an issuer (CA) signing key pair
-// currently two attributes are supported by the issuer:
+// GenerateIssuerKey invokes Idemix library to generate an issuer (CA) signing key pair.
+// Currently four attributes are supported by the issuer:
 // AttributeNameOU is the organization unit name
 // AttributeNameRole is the role (member or admin) name
-// Generated keys are serialized to bytes
+// AttributeNameEnrollmentId is the enrollment id
+// AttributeNameRevocationHandle contains the revocation handle, which can be used to revoke this user
+// Generated keys are serialized to bytes.
 func GenerateIssuerKey() ([]byte, []byte, error) {
 	rng, err := idemix.GetRand()
 	if err != nil {
 		return nil, nil, err
 	}
-	AttributeNames := []string{msp.AttributeNameOU, msp.AttributeNameRole}
+	AttributeNames := []string{msp.AttributeNameOU, msp.AttributeNameRole, msp.AttributeNameEnrollmentId, msp.AttributeNameRevocationHandle}
 	key, err := idemix.NewIssuerKey(AttributeNames, rng)
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "cannot generate CA key")
@@ -35,19 +37,23 @@ func GenerateIssuerKey() ([]byte, []byte, error) {
 	return key.ISk, ipkSerialized, err
 }
 
-// GenerateMSPConfig creates a new MSP config
+// GenerateMSPConfig creates a new MSP config.
 // If the new MSP config contains a signer then
 // it generates a fresh user secret and issues a credential
-// with two attributes (described above)
-// using the CA's key pair from the file
+// with four attributes (described above)
+// using the CA's key pair from the file.
 // If the new MSP config does not contain a signer
 // (meaning it is used only for verification)
-// then only a public key of the CA (issuer) is added to the MSP config (besides the name)
-func GenerateSignerConfig(isAdmin bool, ouString string, key *idemix.IssuerKey) ([]byte, error) {
-	attrs := make([]*FP256BN.BIG, 2)
+// then only a public key of the CA (issuer) is added to the MSP config (besides the name).
+func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, revocationHandle int, key *idemix.IssuerKey) ([]byte, error) {
+	attrs := make([]*FP256BN.BIG, 4)
 
 	if ouString == "" {
 		return nil, errors.Errorf("the OU attribute value is empty")
+	}
+
+	if enrollmentId == "" {
+		return nil, errors.Errorf("the enrollment id value is empty")
 	}
 
 	role := m.MSPRole_MEMBER
@@ -56,8 +62,10 @@ func GenerateSignerConfig(isAdmin bool, ouString string, key *idemix.IssuerKey) 
 		role = m.MSPRole_ADMIN
 	}
 
-	attrs[0] = idemix.HashModOrder([]byte(ouString))
-	attrs[1] = FP256BN.NewBIGint(int(role))
+	attrs[msp.AttributeIndexOU] = idemix.HashModOrder([]byte(ouString))
+	attrs[msp.AttributeIndexRole] = FP256BN.NewBIGint(int(role))
+	attrs[msp.AttributeIndexEnrollmentId] = idemix.HashModOrder([]byte(enrollmentId))
+	attrs[msp.AttributeIndexRevocationHandle] = FP256BN.NewBIGint(revocationHandle)
 
 	rng, err := idemix.GetRand()
 	if err != nil {
@@ -81,6 +89,7 @@ func GenerateSignerConfig(isAdmin bool, ouString string, key *idemix.IssuerKey) 
 		idemix.BigToBytes(sk),
 		ouString,
 		isAdmin,
+		enrollmentId,
 	}
 	return proto.Marshal(signer)
 }
