@@ -20,8 +20,6 @@
 #   - verify - runs unit tests for only the changed package tree
 #   - profile - runs unit tests for all packages in coverprofile mode (slow)
 #   - test-cmd - generates a "go test" string suitable for manual customization
-#   - behave - runs the behave test
-#   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
 #   - check-deps - check for vendored dependencies that are no longer used
@@ -199,14 +197,6 @@ test-cmd:
 docker: docker-thirdparty $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
 
 native: peer orderer configtxgen cryptogen configtxlator
-
-behave-deps: docker peer $(BUILD_DIR)/bin/block-listener configtxgen cryptogen
-behave: behave-deps
-	@echo "Running behave tests"
-	@cd bddtests; behave $(BEHAVE_OPTS)
-
-behave-peer-chaincode: $(BUILD_DIR)/bin/peer peer-docker orderer-docker
-	@cd peer/chaincode && behave
 
 linter: check-deps buildenv
 	@echo "LINT: Running code checks.."
