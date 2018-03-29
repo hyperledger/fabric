@@ -882,6 +882,9 @@ addresses and fails over between them for retrieving blocks.
 Just as we add an Org by adding their artifacts and MSP information, you can remove
 them by reversing the process.
 
+**Note** that once the consensus type has been defined and the network has been
+bootstrapped, it is not possible to change it through a configuration update.
+
 There is another important channel configuration (especially for v1.1) known as
 **Capability Requirements**. It has its own doc that can be found
 [here](./capability_requirements.html).
