@@ -76,7 +76,7 @@ General
 
 :Answer:
   This falls under reconfiguring the network. Please consult the topic on
-  :doc:`configtxlator`.
+  :doc:`commands/configtxlator`.
 
 Solo
 ~~~~
@@ -96,8 +96,8 @@ Kafka
 
 :Answer:
   This is a two step-process:
-  
-  1. Add the node's certificate to the relevant orderer's MSP CRL to prevent peers/clients from connecting to it. 
+
+  1. Add the node's certificate to the relevant orderer's MSP CRL to prevent peers/clients from connecting to it.
   2. Prevent the node from connecting to the Kafka cluster by leveraging standard Kafka access control measures such as TLS CRLs, or firewalling.
 
 ..
