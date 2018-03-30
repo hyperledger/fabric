@@ -102,7 +102,7 @@ PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^bddtests | grep -v ^docs | grep -v _test.go$ | grep -v .md$ | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
-	grep -v ^LICENSE | grep -v ^vendor | grep -v ^gotools )
+	grep -v ^LICENSE | grep -v ^vendor )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
 IMAGES = peer orderer ccenv javaenv buildenv testenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
@@ -143,14 +143,10 @@ spelling:
 license:
 	@scripts/check_license.sh
 
-.PHONY: gotools
-gotools:
-	mkdir -p $(BUILD_DIR)/bin
-	cd gotools && $(MAKE) install BINDIR=$(GOPATH)/bin OBJDIR=$(abspath $(BUILD_DIR)/gotools)
+include gotools.mk
 
-.PHONY: gotools-clean
-gotools-clean:
-	cd gotools && $(MAKE) clean OBJDIR=$(abspath $(BUILD_DIR)/gotools)
+.PHONY: gotools
+gotools: gotools-install
 
 # This is a legacy target left to satisfy existing CI scripts
 membersrvc-image:
@@ -249,13 +245,14 @@ changelog:
 
 $(BUILD_DIR)/docker/gotools/bin/protoc-gen-go: $(BUILD_DIR)/docker/gotools
 
-$(BUILD_DIR)/docker/gotools: gotools/Makefile
+$(BUILD_DIR)/docker/gotools: gotools.mk
+	@echo "Building dockerized gotools"
 	@mkdir -p $@/bin $@/obj
 	@$(DRUN) \
 		-v $(abspath $@):/opt/gotools \
-		-w /opt/gopath/src/$(PKGNAME)/gotools \
+		-w /opt/gopath/src/$(PKGNAME) \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
+		make -f gotools.mk GOTOOLS_BINDIR=/opt/gotools/bin GOTOOLS_GOPATH=/opt/gotools/obj
 
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
 $(BUILD_DIR)/bin/peer: $(BUILD_DIR)/image/ccenv/$(DUMMY) $(BUILD_DIR)/image/javaenv/$(DUMMY)
