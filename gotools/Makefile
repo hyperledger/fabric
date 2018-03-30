@@ -22,7 +22,6 @@ GOTOOLS = dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell
 GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
 
 # go tool->path mapping
-go.fqp.dep       := github.com/golang/dep/cmd/dep
 go.fqp.golint    := github.com/golang/lint/golint
 go.fqp.goimports := golang.org/x/tools/cmd/goimports
 go.fqp.gocov     := github.com/axw/gocov/...
