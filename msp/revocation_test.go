@@ -84,7 +84,7 @@ func TestRevokedIntermediateCA(t *testing.T) {
 	// 2) cacert is the CA that signed the intermediate;
 	// 3) a revocation list that revokes the intermediate CA cert
 	dir := "testdata/revokedica"
-	conf, err := GetLocalMspConfig(dir, nil, "DEFAULT")
+	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
 	thisMSP, err := newBccspMsp(MSPv1_0)

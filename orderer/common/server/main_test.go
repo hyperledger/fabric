@@ -203,7 +203,7 @@ func TestInitializeLocalMsp(t *testing.T) {
 				&config.TopLevel{
 					General: config.General{
 						LocalMSPDir: localMSPDir,
-						LocalMSPID:  "DEFAULT",
+						LocalMSPID:  "SampleOrg",
 						BCCSP: &factory.FactoryOpts{
 							ProviderName: "SW",
 							SwOpts: &factory.SwOpts{
@@ -347,7 +347,7 @@ func genesisConfig(t *testing.T) *config.TopLevel {
 			GenesisProfile: "SampleDevModeSolo",
 			SystemChannel:  genesisconfig.TestChainID,
 			LocalMSPDir:    localMSPDir,
-			LocalMSPID:     "DEFAULT",
+			LocalMSPID:     "SampleOrg",
 			BCCSP: &factory.FactoryOpts{
 				ProviderName: "SW",
 				SwOpts: &factory.SwOpts{

@@ -18,7 +18,7 @@ import (
 func TestMSPConfigManager(t *testing.T) {
 	mspDir, err := config.GetDevMspDir()
 	assert.NoError(t, err)
-	conf, err := msp.GetLocalMspConfig(mspDir, nil, "DEFAULT")
+	conf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
 	// test success:

@@ -199,7 +199,7 @@ func TestInvokeOK(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -221,7 +221,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToPvtAndHashedWriteSet(ccID, "mycollection", "somekey", nil)
@@ -248,7 +248,7 @@ func TestInvokeOKSCC(t *testing.T) {
 
 	ccID := "lscc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -265,7 +265,7 @@ func TestInvokeNOKWritesToLSCC(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "lscc"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -282,7 +282,7 @@ func TestInvokeNOKWritesToESCC(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "escc"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -299,7 +299,7 @@ func TestInvokeNOKWritesToNotExt(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "notext"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -316,7 +316,7 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 
 	ccID := "notext"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -333,7 +333,7 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 
 	ccID := ""
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -350,7 +350,7 @@ func TestInvokeNOKExpiredCC(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -367,7 +367,7 @@ func TestInvokeNOKBogusActions(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, []byte("barf"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -399,7 +399,7 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -629,7 +629,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
-		Policy:  signedByAnyMember([]string{"DEFAULT"}),
+		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}
 
 	cdbytes := utils.MarshalOrPanic(cd)
@@ -670,7 +670,7 @@ func TestValidationResourceUpdate(t *testing.T) {
 		Name:    ccID,
 		Version: ccVersion,
 		Vscc:    "vscc",
-		Policy:  signedByAnyMember([]string{"DEFAULT"}),
+		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}
 
 	cdbytes := utils.MarshalOrPanic(cd)

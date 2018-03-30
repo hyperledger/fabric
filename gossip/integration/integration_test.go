@@ -86,7 +86,7 @@ type secAdviser struct {
 }
 
 func (sa *secAdviser) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
-	return api.OrgIdentityType("DEFAULT")
+	return api.OrgIdentityType("SampleOrg")
 }
 
 type cryptoService struct {

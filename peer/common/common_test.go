@@ -56,7 +56,7 @@ func TestInitConfig(t *testing.T) {
 
 func TestInitCryptoMissingDir(t *testing.T) {
 	dir := os.TempDir() + "/" + util.GenerateUUID()
-	err := common.InitCrypto(dir, "DEFAULT", msp.ProviderTypeToString(msp.FABRIC))
+	err := common.InitCrypto(dir, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
 	assert.Error(t, err, "Should be able to initialize crypto with non-existing directory")
 	assert.Contains(t, err.Error(), fmt.Sprintf("missing %s folder", dir))
 }
@@ -64,7 +64,7 @@ func TestInitCryptoMissingDir(t *testing.T) {
 func TestInitCrypto(t *testing.T) {
 
 	mspConfigPath, err := config.GetDevMspDir()
-	localMspId := "DEFAULT"
+	localMspId := "SampleOrg"
 	err = common.InitCrypto(mspConfigPath, localMspId, msp.ProviderTypeToString(msp.FABRIC))
 	assert.NoError(t, err, "Unexpected error [%s] calling InitCrypto()", err)
 	err = common.InitCrypto("/etc/foobaz", localMspId, msp.ProviderTypeToString(msp.FABRIC))

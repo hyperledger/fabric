@@ -144,7 +144,7 @@ Organizations:
 
         # ID is the key by which this org's MSP definition will be referenced.
         # ID can include alphanumeric characters as well as dots and dashes.
-        ID: DEFAULT
+        ID: SampleOrg
 
         # MSPDir is the filesystem path which contains the MSP configuration.
         MSPDir: msp
@@ -191,10 +191,10 @@ Orderer: &OrdererDefaults
     # Orderer Type: The orderer implementation to start.
     # Available types are "solo" and "kafka".
     OrdererType: solo
-    
-    # Addresses here is a nonexhaustive list of orderers the peers and clients can 
-    # connect to. Adding/removing nodes from this list has no impact on their 
-    # participation in ordering. 
+
+    # Addresses here is a nonexhaustive list of orderers the peers and clients can
+    # connect to. Adding/removing nodes from this list has no impact on their
+    # participation in ordering.
     # NOTE: In the solo case, this should be a one-item list.
     Addresses:
         - 127.0.0.1:7050
@@ -308,7 +308,7 @@ Capabilities:
     # safely manipulated without concern for upgrading orderers.  Set the value
     # of the capability to true to require it.
     Application: &ApplicationCapabilities
-        # V1.2 for Application enables the new non-backwards compatible 
+        # V1.2 for Application enables the new non-backwards compatible
         # features and fixes of fabric v1.2, it implies V1_1.
         V1_2: true
         # V1.1 for Application enables the new non-backwards compatible
@@ -333,7 +333,7 @@ Capabilities:
         # the network may cause a fork.
         V1_1_RESOURCETREE_EXPERIMENTAL: false
         # V1_2_CHAINCODE_LIFECYCLE_EXPERIMENTAL is an Application capability
-        # to enable the new lifecycle semantics of "Install Code, Install 
+        # to enable the new lifecycle semantics of "Install Code, Install
         # Metadata to a Channel, Define Chaincode, Init Chaincode"
         # This is an in development feature and is useful only for developer
         # testing at this time.
