@@ -196,7 +196,12 @@ func TestCredentialSupport(t *testing.T) {
 		t.Fatalf("failed to load root certificates")
 	}
 
-	cs := GetCredentialSupport()
+	cs := &CredentialSupport{
+		CASupport: &CASupport{
+			AppRootCAsByChain:     make(map[string][][]byte),
+			OrdererRootCAsByChain: make(map[string][][]byte),
+		},
+	}
 	cert := tls.Certificate{Certificate: [][]byte{}}
 	cs.SetClientCertificate(cert)
 	assert.Equal(t, cert, cs.clientCert)
@@ -222,10 +227,6 @@ func TestCredentialSupport(t *testing.T) {
 	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
 	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
 
-	// make sure we really have a singleton
-	csClone := GetCredentialSupport()
-	assert.Exactly(t, csClone, cs, "Expected GetCredentialSupport to be a singleton")
-
 	creds, _ := cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
@@ -243,6 +244,10 @@ func TestCredentialSupport(t *testing.T) {
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
+	// test singleton
+	singleton := GetCredentialSupport()
+	clone := GetCredentialSupport()
+	assert.Exactly(t, clone, singleton, "Expected GetCredentialSupport to be a singleton")
 }
 
 type srv struct {
@@ -320,22 +325,33 @@ func TestImpersonation(t *testing.T) {
 	defer osB.Stop()
 	time.Sleep(time.Second)
 
-	cs := GetCredentialSupport()
-	_, err := GetCredentialSupport().GetDeliverServiceCredentials("C")
+	cs := &CredentialSupport{
+		CASupport: &CASupport{
+			AppRootCAsByChain:     make(map[string][][]byte),
+			OrdererRootCAsByChain: make(map[string][][]byte),
+		},
+	}
+	_, err := cs.GetDeliverServiceCredentials("C")
 	assert.Error(t, err)
 
 	cs.OrdererRootCAsByChain["A"] = [][]byte{osA.caCert}
 	cs.OrdererRootCAsByChain["B"] = [][]byte{osB.caCert}
 
-	testInvoke(t, "A", osA, true)
-	testInvoke(t, "B", osB, true)
-	testInvoke(t, "A", osB, false)
-	testInvoke(t, "B", osA, false)
+	testInvoke(t, "A", osA, cs, true)
+	testInvoke(t, "B", osB, cs, true)
+	testInvoke(t, "A", osB, cs, false)
+	testInvoke(t, "B", osA, cs, false)
 
 }
 
-func testInvoke(t *testing.T, channelID string, s *srv, shouldSucceed bool) {
-	creds, err := GetCredentialSupport().GetDeliverServiceCredentials(channelID)
+func testInvoke(
+	t *testing.T,
+	channelID string,
+	s *srv,
+	cs *CredentialSupport,
+	shouldSucceed bool) {
+
+	creds, err := cs.GetDeliverServiceCredentials(channelID)
 	assert.NoError(t, err)
 	endpoint := fmt.Sprintf("localhost:%d", s.port)
 	ctx := context.Background()
