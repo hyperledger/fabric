@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
@@ -47,6 +48,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -200,7 +202,14 @@ func serve(args []string) error {
 	logger.Debugf("Running peer")
 
 	// Register the Admin server
-	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
+	localMSP := mgmt.GetLocalMSP()
+	mspID := viper.GetString("peer.localMspId")
+	pp := cauthdsl.NewPolicyProvider(localMSP)
+	adminPolicy, _, err := pp.NewPolicy(utils.MarshalOrPanic(cauthdsl.SignedByAnyAdmin([]string{mspID})))
+	if err != nil {
+		logger.Panicf("Failed creating admin policy: +%v", err)
+	}
+	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer(adminPolicy))
 
 	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)

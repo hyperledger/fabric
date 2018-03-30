@@ -1,32 +1,28 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package clilogging
 
 import (
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/peer/common"
+	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
+type envelopeWrapper func(msg proto.Message) *common2.Envelope
+
 // LoggingCmdFactory holds the clients used by LoggingCmd
 type LoggingCmdFactory struct {
-	AdminClient pb.AdminClient
+	AdminClient      pb.AdminClient
+	wrapWithEnvelope envelopeWrapper
 }
 
 // InitCmdFactory init the LoggingCmdFactory with default admin client
@@ -39,8 +35,23 @@ func InitCmdFactory() (*LoggingCmdFactory, error) {
 		return nil, err
 	}
 
+	signer, err := common.GetDefaultSignerFnc()
+	if err != nil {
+		return nil, errors.Errorf("failed obtaining default signer: %v", err)
+	}
+
+	localSigner := crypto.NewSignatureHeaderCreator(signer)
+	wrapEnv := func(msg proto.Message) *common2.Envelope {
+		env, err := utils.CreateSignedEnvelope(common2.HeaderType_PEER_ADMIN_OPERATION, "", localSigner, msg, 0, 0)
+		if err != nil {
+			logger.Panicf("Failed signing: %v", err)
+		}
+		return env
+	}
+
 	return &LoggingCmdFactory{
-		AdminClient: adminClient,
+		AdminClient:      adminClient,
+		wrapWithEnvelope: wrapEnv,
 	}, nil
 }
 

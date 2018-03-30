@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package core
@@ -19,55 +9,91 @@ package core
 import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 var logger = flogging.MustGetLogger("server")
 
+type requestValidator interface {
+	validate(ctx context.Context, env *common.Envelope) (*pb.AdminOperation, error)
+}
+
+// AccessControlEvaluator evaluates whether the creator of the given SignedData
+// is eligible of using the admin service
+type AccessControlEvaluator interface {
+	// Evaluate evaluates the eligibility of the creator of the given SignedData
+	// for being serviced by the admin service
+	Evaluate(signatureSet []*common.SignedData) error
+}
+
 // NewAdminServer creates and returns a Admin service instance.
-func NewAdminServer() *ServerAdmin {
-	s := new(ServerAdmin)
+func NewAdminServer(ace AccessControlEvaluator) *ServerAdmin {
+	s := &ServerAdmin{
+		v: &validator{
+			ace: ace,
+		},
+	}
 	return s
 }
 
 // ServerAdmin implementation of the Admin service for the Peer
 type ServerAdmin struct {
+	v requestValidator
 }
 
-// GetStatus reports the status of the server
-func (*ServerAdmin) GetStatus(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
+func (s *ServerAdmin) GetStatus(ctx context.Context, env *common.Envelope) (*pb.ServerStatus, error) {
+	if _, err := s.v.validate(ctx, env); err != nil {
+		return nil, err
+	}
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
 	logger.Debugf("returning status: %s", status)
 	return status, nil
 }
 
-// StartServer starts the server
-func (*ServerAdmin) StartServer(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
+func (s *ServerAdmin) StartServer(ctx context.Context, env *common.Envelope) (*pb.ServerStatus, error) {
+	if _, err := s.v.validate(ctx, env); err != nil {
+		return nil, err
+	}
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
 	logger.Debugf("returning status: %s", status)
 	return status, nil
 }
 
-// GetModuleLogLevel gets the current logging level for the specified module
-// TODO Modify the signature so as to remove the error return - it's always been nil
-func (*ServerAdmin) GetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
+func (s *ServerAdmin) GetModuleLogLevel(ctx context.Context, env *common.Envelope) (*pb.LogLevelResponse, error) {
+	op, err := s.v.validate(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	request := op.GetLogReq()
+	if request == nil {
+		return nil, errors.New("request is nil")
+	}
 	logLevelString := flogging.GetModuleLevel(request.LogModule)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
 	return logResponse, nil
 }
 
-// SetModuleLogLevel sets the logging level for the specified module
-func (*ServerAdmin) SetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
+func (s *ServerAdmin) SetModuleLogLevel(ctx context.Context, env *common.Envelope) (*pb.LogLevelResponse, error) {
+	op, err := s.v.validate(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	request := op.GetLogReq()
+	if request == nil {
+		return nil, errors.New("request is nil")
+	}
 	logLevelString, err := flogging.SetModuleLevel(request.LogModule, request.LogLevel)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
 	return logResponse, err
 }
 
-// RevertLogLevels reverts the logger levels for all modules to the level
-// defined at the end of peer startup.
-func (*ServerAdmin) RevertLogLevels(context.Context, *empty.Empty) (*empty.Empty, error) {
+func (s *ServerAdmin) RevertLogLevels(ctx context.Context, env *common.Envelope) (*empty.Empty, error) {
+	if _, err := s.v.validate(ctx, env); err != nil {
+		return nil, err
+	}
 	err := flogging.RevertToPeerStartupLevels()
-
 	return &empty.Empty{}, err
 }
