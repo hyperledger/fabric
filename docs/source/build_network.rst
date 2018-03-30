@@ -477,6 +477,10 @@ Now, we will define the anchor peer for Org2 on the same channel:
 Start the network
 -----------------
 
+.. note:: If you ran the ``byfn.sh`` example above previously, be sure that you
+          have brought down the test network before you proceed (see
+          `Bring Down the Network`_).
+
 We will leverage a script to spin up our network. The
 docker-compose file references the images that we have previously downloaded,
 and bootstraps the orderer with our previously generated ``genesis.block``.
