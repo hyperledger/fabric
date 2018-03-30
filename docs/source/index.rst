@@ -1,5 +1,8 @@
-Welcome to Hyperledger Fabric
-=============================
+Welcome
+=======
+
+.. image:: images/hyperledger_fabric_logo_color.png
+
 
 Hyperledger Fabric is a platform for distributed ledger solutions, underpinned
 by a modular architecture delivering high degrees of confidentiality, resiliency,
