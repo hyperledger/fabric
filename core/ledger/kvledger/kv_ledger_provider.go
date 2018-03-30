@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/core/ledger/confighistory"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -43,6 +45,7 @@ type Provider struct {
 	ledgerStoreProvider *ledgerstorage.Provider
 	vdbProvider         privacyenabledstate.DBProvider
 	historydbProvider   historydb.HistoryDBProvider
+	configHistoryMgr    confighistory.Mgr
 	stateListeners      []ledger.StateListener
 	bookkeepingProvider bookkeeping.Provider
 }
@@ -67,8 +70,10 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
 	bookkeepingProvider := bookkeeping.NewProvider()
+	// Initialize config history mgr
+	configHistoryMgr := confighistory.NewMgr()
 	logger.Info("ledger provider Initialized")
-	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider, nil, bookkeepingProvider}
+	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider, configHistoryMgr, nil, bookkeepingProvider}
 	provider.recoverUnderConstructionLedger()
 	return provider, nil
 }
@@ -150,7 +155,7 @@ func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, erro
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
 	// (id store, blockstore, state database, history database)
-	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, provider.stateListeners, provider.bookkeepingProvider)
+	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, provider.configHistoryMgr, provider.stateListeners, provider.bookkeepingProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +179,7 @@ func (provider *Provider) Close() {
 	provider.vdbProvider.Close()
 	provider.historydbProvider.Close()
 	provider.bookkeepingProvider.Close()
+	provider.configHistoryMgr.Close()
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package ledgerconfig
@@ -37,7 +27,8 @@ const confLedgersData = "ledgersData"
 const confLedgerProvider = "ledgerProvider"
 const confStateleveldb = "stateLeveldb"
 const confHistoryLeveldb = "historyLeveldb"
-const confPvtWritesetStore = "pvtWritesetStore"
+const confBookkeeper = "bookkeeper"
+const confConfigHistory = "configHistory"
 const confChains = "chains"
 const confPvtdataStore = "pvtdataStore"
 const confQueryLimit = "ledger.state.couchDBConfig.queryLimit"
@@ -80,7 +71,12 @@ func GetPvtdataStorePath() string {
 
 // GetInternalBookkeeperPath returns the filesystem path that is used for bookkeeping the internal stuff by by KVledger (such as expiration time for pvt)
 func GetInternalBookkeeperPath() string {
-	return filepath.Join(GetRootPath(), "bookkeeper")
+	return filepath.Join(GetRootPath(), confBookkeeper)
+}
+
+// GetConfigHistoryPath returns the filesystem path that is used for maintaining history of chaincodes collection configurations
+func GetConfigHistoryPath() string {
+	return filepath.Join(GetRootPath(), confConfigHistory)
 }
 
 // GetMaxBlockfileSize returns maximum size of the block file
