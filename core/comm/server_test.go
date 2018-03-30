@@ -637,7 +637,7 @@ func TestNewSecureGRPCServer(t *testing.T) {
 		tlsVersion := tlsVersion
 		t.Run(tlsVersions[counter], func(t *testing.T) {
 			t.Parallel()
-			_, err = invokeEmptyCall(testAddress,
+			_, err := invokeEmptyCall(testAddress,
 				[]grpc.DialOption{grpc.WithTransportCredentials(
 					credentials.NewTLS(&tls.Config{
 						RootCAs:    certPool,
