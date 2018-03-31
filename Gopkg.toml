@@ -12,8 +12,6 @@ required = [
 ignored = [
     "github.com/hyperledger/fabric/build",
     "github.com/hyperledger/fabric/build/*",
-    "github.com/hyperledger/fabric/gotools",
-    "github.com/hyperledger/fabric/gotools/*",
 ]
 
 [[constraint]]
