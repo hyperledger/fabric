@@ -60,8 +60,8 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 		grpc.WithBlock())
 	client.timeout = config.Timeout
 	// set send/recv message size to package defaults
-	client.maxRecvMsgSize = maxRecvMsgSize
-	client.maxSendMsgSize = maxSendMsgSize
+	client.maxRecvMsgSize = MaxRecvMsgSize
+	client.maxSendMsgSize = MaxSendMsgSize
 
 	return client, nil
 }

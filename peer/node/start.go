@@ -249,8 +249,11 @@ func serve(args []string) error {
 	secureDialOpts := func() []grpc.DialOption {
 		var dialOpts []grpc.DialOption
 		// set max send/recv msg sizes
-		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
+		dialOpts = append(
+			dialOpts,
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+				grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
 		// set the keepalive options
 		kaOpts := comm.DefaultKeepaliveOptions()
 		if viper.IsSet("peer.keepalive.client.interval") {

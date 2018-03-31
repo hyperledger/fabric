@@ -16,18 +16,9 @@ import (
 func TestConfig(t *testing.T) {
 	t.Parallel()
 	// check the defaults
-	assert.EqualValues(t, maxRecvMsgSize, MaxRecvMsgSize())
-	assert.EqualValues(t, maxSendMsgSize, MaxSendMsgSize())
 	assert.EqualValues(t, keepaliveOptions, DefaultKeepaliveOptions())
 	assert.EqualValues(t, false, TLSEnabled())
 	assert.EqualValues(t, true, configurationCached)
-
-	// set send/recv msg sizes
-	size := 10 * 1024 * 1024
-	SetMaxRecvMsgSize(size)
-	SetMaxSendMsgSize(size)
-	assert.EqualValues(t, size, MaxRecvMsgSize())
-	assert.EqualValues(t, size, MaxSendMsgSize())
 
 	// reset cache
 	configurationCached = false

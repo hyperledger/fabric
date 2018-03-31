@@ -225,8 +225,8 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 	return func(endpoint string) (*grpc.ClientConn, error) {
 		dialOpts := []grpc.DialOption{grpc.WithBlock()}
 		// set max send/recv msg sizes
-		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
 		// set the keepalive options
 		kaOpts := comm.DefaultKeepaliveOptions()
 		if viper.IsSet("peer.keepalive.deliveryClient.interval") {

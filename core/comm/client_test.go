@@ -21,23 +21,23 @@ import (
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	netctx "golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
-var caPEM, certPEM, keyPEM, serverKey, serverPEM []byte
 var testClientCert, testServerCert tls.Certificate
 var testTimeout = 1 * time.Second // conservative
 
 type echoServer struct{}
 
-func (es *echoServer) EchoCall(ctx netctx.Context,
+func (es *echoServer) EchoCall(ctx context.Context,
 	echo *testpb.Echo) (*testpb.Echo, error) {
 	return echo, nil
 }
 
 func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	t.Parallel()
-	loadCerts(t)
+	caPEM, certPEM, keyPEM, _, _ := loadCerts(t)
 
 	config := comm.ClientConfig{}
 	client, err := comm.NewGRPCClient(config)
@@ -82,7 +82,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 
 func TestNewGRPCClient_BadConfig(t *testing.T) {
 	t.Parallel()
-	loadCerts(t)
+	_, certPEM, keyPEM, _, _ := loadCerts(t)
 	// bad root cert
 	config := comm.ClientConfig{
 		SecOpts: &comm.SecureOptions{
@@ -143,7 +143,7 @@ func TestNewConnection_Timeout(t *testing.T) {
 
 func TestNewConnection(t *testing.T) {
 	t.Parallel()
-	loadCerts(t)
+	caPEM, certPEM, keyPEM, _, _ := loadCerts(t)
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(caPEM)
 	if !ok {
@@ -269,24 +269,15 @@ func TestNewConnection(t *testing.T) {
 				t.Fatalf("error creating server for test: %v", err)
 			}
 			defer lis.Close()
+			serverOpts := []grpc.ServerOption{}
 			if test.serverTLS != nil {
-				t.Log("starting server with TLS")
-				tlsLis := tls.NewListener(lis, test.serverTLS)
-				defer tlsLis.Close()
-				go func() {
-					rawConn, err := tlsLis.Accept()
-					defer rawConn.Close()
-					if err != nil {
-						t.Fatalf("error accepting TLS connection: %v", err)
-					}
-					t.Logf("server: accepted from %s", rawConn.RemoteAddr())
-					sconn := tls.Server(rawConn, test.serverTLS)
-					err = sconn.Handshake()
-					if err != nil {
-						t.Logf("tls handshake error: %v", err)
-					}
-				}()
+				serverOpts = append(
+					serverOpts,
+					grpc.Creds(credentials.NewTLS(test.serverTLS)))
 			}
+			srv := grpc.NewServer(serverOpts...)
+			defer srv.Stop()
+			go srv.Serve(lis)
 			client, err := comm.NewGRPCClient(test.config)
 			if err != nil {
 				t.Fatalf("error creating client for test: %v", err)
@@ -306,7 +297,7 @@ func TestNewConnection(t *testing.T) {
 
 func TestSetServerRootCAs(t *testing.T) {
 	t.Parallel()
-	loadCerts(t)
+	caPEM, _, _, _, _ := loadCerts(t)
 
 	config := comm.ClientConfig{
 		SecOpts: &comm.SecureOptions{
@@ -325,26 +316,10 @@ func TestSetServerRootCAs(t *testing.T) {
 		t.Fatalf("failed to create listener for test server: %v", err)
 	}
 	defer lis.Close()
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{testServerCert}}
-	tlsLis := tls.NewListener(lis, tlsConf)
-	defer tlsLis.Close()
-	go func() {
-		// 3 connection tests
-		for i := 0; i < 3; i++ {
-			rawConn, err := tlsLis.Accept()
-			defer rawConn.Close()
-			if err != nil {
-				t.Fatalf("error accepting TLS connection: %v", err)
-			}
-			t.Logf("server: accepted from %s", rawConn.RemoteAddr())
-			sconn := tls.Server(rawConn, tlsConf)
-			err = sconn.Handshake()
-			if err != nil {
-				t.Logf("tls handshake error: %v", err)
-			}
-		}
-	}()
+	srv := grpc.NewServer(grpc.Creds(credentials.NewTLS(
+		&tls.Config{Certificates: []tls.Certificate{testServerCert}})))
+	defer srv.Stop()
+	go srv.Serve(lis)
 
 	// initial config should work
 	t.Log("running initial good config")
@@ -371,7 +346,9 @@ func TestSetServerRootCAs(t *testing.T) {
 	conn, err = client.NewConnection(address, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
-	conn.Close()
+	if conn != nil {
+		conn.Close()
+	}
 
 	// bad root cert
 	t.Log("running bad root cert")
@@ -472,7 +449,13 @@ func TestSetMessageSize(t *testing.T) {
 	}
 }
 
-func loadCerts(t *testing.T) {
+func loadCerts(t *testing.T) (
+	caPEM,
+	certPEM,
+	keyPEM,
+	serverKey,
+	serverPEM []byte) {
+
 	t.Helper()
 	var err error
 	caPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs",
@@ -497,4 +480,6 @@ func loadCerts(t *testing.T) {
 	testServerCert, err = tls.LoadX509KeyPair(filepath.Join("testdata", "certs",
 		"Org1-server1-cert.pem"), filepath.Join("testdata", "certs",
 		"Org1-server1-key.pem"))
+
+	return caPEM, certPEM, keyPEM, serverKey, serverPEM
 }
