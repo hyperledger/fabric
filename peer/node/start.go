@@ -8,13 +8,10 @@ package node
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -30,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/library"
@@ -317,10 +313,6 @@ func serve(args []string) error {
 		}
 		serve <- grpcErr
 	}()
-
-	if err := writePid(config.GetPath("peer.fileSystemPath")+"/peer.pid", os.Getpid()); err != nil {
-		return err
-	}
 
 	// Start the event hub server
 	if ehubGrpcServer != nil {
@@ -629,19 +621,4 @@ func initializeEventsServerConfig(mutualTLS bool) *producer.EventsServerConfig {
 	}
 
 	return ehConfig
-}
-
-func writePid(fileName string, pid int) error {
-	err := os.MkdirAll(filepath.Dir(fileName), 0755)
-	if err != nil {
-		return err
-	}
-
-	buf := strconv.Itoa(pid)
-	if err = ioutil.WriteFile(fileName, []byte(buf), 0644); err != nil {
-		logger.Errorf("Cannot write pid to %s (err:%s)", fileName, err)
-		return err
-	}
-
-	return nil
 }
