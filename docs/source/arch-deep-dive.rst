@@ -99,7 +99,7 @@ More formally, state ``s`` is modeled as an element of a mapping
    next version number.
 
 Both ``V`` and ``N`` contain a special element |falsum| (empty type), which is
-in case of ``N`` the lowest element. Initially all keys are mapped to 
+in case of ``N`` the lowest element. Initially all keys are mapped to
 (|falsum|, |falsum|). For ``s(k)=(v,ver)`` we denote ``v`` by ``s(k).value``,
 and ``ver`` by ``s(k).version``.
 
