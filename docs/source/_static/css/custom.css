@@ -67,6 +67,13 @@ a:visited {
     width: 100%
 }
 
+.wy-side-nav-search img {
+    display: block;
+    margin: auto auto .809em auto;
+    padding: 5px;
+    border-radius: unset
+}
+
 .wy-side-nav-search input[type=text] {
     border-radius: 5px
 }
