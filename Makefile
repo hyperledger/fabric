@@ -104,7 +104,7 @@ PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
 	grep -v ^LICENSE | grep -v ^vendor )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
-IMAGES = peer orderer ccenv javaenv buildenv testenv tools
+IMAGES = peer orderer ccenv buildenv testenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
 RELEASE_PKGS = configtxgen cryptogen configtxlator peer orderer
 
@@ -172,8 +172,6 @@ cryptogen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 cryptogen: $(BUILD_DIR)/bin/cryptogen
 
 tools-docker: $(BUILD_DIR)/image/tools/$(DUMMY)
-
-javaenv: $(BUILD_DIR)/image/javaenv/$(DUMMY)
 
 buildenv: $(BUILD_DIR)/image/buildenv/$(DUMMY)
 
@@ -254,9 +252,9 @@ $(BUILD_DIR)/docker/gotools: gotools.mk
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make -f gotools.mk GOTOOLS_BINDIR=/opt/gotools/bin GOTOOLS_GOPATH=/opt/gotools/obj
 
-# Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
-$(BUILD_DIR)/bin/peer: $(BUILD_DIR)/image/ccenv/$(DUMMY) $(BUILD_DIR)/image/javaenv/$(DUMMY)
-$(BUILD_DIR)/image/peer/$(DUMMY): $(BUILD_DIR)/image/ccenv/$(DUMMY) $(BUILD_DIR)/image/javaenv/$(DUMMY)
+# Both peer and peer-docker depend on ccenv (all docker env images it supports).
+$(BUILD_DIR)/bin/peer: $(BUILD_DIR)/image/ccenv/$(DUMMY)
+$(BUILD_DIR)/image/peer/$(DUMMY): $(BUILD_DIR)/image/ccenv/$(DUMMY)
 
 $(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -269,9 +267,6 @@ $(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 $(BUILD_DIR)/image/ccenv/payload:      $(BUILD_DIR)/docker/gotools/bin/protoc-gen-go \
 				$(BUILD_DIR)/bin/chaintool \
 				$(BUILD_DIR)/goshim.tar.bz2
-$(BUILD_DIR)/image/javaenv/payload:    $(BUILD_DIR)/javashim.tar.bz2 \
-				$(BUILD_DIR)/protos.tar.bz2 \
-				settings.gradle
 $(BUILD_DIR)/image/peer/payload:       $(BUILD_DIR)/docker/bin/peer \
 				$(BUILD_DIR)/sampleconfig.tar.bz2
 $(BUILD_DIR)/image/orderer/payload:    $(BUILD_DIR)/docker/bin/orderer \
