@@ -138,6 +138,29 @@ the following commands to build the fabric code:
     cd $GOPATH/src/github.com/hyperledger/fabric
     make dist-clean all
 
+Building on Centos 7
+~~~~~~~~~~~~~~~~~~~~
+
+You will have to build CouchDB from source because there is no package
+available from the distribution. If you are planning a multi-orderer
+arrangement, you will also need to install Apache Kafka from source.
+Apache Kafka includes both Zookeeper and Kafka executables and
+supporting artifacts.
+
+::
+
+   export GOPATH={directory of your choice}
+   mkdir -p $GOPATH/src/github.com/hyperledger
+   FABRIC=$GOPATH/src/github.hyperledger/fabric
+   git clone https://github.com/hyperledger/fabric $FABRIC
+   cd $FABRIC
+   git checkout master # <-- only if you want the master branch
+   export PATH=$GOPATH/bin:$PATH
+   make native
+
+If you are not trying to build for docker, you only need the natives.
+
+
 Configuration
 -------------
 
