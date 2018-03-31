@@ -30,8 +30,7 @@ import (
 
 const (
 	channelFuncName = "channel"
-	shortDes        = "Operate a channel: create|fetch|join|list|update|signconfigtx|getinfo."
-	longDes         = "Operate a channel: create|fetch|join|list|update|signconfigtx|getinfo."
+	channelCmdDes   = "Operate a channel: create|fetch|join|list|update|signconfigtx|getinfo."
 )
 
 var logger = flogging.MustGetLogger("channelCmd")
@@ -105,8 +104,8 @@ func attachFlags(cmd *cobra.Command, names []string) {
 
 var channelCmd = &cobra.Command{
 	Use:              channelFuncName,
-	Short:            fmt.Sprint(shortDes),
-	Long:             fmt.Sprint(longDes),
+	Short:            fmt.Sprint(channelCmdDes),
+	Long:             fmt.Sprint(channelCmdDes),
 	PersistentPreRun: common.SetOrdererEnv,
 }
 
