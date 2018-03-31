@@ -52,29 +52,43 @@ Go Programming Language
 Hyperledger Fabric uses the Go programming language 1.9.x for many of its
 components.
 
-.. note: building with Go version 1.8.x is not supported
+.. note:: Building with Go version 1.8.x is not supported
 
   - `Go <https://golang.org/>`__ - version 1.9.x
 
-Given that we are writing a Go chaincode program, we need to be sure that the
-source code is located somewhere within the ``$GOPATH`` tree. First, you will
-need to check that you have set your ``$GOPATH`` environment variable.
+Given that we will be writing chaincode programs in Go, there are two
+environment variables you will need to set properly; you can make these
+settings permanent by placing them in the appropriate startup file, such
+as your personal ``~/.bashrc`` file if you are using the ``bash`` shell
+under Linux.
 
-.. code:: bash
-
-  echo $GOPATH
-  /Users/xxx/go
-
-If nothing is displayed when you echo ``$GOPATH``, you will need to set it.
-Typically, the value will be a directory tree child of your development
-workspace, if you have one, or as a child of your $HOME directory. Since we'll
-be doing a bunch of coding in Go, you might want to add the following to your
-``~/.bashrc``:
+First, you must set the environment variable ``GOPATH`` to point at the
+Go workspace containing the downloaded Fabric code base, with something like:
 
 .. code:: bash
 
   export GOPATH=$HOME/go
+
+.. note:: You **must** set the GOPATH variable
+
+  Even though, in Linux, Go's ``GOPATH`` variable can be a colon-separated list
+  of directories, and will use a default value of ``$HOME/go`` if it is unset,
+  the current Fabric build framework still requires you to set and export that
+  variable, and it must contain **only** the single directory name for your Go
+  workspace. (This restriction might be removed in a future release.)
+
+Second, you should (again, in the appropriate startup file) extend your
+command search path to include the Go ``bin`` directory, such as the following
+example for ``bash`` under Linux:
+
+.. code:: bash
+
   export PATH=$PATH:$GOPATH/bin
+
+While this directory may not exist in a new Go workspace installation, it is
+populated later by the Fabric build system with a small number of Go executables
+used by other parts of the build system. So even if you currently have no such
+directory yet, extend your shell search path as above.
 
 Node.js Runtime and NPM
 -----------------------
