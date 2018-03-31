@@ -48,11 +48,11 @@ gotool.ginkgo:
 	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/onsi/ginkgo/ginkgo
 
 # Lock to a versioned dep
-gotool.dep: DEP_VERSION ?= "0.4.1"
+gotool.dep: DEP_VERSION ?= "v0.4.1"
 gotool.dep:
 	@echo "Getting dep $(DEP_VERSION)"
-	@GOPATH=$(abspath $(TMP_GOPATH)) go get -d github.com/golang/dep
-	@cd $(abspath $(TMP_GOPATH)) git checkout $(DEP_VERSION)
+	@GOPATH=$(abspath $(TMP_GOPATH)) go get -d -u github.com/golang/dep
+	@cd $(abspath $(TMP_GOPATH))/src/github.com/golang/dep && git checkout -q $(DEP_VERSION)
 	@echo "Building github.com/golang/dep -> dep"
 	@GOPATH=$(abspath $(TMP_GOPATH)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
 
