@@ -67,6 +67,7 @@ func getBuildCmd(codePackage []byte) (string, error) {
 //ValidateSpec validates the java chaincode specs
 func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	path, err := url.Parse(spec.ChaincodeId.Path)
+	fmt.Printf("URL: %+v\n", path)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
