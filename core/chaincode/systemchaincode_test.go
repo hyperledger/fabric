@@ -113,7 +113,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 	peer.MockInitialize()
 
 	mspGetter := func(cid string) []string {
-		return []string{"DEFAULT"}
+		return []string{"SampleOrg"}
 	}
 
 	peer.MockSetMSPIDGetter(mspGetter)

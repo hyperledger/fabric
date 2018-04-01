@@ -74,7 +74,7 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "DEFAULT")
+	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
 		os.Exit(-1)

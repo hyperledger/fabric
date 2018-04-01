@@ -65,7 +65,7 @@ var orderingEndpoint string
 // It should only be referenced in tests.  However, it is necessary
 // to support the 'default chain' setup so temporarily adding until
 // this concept can be removed to testing scenarios only
-const XXXDefaultChannelMSPID = "DEFAULT"
+const XXXDefaultChannelMSPID = "SampleOrg"
 
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.

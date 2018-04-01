@@ -39,7 +39,7 @@ func TestInit(t *testing.T) {
 	e := new(EndorserOneValidSignature)
 	stub := shim.NewMockStub("endorseronevalidsignature", e)
 
-	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
+	args := [][]byte{[]byte("SampleOrg"), []byte("PEER")}
 	if res := stub.MockInit("1", args); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
@@ -64,7 +64,7 @@ func TestInvoke(t *testing.T) {
 	}
 
 	// Initialize ESCC supplying the identity of the signer
-	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
+	args := [][]byte{[]byte("SampleOrg"), []byte("PEER")}
 	if res := stub.MockInit("1", args); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()

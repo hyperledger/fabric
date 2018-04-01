@@ -202,7 +202,7 @@ var defaults = TopLevel{
 		LogLevel:    "INFO",
 		LogFormat:   "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
 		LocalMSPDir: "msp",
-		LocalMSPID:  "DEFAULT",
+		LocalMSPID:  "SampleOrg",
 		BCCSP:       bccsp.GetDefaultOpts(),
 		Authentication: Authentication{
 			TimeWindow: time.Duration(15 * time.Minute),

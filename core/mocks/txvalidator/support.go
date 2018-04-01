@@ -56,5 +56,5 @@ func (ms *Support) PolicyManager() policies.Manager {
 }
 
 func (cs *Support) GetMSPIDs(cid string) []string {
-	return []string{"DEFAULT"}
+	return []string{"SampleOrg"}
 }

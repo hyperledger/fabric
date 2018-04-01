@@ -71,7 +71,7 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 	peer.MockInitialize()
 
 	mspGetter := func(cid string) []string {
-		return []string{"DEFAULT"}
+		return []string{"SampleOrg"}
 	}
 
 	peer.MockSetMSPIDGetter(mspGetter)

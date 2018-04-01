@@ -1684,7 +1684,7 @@ func TestMain(m *testing.M) {
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	mspGetter := func(cid string) []string {
-		return []string{"DEFAULT"}
+		return []string{"SampleOrg"}
 	}
 
 	per.MockSetMSPIDGetter(mspGetter)

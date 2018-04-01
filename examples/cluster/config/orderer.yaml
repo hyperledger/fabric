@@ -69,7 +69,7 @@ General:
     # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
     # ID of one of the organizations defined in the orderer system channel's
     # /Channel/Orderer configuration. The sample organization defined in the
-    # sample configuration provided has an MSP ID of "DEFAULT".
+    # sample configuration provided has an MSP ID of "SampleOrg".
     LocalMSPID: OrdererMSP
 
     # Enable an HTTP service for Go "pprof" profiling as documented at:

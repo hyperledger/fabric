@@ -64,7 +64,7 @@ func LoadDevMsp() error {
 		return err
 	}
 
-	return LoadLocalMsp(mspDir, nil, "DEFAULT")
+	return LoadLocalMsp(mspDir, nil, "SampleOrg")
 }
 
 // FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,
