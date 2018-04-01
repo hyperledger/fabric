@@ -7,10 +7,10 @@ Writing Your First Application
 
 In this section we'll be looking at a handful of sample programs to see how Fabric
 apps work. These apps (and the smart contract they use) -- collectively known as
-``fabcar`` -- provide a broad demonstration of Fabric functionality.  Notably, we
+``fabcar`` -- provide a broad demonstration of Fabric functionality. Notably, we
 will show the process for interacting with a Certificate Authority and generating
-enrollment certificates, after which we will leverage these generated identities
-(user objects) to query and update a ledger.
+enrollment certificates, after which we will leverage these identities to query
+and update a ledger.
 
 We’ll go through three principle steps:
 
@@ -36,17 +36,24 @@ with the ledger (i.e. the peer) on a Fabric network.
 Setting up your Dev Environment
 -------------------------------
 
-First thing, let's download the Fabric images and the accompanying artifacts for the network
-and applications...
+If you've already run through :doc:`build_network`, you should have your dev
+environment setup and will have downloaded `fabric-samples` as well as the
+accompanying artifacts. To run this tutorial, what you need to do now is tear
+down any existing networks you have, which you can do by issuing the following:
 
-Visit the :doc:`prereqs` page and ensure you have the necessary dependencies
-installed on your machine.
+.. code:: bash
 
-Next, visit the :doc:`samples` page and follow the provided instructions.  Return to
+  ./byfn.sh -m down
+
+If you don't have a development environment and the accompanying artifacts for
+the network and applications, visit the :doc:`prereqs` page and ensure you have
+the necessary dependencies installed on your machine.
+
+Next, visit the :doc:`samples` page and follow the provided instructions. Return to
 this tutorial once you have cloned the ``fabric-samples`` repository, and downloaded
 the latest stable Fabric images and available utilities.
 
-At this point everything should be installed.  Navigate to the ``fabcar`` subdirectory
+At this point everything should be installed. Navigate to the ``fabcar`` subdirectory
 within your ``fabric-samples`` repository and take a look at what's inside:
 
 .. code:: bash
@@ -59,7 +66,7 @@ You should see the following:
 
      enrollAdmin.js	invoke.js	package.json	query.js	registerUser.js	startFabric.sh
 
-Before starting we also need to do a little housekeeping.  Run the following command to
+Before starting we also need to do a little housekeeping. Run the following command to
 kill any stale or active containers:
 
 .. code:: bash
@@ -75,7 +82,7 @@ Clear any cached networks:
   docker network prune
 
 And lastly if you've already run through this tutorial, you'll also want to delete the
-underlying chaincode image for the ``fabcar`` smart contract.  If you're a user going through
+underlying chaincode image for the ``fabcar`` smart contract. If you're a user going through
 this content for the first time, then you won't have this chaincode image on your system:
 
 .. code:: bash
@@ -86,7 +93,7 @@ Install the clients & launch the network
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note:: The following instructions require you to be in the ``fabcar`` subdirectory
-          within your local clone of the ``fabric-samples`` repo.  Remain at the
+          within your local clone of the ``fabric-samples`` repo. Remain at the
           root of this subdirectory for the remainder of this tutorial.
 
 Run the following command to install the Fabric dependencies for the applications.
@@ -98,7 +105,7 @@ allows us to load the identity material and talk to the peers and ordering servi
 
   npm install
 
-Launch your network using the ``startFabric.sh`` shell script.  This command
+Launch your network using the ``startFabric.sh`` shell script. This command
 will spin up our various Fabric entities and launch a smart contract container for
 chaincode written in Golang:
 
@@ -107,14 +114,15 @@ chaincode written in Golang:
   ./startFabric.sh
 
 You also have the option of running this tutorial against chaincode written in
-`Node.js <https://fabric-shim.github.io/>`__.  If you'd like to pursue this route, issue the following command instead:
+`Node.js <https://fabric-shim.github.io/>`__. If you'd like to pursue this route,
+issue the following command instead:
 
 .. code:: bash
 
-  ./startFabric.sh node
+ ./startFabric.sh node
 
 .. note:: Be aware that the Node.js chaincode scenario will take roughly 90 seconds
-          to complete; perhaps longer.  The script is not hanging, rather the
+          to complete; perhaps longer. The script is not hanging, rather the
           increased time is a result of the fabric-shim being installed as the
           chaincode image is being built.
 
@@ -138,7 +146,7 @@ Enrolling the Admin User
 ------------------------
 
 .. note:: The following two sections involve communication with the Certificate
-          Authority.  You may find it useful to stream the CA logs when running
+          Authority. You may find it useful to stream the CA logs when running
           the upcoming programs.
 
 To stream your CA logs, split your terminal or open a new shell and issue the following:
@@ -149,12 +157,12 @@ To stream your CA logs, split your terminal or open a new shell and issue the fo
 
 Now hop back to your terminal with the ``fabcar`` content...
 
-When we launched our network, an admin user - ``admin`` - was registered with our
-Certificate Authority.  Now we need to send an enroll call to the CA server and
-retrieve the enrollment certificate (eCert) for this user.  We won't delve into enrollment
+When we launched our network, an admin user -- ``admin`` -- was registered with our
+Certificate Authority. Now we need to send an enroll call to the CA server and
+retrieve the enrollment certificate (eCert) for this user. We won't delve into enrollment
 details here, but suffice it to say that the SDK and by extension our applications
-need this cert in order to form a user object for the admin.  We will then use this admin
-object to subsequently register and enroll a new user.  Send the admin enroll call to the CA
+need this cert in order to form a user object for the admin. We will then use this admin
+object to subsequently register and enroll a new user. Send the admin enroll call to the CA
 server:
 
 .. code:: bash
@@ -162,16 +170,16 @@ server:
   node enrollAdmin.js
 
 This program will invoke a certificate signing request (CSR) and ultimately output
-an eCert and key material into a newly created folder - ``hfc-key-store`` - at the
-root of this project.  Our apps will then look to this location when they need to
+an eCert and key material into a newly created folder -- ``hfc-key-store`` -- at the
+root of this project. Our apps will then look to this location when they need to
 create or load the identity objects for our various users.
 
 Register and Enroll ``user1``
 -----------------------------
 
 With our newly generated admin eCert, we will now communicate with the CA server
-once more to register and enroll a new user.  This user - ``user1`` - will be
-the identity we use when querying and updating the ledger.  It's important to
+once more to register and enroll a new user. This user -- ``user1`` -- will be
+the identity we use when querying and updating the ledger. It's important to
 note here that it is the ``admin`` identity that is issuing the registration and
 enrollment calls for our new user (i.e. this user is acting in the role of a registrar).
 Send the register and enroll calls for ``user1``:
@@ -181,8 +189,8 @@ Send the register and enroll calls for ``user1``:
   node registerUser.js
 
 Similar to the admin enrollment, this program invokes a CSR and outputs the keys
-and eCert into the ``hfc-key-store`` subdirectory.  So now we have identity material for two
-separate users - ``admin`` & ``user1``.  Time to interact with the ledger...
+and eCert into the ``hfc-key-store`` subdirectory. So now we have identity material for two
+separate users -- ``admin`` & ``user1``. Time to interact with the ledger...
 
 Querying the Ledger
 -------------------
@@ -198,8 +206,8 @@ This is a representation of how a query works:
 .. image:: images/QueryingtheLedger.png
 
 First, let's run our ``query.js`` program to return a listing of all the cars on
-the ledger.  We will use our second identity - ``user1`` - as the signing entity
-for this application.  The following line in our program specifies ``user1`` as
+the ledger. We will use our second identity -- ``user1`` -- as the signing entity
+for this application. The following line in our program specifies ``user1`` as
 the signer:
 
 .. code:: bash
@@ -238,7 +246,7 @@ owned by Brad, a violet Fiat Punto owned by Pari, and so on. The ledger is
 key-value based and, in our implementation, the key is ``CAR0`` through ``CAR9``.
 This will become particularly important in a moment.
 
-Let's take a closer look at this program.  Use an editor (e.g. atom or visual studio)
+Let's take a closer look at this program. Use an editor (e.g. atom or visual studio)
 and open ``query.js``.
 
 The initial section of the application defines certain variables such as
@@ -300,7 +308,7 @@ This defines the range of ``queryAllCars``. Every car between ``CAR0`` and
 -- will be returned by the query.
 
 Below is a representation of how an app would call different functions in
-chaincode.  Each function must be coded against an available API in the chaincode
+chaincode. Each function must be coded against an available API in the chaincode
 shim interface, which in turn allows the smart contract container to properly
 interface with the peer ledger.
 
@@ -325,7 +333,7 @@ The ``query.js`` program should now look like this:
     args: ['CAR4']
   };
 
-Save the program and navigate back to your ``fabcar`` directory.  Now run the
+Save the program and navigate back to your ``fabcar`` directory. Now run the
 program again:
 
 .. code:: bash
@@ -362,7 +370,7 @@ written to every peer's ledger:
 
 .. image:: images/UpdatingtheLedger.png
 
-Our first update to the ledger will be to create a new car.  We have a separate
+Our first update to the ledger will be to create a new car. We have a separate
 Javascript program -- ``invoke.js`` -- that we will use to make updates. Just
 as with queries, use an editor to open the program and navigate to the
 code block where we construct our invocation:
@@ -381,7 +389,7 @@ code block where we construct our invocation:
     txId: tx_id
   };
 
-You'll see that we can call one of two functions - ``createCar`` or
+You'll see that we can call one of two functions -- ``createCar`` or
 ``changeCarOwner``. First, let’s create a red Chevy Volt and give it to an
 owner named Nick. We're up to ``CAR9`` on our ledger, so we'll use ``CAR10``
 as the identifying key here. Edit this code block to look like this:
@@ -511,7 +519,7 @@ Additional Resources
 --------------------
 
 The `Hyperledger Fabric Node SDK repo <https://github.com/hyperledger/fabric-sdk-node>`__
-is an excellent resource for deeper documentation and sample code.  You can also consult
+is an excellent resource for deeper documentation and sample code. You can also consult
 the Fabric community and component experts on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
