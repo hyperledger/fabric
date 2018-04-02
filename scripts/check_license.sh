@@ -6,10 +6,24 @@
 #
 
 function filterExcludedFiles {
-  CHECK=`echo "$CHECK" | grep -v .png$ | grep -v .rst$ | grep -v ^.git/ \
-  | grep -v .pem$ | grep -v .block$ | grep -v .tx$ | grep -v ^LICENSE$ | grep -v _sk$ \
-  | grep -v .key$ | grep -v \\.gen.go$ | grep -v ^Gopkg.lock$ | grep -v 'testdata/' \
-  | grep -v .md$ | grep -v ^vendor/ | grep -v ^.build/ | grep -v .pb.go$ | sort -u`
+  CHECK=`echo "$CHECK" \
+		| grep -v "^\.git/" \
+		| grep -v "^\.build/" \
+		| grep -v "^vendor/" \
+		| grep -v "testdata/" \
+		| grep -v "^LICENSE$" \
+		| grep -v "\.png$" \
+		| grep -v "\.rst$" \
+		| grep -v "\.pem$" \
+		| grep -v "\.block$" \
+		| grep -v "\.tx$" \
+		| grep -v "_sk$" \
+		| grep -v "\.key$" \
+		| grep -v "\.gen\.go$" \
+		| grep -v "^Gopkg\.lock$" \
+		| grep -v "\.md$" \
+		| grep -v "\.pb\.go$" \
+		| sort -u`
 }
 
 CHECK=$(git diff --name-only --diff-filter=ACMRTUXB HEAD)
