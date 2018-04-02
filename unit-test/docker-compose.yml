@@ -14,6 +14,7 @@ unit-tests:
     - CORE_VM_DOCKER_ATTACHSTDOUT=true
     - VERBOSE
     - JOB_TYPE=${JOB_TYPE}
+    - COUCHDB_ADDR=couchdb:5984
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     - ${GOPATH}/src/github.com/hyperledger/fabric:/opt/gopath/src/github.com/hyperledger/fabric

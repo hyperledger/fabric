@@ -7,12 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,16 +72,33 @@ func (env *LevelDBCommonStorageTestEnv) Cleanup() {
 
 // CouchDBCommonStorageTestEnv implements TestEnv interface for couchdb based storage
 type CouchDBCommonStorageTestEnv struct {
-	t         testing.TB
-	provider  DBProvider
-	openDbIds map[string]bool
+	t            testing.TB
+	provider     DBProvider
+	openDbIds    map[string]bool
+	couchCleanup func()
+}
+
+func (env *CouchDBCommonStorageTestEnv) setupCouch() string {
+	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
+	if set {
+		env.couchCleanup = func() {}
+		return externalCouch
+	}
+
+	couchDB := &runner.CouchDB{}
+	if err := couchDB.Start(); err != nil {
+		err := fmt.Errorf("failed to start couchDB: %s", err)
+		panic(err)
+	}
+	env.couchCleanup = func() { couchDB.Stop() }
+	return couchDB.Address()
 }
 
 // Init implements corresponding function from interface TestEnv
 func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	// both vagrant and CI have couchdb configured at host "couchdb"
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
+	couchAddr := env.setupCouch()
+	viper.Set("ledger.state.couchDBConfig.couchDBAddress", couchAddr)
 	// Replace with correct username/password such as
 	// admin/admin if user security is enabled on couchdb.
 	viper.Set("ledger.state.couchDBConfig.username", "")
@@ -113,6 +132,7 @@ func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 		statecouchdb.CleanupDB(id)
 	}
 	env.provider.Close()
+	env.couchCleanup()
 }
 
 func removeDBPath(t testing.TB) {
