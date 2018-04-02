@@ -425,6 +425,7 @@ clean: docker-clean unit-test-clean release-clean
 .PHONY: clean-all
 clean-all: clean gotools-clean dist-clean
 	-@rm -rf /var/hyperledger/*
+	-@rm -rf docs/build/
 
 .PHONY: dist-clean
 dist-clean:
