@@ -135,7 +135,7 @@ func TestDeserializeIdentity(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(10000)
 	for i := 0; i < 10000; i++ {
-		go func(m msp.MSP) {
+		go func(m msp.MSP, i int) {
 			sIdentity := serializedIdentity
 			expectedIdentity := mockIdentity
 			defer wg.Done()
@@ -146,7 +146,7 @@ func TestDeserializeIdentity(t *testing.T) {
 			id, err := wrappedMSP.DeserializeIdentity(sIdentity)
 			assert.NoError(t, err)
 			assert.Equal(t, expectedIdentity, id)
-		}(wrappedMSP)
+		}(wrappedMSP, i)
 	}
 	wg.Wait()
 

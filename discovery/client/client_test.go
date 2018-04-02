@@ -517,7 +517,7 @@ type ccMetadataFetcher struct {
 	mock.Mock
 }
 
-func (mdf ccMetadataFetcher) ChaincodeMetadata(channel string, cc string) *chaincode.InstantiatedChaincode {
+func (mdf *ccMetadataFetcher) ChaincodeMetadata(channel string, cc string) *chaincode.InstantiatedChaincode {
 	return mdf.Called().Get(0).(*chaincode.InstantiatedChaincode)
 }
 

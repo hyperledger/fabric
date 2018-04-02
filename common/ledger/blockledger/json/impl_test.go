@@ -165,12 +165,11 @@ func TestRaceCondition(t *testing.T) {
 	it, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	defer it.Close()
 
-	var block *cb.Block
 	var status cb.Status
 
 	complete := make(chan struct{})
 	go func() {
-		block, status = it.Next()
+		_, status = it.Next()
 		close(complete)
 	}()
 

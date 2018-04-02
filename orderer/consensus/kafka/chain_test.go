@@ -2121,11 +2121,10 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
-			var counts []uint64
 			done := make(chan struct{})
 
 			go func() {
-				counts, err = bareMinimumChain.processMessagesToBlocks()
+				_, err = bareMinimumChain.processMessagesToBlocks()
 				done <- struct{}{}
 			}()
 

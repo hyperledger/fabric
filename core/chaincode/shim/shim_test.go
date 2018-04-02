@@ -555,14 +555,11 @@ func TestInvoke(t *testing.T) {
 	streamGetter = mockChaincodeStreamGetter
 	cc := &shimTestCC{}
 	//viper.Set("chaincode.logging.shim", "debug")
-	var err error
 	ccname := "shimTestCC"
 	peerSide := setupcc(ccname, cc)
 	defer mockPeerCCSupport.RemoveCC(ccname)
 	//start the shim+chaincode
-	go func() {
-		err = Start(cc)
-	}()
+	go Start(cc)
 
 	done := setuperror()
 
@@ -576,7 +573,8 @@ func TestInvoke(t *testing.T) {
 			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
 		peerSide.SetResponses(respSet)
 		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
-		err = peerSide.Run()
+		err := peerSide.Run()
+		assert.NoError(t, err, "peer side run failed")
 	}()
 
 	//wait for init
@@ -841,7 +839,6 @@ func TestInvoke(t *testing.T) {
 func TestStartInProc(t *testing.T) {
 	streamGetter = mockChaincodeStreamGetter
 	cc := &shimTestCC{}
-	var err error
 	ccname := "shimTestCC"
 	peerSide := setupcc(ccname, cc)
 	defer mockPeerCCSupport.RemoveCC(ccname)
@@ -858,13 +855,12 @@ func TestStartInProc(t *testing.T) {
 			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
 		peerSide.SetResponses(respSet)
 		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
-		err = peerSide.Run()
+		err := peerSide.Run()
+		assert.NoError(t, err, "peer side run failed")
 	}()
 
 	//start the shim+chaincode
-	go func() {
-		err = StartInProc([]string{"CORE_CHAINCODE_ID_NAME=shimTestCC", "CORE_CHAINCODE_LOGGING_SHIM=debug"}, nil, cc, peerSide.GetSendStream(), peerSide.GetRecvStream())
-	}()
+	go StartInProc([]string{"CORE_CHAINCODE_ID_NAME=shimTestCC", "CORE_CHAINCODE_LOGGING_SHIM=debug"}, nil, cc, peerSide.GetSendStream(), peerSide.GetRecvStream())
 
 	//wait for init
 	processDone(t, done, false)
@@ -880,14 +876,11 @@ func TestCC2CC(t *testing.T) {
 	streamGetter = mockChaincodeStreamGetter
 	cc := &shimTestCC{}
 	//viper.Set("chaincode.logging.shim", "debug")
-	var err error
 	ccname := "shimTestCC"
 	peerSide := setupcc(ccname, cc)
 	defer mockPeerCCSupport.RemoveCC(ccname)
 	//start the shim+chaincode
-	go func() {
-		err = Start(cc)
-	}()
+	go Start(cc)
 
 	done := setuperror()
 
@@ -901,7 +894,8 @@ func TestCC2CC(t *testing.T) {
 			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
 		peerSide.SetResponses(respSet)
 		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
-		err = peerSide.Run()
+		err := peerSide.Run()
+		assert.NoError(t, err, "peer side run failed")
 	}()
 
 	//wait for init

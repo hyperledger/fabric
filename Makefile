@@ -44,7 +44,7 @@
 BASE_VERSION = 1.2.0
 PREV_VERSION = 1.1.0
 CHAINTOOL_RELEASE=1.1.0
-BASEIMAGE_RELEASE=0.4.6
+BASEIMAGE_RELEASE=0.4.7
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,

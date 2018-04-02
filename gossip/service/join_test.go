@@ -108,7 +108,7 @@ func (*gossipMock) Stop() {
 	panic("implement me")
 }
 
-func (gossipMock) SendByCriteria(*proto.SignedGossipMessage, gossip.SendCriteria) error {
+func (*gossipMock) SendByCriteria(*proto.SignedGossipMessage, gossip.SendCriteria) error {
 	panic("implement me")
 }
 

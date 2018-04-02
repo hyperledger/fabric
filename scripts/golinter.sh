@@ -1,17 +1,14 @@
-#!/bin/bash
-#
+#!/bin/bash -e
+
 # Copyright Greg Haskins All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-#
-
-
-set -e
 
 declare -a arr=(
 "./bccsp"
 "./common"
 "./core"
+"./discovery"
 "./events"
 "./examples"
 "./gossip"
@@ -45,7 +42,7 @@ do
     fi
 
     echo "Checking with go vet"
-    OUTPUT="$(go vet $i/...)"
+    OUTPUT="$(go vet -composites=false $i/...)"
     if [[ $OUTPUT ]]; then
         echo "The following files contain go vet errors"
         echo $OUTPUT
