@@ -26,8 +26,7 @@ import (
 
 const (
 	loggingFuncName = "logging"
-	shortDes        = "Log levels: getlevel|setlevel|revertlevels."
-	longDes         = "Log levels: getlevel|setlevel|revertlevels."
+	loggingCmdDes   = "Log levels: getlevel|setlevel|revertlevels."
 )
 
 var logger = flogging.MustGetLogger("cli/logging")
@@ -43,6 +42,6 @@ func Cmd(cf *LoggingCmdFactory) *cobra.Command {
 
 var loggingCmd = &cobra.Command{
 	Use:   loggingFuncName,
-	Short: fmt.Sprint(shortDes),
-	Long:  fmt.Sprint(longDes),
+	Short: fmt.Sprint(loggingCmdDes),
+	Long:  fmt.Sprint(loggingCmdDes),
 }
