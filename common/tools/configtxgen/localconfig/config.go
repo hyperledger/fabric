@@ -95,6 +95,13 @@ type Profile struct {
 	Orderer      *Orderer               `yaml:"Orderer"`
 	Consortiums  map[string]*Consortium `yaml:"Consortiums"`
 	Capabilities map[string]bool        `yaml:"Capabilities"`
+	Policies     map[string]*Policy     `yaml:"Policies"`
+}
+
+// Policy encodes a channel config policy
+type Policy struct {
+	Type string `yaml:"Type"`
+	Rule string `yaml:"Rule"`
 }
 
 // Consortium represents a group of organizations which may create channels with eachother
@@ -104,9 +111,10 @@ type Consortium struct {
 
 // Application encodes the application-level configuration needed in config transactions.
 type Application struct {
-	Organizations []*Organization `yaml:"Organizations"`
-	Capabilities  map[string]bool `yaml:"Capabilities"`
-	Resources     *Resources      `yaml:"Resources"`
+	Organizations []*Organization    `yaml:"Organizations"`
+	Capabilities  map[string]bool    `yaml:"Capabilities"`
+	Resources     *Resources         `yaml:"Resources"`
+	Policies      map[string]*Policy `yaml:"Policies"`
 }
 
 // Resouces encodes the application-level resources configuration needed to seed the resource tree
@@ -116,16 +124,21 @@ type Resources struct {
 
 // Organization encodes the organization-level configuration needed in config transactions.
 type Organization struct {
-	Name           string `yaml:"Name"`
-	ID             string `yaml:"ID"`
-	MSPDir         string `yaml:"MSPDir"`
-	MSPType        string `yaml:"MSPType"`
-	AdminPrincipal string `yaml:"AdminPrincipal"`
+	Name     string             `yaml:"Name"`
+	ID       string             `yaml:"ID"`
+	MSPDir   string             `yaml:"MSPDir"`
+	MSPType  string             `yaml:"MSPType"`
+	Policies map[string]*Policy `yaml:"Policies"`
 
 	// Note: Viper deserialization does not seem to care for
 	// embedding of types, so we use one organization struct
 	// for both orderers and applications.
 	AnchorPeers []*AnchorPeer `yaml:"AnchorPeers"`
+
+	// AdminPrincipal is deprecated and may be removed in a future release
+	// it was used for modifying the default policy generation, but policies
+	// may now be specified explicitly so it is redundant and unnecessary
+	AdminPrincipal string `yaml:"AdminPrincipal"`
 }
 
 // AnchorPeer encodes the necessary fields to identify an anchor peer.
@@ -137,14 +150,15 @@ type AnchorPeer struct {
 // Orderer contains configuration which is used for the
 // bootstrapping of an orderer by the provisional bootstrapper.
 type Orderer struct {
-	OrdererType   string          `yaml:"OrdererType"`
-	Addresses     []string        `yaml:"Addresses"`
-	BatchTimeout  time.Duration   `yaml:"BatchTimeout"`
-	BatchSize     BatchSize       `yaml:"BatchSize"`
-	Kafka         Kafka           `yaml:"Kafka"`
-	Organizations []*Organization `yaml:"Organizations"`
-	MaxChannels   uint64          `yaml:"MaxChannels"`
-	Capabilities  map[string]bool `yaml:"Capabilities"`
+	OrdererType   string             `yaml:"OrdererType"`
+	Addresses     []string           `yaml:"Addresses"`
+	BatchTimeout  time.Duration      `yaml:"BatchTimeout"`
+	BatchSize     BatchSize          `yaml:"BatchSize"`
+	Kafka         Kafka              `yaml:"Kafka"`
+	Organizations []*Organization    `yaml:"Organizations"`
+	MaxChannels   uint64             `yaml:"MaxChannels"`
+	Capabilities  map[string]bool    `yaml:"Capabilities"`
+	Policies      map[string]*Policy `yaml:"Policies"`
 }
 
 // BatchSize contains configuration affecting the size of batches.
