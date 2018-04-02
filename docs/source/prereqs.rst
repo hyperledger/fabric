@@ -49,12 +49,10 @@ following command from a terminal prompt:
 Go Programming Language
 -----------------------
 
-Hyperledger Fabric uses the Go programming language 1.9.x for many of its
+Hyperledger Fabric uses the Go Programming Language for many of its
 components.
 
-.. note:: Building with Go version 1.8.x is not supported
-
-  - `Go <https://golang.org/>`__ - version 1.9.x
+  - `Go <https://golang.org/dl/>`__ version 1.10.x is required.
 
 Given that we will be writing chaincode programs in Go, there are two
 environment variables you will need to set properly; you can make these
