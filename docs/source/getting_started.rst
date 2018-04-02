@@ -5,7 +5,7 @@ Getting Started
    :maxdepth: 1
 
    prereqs
-   samples
+   install
 
 Install Prerequisites
 ^^^^^^^^^^^^^^^^^^^^^
@@ -15,19 +15,13 @@ you have all the :doc:`prereqs` installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
 
-Install Binaries and Docker Images
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install Samples, Binaries and Docker Images
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 While we work on developing real installers for the Hyperledger Fabric
-binaries, we provide a script that will :ref:`binaries` to your system.
-The script also will download the Docker images to your local registry.
-
-Hyperledger Fabric Samples
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-We offer a set of sample applications that you may wish to install these
-:doc:`samples` before starting with the tutorials as the tutorials leverage
-the sample code.
+binaries, we provide a script that will :doc:`install` to your system. We think
+that you'll find the sample applications installed useful to learn more about
+the capabilities and operations of Hyperledger Fabric.
 
 API Documentation
 ^^^^^^^^^^^^^^^^^
