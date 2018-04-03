@@ -1,20 +1,20 @@
 # License for Sphinx
 # ==================
-# 
+#
 # Copyright (c) 2007-2017 by the Sphinx team (see AUTHORS file).
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-# 
+#
 # * Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # * Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in the
 #   documentation and/or other materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -37,13 +37,18 @@ SPHINXPROJ    = hyperledger-fabricdocs
 SOURCEDIR     = source
 BUILDDIR      = build
 
-# Put it first so that "make" without argument is like "make help".
+# Put help target first so it's the default.
+.PHONY: help
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile
+# Remove all generated documentation files.
+.PHONY: clean
+clean:
+	-@rm -rf build/
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
+.PHONY: Makefile
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
