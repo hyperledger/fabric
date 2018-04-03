@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
-	//import system chain codes here
+	//import system chaincodes here
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/escc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
