@@ -196,6 +196,17 @@ func TestNewApplicationGroup(t *testing.T) {
 		assert.NotNil(t, group)
 	})
 
+	t.Run("Application missing policies", func(t *testing.T) {
+		config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+		config.Application.Policies = nil
+		for _, org := range config.Application.Organizations {
+			org.Policies = nil
+		}
+		group, err := NewApplicationGroup(config.Application)
+		assert.NoError(t, err)
+		assert.NotNil(t, group)
+	})
+
 	t.Run("Application unknown MSP", func(t *testing.T) {
 		config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		config.Application.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
@@ -217,6 +228,14 @@ func TestNewChannelGroup(t *testing.T) {
 	t.Run("Add test consortium", func(t *testing.T) {
 		config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
 		config.Consortium = "Test"
+		group, err := NewChannelGroup(config)
+		assert.NoError(t, err)
+		assert.NotNil(t, group)
+	})
+
+	t.Run("Channel missing policies", func(t *testing.T) {
+		config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
+		config.Policies = nil
 		group, err := NewChannelGroup(config)
 		assert.NoError(t, err)
 		assert.NotNil(t, group)
@@ -254,6 +273,17 @@ func TestNewOrdererGroup(t *testing.T) {
 		group, err := NewOrdererGroup(config.Orderer)
 		assert.Error(t, err)
 		assert.Nil(t, group)
+	})
+
+	t.Run("Orderer missing policies", func(t *testing.T) {
+		config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
+		config.Orderer.Policies = nil
+		for _, org := range config.Orderer.Organizations {
+			org.Policies = nil
+		}
+		group, err := NewOrdererGroup(config.Orderer)
+		assert.NoError(t, err)
+		assert.NotNil(t, group)
 	})
 
 	t.Run("Unknown MSP org", func(t *testing.T) {

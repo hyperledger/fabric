@@ -80,6 +80,7 @@ Profiles:
             Organizations:
                 - <<: *SampleOrg
                   Policies:
+                      <<: *SampleOrgPolicies
                       Admins:
                           Type: Signature
                           Rule: "OR('SampleOrg.member')"
@@ -88,6 +89,7 @@ Profiles:
             Organizations:
                 - <<: *SampleOrg
                   Policies:
+                      <<: *SampleOrgPolicies
                       Admins:
                           Type: Signature
                           Rule: "OR('SampleOrg.member')"
@@ -96,6 +98,7 @@ Profiles:
                 Organizations:
                     - <<: *SampleOrg
                       Policies:
+                          <<: *SampleOrgPolicies
                           Admins:
                               Type: Signature
                               Rule: "OR('SampleOrg.member')"
@@ -110,6 +113,7 @@ Profiles:
             Organizations:
                 - <<: *SampleOrg
                   Policies:
+                      <<: *SampleOrgPolicies
                       Admins:
                           Type: Signature
                           Rule: "OR('SampleOrg.member')"
@@ -118,6 +122,7 @@ Profiles:
             Organizations:
                 - <<: *SampleOrg
                   Policies:
+                      <<: *SampleOrgPolicies
                       Admins:
                           Type: Signature
                           Rule: "OR('SampleOrg.member')"
@@ -126,6 +131,7 @@ Profiles:
                 Organizations:
                     - <<: *SampleOrg
                       Policies:
+                          <<: *SampleOrgPolicies
                           Admins:
                               Type: Signature
                               Rule: "OR('SampleOrg.member')"
@@ -170,7 +176,7 @@ Organizations:
         # Policies defines the set of policies at this level of the config tree
         # For organization policies, their canonical path is usually
         #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
-        Policies:
+        Policies: &SampleOrgPolicies
             Readers:
                 Type: Signature
                 Rule: "OR('SampleOrg.member')"
