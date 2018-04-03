@@ -6,7 +6,7 @@
 GOTOOLS = dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell
 BUILD_DIR ?= .build
 GOTOOLS_GOPATH ?= $(BUILD_DIR)/gotools
-GOTOOLS_BINDIR ?= $(GOTOOLS_GOPATH)/bin
+GOTOOLS_BINDIR ?= $(GOPATH)/bin
 
 # go tool->path mapping
 go.fqp.golint    := github.com/golang/lint/golint
