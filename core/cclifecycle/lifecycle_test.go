@@ -229,6 +229,72 @@ var _ = Describe("LifeCycle", func() {
 			}, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed accessing DB"))
+
+			// We also can't query the DB via Metadata()
+			md := lc.Metadata("mychannel", "cc5")
+			var nilMetadata *chaincode.Metadata
+			Expect(md).To(Equal(nilMetadata))
+		})
+	})
+
+	Describe("Channel metadata retrieval", func() {
+		var query *mocks.Query
+		var nilMetadata *chaincode.Metadata
+
+		BeforeEach(func() {
+			query = &mocks.Query{}
+			query.GetStateReturnsOnCall(0, cc1Bytes, nil)
+			query.GetStateReturnsOnCall(1, nil, nil)
+			_, err = lc.NewChannelSubscription("mychannel", func() (cc.Query, error) {
+				return query, nil
+			})
+		})
+
+		Context("When the chaincode is installed and deployed", func() {
+			It("does not attempt to query LSCC for chaincodes that are installed, instead - it fetches from memory", func() {
+				md := lc.Metadata("mychannel", "cc1")
+				Expect(*md).To(Equal(metadataAtStartup))
+			})
+		})
+
+		Context("When the query fails", func() {
+			JustBeforeEach(func() {
+				query.GetStateReturnsOnCall(2, nil, errors.New("failed querying lscc"))
+			})
+			It("does not return the metadata if the query fails", func() {
+				md := lc.Metadata("mychannel", "cc5")
+				Expect(md).To(Equal(nilMetadata))
+			})
+		})
+
+		Context("When a non existent channel is queried for", func() {
+			It("does not return the metadata", func() {
+				md := lc.Metadata("mychannel5", "cc1")
+				Expect(md).To(Equal(nilMetadata))
+			})
+		})
+
+		Context("When the chaincode isn't deployed or installed", func() {
+			JustBeforeEach(func() {
+				query.GetStateReturnsOnCall(2, nil, nil)
+			})
+			It("returns empty metadata for chaincodes that are not installed and not deployed", func() {
+				md := lc.Metadata("mychannel", "cc5")
+				Expect(md).To(Equal(nilMetadata))
+			})
+		})
+
+		Context("When the chaincode is deployed but not installed", func() {
+			JustBeforeEach(func() {
+				query.GetStateReturnsOnCall(2, cc2Bytes, nil)
+			})
+			It("returns empty metadata for chaincodes that are not installed and not deployed", func() {
+				md := lc.Metadata("mychannel", "cc2")
+				Expect(*md).To(Equal(chaincode.Metadata{
+					Name:    "cc2",
+					Version: "1.0",
+				}))
+			})
 		})
 	})
 
@@ -278,6 +344,17 @@ var _ = Describe("LifeCycle", func() {
 				"mychannel2",
 				nilSlice,
 			}))
+		})
+	})
+
+	Context("when a subscription to the same channel is made once again", func() {
+		It("doesn't load data from the state DB", func() {
+			_, err = lc.NewChannelSubscription("mychannel", newQuery)
+			Expect(err).NotTo(HaveOccurred())
+			currentInvocationCount := query.GetStateCallCount()
+			_, err = lc.NewChannelSubscription("mychannel", newQuery)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query.GetStateCallCount()).To(Equal(currentInvocationCount))
 		})
 	})
 })
