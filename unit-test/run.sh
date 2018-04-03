@@ -63,18 +63,11 @@ run_tests() {
     fi
 }
 
-# "go test" the provided packages and generate code coverage reports. Until go 1.10 is released,
-# profile reports can only be generated one package at a time.
+# "go test" the provided packages and generate code coverage reports.
 run_tests_with_coverage() {
-    # Initialize profile.cov
-    for pkg in $@; do
-        :> profile_tmp.cov
-        go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" $pkg -timeout=20m
-        tail -n +2 profile_tmp.cov >> profile.cov || echo "Unable to append coverage for $pkg"
-    done
-
-    # convert to cobertura format
-    gocov convert profile.cov | gocov-xml > report.xml
+    # run the tests serially
+    go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" $@ -timeout=20m
+    tail -n +2 profile_tmp.cov >> profile.cov && rm profile_tmp.cov
 }
 
 main() {
@@ -108,6 +101,7 @@ main() {
         echo "mode: set" > profile.cov
         run_tests_with_coverage "${packages[@]}"
         GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages[@]}"
+        gocov convert profile.cov | gocov-xml > report.xml
     else
         run_tests "${packages[@]}"
         GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${plugin_packages[@]}"
