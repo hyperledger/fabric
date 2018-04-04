@@ -46,11 +46,12 @@ serial_test_packages() {
 # "go test" the provided packages. Packages that are not prsent in the serial package list
 # will be tested in parallel
 run_tests() {
-    echo ${GO_TAGS}
-    flags="-cover"
+    local flags="-cover"
     if [ -n "${VERBOSE}" ]; then
-      flags="-v -cover"
+      flags="${flags} -v"
     fi
+
+    echo ${GO_TAGS}
 
     local parallel=$(parallel_test_packages "$@")
     if [ -n "${parallel}" ]; then
@@ -71,6 +72,11 @@ run_tests_with_coverage() {
 }
 
 main() {
+    # place the cache directory into the default build tree if it exists
+    if [ -d "${GOPATH}/src/github.com/hyperledger/fabric/.build" ]; then
+        export GOCACHE="${GOPATH}/src/github.com/hyperledger/fabric/.build/go-cache"
+    fi
+
     # default behavior is to run all tests
     local package_spec=${TEST_PKGS:-github.com/hyperledger/fabric/...}
 
