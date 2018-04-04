@@ -19,7 +19,7 @@ organization subdivision), and sets the basis for defining access privileges in 
 the context of a network and channel (e.g., channel admins, readers, writers).
 The configuration of an MSP is advertised to all the channels, where members of the
 corresponding organization participate (in the form of a **channel MSP**).
-Peers, orderers and clients also maintain a local MSP instance (also known as **lLocal
+Peers, orderers and clients also maintain a local MSP instance (also known as **Local
 MSP**) to authenticate messages of members of their organization outside the context
 of a channel.
 In addition, an MSP can allow for the identification of a list of
