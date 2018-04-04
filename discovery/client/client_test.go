@@ -254,7 +254,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 
 	sig, _ := cauthdsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
 	polBytes, _ := proto.Marshal(sig)
-	mdf.On("ChaincodeMetadata").Return(&chaincode.InstantiatedChaincode{
+	mdf.On("ChaincodeMetadata").Return(&chaincode.Metadata{
 		Policy:  polBytes,
 		Name:    "mycc",
 		Version: "1.0",
@@ -517,8 +517,8 @@ type ccMetadataFetcher struct {
 	mock.Mock
 }
 
-func (mdf *ccMetadataFetcher) ChaincodeMetadata(channel string, cc string) *chaincode.InstantiatedChaincode {
-	return mdf.Called().Get(0).(*chaincode.InstantiatedChaincode)
+func (mdf *ccMetadataFetcher) ChaincodeMetadata(channel string, cc string) *chaincode.Metadata {
+	return mdf.Called().Get(0).(*chaincode.Metadata)
 }
 
 type principalEvaluator struct {

@@ -15,14 +15,18 @@ import (
 	"syscall"
 	"time"
 
+	"io/ioutil"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	ccdef "github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/admin"
+	cc "github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
@@ -30,11 +34,12 @@ import (
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/library"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/events/producer"
-	common2 "github.com/hyperledger/fabric/gossip/common"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -261,14 +266,14 @@ func serve(args []string) error {
 		return dialOpts
 	}
 
-	var certs *common2.TLSCertificates
+	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
 		serverCert := peerServer.ServerCertificate()
 		clientCert, err := peer.GetClientCertificate()
 		if err != nil {
 			return errors.Wrap(err, "failed obtaining client certificates")
 		}
-		certs = &common2.TLSCertificates{}
+		certs = &gossipcommon.TLSCertificates{}
 		certs.TLSServerCert.Store(&serverCert)
 		certs.TLSClientCert.Store(&clientCert)
 	}
@@ -282,11 +287,29 @@ func serve(args []string) error {
 
 	//initialize system chaincodes
 	initSysCCs()
+	installedCCs := func() ([]ccdef.InstalledChaincode, error) {
+		return cc.InstalledCCs(ccprovider.GetCCsPath(), ioutil.ReadDir, ccprovider.LoadPackage)
+	}
+	lifecycle, err := cc.NewLifeCycle(cc.Enumerate(installedCCs))
+	if err != nil {
+		logger.Panicf("Failed creating lifecycle: +%v", err)
+	}
+	onUpdate := cc.HandleMetadataUpdate(func(channel string, chaincodes ccdef.MetadataSet) {
+		service.GetGossipService().UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChainID(channel))
+	})
+	lifecycle.AddListener(onUpdate)
 
-	//this brings up all the chains (including testchainid)
+	//this brings up all the chains
 	peer.Initialize(func(cid string) {
 		logger.Debugf("Deploying system CC, for chain <%s>", cid)
 		scc.DeploySysCCs(cid)
+		sub, err := lifecycle.NewChannelSubscription(cid, func() (cc.Query, error) {
+			return peer.GetLedger(cid).NewQueryExecutor()
+		})
+		if err != nil {
+			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
+		}
+		cceventmgmt.GetMgr().Register(cid, sub)
 	})
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]",

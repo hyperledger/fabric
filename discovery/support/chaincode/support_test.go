@@ -17,25 +17,25 @@ import (
 )
 
 type mockMetadataRetriever struct {
-	res *chaincode.InstantiatedChaincode
+	res *chaincode.Metadata
 }
 
-func (r *mockMetadataRetriever) Metadata(channel string, cc string) *chaincode.InstantiatedChaincode {
+func (r *mockMetadataRetriever) Metadata(channel string, cc string) *chaincode.Metadata {
 	return r.res
 }
 
 func TestSupport(t *testing.T) {
 	emptySignaturePolicyEnvelope, _ := proto.Marshal(&common.SignaturePolicyEnvelope{})
-	icc1 := &chaincode.InstantiatedChaincode{Policy: emptySignaturePolicyEnvelope}
+	ccmd1 := &chaincode.Metadata{Policy: emptySignaturePolicyEnvelope}
 	notEmptySignaturePolicyEnvelope, _ := proto.Marshal(&common.SignaturePolicyEnvelope{
 		Rule:       &common.SignaturePolicy{},
 		Identities: []*msp.MSPPrincipal{{}},
 	})
-	icc2 := &chaincode.InstantiatedChaincode{Policy: notEmptySignaturePolicyEnvelope}
+	ccmd2 := &chaincode.Metadata{Policy: notEmptySignaturePolicyEnvelope}
 
 	tests := []struct {
 		name        string
-		input       *chaincode.InstantiatedChaincode
+		input       *chaincode.Metadata
 		shouldBeNil bool
 	}{
 		{
@@ -45,17 +45,17 @@ func TestSupport(t *testing.T) {
 		},
 		{
 			name:        "Invalid policy bytes",
-			input:       &chaincode.InstantiatedChaincode{Policy: []byte{1, 2, 3}},
+			input:       &chaincode.Metadata{Policy: []byte{1, 2, 3}},
 			shouldBeNil: true,
 		},
 		{
 			name:        "Empty signature policy envelope",
-			input:       icc1,
+			input:       ccmd1,
 			shouldBeNil: true,
 		},
 		{
 			name:        "Not Empty signature policy envelope",
-			input:       icc2,
+			input:       ccmd2,
 			shouldBeNil: false,
 		},
 	}

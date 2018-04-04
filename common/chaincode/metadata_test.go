@@ -14,7 +14,7 @@ import (
 )
 
 func TestToChaincodes(t *testing.T) {
-	ccs := InstantiatedChaincodes{
+	ccs := MetadataSet{
 		{
 			Name:    "foo",
 			Version: "1.0",
@@ -22,5 +22,33 @@ func TestToChaincodes(t *testing.T) {
 	}
 	assert.Equal(t, []*gossip.Chaincode{
 		{Name: "foo", Version: "1.0"},
-	}, ccs.ToChaincodes())
+	}, ccs.AsChaincodes())
+}
+
+func TestMetadataMapping(t *testing.T) {
+	mm := NewMetadataMapping()
+	md1 := Metadata{
+		Name:    "cc1",
+		Id:      []byte{1},
+		Version: "1.0",
+		Policy:  []byte{1, 2, 3},
+	}
+	mm.Update(md1)
+	res, found := mm.Lookup("cc1")
+	assert.Equal(t, md1, res)
+	assert.True(t, found)
+	res, found = mm.Lookup("cc2")
+	assert.Zero(t, res)
+	assert.False(t, found)
+	md2 := Metadata{
+		Name:    "cc1",
+		Id:      []byte{1},
+		Version: "1.1",
+		Policy:  []byte{2, 2, 2},
+	}
+	mm.Update(md2)
+	res, found = mm.Lookup("cc1")
+	assert.Equal(t, md2, res)
+
+	assert.Equal(t, MetadataSet{md2}, mm.Aggregate())
 }
