@@ -3,17 +3,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell
+GOTOOLS = counterfeiter dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell mockery
 BUILD_DIR ?= .build
 GOTOOLS_GOPATH ?= $(BUILD_DIR)/gotools
 GOTOOLS_BINDIR ?= $(GOPATH)/bin
 
 # go tool->path mapping
-go.fqp.golint    := github.com/golang/lint/golint
-go.fqp.goimports := golang.org/x/tools/cmd/goimports
-go.fqp.gocov     := github.com/axw/gocov/...
-go.fqp.misspell  := github.com/client9/misspell/cmd/misspell
-go.fqp.gocov-xml := github.com/AlekSi/gocov-xml
+go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter
+go.fqp.gocov         := github.com/axw/gocov/gocov
+go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
+go.fqp.goimports     := golang.org/x/tools/cmd/goimports
+go.fqp.golint        := github.com/golang/lint/golint
+go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
+go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
 
 .PHONY: gotools-install
 gotools-install: $(patsubst %,$(GOTOOLS_BINDIR)/%, $(GOTOOLS))
@@ -39,10 +41,9 @@ gotool.ginkgo:
 # Lock to a versioned dep
 gotool.dep: DEP_VERSION ?= "v0.4.1"
 gotool.dep:
-	@echo "Getting dep $(DEP_VERSION)"
 	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d -u github.com/golang/dep
 	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q $(DEP_VERSION)
-	@echo "Building github.com/golang/dep -> dep"
+	@echo "Building github.com/golang/dep $(DEP_VERSION) -> dep"
 	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
 	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q master
 
