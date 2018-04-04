@@ -79,17 +79,26 @@ Profiles:
             <<: *OrdererDefaults
             Organizations:
                 - <<: *SampleOrg
-                  AdminPrincipal: Role.MEMBER
+                  Policies:
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
         Application:
             <<: *ApplicationDefaults
             Organizations:
                 - <<: *SampleOrg
-                  AdminPrincipal: Role.MEMBER
+                  Policies:
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
         Consortiums:
             SampleConsortium:
                 Organizations:
                     - <<: *SampleOrg
-                      AdminPrincipal: Role.MEMBER
+                      Policies:
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
 
     # SampleDevModeKafka defines a configuration that differs from the
     # SampleDevModeSolo one only in that it uses the Kafka-based orderer.
@@ -100,17 +109,26 @@ Profiles:
             OrdererType: kafka
             Organizations:
                 - <<: *SampleOrg
-                  AdminPrincipal: Role.MEMBER
+                  Policies:
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
         Application:
             <<: *ApplicationDefaults
             Organizations:
                 - <<: *SampleOrg
-                  AdminPrincipal: Role.MEMBER
+                  Policies:
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
         Consortiums:
             SampleConsortium:
                 Organizations:
                     - <<: *SampleOrg
-                      AdminPrincipal: Role.MEMBER
+                      Policies:
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
 
     # SampleSingleMSPChannel defines a channel with only the sample org as a
     # member. It is designed to be used in conjunction with SampleSingleMSPSolo
@@ -149,11 +167,25 @@ Organizations:
         # MSPDir is the filesystem path which contains the MSP configuration.
         MSPDir: msp
 
-        # AdminPrincipal dictates the type of principal used for an
-        # organization's Admins policy. Today, only the values of Role.ADMIN and
-        # Role.MEMBER are accepted, which indicates a principal of role type
-        # ADMIN and role type MEMBER respectively.
-        AdminPrincipal: Role.ADMIN
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
+                # If your MSP is configured with the new NodeOUs, you might
+                # want to use a more specific rule like the following:
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.peer')"
+            Writers:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
+                # If your MSP is configured with the new NodeOUs, you might
+                # want to use a more specific rule like the following:
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.client'')"
+            Admins:
+                Type: Signature
+                Rule: "OR('SampleOrg.admin')"
 
         # AnchorPeers defines the location of peers which can be used for
         # cross-org gossip communication. Note, this value is only encoded in
@@ -171,6 +203,23 @@ Organizations:
 #
 ################################################################################
 Channel: &ChannelDefaults
+    # Policies defines the set of policies at this level of the config tree
+    # For Channel policies, their canonical path is
+    #   /Channel/<PolicyName>
+    Policies:
+        # Who may invoke the 'Deliver' API
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        # Who may invoke the 'Broadcast' API
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        # By default, who may modify elements at this config level
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
 
     # Capabilities describes the channel level capabilities, see the
     # dedicated Capabilities section elsewhere in this file for a full
@@ -238,12 +287,30 @@ Orderer: &OrdererDefaults
     # network.
     Organizations:
 
+    # Policies defines the set of policies at this level of the config tree
+    # For Orderer policies, their canonical path is
+    #   /Channel/Orderer/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        # BlockValidation specifies what signatures must be included in the block
+        # from the orderer for the peer to validate it.
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
     # Capabilities describes the orderer level capabilities, see the
     # dedicated Capabilities section elsewhere in this file for a full
     # description
     Capabilities:
         <<: *OrdererCapabilities
-
 
 ################################################################################
 #
@@ -258,6 +325,20 @@ Application: &ApplicationDefaults
     # Organizations lists the orgs participating on the application side of the
     # network.
     Organizations:
+
+    # Policies defines the set of policies at this level of the config tree
+    # For Application policies, their canonical path is
+    #   /Channel/Application/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
 
     # Capabilities describes the application level capabilities, see the
     # dedicated Capabilities section elsewhere in this file for a full
