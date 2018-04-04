@@ -22,6 +22,13 @@ type DirEnumerator func(string) ([]os.FileInfo, error)
 // ChaincodeExtractor extracts chaincode from a given path
 type ChaincodeExtractor func(ccname string, ccversion string, path string) (ccprovider.CCPackage, error)
 
+var (
+	// AcceptAll returns a predicate that accepts all Metadata
+	AcceptAll ChaincodePredicate = func(cc chaincode.Metadata) bool {
+		return true
+	}
+)
+
 // InstalledCCs retrieves the installed chaincodes
 func InstalledCCs(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) ([]chaincode.InstalledChaincode, error) {
 	var chaincodes []chaincode.InstalledChaincode

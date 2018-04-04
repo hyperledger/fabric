@@ -21,9 +21,10 @@ var (
 // Lifecycle manages information regarding chaincode lifecycle
 type Lifecycle struct {
 	sync.RWMutex
-	listeners            []LifeCycleChangeListener
-	installedCCs         []chaincode.InstalledChaincode
-	deployedCCsByChannel map[string]*chaincode.MetadataMapping
+	listeners              []LifeCycleChangeListener
+	installedCCs           []chaincode.InstalledChaincode
+	deployedCCsByChannel   map[string]*chaincode.MetadataMapping
+	queryCreatorsByChannel map[string]QueryCreator
 }
 
 // LifeCycleChangeListener runs whenever there is a change to the metadata
@@ -75,14 +76,48 @@ func NewLifeCycle(installedChaincodes Enumerator) (*Lifecycle, error) {
 	}
 
 	lc := &Lifecycle{
-		installedCCs:         installedCCs,
-		deployedCCsByChannel: make(map[string]*chaincode.MetadataMapping),
+		installedCCs:           installedCCs,
+		deployedCCsByChannel:   make(map[string]*chaincode.MetadataMapping),
+		queryCreatorsByChannel: make(map[string]QueryCreator),
 	}
 
 	return lc, nil
 }
 
+// Metadata returns the metadata of the chaincode on the given channel,
+// or nil if not found or an error occurred at retrieving it
+func (lc *Lifecycle) Metadata(channel string, cc string) *chaincode.Metadata {
+	newQuery := lc.queryCreatorsByChannel[channel]
+	if newQuery == nil {
+		logger.Warning("Requested Metadata for non-existent channel", channel)
+		return nil
+	}
+	if md, found := lc.deployedCCsByChannel[channel].Lookup(cc); found {
+		logger.Debug("Returning metadata for channel", channel, ", chaincode", cc, ":", md)
+		return &md
+	}
+	query, err := newQuery()
+	if err != nil {
+		logger.Error("Failed obtaining new query for channel", channel, ":", err)
+		return nil
+	}
+	md, err := DeployedChaincodes(query, AcceptAll, cc)
+	if err != nil {
+		logger.Error("Failed querying LSCC for channel", channel, ":", err)
+		return nil
+	}
+	if len(md) == 0 {
+		logger.Info("Chaincode", cc, "isn't defined in channel", channel)
+		return nil
+	}
+
+	return &md[0]
+}
+
 func (lc *Lifecycle) initMetadataForChannel(channel string, newQuery QueryCreator) error {
+	if lc.isChannelMetadataInitialized(channel) {
+		return nil
+	}
 	// Create a new metadata mapping for the channel
 	query, err := newQuery()
 	if err != nil {
@@ -92,15 +127,23 @@ func (lc *Lifecycle) initMetadataForChannel(channel string, newQuery QueryCreato
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	lc.createMetadataForChannel(channel)
+	lc.createMetadataForChannel(channel, newQuery)
 	lc.loadMetadataForChannel(channel, ccs)
 	return nil
 }
 
-func (lc *Lifecycle) createMetadataForChannel(channel string) {
+func (lc *Lifecycle) createMetadataForChannel(channel string, newQuery QueryCreator) {
 	lc.Lock()
 	defer lc.Unlock()
 	lc.deployedCCsByChannel[channel] = chaincode.NewMetadataMapping()
+	lc.queryCreatorsByChannel[channel] = newQuery
+}
+
+func (lc *Lifecycle) isChannelMetadataInitialized(channel string) bool {
+	lc.RLock()
+	defer lc.RUnlock()
+	_, exists := lc.deployedCCsByChannel[channel]
+	return exists
 }
 
 func (lc *Lifecycle) loadMetadataForChannel(channel string, ccs chaincode.MetadataSet) {
