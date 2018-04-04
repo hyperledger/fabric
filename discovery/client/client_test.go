@@ -248,13 +248,14 @@ func createConnector(t *testing.T, certificate tls.Certificate, targetPort int) 
 }
 
 func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
+	conf := fabricdisc.Config{TLS: true}
 	mdf := &ccMetadataFetcher{}
 	pe := &principalEvaluator{}
 	pf := &policyFetcher{}
 
 	sig, _ := cauthdsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
 	polBytes, _ := proto.Marshal(sig)
-	mdf.On("ChaincodeMetadata").Return(&chaincode.Metadata{
+	mdf.On("Metadata").Return(&chaincode.Metadata{
 		Policy:  polBytes,
 		Name:    "mycc",
 		Version: "1.0",
@@ -267,7 +268,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 	sup.On("Peers").Return(membershipPeers)
 	sup.endorsementAnalyzer = endorsement.NewEndorsementAnalyzer(sup, pf, pe, mdf)
 	sup.On("IdentityInfo").Return(peerIdentities)
-	return fabricdisc.NewService(true, sup)
+	return fabricdisc.NewService(conf, sup)
 }
 
 func TestClient(t *testing.T) {
@@ -517,7 +518,7 @@ type ccMetadataFetcher struct {
 	mock.Mock
 }
 
-func (mdf *ccMetadataFetcher) ChaincodeMetadata(channel string, cc string) *chaincode.Metadata {
+func (mdf *ccMetadataFetcher) Metadata(channel string, cc string) *chaincode.Metadata {
 	return mdf.Called().Get(0).(*chaincode.Metadata)
 }
 

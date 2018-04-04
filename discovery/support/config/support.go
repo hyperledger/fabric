@@ -25,6 +25,14 @@ type CurrentConfigBlockGetter interface {
 	GetCurrConfigBlock(channel string) *common.Block
 }
 
+// CurrentConfigBlockGetterFunc enables to fetch the last config block
+type CurrentConfigBlockGetterFunc func(channel string) *common.Block
+
+// CurrentConfigBlockGetterFunc enables to fetch the last config block
+func (f CurrentConfigBlockGetterFunc) GetCurrConfigBlock(channel string) *common.Block {
+	return f(channel)
+}
+
 // DiscoverySupport implements support that is used for service discovery
 // that is related to configuration
 type DiscoverySupport struct {

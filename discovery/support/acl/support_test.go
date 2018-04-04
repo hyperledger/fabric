@@ -9,12 +9,72 @@ package acl_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/discovery/support/acl"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestGetChannelConfigFunc(t *testing.T) {
+	r := &mocks.Resources{}
+	f := func(cid string) channelconfig.Resources {
+		return r
+	}
+	assert.Equal(t, r, acl.ChannelConfigGetterFunc(f).GetChannelConfig("mychannel"))
+}
+
+func TestConfigSequence(t *testing.T) {
+	tests := []struct {
+		name           string
+		resourcesFound bool
+		validatorFound bool
+		sequence       uint64
+		shouldPanic    bool
+	}{
+		{
+			name:        "resources not found",
+			shouldPanic: true,
+		},
+		{
+			name:           "validator not found",
+			resourcesFound: true,
+			shouldPanic:    true,
+		},
+		{
+			name:           "both resoruces and validator are found",
+			resourcesFound: true,
+			validatorFound: true,
+			sequence:       100,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			chConfig := &mocks.ChanConfig{}
+			r := &mocks.Resources{}
+			v := &mocks.ConfigtxValidator{}
+			if test.resourcesFound {
+				chConfig.GetChannelConfigReturns(r)
+			}
+			if test.validatorFound {
+				r.ConfigtxValidatorReturns(v)
+			}
+			v.SequenceReturns(test.sequence)
+
+			sup := acl.NewDiscoverySupport(&mocks.Verifier{}, chConfig)
+			if test.shouldPanic {
+				assert.Panics(t, func() {
+					sup.ConfigSequence("mychannel")
+				})
+				return
+			}
+			assert.Equal(t, test.sequence, sup.ConfigSequence("mychannel"))
+		})
+	}
+}
 
 func TestEligibleForService(t *testing.T) {
 	v := &mocks.Verifier{}

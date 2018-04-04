@@ -8,14 +8,13 @@ package node
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -38,7 +37,15 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/discovery"
+	"github.com/hyperledger/fabric/discovery/endorsement"
+	discsupport "github.com/hyperledger/fabric/discovery/support"
+	discacl "github.com/hyperledger/fabric/discovery/support/acl"
+	ccsupport "github.com/hyperledger/fabric/discovery/support/chaincode"
+	"github.com/hyperledger/fabric/discovery/support/config"
+	"github.com/hyperledger/fabric/discovery/support/gossip"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
@@ -47,6 +54,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
+	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -312,6 +320,10 @@ func serve(args []string) error {
 		cceventmgmt.GetMgr().Register(cid, sub)
 	})
 
+	if viper.GetBool("peer.discovery.enabled") {
+		registerDiscoveryService(peerServer, messageCryptoService, lifecycle)
+	}
+
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]",
 		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
@@ -370,6 +382,22 @@ func serve(args []string) error {
 
 	// Block until grpc server exits
 	return <-serve
+}
+
+func registerDiscoveryService(peerServer *comm.GRPCServer, mcs api.MessageCryptoService, lc *cc.Lifecycle) {
+	acl := discacl.NewDiscoverySupport(mcs, discacl.ChannelConfigGetterFunc(peer.GetChannelConfig))
+	gSup := gossip.NewDiscoverySupport(service.GetGossipService())
+	ccSup := ccsupport.NewDiscoverySupport(lc)
+	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, lc)
+	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(peer.GetCurrConfigBlock))
+	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
+	svc := discovery.NewService(discovery.Config{
+		TLS:                          peerServer.TLSEnabled(),
+		AuthCacheMaxSize:             viper.GetInt("peer.discovery.authCacheMaxSize"),
+		AuthCachePurgeRetentionRatio: viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio"),
+	}, support)
+	logger.Info("Discovery service activated")
+	discprotos.RegisterDiscoveryServer(peerServer.Server(), svc)
 }
 
 //create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)

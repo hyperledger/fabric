@@ -35,19 +35,25 @@ type certHashExtractor func(ctx context.Context) []byte
 type dispatcher func(q *discovery.Query) *discovery.QueryResult
 
 type service struct {
+	config      Config
 	dispatchers map[discovery.QueryType]dispatcher
 	auth        *authCache
-	tlsEnabled  bool
 	Support
 }
 
+// Config defines the configuration of the discovery service
+type Config struct {
+	TLS                          bool
+	AuthCacheMaxSize             int
+	AuthCachePurgeRetentionRatio float64
+}
+
 // NewService creates a new discovery service instance
-func NewService(tlsEnabled bool, sup Support) *service {
+func NewService(config Config, sup Support) *service {
 	s := &service{
-		tlsEnabled: tlsEnabled,
 		auth: newAuthCache(sup, authCacheConfig{
-			maxCacheSize:        defaultMaxCacheSize,
-			purgeRetentionRatio: defaultRetentionRatio,
+			maxCacheSize:        config.AuthCacheMaxSize,
+			purgeRetentionRatio: config.AuthCachePurgeRetentionRatio,
 		}),
 		Support: sup,
 	}
@@ -61,7 +67,7 @@ func NewService(tlsEnabled bool, sup Support) *service {
 
 func (s *service) Discover(ctx context.Context, request *discovery.SignedRequest) (*discovery.Response, error) {
 	addr := util.ExtractRemoteAddress(ctx)
-	req, err := validateStructure(ctx, request, addr, s.tlsEnabled, comm.ExtractCertificateHashFromContext)
+	req, err := validateStructure(ctx, request, addr, s.config.TLS, comm.ExtractCertificateHashFromContext)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +112,7 @@ func (s *service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 		desc, err := s.PeersForEndorsement(cc, common2.ChainID(q.Channel))
 		if err != nil {
 			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", cc, err)
-			return wrapError(errors.Errorf("failed constructing descriptor for chaincode %s, version %s", cc))
+			return wrapError(errors.Errorf("failed constructing descriptor for chaincode %s", cc))
 		}
 		descriptors = append(descriptors, desc)
 	}

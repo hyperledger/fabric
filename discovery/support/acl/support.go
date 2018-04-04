@@ -8,6 +8,7 @@ package acl
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	common2 "github.com/hyperledger/fabric/protos/common"
@@ -15,10 +16,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	logger = flogging.MustGetLogger("discovery/acl")
+)
+
 // ChannelConfigGetter enables to retrieve the channel config resources
 type ChannelConfigGetter interface {
 	// GetChannelConfig returns the resources of the channel config
 	GetChannelConfig(cid string) channelconfig.Resources
+}
+
+// ChannelConfigGetterFunc returns the resources of the channel config
+type ChannelConfigGetterFunc func(cid string) channelconfig.Resources
+
+// GetChannelConfig returns the resources of the channel config
+func (f ChannelConfigGetterFunc) GetChannelConfig(cid string) channelconfig.Resources {
+	return f(cid)
 }
 
 // Verifier verifies a signature and a message
@@ -46,6 +59,19 @@ func NewDiscoverySupport(v Verifier, chanConf ChannelConfigGetter) *DiscoverySup
 // service from the discovery service for a given channel
 func (s *DiscoverySupport) EligibleForService(channel string, data common2.SignedData) error {
 	return s.VerifyByChannel(common.ChainID(channel), api.PeerIdentityType(data.Identity), data.Signature, data.Data)
+}
+
+// ConfigSequence returns the configuration sequence of the given channel
+func (s *DiscoverySupport) ConfigSequence(channel string) uint64 {
+	conf := s.GetChannelConfig(channel)
+	if conf == nil {
+		logger.Panic("Failed obtaining channel config for channel", channel)
+	}
+	v := conf.ConfigtxValidator()
+	if v == nil {
+		logger.Panic("ConfigtxValidator for channel", channel, "is nil")
+	}
+	return v.Sequence()
 }
 
 func (s *DiscoverySupport) SatisfiesPrincipal(channel string, rawIdentity []byte, principal *msp.MSPPrincipal) error {

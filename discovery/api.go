@@ -21,6 +21,12 @@ type AccessControlSupport interface {
 	EligibleForService(channel string, data common2.SignedData) error
 }
 
+// ConfigSequenceSupport returns the config sequence of the given channel
+type ConfigSequenceSupport interface {
+	// ConfigSequence returns the configuration sequence of the a given channel
+	ConfigSequence(channel string) uint64
+}
+
 // GossipSupport aggregates abilities that the gossip module
 // provides to the discovery service, such as knowing information about peers
 type GossipSupport interface {
@@ -49,9 +55,6 @@ type EndorsementSupport interface {
 type ConfigSupport interface {
 	// Config returns the channel's configuration
 	Config(channel string) (*discovery2.ConfigResult, error)
-
-	// ConfigSequence returns the configuration sequence of the a given channel
-	ConfigSequence(channel string) uint64
 }
 
 // Support defines an interface that allows the discovery service
@@ -61,4 +64,5 @@ type Support interface {
 	GossipSupport
 	EndorsementSupport
 	ConfigSupport
+	ConfigSequenceSupport
 }

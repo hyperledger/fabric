@@ -391,6 +391,16 @@ peer:
     # the peer so please change this value only if you know what you're doing
     validatorPoolSize:
 
+    # The discovery service is used by clients to query information about peers,
+    # such as - which peers have joined a certain channel, what is the latest
+    # channel config, and most importantly - given a chaincode and a channel,
+    # what possible sets of peers satisfy the endorsement policy.
+    discovery:
+        enabled: true
+        # The maximum size of the cache, after which a purge takes place
+        authCacheMaxSize: 1000
+        # The proportion (0 to 1) of entries that remain in the cache after the cache is purged due to overpopulation
+        authCachePurgeRetentionRatio: 0.75
 ###############################################################################
 #
 #    VM section

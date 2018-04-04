@@ -38,7 +38,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	}
 	cc := "chaincode"
 	mf := &metadataFetcher{}
-	mf.On("ChaincodeMetadata").Return(&chaincode.Metadata{
+	mf.On("Metadata").Return(&chaincode.Metadata{
 		Name: cc, Version: "1.0",
 	}).Times(4)
 	g := &gossipMock{}
@@ -148,7 +148,7 @@ func TestPeersForEndorsement(t *testing.T) {
 
 	// Scenario V: Policy is found, but there are enough peers to satisfy policy combinations,
 	// but all peers have the wrong version installed on them.
-	mf.On("ChaincodeMetadata").Return(&chaincode.Metadata{
+	mf.On("Metadata").Return(&chaincode.Metadata{
 		Name: cc, Version: "1.1",
 	}).Once()
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
@@ -163,7 +163,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	chanPeers[4].Properties = nil
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	mf.On("ChaincodeMetadata").Return(&chaincode.Metadata{
+	mf.On("Metadata").Return(&chaincode.Metadata{
 		Name: cc, Version: "1.0",
 	}).Once()
 	desc, err = analyzer.PeersForEndorsement(cc, channel)
@@ -174,7 +174,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	// but the chaincode metadata cannot be fetched from the ledger.
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	mf.On("ChaincodeMetadata").Return(nil).Once()
+	mf.On("Metadata").Return(nil).Once()
 	desc, err = analyzer.PeersForEndorsement(cc, channel)
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "No metadata was found for chaincode chaincode in channel test")
@@ -310,7 +310,7 @@ type metadataFetcher struct {
 	mock.Mock
 }
 
-func (mf *metadataFetcher) ChaincodeMetadata(channel string, cc string) *chaincode.Metadata {
+func (mf *metadataFetcher) Metadata(channel string, cc string) *chaincode.Metadata {
 	arg := mf.Called().Get(0)
 	if arg == nil {
 		return nil
