@@ -139,7 +139,6 @@ func (c *client) Send(ctx context.Context, req *Request) (Response, error) {
 		return nil, errors.Wrap(err, "failed connecting to discovery service")
 	}
 
-	defer conn.Close()
 	defer func() {
 		req.Queries = nil
 	}()
