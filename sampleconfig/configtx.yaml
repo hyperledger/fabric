@@ -327,6 +327,34 @@ Orderer: &OrdererDefaults
 #
 ################################################################################
 Application: &ApplicationDefaults
+    ACLs:
+        ### TODO --- each of these mappings need to be documented
+        #Lifecycle System Chaincode resource to policy mapping for access control
+        LSCC.GETCCINFO: /Channel/Application/Readers
+        LSCC.GETDEPSPEC: /Channel/Application/Readers
+        LSCC.GETCCDATA: /Channel/Application/Readers
+
+        #Query System Chaincode resource to policy mapping for access control
+        QSCC.GetChainInfo: /Channel/Application/Readers
+        QSCC.GetBlockByNumber: /Channel/Application/Readers
+        QSCC.GetBlockByHash: /Channel/Application/Readers
+        QSCC.GetTransactionByID: /Channel/Application/Readers
+        QSCC.GetBlockByTxID: /Channel/Application/Readers
+
+        #Configuration System Chaincode resource to policy mapping for access control
+        CSCC.GetConfigBlock: /Channel/Application/Readers
+        CSCC.GetConfigTree: /Channel/Application/Readers
+        CSCC.SimulateConfigTreeUpdate: /Channel/Application/Writers
+
+        #Proposal resource to policy mapping default for access control
+        PROPOSAL: /Channel/Application/Writers
+
+        #Chaincode-to-Chaincode invocation resource to policy mapping for access control
+        CC2CC: /Channel/Application/Readers
+
+        #Events resource to policy mapping for access control
+        BLOCKEVENT: /Channel/Application/Readers
+        FILTEREDBLOCKEVENT: /Channel/Application/Readers
 
     # Organizations lists the orgs participating on the application side of the
     # network.
