@@ -68,6 +68,7 @@ directory. Note: you may need to adjust depending on your OS.
 ```
 sudo pip install Sphinx
 sudo pip install sphinx_rtd_theme
+sudo pip install recommonmark==0.4.0
 cd fabric/docs # Be in this directory. Makefile sits there.
 make html
 ```
