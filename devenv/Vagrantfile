@@ -33,7 +33,7 @@ SCRIPT
 Vagrant.require_version ">= 1.7.4"
 Vagrant.configure('2') do |config|
   config.vm.box = "ubuntu/xenial64"
-
+  Vagrant::DEFAULT_SERVER_URL.replace('https://vagrantcloud.com')
   config.vm.network :forwarded_port, guest: 7050, host: 7050, id: "orderer", host_ip: "localhost", auto_correct: true # fabric orderer service
   config.vm.network :forwarded_port, guest: 7051, host: 7051, id: "peer", host_ip: "localhost", auto_correct: true # fabric peer service
   config.vm.network :forwarded_port, guest: 7053, host: 7053, id: "peer_event", host_ip: "localhost", auto_correct: true # fabric peer event service
