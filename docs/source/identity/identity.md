@@ -62,7 +62,7 @@ sure it comes from a verified source.
 Authorities who issue digital certificates to parties (e.g., users of a service, service
 provider), who then use them to authenticate themselves in the messages they exchange
 with their environment. A CA's Certificate Revocation List (CRL) constitutes a reference
-for the certificates that are no longer valid. Revocation of a certificate can happen fora number of reasons. For example, a certificate may be revoked because the cryptographic
+for the certificates that are no longer valid. Revocation of a certificate can happen for a number of reasons. For example, a certificate may be revoked because the cryptographic
 private material associated to the certificate has been exposed.
 
 Although a blockchain network is more than a communications network, it relies on the
