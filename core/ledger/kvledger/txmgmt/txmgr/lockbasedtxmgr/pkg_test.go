@@ -49,6 +49,11 @@ var testEnvs = []testEnv{
 	&lockBasedEnv{name: couchDBtestEnvName, testDBEnv: &privacyenabledstate.CouchDBCommonStorageTestEnv{}},
 }
 
+var testEnvsMap = map[string]testEnv{
+	levelDBtestEnvName: testEnvs[0],
+	couchDBtestEnvName: testEnvs[1],
+}
+
 ///////////// LevelDB Environment //////////////
 
 type lockBasedEnv struct {

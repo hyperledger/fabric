@@ -27,14 +27,27 @@ type LockBasedTxMgr struct {
 	ledgerid       string
 	db             privacyenabledstate.DB
 	validator      validator.Validator
-	batch          *privacyenabledstate.UpdateBatch
-	currentBlock   *common.Block
-	stateListeners ledger.StateListeners
+	stateListeners []ledger.StateListener
 	commitRWLock   sync.RWMutex
+	current        *current
+}
+
+type current struct {
+	block     *common.Block
+	batch     *privacyenabledstate.UpdateBatch
+	listeners []ledger.StateListener
+}
+
+func (c *current) blockNum() uint64 {
+	return c.block.Header.Number
+}
+
+func (c *current) maxTxNumber() uint64 {
+	return uint64(len(c.block.Data.Data)) - 1
 }
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
-func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListeners ledger.StateListeners) *LockBasedTxMgr {
+func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListeners []ledger.StateListener) *LockBasedTxMgr {
 	db.Open()
 	txmgr := &LockBasedTxMgr{ledgerid: ledgerid, db: db, stateListeners: stateListeners}
 	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db)
@@ -71,30 +84,28 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
 	batch, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
-		txmgr.clearCache()
+		txmgr.reset()
 		return err
 	}
-	txmgr.currentBlock = block
-	txmgr.batch = batch
-	return txmgr.invokeNamespaceListeners(batch)
+	txmgr.current = &current{block: block, batch: batch}
+	if err := txmgr.invokeNamespaceListeners(); err != nil {
+		txmgr.reset()
+		return err
+	}
+	return nil
 }
 
-func (txmgr *LockBasedTxMgr) invokeNamespaceListeners(batch *privacyenabledstate.UpdateBatch) error {
-	namespaces := batch.PubUpdates.GetUpdatedNamespaces()
-	for _, namespace := range namespaces {
-		listener := txmgr.stateListeners[namespace]
-		if listener == nil {
+func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
+	for _, listener := range txmgr.stateListeners {
+		stateUpdatesForListener := extractStateUpdates(txmgr.current.batch, listener.InterestedInNamespaces())
+		if len(stateUpdatesForListener) == 0 {
 			continue
 		}
-		logger.Debugf("Invoking listener for state changes over namespace:%s", namespace)
-		updatesMap := batch.PubUpdates.GetUpdates(namespace)
-		var kvwrites []*kvrwset.KVWrite
-		for key, versionedValue := range updatesMap {
-			kvwrites = append(kvwrites, &kvrwset.KVWrite{Key: key, IsDelete: versionedValue.Value == nil, Value: versionedValue.Value})
-		}
-		if err := listener.HandleStateUpdates(txmgr.ledgerid, kvwrites); err != nil {
+		txmgr.current.listeners = append(txmgr.current.listeners, listener)
+		if err := listener.HandleStateUpdates(txmgr.ledgerid, stateUpdatesForListener, txmgr.current.blockNum()); err != nil {
 			return err
 		}
+		logger.Debugf("Invoking listener for state changes:%s", listener)
 	}
 	return nil
 }
@@ -106,35 +117,28 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
-	// If statedb implementation needed bulk read optimization, cache might have been populated by
-	// ValidateAndPrepare(). Once the block is validated and committed, populated cache needs to
-	// be cleared.
-	defer txmgr.clearCache()
-
+	defer txmgr.reset()
 	logger.Debugf("Committing updates to state database")
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
 	logger.Debugf("Write lock acquired for committing updates to state database")
-	if txmgr.batch == nil {
+	if txmgr.current == nil {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
-	defer func() { txmgr.batch = nil }()
-	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.batch,
-		version.NewHeight(txmgr.currentBlock.Header.Number, uint64(len(txmgr.currentBlock.Data.Data)-1))); err != nil {
+	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
+	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
 		return err
 	}
 	logger.Debugf("Updates committed to state database")
-
+	// In the case of error state listeners will not recieve this call - instead a peer panic is caused by the ledger upon receiveing
+	// an error from this function
+	txmgr.updateStateListeners()
 	return nil
 }
 
 // Rollback implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Rollback() {
-	txmgr.batch = nil
-	// If statedb implementation needed bulk read optimization, cache might have been populated by
-	// ValidateAndPrepareBatch(). As the block commit is rollbacked, populated cache needs to
-	// be cleared now.
-	txmgr.clearCache()
+	txmgr.reset()
 }
 
 // clearCache empty the cache maintained by the statedb implementation
@@ -165,4 +169,33 @@ func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvt
 	}
 	logger.Debugf("Committing block %d to state database", block.Header.Number)
 	return txmgr.Commit()
+}
+
+func extractStateUpdates(batch *privacyenabledstate.UpdateBatch, namespaces []string) ledger.StateUpdates {
+	stateupdates := make(ledger.StateUpdates)
+	for _, namespace := range namespaces {
+		updatesMap := batch.PubUpdates.GetUpdates(namespace)
+		var kvwrites []*kvrwset.KVWrite
+		for key, versionedValue := range updatesMap {
+			kvwrites = append(kvwrites, &kvrwset.KVWrite{Key: key, IsDelete: versionedValue.Value == nil, Value: versionedValue.Value})
+			if len(kvwrites) > 0 {
+				stateupdates[namespace] = kvwrites
+			}
+		}
+	}
+	return stateupdates
+}
+
+func (txmgr *LockBasedTxMgr) updateStateListeners() {
+	for _, l := range txmgr.current.listeners {
+		l.StateCommitDone(txmgr.ledgerid)
+	}
+}
+
+func (txmgr *LockBasedTxMgr) reset() {
+	txmgr.current = nil
+	// If statedb implementation needed bulk read optimization, cache might have been populated by
+	// ValidateAndPrepare(). Once the block is validated and committed, populated cache needs to
+	// be cleared.
+	defer txmgr.clearCache()
 }

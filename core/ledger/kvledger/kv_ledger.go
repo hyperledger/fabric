@@ -41,7 +41,7 @@ type kvLedger struct {
 // NewKVLedger constructs new `KVLedger`
 func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
 	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB,
-	stateListeners ledger.StateListeners) (*kvLedger, error) {
+	stateListeners []ledger.StateListener) (*kvLedger, error) {
 
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 

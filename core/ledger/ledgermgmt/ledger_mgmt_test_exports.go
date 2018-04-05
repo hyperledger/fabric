@@ -29,14 +29,14 @@ import (
 // InitializeTestEnv initializes ledgermgmt for tests
 func InitializeTestEnv() {
 	remove()
-	initialize(nil)
+	initialize(nil, nil)
 }
 
 // InitializeTestEnvWithCustomProcessors initializes ledgermgmt for tests with the supplied custom tx processors
 func InitializeTestEnvWithCustomProcessors(customTxProcessors customtx.Processors) {
 	remove()
 	customtx.InitializeTestEnv(customTxProcessors)
-	initialize(customTxProcessors)
+	initialize(customTxProcessors, nil)
 }
 
 // CleanupTestEnv closes the ledgermagmt and removes the store directory

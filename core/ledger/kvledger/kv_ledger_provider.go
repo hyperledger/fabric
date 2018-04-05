@@ -42,7 +42,7 @@ type Provider struct {
 	ledgerStoreProvider *ledgerstorage.Provider
 	vdbProvider         privacyenabledstate.DBProvider
 	historydbProvider   historydb.HistoryDBProvider
-	stateListeners      ledger.StateListeners
+	stateListeners      []ledger.StateListener
 }
 
 // NewProvider instantiates a new Provider.
@@ -73,7 +73,7 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 }
 
 // Initialize implements the corresponding method from interface ledger.PeerLedgerProvider
-func (provider *Provider) Initialize(stateListeners ledger.StateListeners) {
+func (provider *Provider) Initialize(stateListeners []ledger.StateListener) {
 	provider.stateListeners = stateListeners
 }
 
