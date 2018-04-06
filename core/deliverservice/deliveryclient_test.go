@@ -435,6 +435,26 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	service.Stop()
 }
 
+func TestDeliverServiceAbruptStop(t *testing.T) {
+	defer ensureNoGoroutineLeak(t)()
+	// Scenario: The deliver service is started and abruptly stopped.
+	// The block provider instance is run in a separate goroutine, and thus
+	// it might be scheduled after the deliver client is stopped.
+	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
+	service, err := NewDeliverService(&Config{
+		Endpoints:   []string{"a"},
+		Gossip:      gossipServiceAdapter,
+		CryptoSvc:   &mockMCS{},
+		ABCFactory:  DefaultABCFactory,
+		ConnFactory: DefaultConnectionFactory,
+	})
+	assert.NoError(t, err)
+
+	li := &mocks.MockLedgerInfo{Height: uint64(100)}
+	service.StartDeliverForChannel("mychannel", li, func() {})
+	service.StopDeliverForChannel("mychannel")
+}
+
 func TestDeliverServiceShutdown(t *testing.T) {
 	defer ensureNoGoroutineLeak(t)()
 	// Scenario: Launch an ordering service node and let the client pull some blocks.
