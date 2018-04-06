@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -41,6 +41,8 @@ func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"channelID",
 		"installed",
 		"instantiated",
+		"peerAddresses",
+		"tlsRootCertFiles",
 	}
 	attachFlags(chaincodeListCmd, flagList)
 
@@ -56,7 +58,7 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(true, false)
+		cf, err = InitCmdFactory(cmd.Name(), true, false)
 		if err != nil {
 			return err
 		}
@@ -86,7 +88,8 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 		return fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
-	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
+	// list is currently only supported for one peer
+	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
 	}

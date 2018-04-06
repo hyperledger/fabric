@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -41,16 +41,14 @@ func TestChaincodeListCmd(t *testing.T) {
 		Response:    &pb.Response{Status: 200, Payload: installedCqrBytes},
 		Endorsement: &pb.Endorsement{},
 	}
-
-	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
-
+	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChaincodeCmdFactory{
-		EndorserClient:  mockEndorerClient,
+		EndorserClients: mockEndorserClients,
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}
+
 	// reset channelID, it might have been set by previous test
 	channelID = ""
 

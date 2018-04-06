@@ -1,17 +1,7 @@
 /*
- Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
@@ -68,8 +58,8 @@ func TestInvokeCmd(t *testing.T) {
 		common.GetBroadcastClientFnc = getBroadcastClient
 		common.GetDefaultSignerFnc = getDefaultSigner
 	}()
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
-		return mockCF.EndorserClient, nil
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
+		return mockCF.EndorserClients[0], nil
 	}
 	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
 		return []string{}, nil
@@ -83,7 +73,7 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Error case 2: getEndorserClient returns error
 	t.Logf("Start error case 2: getEndorserClient returns error")
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
@@ -91,8 +81,8 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Error case 3: getDefaultSignerFnc returns error
 	t.Logf("Start error case 3: getDefaultSignerFnc returns error")
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
-		return mockCF.EndorserClient, nil
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
+		return mockCF.EndorserClients[0], nil
 	}
 	common.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
 		return nil, errors.New("error")
@@ -103,8 +93,8 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Error case 4: getOrdererEndpointOfChainFnc returns error
 	t.Logf("Start error case 4: getOrdererEndpointOfChainFnc returns error")
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
-		return mockCF.EndorserClient, nil
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
+		return mockCF.EndorserClients[0], nil
 	}
 	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
 		return nil, errors.New("error")
@@ -174,7 +164,6 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		assert.Regexp(t, "Endorsement failure during invoke", buffer.String())
 		assert.Regexp(t, fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), buffer.String())
 	}
-
 }
 
 // Returns mock chaincode command factory
@@ -187,10 +176,10 @@ func getMockChaincodeCmdFactory() (*ChaincodeCmdFactory, error) {
 		Response:    &pb.Response{Status: 200},
 		Endorsement: &pb.Endorsement{},
 	}
-	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
+	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 	mockCF := &ChaincodeCmdFactory{
-		EndorserClient:  mockEndorserClient,
+		EndorserClients: mockEndorserClients,
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}
@@ -206,11 +195,11 @@ func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
 	}
 
 	errMsg := "invoke error"
-	mockEndorerClient := common.GetMockEndorserClient(nil, errors.New(errMsg))
+	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(nil, errors.New(errMsg))}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 
 	mockCF := &ChaincodeCmdFactory{
-		EndorserClient:  mockEndorerClient,
+		EndorserClients: mockEndorserClients,
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}
@@ -240,10 +229,10 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 		return nil, fmt.Errorf("Could not create proposal response failure, err %s\n", err)
 	}
 
-	mockEndorserClient := common.GetMockEndorserClient(mockRespFailure, nil)
+	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockRespFailure, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 	mockCF := &ChaincodeCmdFactory{
-		EndorserClient:  mockEndorserClient,
+		EndorserClients: mockEndorserClients,
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}

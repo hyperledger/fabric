@@ -50,7 +50,7 @@ func signpackage(cmd *cobra.Command, ipackageFile string, opackageFile string, c
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(false, false)
+		cf, err = InitCmdFactory(cmd.Name(), false, false)
 		if err != nil {
 			return err
 		}

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package channel
@@ -82,7 +72,7 @@ func testListChannelsEmptyCF(t *testing.T, mockCF *ChannelCmdFactory) {
 	common.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
 		return nil, errors.New("error")
 	}
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClient, nil
 	}
 	common.GetBroadcastClientFnc = func() (common.BroadcastClient, error) {
@@ -94,13 +84,13 @@ func testListChannelsEmptyCF(t *testing.T, mockCF *ChannelCmdFactory) {
 	assert.Error(t, err, "Error expected because GetDefaultSignerFnc returns an error")
 
 	common.GetDefaultSignerFnc = getDefaultSigner
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
 	assert.Error(t, err, "Error expected because GetEndorserClientFnc returns an error")
 
-	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClient, nil
 	}
 	err = cmd.Execute()

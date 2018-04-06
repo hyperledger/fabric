@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -63,6 +63,8 @@ var (
 	transient             string
 	collectionsConfigFile string
 	collectionConfigBytes []byte
+	peerAddresses         []string
+	tlsRootCertFiles      []string
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -110,6 +112,10 @@ func resetFlags() {
 		"Get the instantiated chaincodes on a channel")
 	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
 		fmt.Sprint("The file containing the configuration for the chaincode's collection"))
+	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
+		fmt.Sprint("The addresses of the peers to connect to"))
+	flags.StringArrayVarP(&tlsRootCertFiles, "tlsRootCertFiles", "", []string{common.UndefinedParamValue},
+		fmt.Sprint("If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag"))
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

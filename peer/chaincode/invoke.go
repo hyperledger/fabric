@@ -1,25 +1,15 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +30,8 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"name",
 		"ctor",
 		"channelID",
+		"peerAddresses",
+		"tlsRootCertFiles",
 	}
 	attachFlags(chaincodeInvokeCmd, flagList)
 
@@ -55,7 +47,7 @@ func chaincodeInvoke(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(true, true)
+		cf, err = InitCmdFactory(cmd.Name(), true, true)
 		if err != nil {
 			return err
 		}

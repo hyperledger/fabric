@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -106,7 +106,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		channelID,
 		invoke,
 		cf.Signer,
-		cf.EndorserClient,
+		cf.EndorserClients,
 		cf.BroadcastClient)
 
 	if err != nil {
@@ -229,35 +229,35 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		if chaincodeVersion == common.UndefinedParamValue {
 			return fmt.Errorf("chaincode version is not provided for %s", cmd.Name())
 		}
-	}
 
-	if escc != common.UndefinedParamValue {
-		logger.Infof("Using escc %s", escc)
-	} else {
-		logger.Info("Using default escc")
-		escc = "escc"
-	}
-
-	if vscc != common.UndefinedParamValue {
-		logger.Infof("Using vscc %s", vscc)
-	} else {
-		logger.Info("Using default vscc")
-		vscc = "vscc"
-	}
-
-	if policy != common.UndefinedParamValue {
-		p, err := cauthdsl.FromString(policy)
-		if err != nil {
-			return fmt.Errorf("invalid policy %s", policy)
+		if escc != common.UndefinedParamValue {
+			logger.Infof("Using escc %s", escc)
+		} else {
+			logger.Info("Using default escc")
+			escc = "escc"
 		}
-		policyMarshalled = putils.MarshalOrPanic(p)
-	}
 
-	if collectionsConfigFile != common.UndefinedParamValue {
-		var err error
-		collectionConfigBytes, err = getCollectionConfigFromFile(collectionsConfigFile)
-		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+		if vscc != common.UndefinedParamValue {
+			logger.Infof("Using vscc %s", vscc)
+		} else {
+			logger.Info("Using default vscc")
+			vscc = "vscc"
+		}
+
+		if policy != common.UndefinedParamValue {
+			p, err := cauthdsl.FromString(policy)
+			if err != nil {
+				return fmt.Errorf("invalid policy %s", policy)
+			}
+			policyMarshalled = putils.MarshalOrPanic(p)
+		}
+
+		if collectionsConfigFile != common.UndefinedParamValue {
+			var err error
+			collectionConfigBytes, err = getCollectionConfigFromFile(collectionsConfigFile)
+			if err != nil {
+				return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+			}
 		}
 	}
 
@@ -291,40 +291,79 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	return nil
 }
 
+func validatePeerConnectionParameters(cmdName string) error {
+	// currently only support multiple peer addresses for invoke
+	if cmdName != "invoke" && len(peerAddresses) > 1 {
+		return errors.Errorf("'%s' command can only be executed against one peer. received %d", cmdName, len(peerAddresses))
+	}
+
+	if len(tlsRootCertFiles) > len(peerAddresses) {
+		logger.Warningf("received more TLS root cert files (%d) than peer addresses (%d)", len(tlsRootCertFiles), len(peerAddresses))
+	}
+
+	if viper.GetBool("peer.tls.enabled") {
+		if len(tlsRootCertFiles) != len(peerAddresses) {
+			return errors.Errorf("number of peer addresses (%d) does not match the number of TLS root cert files (%d)", len(peerAddresses), len(tlsRootCertFiles))
+		}
+	} else {
+		tlsRootCertFiles = nil
+	}
+
+	return nil
+}
+
 // ChaincodeCmdFactory holds the clients used by ChaincodeCmd
 type ChaincodeCmdFactory struct {
-	EndorserClient  pb.EndorserClient
+	EndorserClients []pb.EndorserClient
 	Signer          msp.SigningIdentity
 	BroadcastClient common.BroadcastClient
 }
 
 // InitCmdFactory init the ChaincodeCmdFactory with default clients
-func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
+func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
 	var err error
-	var endorserClient pb.EndorserClient
+	var endorserClients []pb.EndorserClient
 	if isEndorserRequired {
-		endorserClient, err = common.GetEndorserClientFnc()
-		if err != nil {
-			return nil, fmt.Errorf("error getting endorser client %s: %s", chainFuncName, err)
+		if err = validatePeerConnectionParameters(cmdName); err != nil {
+			return nil, errors.WithMessage(err, "error validating peer connection parameters")
+		}
+		for i, address := range peerAddresses {
+			var tlsRootCertFile string
+			if tlsRootCertFiles != nil {
+				tlsRootCertFile = tlsRootCertFiles[i]
+			}
+			endorserClient, err := common.GetEndorserClientFnc(address, tlsRootCertFile)
+			if err != nil {
+				return nil, errors.WithMessage(err, fmt.Sprintf("error getting endorser client for %s", cmdName))
+			}
+			endorserClients = append(endorserClients, endorserClient)
+		}
+		if len(endorserClients) == 0 {
+			return nil, errors.New("no endorser clients retrieved - this might indicate a bug")
 		}
 	}
 
 	signer, err := common.GetDefaultSignerFnc()
 	if err != nil {
-		return nil, fmt.Errorf("error getting default signer: %s", err)
+		return nil, errors.WithMessage(err, "error getting default signer")
 	}
 
 	var broadcastClient common.BroadcastClient
 	if isOrdererRequired {
 		if len(common.OrderingEndpoint) == 0 {
+			if len(endorserClients) == 0 {
+				return nil, errors.New("orderer is required, but no ordering endpoint or endorser client supplied")
+			}
+			endorserClient := endorserClients[0]
+
 			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient)
 			if err != nil {
-				return nil, fmt.Errorf("error getting (%s) orderer endpoint: %s", channelID, err)
+				return nil, errors.WithMessage(err, fmt.Sprintf("error getting channel (%s) orderer endpoint", channelID))
 			}
 			if len(orderingEndpoints) == 0 {
-				return nil, fmt.Errorf("error no orderer endpoint got for %s", channelID)
+				return nil, errors.Errorf("no orderer endpoints retrieved for channel %s", channelID)
 			}
-			logger.Infof("Get chain(%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
+			logger.Infof("Retrieved channel (%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
 			// override viper env
 			viper.Set("orderer.address", orderingEndpoints[0])
 		}
@@ -332,11 +371,11 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 		broadcastClient, err = common.GetBroadcastClientFnc()
 
 		if err != nil {
-			return nil, fmt.Errorf("error getting broadcast client: %s", err)
+			return nil, errors.WithMessage(err, "error getting broadcast client")
 		}
 	}
 	return &ChaincodeCmdFactory{
-		EndorserClient:  endorserClient,
+		EndorserClients: endorserClients,
 		Signer:          signer,
 		BroadcastClient: broadcastClient,
 	}, nil
@@ -356,7 +395,7 @@ func ChaincodeInvokeOrQuery(
 	cID string,
 	invoke bool,
 	signer msp.SigningIdentity,
-	endorserClient pb.EndorserClient,
+	endorserClients []pb.EndorserClient,
 	bc common.BroadcastClient,
 ) (*pb.ProposalResponse, error) {
 	// Build the ChaincodeInvocationSpec message
@@ -394,12 +433,22 @@ func ChaincodeInvokeOrQuery(
 	if err != nil {
 		return nil, fmt.Errorf("error creating signed proposal  %s: %s", funcName, err)
 	}
-
-	var proposalResp *pb.ProposalResponse
-	proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
-	if err != nil {
-		return nil, fmt.Errorf("error endorsing %s: %s", funcName, err)
+	var responses []*pb.ProposalResponse
+	for _, endorser := range endorserClients {
+		proposalResp, err := endorser.ProcessProposal(context.Background(), signedProp)
+		if err != nil {
+			return nil, fmt.Errorf("error endorsing %s: %s", funcName, err)
+		}
+		responses = append(responses, proposalResp)
 	}
+
+	if len(responses) == 0 {
+		// this should only happen if some new code has introduced a bug
+		return nil, errors.New("no proposal responses received - this might indicate a bug")
+	}
+	// all responses will be checked when the signed transaction is created.
+	// for now, just set this so we check the first response's status
+	proposalResp := responses[0]
 
 	if invoke {
 		if proposalResp != nil {
@@ -407,7 +456,7 @@ func ChaincodeInvokeOrQuery(
 				return proposalResp, nil
 			}
 			// assemble a signed transaction (it's an Envelope message)
-			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
+			env, err := putils.CreateSignedTx(prop, signer, responses...)
 			if err != nil {
 				return proposalResp, fmt.Errorf("could not assemble transaction, err %s", err)
 			}
