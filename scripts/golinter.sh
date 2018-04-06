@@ -19,6 +19,11 @@ declare -a arr=(
 "./protos"
 )
 
+# place the Go build cache directory into the default build tree if it exists
+if [ -d "${GOPATH}/src/github.com/hyperledger/fabric/.build" ]; then
+    export GOCACHE="${GOPATH}/src/github.com/hyperledger/fabric/.build/go-cache"
+fi
+
 for i in "${arr[@]}"
 do
     echo ">>>Checking code under $i/"
