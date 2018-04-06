@@ -32,13 +32,6 @@ type Consenter interface {
 // 1. Messages are ordered into a stream, the stream is cut into blocks, the blocks are committed (solo, kafka)
 // 2. Messages are cut into blocks, the blocks are ordered, then the blocks are committed (sbft)
 type Chain interface {
-	// NOTE: The kafka consenter has not been updated to perform the revalidation
-	// checks conditionally.  For now, Order/Configure are essentially Enqueue as before.
-	// This does not cause data inconsistency, but it wastes cycles and will be required
-	// to properly support the ConfigUpdate concept once introduced
-	// Once this is done, the MsgClassification logic in msgprocessor should return error
-	// for non ConfigUpdate/Normal msg types
-
 	// Order accepts a message which has been processed at a given configSeq.
 	// If the configSeq advances, it is the responsibility of the consenter
 	// to revalidate and potentially discard the message
