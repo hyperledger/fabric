@@ -56,12 +56,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/docker/docker"
-  packages = ["pkg/testutil/assert"]
-  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
-  version = "v1.13.1"
-
-[[projects]]
   name = "github.com/eapache/go-resiliency"
   packages = ["breaker"]
   revision = "6800482f2c813e689c88b7ed3282262385011890"
@@ -530,6 +524,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b0b0b643aaf74f16a90bdcb1c098b91de2efac530ce821431adff4710db5da2c"
+  inputs-digest = "e793257d374c84d0cfefc309fe81e1090672a5e6bd0b5756b016709a6c2737b2"
   solver-name = "gps-cdcl"
   solver-version = 1
