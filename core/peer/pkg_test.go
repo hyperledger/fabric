@@ -10,8 +10,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -219,7 +219,6 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	// basic function tests
 	var tests = []struct {
 		name          string
-		listenAddress string
 		serverConfig  comm.ServerConfig
 		createChannel func()
 		goodOptions   []grpc.DialOption
@@ -229,8 +228,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	}{
 
 		{
-			name:          "MutualTLSOrg1Org1",
-			listenAddress: fmt.Sprintf("localhost:%d", 4051),
+			name: "MutualTLSOrg1Org1",
 			serverConfig: comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
@@ -247,8 +245,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			numOrdererCAs: 1,
 		},
 		{
-			name:          "MutualTLSOrg1Org2",
-			listenAddress: fmt.Sprintf("localhost:%d", 4052),
+			name: "MutualTLSOrg1Org2",
 			serverConfig: comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
@@ -267,8 +264,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			numOrdererCAs: 2,
 		},
 		{
-			name:          "MutualTLSOrg1Org2Intermediate",
-			listenAddress: fmt.Sprintf("localhost:%d", 4053),
+			name: "MutualTLSOrg1Org2Intermediate",
 			serverConfig: comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
@@ -292,7 +288,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test %s ...", test.name)
-			server, err := peer.NewPeerServer(test.listenAddress, test.serverConfig)
+			server, err := peer.NewPeerServer("localhost:0", test.serverConfig)
 			if err != nil {
 				t.Fatalf("NewPeerServer failed with error [%s]", err)
 			} else {
@@ -303,9 +299,18 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				go server.Start()
 				defer server.Stop()
 
+				// extract dynamic listen port
+				_, port, err := net.SplitHostPort(server.Listener().Addr().String())
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Logf("listenAddress: %s", server.Listener().Addr())
+				testAddress := "localhost:" + port
+				t.Logf("testAddress: %s", testAddress)
+
 				// invoke the EmptyCall service with good options but should fail
 				// until channel is created and root CAs are updated
-				_, err = invokeEmptyCall(test.listenAddress, test.goodOptions)
+				_, err = invokeEmptyCall(testAddress, test.goodOptions)
 				assert.Error(t, err, "Expected error invoking the EmptyCall service ")
 
 				// creating channel should update the trusted client roots
@@ -319,11 +324,11 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 					"Did not find expected number of orderer CAs for channel")
 
 				// invoke the EmptyCall service with good options
-				_, err = invokeEmptyCall(test.listenAddress, test.goodOptions)
+				_, err = invokeEmptyCall(testAddress, test.goodOptions)
 				assert.NoError(t, err, "Failed to invoke the EmptyCall service")
 
 				// invoke the EmptyCall service with bad options
-				_, err = invokeEmptyCall(test.listenAddress, test.badOptions)
+				_, err = invokeEmptyCall(testAddress, test.badOptions)
 				assert.Error(t, err, "Expected error using bad dial options")
 			}
 		})
