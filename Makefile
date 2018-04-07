@@ -26,6 +26,7 @@
 #   - license - checks go source files for Apache license header
 #   - native - ensures all native binaries are available
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
+#   - docker-list - generates a list of docker images that 'make docker' produces
 #   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
 #   - orderer-docker[-clean] - ensures the orderer container is available[/cleaned]
 #   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
@@ -400,6 +401,12 @@ dist/%: release/%
 .PHONY: protos
 protos: buildenv
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
+
+%-docker-list:
+	$(eval TARGET = ${patsubst %-docker-list,%,${@}})
+	@echo $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
+
+docker-list: $(patsubst %,%-docker-list, $(IMAGES))
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
