@@ -158,12 +158,21 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		client := d.newClient(chainID, ledgerInfo)
 		logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
 		d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
-		go func() {
-			d.blockProviders[chainID].DeliverBlocks()
-			finalizer()
-		}()
+		go d.launchBlockProvider(chainID, finalizer)
 	}
 	return nil
+}
+
+func (d *deliverServiceImpl) launchBlockProvider(chainID string, finalizer func()) {
+	d.lock.RLock()
+	pb := d.blockProviders[chainID]
+	d.lock.RUnlock()
+	if pb == nil {
+		logger.Info("Block delivery for channel", chainID, "was stopped before block provider started")
+		return
+	}
+	pb.DeliverBlocks()
+	finalizer()
 }
 
 // StopDeliverForChannel stops blocks delivery for channel by stopping channel block provider
