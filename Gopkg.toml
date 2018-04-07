@@ -31,10 +31,6 @@ ignored = [
   version = "1.1.0"
 
 [[constraint]]
-  name = "github.com/docker/docker"
-  version = "1.13.1"
-
-[[constraint]]
   name = "github.com/fsouza/go-dockerclient"
   version = "docker-1.9/go-1.4"
 

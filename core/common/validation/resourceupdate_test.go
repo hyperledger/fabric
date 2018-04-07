@@ -9,12 +9,12 @@ package validation
 import (
 	"testing"
 
-	"github.com/docker/docker/pkg/testutil/assert"
 	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateResourceUpdateTx(t *testing.T) {
