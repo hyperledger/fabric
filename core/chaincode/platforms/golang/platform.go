@@ -20,16 +20,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
-
 	"sort"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
@@ -37,6 +35,7 @@ import (
 	ccprovmetadata "github.com/hyperledger/fabric/core/common/ccprovider/metadata"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -477,8 +476,16 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 		}
 	}
 
-	tw.Close()
-	gw.Close()
+	err = tw.Close()
+	if err == nil {
+		err = gw.Close()
+	}
+	if err != nil {
+		return nil, errors.Wrapf(
+			err,
+			"failed to create tar for chaincode: %s",
+			spec.GetChaincodeId().GetName())
+	}
 
 	return payload.Bytes(), nil
 }
