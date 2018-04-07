@@ -176,8 +176,9 @@ buildenv: $(BUILD_DIR)/image/buildenv/$(DUMMY)
 
 $(BUILD_DIR)/image/testenv/$(DUMMY): $(BUILD_DIR)/image/buildenv/$(DUMMY)
 testenv: $(BUILD_DIR)/image/testenv/$(DUMMY)
+ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
 
-unit-test: unit-test-clean peer-docker testenv
+unit-test: unit-test-clean peer-docker testenv ccenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
@@ -242,10 +243,6 @@ $(BUILD_DIR)/docker/gotools: gotools.mk
 		-w /opt/gopath/src/$(PKGNAME) \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make -f gotools.mk GOTOOLS_BINDIR=/opt/gotools/bin GOTOOLS_GOPATH=/opt/gotools/obj
-
-# Both peer and peer-docker depend on ccenv (all docker env images it supports).
-$(BUILD_DIR)/bin/peer: $(BUILD_DIR)/image/ccenv/$(DUMMY)
-$(BUILD_DIR)/image/peer/$(DUMMY): $(BUILD_DIR)/image/ccenv/$(DUMMY)
 
 $(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
