@@ -118,6 +118,18 @@ func serve(args []string) error {
 		panic("Unsupported msp type " + msp.ProviderTypeToString(mspType))
 	}
 
+	// set the logging level for specific modules defined via environment
+	// variables or core.yaml
+	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc", "peer.gossip"}
+	for _, module := range overrideLogModules {
+		err := common.SetLogLevelFromViper(module)
+		if err != nil {
+			logger.Warningf("Error setting log level for module '%s': %s", module, err.Error())
+		}
+	}
+
+	flogging.SetPeerStartupModulesMap()
+
 	logger.Infof("Starting %s", version.GetInfo())
 
 	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
@@ -367,18 +379,6 @@ func serve(args []string) error {
 
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]",
 		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
-
-	// set the logging level for specific modules defined via environment
-	// variables or core.yaml
-	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc", "peer.gossip"}
-	for _, module := range overrideLogModules {
-		err = common.SetLogLevelFromViper(module)
-		if err != nil {
-			logger.Warningf("Error setting log level for module '%s': %s", module, err.Error())
-		}
-	}
-
-	flogging.SetPeerStartupModulesMap()
 
 	// Block until grpc server exits
 	return <-serve
