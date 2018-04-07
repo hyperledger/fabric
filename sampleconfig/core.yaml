@@ -312,7 +312,6 @@ peer:
             # Location of Key Store
             FileKeyStore:
                 # If "", defaults to 'mspConfigPath'/keystore
-                # TODO: Ensure this is read with fabric/core/config.GetPath() once ready
                 KeyStore:
 
     # Path on the file system where peer will find MSP local configurations
