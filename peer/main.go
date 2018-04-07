@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
-	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"runtime"
@@ -51,17 +50,7 @@ var mainCmd = &cobra.Command{
 
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		if versionFlag {
-			fmt.Print(version.GetInfo())
-		} else {
-			cmd.HelpFunc()(cmd, args)
-		}
-	},
 }
-
-// Peer command version flag
-var versionFlag bool
 
 func main() {
 	// For environment variables.
@@ -73,7 +62,6 @@ func main() {
 	// Define command-line flags that are valid for all peer commands and
 	// subcommands.
 	mainFlags := mainCmd.PersistentFlags()
-	mainFlags.BoolVarP(&versionFlag, "version", "v", false, "Display the build version for this fabric peer")
 
 	mainFlags.String("logging-level", "", "Default logging level and overrides, see core.yaml for full syntax")
 	viper.BindPFlag("logging_level", mainFlags.Lookup("logging-level"))
