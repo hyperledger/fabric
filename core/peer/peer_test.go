@@ -103,7 +103,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 
 	// Initialize gossip service
 	grpcServer := grpc.NewServer()
-	socket, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 13611))
+	socket, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 
 	msptesttools.LoadMSPSetupForTesting()
@@ -117,7 +117,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 		return dialOpts
 	}
 	err = service.InitGossipServiceCustomDeliveryFactory(
-		identity, "localhost:13611", grpcServer, nil,
+		identity, socket.Addr().String(), grpcServer, nil,
 		&mockDeliveryClientFactory{},
 		messageCryptoService, secAdv, defaultSecureDialOpts)
 
