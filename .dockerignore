@@ -3,5 +3,5 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-obc-peer
-.git
+.build
+unit-test
