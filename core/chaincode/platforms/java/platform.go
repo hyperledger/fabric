@@ -51,12 +51,14 @@ func getBuildCmd(codePackage []byte) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failure opening gzip stream: %s", err)
 	}
+	defer gr.Close()
+
 	tr := tar.NewReader(gr)
 
 	for {
 		header, err := tr.Next()
 		if err != nil {
-			return "", errors.New("Build file not found")
+			return "", errors.New("build file not found")
 		}
 
 		if cmd, ok := buildCmds[header.Name]; ok == true {
