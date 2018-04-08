@@ -270,13 +270,13 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
 		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", resources.LSCC_GETCCINFO, "test", sProp).Return(nil)
-		args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+		mockAclProvider.On("CheckACL", resources.Lscc_ChaincodeExists, "test", sProp).Return(nil)
+		args = [][]byte{[]byte(CCEXISTS), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
 		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
+		mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, "test", sProp).Return(nil)
 		args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -290,7 +290,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 
 		scc.support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = nil
 		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, "test", sProp).Return(nil)
+		mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, "test", sProp).Return(nil)
 		args = [][]byte{[]byte(GETCCDATA), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -298,7 +298,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		assert.Equal(t, expectedErrorMsg, string(res.Message))
 	}
 
-	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCCINFO)}, nil)
+	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(CCEXISTS)}, nil)
 }
 
 // TestUpgrade tests the upgrade function with various inputs for basic use cases
@@ -402,7 +402,7 @@ func TestGETCCINFO(t *testing.T) {
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
-	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCCINFO), []byte("chain")}, nil)
+	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(CCEXISTS), []byte("chain")}, nil)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
 	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
@@ -421,13 +421,13 @@ func TestGETCCINFO(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.LSCC_GETCCINFO, "chain", sProp).Return(errors.New("Failed access control"))
-	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCCINFO), []byte("chain"), []byte("chaincode")}, sProp)
+	mockAclProvider.On("CheckACL", resources.Lscc_ChaincodeExists, "chain", sProp).Return(errors.New("Failed access control"))
+	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(CCEXISTS), []byte("chain"), []byte("chaincode")}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.LSCC_GETCCINFO, "chain", sProp).Return(nil)
-	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCCINFO), []byte("chain"), []byte("nonexistentchaincode")}, sProp)
+	mockAclProvider.On("CheckACL", resources.Lscc_ChaincodeExists, "chain", sProp).Return(nil)
+	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(CCEXISTS), []byte("chain"), []byte("nonexistentchaincode")}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 }
 

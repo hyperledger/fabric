@@ -209,5 +209,5 @@ func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
 }
 
 func getACLResource(fname string) string {
-	return "QSCC." + fname
+	return "qscc." + fname
 }

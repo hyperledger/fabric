@@ -140,21 +140,21 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return joinChain(cid, block)
 	case GetConfigBlock:
 		// 2. check policy
-		if err = aclmgmt.GetACLProvider().CheckACL(resources.CSCC_GetConfigBlock, string(args[1]), sp); err != nil {
+		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"GetConfigBlock\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 
 		return getConfigBlock(args[1])
 	case GetConfigTree:
 		// 2. check policy
-		if err = aclmgmt.GetACLProvider().CheckACL(resources.CSCC_GetConfigTree, string(args[1]), sp); err != nil {
+		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_GetConfigTree, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"GetConfigTree\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 
 		return e.getConfigTree(args[1])
 	case SimulateConfigTreeUpdate:
 		// Check policy
-		if err = aclmgmt.GetACLProvider().CheckACL(resources.CSCC_SimulateConfigTreeUpdate, string(args[1]), sp); err != nil {
+		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_SimulateConfigTreeUpdate, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"SimulateConfigTreeUpdate\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 		return e.simulateConfigTreeUpdate(args[1], args[2])

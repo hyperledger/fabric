@@ -109,10 +109,10 @@ type blockEvent common.Block
 func (s *server) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 	logger.Debugf("Starting new DeliverFiltered handler")
 	defer dumpStacktraceOnPanic()
-	// getting policy checker based on resources.FILTEREDBLOCKEVENT resource name
+	// getting policy checker based on resources.Event_FilteredBlock resource name
 	deliverServer := &deliver.Server{
 		Receiver:      srv,
-		PolicyChecker: s.policyCheckerProvider(resources.FILTEREDBLOCKEVENT),
+		PolicyChecker: s.policyCheckerProvider(resources.Event_FilteredBlock),
 		ResponseSender: &filteredBlockResponseSender{
 			Deliver_DeliverFilteredServer: srv,
 		},
@@ -124,9 +124,9 @@ func (s *server) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 func (s *server) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 	logger.Debugf("Starting new Deliver handler")
 	defer dumpStacktraceOnPanic()
-	// getting policy checker based on resources.BLOCKEVENT resource name
+	// getting policy checker based on resources.Event_Block resource name
 	deliverServer := &deliver.Server{
-		PolicyChecker: s.policyCheckerProvider(resources.BLOCKEVENT),
+		PolicyChecker: s.policyCheckerProvider(resources.Event_Block),
 		Receiver:      srv,
 		ResponseSender: &blockResponseSender{
 			Deliver_DeliverServer: srv,

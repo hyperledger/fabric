@@ -50,7 +50,7 @@ func TestRegisterNilProvider(t *testing.T) {
 func TestBadID(t *testing.T) {
 	reinit()
 	RegisterACLProvider(nil)
-	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", "badidtype")
+	err := GetACLProvider().CheckACL(resources.Peer_Propose, "somechain", "badidtype")
 	assert.Error(t, err, "Expected error")
 }
 
@@ -65,8 +65,8 @@ func TestWithProvider(t *testing.T) {
 	reinit()
 	aclprov := registerACLProvider()
 	prop := &pb.SignedProposal{}
-	aclprov.On("CheckACL", resources.PROPOSE, "somechain", prop).Return(nil)
-	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", prop)
+	aclprov.On("CheckACL", resources.Peer_Propose, "somechain", prop).Return(nil)
+	err := GetACLProvider().CheckACL(resources.Peer_Propose, "somechain", prop)
 	assert.NoError(t, err)
 }
 
@@ -74,7 +74,7 @@ func TestBadACL(t *testing.T) {
 	reinit()
 	aclprov := registerACLProvider()
 	prop := &pb.SignedProposal{}
-	aclprov.On("CheckACL", resources.PROPOSE, "somechain", prop).Return(errors.New("badacl"))
-	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", prop)
+	aclprov.On("CheckACL", resources.Peer_Propose, "somechain", prop).Return(errors.New("badacl"))
+	err := GetACLProvider().CheckACL(resources.Peer_Propose, "somechain", prop)
 	assert.Error(t, err, "Expected error")
 }

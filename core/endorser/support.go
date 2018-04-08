@@ -112,7 +112,7 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 // CheckACL checks the ACL for the resource for the channel using the
 // SignedProposal from which an id can be extracted for testing against a policy
 func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	return aclmgmt.GetACLProvider().CheckACL(resources.PROPOSE, chdr.ChannelId, signedProp)
+	return aclmgmt.GetACLProvider().CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
 }
 
 // IsJavaCC returns true if the CDS package bytes describe a chaincode

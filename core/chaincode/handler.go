@@ -256,7 +256,7 @@ func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Pro
 		return errors.Errorf("signed proposal must not be nil from caller [%s]", ccIns.String())
 	}
 
-	return aclmgmt.GetACLProvider().CheckACL(resources.CC2CC, ccIns.ChainID, signedProp)
+	return aclmgmt.GetACLProvider().CheckACL(resources.Peer_ChaincodeToChaincode, ccIns.ChainID, signedProp)
 }
 
 func (handler *Handler) deregister() error {

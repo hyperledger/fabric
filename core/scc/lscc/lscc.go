@@ -63,8 +63,8 @@ const (
 	//UPGRADE upgrade chaincode
 	UPGRADE = "upgrade"
 
-	//GETCCINFO get chaincode
-	GETCCINFO = "getid"
+	//CCEXISTS get chaincode
+	CCEXISTS = "getid"
 
 	//GETDEPSPEC get ChaincodeDeploymentSpec
 	GETDEPSPEC = "getdepspec"
@@ -721,7 +721,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(err.Error())
 		}
 		return shim.Success(cdbytes)
-	case GETCCINFO, GETDEPSPEC, GETCCDATA:
+	case CCEXISTS, GETDEPSPEC, GETCCDATA:
 		if len(args) != 3 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
@@ -732,12 +732,12 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		// 2. check local Channel Readers policy
 		var resource string
 		switch function {
-		case GETCCINFO:
-			resource = resources.LSCC_GETCCINFO
+		case CCEXISTS:
+			resource = resources.Lscc_ChaincodeExists
 		case GETDEPSPEC:
-			resource = resources.LSCC_GETDEPSPEC
+			resource = resources.Lscc_GetDeploymentSpec
 		case GETCCDATA:
-			resource = resources.LSCC_GETCCDATA
+			resource = resources.Lscc_GetChaincodeData
 		}
 		if err = aclmgmt.GetACLProvider().CheckACL(resource, chain, sp); err != nil {
 			return shim.Error(fmt.Sprintf("Authorization request failed %s: %s", chain, err))
@@ -750,7 +750,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		switch function {
-		case GETCCINFO:
+		case CCEXISTS:
 			cd, err := lscc.getChaincodeData(ccname, cdbytes)
 			if err != nil {
 				return shim.Error(err.Error())
