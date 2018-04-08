@@ -90,7 +90,7 @@ CHAINTOOL_URL ?= https://nexus.hyperledger.org/content/repositories/releases/org
 
 export GO_LDFLAGS GO_TAGS
 
-EXECUTABLES = go docker git curl
+EXECUTABLES ?= go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
@@ -265,11 +265,6 @@ $(BUILD_DIR)/image/testenv/payload:    $(BUILD_DIR)/docker/bin/orderer \
 				$(BUILD_DIR)/docker/bin/peer \
 				$(BUILD_DIR)/sampleconfig.tar.bz2 \
 				images/testenv/install-softhsm2.sh
-$(BUILD_DIR)/image/tools/payload:      $(BUILD_DIR)/docker/bin/cryptogen \
-	                        $(BUILD_DIR)/docker/bin/configtxgen \
-	                        $(BUILD_DIR)/docker/bin/configtxlator \
-				$(BUILD_DIR)/docker/bin/peer \
-				$(BUILD_DIR)/sampleconfig.tar.bz2
 
 $(BUILD_DIR)/image/%/payload:
 	mkdir -p $@
@@ -278,6 +273,7 @@ $(BUILD_DIR)/image/%/payload:
 .PRECIOUS: $(BUILD_DIR)/image/%/Dockerfile
 
 $(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
+	mkdir -p $(@D)
 	@cat $< \
 		| sed -e 's/_BASE_NS_/$(BASE_DOCKER_NS)/g' \
 		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
@@ -286,6 +282,14 @@ $(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
 		> $@
 	@echo LABEL $(BASE_DOCKER_LABEL).version=$(PROJECT_VERSION) \\>>$@
 	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
+
+$(BUILD_DIR)/image/tools/$(DUMMY): $(BUILD_DIR)/image/tools/Dockerfile
+	$(eval TARGET = ${patsubst $(BUILD_DIR)/image/%/$(DUMMY),%,${@}})
+	@echo "Building docker $(TARGET)-image"
+	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) -f $(@D)/Dockerfile .
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-latest
+	@touch $@
 
 $(BUILD_DIR)/image/%/$(DUMMY): Makefile $(BUILD_DIR)/image/%/payload $(BUILD_DIR)/image/%/Dockerfile
 	$(eval TARGET = ${patsubst $(BUILD_DIR)/image/%/$(DUMMY),%,${@}})
