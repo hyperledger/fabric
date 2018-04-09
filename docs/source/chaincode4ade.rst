@@ -402,7 +402,7 @@ of compiling chaincode and driving calls.
 Install Hyperledger Fabric Samples
 ----------------------------------
 
-If you haven't already done so, please install the :doc:`samples`.
+If you haven't already done so, please :doc:`install`.
 
 Navigate to the ``chaincode-docker-devmode`` directory of the ``fabric-samples``
 clone:
@@ -410,39 +410,6 @@ clone:
 .. code:: bash
 
   cd chaincode-docker-devmode
-
-Download Docker images
-----------------------
-
-We need four Docker images in order for "dev mode" to run against the supplied
-docker compose script.  If you installed the ``fabric-samples`` repo clone and
-followed the instructions to :ref:`binaries`, then
-you should have the necessary Docker images installed locally.
-
-.. note:: If you choose to manually pull the images then you must retag them as
-          ``latest``.
-
-Issue a ``docker images`` command to reveal your local Docker Registry.  You
-should see something similar to following:
-
-.. code:: bash
-
-  docker images
-  REPOSITORY                     TAG                                  IMAGE ID            CREATED             SIZE
-  hyperledger/fabric-tools       latest                           b7bfddf508bc        About an hour ago   1.46GB
-  hyperledger/fabric-tools       x86_64-1.1.0                     b7bfddf508bc        About an hour ago   1.46GB
-  hyperledger/fabric-orderer     latest                           ce0c810df36a        About an hour ago   180MB
-  hyperledger/fabric-orderer     x86_64-1.1.0                     ce0c810df36a        About an hour ago   180MB
-  hyperledger/fabric-peer        latest                           b023f9be0771        About an hour ago   187MB
-  hyperledger/fabric-peer        x86_64-1.1.0                     b023f9be0771        About an hour ago   187MB
-  hyperledger/fabric-javaenv     latest                           82098abb1a17        About an hour ago   1.52GB
-  hyperledger/fabric-javaenv     x86_64-1.1.0                     82098abb1a17        About an hour ago   1.52GB
-  hyperledger/fabric-ccenv       latest                           c8b4909d8d46        About an hour ago   1.39GB
-  hyperledger/fabric-ccenv       x86_64-1.1.0                     c8b4909d8d46        About an hour ago   1.39GB
-
-.. note:: If you retrieved the images through the :ref:`binaries`,
-          then you will see additional images listed.  However, we are only concerned with
-          these four.
 
 Now open three terminals and navigate to your ``chaincode-docker-devmode``
 directory in each.

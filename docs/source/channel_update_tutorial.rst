@@ -2,11 +2,11 @@ Adding an Org to a Channel
 ==========================
 
 .. note:: Ensure that you have downloaded the appropriate images and binaries
-          as outlined in :doc:`samples` and :doc:`prereqs` that conform to the
+          as outlined in :doc:`install` and :doc:`prereqs` that conform to the
           version of this documentation (which can be found at the bottom of the
           table of contents to the left). In particular, your version of the
-          ``fabric-samples`` folder must include the ``eyfn.sh`` ("Extending Your
-          First Network") script and its related scripts.
+          ``fabric-samples`` folder must include the ``eyfn.sh`` ("Extending
+          Your First Network") script and its related scripts.
 
 This tutorial serves as an extension to the :doc:`build_network` (BYFN) tutorial,
 and will demonstrate the addition of a new organization -- ``Org3`` -- to the

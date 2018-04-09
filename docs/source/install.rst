@@ -1,5 +1,5 @@
-Hyperledger Fabric Samples
-==========================
+Install Samples, Binaries and Images
+====================================
 
 .. note:: If you are running on **Windows** you will want to make use of the
 	  Docker Quickstart Terminal for the upcoming terminal commands.
@@ -20,32 +20,17 @@ Hyperledger Fabric Samples
           and use a location under one of the shared drives.
 
 Determine a location on your machine where you want to place the Hyperledger
-Fabric samples applications repository and open that in a terminal window. Then,
-execute the following commands:
+Fabric Samples repository and enter that directory in a terminal window. The
+command that follows will perform the following steps:
 
-.. code:: bash
+#. if needed, clone the hyperledger/fabric-samples repository
+#. checkout the appropriate version tag
+#. install the Hyperledger Fabric platform-specific binaries and config files
+   for the version specified into the root of the fabric-samples repository
+#. download the Hyperledger Fabric docker images for the version specified
 
-  git clone -b master https://github.com/hyperledger/fabric-samples.git
-  cd fabric-samples
-  git checkout {TAG}　
-
-.. note:: To ensure the samples are compatible with the version of Fabric binaries you download below,
-          checkout the samples ``{TAG}`` that matches your Fabric version, for example, v1.1.0.
-          To see a list of all fabric-samples tags, use command "git tag".
-
-.. _binaries:
-
-Download Platform-specific Binaries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Next, we will install the Hyperledger Fabric platform-specific binaries.
-This process was designed to complement the Hyperledger Fabric Samples
-above, but can be used independently. If you are not installing the
-samples above, then simply create and enter a directory into which to
-extract the contents of the platform-specific binaries.
-
-Please execute the following command from within the directory into which
-you will extract the platform-specific binaries:
+Once you are ready, and in the directory into which you will install the
+Fabric Samples and binaries, go ahead and execute the following command:
 
 .. code:: bash
 

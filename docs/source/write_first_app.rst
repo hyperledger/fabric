@@ -49,12 +49,14 @@ If you don't have a development environment and the accompanying artifacts for
 the network and applications, visit the :doc:`prereqs` page and ensure you have
 the necessary dependencies installed on your machine.
 
-Next, visit the :doc:`samples` page and follow the provided instructions. Return to
-this tutorial once you have cloned the ``fabric-samples`` repository, and downloaded
-the latest stable Fabric images and available utilities.
+Next, if you haven't done so already, visit the :doc:`install` page and follow
+the provided instructions. Return to this tutorial once you have cloned the
+``fabric-samples`` repository, and downloaded the latest stable Fabric images
+and available utilities.
 
-At this point everything should be installed. Navigate to the ``fabcar`` subdirectory
-within your ``fabric-samples`` repository and take a look at what's inside:
+At this point everything should be installed. Navigate to the ``fabcar``
+subdirectory within your ``fabric-samples`` repository and take a look at what's
+inside:
 
 .. code:: bash
 
@@ -66,8 +68,8 @@ You should see the following:
 
      enrollAdmin.js	invoke.js	package.json	query.js	registerUser.js	startFabric.sh
 
-Before starting we also need to do a little housekeeping. Run the following command to
-kill any stale or active containers:
+Before starting we also need to do a little housekeeping. Run the following
+command to kill any stale or active containers:
 
 .. code:: bash
 
@@ -81,9 +83,10 @@ Clear any cached networks:
 
   docker network prune
 
-And lastly if you've already run through this tutorial, you'll also want to delete the
-underlying chaincode image for the ``fabcar`` smart contract. If you're a user going through
-this content for the first time, then you won't have this chaincode image on your system:
+And lastly if you've already run through this tutorial, you'll also want to
+delete the underlying chaincode image for the ``fabcar`` smart contract. If
+you're a user going through this content for the first time, then you won't
+have this chaincode image on your system:
 
 .. code:: bash
 
@@ -92,22 +95,24 @@ this content for the first time, then you won't have this chaincode image on you
 Install the clients & launch the network
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note:: The following instructions require you to be in the ``fabcar`` subdirectory
-          within your local clone of the ``fabric-samples`` repo. Remain at the
-          root of this subdirectory for the remainder of this tutorial.
+.. note:: The following instructions require you to be in the ``fabcar``
+          subdirectory within your local clone of the ``fabric-samples`` repo.
+          Remain at the root of this subdirectory for the remainder of this
+          tutorial.
 
-Run the following command to install the Fabric dependencies for the applications.
-We are concerned with ``fabric-ca-client`` which will allow our app(s) to communicate
-with the CA server and retrieve identity material, and with ``fabric-client`` which
-allows us to load the identity material and talk to the peers and ordering service.
+Run the following command to install the Fabric dependencies for the
+applications. We are concerned with ``fabric-ca-client`` which will allow our
+app(s) to communicate with the CA server and retrieve identity material, and
+with ``fabric-client`` which allows us to load the identity material and talk
+to the peers and ordering service.
 
 .. code:: bash
 
   npm install
 
 Launch your network using the ``startFabric.sh`` shell script. This command
-will spin up our various Fabric entities and launch a smart contract container for
-chaincode written in Golang:
+will spin up our various Fabric entities and launch a smart contract container
+for chaincode written in Golang:
 
 .. code:: bash
 
