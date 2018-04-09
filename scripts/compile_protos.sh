@@ -21,7 +21,7 @@ PROTO_ROOT_DIRS="$(dirname $PROTO_ROOT_FILES)"
 ROOTLESS_PROTO_FILES="$(find $PWD \
                              $(for dir in $PROTO_ROOT_DIRS ; do echo "-path $dir -prune -o " ; done) \
                              -path $PWD/vendor -prune -o \
-                             -path $PWD/build -prune -o \
+                             -path $PWD/.build -prune -o \
                              -path $PWD/core/chaincode/shim/java -prune -o \
                              -name "*.proto" -exec readlink -f {} \;)"
 ROOTLESS_PROTO_DIRS="$(dirname $ROOTLESS_PROTO_FILES | sort | uniq)"
