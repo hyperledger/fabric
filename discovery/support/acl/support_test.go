@@ -64,7 +64,7 @@ func TestConfigSequence(t *testing.T) {
 			}
 			v.SequenceReturns(test.sequence)
 
-			sup := acl.NewDiscoverySupport(&mocks.Verifier{}, chConfig)
+			sup := acl.NewDiscoverySupport(&mocks.Verifier{}, &mocks.Evaluator{}, chConfig)
 			if test.shouldPanic {
 				assert.Panics(t, func() {
 					sup.ConfigSequence("mychannel")
@@ -78,12 +78,19 @@ func TestConfigSequence(t *testing.T) {
 
 func TestEligibleForService(t *testing.T) {
 	v := &mocks.Verifier{}
+	e := &mocks.Evaluator{}
 	v.VerifyByChannelReturnsOnCall(0, errors.New("verification failed"))
 	v.VerifyByChannelReturnsOnCall(1, nil)
+	e.EvaluateReturnsOnCall(0, errors.New("verification failed for local msp"))
+	e.EvaluateReturnsOnCall(1, nil)
 	chConfig := &mocks.ChanConfig{}
-	sup := acl.NewDiscoverySupport(v, chConfig)
-	err := sup.EligibleForService("", common2.SignedData{})
+	sup := acl.NewDiscoverySupport(v, e, chConfig)
+	err := sup.EligibleForService("mychannel", common2.SignedData{})
 	assert.Equal(t, "verification failed", err.Error())
+	err = sup.EligibleForService("mychannel", common2.SignedData{})
+	assert.NoError(t, err)
+	err = sup.EligibleForService("", common2.SignedData{})
+	assert.Equal(t, "verification failed for local msp", err.Error())
 	err = sup.EligibleForService("", common2.SignedData{})
 	assert.NoError(t, err)
 }
@@ -143,7 +150,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 		},
 	}
 
-	sup := acl.NewDiscoverySupport(&mocks.Verifier{}, chConfig)
+	sup := acl.NewDiscoverySupport(&mocks.Verifier{}, &mocks.Evaluator{}, chConfig)
 	for _, test := range tests {
 		test := test
 		t.Run(test.testDescription, func(t *testing.T) {

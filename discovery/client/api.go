@@ -29,6 +29,9 @@ type Dialer func() (*grpc.ClientConn, error)
 type Response interface {
 	// ForChannel returns a ChannelResponse in the context of a given channel
 	ForChannel(string) ChannelResponse
+
+	// ForLocal returns a LocalResponse in the context of no channel
+	ForLocal() LocalResponse
 }
 
 // ChannelResponse aggregates responses for a given channel
@@ -43,8 +46,16 @@ type ChannelResponse interface {
 	// chaincode in a given channel context, or error if something went wrong.
 	// The method returns a random set of endorsers, such that signatures from all of them
 	// combined, satisfy the endorsement policy.
-	// The selection is based on the given selection hint
-	Endorsers(cc string, hint Selector) (Endorsers, error)
+	// The selection is based on the given selection hints:
+	// PrioritySelector: Determines which endorsers are selected over others
+	// ExclusionFilter: Determines which endorsers are not selected
+	Endorsers(cc string, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error)
+}
+
+// LocalResponse aggregates responses for a channel-less scope
+type LocalResponse interface {
+	// Peers returns a response for a local peer membership query, or error if something went wrong
+	Peers() ([]*Peer, error)
 }
 
 // Endorsers defines a set of peers that are sufficient

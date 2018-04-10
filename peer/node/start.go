@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/admin"
@@ -385,8 +386,23 @@ func serve(args []string) error {
 	return <-serve
 }
 
+func localPolicy(policyObject proto.Message) policies.Policy {
+	localMSP := mgmt.GetLocalMSP()
+	pp := cauthdsl.NewPolicyProvider(localMSP)
+	policy, _, err := pp.NewPolicy(utils.MarshalOrPanic(policyObject))
+	if err != nil {
+		logger.Panicf("Failed creating local policy: +%v", err)
+	}
+	return policy
+}
+
 func registerDiscoveryService(peerServer *comm.GRPCServer, mcs api.MessageCryptoService, lc *cc.Lifecycle) {
-	acl := discacl.NewDiscoverySupport(mcs, discacl.ChannelConfigGetterFunc(peer.GetChannelConfig))
+	mspID := viper.GetString("peer.localMspId")
+	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
+	if viper.GetBool("peer.discovery.orgMembersAllowedAccess") {
+		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
+	}
+	acl := discacl.NewDiscoverySupport(mcs, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetChannelConfig))
 	gSup := gossip.NewDiscoverySupport(service.GetGossipService())
 	ccSup := ccsupport.NewDiscoverySupport(lc)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, lc)
@@ -628,13 +644,8 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
 	adminListenAddress := viper.GetString("peer.adminService.listenAddress")
 	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
-	localMSP := mgmt.GetLocalMSP()
 	mspID := viper.GetString("peer.localMspId")
-	pp := cauthdsl.NewPolicyProvider(localMSP)
-	adminPolicy, _, err := pp.NewPolicy(utils.MarshalOrPanic(cauthdsl.SignedByAnyAdmin([]string{mspID})))
-	if err != nil {
-		logger.Panicf("Failed creating admin policy: +%v", err)
-	}
+	adminPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	gRPCService := peerServer
 	if separateLsnrForAdmin {
 		logger.Info("Creating gRPC server for admin service on", adminListenAddress)

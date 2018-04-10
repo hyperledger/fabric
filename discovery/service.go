@@ -35,9 +35,10 @@ type certHashExtractor func(ctx context.Context) []byte
 type dispatcher func(q *discovery.Query) *discovery.QueryResult
 
 type service struct {
-	config      Config
-	dispatchers map[discovery.QueryType]dispatcher
-	auth        *authCache
+	config             Config
+	channelDispatchers map[discovery.QueryType]dispatcher
+	localDispatchers   map[discovery.QueryType]dispatcher
+	auth               *authCache
 	Support
 }
 
@@ -48,6 +49,9 @@ type Config struct {
 	AuthCachePurgeRetentionRatio float64
 }
 
+// peerMapping maps PKI-IDs to Peers
+type peerMapping map[string]*discovery.Peer
+
 // NewService creates a new discovery service instance
 func NewService(config Config, sup Support) *service {
 	s := &service{
@@ -57,10 +61,13 @@ func NewService(config Config, sup Support) *service {
 		}),
 		Support: sup,
 	}
-	s.dispatchers = map[discovery.QueryType]dispatcher{
+	s.channelDispatchers = map[discovery.QueryType]dispatcher{
 		discovery.ConfigQueryType:         s.configQuery,
 		discovery.ChaincodeQueryType:      s.chaincodeQuery,
-		discovery.PeerMembershipQueryType: s.membershipQuery,
+		discovery.PeerMembershipQueryType: s.channelMembershipResponse,
+	}
+	s.localDispatchers = map[discovery.QueryType]dispatcher{
+		discovery.LocalMembershipQueryType: s.localMembershipResponse,
 	}
 	return s
 }
@@ -82,7 +89,7 @@ func (s *service) Discover(ctx context.Context, request *discovery.SignedRequest
 }
 
 func (s *service) processQuery(query *discovery.Query, request *discovery.SignedRequest, identity []byte, addr string) *discovery.QueryResult {
-	if !s.ChannelExists(query.Channel) {
+	if query.Channel != "" && !s.ChannelExists(query.Channel) {
 		logger.Warning("got query for channel", query.Channel, "from", addr, "but it doesn't exist")
 		return accessDenied
 	}
@@ -99,11 +106,16 @@ func (s *service) processQuery(query *discovery.Query, request *discovery.Signed
 }
 
 func (s *service) dispatch(q *discovery.Query) *discovery.QueryResult {
-	disp, exists := s.dispatchers[q.GetType()]
+	dispatchers := s.channelDispatchers
+	// Ensure local queries are routed only to channel-less dispatchers
+	if q.Channel == "" {
+		dispatchers = s.localDispatchers
+	}
+	dispatchQuery, exists := dispatchers[q.GetType()]
 	if !exists {
 		return wrapError(errors.New("unknown or missing request type"))
 	}
-	return disp(q)
+	return dispatchQuery(q)
 }
 
 func (s *service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
@@ -139,41 +151,66 @@ func (s *service) configQuery(q *discovery.Query) *discovery.QueryResult {
 	}
 }
 
-func (s *service) membershipQuery(q *discovery.Query) *discovery.QueryResult {
-	peersByOrg := make(map[string]*discovery.Peers)
-	res := &discovery.QueryResult{
+func wrapPeerResponse(peersByOrg map[string]*discovery.Peers) *discovery.QueryResult {
+	return &discovery.QueryResult{
 		Result: &discovery.QueryResult_Members{
 			Members: &discovery.PeerMembershipResult{
 				PeersByOrg: peersByOrg,
 			},
 		},
 	}
+}
 
-	peerAliveInfo := discovery2.Members(s.Peers()).ByID()
+func (s *service) channelMembershipResponse(q *discovery.Query) *discovery.QueryResult {
+	membersByOrgs := make(map[string]*discovery.Peers)
 	chanPeers := s.PeersOfChannel(common2.ChainID(q.Channel))
-	peerChannelInfo := discovery2.Members(chanPeers).ByID()
-	for org, peerIdentities := range s.IdentityInfo().ByOrg() {
-		peersForCurrentOrg := &discovery.Peers{}
-		peersByOrg[org] = peersForCurrentOrg
-		for _, id := range peerIdentities {
-			// Check peer exists in channel
-			chanInfo, exists := peerChannelInfo[string(id.PKIId)]
+	chanPeerByID := discovery2.Members(chanPeers).ByID()
+	for org, ids2Peers := range s.computeMembership(q) {
+		membersByOrgs[org] = &discovery.Peers{}
+		for id, peer := range ids2Peers {
+			// Check if the peer is in the channel view
+			stateInfoMsg, exists := chanPeerByID[string(id)]
+			// If the peer isn't in the channel view, skip it and don't include it in the response
 			if !exists {
 				continue
 			}
+			peer.StateInfo = stateInfoMsg.Envelope
+			membersByOrgs[org].Peers = append(membersByOrgs[org].Peers, peer)
+		}
+	}
+	return wrapPeerResponse(membersByOrgs)
+}
+
+func (s *service) localMembershipResponse(q *discovery.Query) *discovery.QueryResult {
+	membersByOrgs := make(map[string]*discovery.Peers)
+	for org, ids2Peers := range s.computeMembership(q) {
+		membersByOrgs[org] = &discovery.Peers{}
+		for _, peer := range ids2Peers {
+			membersByOrgs[org].Peers = append(membersByOrgs[org].Peers, peer)
+		}
+	}
+	return wrapPeerResponse(membersByOrgs)
+}
+
+func (s *service) computeMembership(q *discovery.Query) map[string]peerMapping {
+	peersByOrg := make(map[string]peerMapping)
+	peerAliveInfo := discovery2.Members(s.Peers()).ByID()
+	for org, peerIdentities := range s.IdentityInfo().ByOrg() {
+		peersForCurrentOrg := make(peerMapping)
+		peersByOrg[org] = peersForCurrentOrg
+		for _, id := range peerIdentities {
 			// Check peer exists in alive membership view
 			aliveInfo, exists := peerAliveInfo[string(id.PKIId)]
 			if !exists {
 				continue
 			}
-			peersForCurrentOrg.Peers = append(peersForCurrentOrg.Peers, &discovery.Peer{
+			peersForCurrentOrg[string(id.PKIId)] = &discovery.Peer{
 				Identity:       id.Identity,
-				StateInfo:      chanInfo.Envelope,
 				MembershipInfo: aliveInfo.Envelope,
-			})
+			}
 		}
 	}
-	return res
+	return peersByOrg
 }
 
 // validateStructure validates that the request contains all the needed fields and that they are computed correctly

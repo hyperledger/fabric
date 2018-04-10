@@ -12,26 +12,6 @@ import (
 	"time"
 )
 
-// Selector selects peers according to its ExclusionFilter and PrioritySelector
-type Selector struct {
-	ExclusionFilter
-	PrioritySelector
-}
-
-// Select selects peers from the given peers according to its criteria
-func (s Selector) Select(peers Endorsers) Endorsers {
-	ps := s.PrioritySelector
-	if ps == nil {
-		ps = NoPriorities
-	}
-	filter := s.ExclusionFilter
-	if filter == nil {
-		filter = NoExclusion
-	}
-	peers = peers.Filter(filter)
-	return peers.Sort(ps)
-}
-
 // ExclusionFilter returns true if the given Peer
 // is not to be considered when selecting peers
 type ExclusionFilter interface {
