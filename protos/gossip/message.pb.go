@@ -201,9 +201,7 @@ func (m *Secret) String() string            { return proto.CompactTextString(m) 
 func (*Secret) ProtoMessage()               {}
 func (*Secret) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-type isSecret_Content interface {
-	isSecret_Content()
-}
+type isSecret_Content interface{ isSecret_Content() }
 
 type Secret_InternalEndpoint struct {
 	InternalEndpoint string `protobuf:"bytes,1,opt,name=internalEndpoint,oneof"`
@@ -318,9 +316,7 @@ func (m *GossipMessage) String() string            { return proto.CompactTextStr
 func (*GossipMessage) ProtoMessage()               {}
 func (*GossipMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-type isGossipMessage_Content interface {
-	isGossipMessage_Content()
-}
+type isGossipMessage_Content interface{ isGossipMessage_Content() }
 
 type GossipMessage_AliveMsg struct {
 	AliveMsg *AliveMessage `protobuf:"bytes,5,opt,name=alive_msg,json=aliveMsg,oneof"`

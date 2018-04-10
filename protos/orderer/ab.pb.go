@@ -143,9 +143,7 @@ func (m *SeekPosition) String() string            { return proto.CompactTextStri
 func (*SeekPosition) ProtoMessage()               {}
 func (*SeekPosition) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
-type isSeekPosition_Type interface {
-	isSeekPosition_Type()
-}
+type isSeekPosition_Type interface{ isSeekPosition_Type() }
 
 type SeekPosition_Newest struct {
 	Newest *SeekNewest `protobuf:"bytes,1,opt,name=newest,oneof"`
@@ -334,9 +332,7 @@ func (m *DeliverResponse) String() string            { return proto.CompactTextS
 func (*DeliverResponse) ProtoMessage()               {}
 func (*DeliverResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-type isDeliverResponse_Type interface {
-	isDeliverResponse_Type()
-}
+type isDeliverResponse_Type interface{ isDeliverResponse_Type() }
 
 type DeliverResponse_Status struct {
 	Status common.Status `protobuf:"varint,1,opt,name=status,enum=common.Status,oneof"`

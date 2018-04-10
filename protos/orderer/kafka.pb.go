@@ -51,9 +51,7 @@ func (m *KafkaMessage) String() string            { return proto.CompactTextStri
 func (*KafkaMessage) ProtoMessage()               {}
 func (*KafkaMessage) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
-type isKafkaMessage_Type interface {
-	isKafkaMessage_Type()
-}
+type isKafkaMessage_Type interface{ isKafkaMessage_Type() }
 
 type KafkaMessage_Regular struct {
 	Regular *KafkaMessageRegular `protobuf:"bytes,1,opt,name=regular,oneof"`

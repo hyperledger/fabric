@@ -216,9 +216,7 @@ func (m *AdminOperation) String() string            { return proto.CompactTextSt
 func (*AdminOperation) ProtoMessage()               {}
 func (*AdminOperation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-type isAdminOperation_Content interface {
-	isAdminOperation_Content()
-}
+type isAdminOperation_Content interface{ isAdminOperation_Content() }
 
 type AdminOperation_LogReq struct {
 	LogReq *LogLevelRequest `protobuf:"bytes,1,opt,name=logReq,oneof"`

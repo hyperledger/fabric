@@ -263,9 +263,7 @@ func (m *RangeQueryInfo) String() string            { return proto.CompactTextSt
 func (*RangeQueryInfo) ProtoMessage()               {}
 func (*RangeQueryInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
-type isRangeQueryInfo_ReadsInfo interface {
-	isRangeQueryInfo_ReadsInfo()
-}
+type isRangeQueryInfo_ReadsInfo interface{ isRangeQueryInfo_ReadsInfo() }
 
 type RangeQueryInfo_RawReads struct {
 	RawReads *QueryReads `protobuf:"bytes,4,opt,name=raw_reads,json=rawReads,oneof"`
