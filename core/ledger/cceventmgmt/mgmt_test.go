@@ -41,28 +41,45 @@ func TestCCEventMgmt(t *testing.T) {
 	setEventMgrForTest(newMgr(mockProvider))
 	defer clearEventMgrForTest()
 
-	handler1, handler2 := &mockHandler{}, &mockHandler{}
+	handler1, handler2, handler3 := &mockHandler{}, &mockHandler{}, &mockHandler{}
 	eventMgr := GetMgr()
 	assert.NotNil(t, eventMgr)
 	eventMgr.Register("channel1", handler1)
 	eventMgr.Register("channel2", handler2)
+	eventMgr.Register("channel1", handler3)
+	eventMgr.Register("channel2", handler3)
 
 	cc2ExpectedEvent := &mockEvent{cc2Def, cc2DBArtifactsTar}
+	_ = cc2ExpectedEvent
 	cc3ExpectedEvent := &mockEvent{cc3Def, cc3DBArtifactsTar}
 
-	// Deploy cc3 on chain1 - only handler1 should recieve event because cc3 is being deployed only on chain1
+	// Deploy cc3 on chain1 - handler1 and handler3 should recieve event because cc3 is being deployed only on chain1
 	eventMgr.HandleChaincodeDeploy("channel1", []*ChaincodeDefinition{cc3Def})
+	eventMgr.ChaincodeDeployDone("channel1")
 	assert.Contains(t, handler1.eventsRecieved, cc3ExpectedEvent)
 	assert.NotContains(t, handler2.eventsRecieved, cc3ExpectedEvent)
+	assert.Contains(t, handler3.eventsRecieved, cc3ExpectedEvent)
+	assert.Equal(t, 1, handler1.doneRecievedCount)
+	assert.Equal(t, 0, handler2.doneRecievedCount)
+	assert.Equal(t, 1, handler3.doneRecievedCount)
 
 	// Deploy cc3 on chain2 as well and this time handler2 should also recieve event
 	eventMgr.HandleChaincodeDeploy("channel2", []*ChaincodeDefinition{cc3Def})
+	eventMgr.ChaincodeDeployDone("channel2")
 	assert.Contains(t, handler2.eventsRecieved, cc3ExpectedEvent)
+	assert.Equal(t, 1, handler1.doneRecievedCount)
+	assert.Equal(t, 1, handler2.doneRecievedCount)
+	assert.Equal(t, 2, handler3.doneRecievedCount)
 
-	// Install CC2 - only handler1 should receive event because cc2 is deployed only on chain1 and not on chain2
+	// Install CC2 - handler1 and handler 3 should receive event because cc2 is deployed only on chain1 and not on chain2
 	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
+	eventMgr.ChaincodeInstallDone(true)
 	assert.Contains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 	assert.NotContains(t, handler2.eventsRecieved, cc2ExpectedEvent)
+	assert.Contains(t, handler3.eventsRecieved, cc2ExpectedEvent)
+	assert.Equal(t, 2, handler1.doneRecievedCount)
+	assert.Equal(t, 1, handler2.doneRecievedCount)
+	assert.Equal(t, 3, handler3.doneRecievedCount)
 }
 
 func TestLSCCListener(t *testing.T) {
@@ -132,7 +149,8 @@ type mockProvider struct {
 }
 
 type mockHandler struct {
-	eventsRecieved []*mockEvent
+	eventsRecieved    []*mockEvent
+	doneRecievedCount int
 }
 
 type mockEvent struct {
@@ -143,6 +161,10 @@ type mockEvent struct {
 func (l *mockHandler) HandleChaincodeDeploy(chaincodeDefinition *ChaincodeDefinition, dbArtifactsTar []byte) error {
 	l.eventsRecieved = append(l.eventsRecieved, &mockEvent{def: chaincodeDefinition, dbArtifactsTar: dbArtifactsTar})
 	return nil
+}
+
+func (l *mockHandler) ChaincodeDeployDone(succeeded bool) {
+	l.doneRecievedCount++
 }
 
 func newMockProvider() *mockProvider {

@@ -27,8 +27,14 @@ func (cdef *ChaincodeDefinition) String() string {
 // to be able to listen to chaincode lifecycle events. 'dbArtifactsTar' represents db specific artifacts
 // (such as index specs) packaged in a tar
 type ChaincodeLifecycleEventListener interface {
-	// HandleChaincodeDeploy is expected to creates all the necessary statedb structures (such as indexes)
+	// HandleChaincodeDeploy is invoked when chaincode installed + defined becomes true.
+	// The expected usage are to creates all the necessary statedb structures (such as indexes) and update
+	// service discovery info. This function is invoked immediately before the committing the state changes
+	// that contain chaincode definition or when a chaincode install happens
 	HandleChaincodeDeploy(chaincodeDefinition *ChaincodeDefinition, dbArtifactsTar []byte) error
+	// ChaincodeDeployDone is invoked after the chaincode deployment is finished - `succeeded` indicates
+	// whether the deploy finished successfully
+	ChaincodeDeployDone(succeeded bool)
 }
 
 // ChaincodeInfoProvider interface enables event mgr to retrieve chaincode info for a given chaincode

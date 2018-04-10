@@ -60,5 +60,5 @@ func (listener *KVLedgerLSCCStateListener) InterestedInNamespaces() []string {
 
 // StateCommitDone implements function from interface `ledger.StateListener` as a NOOP
 func (listener *KVLedgerLSCCStateListener) StateCommitDone(channelName string) {
-	// NOOP
+	GetMgr().ChaincodeDeployDone(channelName)
 }

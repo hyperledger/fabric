@@ -347,7 +347,10 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	_, err = db.ExecuteQuery("ns1", queryString)
 	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
 
-	handleDefinition, _ := db.(cceventmgmt.ChaincodeLifecycleEventListener)
+	handleDefinition, ok := db.(cceventmgmt.ChaincodeLifecycleEventListener)
+	if !ok {
+		t.Fatalf("Couchdb state impl is expected to implement interface `cceventmgmt.ChaincodeLifecycleEventListener`")
+	}
 
 	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: ""}
 
