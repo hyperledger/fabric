@@ -35,6 +35,7 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    chaincode4ade
    chaincode4noah
    systemchaincode
+   couchdb_tutorial
    videos
 
 .. Licensed under Creative Commons Attribution 4.0 International License
