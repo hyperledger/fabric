@@ -35,6 +35,7 @@ func TestApplicationV12(t *testing.T) {
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.ForbidDuplicateTXIdInBlock())
 	assert.True(t, op.V1_1Validation())
+	assert.True(t, op.V1_2Validation())
 }
 
 func TestApplicationPvtDataExperimental(t *testing.T) {
