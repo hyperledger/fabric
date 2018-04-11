@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/viper"
@@ -62,8 +62,7 @@ func TestInitCryptoMissingDir(t *testing.T) {
 }
 
 func TestInitCrypto(t *testing.T) {
-
-	mspConfigPath, err := config.GetDevMspDir()
+	mspConfigPath, err := configtest.GetDevMspDir()
 	localMspId := "SampleOrg"
 	err = common.InitCrypto(mspConfigPath, localMspId, msp.ProviderTypeToString(msp.FABRIC))
 	assert.NoError(t, err, "Unexpected error [%s] calling InitCrypto()", err)

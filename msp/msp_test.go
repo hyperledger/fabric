@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
-	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -61,7 +61,7 @@ func TestMSPParsers(t *testing.T) {
 }
 
 func TestMSPSetupNoCryptoConf(t *testing.T) {
-	mspDir, err := config.GetDevMspDir()
+	mspDir, err := configtest.GetDevMspDir()
 	if err != nil {
 		fmt.Printf("Errog getting DevMspDir: %s", err)
 		os.Exit(-1)
@@ -152,7 +152,7 @@ func (*bccspNoKeyLookupKS) GetKey(ski []byte) (k bccsp.Key, err error) {
 }
 
 func TestNotFoundInBCCSP(t *testing.T) {
-	dir, err := config.GetDevMspDir()
+	dir, err := configtest.GetDevMspDir()
 	assert.NoError(t, err)
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 
@@ -197,7 +197,7 @@ func TestDeserializeIdentityFails(t *testing.T) {
 }
 
 func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
-	mspDir, err := config.GetDevMspDir()
+	mspDir, err := configtest.GetDevMspDir()
 	if err != nil {
 		fmt.Printf("Errog getting DevMspDir: %s", err)
 		os.Exit(-1)
@@ -930,7 +930,7 @@ var mspMgr MSPManager
 
 func TestMain(m *testing.M) {
 	var err error
-	mspDir, err := config.GetDevMspDir()
+	mspDir, err := configtest.GetDevMspDir()
 	if err != nil {
 		fmt.Printf("Errog getting DevMspDir: %s", err)
 		os.Exit(-1)
@@ -995,7 +995,7 @@ func TestMain(m *testing.M) {
 }
 
 func getIdentity(t *testing.T, path string) Identity {
-	mspDir, err := config.GetDevMspDir()
+	mspDir, err := configtest.GetDevMspDir()
 	assert.NoError(t, err)
 
 	pems, err := getPemMaterialFromDir(filepath.Join(mspDir, path))
