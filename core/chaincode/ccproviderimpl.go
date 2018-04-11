@@ -27,21 +27,31 @@ import (
 // ccProviderFactory implements the ccprovider.ChaincodeProviderFactory
 // interface and returns instances of ccprovider.ChaincodeProvider
 type ccProviderFactory struct {
+	cs *ChaincodeSupport
 }
 
 // NewChaincodeProvider returns pointers to ccProviderImpl as an
 // implementer of the ccprovider.ChaincodeProvider interface
 func (c *ccProviderFactory) NewChaincodeProvider() ccprovider.ChaincodeProvider {
-	return &ccProviderImpl{}
+	return &ccProviderImpl{
+		cs: c.cs,
+	}
 }
 
-// init is called when this package is loaded. This implementation registers the factory
-func init() {
-	ccprovider.RegisterChaincodeProviderFactory(&ccProviderFactory{})
+// SideEffectInitialize should be called whenever NewChaincodeSupport is called.
+// Initialization by side effect is a terrible pattern, and we should make every
+// effort to remove this function, but it is being left as is to make the changeset
+// which includes it less invasive.
+// XXX TODO Remove me
+func SideEffectInitialize(cs *ChaincodeSupport) {
+	ccprovider.RegisterChaincodeProviderFactory(&ccProviderFactory{
+		cs: cs,
+	})
 }
 
 // ccProviderImpl is an implementation of the ccprovider.ChaincodeProvider interface
 type ccProviderImpl struct {
+	cs *ChaincodeSupport
 }
 
 // ccProviderContextImpl contains the state that is passed around to calls to methods of ccProviderImpl
@@ -71,23 +81,23 @@ func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc boo
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
 func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return ExecuteChaincode(ctxt, cccid.(*ccProviderContextImpl).ctx, args)
+	return c.cs.ExecuteChaincode(ctxt, cccid.(*ccProviderContextImpl).ctx, args)
 }
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
 func (c *ccProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return Execute(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+	return c.cs.ExecuteSpec(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
 }
 
 // ExecuteWithErrorFilter executes the chaincode given context and spec and returns payload
 func (c *ccProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
-	return ExecuteWithErrorFilter(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+	return c.cs.ExecuteWithErrorFilter(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
 }
 
 // Stop stops the chaincode given context and spec
 func (c *ccProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *pb.ChaincodeDeploymentSpec) error {
-	if theChaincodeSupport != nil {
-		return theChaincodeSupport.Stop(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+	if c.cs != nil {
+		return c.cs.Stop(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
 	}
 	panic("ChaincodeSupport not initialized")
 }

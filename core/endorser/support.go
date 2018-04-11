@@ -27,8 +27,9 @@ import (
 // SupportImpl provides an implementation of the endorser.Support interface
 // issuing calls to various static methods of the peer
 type SupportImpl struct {
-	Peer        peer.Operations
-	PeerSupport peer.Support
+	Peer             peer.Operations
+	PeerSupport      peer.Support
+	ChaincodeSupport *chaincode.ChaincodeSupport
 }
 
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
@@ -83,7 +84,7 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 
 	switch spec.(type) {
 	case *pb.ChaincodeDeploymentSpec:
-		return chaincode.Execute(ctxt, cccid, spec)
+		return s.ChaincodeSupport.ExecuteSpec(ctxt, cccid, spec)
 	case *pb.ChaincodeInvocationSpec:
 		cis := spec.(*pb.ChaincodeInvocationSpec)
 
@@ -93,7 +94,7 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 		cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
 		cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
 
-		return chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
+		return s.ChaincodeSupport.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
 	default:
 		panic("programming error, unkwnown spec type")
 	}
@@ -105,7 +106,7 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 	if txsim != nil {
 		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
 	}
-	return chaincode.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+	return s.ChaincodeSupport.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 }
 
 // CheckACL checks the ACL for the resource for the channel using the

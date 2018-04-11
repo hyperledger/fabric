@@ -88,7 +88,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 
 	var cdbytes []byte
 	//write to lscc
-	if cdbytes, _, err = ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
+	if cdbytes, _, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error executing LSCC for upgrade: %s", err)
 	}
 
@@ -108,7 +108,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 
 	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil, nil)
 
-	if _, _, err = ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
+	if _, _, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode for upgrade: %s", err)
 	}
 	return
