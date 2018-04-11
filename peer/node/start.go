@@ -217,7 +217,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
-	registerChaincodeSupport(ccSrv, ccEndpoint, ca)
+	chaincodeSupport := registerChaincodeSupport(ccSrv, ccEndpoint, ca)
 	go ccSrv.Start()
 
 	logger.Debugf("Running peer")
@@ -232,8 +232,9 @@ func serve(args []string) error {
 	serverEndorser := endorser.NewEndorserServer(
 		privDataDist,
 		&endorser.SupportImpl{
-			Peer:        peer.Default,
-			PeerSupport: peer.DefaultSupport,
+			Peer:             peer.Default,
+			PeerSupport:      peer.DefaultSupport,
+			ChaincodeSupport: chaincodeSupport,
 		},
 	)
 	libConf := library.Config{}
@@ -547,7 +548,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) *chaincode.ChaincodeSupport {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -563,6 +564,8 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 
 	authenticator := accesscontrol.NewAuthenticator(ca)
 	chaincodeSupport := chaincode.NewChaincodeSupport(ccEndpoint, userRunsCC, ccStartupTimeout, ca.CertBytes(), authenticator)
+	chaincode.SideEffectInitialize(chaincodeSupport)
+
 	ccSrv := pb.ChaincodeSupportServer(chaincodeSupport)
 	if tlsEnabled {
 		ccSrv = authenticator.Wrap(ccSrv)
@@ -571,6 +574,8 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	//Now that chaincode is initialized, register all system chaincodes.
 	scc.RegisterSysCCs()
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
+
+	return chaincodeSupport
 }
 
 func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {

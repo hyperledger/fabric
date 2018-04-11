@@ -51,13 +51,6 @@ const (
 	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
 )
 
-//this is basically the singleton that supports the
-//entire chaincode framework. It does NOT know about
-//chains. Chains are per-proposal entities that are
-//setup as part of "join" and go through this object
-//via calls to Execute and Deploy chaincodes.
-var theChaincodeSupport *ChaincodeSupport
-
 //use this for ledger access and make sure TXSimulator is being used
 func getTxSimulator(context context.Context) ledger.TxSimulator {
 	if txsim, ok := context.Value(TXSimulatorKey).(ledger.TxSimulator); ok {
@@ -92,11 +85,6 @@ type runningChaincodes struct {
 	//mark the starting of launch of a chaincode so multiple requests
 	//do not attempt to start the chaincode at the same time
 	launchStarted map[string]bool
-}
-
-//GetChain returns the chaincode framework support object
-func GetChain() *ChaincodeSupport {
-	return theChaincodeSupport
 }
 
 func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string, notfy chan bool) {
@@ -134,7 +122,7 @@ func NewChaincodeSupport(
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
 
-	theChaincodeSupport = &ChaincodeSupport{
+	theChaincodeSupport := &ChaincodeSupport{
 		caCert:        caCert,
 		certGenerator: certGenerator,
 		runningChaincodes: &runningChaincodes{
@@ -363,7 +351,7 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(canName string, cLang
 		return nil, nil, nil, errors.Errorf("unknown chaincodeType: %s", cLang)
 	}
 
-	filesToUpload = theChaincodeSupport.getTLSFiles(certKeyPair)
+	filesToUpload = chaincodeSupport.getTLSFiles(certKeyPair)
 
 	chaincodeLogger.Debugf("Executable is %s", args[0])
 	chaincodeLogger.Debugf("Args %v", args)
@@ -637,7 +625,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
 		//(this will also validate the ID from the LSCC if we're not using the config-tree approach)
-		depPayload, err = GetCDS(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
+		depPayload, err = chaincodeSupport.GetCDS(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
 		if err != nil {
 			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("could not get ChaincodeDeploymentSpec for %s", canName))
 		}

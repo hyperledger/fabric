@@ -28,7 +28,7 @@ import (
 )
 
 //Execute - execute proposal, return original response of chaincode
-func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -42,7 +42,7 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		cctyp = pb.ChaincodeMessage_TRANSACTION
 	}
 
-	_, cMsg, err := theChaincodeSupport.Launch(ctxt, cccid, spec)
+	_, cMsg, err := cs.Launch(ctxt, cccid, spec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -55,7 +55,7 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		return nil, nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
 
-	resp, err := theChaincodeSupport.Execute(ctxt, cccid, ccMsg, theChaincodeSupport.executetimeout)
+	resp, err := cs.Execute(ctxt, cccid, ccMsg, cs.executetimeout)
 	if err != nil {
 		// Rollback transaction
 		return nil, nil, errors.WithMessage(err, "failed to execute transaction")
@@ -89,8 +89,8 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 
 // ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
 // Mostly used by unit-test.
-func ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
-	res, event, err := Execute(ctxt, cccid, spec)
+func (cs *ChaincodeSupport) ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+	res, event, err := cs.ExecuteSpec(ctxt, cccid, spec)
 	if err != nil {
 		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s error: %+v", cccid.Name, err)
 		return nil, nil, err

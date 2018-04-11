@@ -101,7 +101,9 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 	ccStartupTimeout := time.Duration(3) * time.Minute
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator))
+	theChaincodeSupport = NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	SideEffectInitialize(theChaincodeSupport)
+	pb.RegisterChaincodeSupportServer(grpcServer, theChaincodeSupport)
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
@@ -372,11 +374,11 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, sprop, prop)
 
 	//write to lscc
-	if _, _, err = ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
+	if _, _, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
 
-	if b, _, err = ExecuteWithErrorFilter(ctx, cccid, chaincodeDeploymentSpec); err != nil {
+	if b, _, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, cccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
 
@@ -417,7 +419,7 @@ func invokeWithVersion(ctx context.Context, chainID string, version string, spec
 	}
 	sprop, prop := putils.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
 	cccid := ccprovider.NewCCContext(chainID, cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name, version, uuid, false, sprop, prop)
-	retval, ccevt, err = ExecuteWithErrorFilter(ctx, cccid, cdInvocationSpec)
+	retval, ccevt, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, cccid, cdInvocationSpec)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s", err)
 	}

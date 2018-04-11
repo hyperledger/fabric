@@ -139,6 +139,10 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 
 var mockAclProvider *mocks.MockACLProvider
 
+// Terrible singleton from package is preserved here in the tests
+// to make the change to remove package singleton less invasive
+var theChaincodeSupport *ChaincodeSupport
+
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) error {
 	msi := &cmp.MockSupportImpl{
@@ -165,7 +169,8 @@ func initMockPeer(chainIDs ...string) error {
 	ccStartupTimeout := time.Duration(10) * time.Second
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	NewChaincodeSupport("0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	theChaincodeSupport = NewChaincodeSupport("0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	SideEffectInitialize(theChaincodeSupport)
 	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
 
 	// Mock policy checker
@@ -282,7 +287,7 @@ func endTx(t *testing.T, cccid *ccprovider.CCContext, txsim ledger.TxSimulator, 
 func execCC(t *testing.T, ctxt context.Context, ccSide *mockpeer.MockCCComm, cccid *ccprovider.CCContext, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet) error {
 	ccSide.SetResponses(respSet)
 
-	_, _, err := ExecuteWithErrorFilter(ctxt, cccid, cis)
+	_, _, err := theChaincodeSupport.ExecuteWithErrorFilter(ctxt, cccid, cis)
 
 	if err == nil && expectExecErr {
 		t.Fatalf("expected error but succeeded")
@@ -365,7 +370,7 @@ func deployCC(t *testing.T, ctx context.Context, cccid *ccprovider.CCContext, sp
 	lsccid := ccprovider.NewCCContext(cccid.ChainID, lsccSpec.ChaincodeSpec.ChaincodeId.Name, sysCCVers, cccid.TxID, true, sprop, prop)
 
 	//write to lscc
-	if _, _, err := ExecuteWithErrorFilter(ctx, lsccid, lsccSpec); err != nil {
+	if _, _, err := theChaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, lsccSpec); err != nil {
 		t.Fatalf("Error deploying chaincode %v (err: %s)", cccid, err)
 	}
 }

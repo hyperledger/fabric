@@ -40,10 +40,10 @@ func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error
 }
 
 // GetCDS retrieves a chaincode deployment spec for the required chaincode
-func GetCDS(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
+func (cs *ChaincodeSupport) GetCDS(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
 	version := util.GetSysCCVersion()
 	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
-	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("execute getdepspec(%s, %s) of LSCC error", chainID, chaincodeID))
 	}
@@ -55,10 +55,10 @@ func GetCDS(ctxt context.Context, txid string, signedProp *pb.SignedProposal, pr
 }
 
 // GetChaincodeDefinition returns resourcesconfig.ChaincodeDefinition for the chaincode with the supplied name
-func GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (resourcesconfig.ChaincodeDefinition, error) {
+func (cs *ChaincodeSupport) GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (resourcesconfig.ChaincodeDefinition, error) {
 	version := util.GetSysCCVersion()
 	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
-	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
+	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
 	if err == nil {
 		if res.Status != shim.OK {
 			return nil, errors.New(res.Message)
@@ -75,14 +75,14 @@ func GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.Si
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var spec *pb.ChaincodeInvocationSpec
 	var err error
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
 
 	spec, err = createCIS(cccid.Name, args)
-	res, ccevent, err = Execute(ctxt, cccid, spec)
+	res, ccevent, err = cs.ExecuteSpec(ctxt, cccid, spec)
 	if err != nil {
 		err = errors.WithMessage(err, "error executing chaincode")
 		chaincodeLogger.Errorf("%+v", err)
