@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
@@ -23,7 +23,8 @@ var (
 	configTypes = []discovery.QueryType{discovery.ConfigQueryType, discovery.PeerMembershipQueryType, discovery.ChaincodeQueryType}
 )
 
-type client struct {
+// Client interacts with the discovery server
+type Client struct {
 	lastRequest      []byte
 	lastSignature    []byte
 	createConnection Dialer
@@ -109,7 +110,7 @@ func (req *Request) addQueryMapping(queryType discovery.QueryType, key string) {
 }
 
 // Send sends the request and returns the response, or error on failure
-func (c *client) Send(ctx context.Context, req *Request) (Response, error) {
+func (c *Client) Send(ctx context.Context, req *Request) (Response, error) {
 	req.Authentication = c.authInfo
 	payload, err := proto.Marshal(req.Request)
 	if err != nil {
@@ -119,7 +120,7 @@ func (c *client) Send(ctx context.Context, req *Request) (Response, error) {
 	sig := c.lastSignature
 	// Only sign the Request if it is different than the previous Request sent.
 	// Otherwise, use the last signature from the previous send.
-	// This is not only to save CPU cycles in the client-side,
+	// This is not only to save CPU cycles in the Client-side,
 	// but also for the server side to be able to memoize the signature verification.
 	// We have the use the previous signature, because many signature schemes are not deterministic.
 	if !bytes.Equal(c.lastRequest, payload) {
@@ -201,7 +202,7 @@ func (cr *channelResponse) Peers() ([]*Peer, error) {
 	return nil, res.(error)
 }
 
-func (cr *channelResponse) Endorsers(cc string) (Endorsers, error) {
+func (cr *channelResponse) Endorsers(cc string, s Selector) (Endorsers, error) {
 	// If we have a key that has no chaincode field,
 	// it means it's an error returned from the service
 	if err, exists := cr.response[key{
@@ -224,18 +225,33 @@ func (cr *channelResponse) Endorsers(cc string) (Endorsers, error) {
 
 	desc := res.(*endorsementDescriptor)
 	rand.Seed(time.Now().Unix())
-	randomLayoutIndex := rand.Intn(len(desc.layouts))
-	layout := desc.layouts[randomLayoutIndex]
+	// We iterate over all layouts to find one that we have enough peers to select
+	for _, index := range rand.Perm(len(desc.layouts)) {
+		layout := desc.layouts[index]
+		endorsers, canLayoutBeSatisfied := selectPeersForLayout(desc.endorsersByGroups, layout, s)
+		if canLayoutBeSatisfied {
+			return endorsers, nil
+		}
+	}
+	return nil, errors.New("no endorsement combination can be satisfied")
+}
+
+func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, s Selector) (Endorsers, bool) {
 	var endorsers []*Peer
 	for grp, count := range layout {
-		endorsersOfGrp := randomEndorsers(count, desc.endorsersByGroups[grp])
+		shuffledEndorsers := Endorsers(endorsersByGroups[grp]).Shuffle()
+		endorsersOfGrp := s.Select(shuffledEndorsers)
+		// We couldn't select enough peers for this layout because the current group
+		// requires more peers than we have available to be selected
 		if len(endorsersOfGrp) < count {
-			return nil, errors.Errorf("layout has a group that requires at least %d peers, but only %d peers are known", count, len(endorsersOfGrp))
+			return nil, false
 		}
+		endorsersOfGrp = endorsersOfGrp[:count]
 		endorsers = append(endorsers, endorsersOfGrp...)
 	}
-
-	return endorsers, nil
+	// The current (randomly chosen) layout can be satisfied, so return it
+	// instead of checking the next one.
+	return endorsers, true
 }
 
 func (resp response) ForChannel(ch string) ChannelResponse {
@@ -329,6 +345,12 @@ func peersForChannel(membersRes *discovery.PeerMembershipResult) ([]*Peer, error
 			stateInfoMsg, err := peer.StateInfo.ToGossipMessage()
 			if err != nil {
 				return nil, errors.Wrap(err, "failed unmarshaling stateInfo message")
+			}
+			if err := validateAliveMessage(aliveMsg); err != nil {
+				return nil, errors.Wrap(err, "failed validating alive message")
+			}
+			if err := validateStateInfoMessage(stateInfoMsg); err != nil {
+				return nil, errors.Wrap(err, "failed validating stateInfo message")
 			}
 			peers = append(peers, &Peer{
 				MSPID:            org,
@@ -426,24 +448,22 @@ func endorser(peer *discovery.Peer, chaincode, channel string) (*Peer, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling gossip envelope to state info message")
 	}
-	sId := &msp.SerializedIdentity{}
-	if err := proto.Unmarshal(peer.Identity, sId); err != nil {
+	if err := validateAliveMessage(aliveMsg); err != nil {
+		return nil, errors.Wrap(err, "failed validating alive message")
+	}
+	if err := validateStateInfoMessage(stateInfMsg); err != nil {
+		return nil, errors.Wrap(err, "failed validating stateInfo message")
+	}
+	sID := &msp.SerializedIdentity{}
+	if err := proto.Unmarshal(peer.Identity, sID); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling peer's identity")
 	}
 	return &Peer{
 		Identity:         peer.Identity,
 		StateInfoMessage: stateInfMsg,
 		AliveMessage:     aliveMsg,
-		MSPID:            sId.Mspid,
+		MSPID:            sID.Mspid,
 	}, nil
-}
-
-func randomEndorsers(count int, totalPeers []*Peer) Endorsers {
-	var endorsers []*Peer
-	for _, index := range util.GetRandomIndices(count, len(totalPeers)-1) {
-		endorsers = append(endorsers, totalPeers[index])
-	}
-	return endorsers
 }
 
 type endorsementDescriptor struct {
@@ -451,10 +471,40 @@ type endorsementDescriptor struct {
 	layouts           []map[string]int
 }
 
-func NewClient(createConnection Dialer, authInfo *discovery.AuthInfo, s Signer) *client {
-	return &client{
+// NewClient creates a new Client instance
+func NewClient(createConnection Dialer, authInfo *discovery.AuthInfo, s Signer) *Client {
+	return &Client{
 		createConnection: createConnection,
 		authInfo:         authInfo,
 		signRequest:      s,
 	}
+}
+
+func validateAliveMessage(message *gossip.SignedGossipMessage) error {
+	am := message.GetAliveMsg()
+	if am == nil {
+		return errors.New("message isn't an alive message")
+	}
+	m := am.Membership
+	if m == nil {
+		return errors.New("membership is empty")
+	}
+	if am.Timestamp == nil {
+		return errors.New("timestamp is nil")
+	}
+	return nil
+}
+
+func validateStateInfoMessage(message *gossip.SignedGossipMessage) error {
+	si := message.GetStateInfo()
+	if si == nil {
+		return errors.New("message isn't a stateInfo message")
+	}
+	if si.Timestamp == nil {
+		return errors.New("timestamp is nil")
+	}
+	if si.Properties == nil {
+		return errors.New("properties is nil")
+	}
+	return nil
 }

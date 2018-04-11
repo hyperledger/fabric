@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -307,7 +308,7 @@ func TestClient(t *testing.T) {
 	assert.Equal(t, ErrNotFound, err)
 	assert.Nil(t, peers)
 
-	endorsers, err := fakeChannel.Endorsers("mycc")
+	endorsers, err := fakeChannel.Endorsers("mycc", Selector{})
 	assert.Equal(t, ErrNotFound, err)
 	assert.Nil(t, endorsers)
 
@@ -327,7 +328,7 @@ func TestClient(t *testing.T) {
 	// We should see all peers as provided above
 	assert.Len(t, peers, 8)
 
-	endorsers, err = mychannel.Endorsers("mycc")
+	endorsers, err = mychannel.Endorsers("mycc", Selector{})
 	// However, since we didn't provide any chaincodes to these peers - the server shouldn't
 	// be able to construct the descriptor.
 	// Just check that the appropriate error is returned, and nothing crashes.
@@ -347,7 +348,7 @@ func TestClient(t *testing.T) {
 	assert.Len(t, peers, 8)
 
 	// We should get a valid endorsement descriptor from the service
-	endorsers, err = mychannel.Endorsers("mycc")
+	endorsers, err = mychannel.Endorsers("mycc", Selector{})
 	assert.NoError(t, err)
 	// The combinations of endorsers should be in the expected combinations
 	assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
@@ -440,7 +441,7 @@ func TestBadResponses(t *testing.T) {
 	r, err = cl.Send(ctx, req)
 	assert.NoError(t, err)
 	mychannel := r.ForChannel("mychannel")
-	endorsers, err := mychannel.Endorsers("mycc")
+	endorsers, err := mychannel.Endorsers("mycc", Selector{})
 	assert.Nil(t, endorsers)
 	assert.Equal(t, ErrNotFound, err)
 
@@ -472,9 +473,9 @@ func TestBadResponses(t *testing.T) {
 	r, err = cl.Send(ctx, req)
 	assert.NoError(t, err)
 	mychannel = r.ForChannel("mychannel")
-	endorsers, err = mychannel.Endorsers("mycc")
+	endorsers, err = mychannel.Endorsers("mycc", Selector{})
 	assert.Nil(t, endorsers)
-	assert.Contains(t, err.Error(), "layout has a group that requires at least 2 peers, but only 0 peers are known")
+	assert.Contains(t, err.Error(), "no endorsement combination can be satisfied")
 
 	// Scenario VI: discovery service sends back a layout that has a group that doesn't have a matching peer set
 	svc.On("Discover").Return(&discovery.Response{
@@ -489,6 +490,52 @@ func TestBadResponses(t *testing.T) {
 	r, err = cl.Send(ctx, req)
 	assert.Contains(t, err.Error(), "group B isn't mapped to endorsers, but exists in a layout")
 	assert.Empty(t, r)
+}
+
+func TestValidateAliveMessage(t *testing.T) {
+	am := aliveMessage(1)
+	msg, _ := am.ToGossipMessage()
+
+	// Scenario I: Valid alive message
+	assert.NoError(t, validateAliveMessage(msg))
+
+	// Scenario II: Nullify timestamp
+	msg.GetAliveMsg().Timestamp = nil
+	err := validateAliveMessage(msg)
+	assert.Equal(t, "timestamp is nil", err.Error())
+
+	// Scenario III: Nullify membership
+	msg.GetAliveMsg().Membership = nil
+	err = validateAliveMessage(msg)
+	assert.Equal(t, "membership is empty", err.Error())
+
+	// Scenario IV: Nullify the entire alive message part
+	msg.Content = nil
+	err = validateAliveMessage(msg)
+	assert.Equal(t, "message isn't an alive message", err.Error())
+
+}
+
+func TestValidateStateInfoMessage(t *testing.T) {
+	si := stateInfoWithHeight(100)
+
+	// Scenario I: Valid state info message
+	assert.NoError(t, validateStateInfoMessage(si))
+
+	// Scenario II: Nullify properties
+	si.GetStateInfo().Properties = nil
+	err := validateStateInfoMessage(si)
+	assert.Equal(t, "properties is nil", err.Error())
+
+	// Scenario III: Nullify timestamp
+	si.GetStateInfo().Timestamp = nil
+	err = validateStateInfoMessage(si)
+	assert.Equal(t, "timestamp is nil", err.Error())
+
+	// Scenario IV: Nullify the state info message part
+	si.Content = nil
+	err = validateStateInfoMessage(si)
+	assert.Equal(t, "message isn't a stateInfo message", err.Error())
 }
 
 func getMSP(peer *Peer) string {
@@ -573,11 +620,11 @@ func (ip *inquireablePolicy) SatisfiedBy() []policies.PrincipalSet {
 
 func peerIdentity(mspID string, i int) api.PeerIdentityInfo {
 	p := []byte(fmt.Sprintf("p%d", i))
-	sId := &msp.SerializedIdentity{
+	sID := &msp.SerializedIdentity{
 		Mspid:   mspID,
 		IdBytes: p,
 	}
-	b, _ := proto.Marshal(sId)
+	b, _ := proto.Marshal(sID)
 	return api.PeerIdentityInfo{
 		Identity:     api.PeerIdentityType(b),
 		PKIId:        gossipcommon.PKIidType(p),
@@ -595,6 +642,10 @@ func aliveMessage(id int) *gossip.Envelope {
 	g := &gossip.GossipMessage{
 		Content: &gossip.GossipMessage_AliveMsg{
 			AliveMsg: &gossip.AliveMessage{
+				Timestamp: &gossip.PeerTime{
+					SeqNum: uint64(id),
+					IncNum: uint64(time.Now().UnixNano()),
+				},
 				Membership: &gossip.Member{
 					Endpoint: fmt.Sprintf("p%d", id),
 				},
@@ -609,6 +660,10 @@ func stateInfoMessage(chaincodes ...*gossip.Chaincode) *gossip.Envelope {
 	g := &gossip.GossipMessage{
 		Content: &gossip.GossipMessage_StateInfo{
 			StateInfo: &gossip.StateInfo{
+				Timestamp: &gossip.PeerTime{
+					SeqNum: 5,
+					IncNum: uint64(time.Now().UnixNano()),
+				},
 				Properties: &gossip.Properties{
 					Chaincodes: chaincodes,
 				},
