@@ -57,6 +57,10 @@ func signedByAnyMember(ids []string) []byte {
 }
 
 func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
+	return setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{})
+}
+
+func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicationCapabilities) (ledger.PeerLedger, Validator) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/validatortest")
 	ledgermgmt.InitializeTestEnv()
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
@@ -66,7 +70,7 @@ func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
 	vcs := struct {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
-	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb}, semaphore.NewWeighted(10)}
 	theValidator := NewTxValidator(vcs)
 
 	return theLedger, theValidator
@@ -207,6 +211,46 @@ func TestInvokeOK(t *testing.T) {
 	err := v.Validate(b)
 	assert.NoError(t, err)
 	assertValid(b, t)
+}
+
+func TestInvokeNoRWSet(t *testing.T) {
+	t.Run("Pre-1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidator(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		ccID := "mycc"
+
+		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+		tx := getEnv(ccID, createRWset(t), t)
+		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
+		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
+		err := v.Validate(b)
+		assert.NoError(t, err)
+		assertValid(b, t)
+	})
+
+	t.Run("Post-1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		ccID := "mycc"
+
+		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+		tx := getEnv(ccID, createRWset(t), t)
+		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
+		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
+		err := v.Validate(b)
+		assert.NoError(t, err)
+		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+	})
 }
 
 func TestInvokeOKPvtDataOnly(t *testing.T) {

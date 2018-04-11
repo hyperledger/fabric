@@ -73,7 +73,6 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	   1) which namespaces does it write to?
 	   2) does it write to LSCC's namespace?
 	   3) does it write to any cc that cannot be invoked? */
-	wrNamespace := []string{}
 	writesToLSCC := false
 	writesToNonInvokableSCC := false
 	respPayload, err := utils.GetActionFromEnvelope(envBytes)
@@ -83,23 +82,6 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	txRWSet := &rwsetutil.TxRwSet{}
 	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
 		return errors.WithMessage(err, "txRWSet.FromProtoBytes failed"), peer.TxValidationCode_BAD_RWSET
-	}
-	for _, ns := range txRWSet.NsRwSets {
-		if v.txWritesToNamespace(ns) {
-			wrNamespace = append(wrNamespace, ns.NameSpace)
-
-			if !writesToLSCC && ns.NameSpace == "lscc" {
-				writesToLSCC = true
-			}
-
-			if !writesToNonInvokableSCC && v.sccprovider.IsSysCCAndNotInvokableCC2CC(ns.NameSpace) {
-				writesToNonInvokableSCC = true
-			}
-
-			if !writesToNonInvokableSCC && v.sccprovider.IsSysCCAndNotInvokableExternal(ns.NameSpace) {
-				writesToNonInvokableSCC = true
-			}
-		}
 	}
 
 	// Verify the header extension and response payload contain the ChaincodeId
@@ -131,6 +113,36 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		err = errors.New("invalid chaincode version")
 		logger.Errorf("%+v", err)
 		return err, peer.TxValidationCode_INVALID_OTHER_REASON
+	}
+
+	var wrNamespace []string
+	alwaysEnforceOriginalNamespace := v.support.Capabilities().V1_2Validation()
+	if alwaysEnforceOriginalNamespace {
+		wrNamespace = append(wrNamespace, ccID)
+	}
+
+	for _, ns := range txRWSet.NsRwSets {
+		if !v.txWritesToNamespace(ns) {
+			continue
+		}
+
+		// Check to make sure we did not already populate this chaincode
+		// name to avoid checking the same namespace twice
+		if ns.NameSpace != ccID || !alwaysEnforceOriginalNamespace {
+			wrNamespace = append(wrNamespace, ns.NameSpace)
+		}
+
+		if !writesToLSCC && ns.NameSpace == "lscc" {
+			writesToLSCC = true
+		}
+
+		if !writesToNonInvokableSCC && v.sccprovider.IsSysCCAndNotInvokableCC2CC(ns.NameSpace) {
+			writesToNonInvokableSCC = true
+		}
+
+		if !writesToNonInvokableSCC && v.sccprovider.IsSysCCAndNotInvokableExternal(ns.NameSpace) {
+			writesToNonInvokableSCC = true
+		}
 	}
 
 	// we've gathered all the info required to proceed to validation;
@@ -252,6 +264,7 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 		msg := fmt.Sprintf("Invoke VSCC failed for transaction txid=%s, error: %s", txid, err)
 		return &commonerrors.VSCCExecutionFailureError{msg}
 	}
+
 	if res.Status != shim.OK {
 		return &commonerrors.VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
 	}
