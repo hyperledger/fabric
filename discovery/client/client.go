@@ -28,7 +28,6 @@ type Client struct {
 	lastRequest      []byte
 	lastSignature    []byte
 	createConnection Dialer
-	authInfo         *discovery.AuthInfo
 	signRequest      Signer
 }
 
@@ -110,13 +109,13 @@ func (req *Request) addQueryMapping(queryType discovery.QueryType, key string) {
 }
 
 // Send sends the request and returns the response, or error on failure
-func (c *Client) Send(ctx context.Context, req *Request) (Response, error) {
-	req.Authentication = c.authInfo
-	payload, err := proto.Marshal(req.Request)
+func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInfo) (Response, error) {
+	reqToBeSent := *req.Request
+	reqToBeSent.Authentication = auth
+	payload, err := proto.Marshal(&reqToBeSent)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed marshaling Request to bytes")
 	}
-
 	sig := c.lastSignature
 	// Only sign the Request if it is different than the previous Request sent.
 	// Otherwise, use the last signature from the previous send.
@@ -139,10 +138,6 @@ func (c *Client) Send(ctx context.Context, req *Request) (Response, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed connecting to discovery service")
 	}
-
-	defer func() {
-		req.Queries = nil
-	}()
 
 	cl := discovery.NewDiscoveryClient(conn)
 	resp, err := cl.Discover(ctx, &discovery.SignedRequest{
@@ -472,10 +467,9 @@ type endorsementDescriptor struct {
 }
 
 // NewClient creates a new Client instance
-func NewClient(createConnection Dialer, authInfo *discovery.AuthInfo, s Signer) *Client {
+func NewClient(createConnection Dialer, s Signer) *Client {
 	return &Client{
 		createConnection: createConnection,
-		authInfo:         authInfo,
 		signRequest:      s,
 	}
 }
