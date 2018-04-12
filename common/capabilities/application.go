@@ -81,6 +81,12 @@ func (ap *ApplicationProvider) V1_1Validation() bool {
 	return ap.v11 || ap.v12
 }
 
+// V1_2Validation returns true if this channel is configured to perform stricter validation
+// of transactions (as introduced in v1.2).
+func (ap *ApplicationProvider) V1_2Validation() bool {
+	return ap.v12
+}
+
 // MetadataLifecycle indicates whether the peer should use the deprecated and problematic
 // v1.0/v1.1 lifecycle, or whether it should use the newer per channel peer local chaincode
 // metadata package approach planned for release with Fabric v1.2
