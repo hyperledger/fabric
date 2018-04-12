@@ -19,6 +19,11 @@ plugin_packages=(
     "github.com/hyperledger/fabric/core/scc"
 )
 
+# packages which need to be tested with build tag pkcs11
+pkcs11_packages=(
+    "github.com/hyperledger/fabric/bccsp"
+)
+
 # obtain packages changed since some git refspec
 packages_diff() {
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
@@ -111,10 +116,12 @@ main() {
         echo "mode: set" > profile.cov
         run_tests_with_coverage "${packages[@]}"
         GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages[@]}"
+        GO_TAGS="${GO_TAGS} pkcs11" run_tests_with_coverage "${pkcs11_packages[@]}"
         gocov convert profile.cov | gocov-xml > report.xml
     else
         run_tests "${packages[@]}"
         GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${plugin_packages[@]}"
+        GO_TAGS="${GO_TAGS} pkcs11" run_tests "${pkcs11_packages[@]}"
     fi
 }
 

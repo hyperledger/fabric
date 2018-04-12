@@ -160,7 +160,6 @@ orderer: $(BUILD_DIR)/bin/orderer
 orderer-docker: $(BUILD_DIR)/image/orderer/$(DUMMY)
 
 .PHONY: configtxgen
-configtxgen: GO_TAGS+= nopkcs11
 configtxgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 configtxgen: $(BUILD_DIR)/bin/configtxgen
 
@@ -325,15 +324,12 @@ release-all: $(patsubst %,release/%, $(RELEASE_PLATFORMS))
 release/%: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 
 release/windows-amd64: GOOS=windows
-release/windows-amd64: GO_TAGS+= nopkcs11
 release/windows-amd64: $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS)) release/windows-amd64/install
 
 release/darwin-amd64: GOOS=darwin
-release/darwin-amd64: GO_TAGS+= nopkcs11
 release/darwin-amd64: $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS)) release/darwin-amd64/install
 
 release/linux-amd64: GOOS=linux
-release/linux-amd64: GO_TAGS+= nopkcs11
 release/linux-amd64: $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS)) release/linux-amd64/install
 
 release/%-amd64: DOCKER_ARCH=x86_64
@@ -342,12 +338,10 @@ release/linux-%: GOOS=linux
 
 release/linux-ppc64le: GOARCH=ppc64le
 release/linux-ppc64le: DOCKER_ARCH=ppc64le
-release/linux-ppc64le: GO_TAGS+= nopkcs11
 release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS)) release/linux-ppc64le/install
 
 release/linux-s390x: GOARCH=s390x
 release/linux-s390x: DOCKER_ARCH=s390x
-release/linux-s390x: GO_TAGS+= nopkcs11
 release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
 
 release/%/bin/configtxlator: $(PROJECT_FILES)

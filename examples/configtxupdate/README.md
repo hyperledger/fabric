@@ -77,7 +77,7 @@ Then, in another window, build the `configtxgen` tool.
 ```
 $ make configtxgen
 build/bin/configtxgen
-CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/bin go install -tags "nopkcs11" -ldflags "-X github.com/hyperledger/fabric/common/metadata.Version=1.0.0-alpha3-snapshot-63e0dc80f -X github.com/hyperledger/fabric/common/metadata.BaseVersion=0.3.1 -X github.com/hyperledger/fabric/common/metadata.BaseDockerLabel=org.hyperledger.fabric -X github.com/hyperledger/fabric/common/metadata.DockerNamespace=hyperledger -X github.com/hyperledger/fabric/common/metadata.BaseDockerNamespace=hyperledger" github.com/hyperledger/fabric/common/configtx/tool/configtxgen
+CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/bin go install -ldflags "-X github.com/hyperledger/fabric/common/metadata.Version=1.0.0-alpha3-snapshot-63e0dc80f -X github.com/hyperledger/fabric/common/metadata.BaseVersion=0.3.1 -X github.com/hyperledger/fabric/common/metadata.BaseDockerLabel=org.hyperledger.fabric -X github.com/hyperledger/fabric/common/metadata.DockerNamespace=hyperledger -X github.com/hyperledger/fabric/common/metadata.BaseDockerNamespace=hyperledger" github.com/hyperledger/fabric/common/configtx/tool/configtxgen
 Binary available as build/bin/configtxgen
 ```
 
@@ -261,7 +261,7 @@ Then, in another window, build the `configtxgen` tool.
 ```
 $ make configtxgen
 build/bin/configtxgen
-CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/bin go install -tags "nopkcs11" -ldflags "-X github.com/hyperledger/fabric/common/metadata.Version=1.0.0-alpha3-snapshot-63e0dc80f -X github.com/hyperledger/fabric/common/metadata.BaseVersion=0.3.1 -X github.com/hyperledger/fabric/common/metadata.BaseDockerLabel=org.hyperledger.fabric -X github.com/hyperledger/fabric/common/metadata.DockerNamespace=hyperledger -X github.com/hyperledger/fabric/common/metadata.BaseDockerNamespace=hyperledger" github.com/hyperledger/fabric/common/configtx/tool/configtxgen
+CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/bin go install -ldflags "-X github.com/hyperledger/fabric/common/metadata.Version=1.0.0-alpha3-snapshot-63e0dc80f -X github.com/hyperledger/fabric/common/metadata.BaseVersion=0.3.1 -X github.com/hyperledger/fabric/common/metadata.BaseDockerLabel=org.hyperledger.fabric -X github.com/hyperledger/fabric/common/metadata.DockerNamespace=hyperledger -X github.com/hyperledger/fabric/common/metadata.BaseDockerNamespace=hyperledger" github.com/hyperledger/fabric/common/configtx/tool/configtxgen
 Binary available as build/bin/configtxgen
 ```
 
