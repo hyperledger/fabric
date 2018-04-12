@@ -7,7 +7,6 @@
 
 # regexes for packages to exclude from unit test
 excluded_packages=(
-    "github.com/hyperledger/fabric/examples/plugins/bccsp"
 )
 
 # regexes for packages that must be run serially
@@ -30,7 +29,12 @@ packages_diff() {
 
 # "go list" packages and filter out excluded packages
 list_and_filter() {
-    go list $@ 2>/dev/null | grep -Ev $(local IFS='|' ; echo "${excluded_packages[*]}") || true
+    local filter=$(local IFS='|' ; echo "${excluded_packages[*]}")
+    if [ -n "$filter" ]; then
+        go list $@ 2>/dev/null | grep -Ev "${filter}" || true
+    else
+        go list $@ 2>/dev/null
+    fi
 }
 
 # remove packages that must be tested serially
