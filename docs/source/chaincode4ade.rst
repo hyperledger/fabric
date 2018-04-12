@@ -39,7 +39,7 @@ application state. The ``Invoke`` method is called in response to receiving an
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
-  - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStub>`__
+  - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>`__
   - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`__
 
 which is used to access and modify the ledger, and to make invocations between
