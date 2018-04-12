@@ -86,30 +86,30 @@ Let's quickly describe these PKI basics, and if you want to know more details,
 A digital certificate is a document which holds a set of attributes relating to a
 party. The most common type of certificate is the one compliant with the [X.509 standard](https://en.wikipedia.org/wiki/X.509),
 which allows the encoding of a party's identifying details in its structure.
-For example, John Doe of Accounting division in
-FOO Corporation in Detroit, Michigan might have a digital certificate with a
-`SUBJECT` attribute of `C=US, ST=Michigan, L=Detroit, O=FOO Corporation, OU=Accounting,
-CN=John Doe /UID=123456`. John's certificate is similar to his government identity
-card -- it provides information about John which he can use to prove key facts about him.
-There are many other attributes in an X.509 certificate, but let's concentrate
-on just these for now.
+For example, Mary Morris of the Manufacturing division of Mitchell Cars in Detroit,
+Michigan might have a digital certificate with a `SUBJECT` attribute of
+`C=US, ST=Michigan, L=Detroit, O=Mitchell Cars, OU=Manufacturing, CN=Mary Morris/UID=123456`.
+Mary's certificate is similar to her government identity card -- it provides
+information about Mary which she can use to prove key facts about her.  There are
+many other attributes in an X.509 certificate, but let's concentrate on just these
+for now.
 
 ![DigitalCertificate](./identity.diagram.8.png)
 
-*A digital certificate describing a party called John Doe. John is the `SUBJECT` of the
-certificate, and the highlighted `SUBJECT` text shows key facts about John. The
+*A digital certificate describing a party called Mary Morris. Mary is the `SUBJECT` of the
+certificate, and the highlighted `SUBJECT` text shows key facts about Mary. The
 certificate also holds many more pieces of information, as you can see. Most importantly,
-John's public key is distributed within his certificate, whereas his private signing key
+Mary's public key is distributed within her certificate, whereas her private signing key
 is not. This signing key must be kept private.*
 
-What is important is that all of John's attributes can be recorded using a mathematical
+What is important is that all of Mary's attributes can be recorded using a mathematical
 technique called cryptography (literally, "*secret writing*") so that tampering will
-invalidate the certificate. Cryptography allows John to present his certificate to others
-to prove his identity so long as the other party trusts the certificate issuer, known
+invalidate the certificate. Cryptography allows Mary to present her certificate to others
+to prove her identity so long as the other party trusts the certificate issuer, known
 as a **Certificate Authority** (CA). As long as the CA keeps certain cryptographic
 information securely (meaning, its own **private signing key**), anyone reading the
-certificate can be sure that the information about John has not been tampered with --
-it will always have those particular attributes for John Doe. Think of Mary's X.509
+certificate can be sure that the information about Mary has not been tampered with --
+it will always have those particular attributes for Mary Morris. Think of Mary's X.509
 certificate as a digital identity card that is impossible to change.
 
 ## Authentication \& Public keys and Private Keys
@@ -118,8 +118,8 @@ Authentication and message integrity are important concepts of secure
 communication. Authentication requires that parties who exchange messages
 can be assured of the identity that created a specific message. Integrity
 requires that the message was not modified during its transmission.
-For example, you might want to be sure you're communicating with the real John
-Doe than an impersonator. Or if John has sent you a message, you might want to be sure
+For example, you might want to be sure you're communicating with the real Mary
+Morris than an impersonator. Or if Mary has sent you a message, you might want to be sure
 that it hasn't been tampered with by anyone else during transmission.
 
 Traditional authentication mechanisms rely on **digital signature mechanisms**, that
@@ -141,9 +141,9 @@ only on the same message.
 
 ![AuthenticationKeys](./identity.diagram.9.png)
 
-In the example above, to authenticate his message Joe uses his private key to produce a
-signature on the message, which he then attaches to the message. The signature
-can be verified by anyone who sees the signed message, using John's public key.
+In the example above, to authenticate her message Mary uses her private key to produce a
+signature on the message, which she then attaches to the message. The signature
+can be verified by anyone who sees the signed message, using Mary's public key.
 
 
 
