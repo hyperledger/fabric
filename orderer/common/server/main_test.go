@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
-	coreconfig "github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
@@ -198,7 +198,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 func TestInitializeLocalMsp(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
 		assert.NotPanics(t, func() {
-			localMSPDir, _ := coreconfig.GetDevMspDir()
+			localMSPDir, _ := configtest.GetDevMspDir()
 			initializeLocalMsp(
 				&config.TopLevel{
 					General: config.General{
@@ -339,7 +339,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 
 func genesisConfig(t *testing.T) *config.TopLevel {
 	t.Helper()
-	localMSPDir, _ := coreconfig.GetDevMspDir()
+	localMSPDir, _ := configtest.GetDevMspDir()
 	return &config.TopLevel{
 		General: config.General{
 			LedgerType:     "ram",

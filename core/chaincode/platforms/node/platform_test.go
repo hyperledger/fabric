@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )
@@ -290,7 +290,7 @@ func writeFileToPackage(localpath string, packagepath string, tw *tar.Writer, mo
 func TestMain(m *testing.M) {
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
-	config.AddDevConfigPath(nil)
+	configtest.AddDevConfigPath(nil)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {

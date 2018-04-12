@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -230,7 +230,7 @@ func setupTestConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
-	err := config.AddDevConfigPath(nil)
+	err := configtest.AddDevConfigPath(nil)
 	if err != nil {
 		panic(fmt.Errorf("Fatal error adding dev dir: %s \n", err))
 	}

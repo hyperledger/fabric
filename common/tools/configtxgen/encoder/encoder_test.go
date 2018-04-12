@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -147,7 +147,7 @@ func TestNegativeChannelCreateConfigUpdate(t *testing.T) {
 func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
 	channelID := "foo"
 
-	mspmgmt.LoadDevMsp()
+	msptesttools.LoadDevMsp()
 	signer := localmsp.NewSigner()
 
 	cct, err := MakeChannelCreationTransaction(channelID, signer, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
