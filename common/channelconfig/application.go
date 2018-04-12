@@ -9,6 +9,7 @@ package channelconfig
 import (
 	"github.com/hyperledger/fabric/common/capabilities"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/pkg/errors"
 )
@@ -16,10 +17,14 @@ import (
 const (
 	// ApplicationGroupKey is the group name for the Application config
 	ApplicationGroupKey = "Application"
+
+	// ACLsKey is the name of the ACLs config
+	ACLsKey = "ACLs"
 )
 
 // ApplicationProtos is used as the source of the ApplicationConfig
 type ApplicationProtos struct {
+	ACLs         *pb.ACLs
 	Capabilities *cb.Capabilities
 }
 
@@ -59,4 +64,9 @@ func (ac *ApplicationConfig) Organizations() map[string]ApplicationOrg {
 // Capabilities returns a map of capability name to Capability
 func (ac *ApplicationConfig) Capabilities() ApplicationCapabilities {
 	return capabilities.NewApplicationProvider(ac.protos.Capabilities.Capabilities)
+}
+
+// ACLs returns a map of resource name to APIResource
+func (ac *ApplicationConfig) ACLs() map[string]*pb.APIResource {
+	return ac.protos.ACLs.Acls
 }

@@ -42,4 +42,5 @@ func TestUtilsBasic(t *testing.T) {
 	basicTest(t, CapabilitiesValue(map[string]bool{"foo": true, "bar": false}))
 	basicTest(t, AnchorPeersValue([]*pb.AnchorPeer{{}, {}}))
 	basicTest(t, ChannelCreationPolicyValue(&cb.Policy{}))
+	basicTest(t, ACLValues(map[string]string{"foo": "fooval", "bar": "barval"}))
 }

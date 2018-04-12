@@ -6,10 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 
 package config
 
-import "github.com/hyperledger/fabric/common/channelconfig"
+import (
+	"github.com/hyperledger/fabric/common/channelconfig"
+	pb "github.com/hyperledger/fabric/protos/peer"
+)
 
 type MockApplication struct {
 	CapabilitiesRv channelconfig.ApplicationCapabilities
+	Acls           map[string]*pb.APIResource
 }
 
 func (m *MockApplication) Organizations() map[string]channelconfig.ApplicationOrg {
@@ -18,6 +22,10 @@ func (m *MockApplication) Organizations() map[string]channelconfig.ApplicationOr
 
 func (m *MockApplication) Capabilities() channelconfig.ApplicationCapabilities {
 	return m.CapabilitiesRv
+}
+
+func (m *MockApplication) ACLs() map[string]*pb.APIResource {
+	return m.Acls
 }
 
 type MockApplicationCapabilities struct {

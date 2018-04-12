@@ -37,3 +37,15 @@ message AnchorPeer {
     int32 port  = 2;
 
 }
+
+// APIResource represents an API resource in the peer whose ACL
+// is determined by the policy_ref field
+message APIResource {
+    string policy_ref = 1; // The policy name to use for this API
+}
+
+// ACLs provides mappings for resources in a channel. APIResource encpasulates
+// reference to a policy used to determine ACL for the resource
+message ACLs {
+    map<string, APIResource> acls = 1;
+}

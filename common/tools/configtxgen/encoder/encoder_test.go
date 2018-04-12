@@ -77,13 +77,17 @@ func TestGoodChannelCreateConfigUpdate(t *testing.T) {
 
 	createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
+	//ACLs does not marshal deterministically. Set it to nil is ok as its not
+	//updated anyway
+	createConfig.Application.ACLs = nil
+
 	configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
 	assert.NoError(t, err)
 	assert.NotNil(t, configUpdate)
 
 	defaultConfigUpdate, err := NewChannelCreateConfigUpdate("channel.id", systemChannel, createConfig)
 	assert.NoError(t, err)
-	assert.NotNil(t, configUpdate)
+	assert.NotNil(t, defaultConfigUpdate)
 
 	assert.True(t, proto.Equal(configUpdate, defaultConfigUpdate), "the config used has had no updates, so should equal default")
 }
