@@ -130,7 +130,7 @@ where you will fill in a commit message. Add a commit message.
 
    I made a change
 
-   Signed-off-by: John Doe <cjohn.doe@example.com>
+   Signed-off-by: John Doe <john.doe@example.com>
 
    # Please enter the commit message for your changes. Lines starting
    # with '#' will be ignored, and an empty message aborts the commit.

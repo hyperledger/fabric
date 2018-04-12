@@ -296,7 +296,7 @@ submitter accepts the DCO:
 
 ::
 
-    Signed-off-by: John Doe <john.doe@hisdomain.com>
+    Signed-off-by: John Doe <john.doe@example.com>
 
 You can include this automatically when you commit a change to your
 local git repository using ``git commit -s``.
