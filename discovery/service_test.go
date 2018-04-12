@@ -445,7 +445,8 @@ func (ms *mockSupport) Peers() discovery2.Members {
 	return ms.Called().Get(0).(discovery2.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(cc string, channel common2.ChainID) (*discovery.EndorsementDescriptor, error) {
+func (ms *mockSupport) PeersForEndorsement(channel common2.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+	cc := interest.ChaincodeNames[0]
 	args := ms.Called(cc)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

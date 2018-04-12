@@ -577,6 +577,12 @@ func (mdf *ccMetadataFetcher) Metadata(channel string, cc string) *chaincode.Met
 type principalEvaluator struct {
 }
 
+func (pe *principalEvaluator) MSPOfPrincipal(principal *msp.MSPPrincipal) string {
+	sID := &msp.SerializedIdentity{}
+	proto.Unmarshal(principal.Principal, sID)
+	return sID.Mspid
+}
+
 func (pe *principalEvaluator) SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error {
 	sID := &msp.SerializedIdentity{}
 	proto.Unmarshal(identity, sID)
@@ -597,7 +603,7 @@ func (pf *policyFetcher) PolicyByChaincode(channel string, cc string) policies.I
 }
 
 type endorsementAnalyzer interface {
-	PeersForEndorsement(chaincode string, chainID gossipcommon.ChainID) (*discovery.EndorsementDescriptor, error)
+	PeersForEndorsement(chainID gossipcommon.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
 }
 
 type inquireablePolicy struct {
@@ -722,8 +728,8 @@ func (ms *mockSupport) Peers() discovery3.Members {
 	return ms.Called().Get(0).(discovery3.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(chaincode string, channel gossipcommon.ChainID) (*discovery.EndorsementDescriptor, error) {
-	return ms.endorsementAnalyzer.PeersForEndorsement(chaincode, channel)
+func (ms *mockSupport) PeersForEndorsement(channel gossipcommon.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+	return ms.endorsementAnalyzer.PeersForEndorsement(channel, interest)
 }
 
 func (*mockSupport) EligibleForService(channel string, data common.SignedData) error {

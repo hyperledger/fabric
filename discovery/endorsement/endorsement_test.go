@@ -55,7 +55,23 @@ func TestPeersForEndorsement(t *testing.T) {
 		newPeer(12),
 	}
 
-	identities := alivePeers.toIdentitySet()
+	pkiID2MSPID := map[string]string{
+		"p0":  "Org1MSP",
+		"p1":  "Org1MSP",
+		"p2":  "Org1MSP",
+		"p3":  "Org1MSP",
+		"p4":  "Org1MSP",
+		"p5":  "Org2MSP",
+		"p6":  "Org2MSP",
+		"p7":  "Org2MSP",
+		"p8":  "Org2MSP",
+		"p9":  "Org2MSP",
+		"p10": "Org2MSP",
+		"p11": "Org2MSP",
+		"p12": "Org2MSP",
+	}
+
+	identities := identitySet(pkiID2MSPID)
 
 	chanPeers := peerSet{
 		newPeer(0).withChaincode(cc, "1.0"),
@@ -71,7 +87,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	// Scenario I: Policy isn't found
 	pf.On("PolicyByChaincode", ccWithMissingPolicy).Return(nil).Once()
 	analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-	desc, err := analyzer.PeersForEndorsement(ccWithMissingPolicy, channel)
+	desc, err := analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{ccWithMissingPolicy}})
 	assert.Nil(t, desc)
 	assert.Equal(t, "policy not found", err.Error())
 
@@ -88,9 +104,9 @@ func TestPeersForEndorsement(t *testing.T) {
 		Principal: []byte("p11"),
 	}).buildPolicy()
 
-	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(), mf)
+	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(pkiID2MSPID), mf)
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(cc, channel)
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "cannot satisfy any principal combination")
 
@@ -108,9 +124,9 @@ func TestPeersForEndorsement(t *testing.T) {
 		Principal: []byte("p12"),
 	}).buildPolicy()
 
-	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(), mf)
+	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(pkiID2MSPID), mf)
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(cc, channel)
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
 	assert.NoError(t, err)
 	assert.NotNil(t, desc)
 	assert.Len(t, desc.Layouts, 1)
@@ -132,9 +148,9 @@ func TestPeersForEndorsement(t *testing.T) {
 		Principal: []byte("p12"),
 	}).buildPolicy()
 
-	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(), mf)
+	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(pkiID2MSPID), mf)
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(cc, channel)
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
 	assert.NoError(t, err)
 	assert.NotNil(t, desc)
 	assert.Len(t, desc.Layouts, 2)
@@ -153,7 +169,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	}).Once()
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(cc, channel)
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "cannot satisfy any principal combination")
 
@@ -166,7 +182,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	mf.On("Metadata").Return(&chaincode.Metadata{
 		Name: cc, Version: "1.0",
 	}).Once()
-	desc, err = analyzer.PeersForEndorsement(cc, channel)
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "cannot satisfy any principal combination")
 
@@ -175,7 +191,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
 	mf.On("Metadata").Return(nil).Once()
-	desc, err = analyzer.PeersForEndorsement(cc, channel)
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "No metadata was found for chaincode chaincode in channel test")
 }
@@ -190,12 +206,13 @@ func (p peerSet) toMembers() discovery.Members {
 	return members
 }
 
-func (p peerSet) toIdentitySet() api.PeerIdentitySet {
+func identitySet(pkiID2MSPID map[string]string) api.PeerIdentitySet {
 	var res api.PeerIdentitySet
-	for _, peer := range p {
+	for pkiID, mspID := range pkiID2MSPID {
 		res = append(res, api.PeerIdentityInfo{
-			Identity: peer.identity,
-			PKIId:    peer.pkiID,
+			Identity:     api.PeerIdentityType(pkiID),
+			PKIId:        common.PKIidType(pkiID),
+			Organization: api.OrgIdentityType(mspID),
 		})
 	}
 	return res
@@ -291,12 +308,17 @@ func (ip inquireablePolicy) SatisfiedBy() []policies.PrincipalSet {
 	return ip
 }
 
-func (ip inquireablePolicy) ToPrincipalEvaluator() *principalEvaluatorMock {
-	return &principalEvaluatorMock{ip: ip}
+func (ip inquireablePolicy) ToPrincipalEvaluator(pkiID2MSPID map[string]string) *principalEvaluatorMock {
+	return &principalEvaluatorMock{ip: ip, pkiID2MSPID: pkiID2MSPID}
 }
 
 type principalEvaluatorMock struct {
-	ip []policies.PrincipalSet
+	pkiID2MSPID map[string]string
+	ip          []policies.PrincipalSet
+}
+
+func (pe *principalEvaluatorMock) MSPOfPrincipal(principal *msp.MSPPrincipal) string {
+	return pe.pkiID2MSPID[string(principal.Principal)]
 }
 
 func (pe *principalEvaluatorMock) SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error {

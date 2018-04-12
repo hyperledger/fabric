@@ -56,6 +56,32 @@ var logger = flogging.MustGetLogger("policies")
 // PrincipalSet is a collection of MSPPrincipals
 type PrincipalSet []*msp.MSPPrincipal
 
+// PrincipalSets aggregates PrincipalSets
+type PrincipalSets []PrincipalSet
+
+// ContainingOnly returns PrincipalSets that contain only principals of the given predicate
+func (psSets PrincipalSets) ContainingOnly(f func(*msp.MSPPrincipal) bool) PrincipalSets {
+	var res PrincipalSets
+	for _, set := range psSets {
+		if !set.ContainingOnly(f) {
+			continue
+		}
+		res = append(res, set)
+	}
+	return res
+}
+
+// ContainingOnly returns whether the given PrincipalSet contains only Principals
+// that satisfy the given predicate
+func (ps PrincipalSet) ContainingOnly(f func(*msp.MSPPrincipal) bool) bool {
+	for _, principal := range ps {
+		if !f(principal) {
+			return false
+		}
+	}
+	return true
+}
+
 // UniqueSet returns a histogram that is induced by the PrincipalSet
 func (ps PrincipalSet) UniqueSet() map[*msp.MSPPrincipal]int {
 	// Create a histogram that holds the MSPPrincipals and counts them

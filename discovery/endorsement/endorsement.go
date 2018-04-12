@@ -29,6 +29,9 @@ type principalEvaluator interface {
 	// SatisfiesPrincipal returns whether a given peer identity satisfies a certain principal
 	// on a given channel
 	SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error
+
+	// MSPOfPrincipal returns the MSP ID of the given principal
+	MSPOfPrincipal(principal *msp.MSPPrincipal) string
 }
 
 type chaincodeMetadataFetcher interface {
@@ -75,27 +78,41 @@ func NewEndorsementAnalyzer(gs gossipSupport, pf policyFetcher, pe principalEval
 type peerPrincipalEvaluator func(member discovery2.NetworkMember, principal *msp.MSPPrincipal) bool
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-func (ea *endorsementAnalyzer) PeersForEndorsement(chaincode string, chainID common.ChainID) (*discovery.EndorsementDescriptor, error) {
+func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+	chaincode := interest.ChaincodeNames[0]
 	ccMD := ea.Metadata(string(chainID), chaincode)
 	if ccMD == nil {
 		return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode, string(chainID))
 	}
-	aliveMembership := ea.Peers()
+	// Filter out peers that don't have the chaincode installed on them
 	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(ccMD))
-	aliveMembership = aliveMembership.Intersect(chanMembership)
-	membersById := aliveMembership.ByID()
 	channelMembersById := chanMembership.ByID()
-	identitiesOfMembers := computeIdentitiesOfMembers(ea.IdentityInfo(), membersById)
+	// Choose only the alive messages of those that have joined the channel
+	aliveMembership := ea.Peers().Intersect(chanMembership)
+	membersById := aliveMembership.ByID()
+	// Compute a mapping between the PKI-IDs of members to their identities
+	identities := ea.IdentityInfo()
+	identitiesOfMembers := computeIdentitiesOfMembers(identities, membersById)
 
+	// Retrieve the policy for the chaincode
 	pol := ea.PolicyByChaincode(string(chainID), chaincode)
 	if pol == nil {
 		logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 		return nil, errors.New("policy not found")
 	}
 
-	// SatisfiedBy computes combinations of principals that each combination, if satisfied-
-	// satisfies the endorsement policy on its own.
-	principalsSets := pol.SatisfiedBy()
+	// Compute the combinations of principals (principal sets) that satisfy the endorsement policy
+	principalsSets := policies.PrincipalSets(pol.SatisfiedBy())
+
+	// Obtain the MSP IDs of the members of the channel that are alive
+	mspIDsOfChannelPeers := mspIDsOfMembers(membersById, identities.ByID())
+	// Filter out principal sets that contain MSP IDs for peers that don't have the chaincode(s) installed
+	principalsSets = principalsSets.ContainingOnly(func(principal *msp.MSPPrincipal) bool {
+		mspID := ea.MSPOfPrincipal(principal)
+		_, exists := mspIDsOfChannelPeers[mspID]
+		return mspID != "" && exists
+	})
+
 	// mapPrincipalsToGroups returns a mapping from principals to their corresponding groups.
 	// groups are just human readable representations that mask the principals behind them
 	principalGroups := mapPrincipalsToGroups(principalsSets)
@@ -105,16 +122,7 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chaincode string, chainID com
 	satGraph := principalsToPeersGraph(principalAndPeerData{
 		members: aliveMembership,
 		pGrps:   principalGroups,
-	}, func(member discovery2.NetworkMember, principal *msp.MSPPrincipal) bool {
-		err := ea.SatisfiesPrincipal(string(chainID), identitiesOfMembers.identityByPKIID(member.PKIid), principal)
-		if err == nil {
-			// TODO: log the principals in a human readable form
-			logger.Debug(member, "satisfies principal", principal)
-			return true
-		}
-		logger.Debug(member, "doesn't satisfy principal", principal, ":", err)
-		return false
-	})
+	}, ea.satisfiesPrincipal(string(chainID), identitiesOfMembers))
 
 	layouts := computeLayouts(principalsSets, principalGroups, satGraph)
 	if len(layouts) == 0 {
@@ -133,6 +141,19 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chaincode string, chainID com
 		Layouts:           layouts,
 		EndorsersByGroups: endorsersByGroup(criteria),
 	}, nil
+}
+
+func (ea *endorsementAnalyzer) satisfiesPrincipal(channel string, identitiesOfMembers memberIdentities) peerPrincipalEvaluator {
+	return func(member discovery2.NetworkMember, principal *msp.MSPPrincipal) bool {
+		err := ea.SatisfiesPrincipal(channel, identitiesOfMembers.identityByPKIID(member.PKIid), principal)
+		if err == nil {
+			// TODO: log the principals in a human readable form
+			logger.Debug(member, "satisfies principal", principal)
+			return true
+		}
+		logger.Debug(member, "doesn't satisfy principal", principal, ":", err)
+		return false
+	}
 }
 
 type peerMembershipCriteria struct {
@@ -350,4 +371,14 @@ func peersWithChaincode(ccMD *chaincode.Metadata) func(member discovery2.Network
 		}
 		return false
 	}
+}
+
+func mspIDsOfMembers(membersById map[string]discovery2.NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) map[string]struct{} {
+	res := make(map[string]struct{})
+	for pkiID := range membersById {
+		if identity, exists := identitiesByID[string(pkiID)]; exists {
+			res[string(identity.Organization)] = struct{}{}
+		}
+	}
+	return res
 }
