@@ -164,7 +164,7 @@ type Orderer struct {
 
 // BatchSize contains configuration affecting the size of batches.
 type BatchSize struct {
-	MaxMessageCount   uint32 `yaml:"MaxMessageSize"`
+	MaxMessageCount   uint32 `yaml:"MaxMessageCount"`
 	AbsoluteMaxBytes  uint32 `yaml:"AbsoluteMaxBytes"`
 	PreferredMaxBytes uint32 `yaml:"PreferredMaxBytes"`
 }
