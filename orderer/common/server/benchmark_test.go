@@ -108,7 +108,7 @@ const (
 	// This is the hard limit for all types of tx, including config tx, which is normally
 	// larger than 13 KB. Therefore, for config tx not to be rejected, this value cannot
 	// be less than 13 KB.
-	AbsoluteMaxBytes  = 15 // KB
+	AbsoluteMaxBytes  = 16 // KB
 	PreferredMaxBytes = 10 // KB
 	ChannelProfile    = localconfig.SampleSingleMSPChannelProfile
 )
