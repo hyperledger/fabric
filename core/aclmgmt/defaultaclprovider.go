@@ -54,47 +54,45 @@ func (d *defaultACLProvider) initialize() {
 
 	//-------------- LSCC --------------
 	//p resources (implemented by the chaincode currently)
-	d.pResourcePolicyMap[resources.LSCC_INSTALL] = ""
-	d.pResourcePolicyMap[resources.LSCC_GETCHAINCODES] = ""
-	d.pResourcePolicyMap[resources.LSCC_GETINSTALLEDCHAINCODES] = ""
+	d.pResourcePolicyMap[resources.Lscc_Install] = ""
+	d.pResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = ""
+	d.pResourcePolicyMap[resources.Lscc_GetInstalledChaincodes] = ""
 
 	//c resources
-	d.cResourcePolicyMap[resources.LSCC_DEPLOY] = ""  //ACL check covered by PROPOSAL
-	d.cResourcePolicyMap[resources.LSCC_UPGRADE] = "" //ACL check covered by PROPOSAL
-	d.cResourcePolicyMap[resources.LSCC_GETCCINFO] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.LSCC_GETDEPSPEC] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.LSCC_GETCCDATA] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_Deploy] = ""  //ACL check covered by PROPOSAL
+	d.cResourcePolicyMap[resources.Lscc_Upgrade] = "" //ACL check covered by PROPOSAL
+	d.cResourcePolicyMap[resources.Lscc_ChaincodeExists] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetDeploymentSpec] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetChaincodeData] = CHANNELREADERS
 
 	//-------------- QSCC --------------
 	//p resources (none)
 
 	//c resources
-	d.cResourcePolicyMap[resources.QSCC_GetChainInfo] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetBlockByNumber] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetBlockByHash] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetTransactionByID] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetBlockByTxID] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetChainInfo] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetBlockByNumber] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetBlockByHash] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetTransactionByID] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetBlockByTxID] = CHANNELREADERS
 
 	//--------------- CSCC resources -----------
 	//p resources (implemented by the chaincode currently)
-	d.pResourcePolicyMap[resources.CSCC_JoinChain] = ""
-	d.pResourcePolicyMap[resources.CSCC_GetChannels] = ""
+	d.pResourcePolicyMap[resources.Cscc_JoinChain] = ""
+	d.pResourcePolicyMap[resources.Cscc_GetChannels] = ""
 
 	//c resources
-	d.cResourcePolicyMap[resources.CSCC_GetConfigBlock] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.CSCC_GetConfigTree] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.CSCC_SimulateConfigTreeUpdate] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Cscc_GetConfigBlock] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Cscc_GetConfigTree] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Cscc_SimulateConfigTreeUpdate] = CHANNELWRITERS
 
 	//---------------- non-scc resources ------------
-	//Propose
-	d.cResourcePolicyMap[resources.PROPOSE] = CHANNELWRITERS
+	//Peer resources
+	d.cResourcePolicyMap[resources.Peer_Propose] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Peer_ChaincodeToChaincode] = CHANNELWRITERS
 
-	//Chaincode-to-Chaincode
-	d.cResourcePolicyMap[resources.CC2CC] = CHANNELWRITERS
-
-	//Events (not used currently - for future)
-	d.cResourcePolicyMap[resources.BLOCKEVENT] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.FILTEREDBLOCKEVENT] = CHANNELREADERS
+	//Event resources
+	d.cResourcePolicyMap[resources.Event_Block] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Event_FilteredBlock] = CHANNELREADERS
 }
 
 //this should cover an exhaustive list of everything called from the peer

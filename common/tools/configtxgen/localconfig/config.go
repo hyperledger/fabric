@@ -115,6 +115,7 @@ type Application struct {
 	Capabilities  map[string]bool    `yaml:"Capabilities"`
 	Resources     *Resources         `yaml:"Resources"`
 	Policies      map[string]*Policy `yaml:"Policies"`
+	ACLs          map[string]string  `yaml:"ACLs"`
 }
 
 // Resouces encodes the application-level resources configuration needed to seed the resource tree

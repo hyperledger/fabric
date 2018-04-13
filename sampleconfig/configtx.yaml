@@ -327,6 +327,70 @@ Orderer: &OrdererDefaults
 #
 ################################################################################
 Application: &ApplicationDefaults
+    ACLs: &ACLsDefault
+        #This section provides defaults for policies for various resources
+        #in the system. These "resources" could be functions on system chaincodes
+        #(e.g., "GetBlockByNumber" on the "qscc" system chaincode) or other resources
+        #(e.g.,who can receive Block events). This section does NOT specify the resource's
+        #definition or API, but just the ACL policy for it.
+        #
+        #User's can override these defaults with their own policy mapping by defining the
+        #mapping under ACLs in their channel definition
+
+        #---Lifecycle System Chaincode (lscc) function to policy mapping for access control---#
+
+        #ACL policy for lscc's "getid" function
+        lscc.ChaincodeExists: /Channel/Application/Readers
+
+        #ACL policy for lscc's "getdepspec" function
+        lscc.GetDeploymentSpec: /Channel/Application/Readers
+
+        #ACL policy for lscc's "getccdata" function
+        lscc.GetChaincodeData: /Channel/Application/Readers
+
+        #---Query System Chaincode (qscc) function to policy mapping for access control---#
+
+        #ACL policy for qscc's "GetChainInfo" function
+        qscc.GetChainInfo: /Channel/Application/Readers
+
+        #ACL policy for qscc's "GetBlockByNumber" function
+        qscc.GetBlockByNumber: /Channel/Application/Readers
+
+        #ACL policy for qscc's  "GetBlockByHash" function
+        qscc.GetBlockByHash: /Channel/Application/Readers
+
+        #ACL policy for qscc's "GetTransactionByID" function
+        qscc.GetTransactionByID: /Channel/Application/Readers
+
+        #ACL policy for qscc's "GetBlockByTxID" function
+        qscc.GetBlockByTxID: /Channel/Application/Readers
+
+        #---Configuration System Chaincode (cscc) function to policy mapping for access control---#
+
+        #ACL policy for cscc's "GetConfigBlock" function
+        cscc.GetConfigBlock: /Channel/Application/Readers
+
+        #ACL policy for cscc's "GetConfigTree" function
+        cscc.GetConfigTree: /Channel/Application/Readers
+
+        #ACL policy for cscc's "SimulateConfigTreeUpdate" function
+        cscc.SimulateConfigTreeUpdate: /Channel/Application/Writers
+
+        #---Miscellanesous peer function to policy mapping for access control---#
+
+        #ACL policy for invoking chaincodes on peer
+        peer.Proposal: /Channel/Application/Writers
+
+        #ACL policy for chaincode to chaincode invocation
+        peer.ChaincodeToChaincode: /Channel/Application/Readers
+
+        #---Events resource to policy mapping for access control###---#
+
+        #ACL policy for sending block events
+        event.Block: /Channel/Application/Readers
+
+        #ACL policy for sending filtered block events
+        event.FilteredBlock: /Channel/Application/Readers
 
     # Organizations lists the orgs participating on the application side of the
     # network.
