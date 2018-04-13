@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package metadata
+package ccmetadata
 
 import (
 	"encoding/json"
@@ -12,11 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-
-	"github.com/hyperledger/fabric/common/flogging"
 )
-
-var logger = flogging.MustGetLogger("metadata")
 
 // fileValidators are used as handlers to validate specific metadata directories
 type fileValidator func(fileName string, fileBytes []byte) error

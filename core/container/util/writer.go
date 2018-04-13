@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/common/ccprovider/metadata"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/pkg/errors"
 )
 
@@ -111,7 +111,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 			// Validate metadata file for inclusion in tar
 			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
 			// Clean metadata directory to remove trailing slash
-			err = metadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
+			err = ccmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
 			if err != nil {
 				return err
 			}
