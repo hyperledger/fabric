@@ -34,8 +34,17 @@ type Big interface {
 	Bytes() ([]byte, error)
 }
 
+// Ecp represents an elliptic curve point
+type Ecp interface {
+	// Bytes returns the byte representation of this key
+	Bytes() ([]byte, error)
+}
+
 // User is a local interface to decouple from the idemix implementation
 type User interface {
 	// NewKey generates a new User secret key
 	NewKey() (Big, error)
+
+	// MakeNym creates a new unlinkable pseudonym
+	MakeNym(sk Big, key IssuerPublicKey) (Ecp, Big, error)
 }

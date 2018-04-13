@@ -60,6 +60,10 @@ type issuerPublicKey struct {
 	pk IssuerPublicKey
 }
 
+func NewIssuerPublicKey(pk IssuerPublicKey) *issuerPublicKey {
+	return &issuerPublicKey{pk}
+}
+
 func (k *issuerPublicKey) Bytes() ([]byte, error) {
 	return k.pk.Bytes()
 }

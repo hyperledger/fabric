@@ -18,17 +18,21 @@ import (
 
 var _ = Describe("User", func() {
 
-	Describe("when creating an User key", func() {
+	var (
+		fakeUser          *mock.User
+		fakeUserSecretKey bccsp.Key
+	)
+
+	BeforeEach(func() {
+		fakeUser = &mock.User{}
+	})
+
+	Describe("when creating a user key", func() {
 		var (
 			UserKeyGen *idemix.UserKeyGen
-
-			fakeUser          *mock.User
-			fakeUserSecretKey bccsp.Key
 		)
 
 		BeforeEach(func() {
-			fakeUser = &mock.User{}
-
 			UserKeyGen = &idemix.UserKeyGen{}
 			UserKeyGen.User = fakeUser
 		})
@@ -112,6 +116,184 @@ var _ = Describe("User", func() {
 			})
 		})
 
+	})
+
+	Describe("when deriving a new pseudonym", func() {
+		var (
+			NymKeyDerivation    *idemix.NymKeyDerivation
+			fakeIssuerPublicKey bccsp.Key
+		)
+
+		BeforeEach(func() {
+			NymKeyDerivation = &idemix.NymKeyDerivation{}
+			NymKeyDerivation.User = fakeUser
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+			var (
+				nym     bccsp.Key
+				userKey *mock.Big
+				fakeNym bccsp.Key
+				result2 *mock.Big
+				result1 *mock.Ecp
+			)
+
+			BeforeEach(func() {
+				result2 = &mock.Big{}
+				result2.BytesReturns([]byte{1, 2, 3, 4}, nil)
+				result1 = &mock.Ecp{}
+				result1.BytesReturns([]byte{5, 6, 7, 8}, nil)
+
+				fakeUser.MakeNymReturns(result1, result2, nil)
+			})
+
+			AfterEach(func() {
+				Expect(nym.Private()).To(BeTrue())
+				Expect(nym.Symmetric()).To(BeFalse())
+				Expect(nym.SKI()).NotTo(BeNil())
+
+				pk, err := nym.PublicKey()
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(pk.Private()).To(BeFalse())
+				Expect(pk.Symmetric()).To(BeFalse())
+				Expect(pk.SKI()).NotTo(BeNil())
+				raw, err := pk.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw).NotTo(BeNil())
+
+				pk2, err := pk.PublicKey()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pk).To(BeEquivalentTo(pk2))
+			})
+
+			Context("and the secret key is exportable", func() {
+				BeforeEach(func() {
+					var err error
+					NymKeyDerivation.Exportable = true
+					fakeUserSecretKey = idemix.NewUserSecretKey(userKey, true)
+					fakeIssuerPublicKey = idemix.NewIssuerPublicKey(nil)
+					fakeNym, err = idemix.NewNymSecretKey(result2, result1, true)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns no error and a key", func() {
+					var err error
+					nym, err = NymKeyDerivation.KeyDeriv(fakeUserSecretKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: fakeIssuerPublicKey})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(nym).To(BeEquivalentTo(fakeNym))
+
+					raw, err := nym.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeNil())
+				})
+			})
+
+			Context("and the secret key is not exportable", func() {
+				BeforeEach(func() {
+					var err error
+					NymKeyDerivation.Exportable = false
+					fakeUserSecretKey = idemix.NewUserSecretKey(userKey, false)
+					fakeNym, err = idemix.NewNymSecretKey(result2, result1, false)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns no error and a key", func() {
+					var err error
+					nym, err = NymKeyDerivation.KeyDeriv(fakeUserSecretKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: fakeIssuerPublicKey})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(nym).To(BeEquivalentTo(fakeNym))
+
+					raw, err := nym.Bytes()
+					Expect(err).To(HaveOccurred())
+					Expect(raw).To(BeNil())
+				})
+
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+			BeforeEach(func() {
+				fakeUserSecretKey = idemix.NewUserSecretKey(nil, true)
+				fakeIssuerPublicKey = idemix.NewIssuerPublicKey(nil)
+				fakeUser.MakeNymReturns(nil, nil, errors.New("make-nym error"))
+			})
+
+			It("returns an error", func() {
+				nym, err := NymKeyDerivation.KeyDeriv(fakeUserSecretKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: fakeIssuerPublicKey})
+				Expect(err).To(MatchError("make-nym error"))
+				Expect(nym).To(BeNil())
+			})
+		})
+
+		Context("and the options are not well formed", func() {
+
+			Context("and the user secret key is nil", func() {
+				It("returns error", func() {
+					nym, err := NymKeyDerivation.KeyDeriv(nil, &bccsp.IdemixNymKeyDerivationOpts{})
+					Expect(err).To(MatchError("invalid key, expected *userSecretKey"))
+					Expect(nym).To(BeNil())
+				})
+			})
+
+			Context("and the user secret key is not of type *userSecretKey", func() {
+				It("returns error", func() {
+					nym, err := NymKeyDerivation.KeyDeriv(idemix.NewIssuerPublicKey(nil), &bccsp.IdemixNymKeyDerivationOpts{})
+					Expect(err).To(MatchError("invalid key, expected *userSecretKey"))
+					Expect(nym).To(BeNil())
+				})
+			})
+
+			Context("and the option is missing", func() {
+				BeforeEach(func() {
+					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+				})
+
+				It("returns error", func() {
+					nym, err := NymKeyDerivation.KeyDeriv(fakeUserSecretKey, nil)
+					Expect(err).To(MatchError("invalid options, expected *IdemixNymKeyDerivationOpts"))
+					Expect(nym).To(BeNil())
+				})
+			})
+
+			Context("and the option is not of type *bccsp.IdemixNymKeyDerivationOpts", func() {
+				BeforeEach(func() {
+					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+				})
+
+				It("returns error", func() {
+					nym, err := NymKeyDerivation.KeyDeriv(fakeUserSecretKey, &bccsp.AESKeyGenOpts{})
+					Expect(err).To(MatchError("invalid options, expected *IdemixNymKeyDerivationOpts"))
+					Expect(nym).To(BeNil())
+				})
+			})
+
+			Context("and the issuer public key is missing", func() {
+				BeforeEach(func() {
+					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+				})
+
+				It("returns error", func() {
+					nym, err := NymKeyDerivation.KeyDeriv(fakeUserSecretKey, &bccsp.IdemixNymKeyDerivationOpts{})
+					Expect(err).To(MatchError("invalid options, missing issuer public key"))
+					Expect(nym).To(BeNil())
+				})
+
+			})
+
+			Context("and the issuer public key is not of type *issuerPublicKey", func() {
+				BeforeEach(func() {
+					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+				})
+
+				It("returns error", func() {
+					nym, err := NymKeyDerivation.KeyDeriv(fakeUserSecretKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: fakeUserSecretKey})
+					Expect(err).To(MatchError("invalid options, expected IssuerPK as *issuerPublicKey"))
+					Expect(nym).To(BeNil())
+				})
+
+			})
+		})
 	})
 
 })
