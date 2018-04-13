@@ -290,16 +290,16 @@ func TestClient(t *testing.T) {
 	signer := func(msg []byte) ([]byte, error) {
 		return msg, nil
 	}
-
-	cl := NewClient(connect, &discovery.AuthInfo{
+	authInfo := &discovery.AuthInfo{
 		ClientIdentity:    []byte{1, 2, 3},
 		ClientTlsCertHash: util.ComputeSHA256(clientTLSCert.Certificate[0]),
-	}, signer)
+	}
+	cl := NewClient(connect, signer)
 
 	sup.On("PeersOfChannel").Return(channelPeersWithoutChaincodes).Times(2)
 	req := NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery()
-	r, err := cl.Send(ctx, req)
+	r, err := cl.Send(ctx, req, authInfo)
 	assert.NoError(t, err)
 
 	// Check behavior for channels that we didn't query for.
@@ -339,7 +339,7 @@ func TestClient(t *testing.T) {
 	sup.On("PeersOfChannel").Return(channelPeersWithChaincodes).Times(2)
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery()
-	r, err = cl.Send(ctx, req)
+	r, err = cl.Send(ctx, req, authInfo)
 	assert.NoError(t, err)
 
 	mychannel = r.ForChannel("mychannel")
@@ -361,12 +361,13 @@ func TestUnableToSign(t *testing.T) {
 	failToConnect := func() (*grpc.ClientConn, error) {
 		return nil, nil
 	}
-	cl := NewClient(failToConnect, &discovery.AuthInfo{
+	authInfo := &discovery.AuthInfo{
 		ClientIdentity: []byte{1, 2, 3},
-	}, signer)
+	}
+	cl := NewClient(failToConnect, signer)
 	req := NewRequest()
 	req = req.OfChannel("mychannel")
-	resp, err := cl.Send(ctx, req)
+	resp, err := cl.Send(ctx, req, authInfo)
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "not enough entropy")
 }
@@ -378,12 +379,13 @@ func TestUnableToConnect(t *testing.T) {
 	failToConnect := func() (*grpc.ClientConn, error) {
 		return nil, errors.New("unable to connect")
 	}
-	cl := NewClient(failToConnect, &discovery.AuthInfo{
+	auth := &discovery.AuthInfo{
 		ClientIdentity: []byte{1, 2, 3},
-	}, signer)
+	}
+	cl := NewClient(failToConnect, signer)
 	req := NewRequest()
 	req = req.OfChannel("mychannel")
-	resp, err := cl.Send(ctx, req)
+	resp, err := cl.Send(ctx, req, auth)
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "unable to connect")
 }
@@ -400,15 +402,16 @@ func TestBadResponses(t *testing.T) {
 		return grpc.Dial(fmt.Sprintf("localhost:%d", svc.port), grpc.WithInsecure())
 	}
 
-	cl := NewClient(connect, &discovery.AuthInfo{
+	auth := &discovery.AuthInfo{
 		ClientIdentity: []byte{1, 2, 3},
-	}, signer)
+	}
+	cl := NewClient(connect, signer)
 
 	// Scenario I: discovery service sends back an error
 	svc.On("Discover").Return(nil, errors.New("foo")).Once()
 	req := NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery()
-	r, err := cl.Send(ctx, req)
+	r, err := cl.Send(ctx, req, auth)
 	assert.Contains(t, err.Error(), "foo")
 	assert.Nil(t, r)
 
@@ -416,7 +419,7 @@ func TestBadResponses(t *testing.T) {
 	svc.On("Discover").Return(&discovery.Response{}, nil).Once()
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery()
-	r, err = cl.Send(ctx, req)
+	r, err = cl.Send(ctx, req, auth)
 	assert.Equal(t, "Sent 3 queries but received 0 responses back", err.Error())
 	assert.Nil(t, r)
 
@@ -438,7 +441,7 @@ func TestBadResponses(t *testing.T) {
 	}, nil).Once()
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
-	r, err = cl.Send(ctx, req)
+	r, err = cl.Send(ctx, req, auth)
 	assert.NoError(t, err)
 	mychannel := r.ForChannel("mychannel")
 	endorsers, err := mychannel.Endorsers("mycc", Selector{})
@@ -455,7 +458,7 @@ func TestBadResponses(t *testing.T) {
 	}, nil).Once()
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
-	r, err = cl.Send(ctx, req)
+	r, err = cl.Send(ctx, req, auth)
 	assert.Contains(t, err.Error(), "received empty envelope(s) for endorsers for chaincode mycc")
 	assert.Nil(t, r)
 
@@ -470,7 +473,7 @@ func TestBadResponses(t *testing.T) {
 	}, nil).Once()
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
-	r, err = cl.Send(ctx, req)
+	r, err = cl.Send(ctx, req, auth)
 	assert.NoError(t, err)
 	mychannel = r.ForChannel("mychannel")
 	endorsers, err = mychannel.Endorsers("mycc", Selector{})
@@ -487,7 +490,7 @@ func TestBadResponses(t *testing.T) {
 	}, nil).Once()
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
-	r, err = cl.Send(ctx, req)
+	r, err = cl.Send(ctx, req, auth)
 	assert.Contains(t, err.Error(), "group B isn't mapped to endorsers, but exists in a layout")
 	assert.Empty(t, r)
 }
