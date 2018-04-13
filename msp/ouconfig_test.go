@@ -74,7 +74,7 @@ func TestValidateIntermediateConfigOU(t *testing.T) {
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/external", "keystore"), true)
 	assert.NoError(t, err)
-	csp, err := sw.New(256, "SHA2", ks)
+	csp, err := sw.NewWithParams(256, "SHA2", ks)
 	assert.NoError(t, err)
 	thisMSP.(*bccspmsp).bccsp = csp
 

@@ -57,7 +57,7 @@ func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 		ks = sw.NewDummyKeyStore()
 	}
 
-	return sw.New(swOpts.SecLevel, swOpts.HashFamily, ks)
+	return sw.NewWithParams(swOpts.SecLevel, swOpts.HashFamily, ks)
 }
 
 // SwOpts contains options for the SWFactory

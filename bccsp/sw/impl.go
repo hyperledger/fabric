@@ -16,133 +16,25 @@ limitations under the License.
 package sw
 
 import (
-	"crypto/elliptic"
-	"crypto/sha256"
-	"crypto/sha512"
 	"hash"
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
 	logger = flogging.MustGetLogger("bccsp_sw")
 )
 
-// NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
-// at security level 256, hash family SHA2 and using FolderBasedKeyStore as KeyStore.
-func NewDefaultSecurityLevel(keyStorePath string) (bccsp.BCCSP, error) {
-	ks := &fileBasedKeyStore{}
-	if err := ks.Init(nil, keyStorePath, false); err != nil {
-		return nil, errors.Wrapf(err, "Failed initializing key store at [%v]", keyStorePath)
-	}
-
-	return New(256, "SHA2", ks)
-}
-
-// NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
-// at security level 256, hash family SHA2 and using the passed KeyStore.
-func NewDefaultSecurityLevelWithKeystore(keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
-	return New(256, "SHA2", keyStore)
-}
-
-// New returns a new instance of the software-based BCCSP
-// set at the passed security level, hash family and KeyStore.
-func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
-	// Init config
-	conf := &config{}
-	err := conf.setSecurityLevel(securityLevel, hashFamily)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed initializing configuration at [%v,%v]", securityLevel, hashFamily)
-	}
-
-	// Check KeyStore
-	if keyStore == nil {
-		return nil, errors.Errorf("Invalid bccsp.KeyStore instance. It must be different from nil.")
-	}
-
-	// Set the encryptors
-	encryptors := make(map[reflect.Type]Encryptor)
-	encryptors[reflect.TypeOf(&aesPrivateKey{})] = &aescbcpkcs7Encryptor{}
-
-	// Set the decryptors
-	decryptors := make(map[reflect.Type]Decryptor)
-	decryptors[reflect.TypeOf(&aesPrivateKey{})] = &aescbcpkcs7Decryptor{}
-
-	// Set the signers
-	signers := make(map[reflect.Type]Signer)
-	signers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaSigner{}
-	signers[reflect.TypeOf(&rsaPrivateKey{})] = &rsaSigner{}
-
-	// Set the verifiers
-	verifiers := make(map[reflect.Type]Verifier)
-	verifiers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaPrivateKeyVerifier{}
-	verifiers[reflect.TypeOf(&ecdsaPublicKey{})] = &ecdsaPublicKeyKeyVerifier{}
-	verifiers[reflect.TypeOf(&rsaPrivateKey{})] = &rsaPrivateKeyVerifier{}
-	verifiers[reflect.TypeOf(&rsaPublicKey{})] = &rsaPublicKeyKeyVerifier{}
-
-	// Set the hashers
-	hashers := make(map[reflect.Type]Hasher)
-	hashers[reflect.TypeOf(&bccsp.SHAOpts{})] = &hasher{hash: conf.hashFunction}
-	hashers[reflect.TypeOf(&bccsp.SHA256Opts{})] = &hasher{hash: sha256.New}
-	hashers[reflect.TypeOf(&bccsp.SHA384Opts{})] = &hasher{hash: sha512.New384}
-	hashers[reflect.TypeOf(&bccsp.SHA3_256Opts{})] = &hasher{hash: sha3.New256}
-	hashers[reflect.TypeOf(&bccsp.SHA3_384Opts{})] = &hasher{hash: sha3.New384}
-
-	impl := &impl{
-		conf:       conf,
-		ks:         keyStore,
-		encryptors: encryptors,
-		decryptors: decryptors,
-		signers:    signers,
-		verifiers:  verifiers,
-		hashers:    hashers}
-
-	// Set the key generators
-	keyGenerators := make(map[reflect.Type]KeyGenerator)
-	keyGenerators[reflect.TypeOf(&bccsp.ECDSAKeyGenOpts{})] = &ecdsaKeyGenerator{curve: conf.ellipticCurve}
-	keyGenerators[reflect.TypeOf(&bccsp.ECDSAP256KeyGenOpts{})] = &ecdsaKeyGenerator{curve: elliptic.P256()}
-	keyGenerators[reflect.TypeOf(&bccsp.ECDSAP384KeyGenOpts{})] = &ecdsaKeyGenerator{curve: elliptic.P384()}
-	keyGenerators[reflect.TypeOf(&bccsp.AESKeyGenOpts{})] = &aesKeyGenerator{length: conf.aesBitLength}
-	keyGenerators[reflect.TypeOf(&bccsp.AES256KeyGenOpts{})] = &aesKeyGenerator{length: 32}
-	keyGenerators[reflect.TypeOf(&bccsp.AES192KeyGenOpts{})] = &aesKeyGenerator{length: 24}
-	keyGenerators[reflect.TypeOf(&bccsp.AES128KeyGenOpts{})] = &aesKeyGenerator{length: 16}
-	keyGenerators[reflect.TypeOf(&bccsp.RSAKeyGenOpts{})] = &rsaKeyGenerator{length: conf.rsaBitLength}
-	keyGenerators[reflect.TypeOf(&bccsp.RSA1024KeyGenOpts{})] = &rsaKeyGenerator{length: 1024}
-	keyGenerators[reflect.TypeOf(&bccsp.RSA2048KeyGenOpts{})] = &rsaKeyGenerator{length: 2048}
-	keyGenerators[reflect.TypeOf(&bccsp.RSA3072KeyGenOpts{})] = &rsaKeyGenerator{length: 3072}
-	keyGenerators[reflect.TypeOf(&bccsp.RSA4096KeyGenOpts{})] = &rsaKeyGenerator{length: 4096}
-	impl.keyGenerators = keyGenerators
-
-	// Set the key generators
-	keyDerivers := make(map[reflect.Type]KeyDeriver)
-	keyDerivers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaPrivateKeyKeyDeriver{}
-	keyDerivers[reflect.TypeOf(&ecdsaPublicKey{})] = &ecdsaPublicKeyKeyDeriver{}
-	keyDerivers[reflect.TypeOf(&aesPrivateKey{})] = &aesPrivateKeyKeyDeriver{bccsp: impl}
-	impl.keyDerivers = keyDerivers
-
-	// Set the key importers
-	keyImporters := make(map[reflect.Type]KeyImporter)
-	keyImporters[reflect.TypeOf(&bccsp.AES256ImportKeyOpts{})] = &aes256ImportKeyOptsKeyImporter{}
-	keyImporters[reflect.TypeOf(&bccsp.HMACImportKeyOpts{})] = &hmacImportKeyOptsKeyImporter{}
-	keyImporters[reflect.TypeOf(&bccsp.ECDSAPKIXPublicKeyImportOpts{})] = &ecdsaPKIXPublicKeyImportOptsKeyImporter{}
-	keyImporters[reflect.TypeOf(&bccsp.ECDSAPrivateKeyImportOpts{})] = &ecdsaPrivateKeyImportOptsKeyImporter{}
-	keyImporters[reflect.TypeOf(&bccsp.ECDSAGoPublicKeyImportOpts{})] = &ecdsaGoPublicKeyImportOptsKeyImporter{}
-	keyImporters[reflect.TypeOf(&bccsp.RSAGoPublicKeyImportOpts{})] = &rsaGoPublicKeyImportOptsKeyImporter{}
-	keyImporters[reflect.TypeOf(&bccsp.X509PublicKeyImportOpts{})] = &x509PublicKeyImportOptsKeyImporter{bccsp: impl}
-
-	impl.keyImporters = keyImporters
-
-	return impl, nil
-}
-
-// SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
-type impl struct {
-	conf *config
-	ks   bccsp.KeyStore
+// CSP provides a generic implementation of the BCCSP interface based
+// on wrappers. It can be customized by providing implementations for the
+// following algorithm-based wrappers: KeyGenerator, KeyDeriver, KeyImporter,
+// Encryptor, Decryptor, Signer, Verifier, Hasher. Each wrapper is bound to a
+// goland type representing either an option or a key.
+type CSP struct {
+	ks bccsp.KeyStore
 
 	keyGenerators map[reflect.Type]KeyGenerator
 	keyDerivers   map[reflect.Type]KeyDeriver
@@ -154,8 +46,29 @@ type impl struct {
 	hashers       map[reflect.Type]Hasher
 }
 
+func New(keyStore bccsp.KeyStore) (*CSP, error) {
+	if keyStore == nil {
+		return nil, errors.Errorf("Invalid bccsp.KeyStore instance. It must be different from nil.")
+	}
+
+	encryptors := make(map[reflect.Type]Encryptor)
+	decryptors := make(map[reflect.Type]Decryptor)
+	signers := make(map[reflect.Type]Signer)
+	verifiers := make(map[reflect.Type]Verifier)
+	hashers := make(map[reflect.Type]Hasher)
+	keyGenerators := make(map[reflect.Type]KeyGenerator)
+	keyDerivers := make(map[reflect.Type]KeyDeriver)
+	keyImporters := make(map[reflect.Type]KeyImporter)
+
+	csp := &CSP{keyStore,
+		keyGenerators, keyDerivers, keyImporters, encryptors,
+		decryptors, signers, verifiers, hashers}
+
+	return csp, nil
+}
+
 // KeyGen generates a key using opts.
-func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+func (csp *CSP) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Validate arguments
 	if opts == nil {
 		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
@@ -185,7 +98,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 
 // KeyDeriv derives a key from k using opts.
 // The opts argument should be appropriate for the primitive used.
-func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
+func (csp *CSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
 	// Validate arguments
 	if k == nil {
 		return nil, errors.New("Invalid Key. It must not be nil.")
@@ -218,7 +131,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 // KeyImport imports a key from its raw representation using opts.
 // The opts argument should be appropriate for the primitive used.
-func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (csp *CSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	// Validate arguments
 	if raw == nil {
 		return nil, errors.New("Invalid raw. It must not be nil.")
@@ -251,7 +164,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
-func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
+func (csp *CSP) GetKey(ski []byte) (k bccsp.Key, err error) {
 	k, err = csp.ks.GetKey(ski)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed getting key for SKI [%v]", ski)
@@ -261,7 +174,7 @@ func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
 }
 
 // Hash hashes messages msg using options opts.
-func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error) {
+func (csp *CSP) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error) {
 	// Validate arguments
 	if opts == nil {
 		return nil, errors.New("Invalid opts. It must not be nil.")
@@ -282,7 +195,7 @@ func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error
 
 // GetHash returns and instance of hash.Hash using options opts.
 // If opts is nil then the default hash function is returned.
-func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
+func (csp *CSP) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 	// Validate arguments
 	if opts == nil {
 		return nil, errors.New("Invalid opts. It must not be nil.")
@@ -307,7 +220,7 @@ func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 // Note that when a signature of a hash of a larger message is needed,
 // the caller is responsible for hashing the larger message and passing
 // the hash (as digest).
-func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+func (csp *CSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	// Validate arguments
 	if k == nil {
 		return nil, errors.New("Invalid Key. It must not be nil.")
@@ -331,7 +244,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 }
 
 // Verify verifies signature against key k and digest
-func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+func (csp *CSP) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	// Validate arguments
 	if k == nil {
 		return false, errors.New("Invalid Key. It must not be nil.")
@@ -358,7 +271,7 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 
 // Encrypt encrypts plaintext using key k.
 // The opts argument should be appropriate for the primitive used.
-func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
+func (csp *CSP) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
 	// Validate arguments
 	if k == nil {
 		return nil, errors.New("Invalid Key. It must not be nil.")
@@ -374,7 +287,7 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 
 // Decrypt decrypts ciphertext using key k.
 // The opts argument should be appropriate for the primitive used.
-func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
+func (csp *CSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
 	// Validate arguments
 	if k == nil {
 		return nil, errors.New("Invalid Key. It must not be nil.")
@@ -391,4 +304,37 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 	}
 
 	return
+}
+
+// AddWrapper binds the passed type to the passed wrapper.
+// Notice that that wrapper must be an instance of one of the following interfaces:
+// KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher.
+func (csp *CSP) AddWrapper(t reflect.Type, w interface{}) error {
+	if t == nil {
+		return errors.Errorf("type cannot be nil")
+	}
+	if w == nil {
+		return errors.Errorf("wrapper cannot be nil")
+	}
+	switch dt := w.(type) {
+	case KeyGenerator:
+		csp.keyGenerators[t] = dt
+	case KeyImporter:
+		csp.keyImporters[t] = dt
+	case KeyDeriver:
+		csp.keyDerivers[t] = dt
+	case Encryptor:
+		csp.encryptors[t] = dt
+	case Decryptor:
+		csp.decryptors[t] = dt
+	case Signer:
+		csp.signers[t] = dt
+	case Verifier:
+		csp.verifiers[t] = dt
+	case Hasher:
+		csp.hashers[t] = dt
+	default:
+		return errors.Errorf("wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
+	}
+	return nil
 }
