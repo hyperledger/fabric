@@ -120,12 +120,7 @@ that is not defined in a consortium may be added to an existing channel.
 Current State
 -------------
 
-The current state of the ledger represents the latest values for all keys ever
-included in its chain transaction log. Peers commit the latest values to ledger
-current state for each valid transaction included in a processed block. Since
-current state represents all latest key values known to the channel, it is
-sometimes referred to as World State. Chaincode executes transaction proposals
-against current state data.
+See World-State_.
 
 .. _Dynamic-Membership:
 
@@ -410,6 +405,25 @@ Invokes are requests to read/write data from the ledger. Instantiate is a reques
 start and initialize a chaincode on a channel. Application clients gather invoke or
 instantiate responses from endorsing peers and package the results and endorsements
 into a transaction that is submitted for ordering, validation, and commit.
+
+.. _World-State:
+
+World State
+-----------
+
+Also known as the “current state”, the world state is a component of the
+HyperLedger Fabric :ref:`Ledger`. The world state represents the latest values
+for all keys included in the chain transaction log. Chaincode executes
+transaction proposals against world state data because the world state provides
+direct access to the latest value of these keys rather than having to calculate
+them by traversing the entire transaction log. The world state will change
+every time the value of a key changes (for example, when the ownership of a
+car -- the "key" -- is transferred from one owner to another -- the
+"value") or when a new key is added (a car is created). As a result, the world
+state is critical to a transaction flow, since the current state of a key-value
+pair must be known before it can be changed. Peers commit the latest values to
+the ledger world state for each valid transaction included in a processed block.
+
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
