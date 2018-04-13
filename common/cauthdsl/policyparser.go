@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/Knetic/govaluate"
 	"github.com/hyperledger/fabric/protos/common"
@@ -28,8 +29,29 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:].-]+)([.])(member|admin|client|peer|orderer)$")
-var regexErr *regexp.Regexp = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
+// Gate values
+const (
+	GateAnd   = "And"
+	GateOr    = "Or"
+	GateOutOf = "OutOf"
+)
+
+// Role values for principals
+const (
+	RoleAdmin  = "admin"
+	RoleMember = "member"
+	RoleClient = "client"
+	RolePeer   = "peer"
+	// RoleOrderer = "orderer" TODO
+)
+
+var (
+	regex = regexp.MustCompile(
+		fmt.Sprintf("^([[:alnum:].-]+)([.])(%s|%s|%s|%s)$",
+			RoleAdmin, RoleMember, RoleClient, RolePeer),
+	)
+	regexErr = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
+)
 
 // a stub function - it returns the same string as it's passed.
 // This will be evaluated by second/third passes to convert to a proto policy
@@ -150,13 +172,13 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			/* get the right role */
 			var r msp.MSPRole_MSPRoleType
 			switch subm[0][3] {
-			case "member":
+			case RoleMember:
 				r = msp.MSPRole_MEMBER
-			case "admin":
+			case RoleAdmin:
 				r = msp.MSPRole_ADMIN
-			case "client":
+			case RoleClient:
 				r = msp.MSPRole_CLIENT
-			case "peer":
+			case RolePeer:
 				r = msp.MSPRole_PEER
 			default:
 				return nil, fmt.Errorf("Error parsing role %s", t)
@@ -203,24 +225,37 @@ func newContext() *context {
 
 // FromString takes a string representation of the policy,
 // parses it and returns a SignaturePolicyEnvelope that
-// implements that policy. The supported language is as follows
+// implements that policy. The supported language is as follows:
 //
 // GATE(P[, P])
 //
-// where
+// where:
 //	- GATE is either "and" or "or"
 //	- P is either a principal or another nested call to GATE
 //
-// a principal is defined as
+// A principal is defined as:
 //
 // ORG.ROLE
 //
-// where
+// where:
 //	- ORG is a string (representing the MSP identifier)
-//	- ROLE is either the string "member", "admin", "client", "peer", or the string "orderer" representing the required role
+//	- ROLE takes the value of any of the RoleXXX constants representing
+//    the required role
 func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
-	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(policy, map[string]govaluate.ExpressionFunction{"AND": and, "and": and, "OR": or, "or": or, "OUTOF": outof, "outof": outof, "OutOf": outof})
+	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(
+		policy, map[string]govaluate.ExpressionFunction{
+			GateAnd:                  and,
+			strings.ToLower(GateAnd): and,
+			strings.ToUpper(GateAnd): and,
+			GateOr:                     or,
+			strings.ToLower(GateOr):    or,
+			strings.ToUpper(GateOr):    or,
+			GateOutOf:                  outof,
+			strings.ToLower(GateOutOf): outof,
+			strings.ToUpper(GateOutOf): outof,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
