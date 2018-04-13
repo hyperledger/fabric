@@ -92,7 +92,7 @@ many chaincodes which access it. In this example, we can see that peer P1
 hosts ledgers L1 and L2. L1 is accessed by chaincodes S1 and S2, whereas
 L2 is accessed by S3 and S1. We can see that S1 can access both L1 and L2.*
 
-We'll see a little later why the concept of **channels** in Hyperldeger Fabric
+We'll see a little later why the concept of **channels** in Hyperledger Fabric
 is important when hosting multiple ledgers or multiple chaincodes on a
 peer.
 

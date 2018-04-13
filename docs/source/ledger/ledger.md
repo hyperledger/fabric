@@ -224,7 +224,7 @@ In the above example, we can see the following fields:
 
 * **Signature**
 
-  This section, illustrated by S4, contains a cryptgraphic signature, created by
+  This section, illustrated by S4, contains a cryptographic signature, created by
   the client application. This field is used to check that the transaction
   details have not been tampered with, as it requires the application's private
   key to generate it.
@@ -282,7 +282,7 @@ between a network node and a CouchDB instance. All of this is invisible to
 chaincode. See [CouchDB as the StateDatabase](./couchdb_as_state_database.html)
 for more information on CouchDB.
 
-In LeveDB and CouchDB, we see an important aspect of Hyperledger Fabric -- it is
+In LevelDB and CouchDB, we see an important aspect of Hyperledger Fabric -- it is
 *pluggable*. The world state database could be a relational data store, or a
 graph store, or a temporal database.  This provides great flexibility in the
 types of ledger states that can be efficiently accessed, allowing Hyperledger
@@ -323,7 +323,7 @@ headers and hashes.  If you're interested in the precise details of these, you
 will find a dedicated reference topic elsewhere in the documentation. It gives
 you a fully worked example of an entire block with its transactions in glorious
 detail -- but for now, you have achieved a solid conceptual understanding of a
-Hypterledger Fabric ledger. Well done!
+Hyperledger Fabric ledger. Well done!
 
 ## More information
 

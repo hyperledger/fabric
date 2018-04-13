@@ -57,7 +57,7 @@ flags are
 
 * `-o` or `--orderer <string>`
 
-  Ordering service endpoint specifed as `<hostname or IP address>:<port>`
+  Ordering service endpoint specified as `<hostname or IP address>:<port>`
 
 * `--ordererTLSHostnameOverride <string>`
 

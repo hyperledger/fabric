@@ -42,7 +42,7 @@ The `peer node start` command has the following command specific flag:
 * `--peer-chaincodedev`
 
   starts peer node in chaincode development mode. Normally chaincode containers are started
-  and maintained by peer. However in devlopment mode, chaincode is built and started by the user.
+  and maintained by peer. However in development mode, chaincode is built and started by the user.
   This mode is useful during chaincode development phase for iterative development.
   See more information on development mode in the [chaincode tutorial](../chaincode4ade.html).
 
