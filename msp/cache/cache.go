@@ -58,12 +58,24 @@ type cachedMSP struct {
 	spcMutex sync.Mutex // synchronize access to cache
 }
 
+type cachedIdentity struct {
+	msp.Identity
+	cache *cachedMSP
+}
+
+func (id *cachedIdentity) SatisfiesPrincipal(principal *pmsp.MSPPrincipal) error {
+	return id.cache.SatisfiesPrincipal(id.Identity, principal)
+}
+
 func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
 	c.dicMutex.Lock()
-	cached, ok := c.deserializeIdentityCache.Get(string(serializedIdentity))
+	id, ok := c.deserializeIdentityCache.Get(string(serializedIdentity))
 	c.dicMutex.Unlock()
 	if ok {
-		return cached.(msp.Identity), nil
+		return &cachedIdentity{
+			cache:    c,
+			Identity: id.(msp.Identity),
+		}, nil
 	}
 
 	id, err := c.MSP.DeserializeIdentity(serializedIdentity)
@@ -71,8 +83,12 @@ func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity
 		c.dicMutex.Lock()
 		defer c.dicMutex.Unlock()
 		c.deserializeIdentityCache.Add(string(serializedIdentity), id)
+		return &cachedIdentity{
+			cache:    c,
+			Identity: id.(msp.Identity),
+		}, nil
 	}
-	return id, err
+	return nil, err
 }
 
 func (c *cachedMSP) Setup(config *pmsp.MSPConfig) error {
