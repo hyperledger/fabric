@@ -169,9 +169,8 @@ func TestCachePurgeCache(t *testing.T) {
 	cache := newAuthCache(as, authCacheConfig{maxCacheSize: 4, purgeRetentionRatio: 0.75})
 	as.On("ConfigSequence", "mychannel").Return(uint64(0))
 
-	// Warm up the cache - attempt to place 5 identities but the cache size is 4 so among the first 4 identities,
-	// only 3 of them should be cached
-	for _, id := range []string{"identity1", "identity2", "identity3", "identity4", "identity5"} {
+	// Warm up the cache - attempt to place 4 identities to fill it up
+	for _, id := range []string{"identity1", "identity2", "identity3", "identity4"} {
 		sd := common.SignedData{
 			Data:      []byte{1, 2, 3},
 			Identity:  []byte(id),
@@ -185,7 +184,7 @@ func TestCachePurgeCache(t *testing.T) {
 
 	// Now, ensure that at least 1 of the identities was evicted from the cache, but not all
 	var evicted int
-	for _, id := range []string{"identity1", "identity2", "identity3", "identity4"} {
+	for _, id := range []string{"identity5", "identity1", "identity2"} {
 		sd := common.SignedData{
 			Data:      []byte{1, 2, 3},
 			Identity:  []byte(id),
@@ -197,7 +196,7 @@ func TestCachePurgeCache(t *testing.T) {
 			evicted++
 		}
 	}
-	assert.True(t, evicted > 0 && evicted < 3)
+	assert.True(t, evicted > 0 && evicted < 4, "evicted: %d, but expected between 1 and 3 evictions", evicted)
 }
 
 func TestCacheConcurrentConfigUpdate(t *testing.T) {
