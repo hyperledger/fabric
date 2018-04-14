@@ -50,7 +50,7 @@ included in the submitted transaction,  versus just output data. Therefore,
 the input data can be private to the endorsers only.
 If you do not want the orderers to see chaincode output, then you can hash or
 encrypt the data before calling chaincode. If you hash the data then you will
-need to provide a meansto share the source data. If you encrypt the data then
+need to provide a means to share the source data. If you encrypt the data then
 you will need to provide a means to share the decryption keys.
 
 Application-side Programming Model
