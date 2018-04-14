@@ -8,18 +8,20 @@ package cc
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/pkg/errors"
 )
 
 // Subscription channels information flow
 // about a specific channel into the Lifecycle
 type Subscription struct {
-	lc       *Lifecycle
-	channel  string
-	newQuery QueryCreator
+	sync.Mutex
+	lc             *Lifecycle
+	channel        string
+	queryCreator   QueryCreator
+	pendingUpdates chan *cceventmgmt.ChaincodeDefinition
 }
 
 type depCCsRetriever func(Query, ChaincodePredicate, ...string) (chaincode.MetadataSet, error)
@@ -27,32 +29,50 @@ type depCCsRetriever func(Query, ChaincodePredicate, ...string) (chaincode.Metad
 // HandleChaincodeDeploy is expected to be invoked when a chaincode is deployed via a deploy transaction and the chaicndoe was already
 // installed on the peer. This also gets invoked when an already deployed chaincode is installed on the peer
 func (sub *Subscription) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
-	logger.Debug("Channel", sub.channel, "got a new deployment:", chaincodeDefinition)
-	query, err := sub.newQuery()
-	if err != nil {
-		return errors.WithStack(err)
-	}
+	Logger.Debug("Channel", sub.channel, "got a new deployment:", chaincodeDefinition)
+	sub.pendingUpdates <- chaincodeDefinition
+	return nil
+}
 
+func (sub *Subscription) processPendingUpdate(ccDef *cceventmgmt.ChaincodeDefinition) {
+	query, err := sub.queryCreator.NewQuery()
+	if err != nil {
+		Logger.Errorf("Failed creating a new query for channel %s: %v", sub.channel, err)
+		return
+	}
 	installedCC := []chaincode.InstalledChaincode{{
-		Name:    chaincodeDefinition.Name,
-		Version: chaincodeDefinition.Version,
-		Id:      chaincodeDefinition.Hash,
+		Name:    ccDef.Name,
+		Version: ccDef.Version,
+		Id:      ccDef.Hash,
 	}}
 	ccs, err := queryChaincodeDefinitions(query, installedCC, DeployedChaincodes)
 	if err != nil {
-		logger.Warning("Channel", sub.channel, "returning with error for", chaincodeDefinition, ":", err)
-		return errors.Wrapf(err, "failed querying chaincode definition")
+		Logger.Errorf("Query for channel %s for %v failed with error %v", sub.channel, ccDef, err)
+		return
 	}
-	logger.Debugf("Updating channel", sub.channel, "with", ccs.AsChaincodes())
+	Logger.Debug("Updating channel", sub.channel, "with", ccs.AsChaincodes())
 	sub.lc.updateState(sub.channel, ccs)
 	sub.lc.fireChangeListeners(sub.channel)
-	return nil
 }
 
 // ChaincodeDeployDone gets invoked when the chaincode deploy transaction or chaincode install
 // (the context in which the above function was invoked)
 func (sub *Subscription) ChaincodeDeployDone(succeeded bool) {
-	// Noop
+	// Run a new goroutine which would dispatch a single pending update.
+	// This is to prevent any ledger locks being obtained during the state query
+	// to affect the locks held while invoking this method by the ledger itself.
+	// We first lock and then take the pending update, to preserve order.
+	sub.Lock()
+	go func() {
+		defer sub.Unlock()
+		update := <-sub.pendingUpdates
+		// If we haven't succeeded in deploying the chaincode, just skip the update
+		if !succeeded {
+			Logger.Error("Chaincode deploy for", update.Name, "failed")
+			return
+		}
+		sub.processPendingUpdate(update)
+	}()
 }
 
 func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, deployedCCs depCCsRetriever) (chaincode.MetadataSet, error) {
@@ -60,18 +80,18 @@ func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, 
 	installedCCsToIDs := make(map[nameVersion][]byte)
 	// Populate the map
 	for _, cc := range ccs {
-		logger.Debugf("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Id)
+		Logger.Debug("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Id)
 		installedCCsToIDs[installedCCToNameVersion(cc)] = cc.Id
 	}
 
 	filter := func(cc chaincode.Metadata) bool {
 		installedID, exists := installedCCsToIDs[deployedCCToNameVersion(cc)]
 		if !exists {
-			logger.Debug("Chaincode", cc, "is instantiated but a different version is installed")
+			Logger.Debug("Chaincode", cc, "is instantiated but a different version is installed")
 			return false
 		}
 		if !bytes.Equal(installedID, cc.Id) {
-			logger.Debug("ID of chaincode", cc, "on filesystem doesn't match ID in ledger")
+			Logger.Debug("ID of chaincode", cc, "on filesystem doesn't match ID in ledger")
 			return false
 		}
 		return true

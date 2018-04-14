@@ -50,7 +50,7 @@ func InstalledCCs(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) (
 		// Skip files that don't adhere to the file naming convention of "A.B"
 		i := strings.Index(f.Name(), ".")
 		if i == -1 {
-			logger.Info("Skipping", f.Name(), "because of missing separator '.'")
+			Logger.Info("Skipping", f.Name(), "because of missing separator '.'")
 			continue
 		}
 		ccName := f.Name()[:i]      // Everything before the separator
@@ -58,7 +58,7 @@ func InstalledCCs(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) (
 
 		ccPackage, err := ccFromPath(ccName, ccVersion, dir)
 		if err != nil {
-			logger.Warning("Failed obtaining chaincode information about", ccName, ccVersion, ":", err)
+			Logger.Warning("Failed obtaining chaincode information about", ccName, ccVersion, ":", err)
 			return nil, errors.Wrapf(err, "failed obtaining information about %s, version %s", ccName, ccVersion)
 		}
 
@@ -68,7 +68,7 @@ func InstalledCCs(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) (
 			Id:      ccPackage.GetId(),
 		})
 	}
-	logger.Debug("Returning", chaincodes)
+	Logger.Debug("Returning", chaincodes)
 	return chaincodes, nil
 }
 
@@ -83,20 +83,20 @@ func DeployedChaincodes(q Query, filter ChaincodePredicate, chaincodes ...string
 	for _, cc := range chaincodes {
 		data, err := q.GetState("lscc", cc)
 		if err != nil {
-			logger.Error("Failed querying lscc namespace:", err)
+			Logger.Error("Failed querying lscc namespace:", err)
 			return nil, errors.WithStack(err)
 		}
 		if len(data) == 0 {
-			logger.Info("Chaincode", cc, "isn't instantiated")
+			Logger.Info("Chaincode", cc, "isn't instantiated")
 			continue
 		}
 		ccInfo, err := extractCCInfo(data)
 		if err != nil {
-			logger.Error("Failed extracting chaincode info about", cc, "from LSCC returned payload. Error:", err)
+			Logger.Error("Failed extracting chaincode info about", cc, "from LSCC returned payload. Error:", err)
 			continue
 		}
 		if ccInfo.Name != cc {
-			logger.Error("Chaincode", cc, "is listed in LSCC as", ccInfo.Name)
+			Logger.Error("Chaincode", cc, "is listed in LSCC as", ccInfo.Name)
 			continue
 		}
 
@@ -108,12 +108,12 @@ func DeployedChaincodes(q Query, filter ChaincodePredicate, chaincodes ...string
 		}
 
 		if !filter(instCC) {
-			logger.Debug("Filtered out", instCC)
+			Logger.Debug("Filtered out", instCC)
 			continue
 		}
 		res = append(res, instCC)
 	}
-	logger.Debug("Returning", res)
+	Logger.Debug("Returning", res)
 	return res, nil
 }
 

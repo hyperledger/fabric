@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestInstalledCCs(t *testing.T) {
@@ -249,8 +250,9 @@ func TestChaincodeInspection(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			query := &mocks.Query{}
-			query.GetStateReturnsOnCall(0, test.returnedCCBytes, test.queryErr)
-			query.GetStateReturnsOnCall(1, cc2Bytes, nil)
+			query.On("Done")
+			query.On("GetState", mock.Anything, mock.Anything).Return(test.returnedCCBytes, test.queryErr).Once()
+			query.On("GetState", mock.Anything, mock.Anything).Return(cc2Bytes, nil).Once()
 			ccInfo, err := cc.DeployedChaincodes(query, test.filter, test.queriedChaincodes...)
 			if test.queryErr != nil {
 				assert.Error(t, err)
@@ -258,7 +260,6 @@ func TestChaincodeInspection(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, test.expected, ccInfo)
-			assert.Equal(t, 1, query.DoneCallCount())
 		})
 	}
 }
