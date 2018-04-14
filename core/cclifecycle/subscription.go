@@ -24,7 +24,8 @@ type Subscription struct {
 
 type depCCsRetriever func(Query, ChaincodePredicate, ...string) (chaincode.MetadataSet, error)
 
-// HandleChaincodeDeploy is expected to be invoked when a chaincode is deployed via a deploy transaction
+// HandleChaincodeDeploy is expected to be invoked when a chaincode is deployed via a deploy transaction and the chaicndoe was already
+// installed on the peer. This also gets invoked when an already deployed chaincode is installed on the peer
 func (sub *Subscription) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
 	logger.Debug("Channel", sub.channel, "got a new deployment:", chaincodeDefinition)
 	query, err := sub.newQuery()
@@ -46,6 +47,12 @@ func (sub *Subscription) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.
 	sub.lc.updateState(sub.channel, ccs)
 	sub.lc.fireChangeListeners(sub.channel)
 	return nil
+}
+
+// ChaincodeDeployDone gets invoked when the chaincode deploy transaction or chaincode install
+// (the context in which the above function was invoked)
+func (sub *Subscription) ChaincodeDeployDone(succeeded bool) {
+	// Noop
 }
 
 func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, deployedCCs depCCsRetriever) (chaincode.MetadataSet, error) {

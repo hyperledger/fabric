@@ -26,7 +26,7 @@ import (
 
 // PeerLedgerProvider provides handle to ledger instances
 type PeerLedgerProvider interface {
-	Initialize(statelisteners StateListeners)
+	Initialize(statelisteners []StateListener)
 	// Create creates a new ledger with the given genesis block.
 	// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 	// The chain id retrieved from the genesis block is treated as a ledger id
@@ -267,6 +267,8 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 	return txSim.PvtSimulationResults != nil
 }
 
+//go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
+
 // StateListener allows a custom code for performing additional stuff upon state change
 // for a perticular namespace against which the listener is registered.
 // This helps to perform custom tasks other than the state updates.
@@ -279,11 +281,10 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // function returns an error, the ledger implementation is expected to halt block commit operation
 // and result in a panic
 type StateListener interface {
-	HandleStateUpdates(ledgerID string, stateUpdates StateUpdates) error
+	InterestedInNamespaces() []string
+	HandleStateUpdates(ledgerID string, stateUpdates StateUpdates, committingBlockNum uint64) error
+	StateCommitDone(channelID string)
 }
 
 // StateUpdates is the generic type to represent the state updates
-type StateUpdates interface{}
-
-// StateListeners maintains the association between a namespace to its corresponding listener
-type StateListeners map[string]StateListener
+type StateUpdates map[string]interface{}

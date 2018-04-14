@@ -119,6 +119,11 @@ func (vdb *VersionedDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.C
 
 }
 
+// ChaincodeDeployDone is a noop for couchdb state impl
+func (vdb *VersionedDB) ChaincodeDeployDone(succeeded bool) {
+	// NOOP
+}
+
 // GetDBHandle gets the handle to a named database
 func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.VersionedDB, error) {
 

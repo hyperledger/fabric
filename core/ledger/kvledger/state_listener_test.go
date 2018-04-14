@@ -25,8 +25,8 @@ func TestStateListener(t *testing.T) {
 	// create a listener and register it to listen to state change in a namespace
 	channelid := "testLedger"
 	namespace := "testchaincode"
-	mockListener := &mockStateListener{}
-	provider.Initialize(ledger.StateListeners{namespace: mockListener})
+	mockListener := &mockStateListener{namespace: namespace}
+	provider.Initialize([]ledger.StateListener{mockListener})
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)
 	lgr, err := provider.Create(gb)
@@ -89,13 +89,22 @@ func TestStateListener(t *testing.T) {
 
 type mockStateListener struct {
 	channelName string
+	namespace   string
 	kvWrites    []*kvrwset.KVWrite
 }
 
-func (l *mockStateListener) HandleStateUpdates(channelName string, stateUpdates ledger.StateUpdates) error {
+func (l *mockStateListener) InterestedInNamespaces() []string {
+	return []string{l.namespace}
+}
+
+func (l *mockStateListener) HandleStateUpdates(channelName string, stateUpdates ledger.StateUpdates, committingBlockNum uint64) error {
 	l.channelName = channelName
-	l.kvWrites = stateUpdates.([]*kvrwset.KVWrite)
+	l.kvWrites = stateUpdates[l.namespace].([]*kvrwset.KVWrite)
 	return nil
+}
+
+func (l *mockStateListener) StateCommitDone(channelID string) {
+	// NOOP
 }
 
 func (l *mockStateListener) reset() {
