@@ -64,14 +64,11 @@ func TestIdemix(t *testing.T) {
 
 	// Test issuance
 	sk := RandModOrder(rng)
-	randCred := RandModOrder(rng)
 	ni := RandModOrder(rng)
-	m := NewCredRequest(sk, randCred, ni, key.IPk, rng)
+	m := NewCredRequest(sk, ni, key.IPk, rng)
 
 	cred, err := NewCredential(key, m, attrs, rng)
 	assert.NoError(t, err, "Failed to issue a credential: \"%s\"", err)
-
-	cred.Complete(randCred)
 
 	assert.NoError(t, cred.Ver(sk, key.IPk), "credential should be valid")
 

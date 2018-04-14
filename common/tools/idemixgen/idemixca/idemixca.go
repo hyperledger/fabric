@@ -64,14 +64,12 @@ func GenerateSignerConfig(isAdmin bool, ouString string, key *idemix.IssuerKey) 
 		return nil, errors.WithMessage(err, "Error getting PRNG")
 	}
 	sk := idemix.RandModOrder(rng)
-	randCred := idemix.RandModOrder(rng)
 	ni := idemix.RandModOrder(rng)
-	msg := idemix.NewCredRequest(sk, randCred, ni, key.IPk, rng)
+	msg := idemix.NewCredRequest(sk, ni, key.IPk, rng)
 	cred, err := idemix.NewCredential(key, msg, attrs, rng)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate a credential")
 	}
-	cred.Complete(randCred)
 
 	credBytes, err := proto.Marshal(cred)
 	if err != nil {

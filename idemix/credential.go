@@ -81,11 +81,6 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *am
 		CredAttrs}, nil
 }
 
-// Complete completes the credential by updating it with the randomness used to generate CredRequest
-func (cred *Credential) Complete(credS1 *FP256BN.BIG) {
-	cred.S = BigToBytes(Modadd(FP256BN.FromBytes(cred.S), credS1, GroupOrder))
-}
-
 // Ver cryptographically verifies the credential by verifying the signature
 // on the attribute values and user's secret key
 func (cred *Credential) Ver(sk *FP256BN.BIG, ipk *IssuerPublicKey) error {

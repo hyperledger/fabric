@@ -31,15 +31,13 @@ const credRequestLabel = "credRequest"
 //    the signature value, a randomness used to create the signature, the user secret, and the attribute values
 
 // NewCredRequest creates a new Credential Request, the first message of the interactive credential issuance protocol (from user to issuer)
-func NewCredRequest(sk *FP256BN.BIG, credS1 *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublicKey, rng *amcl.RAND) *CredRequest {
+func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublicKey, rng *amcl.RAND) *CredRequest {
 	HSk := EcpFromProto(ipk.HSk)
-	HRand := EcpFromProto(ipk.HRand)
-	Nym := HSk.Mul2(sk, HRand, credS1)
+	Nym := HSk.Mul(sk)
 
 	// Create ZK Proof
 	rSk := RandModOrder(rng)
-	rRand := RandModOrder(rng)
-	t := HSk.Mul2(rSk, HRand, rRand)
+	t := HSk.Mul(rSk)
 
 	// proofData is the data being hashed, it consists of:
 	// the credential request label
@@ -56,10 +54,9 @@ func NewCredRequest(sk *FP256BN.BIG, credS1 *FP256BN.BIG, IssuerNonce *FP256BN.B
 	copy(proofData[index:], ipk.Hash)
 
 	proofC := HashModOrder(proofData)
-	proofS1 := Modadd(FP256BN.Modmul(proofC, sk, GroupOrder), rSk, GroupOrder)
-	proofS2 := Modadd(FP256BN.Modmul(proofC, credS1, GroupOrder), rRand, GroupOrder)
+	proofS := Modadd(FP256BN.Modmul(proofC, sk, GroupOrder), rSk, GroupOrder)
 
-	return &CredRequest{EcpToProto(Nym), BigToBytes(IssuerNonce), BigToBytes(proofC), BigToBytes(proofS1), BigToBytes(proofS2)}
+	return &CredRequest{EcpToProto(Nym), BigToBytes(IssuerNonce), BigToBytes(proofC), BigToBytes(proofS), nil}
 }
 
 // Check cryptographically verifies the credential request
@@ -67,17 +64,15 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	Nym := EcpFromProto(m.GetNym())
 	IssuerNonce := FP256BN.FromBytes(m.GetIssuerNonce())
 	ProofC := FP256BN.FromBytes(m.GetProofC())
-	ProofS1 := FP256BN.FromBytes(m.GetProofS1())
-	ProofS2 := FP256BN.FromBytes(m.GetProofS2())
+	ProofS := FP256BN.FromBytes(m.GetProofS1())
 
 	HSk := EcpFromProto(ipk.HSk)
-	HRand := EcpFromProto(ipk.HRand)
 
-	if Nym == nil || IssuerNonce == nil || ProofC == nil || ProofS1 == nil || ProofS2 == nil {
+	if Nym == nil || IssuerNonce == nil || ProofC == nil || ProofS == nil {
 		return errors.Errorf("one of the proof values is undefined")
 	}
 
-	t := HSk.Mul2(ProofS1, HRand, ProofS2)
+	t := HSk.Mul(ProofS)
 	t.Sub(Nym.Mul(ProofC))
 
 	// proofData is the data being hashed, it consists of:
