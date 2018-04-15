@@ -321,22 +321,32 @@ func TestGetLDFlagsOpts(t *testing.T) {
 
 //TestGenerateDockerBuild goes through the functions needed to do docker build
 func TestGenerateDockerBuild(t *testing.T) {
+	defaultGopath := os.Getenv("GOPATH")
+	testdataPath, err := filepath.Abs("testdata")
+	require.NoError(t, err)
+
+	tests := []struct {
+		gopath string
+		spec   spec
+	}{
+		{gopath: defaultGopath, spec: spec{CCName: "NoCode", Path: "path/to/nowhere", File: "/bin/warez", Mode: 0100400, SuccessExpected: false}},
+		{gopath: defaultGopath, spec: spec{CCName: "invalidhttp", Path: "https://not/a/valid/path", SuccessExpected: false, RealGen: true}},
+		{gopath: defaultGopath, spec: spec{CCName: "map", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", SuccessExpected: true, RealGen: true}},
+		{gopath: defaultGopath, spec: spec{CCName: "mapBadPath", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/bad/path/to/map.go", Mode: 0100400, SuccessExpected: false}},
+		{gopath: defaultGopath, spec: spec{CCName: "mapBadMode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/chaincode/go/map/map.go", Mode: 0100555, SuccessExpected: false}},
+		{gopath: testdataPath, spec: spec{CCName: "AutoVendor", Path: "chaincodes/AutoVendor/chaincode", SuccessExpected: true, RealGen: true}},
+	}
+
 	platform := &Platform{}
+	for _, test := range tests {
+		tst := test.spec
+		reset := updateGopath(t, test.gopath)
 
-	specs := make([]spec, 0)
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/nowhere", File: "/bin/warez", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "invalidhttp", Path: "https://not/a/valid/path", File: "/src/github.com/hyperledger/fabric/examples/chaincode/go/map/map.go", Mode: 0100400, SuccessExpected: false, RealGen: true})
-	specs = append(specs, spec{CCName: "map", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/chaincode/go/map/map.go", Mode: 0100400, SuccessExpected: true, RealGen: true})
-	specs = append(specs, spec{CCName: "AutoVendor", Path: "github.com/hyperledger/fabric/test/chaincodes/AutoVendor/chaincode", File: "/src/github.com/hyperledger/fabric/test/chaincodes/AutoVendor/chaincode/main.go", Mode: 0100400, SuccessExpected: true, RealGen: true})
-	specs = append(specs, spec{CCName: "mapBadPath", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/bad/path/to/map.go", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "mapBadMode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/chaincode/go/map/map.go", Mode: 0100555, SuccessExpected: false})
-
-	var err error
-	for _, tst := range specs {
 		inputbuf := bytes.NewBuffer(nil)
 		tw := tar.NewWriter(inputbuf)
 
 		var cds *pb.ChaincodeDeploymentSpec
+		var err error
 		if tst.RealGen {
 			cds = &pb.ChaincodeDeploymentSpec{
 				ChaincodeSpec: &pb.ChaincodeSpec{
@@ -362,6 +372,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 		if err = testerr(err, tst.SuccessExpected); err != nil {
 			t.Errorf("Error validating chaincode spec: %s, %s", cds.ChaincodeSpec.ChaincodeId.Path, err)
 		}
+		reset()
 	}
 }
 

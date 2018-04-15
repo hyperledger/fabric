@@ -8,7 +8,7 @@
 package directdep
 
 import (
-	"github.com/hyperledger/fabric/test/chaincodes/AutoVendor/indirectdep"
+	"chaincodes/AutoVendor/indirectdep"
 )
 
 func PointlessFunction() {
