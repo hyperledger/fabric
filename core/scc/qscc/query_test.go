@@ -262,7 +262,7 @@ func TestQueryNonexistentFunction(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("GetBlocks"), []byte(chainid), []byte("arg1")}
-	prop := resetProvider("qscc.GetBlocks", chainid, &peer2.SignedProposal{}, nil)
+	prop := resetProvider("qscc/GetBlocks", chainid, &peer2.SignedProposal{}, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
 	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlocks should have failed because the function does not exist")
 }
