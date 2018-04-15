@@ -65,7 +65,7 @@ func (*mockTransientStore) PurgeByTxids(txids []string) error {
 func TestInitGossipService(t *testing.T) {
 	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
-	socket, error := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 35611))
+	socket, error := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
 	assert.NoError(t, error)
 
 	msptesttools.LoadMSPSetupForTesting()
@@ -78,7 +78,7 @@ func TestInitGossipService(t *testing.T) {
 			defer wg.Done()
 			messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
 			secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-			err := InitGossipService(identity, "localhost:35611", grpcServer, nil, messageCryptoService,
+			err := InitGossipService(identity, "localhost:5611", grpcServer, nil, messageCryptoService,
 				secAdv, nil)
 			assert.NoError(t, err)
 		}()
@@ -116,14 +116,14 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	viper.Set("peer.gossip.useLeaderElection", true)
 	viper.Set("peer.gossip.orgLeader", false)
 	n := 10
-	gossips := startPeers(t, n, 34611)
+	gossips := startPeers(t, n, 20100)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-	addPeersToChannel(t, n, 34611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, 20100, channelName, gossips, peerIndexes)
 
 	waitForFullMembership(t, gossips, n, time.Second*20, time.Second*2)
 
@@ -175,7 +175,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	viper.Set("peer.gossip.orgLeader", true)
 
 	n := 2
-	gossips := startPeers(t, n, 33611)
+	gossips := startPeers(t, n, 20200)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -183,7 +183,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, 33611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, 20200, channelName, gossips, peerIndexes)
 
 	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
 
@@ -229,7 +229,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	viper.Set("peer.gossip.orgLeader", false)
 
 	n := 2
-	gossips := startPeers(t, n, 32611)
+	gossips := startPeers(t, n, 20300)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -237,7 +237,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, 32611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, 20300, channelName, gossips, peerIndexes)
 
 	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
 
@@ -269,7 +269,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	viper.Set("peer.gossip.orgLeader", true)
 
 	n := 2
-	gossips := startPeers(t, n, 31611)
+	gossips := startPeers(t, n, 20400)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -277,7 +277,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, 31611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, 20400, channelName, gossips, peerIndexes)
 
 	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
 
@@ -375,7 +375,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	// Creating gossip service instances for peers
 	n := 10
-	gossips := startPeers(t, n, 30611)
+	gossips := startPeers(t, n, 20500)
 
 	// Joining all peers to first channel
 	channelName := "chanA"
@@ -383,7 +383,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-	addPeersToChannel(t, n, 30611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, 20500, channelName, gossips, peerIndexes)
 
 	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
 
@@ -416,7 +416,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	secondChannelPeerIndexes := []int{1, 3, 5, 7}
 	secondChannelName := "chanB"
 	secondChannelServices := make([]*electionService, len(secondChannelPeerIndexes))
-	addPeersToChannel(t, n, 30611, secondChannelName, gossips, secondChannelPeerIndexes)
+	addPeersToChannel(t, n, 20500, secondChannelName, gossips, secondChannelPeerIndexes)
 
 	for idx, i := range secondChannelPeerIndexes {
 		secondChannelServices[idx] = &electionService{nil, false, 0}

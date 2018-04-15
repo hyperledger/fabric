@@ -427,7 +427,7 @@ func TestConnect(t *testing.T) {
 	instances := []*gossipInstance{}
 	firstSentMemReqMsgs := make(chan *proto.SignedGossipMessage, nodeNum)
 	for i := 0; i < nodeNum; i++ {
-		inst := createDiscoveryInstance(17611+i, fmt.Sprintf("d%d", i), []string{})
+		inst := createDiscoveryInstance(7611+i, fmt.Sprintf("d%d", i), []string{})
 
 		inst.comm.lock.Lock()
 		inst.comm.mock = &mock.Mock{}
@@ -447,7 +447,7 @@ func TestConnect(t *testing.T) {
 
 		instances = append(instances, inst)
 		j := (i + 1) % 10
-		endpoint := fmt.Sprintf("localhost:%d", 17611+j)
+		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
 		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
 		inst.Connect(netMember2Connect2, func() (identification *PeerIdentification, err error) {
 			return &PeerIdentification{SelfOrg: false, ID: nil}, nil
@@ -479,18 +479,18 @@ func TestConnect(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 	nodeNum := 5
-	bootPeers := []string{bootPeer(16611), bootPeer(16612)}
+	bootPeers := []string{bootPeer(6611), bootPeer(6612)}
 	instances := []*gossipInstance{}
 
-	inst := createDiscoveryInstance(16611, "d1", bootPeers)
+	inst := createDiscoveryInstance(6611, "d1", bootPeers)
 	instances = append(instances, inst)
 
-	inst = createDiscoveryInstance(16612, "d2", bootPeers)
+	inst = createDiscoveryInstance(6612, "d2", bootPeers)
 	instances = append(instances, inst)
 
 	for i := 3; i <= nodeNum; i++ {
 		id := fmt.Sprintf("d%d", i)
-		inst = createDiscoveryInstance(16610+i, id, bootPeers)
+		inst = createDiscoveryInstance(6610+i, id, bootPeers)
 		instances = append(instances, inst)
 	}
 
@@ -501,7 +501,7 @@ func TestUpdate(t *testing.T) {
 	waitUntilOrFail(t, fullMembership)
 
 	instances[0].UpdateMetadata([]byte("bla bla"))
-	instances[nodeNum-1].UpdateEndpoint("localhost:15511")
+	instances[nodeNum-1].UpdateEndpoint("localhost:5511")
 
 	checkMembership := func() bool {
 		for _, member := range instances[nodeNum-1].GetMembership() {
@@ -514,7 +514,7 @@ func TestUpdate(t *testing.T) {
 
 		for _, member := range instances[0].GetMembership() {
 			if string(member.PKIid) == instances[nodeNum-1].comm.id {
-				if "localhost:15511" != string(member.Endpoint) {
+				if "localhost:5511" != string(member.Endpoint) {
 					return false
 				}
 			}
@@ -652,14 +652,14 @@ func TestGetFullMembership(t *testing.T) {
 
 func TestGossipDiscoveryStopping(t *testing.T) {
 	t.Parallel()
-	inst := createDiscoveryInstance(19611, "d1", []string{bootPeer(19611)})
+	inst := createDiscoveryInstance(9611, "d1", []string{bootPeer(9611)})
 	time.Sleep(time.Second)
 	waitUntilOrFailBlocking(t, inst.Stop)
 }
 
 func TestGossipDiscoverySkipConnectingToLocalhostBootstrap(t *testing.T) {
 	t.Parallel()
-	inst := createDiscoveryInstance(11711, "d1", []string{"localhost:11711", "127.0.0.1:11711"})
+	inst := createDiscoveryInstance(11611, "d1", []string{"localhost:11611", "127.0.0.1:11611"})
 	inst.comm.lock.Lock()
 	inst.comm.mock = &mock.Mock{}
 	inst.comm.mock.On("SendToPeer", mock.Anything, mock.Anything).Run(func(mock.Arguments) {

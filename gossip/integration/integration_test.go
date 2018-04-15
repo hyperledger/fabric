@@ -48,9 +48,9 @@ func TestNewGossipCryptoService(t *testing.T) {
 	ll1, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
 	ll2, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5612))
 	ll3, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5613))
-	endpoint1 := "localhost:55611"
-	endpoint2 := "localhost:55612"
-	endpoint3 := "localhost:55613"
+	endpoint1 := "localhost:5611"
+	endpoint2 := "localhost:5612"
+	endpoint3 := "localhost:5613"
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	g1, err := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc,
