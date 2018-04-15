@@ -41,7 +41,7 @@ func createTestServer(t *testing.T, cert *tls.Certificate) *gossipTestServer {
 		InsecureSkipVerify: true,
 	}
 	s := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
-	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 2030))
+	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
 	assert.NoError(t, err, "%v", err)
 
 	srv := &gossipTestServer{s: s, ll: ll, selfCertHash: certHashFromRawCert(cert.Certificate[0])}
@@ -85,7 +85,7 @@ func TestCertificateExtraction(t *testing.T) {
 	})
 	ctx := context.Background()
 	ctx, _ = context.WithTimeout(ctx, time.Second)
-	conn, err := grpc.DialContext(ctx, "localhost:2030", grpc.WithTransportCredentials(ta), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, "localhost:5611", grpc.WithTransportCredentials(ta), grpc.WithBlock())
 	assert.NoError(t, err, "%v", err)
 
 	cl := proto.NewGossipClient(conn)

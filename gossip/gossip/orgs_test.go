@@ -276,7 +276,7 @@ func TestConfidentiality(t *testing.T) {
 	// from a peer in org Y about a peer in org Z not in {X, Y}
 	// or if any org other than orgB knows peers in orgD (and vice versa).
 
-	portPrefix := 42610
+	portPrefix := 12610
 	peersInOrg := 3
 	externalEndpointsInOrg := 2
 

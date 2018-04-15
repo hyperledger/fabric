@@ -44,7 +44,7 @@ import (
 )
 
 var (
-	portStartRange = 28000
+	portStartRange = 5610
 
 	orgID = []byte("ORG1")
 
