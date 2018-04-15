@@ -205,3 +205,20 @@ func ChannelCreationPolicyValue(policy *cb.Policy) *StandardConfigValue {
 		value: policy,
 	}
 }
+
+// ACLsValues returns the config definition for an applications resources based ACL definitions.
+// It is a value for the /Channel/Application/.
+func ACLValues(acls map[string]string) *StandardConfigValue {
+	a := &pb.ACLs{
+		Acls: make(map[string]*pb.APIResource),
+	}
+
+	for apiResource, policyRef := range acls {
+		a.Acls[apiResource] = &pb.APIResource{PolicyRef: policyRef}
+	}
+
+	return &StandardConfigValue{
+		key:   ACLsKey,
+		value: a,
+	}
+}

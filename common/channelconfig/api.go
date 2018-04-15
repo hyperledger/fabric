@@ -39,6 +39,9 @@ type Application interface {
 	// Organizations returns a map of org ID to ApplicationOrg
 	Organizations() map[string]ApplicationOrg
 
+	// ACLs returns map of string to APIResource
+	ACLs() map[string]*pb.APIResource
+
 	// Capabilities defines the capabilities for the application portion of a channel
 	Capabilities() ApplicationCapabilities
 }

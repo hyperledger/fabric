@@ -389,7 +389,7 @@ func TestInvalidFunction(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -445,7 +445,7 @@ func TestRWSetTooBig(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -514,7 +514,7 @@ func TestValidateDeployFail(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -803,7 +803,7 @@ func TestAlreadyDeployed(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -882,7 +882,7 @@ func TestValidateDeployNoLedger(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		QErr: fmt.Errorf("Simulated error"),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -940,7 +940,7 @@ func TestValidateDeployOK(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -998,7 +998,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1086,7 +1086,7 @@ func TestInvalidUpgrade(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1142,7 +1142,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1223,7 +1223,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1302,7 +1302,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1400,7 +1400,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{V1_1ValidationRv: v11capability}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{V1_1ValidationRv: v11capability}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1497,7 +1497,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	stub.MockPeerChaincode("lscc", stublccc)
 
@@ -1679,7 +1679,7 @@ func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lccctestpath)
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 	})
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 

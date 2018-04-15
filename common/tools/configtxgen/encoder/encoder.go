@@ -271,6 +271,10 @@ func NewApplicationGroup(conf *genesisconfig.Application) (*cb.ConfigGroup, erro
 		}
 	}
 
+	if len(conf.ACLs) > 0 {
+		addValue(applicationGroup, channelconfig.ACLValues(conf.ACLs), channelconfig.AdminsPolicyKey)
+	}
+
 	if len(conf.Capabilities) > 0 {
 		addValue(applicationGroup, channelconfig.CapabilitiesValue(conf.Capabilities), channelconfig.AdminsPolicyKey)
 	}

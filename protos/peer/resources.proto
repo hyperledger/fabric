@@ -13,11 +13,6 @@ package protos;
 
 import "common/configtx.proto";
 
-// APIResource represents an API resource in the peer whose ACL is determined by the policy_ref field
-message APIResource {
-    string policy_ref = 1; // The policy name to use for this API
-}
-
 // ChaincodeIdentifier identifies a piece of chaincode.  For a peer to accept invocations of
 // this chaincode, the hash of the installed code must match, as must the version string
 // included with the install command.

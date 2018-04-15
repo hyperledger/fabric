@@ -146,7 +146,7 @@ var theChaincodeSupport *ChaincodeSupport
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) error {
 	msi := &cmp.MockSupportImpl{
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetApplicationConfigBoolRv: true,
 	}
 	sysccprovider.RegisterSystemChaincodeProviderFactory(

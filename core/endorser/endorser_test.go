@@ -60,7 +60,7 @@ func TestEndorserNilProp(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -76,7 +76,7 @@ func TestEndorserUninvokableSysCC(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv:       true,
-		GetApplicationConfigRv:           &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:           &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:            errors.New(""),
 		IsSysCCAndNotInvokableExternalRv: true,
 	})
@@ -92,7 +92,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 1000, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -110,7 +110,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionError:   errors.New(""),
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -128,7 +128,7 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv:    true,
-		GetApplicationConfigRv:        &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:        &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:         errors.New(""),
 		CheckInstantiationPolicyError: errors.New(""),
 		ChaincodeDefinitionRv:         &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
@@ -147,7 +147,7 @@ func TestEndorserSysCC(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		IsSysCCRv:                  true,
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
@@ -166,7 +166,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ExecuteError:               errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
@@ -184,7 +184,7 @@ func TestEndorserLSCCBadType(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -210,7 +210,7 @@ func TestEndorserDupTXId(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv:           &ccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
@@ -227,7 +227,7 @@ func TestEndorserBadACL(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		CheckACLErr:                errors.New(""),
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
@@ -246,7 +246,7 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -264,7 +264,7 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -294,7 +294,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -325,7 +325,7 @@ func TestEndorserLSCCJava1(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		IsJavaRV:                   true,
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
@@ -356,7 +356,7 @@ func TestEndorserLSCCJava2(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		IsJavaErr:                  errors.New(""),
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
@@ -383,7 +383,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -402,7 +402,7 @@ func TestEndorserBadChannel(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -420,7 +420,7 @@ func TestEndorserGoodPath(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -438,7 +438,7 @@ func TestEndorserLSCC(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -464,7 +464,7 @@ func TestSimulateProposal(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
@@ -484,7 +484,7 @@ func TestEndorserJavaChecks(t *testing.T) {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
