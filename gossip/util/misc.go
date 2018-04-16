@@ -157,6 +157,18 @@ func GetIntOrDefault(key string, defVal int) int {
 	return defVal
 }
 
+// GetFloat64OrDefault returns the float64 value from config if present otherwise default value
+func GetFloat64OrDefault(key string, defVal float64) float64 {
+	viperLock.RLock()
+	defer viperLock.RUnlock()
+
+	if val := viper.GetFloat64(key); val != 0 {
+		return val
+	}
+
+	return defVal
+}
+
 // GetDurationOrDefault returns the Duration value from config if present otherwise default value
 func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
 	viperLock.RLock()

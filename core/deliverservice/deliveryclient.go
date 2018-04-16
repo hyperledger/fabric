@@ -33,15 +33,20 @@ func init() {
 
 const (
 	defaultReConnectTotalTimeThreshold = time.Second * 60 * 60
-)
-
-var (
-	connTimeout               = time.Second * 3
-	reConnectBackoffThreshold = float64(time.Hour)
+	defaultConnectionTimeout           = time.Second * 3
+	defaultReConnectBackoffThreshold   = float64(time.Hour)
 )
 
 func getReConnectTotalTimeThreshold() time.Duration {
 	return util.GetDurationOrDefault("peer.deliveryclient.reconnectTotalTimeThreshold", defaultReConnectTotalTimeThreshold)
+}
+
+func getConnectionTimeout() time.Duration {
+	return util.GetDurationOrDefault("peer.deliveryclient.connTimeout", defaultConnectionTimeout)
+}
+
+func getReConnectBackoffThreshold() float64 {
+	return util.GetFloat64OrDefault("peer.deliveryclient.reConnectBackoffThreshold", defaultReConnectBackoffThreshold)
 }
 
 // DeliverService used to communicate with orderers to obtain
@@ -222,7 +227,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		}
 		sleepIncrement := float64(time.Millisecond * 500)
 		attempt := float64(attemptNum)
-		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reConnectBackoffThreshold)), true
+		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, getReConnectBackoffThreshold())), true
 	}
 	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.conf.Endpoints)
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
@@ -259,7 +264,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		}
 		grpc.EnableTracing = true
 		ctx := context.Background()
-		ctx, _ = context.WithTimeout(ctx, connTimeout)
+		ctx, _ = context.WithTimeout(ctx, getConnectionTimeout())
 		return grpc.DialContext(ctx, endpoint, dialOpts...)
 	}
 }
