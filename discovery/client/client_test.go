@@ -298,7 +298,7 @@ func TestClient(t *testing.T) {
 
 	sup.On("PeersOfChannel").Return(channelPeersWithoutChaincodes).Times(2)
 	req := NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery()
+	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery().AddLocalPeersQuery()
 	r, err := cl.Send(ctx, req, authInfo)
 	assert.NoError(t, err)
 
@@ -308,7 +308,7 @@ func TestClient(t *testing.T) {
 	assert.Equal(t, ErrNotFound, err)
 	assert.Nil(t, peers)
 
-	endorsers, err := fakeChannel.Endorsers("mycc", Selector{})
+	endorsers, err := fakeChannel.Endorsers("mycc", NoPriorities, NoExclusion)
 	assert.Equal(t, ErrNotFound, err)
 	assert.Nil(t, endorsers)
 
@@ -322,13 +322,16 @@ func TestClient(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedConf.Msps, conf.Msps)
 	assert.Equal(t, expectedConf.Orderers, conf.Orderers)
-
 	peers, err = mychannel.Peers()
 	assert.NoError(t, err)
 	// We should see all peers as provided above
 	assert.Len(t, peers, 8)
+	// Check response for peers when doing a local query
+	peers, err = r.ForLocal().Peers()
+	assert.NoError(t, err)
+	assert.Len(t, peers, 8)
 
-	endorsers, err = mychannel.Endorsers("mycc", Selector{})
+	endorsers, err = mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
 	// However, since we didn't provide any chaincodes to these peers - the server shouldn't
 	// be able to construct the descriptor.
 	// Just check that the appropriate error is returned, and nothing crashes.
@@ -348,7 +351,7 @@ func TestClient(t *testing.T) {
 	assert.Len(t, peers, 8)
 
 	// We should get a valid endorsement descriptor from the service
-	endorsers, err = mychannel.Endorsers("mycc", Selector{})
+	endorsers, err = mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
 	assert.NoError(t, err)
 	// The combinations of endorsers should be in the expected combinations
 	assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
@@ -444,7 +447,7 @@ func TestBadResponses(t *testing.T) {
 	r, err = cl.Send(ctx, req, auth)
 	assert.NoError(t, err)
 	mychannel := r.ForChannel("mychannel")
-	endorsers, err := mychannel.Endorsers("mycc", Selector{})
+	endorsers, err := mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
 	assert.Nil(t, endorsers)
 	assert.Equal(t, ErrNotFound, err)
 
@@ -476,7 +479,7 @@ func TestBadResponses(t *testing.T) {
 	r, err = cl.Send(ctx, req, auth)
 	assert.NoError(t, err)
 	mychannel = r.ForChannel("mychannel")
-	endorsers, err = mychannel.Endorsers("mycc", Selector{})
+	endorsers, err = mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
 	assert.Nil(t, endorsers)
 	assert.Contains(t, err.Error(), "no endorsement combination can be satisfied")
 
@@ -516,7 +519,6 @@ func TestValidateAliveMessage(t *testing.T) {
 	msg.Content = nil
 	err = validateAliveMessage(msg)
 	assert.Equal(t, "message isn't an alive message", err.Error())
-
 }
 
 func TestValidateStateInfoMessage(t *testing.T) {

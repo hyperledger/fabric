@@ -37,7 +37,7 @@ func TestShuffle(t *testing.T) {
 	assert.False(t, isHeightAscending(endorsers.Shuffle()))
 }
 
-func TestSelect(t *testing.T) {
+func TestExclusionAndPriority(t *testing.T) {
 	newPeer := func(i int) *Peer {
 		si := stateInfoWithHeight(uint64(i))
 		am, _ := aliveMessage(i).ToGossipMessage()
@@ -47,14 +47,12 @@ func TestSelect(t *testing.T) {
 		}
 	}
 
-	s := Selector{
-		ExclusionFilter: selectionFunc(func(p Peer) bool {
-			return p.AliveMessage.GetAliveMsg().Timestamp.SeqNum == uint64(1)
-		}),
-		PrioritySelector: PrioritiesByHeight,
-	}
+	excludeFirst := selectionFunc(func(p Peer) bool {
+		return p.AliveMessage.GetAliveMsg().Timestamp.SeqNum == uint64(1)
+	})
+
 	givenPeers := Endorsers{newPeer(3), newPeer(5), newPeer(1), newPeer(4), newPeer(2), newPeer(3)}
-	assert.Equal(t, []int{5, 4, 3, 3, 2}, heights(s.Select(givenPeers)))
+	assert.Equal(t, []int{5, 4, 3, 3, 2}, heights(givenPeers.Filter(excludeFirst).Sort(PrioritiesByHeight)))
 }
 
 func TestExcludeEndpoints(t *testing.T) {

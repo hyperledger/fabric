@@ -136,26 +136,39 @@ func TestService(t *testing.T) {
 	// Scenario VIII: Request with a membership query
 	// Peers in membership view: { p0, p1, p2, p3}
 	// Peers in channel view: {p1, p2, p4}
-	// So that means that the returned peers should be the intersection
-	// which is: {p1, p2}
+	// So that means that the returned peers for the channel should be the intersection
+	// which is: {p1, p2}, but the returned peers for the local query should be
+	// simply the membership view.
 	peersInMembershipView := discovery2.Members{
 		aliveMsg(0), aliveMsg(1), aliveMsg(2), aliveMsg(3),
 	}
 	peersInChannelView := discovery2.Members{
 		stateInfoMsg(1), stateInfoMsg(2), stateInfoMsg(4),
 	}
+	// EligibleForService for an "empty" channel
+	mockSup.On("EligibleForService", "", mock.Anything).Return(nil).Once()
 	mockSup.On("PeersOfChannel", common2.ChainID("channelWithAccessGranted")).Return(peersInChannelView).Once()
-	mockSup.On("Peers").Return(peersInMembershipView).Once()
+	mockSup.On("Peers").Return(peersInMembershipView).Twice()
 	mockSup.On("IdentityInfo").Return(api.PeerIdentitySet{
 		idInfo(0, "O2"), idInfo(1, "O2"), idInfo(2, "O3"),
 		idInfo(3, "O3"), idInfo(4, "O3"),
-	}).Once()
+	}).Twice()
 
-	req.Queries[0].Query = &discovery.Query_PeerQuery{
-		PeerQuery: &discovery.PeerMembershipQuery{},
+	req.Queries = []*discovery.Query{
+		{
+			Channel: "channelWithAccessGranted",
+			Query: &discovery.Query_PeerQuery{
+				PeerQuery: &discovery.PeerMembershipQuery{},
+			},
+		},
+		{
+			Query: &discovery.Query_LocalPeers{
+				LocalPeers: &discovery.LocalPeerQuery{},
+			},
+		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	expected = wrapResult(&discovery.PeerMembershipResult{
+	expectedChannelResponse := &discovery.PeerMembershipResult{
 		PeersByOrg: map[string]*discovery.Peers{
 			"O2": {
 				Peers: []*discovery.Peer{
@@ -176,10 +189,63 @@ func TestService(t *testing.T) {
 				},
 			},
 		},
-	})
+	}
+	expectedLocalResponse := &discovery.PeerMembershipResult{
+		PeersByOrg: map[string]*discovery.Peers{
+			"O2": {
+				Peers: []*discovery.Peer{
+					{
+						Identity:       idInfo(0, "O2").Identity,
+						MembershipInfo: aliveMsg(0).Envelope,
+					},
+					{
+						Identity:       idInfo(1, "O2").Identity,
+						MembershipInfo: aliveMsg(1).Envelope,
+					},
+				},
+			},
+			"O3": {
+				Peers: []*discovery.Peer{
+					{
+						Identity:       idInfo(2, "O3").Identity,
+						MembershipInfo: aliveMsg(2).Envelope,
+					},
+					{
+						Identity:       idInfo(3, "O3").Identity,
+						MembershipInfo: aliveMsg(3).Envelope,
+					},
+				},
+			},
+		},
+	}
 
+	assert.Len(t, resp.Results, 2)
+	assert.Len(t, resp.Results[0].GetMembers().PeersByOrg, 2)
+	assert.Len(t, resp.Results[1].GetMembers().PeersByOrg, 2)
+
+	for org, responsePeers := range resp.Results[0].GetMembers().PeersByOrg {
+		err := peers(expectedChannelResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
+		assert.NoError(t, err)
+	}
+	for org, responsePeers := range resp.Results[1].GetMembers().PeersByOrg {
+		err := peers(expectedLocalResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
+		assert.NoError(t, err)
+	}
+
+	// Scenario IX: The client is eligible for channel queries but not for channel-less
+	// since it's not an admin. It sends a query for a channel-less query but puts a channel in the query.
+	// It should fail because channel-less query types cannot have a channel configured in them.
+	req.Queries = []*discovery.Query{
+		{
+			Channel: "channelWithAccessGranted",
+			Query: &discovery.Query_LocalPeers{
+				LocalPeers: &discovery.LocalPeerQuery{},
+			},
+		},
+	}
+	resp, err = service.Discover(ctx, toSignedRequest(req))
 	assert.NoError(t, err)
-	assert.Equal(t, expected, resp)
+	assert.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
 }
 
 func TestValidateStructure(t *testing.T) {
@@ -278,48 +344,40 @@ func TestValidateStructure(t *testing.T) {
 	}, "", true, extractHash)
 }
 
-func wrapResult(res interface{}) *discovery.Response {
+func wrapResult(responses ...interface{}) *discovery.Response {
+	response := &discovery.Response{}
+	for _, res := range responses {
+		response.Results = append(response.Results, wrapQueryResult(res))
+	}
+	return response
+}
+
+func wrapQueryResult(res interface{}) *discovery.QueryResult {
 	if err, isErr := res.(*discovery.Error); isErr {
-		return &discovery.Response{
-			Results: []*discovery.QueryResult{
-				{
-					Result: &discovery.QueryResult_Error{
-						Error: err,
-					},
-				},
+		return &discovery.QueryResult{
+			Result: &discovery.QueryResult_Error{
+				Error: err,
 			},
 		}
 	}
 	if ccRes, isCCQuery := res.(*discovery.ChaincodeQueryResult); isCCQuery {
-		return &discovery.Response{
-			Results: []*discovery.QueryResult{
-				{
-					Result: &discovery.QueryResult_CcQueryRes{
-						CcQueryRes: ccRes,
-					},
-				},
+		return &discovery.QueryResult{
+			Result: &discovery.QueryResult_CcQueryRes{
+				CcQueryRes: ccRes,
 			},
 		}
 	}
 	if membRes, isMembershipQuery := res.(*discovery.PeerMembershipResult); isMembershipQuery {
-		return &discovery.Response{
-			Results: []*discovery.QueryResult{
-				{
-					Result: &discovery.QueryResult_Members{
-						Members: membRes,
-					},
-				},
+		return &discovery.QueryResult{
+			Result: &discovery.QueryResult_Members{
+				Members: membRes,
 			},
 		}
 	}
 	if confRes, isConfQuery := res.(*discovery.ConfigResult); isConfQuery {
-		return &discovery.Response{
-			Results: []*discovery.QueryResult{
-				{
-					Result: &discovery.QueryResult_ConfigResult{
-						ConfigResult: confRes,
-					},
-				},
+		return &discovery.QueryResult{
+			Result: &discovery.QueryResult_ConfigResult{
+				ConfigResult: confRes,
 			},
 		}
 	}
@@ -428,4 +486,39 @@ func aliveMsg(id int) discovery2.NetworkMember {
 		Endpoint: endpoint,
 		Envelope: sm.Envelope,
 	}
+}
+
+type peers []*discovery.Peer
+
+func (ps peers) exists(p *discovery.Peer) error {
+	var found bool
+	for _, q := range ps {
+		if reflect.DeepEqual(*p, *q) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("%v wasn't found in %v", ps, p)
+	}
+	return nil
+}
+
+func (ps peers) compare(otherPeers peers) error {
+	if len(ps) != len(otherPeers) {
+		return fmt.Errorf("size mismatch: %d, %d", len(ps), len(otherPeers))
+	}
+
+	for _, p := range otherPeers {
+		if err := ps.exists(p); err != nil {
+			return err
+		}
+	}
+
+	for _, p := range ps {
+		if err := otherPeers.exists(p); err != nil {
+			return err
+		}
+	}
+	return nil
 }

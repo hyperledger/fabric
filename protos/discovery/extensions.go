@@ -18,6 +18,7 @@ const (
 	ConfigQueryType
 	PeerMembershipQueryType
 	ChaincodeQueryType
+	LocalMembershipQueryType
 )
 
 // GetType returns the type of the request
@@ -30,6 +31,9 @@ func (q *Query) GetType() QueryType {
 	}
 	if q.GetPeerQuery() != nil {
 		return PeerMembershipQueryType
+	}
+	if q.GetLocalPeers() != nil {
+		return LocalMembershipQueryType
 	}
 	return InvalidQueryType
 }

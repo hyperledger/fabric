@@ -400,6 +400,9 @@ peer:
         authCacheMaxSize: 1000
         # The proportion (0 to 1) of entries that remain in the cache after the cache is purged due to overpopulation
         authCachePurgeRetentionRatio: 0.75
+        # Whether to allow non-admins to perform non channel scoped queries.
+        # When this is false, it means that only peer admins can perform non channel scoped queries.
+        orgMembersAllowedAccess: false
 ###############################################################################
 #
 #    VM section

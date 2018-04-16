@@ -43,21 +43,32 @@ type Verifier interface {
 	VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
 }
 
+// Evaluator evaluates signatures.
+// It is used to evaluate signatures for the local MSP
+type Evaluator interface {
+	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+	Evaluate(signatureSet []*common2.SignedData) error
+}
+
 // DiscoverySupport implements support that is used for service discovery
 // that is related to access control
 type DiscoverySupport struct {
 	ChannelConfigGetter
 	Verifier
+	Evaluator
 }
 
 // NewDiscoverySupport creates a new DiscoverySupport
-func NewDiscoverySupport(v Verifier, chanConf ChannelConfigGetter) *DiscoverySupport {
-	return &DiscoverySupport{Verifier: v, ChannelConfigGetter: chanConf}
+func NewDiscoverySupport(v Verifier, e Evaluator, chanConf ChannelConfigGetter) *DiscoverySupport {
+	return &DiscoverySupport{Verifier: v, Evaluator: e, ChannelConfigGetter: chanConf}
 }
 
 // Eligible returns whether the given peer is eligible for receiving
 // service from the discovery service for a given channel
 func (s *DiscoverySupport) EligibleForService(channel string, data common2.SignedData) error {
+	if channel == "" {
+		return s.Evaluate([]*common2.SignedData{&data})
+	}
 	return s.VerifyByChannel(common.ChainID(channel), api.PeerIdentityType(data.Identity), data.Signature, data.Data)
 }
 

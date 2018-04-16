@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	configTypes = []discovery.QueryType{discovery.ConfigQueryType, discovery.PeerMembershipQueryType, discovery.ChaincodeQueryType}
+	configTypes = []discovery.QueryType{discovery.ConfigQueryType, discovery.PeerMembershipQueryType, discovery.ChaincodeQueryType, discovery.LocalMembershipQueryType}
 )
 
 // Client interacts with the discovery server
@@ -80,6 +80,18 @@ func (req *Request) AddEndorsersQuery(chaincodes ...string) *Request {
 		Query:   q,
 	})
 	req.addQueryMapping(discovery.ChaincodeQueryType, ch)
+	return req
+}
+
+// AddLocalPeersQuery adds to the request a local peer query
+func (req *Request) AddLocalPeersQuery() *Request {
+	q := &discovery.Query_LocalPeers{
+		LocalPeers: &discovery.LocalPeerQuery{},
+	}
+	req.Queries = append(req.Queries, &discovery.Query{
+		Query: q,
+	})
+	req.addQueryMapping(discovery.LocalMembershipQueryType, "")
 	return req
 }
 
@@ -158,6 +170,14 @@ type resultOrError interface {
 
 type response map[key]resultOrError
 
+type localResponse struct {
+	response
+}
+
+func (cr *localResponse) Peers() ([]*Peer, error) {
+	return parsePeers(discovery.LocalMembershipQueryType, cr.response, "")
+}
+
 type channelResponse struct {
 	response
 	channel string
@@ -180,10 +200,10 @@ func (cr *channelResponse) Config() (*discovery.ConfigResult, error) {
 	return nil, res.(error)
 }
 
-func (cr *channelResponse) Peers() ([]*Peer, error) {
-	res, exists := cr.response[key{
-		queryType: discovery.PeerMembershipQueryType,
-		channel:   cr.channel,
+func parsePeers(queryType discovery.QueryType, r response, channel string) ([]*Peer, error) {
+	res, exists := r[key{
+		queryType: queryType,
+		channel:   channel,
 	}]
 
 	if !exists {
@@ -197,7 +217,11 @@ func (cr *channelResponse) Peers() ([]*Peer, error) {
 	return nil, res.(error)
 }
 
-func (cr *channelResponse) Endorsers(cc string, s Selector) (Endorsers, error) {
+func (cr *channelResponse) Peers() ([]*Peer, error) {
+	return parsePeers(discovery.PeerMembershipQueryType, cr.response, cr.channel)
+}
+
+func (cr *channelResponse) Endorsers(cc string, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error) {
 	// If we have a key that has no chaincode field,
 	// it means it's an error returned from the service
 	if err, exists := cr.response[key{
@@ -223,7 +247,7 @@ func (cr *channelResponse) Endorsers(cc string, s Selector) (Endorsers, error) {
 	// We iterate over all layouts to find one that we have enough peers to select
 	for _, index := range rand.Perm(len(desc.layouts)) {
 		layout := desc.layouts[index]
-		endorsers, canLayoutBeSatisfied := selectPeersForLayout(desc.endorsersByGroups, layout, s)
+		endorsers, canLayoutBeSatisfied := selectPeersForLayout(desc.endorsersByGroups, layout, ps, ef)
 		if canLayoutBeSatisfied {
 			return endorsers, nil
 		}
@@ -231,11 +255,11 @@ func (cr *channelResponse) Endorsers(cc string, s Selector) (Endorsers, error) {
 	return nil, errors.New("no endorsement combination can be satisfied")
 }
 
-func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, s Selector) (Endorsers, bool) {
+func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, ps PrioritySelector, ef ExclusionFilter) (Endorsers, bool) {
 	var endorsers []*Peer
 	for grp, count := range layout {
 		shuffledEndorsers := Endorsers(endorsersByGroups[grp]).Shuffle()
-		endorsersOfGrp := s.Select(shuffledEndorsers)
+		endorsersOfGrp := shuffledEndorsers.Filter(ef).Sort(ps)
 		// We couldn't select enough peers for this layout because the current group
 		// requires more peers than we have available to be selected
 		if len(endorsersOfGrp) < count {
@@ -247,6 +271,12 @@ func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[strin
 	// The current (randomly chosen) layout can be satisfied, so return it
 	// instead of checking the next one.
 	return endorsers, true
+}
+
+func (resp response) ForLocal() LocalResponse {
+	return &localResponse{
+		response: resp,
+	}
 }
 
 func (resp response) ForChannel(ch string) ChannelResponse {
@@ -272,7 +302,9 @@ func computeResponse(queryMapping map[discovery.QueryType]map[string]int, r *dis
 		case discovery.ChaincodeQueryType:
 			err = resp.mapEndorsers(channel2index, r)
 		case discovery.PeerMembershipQueryType:
-			err = resp.mapPeerMembership(channel2index, r)
+			err = resp.mapPeerMembership(channel2index, r, discovery.PeerMembershipQueryType)
+		case discovery.LocalMembershipQueryType:
+			err = resp.mapPeerMembership(channel2index, r, discovery.LocalMembershipQueryType)
 		}
 		if err != nil {
 			return nil, err
@@ -303,14 +335,14 @@ func (resp response) mapConfig(channel2index map[string]int, r *discovery.Respon
 	return nil
 }
 
-func (resp response) mapPeerMembership(channel2index map[string]int, r *discovery.Response) error {
+func (resp response) mapPeerMembership(channel2index map[string]int, r *discovery.Response, qt discovery.QueryType) error {
 	for ch, index := range channel2index {
 		membersRes, err := r.MembershipAt(index)
 		if membersRes == nil && err == nil {
 			return errors.Errorf("expected QueryResult of either PeerMembershipResult or Error but got %v instead", r.Results[index])
 		}
 		key := key{
-			queryType: discovery.PeerMembershipQueryType,
+			queryType: qt,
 			channel:   ch,
 		}
 
@@ -319,7 +351,7 @@ func (resp response) mapPeerMembership(channel2index map[string]int, r *discover
 			continue
 		}
 
-		peers, err2 := peersForChannel(membersRes)
+		peers, err2 := peersForChannel(membersRes, qt)
 		if err2 != nil {
 			return errors.Wrap(err2, "failed constructing peer membership out of response")
 		}
@@ -329,7 +361,7 @@ func (resp response) mapPeerMembership(channel2index map[string]int, r *discover
 	return nil
 }
 
-func peersForChannel(membersRes *discovery.PeerMembershipResult) ([]*Peer, error) {
+func peersForChannel(membersRes *discovery.PeerMembershipResult, qt discovery.QueryType) ([]*Peer, error) {
 	var peers []*Peer
 	for org, peersOfCurrentOrg := range membersRes.PeersByOrg {
 		for _, peer := range peersOfCurrentOrg.Peers {
@@ -337,15 +369,18 @@ func peersForChannel(membersRes *discovery.PeerMembershipResult) ([]*Peer, error
 			if err != nil {
 				return nil, errors.Wrap(err, "failed unmarshaling alive message")
 			}
-			stateInfoMsg, err := peer.StateInfo.ToGossipMessage()
-			if err != nil {
-				return nil, errors.Wrap(err, "failed unmarshaling stateInfo message")
+			var stateInfoMsg *gossip.SignedGossipMessage
+			if isStateInfoExpected(qt) {
+				stateInfoMsg, err = peer.StateInfo.ToGossipMessage()
+				if err != nil {
+					return nil, errors.Wrap(err, "failed unmarshaling stateInfo message")
+				}
+				if err := validateStateInfoMessage(stateInfoMsg); err != nil {
+					return nil, errors.Wrap(err, "failed validating stateInfo message")
+				}
 			}
 			if err := validateAliveMessage(aliveMsg); err != nil {
 				return nil, errors.Wrap(err, "failed validating alive message")
-			}
-			if err := validateStateInfoMessage(stateInfoMsg); err != nil {
-				return nil, errors.Wrap(err, "failed validating stateInfo message")
 			}
 			peers = append(peers, &Peer{
 				MSPID:            org,
@@ -356,6 +391,10 @@ func peersForChannel(membersRes *discovery.PeerMembershipResult) ([]*Peer, error
 		}
 	}
 	return peers, nil
+}
+
+func isStateInfoExpected(qt discovery.QueryType) bool {
+	return qt != discovery.LocalMembershipQueryType
 }
 
 func (resp response) mapEndorsers(channel2index map[string]int, r *discovery.Response) error {

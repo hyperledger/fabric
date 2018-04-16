@@ -73,12 +73,17 @@ message Query {
         // The result is returned in the form of ConfigResult.
         ConfigQuery configQuery = 2;
 
-        // PeerMembershipQuery returns PeerMembershipResult
+        // PeerMembershipQuery queries for peers in a channel context,
+        // and returns PeerMembershipResult
         PeerMembershipQuery peerQuery = 3;
 
         // ChaincodeQuery queries for chaincodes by their name and version.
         // An empty version means any version can by returned.
         ChaincodeQuery ccQuery = 4;
+
+        // LocalPeerQuery queries for peers in a non channel context,
+        // and returns PeerMembershipResult
+        LocalPeerQuery localPeers = 5;
     }
 }
 
@@ -137,6 +142,10 @@ message ChaincodeQuery {
 // chaincodes
 message ChaincodeQueryResult {
     repeated EndorsementDescriptor content = 1;
+}
+
+// LocalPeerQuery queries for peers in a non channel context
+message LocalPeerQuery {
 }
 
 // EndorsementDescriptor contains information about which peers can be used
