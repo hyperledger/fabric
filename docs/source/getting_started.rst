@@ -3,25 +3,21 @@ Getting Started
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
    prereqs
    install
-
-Install Prerequisites
-^^^^^^^^^^^^^^^^^^^^^
 
 Before we begin, if you haven't already done so, you may wish to check that
 you have all the :doc:`prereqs` installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
 
-Install Samples, Binaries and Docker Images
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Once you have the prerequisites installed, you are ready to download and
+install HyperLedger Fabric. While we work on developing real installers for the
+Fabric binaries, we provide a script that will :doc:`install` to your system.
+The script also will download the Docker images to your local registry.
 
-While we work on developing real installers for the Hyperledger Fabric
-binaries, we provide a script that will :doc:`install` to your system. We think
-that you'll find the sample applications installed useful to learn more about
-the capabilities and operations of Hyperledger Fabric.
 
 Hyperledger Fabric SDKs
 ^^^^^^^^^^^^^^^^^^^^^^^

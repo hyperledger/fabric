@@ -1,5 +1,12 @@
-Install Samples, Binaries and Images
-====================================
+Install Samples, Binaries and Docker Images
+===========================================
+
+While we work on developing real installers for the Hyperledger Fabric
+binaries, we provide a script that will download and install samples and
+binaries to your system. We think that you'll find the sample applications
+installed useful to learn more about the capabilities and operations of
+Hyperledger Fabric.
+
 
 .. note:: If you are running on **Windows** you will want to make use of the
 	  Docker Quickstart Terminal for the upcoming terminal commands.
@@ -23,11 +30,11 @@ Determine a location on your machine where you want to place the Hyperledger
 Fabric Samples repository and enter that directory in a terminal window. The
 command that follows will perform the following steps:
 
-#. if needed, clone the hyperledger/fabric-samples repository
-#. checkout the appropriate version tag
-#. install the Hyperledger Fabric platform-specific binaries and config files
+#. If needed, clone the hyperledger/fabric-samples repository
+#. Checkout the appropriate version tag
+#. Install the Hyperledger Fabric platform-specific binaries and config files
    for the version specified into the root of the fabric-samples repository
-#. download the Hyperledger Fabric docker images for the version specified
+#. Download the Hyperledger Fabric docker images for the version specified
 
 Once you are ready, and in the directory into which you will install the
 Fabric Samples and binaries, go ahead and execute the following command:
