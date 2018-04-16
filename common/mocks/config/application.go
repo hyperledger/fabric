@@ -8,12 +8,11 @@ package config
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type MockApplication struct {
 	CapabilitiesRv channelconfig.ApplicationCapabilities
-	Acls           map[string]*pb.APIResource
+	Acls           map[string]string
 }
 
 func (m *MockApplication) Organizations() map[string]channelconfig.ApplicationOrg {
@@ -24,8 +23,16 @@ func (m *MockApplication) Capabilities() channelconfig.ApplicationCapabilities {
 	return m.CapabilitiesRv
 }
 
-func (m *MockApplication) ACLs() map[string]*pb.APIResource {
-	return m.Acls
+func (m *MockApplication) PolicyRefForAPI(apiName string) string {
+	if m.Acls == nil {
+		return ""
+	}
+	return m.Acls[apiName]
+}
+
+// Returns the mock which itself is a provider
+func (m *MockApplication) APIPolicyMapper() channelconfig.PolicyMapper {
+	return m
 }
 
 type MockApplicationCapabilities struct {

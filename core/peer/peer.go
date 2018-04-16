@@ -324,6 +324,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	if !ok {
 		ac = nil
 	}
+
 	cs := &chainSupport{
 		Application: ac, // TODO, refactor as this is accessible through Manager
 		ledger:      ledger,
@@ -442,6 +443,17 @@ func GetResourcesConfig(cid string) resourcesconfig.Resources {
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
 		return c.cs.bundleSource.StableBundle()
+	}
+	return nil
+}
+
+// GetStableChannelConfig returns the stable channel configuration of the chain with channel ID.
+// Note that this call returns nil if chain cid has not been created.
+func GetStableChannelConfig(cid string) channelconfig.Resources {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.bundleSource.StableBundle().ChannelConfig()
 	}
 	return nil
 }

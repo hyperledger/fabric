@@ -39,8 +39,8 @@ type Application interface {
 	// Organizations returns a map of org ID to ApplicationOrg
 	Organizations() map[string]ApplicationOrg
 
-	// ACLs returns map of string to APIResource
-	ACLs() map[string]*pb.APIResource
+	// APIPolicyMapper returns a PolicyMapper that maps API names to policies
+	APIPolicyMapper() PolicyMapper
 
 	// Capabilities defines the capabilities for the application portion of a channel
 	Capabilities() ApplicationCapabilities
@@ -159,6 +159,13 @@ type OrdererCapabilities interface {
 	// ExpirationCheck specifies whether the orderer checks for identity expiration checks
 	// when validating messages
 	ExpirationCheck() bool
+}
+
+// PolicyMapper is an interface for
+type PolicyMapper interface {
+	// PolicyRefForAPI takes the name of an API, and returns the policy name
+	// or the empty string if the API is not found
+	PolicyRefForAPI(apiName string) string
 }
 
 // Resources is the common set of config resources for all channels
