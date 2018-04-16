@@ -217,7 +217,7 @@ It's because CAs are so important that Fabric provides a built-in CA component t
 allow you to create CAs in the blockchain networks you form. This component -- known
 as **fabric-ca** is a private root CA provider capable of managing digital identities of
 Fabric participants that have the form of X.509 certificates.
-Because Fabric-CA is a custom CA targetting the Root CA needs of Fabric,
+Because Fabric-CA is a custom CA targeting the Root CA needs of Fabric,
 it is inherently not capable of providing SSL certificates for general/automatic use
 in browsers. However, because **some** CA must be used to manage identity
 (even in a test environment), fabric-ca can be used to provide and manage

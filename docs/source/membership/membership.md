@@ -42,7 +42,7 @@ name the MSP after the organization, a convention you'll find adopted in most po
 configurations. For example, organization `ORG1` would have an MSP called `ORG1-MSP`.
 In some cases an organization may require multiple membership groups -- for example,
 where channels are used to perform very different business functions between
-organisations. In these cases it makes sense to have multiple MSPs and name them
+organizations. In these cases it makes sense to have multiple MSPs and name them
 accordingly, e.g., `ORG2-MSP-NATIONAL` and `ORG2-MSP-GOVERNMENT`, reflecting the
 different membership roots of trust within `ORG2` in the NATIONAL sales channel
 compared to the GOVERNMENT regulatory channel.
