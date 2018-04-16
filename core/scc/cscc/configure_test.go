@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -336,7 +337,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
-	conf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	conf := configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile)
 	conf.Application = nil
 	cg, err := encoder.NewChannelGroup(conf)
 	assert.NoError(t, err)

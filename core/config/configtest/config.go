@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 // AddDevConfigPath adds the DevConfigDir to the viper path.
@@ -69,4 +71,27 @@ func GetDevMspDir() (string, error) {
 	}
 
 	return filepath.Join(devDir, "msp"), nil
+}
+
+func SetDevFabricConfigPath(t *testing.T) (cleanup func()) {
+	t.Helper()
+
+	oldFabricCfgPath, resetFabricCfgPath := os.LookupEnv("FABRIC_CFG_PATH")
+	devConfigDir, err := GetDevConfigDir()
+	if err != nil {
+		t.Fatalf("failed to get dev config dir: %s", err)
+	}
+
+	err = os.Setenv("FABRIC_CFG_PATH", devConfigDir)
+	if resetFabricCfgPath {
+		return func() {
+			err := os.Setenv("FABRIC_CFG_PATH", oldFabricCfgPath)
+			assert.NoError(t, err)
+		}
+	}
+
+	return func() {
+		err := os.Unsetenv("FABRIC_CFG_PATH")
+		assert.NoError(t, err)
+	}
 }

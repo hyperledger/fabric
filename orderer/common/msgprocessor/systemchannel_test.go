@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -409,7 +410,7 @@ func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
 
 func TestNewChannelConfig(t *testing.T) {
 	channelID := "foo"
-	gConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	gConf := configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile)
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV1_1: true,
 	}
@@ -673,7 +674,7 @@ func TestNewChannelConfig(t *testing.T) {
 
 	// Successful
 	t.Run("Success", func(t *testing.T) {
-		createTx, err := encoder.MakeChannelCreationTransaction("foo", nil, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
+		createTx, err := encoder.MakeChannelCreationTransaction("foo", nil, nil, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile))
 		assert.Nil(t, err)
 		res, err := templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)

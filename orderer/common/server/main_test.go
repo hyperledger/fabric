@@ -147,6 +147,9 @@ func TestInitializeServerConfig(t *testing.T) {
 }
 
 func TestInitializeBootstrapChannel(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
 	testCases := []struct {
 		genesisMethod string
 		ledgerType    string
@@ -234,6 +237,8 @@ func TestInitializeLocalMsp(t *testing.T) {
 }
 
 func TestInitializeMultiChainManager(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
@@ -267,6 +272,8 @@ func TestInitializeGrpcServer(t *testing.T) {
 }
 
 func TestUpdateTrustedRoots(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	initializeLocalMsp(genesisConfig(t))
 	// get a free random port
 	listenAddr := func() string {

@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
@@ -179,7 +180,7 @@ func TestNewLedgerCommitterReactive(t *testing.T) {
 	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
 
-	profile := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
+	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
 	block := encoder.New(profile).GenesisBlockForChannel(chainID)
 
 	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
@@ -203,7 +204,7 @@ func TestNewLedgerCommitterReactiveFailedConfigUpdate(t *testing.T) {
 	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
 
-	profile := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
+	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
 	block := encoder.New(profile).GenesisBlockForChannel(chainID)
 
 	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{

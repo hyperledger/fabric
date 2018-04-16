@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -30,7 +31,8 @@ import (
 
 func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, nil, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
+	profile := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, nil, nil, profile)
 	if err != nil {
 		t.Fatalf("MakeChannelCreationTransaction failed, err %s", err)
 		return

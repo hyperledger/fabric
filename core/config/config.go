@@ -23,7 +23,7 @@ func dirExists(path string) bool {
 	return fi.IsDir()
 }
 
-func addConfigPath(v *viper.Viper, p string) {
+func AddConfigPath(v *viper.Viper, p string) {
 	if v != nil {
 		v.AddConfigPath(p)
 	} else {
@@ -97,7 +97,7 @@ func InitViper(v *viper.Viper, configName string) error {
 			return fmt.Errorf("FABRIC_CFG_PATH %s does not exist", altPath)
 		}
 
-		addConfigPath(v, altPath)
+		AddConfigPath(v, altPath)
 	} else {
 		// If we get here, we should use the default paths in priority order:
 		//
@@ -105,11 +105,11 @@ func InitViper(v *viper.Viper, configName string) error {
 		// *) /etc/hyperledger/fabric
 
 		// CWD
-		addConfigPath(v, "./")
+		AddConfigPath(v, "./")
 
 		// And finally, the official path
 		if dirExists(OfficialPath) {
-			addConfigPath(v, OfficialPath)
+			AddConfigPath(v, OfficialPath)
 		}
 	}
 

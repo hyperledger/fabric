@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	perf "github.com/hyperledger/fabric/orderer/common/performance"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -357,6 +358,9 @@ func benchmarkOrderer(
 	numOfOrderer int,
 	multiplex bool,
 ) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
 	// Initialization shared by all orderers
 	conf, err := config.Load()
 	if err != nil {

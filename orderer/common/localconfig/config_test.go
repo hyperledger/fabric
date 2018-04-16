@@ -26,6 +26,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,6 +35,8 @@ func init() {
 }
 
 func TestLoadGoodConfig(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	cfg, err := Load()
 	assert.NotNil(t, cfg, "Could not load config")
 	assert.Nil(t, err, "Load good config returned unexpected error")
@@ -89,6 +92,8 @@ func TestEnvInnerVar(t *testing.T) {
 	os.Setenv(envVar2, envVal2)
 	defer os.Unsetenv(envVar1)
 	defer os.Unsetenv(envVar2)
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	config, _ := Load()
 
 	assert.NotNil(t, config, "Could not load config")
@@ -122,6 +127,8 @@ func TestKafkaTLSConfig(t *testing.T) {
 }
 
 func TestSystemChannel(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	conf, _ := Load()
 	assert.Equal(t, genesisconfig.TestChainID, conf.General.SystemChannel,
 		"Expected default system channel ID to be '%s', got '%s' instead", genesisconfig.TestChainID, conf.General.SystemChannel)

@@ -21,6 +21,9 @@ import (
 )
 
 func TestInitConfig(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
 	type args struct {
 		cmdRoot string
 	}
@@ -105,6 +108,9 @@ func TestSetBCCSPKeystorePath(t *testing.T) {
 
 func TestSetLogLevelFromViper(t *testing.T) {
 	viper.Reset()
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
 	common.InitConfig("core")
 	type args struct {
 		module string

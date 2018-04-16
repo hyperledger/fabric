@@ -190,13 +190,18 @@ var genesisDefaults = TopLevel{
 	},
 }
 
-// LoadTopLevel simply loads the configtx.yaml file into the structs above
-// and completes their initialization.  Note, for environment overrides to work properly
-// within a profile, Load(profile string) should be called when attempting to work within
-// a particular profile.
-func LoadTopLevel() *TopLevel {
+// LoadTopLevel simply loads the configtx.yaml file into the structs above and
+// completes their initialization. Additional config search paths may optional
+// be provided.
+//
+// Note, for environment overrides to work properly within a profile, Load
+// should be used instead.
+func LoadTopLevel(extraSearchPaths ...string) *TopLevel {
 	config := viper.New()
 	cf.InitViper(config, configName)
+	for _, p := range extraSearchPaths {
+		cf.AddConfigPath(config, p)
+	}
 
 	// For environment variables
 	config.SetEnvPrefix(Prefix)
@@ -224,10 +229,14 @@ func LoadTopLevel() *TopLevel {
 	return &uconf
 }
 
-// Load returns the orderer/application config combination that corresponds to a given profile.
-func Load(profile string) *Profile {
+// Load returns the orderer/application config combination that corresponds to
+// a given profile. Additional config search paths may optionally be provided.
+func Load(profile string, extraSearchPaths ...string) *Profile {
 	config := viper.New()
 	cf.InitViper(config, configName)
+	for _, p := range extraSearchPaths {
+		cf.AddConfigPath(config, p)
+	}
 
 	// For environment variables
 	config.SetEnvPrefix(Prefix)

@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,6 +28,8 @@ import (
 func TestFetchChain(t *testing.T) {
 	InitMSP()
 	resetFlags()
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 
 	mockchain := "mockchain"
 

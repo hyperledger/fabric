@@ -22,14 +22,16 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	config "github.com/hyperledger/fabric/orderer/common/localconfig"
+	ordererconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	protospeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -47,7 +49,7 @@ func setupPeerFS(t *testing.T) (cleanup func()) {
 }
 
 func TestConfigTxSerializeDeserialize(t *testing.T) {
-	helper := &testHelper{}
+	helper := &testHelper{t: t}
 	config := helper.sampleResourceConfig(0, "cc1", "cc2")
 	configBytes, err := serialize(config)
 	assert.NoError(t, err)
@@ -58,7 +60,7 @@ func TestConfigTxSerializeDeserialize(t *testing.T) {
 
 func TestConfigTxResConfigCapability(t *testing.T) {
 	chainid := "testchain"
-	helper := &testHelper{}
+	helper := &testHelper{t: t}
 	config := helper.sampleChannelConfig(1, false)
 	confCapabilityOn, err := isResConfigCapabilityOn(chainid, config)
 	assert.NoError(t, err)
@@ -71,7 +73,7 @@ func TestConfigTxResConfigCapability(t *testing.T) {
 }
 
 func TestConfigTxExtractFullConfigFromSeedTx(t *testing.T) {
-	helper := &testHelper{}
+	helper := &testHelper{t: t}
 	chanConf := helper.sampleChannelConfig(1, true)
 	resConf := helper.sampleResourceConfig(0, "cc1", "cc2")
 	genesisTx := helper.constructGenesisTx(t, "foo", chanConf, resConf)
@@ -83,7 +85,7 @@ func TestConfigTxExtractFullConfigFromSeedTx(t *testing.T) {
 }
 
 func TestConfigTxCreateLedger(t *testing.T) {
-	helper := &testHelper{}
+	helper := &testHelper{t: t}
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 
@@ -108,7 +110,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 }
 
 func TestConfigTxUpdateResConfig(t *testing.T) {
-	helper := &testHelper{}
+	helper := &testHelper{t: t}
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 	chainid := "testchain1"
@@ -191,6 +193,7 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 }
 
 type testHelper struct {
+	t *testing.T
 }
 
 func (h *testHelper) sampleResourceConfig(version uint64, entries ...string) *common.Config {
@@ -213,7 +216,7 @@ func (h *testHelper) sampleResourceConfig(version uint64, entries ...string) *co
 }
 
 func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bool) *common.Config {
-	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
+	profile := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
 	if enableV11Capability {
 		profile.Orderer.Capabilities = make(map[string]bool)
 		profile.Orderer.Capabilities[capabilities.ApplicationV1_1] = true
@@ -319,7 +322,9 @@ func (h *testHelper) computeDeltaResConfTx(t *testing.T, chainid string, source,
 
 func (h *testHelper) initLocalMSP() {
 	rand.Seed(time.Now().UnixNano())
-	conf, err := config.Load()
+	cleanup := configtest.SetDevFabricConfigPath(h.t)
+	defer cleanup()
+	conf, err := ordererconfig.Load()
 	if err != nil {
 		panic(fmt.Errorf("failed to load config: %s", err))
 	}

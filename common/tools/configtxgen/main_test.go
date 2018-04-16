@@ -20,10 +20,13 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/config/configtest"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -47,82 +50,75 @@ func TestInspectMissing(t *testing.T) {
 }
 
 func TestInspectBlock(t *testing.T) {
-	blockDest := tmpDir + string(os.PathSeparator) + "block"
+	blockDest := filepath.Join(tmpDir, "block")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 
 	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Good block generation request")
 	assert.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
 }
 
 func TestMissingOrdererSection(t *testing.T) {
-	blockDest := tmpDir + string(os.PathSeparator) + "block"
+	blockDest := filepath.Join(tmpDir, "block")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	config.Orderer = nil
 
 	assert.Panics(t, func() { doOutputBlock(config, "foo", blockDest) }, "Missing orderer section")
 }
 
 func TestMissingConsortiumSection(t *testing.T) {
-	blockDest := tmpDir + string(os.PathSeparator) + "block"
+	blockDest := filepath.Join(tmpDir, "block")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	config.Consortiums = nil
 
 	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Missing consortiums section")
 }
 
 func TestMissingConsortiumValue(t *testing.T) {
-	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
+	configTxDest := filepath.Join(tmpDir, "configtx")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	config.Consortium = ""
 
 	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Consortium value in Application Profile definition")
 }
 
 func TestMissingApplicationValue(t *testing.T) {
-	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
+	configTxDest := filepath.Join(tmpDir, "configtx")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	config.Application = nil
 
 	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Application value in Application Profile definition")
 }
+
 func TestInspectMissingConfigTx(t *testing.T) {
 	assert.Error(t, doInspectChannelCreateTx("ChannelCreateTxFileWhichDoesn'tReallyExist"), "Missing channel create tx file")
 }
 
 func TestInspectConfigTx(t *testing.T) {
-	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
+	configTxDest := filepath.Join(tmpDir, "configtx")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
 	assert.NoError(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Good outputChannelCreateTx generation request")
 	assert.NoError(t, doInspectChannelCreateTx(configTxDest), "Good configtx inspection request")
 }
 
 func TestGenerateAnchorPeersUpdate(t *testing.T) {
-	configTxDest := tmpDir + string(os.PathSeparator) + "anchorPeerUpdate"
+	configTxDest := filepath.Join(tmpDir, "anchorPeerUpdate")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
 	assert.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
 }
 
 func TestBadAnchorPeersUpdates(t *testing.T) {
-	configTxDest := tmpDir + string(os.PathSeparator) + "anchorPeerUpdate"
+	configTxDest := filepath.Join(tmpDir, "anchorPeerUpdate")
 
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
 	assert.Error(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, ""), "Bad anchorPeerUpdate request - asOrg empty")
 
@@ -136,8 +132,9 @@ func TestBadAnchorPeersUpdates(t *testing.T) {
 }
 
 func TestConfigTxFlags(t *testing.T) {
-	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
-	configTxDestAnchorPeers := tmpDir + string(os.PathSeparator) + "configtxAnchorPeers"
+	configTxDest := filepath.Join(tmpDir, "configtx")
+	configTxDestAnchorPeers := filepath.Join(tmpDir, "configtxAnchorPeers")
+
 	oldArgs := os.Args
 	defer func() {
 		os.Args = oldArgs
@@ -151,6 +148,9 @@ func TestConfigTxFlags(t *testing.T) {
 		"-outputAnchorPeersUpdate=" + configTxDestAnchorPeers,
 		"-asOrg=" + genesisconfig.SampleOrgName,
 	}
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
 	main()
 
 	_, err := os.Stat(configTxDest)
@@ -160,7 +160,7 @@ func TestConfigTxFlags(t *testing.T) {
 }
 
 func TestBlockFlags(t *testing.T) {
-	blockDest := tmpDir + string(os.PathSeparator) + "block"
+	blockDest := filepath.Join(tmpDir, "block")
 	oldArgs := os.Args
 	defer func() {
 		os.Args = oldArgs
@@ -172,6 +172,9 @@ func TestBlockFlags(t *testing.T) {
 		"-outputBlock=" + blockDest,
 		"-inspectBlock=" + blockDest,
 	}
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
 	main()
 
 	_, err := os.Stat(blockDest)
@@ -180,7 +183,7 @@ func TestBlockFlags(t *testing.T) {
 
 func TestPrintOrg(t *testing.T) {
 	factory.InitFactories(nil)
-	config := genesisconfig.LoadTopLevel()
+	config := configtxgentest.LoadTopLevel()
 
 	assert.NoError(t, doPrintOrg(config, genesisconfig.SampleOrgName), "Good org to print")
 

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	. "github.com/hyperledger/fabric/common/tools/protolator"
@@ -56,7 +57,7 @@ func bidirectionalMarshal(t *testing.T, doc proto.Message) {
 }
 
 func TestConfigUpdate(t *testing.T) {
-	cg, err := encoder.NewChannelGroup(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
+	cg, err := encoder.NewChannelGroup(configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile))
 	assert.NoError(t, err)
 
 	bidirectionalMarshal(t, &cb.ConfigUpdateEnvelope{
@@ -68,7 +69,7 @@ func TestConfigUpdate(t *testing.T) {
 }
 
 func TestGenesisBlock(t *testing.T) {
-	p := encoder.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
+	p := encoder.New(configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile))
 	gb := p.GenesisBlockForChannel("foo")
 
 	bidirectionalMarshal(t, gb)
