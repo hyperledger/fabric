@@ -332,6 +332,12 @@ peer:
         # attempts until its retry logic gives up and returns an error
         reconnectTotalTimeThreshold: 3600s
 
+        # It sets the delivery service <-> ordering service node connection timeout
+        connTimeout: 3s
+
+        # It sets the delivery service maximal delay between consecutive retries
+        reConnectBackoffThreshold: 3600s
+
     # Type for the local MSP - by default it's of type bccsp
     localMspType: bccsp
 
