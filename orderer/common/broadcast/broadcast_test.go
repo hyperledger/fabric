@@ -98,10 +98,11 @@ type mockSupportManager struct {
 	MsgProcessorIsConfig bool
 	MsgProcessorVal      *mockSupport
 	MsgProcessorErr      error
+	ChdrVal              *cb.ChannelHeader
 }
 
 func (mm *mockSupportManager) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, ChannelSupport, error) {
-	return &cb.ChannelHeader{}, mm.MsgProcessorIsConfig, mm.MsgProcessorVal, mm.MsgProcessorErr
+	return mm.ChdrVal, mm.MsgProcessorIsConfig, mm.MsgProcessorVal, mm.MsgProcessorErr
 }
 
 type mockSupport struct {
@@ -147,6 +148,7 @@ func (ms *mockSupport) ProcessConfigMsg(msg *cb.Envelope) (*cb.Envelope, uint64,
 func getMockSupportManager() *mockSupportManager {
 	return &mockSupportManager{
 		MsgProcessorVal: &mockSupport{},
+		ChdrVal:         &cb.ChannelHeader{},
 	}
 }
 
@@ -260,6 +262,7 @@ func TestGracefulShutdown(t *testing.T) {
 func TestRejected(t *testing.T) {
 	mm := &mockSupportManager{
 		MsgProcessorVal: &mockSupport{ProcessErr: fmt.Errorf("Reject")},
+		ChdrVal:         &cb.ChannelHeader{},
 	}
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
@@ -282,4 +285,30 @@ func TestBadStreamSend(t *testing.T) {
 	bh := NewHandlerImpl(mm)
 	m := &erroneousSendMockB{recvVal: nil}
 	assert.Error(t, bh.Handle(m), "Should catch unexpected stream error")
+}
+
+func TestMalformedHeader(t *testing.T) {
+	mm := getMockSupportManager()
+	mm.ChdrVal = nil
+	mm.MsgProcessorErr = errors.New("Mocked Error")
+	bh := NewHandlerImpl(mm)
+	m := newMockB()
+	defer close(m.recvChan)
+	done := make(chan struct{})
+	go func() {
+		bh.Handle(m)
+		close(done)
+	}()
+
+	m.recvChan <- nil
+	reply := <-m.sendChan
+	if reply.Status != cb.Status_BAD_REQUEST {
+		t.Fatalf("Should have rejected message for malformed header")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("Should have terminated the stream")
+	}
 }
