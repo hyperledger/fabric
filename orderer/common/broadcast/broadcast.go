@@ -92,8 +92,12 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		chdr, isConfig, processor, err := bh.sm.BroadcastChannelSupport(msg)
 		if err != nil {
-			logger.Warningf("[channel: %s] Could not get message processor for serving %s: %s", chdr.ChannelId, addr, err)
-			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR, Info: err.Error()})
+			channelID := "<malformed_header>"
+			if chdr != nil {
+				channelID = chdr.ChannelId
+			}
+			logger.Warningf("[channel: %s] Could not get message processor for serving %s: %s", channelID, addr, err)
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: err.Error()})
 		}
 
 		if err = processor.WaitReady(); err != nil {
