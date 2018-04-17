@@ -280,7 +280,7 @@ func serve(args []string) error {
 		}
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
-		if comm.TLSEnabled() {
+		if viper.GetBool("peer.tls.enabled") {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCredentialSupport().GetPeerCredentials()))
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())

@@ -80,7 +80,7 @@ var streamGetter peerStreamGetter
 //the non-mock user CC stream establishment func
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
-	if comm.TLSEnabled() {
+	if viper.GetBool("peer.tls.enabled") {
 		keyPath := viper.GetString("tls.client.key.path")
 		certPath := viper.GetString("tls.client.cert.path")
 
@@ -254,7 +254,7 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 		ClientInterval: time.Duration(1) * time.Minute,
 		ClientTimeout:  time.Duration(20) * time.Second,
 	}
-	if comm.TLSEnabled() {
+	if viper.GetBool("peer.tls.enabled") {
 		return comm.NewClientConnectionWithAddress(peerAddress, true, true,
 			comm.InitTLSForShim(key, cert), kaOpts)
 	}
