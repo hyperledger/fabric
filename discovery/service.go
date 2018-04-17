@@ -120,11 +120,15 @@ func (s *service) dispatch(q *discovery.Query) *discovery.QueryResult {
 
 func (s *service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 	var descriptors []*discovery.EndorsementDescriptor
-	for _, cc := range q.GetCcQuery().Chaincodes {
-		desc, err := s.PeersForEndorsement(cc, common2.ChainID(q.Channel))
+	for _, interest := range q.GetCcQuery().Interests {
+		if len(interest.ChaincodeNames) == 0 {
+			return wrapError(errors.Errorf("must include at least one chaincode"))
+		}
+		// Until we have cc2cc support, we just take the first chaincode
+		desc, err := s.PeersForEndorsement(interest.ChaincodeNames[0], common2.ChainID(q.Channel))
 		if err != nil {
-			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", cc, err)
-			return wrapError(errors.Errorf("failed constructing descriptor for chaincode %s", cc))
+			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", interest, err)
+			return wrapError(errors.Errorf("failed constructing descriptor for %v", interest))
 		}
 		descriptors = append(descriptors, desc)
 	}

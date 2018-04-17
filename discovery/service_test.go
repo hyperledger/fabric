@@ -91,21 +91,51 @@ func TestService(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed parsing request")
 	}
 
-	// Scenario V: Request with a CC query where one chaincode is unavailable
+	// Scenario V: Request a CC query with no chaincodes at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Chaincodes: []string{"unknownCC", "cc1"},
+			Interests: []*discovery.ChaincodeInterest{
+				{},
+			},
+		},
+	}
+	resp, err = service.Discover(ctx, toSignedRequest(req))
+	assert.NoError(t, err)
+	assert.Contains(t, resp.Results[0].GetError().Content, "must include at least one chaincode")
+
+	// Scenario VI: Request with a CC query where one chaincode is unavailable
+	req.Queries[0].Query = &discovery.Query_CcQuery{
+		CcQuery: &discovery.ChaincodeQuery{
+			Interests: []*discovery.ChaincodeInterest{
+				{
+					ChaincodeNames: []string{"unknownCC"},
+				},
+				{
+					ChaincodeNames: []string{"cc1"},
+				},
+			},
 		},
 	}
 
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "failed constructing descriptor for chaincode unknownCC")
+	assert.Contains(t, resp.Results[0].GetError().Content, "failed constructing descriptor")
+	assert.Contains(t, resp.Results[0].GetError().Content, "unknownCC")
 
-	// Scenario VI: Request with a CC query where all are available
+	// Scenario VII: Request with a CC query where all are available
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Chaincodes: []string{"cc1", "cc2", "cc3"},
+			Interests: []*discovery.ChaincodeInterest{
+				{
+					ChaincodeNames: []string{"cc1"},
+				},
+				{
+					ChaincodeNames: []string{"cc2"},
+				},
+				{
+					ChaincodeNames: []string{"cc3"},
+				},
+			},
 		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
@@ -115,7 +145,7 @@ func TestService(t *testing.T) {
 	})
 	assert.Equal(t, expected, resp)
 
-	// Scenario VII: Request with a config query
+	// Scenario VIII: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(nil, errors.New("failed fetching config")).Once()
 	req.Queries[0].Query = &discovery.Query_ConfigQuery{
 		ConfigQuery: &discovery.ConfigQuery{},
@@ -124,7 +154,7 @@ func TestService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, resp.Results[0].GetError().Content, "failed fetching config for channel channelWithAccessGranted")
 
-	// Scenario VII: Request with a config query
+	// Scenario IX: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(&discovery.ConfigResult{}, nil).Once()
 	req.Queries[0].Query = &discovery.Query_ConfigQuery{
 		ConfigQuery: &discovery.ConfigQuery{},
@@ -133,7 +163,7 @@ func TestService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp.Results[0].GetConfigResult())
 
-	// Scenario VIII: Request with a membership query
+	// Scenario X: Request with a membership query
 	// Peers in membership view: { p0, p1, p2, p3}
 	// Peers in channel view: {p1, p2, p4}
 	// So that means that the returned peers for the channel should be the intersection
@@ -232,7 +262,7 @@ func TestService(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// Scenario IX: The client is eligible for channel queries but not for channel-less
+	// Scenario XI: The client is eligible for channel queries but not for channel-less
 	// since it's not an admin. It sends a query for a channel-less query but puts a channel in the query.
 	// It should fail because channel-less query types cannot have a channel configured in them.
 	req.Queries = []*discovery.Query{
