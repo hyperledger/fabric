@@ -57,9 +57,11 @@ type cursor struct {
 type jsonLedger struct {
 	directory string
 	height    uint64
-	signal    chan struct{}
 	lastHash  []byte
 	marshaler *jsonpb.Marshaler
+
+	mutex  sync.Mutex
+	signal chan struct{}
 }
 
 // readBlock returns the block or nil, and whether the block was found or not, (nil,true) generally indicates an irrecoverable problem
@@ -99,13 +101,21 @@ func (cu *cursor) Next() (*cb.Block, cb.Status) {
 			cu.blockNumber++
 			return block, cb.Status_SUCCESS
 		}
-		<-cu.jl.signal
+
+		// copy the signal channel under lock to avoid race
+		// with new signal channel in append
+		cu.jl.mutex.Lock()
+		signal := cu.jl.signal
+		cu.jl.mutex.Unlock()
+		<-signal
 	}
 }
 
 // ReadyChan supplies a channel which will block until Next will not block
 func (cu *cursor) ReadyChan() <-chan struct{} {
+	cu.jl.mutex.Lock()
 	signal := cu.jl.signal
+	cu.jl.mutex.Unlock()
 	if _, err := os.Stat(cu.jl.blockFilename(cu.blockNumber)); os.IsNotExist(err) {
 		return signal
 	}
@@ -151,8 +161,12 @@ func (jl *jsonLedger) Append(block *cb.Block) error {
 	jl.writeBlock(block)
 	jl.lastHash = block.Header.Hash()
 	jl.height++
+
+	// Manage the signal channel under lock to avoid race with read in Next
+	jl.mutex.Lock()
 	close(jl.signal)
 	jl.signal = make(chan struct{})
+	jl.mutex.Unlock()
 	return nil
 }
 
