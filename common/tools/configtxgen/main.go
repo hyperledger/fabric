@@ -209,7 +209,7 @@ func main() {
 	var outputBlock, outputChannelCreateTx, profile, channelID, inspectBlock, inspectChannelCreateTx, outputAnchorPeersUpdate, asOrg, printOrg string
 
 	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set)")
-	flag.StringVar(&channelID, "channelID", genesisconfig.TestChainID, "The channel ID to use in the configtx")
+	flag.StringVar(&channelID, "channelID", "", "The channel ID to use in the configtx")
 	flag.StringVar(&outputChannelCreateTx, "outputCreateChannelTx", "", "The path to write a channel creation configtx to (if set)")
 	flag.StringVar(&profile, "profile", genesisconfig.SampleInsecureSoloProfile, "The profile from configtx.yaml to use for generation.")
 	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path")
@@ -217,6 +217,11 @@ func main() {
 	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
 	flag.StringVar(&printOrg, "printOrg", "", "Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)")
+
+	if channelID == "" {
+		channelID = genesisconfig.TestChainID
+		logger.Warningf("Omitting the channel ID for configtxgen is deprecated.  Explicitly passing the channel ID will be required in the future, defaulting to '%s'.", channelID)
+	}
 
 	version := flag.Bool("version", false, "Show version information")
 
