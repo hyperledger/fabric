@@ -38,14 +38,10 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	itr, err := blkfileMgr.retrieveBlocks(1)
 	defer itr.Close()
 	testutil.AssertNoError(t, err, "")
+	readyChan := make(chan struct{})
 	doneChan := make(chan bool)
-	go testIterateAndVerify(t, itr, blocks[1:], doneChan)
-	for {
-		if itr.blockNumToRetrieve == 5 {
-			break
-		}
-		time.Sleep(time.Millisecond * 10)
-	}
+	go testIterateAndVerify(t, itr, blocks[1:], 4, readyChan, doneChan)
+	<-readyChan
 	testAppendBlocks(blkfileMgrWrapper, blocks[5:7])
 	blkfileMgr.moveToNextFile()
 	time.Sleep(time.Millisecond * 10)
@@ -137,7 +133,7 @@ func iterateInBackground(t *testing.T, itr *blocksItr, quitAfterBlkNum uint64, w
 	}
 }
 
-func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, doneChan chan bool) {
+func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, readyAt int, readyChan chan<- struct{}, doneChan chan bool) {
 	blocksIterated := 0
 	for {
 		t.Logf("blocksIterated: %v", blocksIterated)
@@ -145,6 +141,9 @@ func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, 
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, block, blocks[blocksIterated])
 		blocksIterated++
+		if blocksIterated == readyAt {
+			close(readyChan)
+		}
 		if blocksIterated == len(blocks) {
 			break
 		}
