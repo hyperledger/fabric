@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package escc
@@ -30,6 +20,17 @@ import (
 
 var logger = flogging.MustGetLogger("escc")
 
+// New returns a new instance of the ESCC
+// Typically, only one will be constructed per peer instance
+func New() *EndorserOneValidSignature {
+	return &EndorserOneValidSignature{}
+}
+
+// NewAsChaincode wraps New() to return it as a chaincode
+func NewAsChaincode() shim.Chaincode {
+	return New()
+}
+
 // EndorserOneValidSignature implements the default endorsement policy, which is to
 // sign the proposal hash and the read-write set
 type EndorserOneValidSignature struct {
@@ -38,7 +39,6 @@ type EndorserOneValidSignature struct {
 // Init is called once when the chaincode started the first time
 func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	logger.Infof("Successfully initialized ESCC")
-
 	return shim.Success(nil)
 }
 

@@ -98,7 +98,8 @@ func TestInstall(t *testing.T) {
 	// TODO cceventmgmt singleton should be refactored out of peer in the future. See CR 16549 for details.
 	cceventmgmt.Initialize()
 
-	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc := New()
+	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -174,7 +175,8 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1{}0", path, false, false, true, InvalidVersionErr("1{}0").Error(), nil, nil)
 	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil)
 
-	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc := New()
+	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -191,7 +193,8 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode exists example02", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -199,7 +202,8 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -207,7 +211,8 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -215,7 +220,8 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "escc is not a valid endorsement system chaincode", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -226,7 +232,8 @@ func TestDeploy(t *testing.T) {
 
 func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub) {
 	if scc == nil {
-		scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+		scc = New()
+		scc.support = &lscc.MockSupport{}
 		stub = shim.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -313,7 +320,8 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error(), nil, nil)
 	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil)
 
-	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc := New()
+	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -322,14 +330,16 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -339,7 +349,8 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
 
-	scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc = New()
+	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -352,7 +363,8 @@ func TestUpgrade(t *testing.T) {
 
 func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub) {
 	if scc == nil {
-		scc = &lifeCycleSysCC{support: &lscc.MockSupport{}}
+		scc = New()
+		scc.support = &lscc.MockSupport{}
 		stub = shim.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -397,7 +409,8 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 }
 
 func TestGETCCINFO(t *testing.T) {
-	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc := New()
+	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -432,7 +445,8 @@ func TestGETCCINFO(t *testing.T) {
 }
 
 func TestGETCHAINCODES(t *testing.T) {
-	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc := New()
+	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -460,7 +474,8 @@ func TestGETCHAINCODES(t *testing.T) {
 }
 
 func TestGETINSTALLEDCHAINCODES(t *testing.T) {
-	scc := &lifeCycleSysCC{support: &lscc.MockSupport{}}
+	scc := New()
+	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -518,7 +533,7 @@ func TestGETINSTALLEDCHAINCODES(t *testing.T) {
 }
 
 func TestNewLifeCycleSysCC(t *testing.T) {
-	scc := NewLifeCycleSysCC()
+	scc := New()
 	assert.NotNil(t, scc)
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -529,7 +544,7 @@ func TestNewLifeCycleSysCC(t *testing.T) {
 }
 
 func TestGetChaincodeData(t *testing.T) {
-	scc := NewLifeCycleSysCC()
+	scc := New()
 	assert.NotNil(t, scc)
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -544,7 +559,7 @@ func TestGetChaincodeData(t *testing.T) {
 }
 
 func TestExecuteInstall(t *testing.T) {
-	scc := NewLifeCycleSysCC()
+	scc := New()
 	assert.NotNil(t, scc)
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package vscc
@@ -46,6 +36,22 @@ const (
 	DUPLICATED_IDENTITY_ERROR = "Endorsement policy evaluation failure might be caused by duplicated identities"
 )
 
+// New creates a new instance of the default VSCC
+// Typically this will only be invoked once per peer
+func New() *ValidatorOneValidSignature {
+	vos := &ValidatorOneValidSignature{
+		sccprovider: sysccprovider.GetSystemChaincodeProvider(),
+	}
+	vos.collectionStore = privdata.NewSimpleCollectionStore(&collectionStoreSupport{vos.sccprovider})
+	return vos
+
+}
+
+// NewAsChaincode wraps New() to return a shim.Chaincode
+func NewAsChaincode() shim.Chaincode {
+	return New()
+}
+
 // ValidatorOneValidSignature implements the default transaction validation policy,
 // which is to check the correctness of the read-write set and the endorsement
 // signatures against an endorsement policy that is supplied as argument to
@@ -74,11 +80,8 @@ func (c *collectionStoreSupport) GetIdentityDeserializer(chainID string) m.Ident
 	return mspmgmt.GetIdentityDeserializer(chainID)
 }
 
-// Init is called once when the chaincode started the first time
+// Init is mostly useless for SCC
 func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Response {
-	vscc.sccprovider = sysccprovider.GetSystemChaincodeProvider()
-	vscc.collectionStore = privdata.NewSimpleCollectionStore(&collectionStoreSupport{vscc.sccprovider})
-
 	return shim.Success(nil)
 }
 
