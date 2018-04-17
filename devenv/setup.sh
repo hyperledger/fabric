@@ -121,7 +121,8 @@ sudo cp /hyperledger/fabric/devenv/limits.conf /etc/security/limits.conf
 # Configure vagrant specific environment
 cat <<EOF >/etc/profile.d/vagrant-devenv.sh
 # Expose the devenv/tools in the $PATH
-export PATH=\$PATH:/hyperledger/fabric/devenv/tools:/hyperledger/fabric/build/bin
+export PATH=\$PATH:/hyperledger/fabric/devenv/tools:/hyperledger/fabric/.build/bin
+export FABRIC_CFG_PATH=/hyperledger/fabric/sampleconfig/
 export VAGRANT=1
 export CGO_CFLAGS=" "
 EOF
