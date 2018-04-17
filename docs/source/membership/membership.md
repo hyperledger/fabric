@@ -15,11 +15,11 @@ through a combination of both.
 The power of an MSP goes beyond simply listing who is a network participant or
 member of a channel. An MSP can identify specific roles an actor might play either within the range
 or the organization (trust domain) the MSP represents (e.g., MSP admins, members of an
-organization subdivision), and sets the basis for defining access privileges in the
+organization subdivision), and sets the basis for defining access privileges in
 the context of a network and channel (e.g., channel admins, readers, writers).
 The configuration of an MSP is advertised to all the channels, where members of the
 corresponding organization participate (in the form of a **channel MSP**).
-Peers, orderers and clients also maintain a local MSP instance (also known as **lLocal
+Peers, orderers and clients also maintain a local MSP instance (also known as **Local
 MSP**) to authenticate messages of members of their organization outside the context
 of a channel.
 In addition, an MSP can allow for the identification of a list of
@@ -192,7 +192,7 @@ ORG2.MSP does exist in the network definition.*
 ### MSP Structure
 
 So far, you've seen that the two most important elements of an MSP are the specification
-of the (root or intermediate) CAs that are used to used to establish an actor's or node's
+of the (root or intermediate) CAs that are used to establish an actor's or node's
 membership in the respective organization. There are, however, more elements that are
 used in conjunction with these two to assist with membership functions.
 

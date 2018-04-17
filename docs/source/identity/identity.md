@@ -19,7 +19,7 @@ identity, in other words), and for this reason it must come from an
 authority **trusted** by the system. A [membership service provider](../membership/membership.html)
 (MSP) is the means to achieve this in Hyperledger Fabric. More specifically,
 an MSP is a component that represents the membership rules of an organization,
-and as such, it that defines the rules that govern a valid identity
+and as such, it defines the rules that govern a valid identity
 of a member of this organization. The default MSP implementation in Fabric
 uses X.509 certificates as identities, adopting a traditional Public
 Key Infrastructure (PKI) hierarchical model.
@@ -62,7 +62,7 @@ sure it comes from a verified source.
 Authorities who issue digital certificates to parties (e.g., users of a service, service
 provider), who then use them to authenticate themselves in the messages they exchange
 with their environment. A CA's Certificate Revocation List (CRL) constitutes a reference
-for the certificates that are no longer valid. Revocation of a certificate can happen fora number of reasons. For example, a certificate may be revoked because the cryptographic
+for the certificates that are no longer valid. Revocation of a certificate can happen for a number of reasons. For example, a certificate may be revoked because the cryptographic
 private material associated to the certificate has been exposed.
 
 Although a blockchain network is more than a communications network, it relies on the
