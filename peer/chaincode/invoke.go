@@ -33,7 +33,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		Long:      fmt.Sprintf("Invoke the specified %s. It will try to commit the endorsed transaction to the network.", chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return chaincodeInvoke(cmd, args, cf)
+			return chaincodeInvoke(cmd, cf)
 		},
 	}
 	flagList := []string{
@@ -46,7 +46,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	return chaincodeInvokeCmd
 }
 
-func chaincodeInvoke(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+func chaincodeInvoke(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	if channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -59,5 +59,5 @@ func chaincodeInvoke(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory)
 	}
 	defer cf.BroadcastClient.Close()
 
-	return chaincodeInvokeOrQuery(cmd, args, true, cf)
+	return chaincodeInvokeOrQuery(cmd, true, cf)
 }
