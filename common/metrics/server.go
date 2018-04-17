@@ -9,7 +9,6 @@ package metrics
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/spf13/viper"
@@ -31,7 +30,8 @@ const (
 
 var RootScope Scope
 var once sync.Once
-var started uint32
+var rootScopeMutex = &sync.Mutex{}
+var running bool
 
 // NewOpts create metrics options based config file
 func NewOpts() Opts {
@@ -84,21 +84,33 @@ func Init(opts Opts) (err error) {
 
 //Start starts metrics server
 func Start() error {
-	if atomic.CompareAndSwapUint32(&started, 0, 1) {
-		return RootScope.Start()
+	rootScopeMutex.Lock()
+	defer rootScopeMutex.Unlock()
+	if running {
+		return nil
 	}
-	return nil
+	running = true
+	return RootScope.Start()
 }
 
 //Shutdown closes underlying resources used by metrics server
 func Shutdown() error {
-	if atomic.CompareAndSwapUint32(&started, 1, 0) {
-		err := RootScope.Close()
-		RootScope = nil
-		return err
+	rootScopeMutex.Lock()
+	defer rootScopeMutex.Unlock()
+	if !running {
+		return nil
 	}
 
-	return nil
+	err := RootScope.Close()
+	RootScope = nil
+	running = false
+	return err
+}
+
+func isRunning() bool {
+	rootScopeMutex.Lock()
+	defer rootScopeMutex.Unlock()
+	return running
 }
 
 type StatsdReporterOpts struct {
