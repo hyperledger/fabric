@@ -71,19 +71,19 @@ message Query {
         // The client has to query a peer it trusts as it doesn't have means to self-verify
         // the authenticity of the returned result.
         // The result is returned in the form of ConfigResult.
-        ConfigQuery configQuery = 2;
+        ConfigQuery config_query = 2;
 
         // PeerMembershipQuery queries for peers in a channel context,
         // and returns PeerMembershipResult
-        PeerMembershipQuery peerQuery = 3;
+        PeerMembershipQuery peer_query = 3;
 
         // ChaincodeQuery queries for chaincodes by their name and version.
         // An empty version means any version can by returned.
-        ChaincodeQuery ccQuery = 4;
+        ChaincodeQuery cc_query = 4;
 
         // LocalPeerQuery queries for peers in a non channel context,
         // and returns PeerMembershipResult
-        LocalPeerQuery localPeers = 5;
+        LocalPeerQuery local_peers = 5;
     }
 }
 
@@ -98,11 +98,11 @@ message QueryResult {
 
         // ConfigResult contains the configuration of the channel,
         // such as FabricMSPConfig and orderer endpoints
-        ConfigResult configResult = 2;
+        ConfigResult config_result = 2;
 
         // ChaincodeQueryResult contains information about chaincodes,
         // and their corresponding endorsers
-        ChaincodeQueryResult ccQueryRes = 3;
+        ChaincodeQueryResult cc_query_res = 3;
 
         // PeerMembershipResult contains information about peers,
         // such as their identity, endpoints, and channel related state.
