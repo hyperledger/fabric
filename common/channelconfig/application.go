@@ -66,7 +66,9 @@ func (ac *ApplicationConfig) Capabilities() ApplicationCapabilities {
 	return capabilities.NewApplicationProvider(ac.protos.Capabilities.Capabilities)
 }
 
-// ACLs returns a map of resource name to APIResource
-func (ac *ApplicationConfig) ACLs() map[string]*pb.APIResource {
-	return ac.protos.ACLs.Acls
+// APIPolicyMapper returns a PolicyMapper that maps API names to policies
+func (ac *ApplicationConfig) APIPolicyMapper() PolicyMapper {
+	pm := newAPIsProvider(ac.protos.ACLs.Acls)
+
+	return pm
 }
