@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/events/producer"
@@ -45,7 +46,7 @@ func New() *PeerConfiger {
 }
 
 // NewAsChaincode returns a new PeerConfiger as a shim.Chaincode
-func NewAsChaincode() shim.Chaincode {
+func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 	return New()
 }
 

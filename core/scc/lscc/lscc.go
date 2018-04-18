@@ -73,7 +73,7 @@ const (
 )
 
 // Support contains functions that LSCC requires to execute its tasks
-type Support interface {
+type FilesystemSupport interface {
 	// PutChaincodeToLocalStorage stores the supplied chaincode
 	// package to local storage (i.e. the file system)
 	PutChaincodeToLocalStorage(ccprovider.CCPackage) error
@@ -99,9 +99,8 @@ type Support interface {
 
 // LifeCycleSysCC implements chaincode lifecycle and policies around it
 type lifeCycleSysCC struct {
-	// sccprovider is the interface with which we call
-	// methods of the system chaincode package without
-	// import cycles
+	// sccprovider is the interface which is passed into system chaincodes
+	// to access other parts of the system
 	sccprovider sysccprovider.SystemChaincodeProvider
 
 	// policyChecker is the interface used to perform
@@ -110,19 +109,22 @@ type lifeCycleSysCC struct {
 
 	// support provides the implementation of several
 	// static functions
-	support Support
+	support FilesystemSupport
 }
 
-func New() *lifeCycleSysCC {
+// New creates a new instance of the LSCC
+// Typically there is only one of these per peer
+func New(sccp sysccprovider.SystemChaincodeProvider) *lifeCycleSysCC {
 	return &lifeCycleSysCC{
 		support:       &supportImpl{},
 		policyChecker: policyprovider.GetPolicyChecker(),
-		sccprovider:   sysccprovider.GetSystemChaincodeProvider(),
+		sccprovider:   sccp,
 	}
 }
 
-func NewAsChaincode() shim.Chaincode {
-	return New()
+// NewAsChaincode returns New as a shim.Chaincode
+func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
+	return New(sccp)
 }
 
 //-------------- helper functions ------------------

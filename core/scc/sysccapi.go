@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
 
@@ -39,7 +40,7 @@ type SystemChaincode struct {
 	InitArgs [][]byte
 
 	// Chaincode can be invoked to create the actual chaincode instance
-	Chaincode func() shim.Chaincode
+	Chaincode func(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode
 
 	// InvokableExternal keeps track of whether
 	// this system chaincode can be invoked
@@ -64,7 +65,10 @@ func registerSysCC(syscc *SystemChaincode) (bool, error) {
 		return false, nil
 	}
 
-	err := inproccontroller.Register(syscc.Path, syscc.Chaincode())
+	err := inproccontroller.Register(syscc.Path, syscc.Chaincode(&sccProviderImpl{
+		Peer:        peer.Default,
+		PeerSupport: peer.DefaultSupport,
+	}))
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {
