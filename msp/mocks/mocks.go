@@ -112,8 +112,8 @@ func (*MockIdentity) Serialize() ([]byte, error) {
 	panic("implement me")
 }
 
-func (*MockIdentity) SatisfiesPrincipal(principal *pmsp.MSPPrincipal) error {
-	panic("implement me")
+func (m *MockIdentity) SatisfiesPrincipal(principal *pmsp.MSPPrincipal) error {
+	return m.Called(principal).Error(0)
 }
 
 type MockSigningIdentity struct {
