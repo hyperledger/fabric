@@ -74,6 +74,10 @@ func (s *DiscoverySupport) EligibleForService(channel string, data common2.Signe
 
 // ConfigSequence returns the configuration sequence of the given channel
 func (s *DiscoverySupport) ConfigSequence(channel string) uint64 {
+	// No sequence if the channel is empty
+	if channel == "" {
+		return 0
+	}
 	conf := s.GetChannelConfig(channel)
 	if conf == nil {
 		logger.Panic("Failed obtaining channel config for channel", channel)

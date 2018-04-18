@@ -25,6 +25,13 @@ func TestGetChannelConfigFunc(t *testing.T) {
 	assert.Equal(t, r, acl.ChannelConfigGetterFunc(f).GetChannelConfig("mychannel"))
 }
 
+func TestConfigSequenceEmptyChannelName(t *testing.T) {
+	// If the channel name is empty, there is no config sequence,
+	// and we return 0
+	sup := acl.NewDiscoverySupport(nil, nil, nil)
+	assert.Equal(t, uint64(0), sup.ConfigSequence(""))
+}
+
 func TestConfigSequence(t *testing.T) {
 	tests := []struct {
 		name           string
