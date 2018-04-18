@@ -96,8 +96,8 @@ func (*MockIdentity) GetMSPIdentifier() string {
 	panic("implement me")
 }
 
-func (*MockIdentity) Validate() error {
-	panic("implement me")
+func (m *MockIdentity) Validate() error {
+	return m.Called().Error(0)
 }
 
 func (*MockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
