@@ -67,6 +67,10 @@ func (id *cachedIdentity) SatisfiesPrincipal(principal *pmsp.MSPPrincipal) error
 	return id.cache.SatisfiesPrincipal(id.Identity, principal)
 }
 
+func (id *cachedIdentity) Validate() error {
+	return id.cache.Validate(id.Identity)
+}
+
 func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
 	c.dicMutex.Lock()
 	id, ok := c.deserializeIdentityCache.Get(string(serializedIdentity))

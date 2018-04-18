@@ -213,6 +213,35 @@ func TestValidate(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestSatisfiesValidateIndirectCall(t *testing.T) {
+	mockMSP := &mocks.MockMSP{}
+
+	mockIdentity := &mocks.MockIdentity{ID: "Alice"}
+	mockIdentity.On("Validate").Run(func(_ mock.Arguments) {
+		panic("shouldn't have invoked the identity method")
+	})
+	mockMSP.On("DeserializeIdentity", mock.Anything).Return(mockIdentity, nil).Once()
+	mockIdentity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "MSP", Id: "Alice"})
+
+	cache, err := New(mockMSP)
+	assert.NoError(t, err)
+
+	mockMSP.On("Validate", mockIdentity).Return(nil)
+
+	// Test that cache returns the correct value, and also use this to prime the cache
+	err = cache.Validate(mockIdentity)
+	mockMSP.AssertNumberOfCalls(t, "Validate", 1)
+	assert.NoError(t, err)
+	// Get the identity we test the caching on
+	identity, err := cache.DeserializeIdentity([]byte{1, 2, 3})
+	assert.NoError(t, err)
+	// Ensure the identity returned answers what the cached MSP answers.
+	err = identity.Validate()
+	assert.NoError(t, err)
+	// Ensure that although a call to Validate was called, the calls weren't passed on to the backing MSP
+	mockMSP.AssertNumberOfCalls(t, "Validate", 1)
+}
+
 func TestSatisfiesPrincipalIndirectCall(t *testing.T) {
 	mockMSP := &mocks.MockMSP{}
 	mockMSPPrincipal := &msp2.MSPPrincipal{PrincipalClassification: msp2.MSPPrincipal_IDENTITY, Principal: []byte{1, 2, 3}}
