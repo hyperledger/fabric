@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016-2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -50,6 +50,8 @@ func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"path",
 		"name",
 		"version",
+		"peerAddresses",
+		"tlsRootCertFiles",
 	}
 	attachFlags(chaincodeInstallCmd, flagList)
 
@@ -74,7 +76,8 @@ func install(msg proto.Message, cf *ChaincodeCmdFactory) error {
 		return fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
-	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
+	// install is currently only supported for one peer
+	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
 	}
@@ -153,7 +156,7 @@ func chaincodeInstall(cmd *cobra.Command, ccpackfile string, cf *ChaincodeCmdFac
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(true, false)
+		cf, err = InitCmdFactory(cmd.Name(), true, false)
 		if err != nil {
 			return err
 		}

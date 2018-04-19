@@ -1,23 +1,15 @@
 /*
- Copyright Digital Asset Holdings, LLC 2016 All Rights Reserved.
+Copyright Digital Asset Holdings, LLC. All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -26,11 +18,13 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/peer/common"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -216,4 +210,104 @@ func TestCollectionParsing(t *testing.T) {
 	cc, err = getCollectionConfigFromBytes([]byte("barf"))
 	assert.Error(t, err)
 	assert.Nil(t, cc)
+}
+
+func TestValidatePeerConnectionParams(t *testing.T) {
+	assert := assert.New(t)
+	viper.Reset()
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	// TLS disabled
+	viper.Set("peer.tls.enabled", false)
+
+	// failure - more than one peer and TLS root cert - not invoke
+	resetFlags()
+	peerAddresses = []string{"peer0", "peer1"}
+	tlsRootCertFiles = []string{"cert0", "cert1"}
+	err := validatePeerConnectionParameters("query")
+	assert.Error(err)
+	assert.Contains(err.Error(), "command can only be executed against one peer")
+
+	// success - peer provided and no TLS root certs
+	// TLS disabled
+	resetFlags()
+	peerAddresses = []string{"peer0"}
+	err = validatePeerConnectionParameters("query")
+	assert.NoError(err)
+	assert.Nil(tlsRootCertFiles)
+
+	// success - more TLS root certs than peers
+	// TLS disabled
+	resetFlags()
+	peerAddresses = []string{"peer0"}
+	tlsRootCertFiles = []string{"cert0", "cert1"}
+	err = validatePeerConnectionParameters("invoke")
+	assert.NoError(err)
+	assert.Nil(tlsRootCertFiles)
+
+	// success - multiple peers and no TLS root certs - invoke
+	// TLS disabled
+	resetFlags()
+	peerAddresses = []string{"peer0", "peer1"}
+	err = validatePeerConnectionParameters("invoke")
+	assert.NoError(err)
+	assert.Nil(tlsRootCertFiles)
+
+	// TLS enabled
+	viper.Set("peer.tls.enabled", true)
+
+	// failure - uneven number of peers and TLS root certs - invoke
+	// TLS enabled
+	resetFlags()
+	peerAddresses = []string{"peer0", "peer1"}
+	tlsRootCertFiles = []string{"cert0"}
+	err = validatePeerConnectionParameters("invoke")
+	assert.Error(err)
+	assert.Contains(err.Error(), fmt.Sprintf("number of peer addresses (%d) does not match the number of TLS root cert files (%d)", len(peerAddresses), len(tlsRootCertFiles)))
+
+	// success - more than one peer and TLS root certs - invoke
+	// TLS enabled
+	resetFlags()
+	peerAddresses = []string{"peer0", "peer1"}
+	tlsRootCertFiles = []string{"cert0", "cert1"}
+	err = validatePeerConnectionParameters("invoke")
+	assert.NoError(err)
+
+	// cleanup pflags and viper
+	resetFlags()
+	viper.Reset()
+}
+
+func TestInitCmdFactoryFailures(t *testing.T) {
+	assert := assert.New(t)
+
+	// failure validating peer connection parameters
+	resetFlags()
+	peerAddresses = []string{"peer0", "peer1"}
+	tlsRootCertFiles = []string{"cert0", "cert1"}
+	cf, err := InitCmdFactory("query", true, false)
+	assert.Error(err)
+	assert.Contains(err.Error(), "error validating peer connection parameters: 'query' command can only be executed against one peer")
+	assert.Nil(cf)
+
+	// failure - no peers supplied and endorser client is needed
+	resetFlags()
+	peerAddresses = []string{}
+	cf, err = InitCmdFactory("query", true, false)
+	assert.Error(err)
+	assert.Contains(err.Error(), "no endorser clients retrieved")
+	assert.Nil(cf)
+
+	// failure - orderer client is needed, ordering endpoint is empty and no
+	// endorser client supplied
+	resetFlags()
+	peerAddresses = nil
+	cf, err = InitCmdFactory("invoke", false, true)
+	assert.Error(err)
+	assert.Contains(err.Error(), "no ordering endpoint or endorser client supplied")
+	assert.Nil(cf)
+
+	// cleanup
+	resetFlags()
 }

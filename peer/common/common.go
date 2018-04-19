@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016-2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -37,9 +37,10 @@ var (
 	// These function variables (xyzFnc) can be used to invoke corresponding xyz function
 	// this will allow the invoking packages to mock these functions in their unit test cases
 
-	// GetEndorserClientFnc is a function that returns a new endorser client connection,
+	// GetEndorserClientFnc is a function that returns a new endorser client connection
+	// to the provided peer address using the TLS root cert file,
 	// by default it is set to GetEndorserClient function
-	GetEndorserClientFnc func() (pb.EndorserClient, error)
+	GetEndorserClientFnc func(address string, tlsRootCertFile string) (pb.EndorserClient, error)
 
 	// GetDefaultSignerFnc is a function that returns a default Signer(Default/PERR)
 	// by default it is set to GetDefaultSigner function
@@ -213,8 +214,7 @@ func CheckLogLevel(level string) error {
 	return err
 }
 
-func configFromEnv(prefix string) (address, override string,
-	clientConfig comm.ClientConfig, err error) {
+func configFromEnv(prefix string) (address, override string, clientConfig comm.ClientConfig, err error) {
 	address = viper.GetString(prefix + ".address")
 	override = viper.GetString(prefix + ".tls.serverhostoverride")
 	clientConfig = comm.ClientConfig{}

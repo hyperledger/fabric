@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016-2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -94,7 +94,7 @@ func TestPeerClient(t *testing.T) {
 	eClient, err := pClient1.Endorser()
 	assert.NoError(t, err)
 	assert.NotNil(t, eClient)
-	eClient, err = common.GetEndorserClient()
+	eClient, err = common.GetEndorserClient("", "")
 	assert.NoError(t, err)
 	assert.NotNil(t, eClient)
 
@@ -117,7 +117,7 @@ func TestPeerClient(t *testing.T) {
 	})
 	t.Run("GetEndorserClient() timeout", func(t *testing.T) {
 		t.Parallel()
-		_, err3 := common.GetEndorserClient()
+		_, err3 := common.GetEndorserClient("", "")
 		assert.Contains(t, err3.Error(), "endorser client failed to connect")
 	})
 	t.Run("PeerClient.GetAdmin() timeout", func(t *testing.T) {
@@ -134,6 +134,57 @@ func TestPeerClient(t *testing.T) {
 		_, err5 := common.GetAdminClient()
 		assert.Contains(t, err5.Error(), "admin client failed to connect")
 	})
+
+	viper.Reset()
+	os.Unsetenv("FABRIC_CFG_PATH")
+}
+
+func TestNewPeerClientForAddress(t *testing.T) {
+	initPeerTestEnv(t)
+
+	// TLS disabled
+	viper.Set("peer.tls.enabled", false)
+
+	// success case
+	pClient, err := common.NewPeerClientForAddress("testPeer", "")
+	assert.NoError(t, err)
+	assert.NotNil(t, pClient)
+
+	// failure - no peer address supplied
+	pClient, err = common.NewPeerClientForAddress("", "")
+	assert.Contains(t, err.Error(), "peer address must be set")
+	assert.Nil(t, pClient)
+
+	// TLS enabled
+	viper.Set("peer.tls.enabled", true)
+
+	// success case
+	pClient, err = common.NewPeerClientForAddress("tlsPeer", "./testdata/certs/ca.crt")
+	assert.NoError(t, err)
+	assert.NotNil(t, pClient)
+
+	// failure - bad tls root cert file
+	pClient, err = common.NewPeerClientForAddress("badPeer", "bad.crt")
+	assert.Contains(t, err.Error(), "unable to load TLS root cert file from bad.crt")
+	assert.Nil(t, pClient)
+
+	// failure - empty tls root cert file
+	pClient, err = common.NewPeerClientForAddress("badPeer", "")
+	assert.Contains(t, err.Error(), "tls root cert file must be set")
+	assert.Nil(t, pClient)
+
+	viper.Reset()
+	os.Unsetenv("FABRIC_CFG_PATH")
+}
+
+func TestGetEndorserClientForAddressError(t *testing.T) {
+	initPeerTestEnv(t)
+	viper.Set("peer.tls.enabled", true)
+
+	// failure
+	eClient, err := common.GetEndorserClient("peer0", "")
+	assert.Contains(t, err.Error(), "tls root cert file must be set")
+	assert.Nil(t, eClient)
 
 	viper.Reset()
 	os.Unsetenv("FABRIC_CFG_PATH")

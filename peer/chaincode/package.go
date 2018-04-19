@@ -158,7 +158,7 @@ func chaincodePackage(cmd *cobra.Command, args []string, cdsFact ccDepSpecFactor
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(false, false)
+		cf, err = InitCmdFactory(cmd.Name(), false, false)
 		if err != nil {
 			return err
 		}
