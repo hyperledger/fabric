@@ -1,24 +1,13 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package container
 
 import (
 	"fmt"
-	"io"
 	"sync"
 
 	"golang.org/x/net/context"
@@ -44,20 +33,15 @@ type VMController struct {
 	containerLocks map[string]*refCountedLock
 }
 
-//singleton...acess through NewVMController
-var vmcontroller *VMController
+var vmcontroller = &VMController{
+	containerLocks: make(map[string]*refCountedLock),
+}
 
 //constants for supported containers
 const (
 	DOCKER = "Docker"
 	SYSTEM = "System"
 )
-
-//NewVMController - creates/returns singleton
-func init() {
-	vmcontroller = new(VMController)
-	vmcontroller.containerLocks = make(map[string]*refCountedLock)
-}
 
 func (vmc *VMController) newVM(typ string) api.VM {
 	var v api.VM
@@ -68,7 +52,7 @@ func (vmc *VMController) newVM(typ string) api.VM {
 	case SYSTEM:
 		v = &inproccontroller.InprocVM{}
 	default:
-		v = &dockercontroller.DockerVM{}
+		vmLogger.Panicf("Programming error: unsupported VM type: %s", typ)
 	}
 	return v
 }
@@ -124,30 +108,6 @@ type VMCResp struct {
 	Resp interface{}
 }
 
-//CreateImageReq - properties for creating an container image
-type CreateImageReq struct {
-	ccintf.CCID
-	Reader io.Reader
-	Args   []string
-	Env    []string
-}
-
-func (bp CreateImageReq) do(ctxt context.Context, v api.VM) VMCResp {
-	var resp VMCResp
-
-	if err := v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader); err != nil {
-		resp = VMCResp{Err: err}
-	} else {
-		resp = VMCResp{}
-	}
-
-	return resp
-}
-
-func (bp CreateImageReq) getCCID() ccintf.CCID {
-	return bp.CCID
-}
-
 //StartContainerReq - properties for starting a container.
 type StartContainerReq struct {
 	ccintf.CCID
@@ -198,30 +158,6 @@ func (si StopContainerReq) do(ctxt context.Context, v api.VM) VMCResp {
 
 func (si StopContainerReq) getCCID() ccintf.CCID {
 	return si.CCID
-}
-
-//DestroyImageReq - properties for stopping a container.
-type DestroyImageReq struct {
-	ccintf.CCID
-	Timeout uint
-	Force   bool
-	NoPrune bool
-}
-
-func (di DestroyImageReq) do(ctxt context.Context, v api.VM) VMCResp {
-	var resp VMCResp
-
-	if err := v.Destroy(ctxt, di.CCID, di.Force, di.NoPrune); err != nil {
-		resp = VMCResp{Err: err}
-	} else {
-		resp = VMCResp{}
-	}
-
-	return resp
-}
-
-func (di DestroyImageReq) getCCID() ccintf.CCID {
-	return di.CCID
 }
 
 //VMCProcess should be used as follows

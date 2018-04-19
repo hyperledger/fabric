@@ -35,7 +35,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -537,7 +536,7 @@ func checkFinalState(cccid *ccprovider.CCContext, a int, b int) error {
 }
 
 // Invoke chaincode_example02
-func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContext, cID *pb.ChaincodeID, chaincodeType pb.ChaincodeSpec_Type, args []string, destroyImage bool, chaincodeSupport *ChaincodeSupport) error {
+func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContext, cID *pb.ChaincodeID, chaincodeType pb.ChaincodeSpec_Type, args []string, chaincodeSupport *ChaincodeSupport) error {
 	// the ledger is created with genesis block. Start block number 1 onwards
 	var nextBlockNumber uint64 = 1
 	f := "init"
@@ -551,25 +550,6 @@ func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContex
 	}
 
 	time.Sleep(time.Second)
-
-	if destroyImage {
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		dir := container.DestroyImageReq{
-			CCID: ccintf.CCID{
-				ChaincodeSpec: spec,
-				// NetworkID:     chaincodeSupport.peerNetworkID,
-				// PeerID:        chaincodeSupport.peerID,
-			},
-			Force:   true,
-			NoPrune: true,
-		}
-
-		_, err = container.VMCProcess(ctxt, container.DOCKER, dir)
-		if err != nil {
-			err = fmt.Errorf("Error destroying image: %s", err)
-			return err
-		}
-	}
 
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
@@ -786,7 +766,7 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 			ccID := &pb.ChaincodeID{Name: chaincodeName, Path: tc.chaincodePath, Version: chaincodeVersion}
 
 			args := []string{"a", "b", "10"}
-			err = invokeExample02Transaction(ctxt, cccid, ccID, tc.chaincodeType, args, true, chaincodeSupport)
+			err = invokeExample02Transaction(ctxt, cccid, ccID, tc.chaincodeType, args, chaincodeSupport)
 			if err != nil {
 				t.Fail()
 				t.Logf("Error invoking transaction: %s", err)
@@ -825,7 +805,7 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 
 	//FAIL, FAIL!
 	args := []string{"x", "-1"}
-	err = invokeExample02Transaction(ctxt, cccid, ccID, pb.ChaincodeSpec_GOLANG, args, false, chaincodeSupport)
+	err = invokeExample02Transaction(ctxt, cccid, ccID, pb.ChaincodeSpec_GOLANG, args, chaincodeSupport)
 
 	//this HAS to fail with expectedDeltaStringPrefix
 	if err != nil {

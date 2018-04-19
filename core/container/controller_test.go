@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
@@ -125,45 +126,59 @@ func getCodeChainBytesInMem() (io.Reader, error) {
 	return inputbuf, nil
 }
 
+//CreateImageReq - properties for creating an container image
+type CreateImageReq struct {
+	ccintf.CCID
+	Reader io.Reader
+	Args   []string
+	Env    []string
+}
+
+func (bp CreateImageReq) do(ctxt context.Context, v api.VM) VMCResp {
+	var resp VMCResp
+	if err := v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader); err != nil {
+		resp = VMCResp{Err: err}
+	} else {
+		resp = VMCResp{}
+	}
+	return resp
+}
+func (bp CreateImageReq) getCCID() ccintf.CCID {
+	return bp.CCID
+}
+
+func createImage() {
+	var ctxt = context.Background()
+	//get the tarball for codechain
+	tarRdr, err := getCodeChainBytesInMem()
+	if err != nil {
+		panic(err)
+	}
+
+	//create a the image needed for the rest of the tests obj and send it to VMCProcess
+	cir := CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}, Reader: tarRdr}
+	resp, err := VMCProcess(ctxt, "Docker", cir)
+	eResp := VMCResp{}
+	if err != nil || resp != eResp {
+		panic(fmt.Sprintf("err: %s, resp: %s", err, resp))
+	}
+}
+
 //set to true by providing "-run-controller-tests" command line option... Tests will create a docker image called "simple"
 var runTests bool
 
+// tests will fail if we don't build an image to start and stop, so check to see if this has been done
+var imageCreated bool
+
 func testForSkip(t *testing.T) {
+	if !imageCreated {
+		createImage()
+	}
+
 	//run tests
 	if !runTests {
 		t.SkipNow()
 	}
-}
-
-func TestVMCBuildImage(t *testing.T) {
-	testForSkip(t)
-	var ctxt = context.Background()
-
-	//get the tarball for codechain
-	tarRdr, err := getCodeChainBytesInMem()
-	if err != nil {
-		t.Fail()
-		t.Logf("Error reading tar file: %s", err)
-		return
-	}
-
-	c := make(chan struct{})
-
-	//creat a CreateImageReq obj and send it to VMCProcess
-	go func() {
-		defer close(c)
-		cir := CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}, Reader: tarRdr}
-		_, err := VMCProcess(ctxt, "Docker", cir)
-		if err != nil {
-			t.Fail()
-			t.Logf("Error creating image: %s", err)
-			return
-		}
-	}()
-
-	//wait for VMController to complete.
-	fmt.Println("VMCBuildImage-waiting for response")
-	<-c
 }
 
 func TestVMCStartContainer(t *testing.T) {
@@ -278,7 +293,5 @@ func TestNewVM(t *testing.T) {
 	ivm := vm.(*inproccontroller.InprocVM)
 	assert.NotNil(t, ivm, "Requested System VM but newVM did not return inproccontroller.InprocVM")
 
-	vm = vmcontroller.newVM("")
-	dvm = vm.(*dockercontroller.DockerVM)
-	assert.NotNil(t, dvm, "Requested default VM but newVM did not return dockercontroller.DockerVM")
+	assert.Panics(t, func() { vmcontroller.newVM("") }, "Requested unknown VM but did not panic")
 }
