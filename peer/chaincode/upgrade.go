@@ -44,6 +44,7 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"vscc",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 	}
 	attachFlags(chaincodeUpgradeCmd, flagList)
 

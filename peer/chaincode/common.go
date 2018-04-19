@@ -292,6 +292,27 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 }
 
 func validatePeerConnectionParameters(cmdName string) error {
+	if connectionProfile != common.UndefinedParamValue {
+		networkConfig, err := common.GetConfig(connectionProfile)
+		if err != nil {
+			return err
+		}
+		if len(networkConfig.Channels[channelID].Peers) != 0 {
+			peerAddresses = []string{}
+			tlsRootCertFiles = []string{}
+			for peer, peerChannelConfig := range networkConfig.Channels[channelID].Peers {
+				if peerChannelConfig.EndorsingPeer {
+					peerConfig, ok := networkConfig.Peers[peer]
+					if !ok {
+						return errors.Errorf("peer '%s' is defined in the channel config but doesn't have associated peer config", peer)
+					}
+					peerAddresses = append(peerAddresses, peerConfig.URL)
+					tlsRootCertFiles = append(tlsRootCertFiles, peerConfig.TLSCACerts.Path)
+				}
+			}
+		}
+	}
+
 	// currently only support multiple peer addresses for invoke
 	if cmdName != "invoke" && len(peerAddresses) > 1 {
 		return errors.Errorf("'%s' command can only be executed against one peer. received %d", cmdName, len(peerAddresses))

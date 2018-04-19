@@ -43,6 +43,7 @@ func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"instantiated",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 	}
 	attachFlags(chaincodeListCmd, flagList)
 
