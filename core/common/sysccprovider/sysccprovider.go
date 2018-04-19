@@ -53,30 +53,6 @@ type SystemChaincodeProvider interface {
 	PolicyManager(channelID string) (policies.Manager, bool)
 }
 
-var sccFactory SystemChaincodeProviderFactory
-
-// SystemChaincodeProviderFactory defines a factory interface so
-// that the actual implementation can be injected
-type SystemChaincodeProviderFactory interface {
-	NewSystemChaincodeProvider() SystemChaincodeProvider
-}
-
-// RegisterSystemChaincodeProviderFactory is to be called once to set
-// the factory that will be used to obtain instances of ChaincodeProvider
-func RegisterSystemChaincodeProviderFactory(sccfact SystemChaincodeProviderFactory) {
-	sccFactory = sccfact
-}
-
-// GetSystemChaincodeProvider returns instances of SystemChaincodeProvider;
-// the actual implementation is controlled by the factory that
-// is registered via RegisterSystemChaincodeProviderFactory
-func GetSystemChaincodeProvider() SystemChaincodeProvider {
-	if sccFactory == nil {
-		panic("The factory must be set first via RegisterSystemChaincodeProviderFactory")
-	}
-	return sccFactory.NewSystemChaincodeProvider()
-}
-
 // ChaincodeInstance is unique identifier of chaincode instance
 type ChaincodeInstance struct {
 	ChainID          string

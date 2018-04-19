@@ -16,7 +16,6 @@ import (
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/core/comm"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -85,9 +84,8 @@ func TestInitialize(t *testing.T) {
 
 	// we mock this because we can't import the chaincode package lest we create an import cycle
 	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&mscc.MocksccProviderFactory{})
 
-	Initialize(nil)
+	Initialize(nil, (&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider())
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
@@ -126,7 +124,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	err = CreateChainFromBlock(block)
+	err = CreateChainFromBlock(block, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
@@ -187,9 +185,6 @@ func TestCreateChainFromBlock(t *testing.T) {
 	pmgr, ok := pmg.Manager(testChainID)
 	assert.NotNil(t, pmgr, "PolicyManager should not be nil")
 	assert.Equal(t, true, ok, "expected Manage() to return true")
-
-	// Chaos monkey test
-	Initialize(nil)
 
 	SetCurrConfigBlock(block, testChainID)
 

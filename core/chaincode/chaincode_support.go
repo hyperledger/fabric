@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -123,6 +124,15 @@ type ChaincodeSupport struct {
 	executetimeout    time.Duration
 	userRunsCC        bool
 	ContainerRuntime  Runtime
+	sccp              sysccprovider.SystemChaincodeProvider
+}
+
+// SetSysCCProvider is a bit of a hack to make a latent dependency of ChaincodeSupport
+// be an explicit dependency.  Because the chaincode support must be registered before
+// the sysccprovider implementation can be created, we cannot make the sccp part of the
+// constructor for ChaincodeSupport
+func (cs *ChaincodeSupport) SetSysCCProvider(sccp sysccprovider.SystemChaincodeProvider) {
+	cs.sccp = sccp
 }
 
 // DuplicateChaincodeHandlerError returned if attempt to register same chaincodeID while a stream already exists.

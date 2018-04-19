@@ -34,7 +34,7 @@ import (
 
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
-func New() *PeerConfiger {
+func New(sccp sysccprovider.SystemChaincodeProvider) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
@@ -42,12 +42,13 @@ func New() *PeerConfiger {
 			mgmt.NewLocalMSPPrincipalGetter(),
 		),
 		configMgr: peer.NewConfigSupport(),
+		sccp:      sccp,
 	}
 }
 
 // NewAsChaincode returns a new PeerConfiger as a shim.Chaincode
 func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
-	return New()
+	return New(sccp)
 }
 
 // PeerConfiger implements the configuration handler for the peer. For every
@@ -56,6 +57,7 @@ func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 type PeerConfiger struct {
 	policyChecker policy.PolicyChecker
 	configMgr     config.Manager
+	sccp          sysccprovider.SystemChaincodeProvider
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -136,7 +138,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 				"for channel [%s]: [%s]", cid, err))
 		}
 
-		return joinChain(cid, block)
+		return joinChain(cid, block, e.sccp)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -207,8 +209,8 @@ func validateConfigBlock(block *common.Block) error {
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(chainID string, block *common.Block) pb.Response {
-	if err := peer.CreateChainFromBlock(block); err != nil {
+func joinChain(chainID string, block *common.Block, sccp sysccprovider.SystemChaincodeProvider) pb.Response {
+	if err := peer.CreateChainFromBlock(block, sccp); err != nil {
 		return shim.Error(err.Error())
 	}
 

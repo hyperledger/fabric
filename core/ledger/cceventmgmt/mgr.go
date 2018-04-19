@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 )
 
 var logger = flogging.MustGetLogger("cceventmgmt")
@@ -101,7 +102,7 @@ func (m *Mgr) ChaincodeDeployDone(chainid string) {
 }
 
 // HandleChaincodeInstall is expected to get invoked during installation of a chaincode package
-func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, dbArtifacts []byte) error {
+func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, dbArtifacts []byte, sccp sysccprovider.SystemChaincodeProvider) error {
 	logger.Debugf("HandleChaincodeInstall() - chaincodeDefinition=%#v", chaincodeDefinition)
 	// Write lock prevents concurrent deploy operations
 	m.rwlock.Lock()
@@ -109,7 +110,7 @@ func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, d
 		logger.Debugf("Channel [%s]: Handling chaincode install event for chaincode [%s]", chainid, chaincodeDefinition)
 		var deployed bool
 		var err error
-		if deployed, err = m.infoProvider.IsChaincodeDeployed(chainid, chaincodeDefinition); err != nil {
+		if deployed, err = m.infoProvider.IsChaincodeDeployed(chainid, chaincodeDefinition, sccp); err != nil {
 			logger.Warningf("Channel [%s]: Error while getting the deployment status of chaincode: %s", chainid, err)
 			return err
 		}

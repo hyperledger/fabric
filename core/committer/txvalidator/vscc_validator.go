@@ -43,11 +43,11 @@ type vsccValidatorImpl struct {
 }
 
 // newVSCCValidator creates new vscc validator
-func newVSCCValidator(support Support) *vsccValidatorImpl {
+func newVSCCValidator(support Support, sccp sysccprovider.SystemChaincodeProvider) *vsccValidatorImpl {
 	return &vsccValidatorImpl{
 		support:     support,
 		ccprovider:  ccprovider.GetChaincodeProvider(),
-		sccprovider: sysccprovider.GetSystemChaincodeProvider(),
+		sccprovider: sccp,
 	}
 }
 
@@ -324,7 +324,7 @@ func (v *vsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 	}
 	var policy []byte
 	var err error
-	if !sysccprovider.GetSystemChaincodeProvider().IsSysCC(ccID) {
+	if !v.sccprovider.IsSysCC(ccID) {
 		// when we are validating a chaincode that is not a
 		// system CC, we need to ask the CC to give us the name
 		// of VSCC and of the policy that should be used

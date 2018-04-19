@@ -33,7 +33,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -152,9 +151,8 @@ func initMockPeer(chainIDs ...string) error {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetApplicationConfigBoolRv: true,
 	}
-	sysccprovider.RegisterSystemChaincodeProviderFactory(
-		&scc.ProviderFactory{Peer: peer.Default, PeerSupport: msi},
-	)
+
+	sccp := &scc.ProviderImpl{Peer: peer.Default, PeerSupport: msi}
 
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
@@ -174,6 +172,7 @@ func initMockPeer(chainIDs ...string) error {
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	theChaincodeSupport = NewChaincodeSupport(GlobalConfig(), "0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
 	SideEffectInitialize(theChaincodeSupport)
+	theChaincodeSupport.SetSysCCProvider(sccp)
 	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
 
 	// Mock policy checker
@@ -288,10 +287,10 @@ func endTx(t *testing.T, cccid *ccprovider.CCContext, txsim ledger.TxSimulator, 
 }
 
 func execCC(t *testing.T, ctxt context.Context, ccSide *mockpeer.MockCCComm, cccid *ccprovider.CCContext, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet) error {
+
 	ccSide.SetResponses(respSet)
 
 	_, _, err := theChaincodeSupport.ExecuteWithErrorFilter(ctxt, cccid, cis)
-
 	if err == nil && expectExecErr {
 		t.Fatalf("expected error but succeeded")
 	} else if err != nil && !expectExecErr {
@@ -1008,7 +1007,7 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
-	h := Handler{txCtxs: NewTransactionContexts()}
+	h := Handler{txCtxs: NewTransactionContexts(), sccp: &scc.ProviderImpl{Peer: peer.Default, PeerSupport: peer.DefaultSupport}}
 
 	chnl := "test"
 	txid := "1"
@@ -1194,10 +1193,6 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 }
 
 func TestCCFramework(t *testing.T) {
-	// XXX temporarily skipping to make a CR series easier to review
-	// restored in https://gerrit.hyperledger.org/r/c/20749/
-	t.Skip()
-
 	//register 2 channels
 	chainID := "mockchainid"
 	chainID2 := "secondchain"
@@ -1219,7 +1214,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide)
 
 	//chaincode support should not allow dups
-	if err := theChaincodeSupport.registerHandler(&Handler{ChaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}}); err == nil {
+	if err := theChaincodeSupport.registerHandler(&Handler{ChaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, sccp: theChaincodeSupport.sccp}); err == nil {
 		t.Fatalf("expected re-register to fail")
 	} else if err, _ := err.(*DuplicateChaincodeHandlerError); err == nil {
 		t.Fatalf("expected DuplicateChaincodeHandlerError")

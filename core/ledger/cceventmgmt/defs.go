@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 )
 
 // ChaincodeDefinition captures the info about chaincode
@@ -39,8 +40,10 @@ type ChaincodeLifecycleEventListener interface {
 
 // ChaincodeInfoProvider interface enables event mgr to retrieve chaincode info for a given chaincode
 type ChaincodeInfoProvider interface {
-	// IsChaincodeDeployed returns true if the given chaincode is deployed on the given channel
-	IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition) (bool, error)
+	// IsChaincodeDeployed returns true if the given chaincode is deployed on the given channel.
+	// TODO, the syscc provider should probably be part of the impl struct, but because of the
+	// current complexities of our initialization, it is much easier to pass as a parameter.
+	IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition, sccp sysccprovider.SystemChaincodeProvider) (bool, error)
 	// RetrieveChaincodeArtifacts checks if the given chaincode is installed on the peer and if yes,
 	// it extracts the state db specific artifacts from the chaincode package tarball
 	RetrieveChaincodeArtifacts(chaincodeDefinition *ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error)
@@ -50,8 +53,8 @@ type chaincodeInfoProviderImpl struct {
 }
 
 // IsChaincodeDeployed implements function in the interface ChaincodeInfoProvider
-func (p *chaincodeInfoProviderImpl) IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition) (bool, error) {
-	return ccprovider.IsChaincodeDeployed(chainid, chaincodeDefinition.Name, chaincodeDefinition.Version, chaincodeDefinition.Hash)
+func (p *chaincodeInfoProviderImpl) IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition, sccp sysccprovider.SystemChaincodeProvider) (bool, error) {
+	return ccprovider.IsChaincodeDeployed(chainid, chaincodeDefinition.Name, chaincodeDefinition.Version, chaincodeDefinition.Hash, sccp)
 }
 
 // RetrieveChaincodeArtifacts implements function in the interface ChaincodeInfoProvider

@@ -28,7 +28,7 @@ func init() {
 }
 
 func newTestProvider() sysccprovider.SystemChaincodeProvider {
-	return (&ProviderFactory{Peer: peer.Default, PeerSupport: peer.DefaultSupport}).NewSystemChaincodeProvider()
+	return (&ProviderImpl{Peer: peer.Default, PeerSupport: peer.DefaultSupport})
 }
 
 func TestDeploy(t *testing.T) {
@@ -53,10 +53,6 @@ func TestDeDeploySysCC(t *testing.T) {
 		DeDeploySysCCs("a")
 	}
 	assert.NotPanics(t, f)
-}
-
-func TestSCCProvider(t *testing.T) {
-	assert.NotNil(t, (&ProviderFactory{}).NewSystemChaincodeProvider())
 }
 
 func TestIsSysCC(t *testing.T) {
@@ -105,14 +101,14 @@ func TestRegisterSysCC(t *testing.T) {
 		Path:      "path",
 		Enabled:   true,
 		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
-	})
+	}, nil)
 	assert.NoError(t, err)
 	_, err = registerSysCC(&SystemChaincode{
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
 		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
-	})
+	}, nil)
 	assert.Error(t, err)
 	assert.Contains(t, "path already registered", err)
 }

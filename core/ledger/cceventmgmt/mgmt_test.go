@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +73,7 @@ func TestCCEventMgmt(t *testing.T) {
 	assert.Equal(t, 2, handler3.doneRecievedCount)
 
 	// Install CC2 - handler1 and handler 3 should receive event because cc2 is deployed only on chain1 and not on chain2
-	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
+	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar, nil)
 	eventMgr.ChaincodeInstallDone(true)
 	assert.Contains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 	assert.NotContains(t, handler2.eventsRecieved, cc2ExpectedEvent)
@@ -187,7 +188,7 @@ func (p *mockProvider) setChaincodeDeployAndInstalled(chainid string, chaincodeD
 	p.setChaincodeInstalled(chaincodeDefinition, dbArtifactsTar)
 }
 
-func (p *mockProvider) IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition) (bool, error) {
+func (p *mockProvider) IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition, sccp sysccprovider.SystemChaincodeProvider) (bool, error) {
 	return p.chaincodesDeployed[[3]string{chainid, chaincodeDefinition.Name, chaincodeDefinition.Version}], nil
 }
 

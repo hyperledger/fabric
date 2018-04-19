@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -71,7 +70,8 @@ func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicati
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb}, semaphore.NewWeighted(10)}
-	theValidator := NewTxValidator(vcs)
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	theValidator := NewTxValidator(vcs, mp)
 
 	return theLedger, theValidator
 }
@@ -634,7 +634,8 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	validator := NewTxValidator(vcs)
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	validator := NewTxValidator(vcs, mp)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
@@ -662,7 +663,8 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	validator := NewTxValidator(vcs)
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	validator := NewTxValidator(vcs, mp)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
@@ -699,11 +701,13 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 func TestValidationResourceUpdate(t *testing.T) {
 	theLedger := new(mockLedger)
 	sup := &mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}
+
 	vcs := struct {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{sup, semaphore.NewWeighted(10)}
-	validator := NewTxValidator(vcs)
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	validator := NewTxValidator(vcs, mp)
 
 	ccID := "mycc"
 	tx := getEnvWithType(ccID, createRWset(t, ccID), common.HeaderType_PEER_RESOURCE_UPDATE, t)
@@ -771,7 +775,6 @@ var executeChaincodeProvider = &ccExecuteChaincode{
 }
 
 func TestMain(m *testing.M) {
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
 	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{executeChaincodeProvider})
 
 	msptesttools.LoadMSPSetupForTesting()

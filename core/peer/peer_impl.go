@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -19,7 +20,7 @@ import (
 // on singletons in the package. This is a step towards moving from package
 // level data for the peer to instance level data.
 type Operations interface {
-	CreateChainFromBlock(cb *common.Block) error
+	CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider) error
 	GetChannelConfig(cid string) channelconfig.Resources
 	GetChannelsInfo() []*pb.ChannelInfo
 	GetCurrConfigBlock(cid string) *common.Block
@@ -28,11 +29,11 @@ type Operations interface {
 	GetPolicyManager(cid string) policies.Manager
 	GetResourcesConfig(cid string) resourcesconfig.Resources
 	InitChain(cid string)
-	Initialize(init func(string))
+	Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider)
 }
 
 type peerImpl struct {
-	createChainFromBlock func(cb *common.Block) error
+	createChainFromBlock func(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider) error
 	getChannelConfig     func(cid string) channelconfig.Resources
 	getChannelsInfo      func() []*pb.ChannelInfo
 	getCurrConfigBlock   func(cid string) *common.Block
@@ -41,7 +42,7 @@ type peerImpl struct {
 	getPolicyManager     func(cid string) policies.Manager
 	getResourcesConfig   func(cid string) resourcesconfig.Resources
 	initChain            func(cid string)
-	initialize           func(init func(string))
+	initialize           func(init func(string), sccp sysccprovider.SystemChaincodeProvider)
 }
 
 // Default provides in implementation of the Peer interface that provides
@@ -61,7 +62,9 @@ var Default Operations = &peerImpl{
 
 var DefaultSupport Support = &supportImpl{operations: Default}
 
-func (p *peerImpl) CreateChainFromBlock(cb *common.Block) error { return p.createChainFromBlock(cb) }
+func (p *peerImpl) CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider) error {
+	return p.createChainFromBlock(cb, sccp)
+}
 func (p *peerImpl) GetChannelConfig(cid string) channelconfig.Resources {
 	return p.getChannelConfig(cid)
 }
@@ -73,5 +76,7 @@ func (p *peerImpl) GetPolicyManager(cid string) policies.Manager { return p.getP
 func (p *peerImpl) GetResourcesConfig(cid string) resourcesconfig.Resources {
 	return p.getResourcesConfig(cid)
 }
-func (p *peerImpl) InitChain(cid string)         { p.initChain(cid) }
-func (p *peerImpl) Initialize(init func(string)) { p.initialize(init) }
+func (p *peerImpl) InitChain(cid string) { p.initChain(cid) }
+func (p *peerImpl) Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider) {
+	p.initialize(init, sccp)
+}

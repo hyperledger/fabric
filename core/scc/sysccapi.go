@@ -59,16 +59,13 @@ type SystemChaincode struct {
 }
 
 // registerSysCC registers the given system chaincode with the peer
-func registerSysCC(syscc *SystemChaincode) (bool, error) {
+func registerSysCC(syscc *SystemChaincode, sccp sysccprovider.SystemChaincodeProvider) (bool, error) {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name, syscc.Path, syscc.Enabled))
 		return false, nil
 	}
 
-	err := inproccontroller.Register(syscc.Path, syscc.Chaincode(&sccProviderImpl{
-		Peer:        peer.Default,
-		PeerSupport: peer.DefaultSupport,
-	}))
+	err := inproccontroller.Register(syscc.Path, syscc.Chaincode(sccp))
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {
