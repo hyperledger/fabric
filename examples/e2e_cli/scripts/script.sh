@@ -19,6 +19,7 @@ MAX_RETRY=5
 ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 PEER0_ORG1_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 PEER0_ORG2_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+ORDERER_SYSCHAN_ID=e2e-orderer-syschan
 
 echo "Channel name : "$CHANNEL_NAME
 
@@ -70,11 +71,11 @@ checkOSNAvailability() {
 	while test "$(($(date +%s)-starttime))" -lt "$TIMEOUT" -a $rc -ne 0
 	do
 		 sleep 3
-		 echo "Attempting to fetch system channel 'testchainid' ...$(($(date +%s)-starttime)) secs"
+		 echo "Attempting to fetch system channel '$ORDERER_SYSCHAN_ID' ...$(($(date +%s)-starttime)) secs"
 		 if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
-			 peer channel fetch 0 -o orderer.example.com:7050 -c "testchainid" >&log.txt
+			 peer channel fetch 0 -o orderer.example.com:7050 -c "$ORDERER_SYSCHAN_ID" >&log.txt
 		 else
-			 peer channel fetch 0 0_block.pb -o orderer.example.com:7050 -c "testchainid" --tls --cafile $ORDERER_CA >&log.txt
+			 peer channel fetch 0 0_block.pb -o orderer.example.com:7050 -c "$ORDERER_SYSCHAN_ID" --tls --cafile $ORDERER_CA >&log.txt
 		 fi
 		 test $? -eq 0 && VALUE=$(cat log.txt | awk '/Received block/ {print $NF}')
 		 test "$VALUE" = "0" && let rc=0
