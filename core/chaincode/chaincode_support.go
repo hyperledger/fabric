@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -51,23 +50,6 @@ const (
 )
 
 //use this for ledger access and make sure TXSimulator is being used
-func getTxSimulator(context context.Context) ledger.TxSimulator {
-	if txsim, ok := context.Value(TXSimulatorKey).(ledger.TxSimulator); ok {
-		return txsim
-	}
-	//chaincode will not allow state operations
-	return nil
-}
-
-//use this for ledger access and make sure HistoryQueryExecutor is being used
-func getHistoryQueryExecutor(context context.Context) ledger.HistoryQueryExecutor {
-	if historyQueryExecutor, ok := context.Value(HistoryQueryExecutorKey).(ledger.HistoryQueryExecutor); ok {
-		return historyQueryExecutor
-	}
-	//chaincode will not allow state operations
-	return nil
-}
-
 //
 //chaincode runtime environment encapsulates handler and container environment
 //This is where the VM that's running the chaincode would hook in
@@ -231,7 +213,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 
 	//now we are ready to receive messages and send back responses
 	// TODO: Should we move these to the handler constructor?
-	chaincodehandler.txCtxs = make(map[string]*transactionContext)
+	chaincodehandler.txCtxs = NewTransactionContexts()
 	chaincodehandler.txidMap = make(map[string]bool)
 
 	chaincodeLogger.Debugf("registered handler complete for chaincode %s", key)
@@ -242,11 +224,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
 
 	// clean up queryIteratorMap
-	for _, txcontext := range chaincodehandler.txCtxs {
-		for _, v := range txcontext.queryIteratorMap {
-			v.Close()
-		}
-	}
+	chaincodehandler.txCtxs.Close()
 
 	key := chaincodehandler.ChaincodeID.Name
 	chaincodeLogger.Debugf("Deregister handler: %s", key)

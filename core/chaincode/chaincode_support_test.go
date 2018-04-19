@@ -938,7 +938,7 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
-	h := Handler{txCtxs: map[string]*transactionContext{}}
+	h := Handler{txCtxs: NewTransactionContexts()}
 
 	chnl := "test"
 	txid := "1"
@@ -1032,7 +1032,7 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	}
 }
 
-func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid string, pldgr ledger.PeerLedger, h *Handler) (*transactionContext, []byte) {
+func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid string, pldgr ledger.PeerLedger, h *Handler) (*TransactionContext, []byte) {
 	// create a new TxSimulator for the received txid
 	txsim, err := pldgr.NewTxSimulator(txid)
 	if err != nil {

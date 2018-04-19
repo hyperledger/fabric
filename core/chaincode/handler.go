@@ -41,7 +41,7 @@ const (
 
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
 
-type transactionContext struct {
+type TransactionContext struct {
 	chainID          string
 	signedProp       *pb.SignedProposal
 	proposal         *pb.Proposal
@@ -90,7 +90,7 @@ type Handler struct {
 	errChan chan error
 	// Map of tx txid to either invoke tx. Each tx will be
 	// added prior to execute and remove when done execute
-	txCtxs map[string]*transactionContext
+	txCtxs *TransactionContexts
 
 	txidMap map[string]bool
 
@@ -186,44 +186,19 @@ func (handler *Handler) getTxCtxId(chainID string, txid string) string {
 	return chainID + txid
 }
 
-func (handler *Handler) createTxContext(ctxt context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal) (*transactionContext, error) {
-	if handler.txCtxs == nil {
-		return nil, errors.Errorf("cannot create notifier for txid: %s", txid)
-	}
-	handler.Lock()
-	defer handler.Unlock()
-	txCtxID := handler.getTxCtxId(chainID, txid)
-	if handler.txCtxs[txCtxID] != nil {
-		return nil, errors.Errorf("txid: %s(%s) exists", txid, chainID)
-	}
-	txctx := &transactionContext{chainID: chainID, signedProp: signedProp,
-		proposal: prop, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
-		queryIteratorMap:    make(map[string]commonledger.ResultsIterator),
-		pendingQueryResults: make(map[string]*pendingQueryResult)}
-	handler.txCtxs[txCtxID] = txctx
-	txctx.txsimulator = getTxSimulator(ctxt)
-	txctx.historyQueryExecutor = getHistoryQueryExecutor(ctxt)
-
-	return txctx, nil
+func (handler *Handler) createTxContext(ctxt context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal) (*TransactionContext, error) {
+	return handler.txCtxs.Create(ctxt, chainID, txid, signedProp, prop)
 }
 
-func (handler *Handler) getTxContext(chainID, txid string) *transactionContext {
-	handler.Lock()
-	defer handler.Unlock()
-	txCtxID := handler.getTxCtxId(chainID, txid)
-	return handler.txCtxs[txCtxID]
+func (handler *Handler) getTxContext(chainID, txid string) *TransactionContext {
+	return handler.txCtxs.Get(chainID, txid)
 }
 
 func (handler *Handler) deleteTxContext(chainID, txid string) {
-	handler.Lock()
-	defer handler.Unlock()
-	txCtxID := handler.getTxCtxId(chainID, txid)
-	if handler.txCtxs != nil {
-		delete(handler.txCtxs, txCtxID)
-	}
+	handler.txCtxs.Delete(chainID, txid)
 }
 
-func (handler *Handler) initializeQueryContext(txContext *transactionContext, queryID string,
+func (handler *Handler) initializeQueryContext(txContext *TransactionContext, queryID string,
 	queryIterator commonledger.ResultsIterator) {
 	handler.Lock()
 	defer handler.Unlock()
@@ -231,13 +206,13 @@ func (handler *Handler) initializeQueryContext(txContext *transactionContext, qu
 	txContext.pendingQueryResults[queryID] = &pendingQueryResult{batch: make([]*pb.QueryResultBytes, 0)}
 }
 
-func (handler *Handler) getQueryIterator(txContext *transactionContext, queryID string) commonledger.ResultsIterator {
+func (handler *Handler) getQueryIterator(txContext *TransactionContext, queryID string) commonledger.ResultsIterator {
 	handler.Lock()
 	defer handler.Unlock()
 	return txContext.queryIteratorMap[queryID]
 }
 
-func (handler *Handler) cleanupQueryContext(txContext *transactionContext, queryID string) {
+func (handler *Handler) cleanupQueryContext(txContext *TransactionContext, queryID string) {
 	handler.Lock()
 	defer handler.Unlock()
 	txContext.queryIteratorMap[queryID].Close()
@@ -533,8 +508,7 @@ func (handler *Handler) handleRegister(msg *pb.ChaincodeMessage) {
 func (handler *Handler) notify(msg *pb.ChaincodeMessage) {
 	handler.Lock()
 	defer handler.Unlock()
-	txCtxID := handler.getTxCtxId(msg.ChannelId, msg.Txid)
-	tctx := handler.txCtxs[txCtxID]
+	tctx := handler.txCtxs.Get(msg.ChannelId, msg.Txid)
 	if tctx == nil {
 		chaincodeLogger.Debugf("notifier Txid:%s, channelID:%s does not exist for handleing message %s", msg.Txid, msg.ChannelId, msg.Type)
 	} else {
@@ -549,7 +523,7 @@ func (handler *Handler) notify(msg *pb.ChaincodeMessage) {
 }
 
 // is this a txid for which there is a valid txsim
-func (handler *Handler) isValidTxSim(channelID string, txid string, fmtStr string, args ...interface{}) (*transactionContext, *pb.ChaincodeMessage) {
+func (handler *Handler) isValidTxSim(channelID string, txid string, fmtStr string, args ...interface{}) (*TransactionContext, *pb.ChaincodeMessage) {
 	txContext := handler.getTxContext(channelID, txid)
 	if txContext == nil || txContext.txsimulator == nil {
 		// Send error msg back to chaincode. No ledger context
@@ -587,7 +561,7 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 		}
 
 		var serialSendMsg *pb.ChaincodeMessage
-		var txContext *transactionContext
+		var txContext *TransactionContext
 		txContext, serialSendMsg = handler.isValidTxSim(msg.ChannelId, msg.Txid,
 			"[%s]No ledger context for GetState. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
 
@@ -663,7 +637,7 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 
 		iterID := util.GenerateUUID()
 
-		var txContext *transactionContext
+		var txContext *TransactionContext
 
 		txContext, serialSendMsg = handler.isValidTxSim(msg.ChannelId, msg.Txid, "[%s]No ledger context for GetStateByRange. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
 		if txContext == nil {
@@ -717,7 +691,7 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 const maxResultLimit = 100
 
 //getQueryResponse takes an iterator and fetch state to construct QueryResponse
-func getQueryResponse(handler *Handler, txContext *transactionContext, iter commonledger.ResultsIterator,
+func getQueryResponse(handler *Handler, txContext *TransactionContext, iter commonledger.ResultsIterator,
 	iterID string) (*pb.QueryResponse, error) {
 	pendingQueryResults := txContext.pendingQueryResults[iterID]
 	for {
@@ -782,7 +756,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 			handler.deRegisterTxid(msg, serialSendMsg, false)
 		}()
 
-		var txContext *transactionContext
+		var txContext *TransactionContext
 		var queryStateNext *pb.QueryStateNext
 
 		errHandler := func(payload []byte, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
@@ -896,7 +870,7 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 			handler.deRegisterTxid(msg, serialSendMsg, false)
 		}()
 
-		var txContext *transactionContext
+		var txContext *TransactionContext
 		var iterID string
 
 		errHandler := func(payload []byte, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
@@ -974,7 +948,7 @@ func (handler *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 		}()
 
 		var iterID string
-		var txContext *transactionContext
+		var txContext *TransactionContext
 
 		errHandler := func(payload []byte, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
 			if iter != nil {
@@ -1035,7 +1009,7 @@ func isCollectionSet(collection string) bool {
 	return true
 }
 
-func (handler *Handler) getTxContextForMessage(channelID string, txid string, msgType string, payload []byte, fmtStr string, args ...interface{}) (*transactionContext, *pb.ChaincodeMessage) {
+func (handler *Handler) getTxContextForMessage(channelID string, txid string, msgType string, payload []byte, fmtStr string, args ...interface{}) (*TransactionContext, *pb.ChaincodeMessage) {
 	//if we have a channelID, just get the txsim from isValidTxSim
 	//if this is NOT an INVOKE_CHAINCODE, then let isValidTxSim handle retrieving the txContext
 	if channelID != "" || msgType != pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
@@ -1043,7 +1017,7 @@ func (handler *Handler) getTxContextForMessage(channelID string, txid string, ms
 	}
 
 	var calledCcIns *sysccprovider.ChaincodeInstance
-	var txContext *transactionContext
+	var txContext *TransactionContext
 	var triggerNextStateMsg *pb.ChaincodeMessage
 
 	// prepare to get isscc (only for INVOKE_CHAINCODE, any other msgType will always call isValidTxSim to get the tx context)
@@ -1092,7 +1066,7 @@ func (handler *Handler) handleModState(msg *pb.ChaincodeMessage) {
 		}
 
 		var triggerNextStateMsg *pb.ChaincodeMessage
-		var txContext *transactionContext
+		var txContext *TransactionContext
 		txContext, triggerNextStateMsg = handler.getTxContextForMessage(msg.ChannelId, msg.Txid, msg.Type.String(), msg.Payload,
 			"[%s]No ledger context for %s. Sending %s", shorttxid(msg.Txid), msg.Type, pb.ChaincodeMessage_ERROR)
 
