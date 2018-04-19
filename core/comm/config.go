@@ -10,16 +10,11 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
 
 var (
-	// Is the configuration cached?
-	configurationCached = false
-	// Is TLS enabled
-	tlsEnabled bool
 	// Max send and receive bytes for grpc clients and servers
 	MaxRecvMsgSize = 100 * 1024 * 1024
 	MaxSendMsgSize = 100 * 1024 * 1024
@@ -105,22 +100,6 @@ type KeepaliveOptions struct {
 	// ServerMinInterval is the minimum permitted time between client pings.
 	// If clients send pings more frequently, the server will disconnect them
 	ServerMinInterval time.Duration
-}
-
-// cacheConfiguration caches common package scoped variables
-func cacheConfiguration() {
-	if !configurationCached {
-		tlsEnabled = viper.GetBool("peer.tls.enabled")
-		configurationCached = true
-	}
-}
-
-// TLSEnabled return cached value for "peer.tls.enabled" configuration value
-func TLSEnabled() bool {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return tlsEnabled
 }
 
 // DefaultKeepaliveOptions returns sane default keepalive settings for gRPC

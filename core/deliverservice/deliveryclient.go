@@ -215,7 +215,7 @@ func (d *deliverServiceImpl) Stop() {
 
 func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocksprovider.LedgerInfo) *broadcastClient {
 	requester := &blocksRequester{
-		tls:     comm.TLSEnabled(),
+		tls:     viper.GetBool("peer.tls.enabled"),
 		chainID: chainID,
 	}
 	broadcastSetup := func(bd blocksprovider.BlocksDeliverer) error {
@@ -253,7 +253,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		}
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
-		if comm.TLSEnabled() {
+		if viper.GetBool("peer.tls.enabled") {
 			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
 			if err != nil {
 				return nil, fmt.Errorf("Failed obtaining credentials for channel %s: %v", channelID, err)
