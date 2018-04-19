@@ -211,11 +211,6 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 
 	chaincodehandler.registered = true
 
-	//now we are ready to receive messages and send back responses
-	// TODO: Should we move these to the handler constructor?
-	chaincodehandler.txCtxs = NewTransactionContexts()
-	chaincodehandler.txidMap = make(map[string]bool)
-
 	chaincodeLogger.Debugf("registered handler complete for chaincode %s", key)
 
 	return nil

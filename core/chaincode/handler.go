@@ -88,11 +88,13 @@ type Handler struct {
 
 	//chan to pass error in sync and nonsync mode
 	errChan chan error
+
 	// Map of tx txid to either invoke tx. Each tx will be
 	// added prior to execute and remove when done execute
 	txCtxs *TransactionContexts
 
-	txidMap map[string]bool
+	// set of active transaction identifiers
+	activeTransactions *ActiveTransactions
 
 	//handlers for each state of the handler
 	readyStateHandlers  stateHandlers
@@ -358,12 +360,14 @@ func HandleChaincodeStream(chaincodeSupport *ChaincodeSupport, ctxt context.Cont
 
 func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStream ccintf.ChaincodeStream) *Handler {
 	v := &Handler{
-		ChatStream:     peerChatStream,
-		handlerSupport: chaincodeSupport,
-		state:          created,
-		errChan:        make(chan error, 1),
-		keepalive:      chaincodeSupport.keepalive,
-		userRunsCC:     chaincodeSupport.userRunsCC,
+		ChatStream:         peerChatStream,
+		handlerSupport:     chaincodeSupport,
+		state:              created,
+		errChan:            make(chan error, 1),
+		txCtxs:             NewTransactionContexts(),
+		activeTransactions: NewActiveTransactions(),
+		keepalive:          chaincodeSupport.keepalive,
+		userRunsCC:         chaincodeSupport.userRunsCC,
 	}
 
 	v.readyStateHandlers = stateHandlers{
@@ -392,28 +396,11 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 }
 
 func (handler *Handler) createTXIDEntry(channelID, txid string) bool {
-	if handler.txidMap == nil {
-		return false
-	}
-	handler.Lock()
-	defer handler.Unlock()
-	txCtxID := handler.getTxCtxId(channelID, txid)
-	if handler.txidMap[txCtxID] {
-		return false
-	}
-	handler.txidMap[txCtxID] = true
-	return handler.txidMap[txCtxID]
+	return handler.activeTransactions.Add(channelID, txid)
 }
 
 func (handler *Handler) deleteTXIDEntry(channelID, txid string) {
-	handler.Lock()
-	defer handler.Unlock()
-	txCtxID := handler.getTxCtxId(channelID, txid)
-	if handler.txidMap != nil {
-		delete(handler.txidMap, txCtxID)
-	} else {
-		chaincodeLogger.Warningf("TXID %s not found!", txCtxID)
-	}
+	handler.activeTransactions.Remove(channelID, txid)
 }
 
 //sendReady sends READY to chaincode serially (just like REGISTER)
