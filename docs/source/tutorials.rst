@@ -27,8 +27,8 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    :maxdepth: 1
    :caption: Tutorials
 
-   build_network
    write_first_app
+   build_network
    channel_update_tutorial
    upgrading_your_network_tutorial
    chaincode

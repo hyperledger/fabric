@@ -279,7 +279,7 @@ as JSON documents because CouchDB supports the rich queries and update of richer
 data types often found in business transactions. Implementation-wise, CouchDB
 runs in a separate operating system process, but there is still a 1:1 relation
 between a network node and a CouchDB instance. All of this is invisible to
-chaincode. See [CouchDB as the StateDatabase](./couchdb_as_state_database.html)
+chaincode. See [CouchDB as the StateDatabase](../couchdb_as_state_database.html)
 for more information on CouchDB.
 
 In LevelDB and CouchDB, we see an important aspect of Hyperledger Fabric -- it is
