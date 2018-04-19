@@ -21,9 +21,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -51,7 +53,7 @@ func TestMain(m *testing.M) {
 	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
 	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
 	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
-
+	flogging.SetModuleLevel("statecouchdb", "debug")
 	//run the actual test
 	result := m.Run()
 
@@ -384,6 +386,18 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	testutil.AssertError(t, err, "Error should have been thrown for a nil chaincodeDefinition")
 }
 
+func TestTryCastingToJSON(t *testing.T) {
+	sampleJSON := []byte(`{"a":"A", "b":"B"}`)
+	isJSON, jsonVal := tryCastingToJSON(sampleJSON)
+	testutil.AssertEquals(t, isJSON, true)
+	testutil.AssertEquals(t, jsonVal["a"], "A")
+	testutil.AssertEquals(t, jsonVal["b"], "B")
+
+	sampleNonJSON := []byte(`This is not a json`)
+	isJSON, jsonVal = tryCastingToJSON(sampleNonJSON)
+	testutil.AssertEquals(t, isJSON, false)
+}
+
 func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	channelName := "ch1"
 	env := NewTestVDBEnv(t)
@@ -420,6 +434,14 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	testutil.AssertNoError(t, err, "")
 }
 
+func TestIsBulkOptimizable(t *testing.T) {
+	var db statedb.VersionedDB = &VersionedDB{}
+	_, ok := db.(statedb.BulkOptimizable)
+	if !ok {
+		t.Fatal("state couch db is expected to implement interface statedb.BulkOptimizable")
+	}
+}
+
 type testFile struct {
 	name, body string
 }
@@ -444,4 +466,13 @@ func createTarBytesForTest(t *testing.T, testFiles []*testFile) []byte {
 	// Make sure to check the error on Close.
 	testutil.AssertNoError(t, tarWriter.Close(), "")
 	return buffer.Bytes()
+}
+
+func printCompositeKeys(keys []*statedb.CompositeKey) string {
+
+	compositeKeyString := []string{}
+	for _, key := range keys {
+		compositeKeyString = append(compositeKeyString, "["+key.Namespace+","+key.Key+"]")
+	}
+	return strings.Join(compositeKeyString, ",")
 }
