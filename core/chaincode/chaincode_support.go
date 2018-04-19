@@ -498,25 +498,9 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *c
 }
 
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into ready state.
-func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
-	//build the chaincode
-	var cID *pb.ChaincodeID
-	var cMsg *pb.ChaincodeInput
-
-	var cds *pb.ChaincodeDeploymentSpec
-	var ci *pb.ChaincodeInvocationSpec
-	if cds, _ = spec.(*pb.ChaincodeDeploymentSpec); cds == nil {
-		if ci, _ = spec.(*pb.ChaincodeInvocationSpec); ci == nil {
-			panic("Launch should be called with deployment or invocation spec")
-		}
-	}
-	if cds != nil {
-		cID = cds.ChaincodeSpec.ChaincodeId
-		cMsg = cds.ChaincodeSpec.Input
-	} else {
-		cID = ci.ChaincodeSpec.ChaincodeId
-		cMsg = ci.ChaincodeSpec.Input
-	}
+func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
+	cID := spec.GetChaincodeSpec().ChaincodeId
+	cMsg := spec.GetChaincodeSpec().Input
 
 	canName := cccid.GetCanonicalName()
 	if chaincodeSupport.runningChaincodes.Contains(canName) {
@@ -533,6 +517,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		return cID, cMsg, errors.Errorf("premature execution - chaincode (%s) is being launched", canName)
 	}
 
+	cds, _ := spec.(*pb.ChaincodeDeploymentSpec)
 	if cds == nil {
 		if cccid.Syscc {
 			return cID, cMsg, errors.Errorf("a syscc should be running (it cannot be launched) %s", canName)
