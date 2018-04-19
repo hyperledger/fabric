@@ -182,7 +182,7 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 		secureOpts.ClientRootCAs = clientRootCAs
 		logger.Infof("Starting orderer with %s enabled", msg)
 	}
-	kaOpts := comm.DefaultKeepaliveOptions()
+	kaOpts := comm.DefaultKeepaliveOptions
 	// keepalive settings
 	// ServerMinInterval must be greater than 0
 	if conf.General.Keepalive.ServerMinInterval > time.Duration(0) {

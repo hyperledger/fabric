@@ -160,7 +160,7 @@ func main() {
 	}
 
 	clientConfig := comm.ClientConfig{
-		KaOpts:  comm.DefaultKeepaliveOptions(),
+		KaOpts:  comm.DefaultKeepaliveOptions,
 		SecOpts: &comm.SecureOptions{},
 		Timeout: 5 * time.Minute,
 	}

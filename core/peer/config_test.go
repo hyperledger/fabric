@@ -138,7 +138,7 @@ func TestGetServerConfig(t *testing.T) {
 		"ServerConfig.SecOpts.UseTLS should be false")
 
 	// keepalive options
-	assert.Equal(t, comm.DefaultKeepaliveOptions(), sc.KaOpts,
+	assert.Equal(t, comm.DefaultKeepaliveOptions, sc.KaOpts,
 		"ServerConfig.KaOpts should be set to default values")
 	viper.Set("peer.keepalive.minInterval", "2m")
 	sc, _ = GetServerConfig()

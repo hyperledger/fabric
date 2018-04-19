@@ -276,7 +276,7 @@ func serve(args []string) error {
 				grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
 				grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
 		// set the keepalive options
-		kaOpts := comm.DefaultKeepaliveOptions()
+		kaOpts := comm.DefaultKeepaliveOptions
 		if viper.IsSet("peer.keepalive.client.interval") {
 			kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.client.interval")
 		}
@@ -608,7 +608,7 @@ func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, err
 	}
 
 	// set the keepalive options
-	serverConfig.KaOpts = comm.DefaultKeepaliveOptions()
+	serverConfig.KaOpts = comm.DefaultKeepaliveOptions
 	if viper.IsSet("peer.events.keepalive.minInterval") {
 		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.events.keepalive.minInterval")
 	}

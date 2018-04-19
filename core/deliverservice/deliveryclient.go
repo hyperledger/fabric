@@ -242,7 +242,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
 			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
 		// set the keepalive options
-		kaOpts := comm.DefaultKeepaliveOptions()
+		kaOpts := comm.DefaultKeepaliveOptions
 		if viper.IsSet("peer.keepalive.deliveryClient.interval") {
 			kaOpts.ClientInterval = viper.GetDuration(
 				"peer.keepalive.deliveryClient.interval")

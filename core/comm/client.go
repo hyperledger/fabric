@@ -51,8 +51,8 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	} else {
 		// use defaults
 		kap = keepalive.ClientParameters{
-			Time:    keepaliveOptions.ClientInterval,
-			Timeout: keepaliveOptions.ClientTimeout}
+			Time:    DefaultKeepaliveOptions.ClientInterval,
+			Timeout: DefaultKeepaliveOptions.ClientTimeout}
 	}
 	kap.PermitWithoutStream = true
 	// set keepalive and blocking

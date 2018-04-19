@@ -166,7 +166,7 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		}
 	}
 	// get the default keepalive options
-	serverConfig.KaOpts = comm.DefaultKeepaliveOptions()
+	serverConfig.KaOpts = comm.DefaultKeepaliveOptions
 	// check to see if minInterval is set for the env
 	if viper.IsSet("peer.keepalive.minInterval") {
 		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.keepalive.minInterval")
