@@ -12,10 +12,13 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type refCountedLock struct {
@@ -32,6 +35,8 @@ type VMController struct {
 	// Handlers for each chaincode
 	containerLocks map[string]*refCountedLock
 }
+
+var vmLogger = flogging.MustGetLogger("container")
 
 var vmcontroller = &VMController{
 	containerLocks: make(map[string]*refCountedLock),
@@ -197,4 +202,13 @@ func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (VMCResp, e
 		<-c
 		return VMCResp{}, ctxt.Err()
 	}
+}
+
+// GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification
+func GetChaincodePackageBytes(spec *pb.ChaincodeSpec) ([]byte, error) {
+	if spec == nil || spec.ChaincodeId == nil {
+		return nil, fmt.Errorf("invalid chaincode spec")
+	}
+
+	return platforms.GetDeploymentPayload(spec)
 }
