@@ -39,6 +39,7 @@
 #   - enable_ci_only_tests - triggers unit-tests in downstream jobs. Applicable only for CI not to
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - help-docs - generate the command reference docs
 
 BASE_VERSION = 1.2.0
 PREV_VERSION = 1.1.0
@@ -123,6 +124,9 @@ checks: basic-checks unit-test
 basic-checks: license spelling linter
 
 desk-check: checks verify
+
+help-docs: native
+	@scripts/generateHelpDocs.sh
 
 # Pull thirdparty docker images based on the latest baseimage release version
 .PHONY: docker-thirdparty
