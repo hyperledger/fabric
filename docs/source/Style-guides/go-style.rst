@@ -12,6 +12,13 @@ code and fix all errors and warnings: -
 vet <https://golang.org/cmd/vet/>`__ -
 `goimports <https://godoc.org/golang.org/x/tools/cmd/goimports>`__
 
+API Documentation
+^^^^^^^^^^^^^^^^^
+
+The API documentation for Hyperledger Fabric's Golang APIs is available
+in `GoDoc <https://godoc.org/github.com/hyperledger/fabric>`_.
+
+
 Generating gRPC code
 ---------------------
 
@@ -36,4 +43,3 @@ packages in this folder instead of the GOPATH when the ``go install`` or
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-

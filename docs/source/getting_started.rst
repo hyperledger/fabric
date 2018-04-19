@@ -23,14 +23,6 @@ binaries, we provide a script that will :doc:`install` to your system. We think
 that you'll find the sample applications installed useful to learn more about
 the capabilities and operations of Hyperledger Fabric.
 
-API Documentation
-^^^^^^^^^^^^^^^^^
-
-The API documentation for Hyperledger Fabric's Golang APIs can be found on
-the godoc site for `Fabric <https://godoc.org/github.com/hyperledger/fabric>`_.
-If you plan on doing any development using these APIs, you may want to
-bookmark those links now.
-
 Hyperledger Fabric SDKs
 ^^^^^^^^^^^^^^^^^^^^^^^
 
