@@ -1,6 +1,11 @@
 Prerequisites
 =============
 
+Before we begin, if you haven't already done so, you may wish to check that
+you have all the prerequisites below installed on the platform(s)
+on which you'll be developing blockchain applications and/or operating
+Hyperledger Fabric.
+
 Install cURL
 ------------
 
