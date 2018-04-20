@@ -95,7 +95,7 @@ func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 }
 
-func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
+func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledger/test/tmpdb")
@@ -115,13 +115,14 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 	peerAddress := "0.0.0.0:21726"
 	lis, err := net.Listen("tcp", peerAddress)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator))
+	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	go grpcServer.Serve(lis)
 
@@ -144,10 +145,10 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 	sysccinfo.origSystemCC = scc.MockRegisterSysCCs(sysccs)
 
 	/////^^^ system initialization completed ^^^
-	return sysccinfo, lis, nil
+	return sysccinfo, lis, chaincodeSupport, nil
 }
 
-func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error {
+func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string, chaincodeSupport *ChaincodeSupport) error {
 	scc.DeploySysCCs(chainID)
 
 	defer scc.DeDeploySysCCs(chainID)
@@ -162,13 +163,13 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
 	// the ledger is created with genesis block. Start block number 1 onwards
 	var nextBlockNumber uint64 = 1
-	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
+	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	cccid := ccprovider.NewCCContext(chainID, "sample_syscc", sysCCVers, "", true, nil, nil)
 	cdsforStop := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: spec}
 	if err != nil {
-		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)
+		chaincodeSupport.Stop(ctxt, cccid, cdsforStop)
 		t.Logf("Error invoking sample_syscc: %s", err)
 		return err
 	}
@@ -176,14 +177,14 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 	f = "getval"
 	args = util.ToChaincodeArgs(f, "greeting")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
+	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err != nil {
-		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)
+		chaincodeSupport.Stop(ctxt, cccid, cdsforStop)
 		t.Logf("Error invoking sample_syscc: %s", err)
 		return err
 	}
 
-	theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)
+	chaincodeSupport.Stop(ctxt, cccid, cdsforStop)
 
 	return nil
 }
@@ -191,7 +192,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 // Test deploy of a transaction.
 func TestExecuteDeploySysChaincode(t *testing.T) {
 	testForSkip(t)
-	sysccinfo, lis, err := initSysCCTests()
+	sysccinfo, lis, chaincodeSupport, err := initSysCCTests()
 	if err != nil {
 		t.Fail()
 		return
@@ -210,7 +211,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	var ctxt = context.Background()
 
-	err = deploySampleSysCC(t, ctxt, chainID)
+	err = deploySampleSysCC(t, ctxt, chainID, chaincodeSupport)
 	if err != nil {
 		closeListenerAndSleep(lis)
 		t.Fail()
@@ -223,7 +224,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 // Test multichains
 func TestMultichains(t *testing.T) {
 	testForSkip(t)
-	sysccinfo, lis, err := initSysCCTests()
+	sysccinfo, lis, chaincodeSupport, err := initSysCCTests()
 	if err != nil {
 		t.Fail()
 		return
@@ -242,7 +243,7 @@ func TestMultichains(t *testing.T) {
 
 	var ctxt = context.Background()
 
-	err = deploySampleSysCC(t, ctxt, chainID)
+	err = deploySampleSysCC(t, ctxt, chainID, chaincodeSupport)
 	if err != nil {
 		closeListenerAndSleep(lis)
 		t.Fail()
@@ -256,7 +257,7 @@ func TestMultichains(t *testing.T) {
 		return
 	}
 
-	err = deploySampleSysCC(t, ctxt, chainID)
+	err = deploySampleSysCC(t, ctxt, chainID, chaincodeSupport)
 	if err != nil {
 		closeListenerAndSleep(lis)
 		t.Fail()

@@ -44,18 +44,18 @@ func getUpgradeLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.Ch
 }
 
 // upgrade a chaincode - i.e., build and initialize.
-func upgrade(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeSpec, blockNumber uint64) (*ccprovider.CCContext, error) {
+func upgrade(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeSpec, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (*ccprovider.CCContext, error) {
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := getDeploymentSpec(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
 
-	return upgrade2(ctx, cccid, chaincodeDeploymentSpec, blockNumber)
+	return upgrade2(ctx, cccid, chaincodeDeploymentSpec, blockNumber, chaincodeSupport)
 }
 
 func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
-	chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, blockNumber uint64) (newcccid *ccprovider.CCContext, err error) {
+	chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (newcccid *ccprovider.CCContext, err error) {
 	cis, err := getUpgradeLSCCSpec(cccid.ChainID, chaincodeDeploymentSpec)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating lscc spec : %s\n", err)
@@ -88,7 +88,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 
 	var cdbytes []byte
 	//write to lscc
-	if cdbytes, _, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
+	if cdbytes, _, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error executing LSCC for upgrade: %s", err)
 	}
 
@@ -108,7 +108,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 
 	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil, nil)
 
-	if _, _, err = theChaincodeSupport.ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
+	if _, _, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode for upgrade: %s", err)
 	}
 	return
@@ -127,13 +127,13 @@ func TestUpgradeCC(t *testing.T) {
 	testForSkip(t)
 	chainID := util.GetTestChainID()
 
-	lis, err := initPeer(chainID)
+	_, chaincodeSupport, cleanup, err := initPeer(chainID)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error creating peer: %s", err)
 	}
 
-	defer finitPeer(lis, chainID)
+	defer cleanup()
 
 	var ctxt = context.Background()
 
@@ -148,13 +148,13 @@ func TestUpgradeCC(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil, nil)
 	var nextBlockNumber uint64 = 1
-	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 
 	if err != nil {
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		t.Fail()
 		t.Logf("Error deploying chaincode %s(%s)", chaincodeID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
 
@@ -164,16 +164,16 @@ func TestUpgradeCC(t *testing.T) {
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: qArgs}}
 
 	//Do not increment block number here because, the block will not be committted because of error
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err == nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl01 should fail transaction: %s", err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	} else if !strings.Contains(err.Error(), "Invalid invoke function name. Expecting \"invoke\"") {
 		t.Fail()
 		t.Logf("expected <Invalid invoke function name. Expecting \"invoke\"> found <%s>", err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
 
@@ -187,13 +187,13 @@ func TestUpgradeCC(t *testing.T) {
 
 	//...and get back the ccid with the new version
 	nextBlockNumber++
-	cccid2, err := upgrade(ctxt, cccid, spec, nextBlockNumber)
+	cccid2, err := upgrade(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error upgrading chaincode %s(%s)", chaincodeID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		if cccid2 != nil {
-			theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		}
 		return
 	}
@@ -201,17 +201,17 @@ func TestUpgradeCC(t *testing.T) {
 	//go back and do the same query now
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: qArgs}}
 	nextBlockNumber++
-	_, _, _, err = invokeWithVersion(ctxt, chainID, cccid2.Version, spec, nextBlockNumber, nil)
+	_, _, _, err = invokeWithVersion(ctxt, chainID, cccid2.Version, spec, nextBlockNumber, nil, chaincodeSupport)
 
 	if err != nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl02 did not succeed: %s", err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-	theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestInvalUpgradeCC - test basic upgrade
@@ -221,13 +221,13 @@ func TestInvalUpgradeCC(t *testing.T) {
 	testForSkip(t)
 	chainID := util.GetTestChainID()
 
-	lis, err := initPeer(chainID)
+	_, chaincodeSupport, cleanup, err := initPeer(chainID)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error creating peer: %s", err)
 	}
 
-	defer finitPeer(lis, chainID)
+	defer cleanup()
 
 	var ctxt = context.Background()
 
@@ -245,16 +245,16 @@ func TestInvalUpgradeCC(t *testing.T) {
 
 	//...and get back the ccid with the new version
 	var nextBlockNumber uint64
-	cccid2, err := upgrade(ctxt, cccid, spec, nextBlockNumber)
+	cccid2, err := upgrade(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	if err == nil {
 		t.Fail()
 		t.Logf("Error expected upgrading to fail but it succeeded%s(%s)", chaincodeID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		if cccid2 != nil {
-			theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		}
 		return
 	}
 
-	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }

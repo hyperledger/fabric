@@ -33,16 +33,17 @@ import (
 func TestExecuteConcurrentInvokes(t *testing.T) {
 	//this test fails occasionally. FAB-1600 is opened to track this issue
 	//skip meanwhile so as to not block CI
+
 	t.Skip()
 	chainID := util.GetTestChainID()
 
-	lis, err := initPeer(chainID)
+	_, chaincodeSupport, cleanup, err := initPeer(chainID)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error creating peer: %s", err)
 	}
 
-	defer finitPeer(lis, chainID)
+	defer cleanup()
 
 	var ctxt = context.Background()
 
@@ -56,10 +57,10 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil, nil)
 
-	defer theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	defer chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 
 	var nextBlockNumber uint64
-	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -90,7 +91,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 		//start with a new background
-		_, _, results[qnum], err = invoke(context.Background(), chainID, spec, nextBlockNumber, nil)
+		_, _, results[qnum], err = invoke(context.Background(), chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 
 		if err != nil {
 			errs[qnum] = fmt.Errorf("Error executing <%s>: %s", chaincodeID.Name, err)
