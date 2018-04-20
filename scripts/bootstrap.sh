@@ -54,10 +54,6 @@ dockerCaPull() {
       docker tag hyperledger/fabric-ca:$CA_TAG hyperledger/fabric-ca
 }
 
-: ${CA_TAG:="$MARCH-$CA_VERSION"}
-: ${FABRIC_TAG:="$MARCH-$VERSION"}
-: ${THIRDPARTY_TAG:="$MARCH-$THIRDPARTY_IMAGE_VERSION"}
-
 samplesInstall() {
   # clone (if needed) hyperledger/fabric-samples and checkout corresponding
   # version to the binaries and docker images to be downloaded
@@ -115,12 +111,16 @@ BINARIES=true
 
 # Parse commandline args pull out
 # version and/or ca-version strings first
-if echo $1 | grep -q '\d'; then
+if echo $1 | grep -P -q '\d'; then
   VERSION=$1;shift
-  if echo $1 | grep -q '\d'; then
+  if echo $1 | grep -P -q '\d'; then
     CA_VERSION=$1;shift
   fi
 fi
+
+: ${CA_TAG:="$MARCH-$CA_VERSION"}
+: ${FABRIC_TAG:="$MARCH-$VERSION"}
+: ${THIRDPARTY_TAG:="$MARCH-$THIRDPARTY_IMAGE_VERSION"}
 
 # then parse opts
 while getopts "h?dsb" opt; do
