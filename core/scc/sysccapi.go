@@ -27,6 +27,12 @@ import (
 
 var sysccLogger = flogging.MustGetLogger("sccapi")
 
+// Registrar provides a way for system chaincodes to be registered
+type Registrar interface {
+	// Register registers a system chaincode
+	Register(path string, cc shim.Chaincode) error
+}
+
 // SystemChaincode defines the metadata needed to initialize system chaincode
 // when the fabric comes up. SystemChaincodes are installed by adding an
 // entry in importsysccs.go
@@ -60,13 +66,13 @@ type SystemChaincode struct {
 }
 
 // registerSysCC registers the given system chaincode with the peer
-func registerSysCC(syscc *SystemChaincode, sccp sysccprovider.SystemChaincodeProvider) (bool, error) {
+func registerSysCC(syscc *SystemChaincode, sccp sysccprovider.SystemChaincodeProvider, registrar Registrar) (bool, error) {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name, syscc.Path, syscc.Enabled))
 		return false, nil
 	}
 
-	err := inproccontroller.Register(syscc.Path, syscc.Chaincode(sccp))
+	err := registrar.Register(syscc.Path, syscc.Chaincode(sccp))
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {

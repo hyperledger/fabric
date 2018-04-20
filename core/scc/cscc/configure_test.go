@@ -208,7 +208,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		aclmgmt.GetACLProvider(),
 		container.NewVMController(
 			map[string]container.VMProvider{
-				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+				inproccontroller.ContainerType: inproccontroller.NewRegistry(),
 			},
 		),
 	)

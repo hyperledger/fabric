@@ -18,7 +18,7 @@ import (
 //note the chaincode must still be deployed and launched like a user chaincode will be
 // TODO, this is named poorly, it should actually return only the provider, and not do side-effect
 // initialization for registration.  To be tacked in a future CR.
-func RegisterSysCCs() sysccprovider.SystemChaincodeProvider {
+func RegisterSysCCs(registrar Registrar) sysccprovider.SystemChaincodeProvider {
 	systemChaincodes = append(systemChaincodes, loadSysCCs()...)
 
 	sccp := &ProviderImpl{
@@ -27,7 +27,7 @@ func RegisterSysCCs() sysccprovider.SystemChaincodeProvider {
 	}
 
 	for _, sysCC := range systemChaincodes {
-		registerSysCC(sysCC, sccp)
+		registerSysCC(sysCC, sccp, registrar)
 	}
 
 	return sccp

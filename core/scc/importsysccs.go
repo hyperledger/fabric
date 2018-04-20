@@ -8,6 +8,7 @@ package scc
 
 import (
 	//import system chaincodes here
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
@@ -105,10 +106,10 @@ func IsSysCCAndNotInvokableCC2CC(name string) bool {
 
 // MockRegisterSysCCs is used only for testing
 // This is needed to break import cycle
-func MockRegisterSysCCs(mockSysCCs []*SystemChaincode) []*SystemChaincode {
+func MockRegisterSysCCs(mockSysCCs []*SystemChaincode, ipRegistry *inproccontroller.Registry) []*SystemChaincode {
 	orig := systemChaincodes
 	systemChaincodes = mockSysCCs
-	RegisterSysCCs()
+	RegisterSysCCs(ipRegistry)
 	return orig
 }
 

@@ -171,6 +171,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	config := GlobalConfig()
 	config.StartupTimeout = 10 * time.Second
 	config.ExecuteTimeout = 1 * time.Second
+	ipRegistry := inproccontroller.NewRegistry()
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		"0.0.0.0:7052",
@@ -182,7 +183,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: dockercontroller.NewProvider(),
-				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
 	)
@@ -192,7 +193,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
-	scc.RegisterSysCCs()
+	scc.RegisterSysCCs(ipRegistry)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {

@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
@@ -87,28 +88,29 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 }
 
 func TestMockRegisterAndResetSysCCs(t *testing.T) {
-	orig := MockRegisterSysCCs([]*SystemChaincode{})
+	orig := MockRegisterSysCCs([]*SystemChaincode{}, inproccontroller.NewRegistry())
 	assert.NotEmpty(t, orig)
 	MockResetSysCCs(orig)
 	assert.Equal(t, len(orig), len(systemChaincodes))
 }
 
 func TestRegisterSysCC(t *testing.T) {
-	assert.NotPanics(t, func() { RegisterSysCCs() }, "expected successful init")
+	assert.NotPanics(t, func() { RegisterSysCCs(inproccontroller.NewRegistry()) }, "expected successful init")
 
+	ipRegistry := inproccontroller.NewRegistry()
 	_, err := registerSysCC(&SystemChaincode{
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
 		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
-	}, nil)
+	}, nil, ipRegistry)
 	assert.NoError(t, err)
 	_, err = registerSysCC(&SystemChaincode{
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
 		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
-	}, nil)
+	}, nil, ipRegistry)
 	assert.Error(t, err)
 	assert.Contains(t, "path already registered", err)
 }

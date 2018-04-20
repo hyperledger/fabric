@@ -119,6 +119,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()
 	config.StartupTimeout = 3 * time.Minute
+	ipRegistry := inproccontroller.NewRegistry()
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -130,7 +131,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: dockercontroller.NewProvider(),
-				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
 	)
@@ -141,7 +142,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
-	scc.RegisterSysCCs()
+	scc.RegisterSysCCs(ipRegistry)
 
 	for _, id := range chainIDs {
 		scc.DeDeploySysCCs(id)

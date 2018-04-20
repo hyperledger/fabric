@@ -126,6 +126,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()
 	config.ExecuteTimeout = 5 * time.Second
+	ipRegistry := inproccontroller.NewRegistry()
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -137,7 +138,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 		container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: dockercontroller.NewProvider(),
-				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
 	)
@@ -161,7 +162,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	// System chaincode has to be enabled
 	viper.Set("chaincode.system", map[string]string{"sample_syscc": "true"})
 
-	sysccinfo.origSystemCC = scc.MockRegisterSysCCs(sysccs)
+	sysccinfo.origSystemCC = scc.MockRegisterSysCCs(sysccs, ipRegistry)
 
 	/////^^^ system initialization completed ^^^
 	return sysccinfo, lis, chaincodeSupport, nil

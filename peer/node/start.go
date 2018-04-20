@@ -592,6 +592,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
 
 	authenticator := accesscontrol.NewAuthenticator(ca)
+	ipRegistry := inproccontroller.NewRegistry()
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
 		ccEndpoint,
@@ -602,7 +603,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		aclmgmt.GetACLProvider(),
 		container.NewVMController(map[string]container.VMProvider{
 			dockercontroller.ContainerType: dockercontroller.NewProvider(),
-			inproccontroller.ContainerType: inproccontroller.NewProvider(),
+			inproccontroller.ContainerType: ipRegistry,
 		}),
 	)
 	chaincode.SideEffectInitialize(chaincodeSupport)
@@ -613,7 +614,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	sccp := scc.RegisterSysCCs()
+	sccp := scc.RegisterSysCCs(ipRegistry)
 	chaincodeSupport.SetSysCCProvider(sccp)
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 
