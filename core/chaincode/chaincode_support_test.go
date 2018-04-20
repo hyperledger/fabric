@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -45,6 +46,8 @@ import (
 	plgr "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
 
@@ -821,17 +824,16 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
-func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
-	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info"}
-
-	//set the certGenerator for generating TLS stuff
-	newCCSupport.certGenerator = certGenerator
-
+func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
+	gt := NewGomegaWithT(t)
 	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", false, nil, nil)
-	args, envs, filesToUpload, err := newCCSupport.getLaunchConfigs(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG)
+	lc, err := cr.LaunchConfig(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG)
 	if err != nil {
 		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
 	}
+	args := lc.Args
+	envs := lc.Envs
+	filesToUpload := lc.Files
 
 	if len(args) != 2 {
 		t.Fatalf("calling getLaunchConfigs() for golang chaincode should have returned an array of 2 elements for Args, but got %v", args)
@@ -839,20 +841,27 @@ func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
 	if args[0] != "chaincode" || !strings.HasPrefix(args[1], "-peer.address") {
 		t.Fatalf("calling getLaunchConfigs() should have returned the start command for golang chaincode, but got %v", args)
 	}
-	if len(envs) != 7 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 7 elements for Envs, but got %v", envs)
+
+	if len(envs) != 8 {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 8 elements for Envs, but got %v", envs)
 	}
-	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=true" ||
-		envs[2] != "CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key" || envs[3] != "CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt" ||
-		envs[4] != "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt" ||
-		envs[5] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[6] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned the proper environment variables, but got %v", envs)
-	}
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warning"))
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
+	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=true"))
+	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key"))
+	gt.Expect(envs).To(ContainElement("CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt"))
+	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt"))
+
 	if len(filesToUpload) != 3 {
 		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 3 elements for filesToUpload, but got %v", len(filesToUpload))
 	}
 
-	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext.GetCanonicalName(), pb.ChaincodeSpec_NODE)
+	cr.CertGenerator = nil // disable TLS
+	lc, err = cr.LaunchConfig(ccContext.GetCanonicalName(), pb.ChaincodeSpec_NODE)
+	assert.NoError(t, err)
+	args = lc.Args
+
 	if len(args) != 3 {
 		t.Fatalf("calling getLaunchConfigs() for node chaincode should have returned an array of 3 elements for Args, but got %v", args)
 	}
@@ -861,28 +870,48 @@ func getLaunchConfigs(t *testing.T, certGenerator CertGenerator) {
 		t.Fatalf("calling getLaunchConfigs() should have returned the start command for node.js chaincode, but got %v", args)
 	}
 
-	newCCSupport.peerTLS = false
-	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG)
-	if len(envs) != 4 {
+	lc, err = cr.LaunchConfig(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG)
+	assert.NoError(t, err)
+
+	envs = lc.Envs
+	if len(envs) != 5 {
 		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 4 elements for Envs, but got %v", envs)
 	}
-	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=false" ||
-		envs[2] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[3] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
-		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned the proper environment variables, but got %v", envs)
-	}
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_LEVEL=info"))
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_LOGGING_SHIM=warning"))
+	gt.Expect(envs).To(ContainElement("CORE_CHAINCODE_ID_NAME=mycc:v0"))
+	gt.Expect(envs).To(ContainElement("CORE_PEER_TLS_ENABLED=false"))
 }
 
 //success case
 func TestLaunchAndWaitSuccess(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	fakeRuntime := &mock.Runtime{}
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
+		preLaunchFunc()
+		notify <- true
+		return nil
+	}
+
+	newCCSupport := &ChaincodeSupport{
+		peerTLS:           false,
+		chaincodeLogLevel: "debug",
+		shimLogLevel:      "info",
+		ccStartupTimeout:  time.Duration(10) * time.Second,
+		peerNetworkID:     "networkID",
+		peerID:            "peerID",
+		runningChaincodes: &runningChaincodes{
+			chaincodeMap:  make(map[string]*chaincodeRTEnv),
+			launchStarted: make(map[string]bool),
+		},
+		ContainerRuntime: fakeRuntime,
+	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//actual test - everythings good
-	launcher := &mockCCLauncher{execTime: nil, resp: container.VMCResp{}, retErr: nil, notfyb: true}
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -890,16 +919,34 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 
 //test timeout error
 func TestLaunchAndWaitTimeout(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	fakeRuntime := &mock.Runtime{}
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
+		preLaunchFunc()
+		time.Sleep(time.Second)
+		notify <- true
+		return nil
+	}
+
+	newCCSupport := &ChaincodeSupport{
+		peerTLS:           false,
+		chaincodeLogLevel: "debug",
+		shimLogLevel:      "info",
+		ccStartupTimeout:  500 * time.Millisecond,
+		peerNetworkID:     "networkID",
+		peerID:            "peerID",
+		runningChaincodes: &runningChaincodes{
+			chaincodeMap:  make(map[string]*chaincodeRTEnv),
+			launchStarted: make(map[string]bool),
+		},
+		ContainerRuntime: fakeRuntime,
+	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//the actual test - timeout 1000 > 500
-	sleepTime := time.Duration(1) * time.Second
-	launcher := &mockCCLauncher{execTime: &sleepTime, resp: container.VMCResp{}, retErr: nil, notfyb: true}
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -907,15 +954,33 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 
 //test notification error case
 func TestLaunchAndWaitNotificationError(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	fakeRuntime := &mock.Runtime{}
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
+		preLaunchFunc()
+		notify <- false
+		return nil
+	}
+
+	newCCSupport := &ChaincodeSupport{
+		peerTLS:           false,
+		chaincodeLogLevel: "debug",
+		shimLogLevel:      "info",
+		ccStartupTimeout:  10 * time.Second,
+		peerNetworkID:     "networkID",
+		peerID:            "peerID",
+		runningChaincodes: &runningChaincodes{
+			chaincodeMap:  make(map[string]*chaincodeRTEnv),
+			launchStarted: make(map[string]bool),
+		},
+		ContainerRuntime: fakeRuntime,
+	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//the actual test - notify false
-	launcher := &mockCCLauncher{execTime: nil, resp: container.VMCResp{}, retErr: nil, notfyb: false}
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -923,15 +988,32 @@ func TestLaunchAndWaitNotificationError(t *testing.T) {
 
 //test container return error
 func TestLaunchAndWaitLaunchError(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	fakeRuntime := &mock.Runtime{}
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
+		preLaunchFunc()
+		return errors.New("Bad lunch; upset stomache")
+	}
+
+	newCCSupport := &ChaincodeSupport{
+		peerTLS:           false,
+		chaincodeLogLevel: "debug",
+		shimLogLevel:      "info",
+		ccStartupTimeout:  time.Duration(10) * time.Second,
+		peerNetworkID:     "networkID",
+		peerID:            "peerID",
+		runningChaincodes: &runningChaincodes{
+			chaincodeMap:  make(map[string]*chaincodeRTEnv),
+			launchStarted: make(map[string]bool),
+		},
+		ContainerRuntime: fakeRuntime,
+	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//actual test - container launch gives error
-	launcher := &mockCCLauncher{execTime: nil, resp: container.VMCResp{Err: errors.New("Bad launch")}, retErr: nil}
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -1176,7 +1258,8 @@ func TestCCFramework(t *testing.T) {
 	getHistory(t, chainID, ccname, ccSide)
 
 	//just use the previous certGenerator for generating TLS key/pair
-	getLaunchConfigs(t, theChaincodeSupport.certGenerator)
+	cr := theChaincodeSupport.ContainerRuntime.(*ContainerRuntime)
+	getLaunchConfigs(t, cr)
 
 	ccSide.Quit()
 }

@@ -8,8 +8,6 @@ package chaincode
 
 import (
 	"fmt"
-	"io"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -17,10 +15,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
@@ -42,12 +38,20 @@ const (
 
 	//HistoryQueryExecutorKey is used to attach ledger history query executor context
 	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
-
-	// Mutual TLS auth client key and cert paths in the chaincode container
-	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"
-	TLSClientCertPath     string = "/etc/hyperledger/fabric/client.crt"
-	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
 )
+
+// CertGenerator generate client certificates for chaincode
+type CertGenerator interface {
+	// Generate returns a certificate and private key and associates
+	// the hash of the certificates with the given chaincode name
+	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
+}
+
+// Runtime is used to manage chaincode runtime instances.
+type Runtime interface {
+	Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error
+	Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
+}
 
 //use this for ledger access and make sure TXSimulator is being used
 //
@@ -66,7 +70,7 @@ func (cs *ChaincodeSupport) preLaunchSetup(chaincode string, notify chan bool) {
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
 func NewChaincodeSupport(
-	ccEndpoint string,
+	peerAddress string,
 	userrunsCC bool,
 	ccstartuptimeout time.Duration,
 	caCert []byte,
@@ -78,15 +82,13 @@ func NewChaincodeSupport(
 
 	theChaincodeSupport := &ChaincodeSupport{
 		caCert:        caCert,
-		certGenerator: certGenerator,
+		peerNetworkID: pnid,
+		peerID:        pid,
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
-		}, peerNetworkID: pnid, peerID: pid,
+		},
 	}
-
-	theChaincodeSupport.peerAddress = ccEndpoint
-	chaincodeLogger.Infof("Chaincode support using peerAddress: %s\n", theChaincodeSupport.peerAddress)
 
 	theChaincodeSupport.userRunsCC = userrunsCC
 	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
@@ -127,6 +129,25 @@ func NewChaincodeSupport(
 	theChaincodeSupport.shimLogLevel = getLogLevelFromViper("shim")
 	theChaincodeSupport.logFormat = viper.GetString("chaincode.logging.format")
 
+	// Keep TestQueries working
+	if !theChaincodeSupport.peerTLS {
+		certGenerator = nil
+	}
+
+	theChaincodeSupport.ContainerRuntime = &ContainerRuntime{
+		CertGenerator: certGenerator,
+		Processor:     ProcessFunc(container.VMCProcess),
+		CACert:        caCert,
+		PeerAddress:   peerAddress,
+		PeerID:        pid,
+		PeerNetworkID: pnid,
+		CommonEnv: []string{
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + theChaincodeSupport.chaincodeLogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + theChaincodeSupport.shimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + theChaincodeSupport.logFormat,
+		},
+	}
+
 	return theChaincodeSupport
 }
 
@@ -144,17 +165,9 @@ func getLogLevelFromViper(module string) string {
 	return levelString
 }
 
-// CertGenerator generates client certificates for chaincode.
-type CertGenerator interface {
-	// Generate returns a certificate and private key and associates
-	// the hash of the certificate with the given chaincode name
-	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
-}
-
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
 	caCert            []byte
-	certGenerator     CertGenerator
 	runningChaincodes *runningChaincodes
 	peerAddress       string
 	ccStartupTimeout  time.Duration
@@ -167,6 +180,7 @@ type ChaincodeSupport struct {
 	executetimeout    time.Duration
 	userRunsCC        bool
 	peerTLS           bool
+	ContainerRuntime  Runtime
 }
 
 // DuplicateChaincodeHandlerError returned if attempt to register same chaincodeID while a stream already exists.
@@ -198,10 +212,9 @@ func (cs *ChaincodeSupport) registerHandler(chaincodehandler *Handler) error {
 		chrte.handler = chaincodehandler
 	} else {
 		if cs.userRunsCC == false {
-			//this chaincode was not launched by the peer and is attempting to register. Don't allow this.
-			return errors.Errorf(
-				"peer will not accept external chaincode connection %v (except in dev mode)", chaincodehandler.ChaincodeID,
-			)
+			//this chaincode was not launched by the peer and is attempting to
+			//register. Don't allow this.
+			return errors.Errorf("peer will not accept external chaincode connection %v (except in dev mode)", chaincodehandler.ChaincodeID)
 		}
 		err := cs.runningChaincodes.RegisterChaincode(key, &chaincodeRTEnv{handler: chaincodehandler})
 		if err != nil {
@@ -231,144 +244,11 @@ func (cs *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
 	return nil
 }
 
-// returns a map of file path <-> []byte for all files related to TLS
-func (cs *ChaincodeSupport) getTLSFiles(keyPair *accesscontrol.CertAndPrivKeyPair) map[string][]byte {
-	if keyPair == nil {
-		return nil
-	}
-
-	return map[string][]byte{
-		TLSClientKeyPath:      []byte(keyPair.Key),
-		TLSClientCertPath:     []byte(keyPair.Cert),
-		TLSClientRootCertPath: cs.caCert,
-	}
-}
-
-//get args and env given chaincodeID
-func (cs *ChaincodeSupport) getLaunchConfigs(canName string, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, filesToUpload map[string][]byte, err error) {
-	envs = []string{"CORE_CHAINCODE_ID_NAME=" + canName}
-
-	// ----------------------------------------------------------------------------
-	// Pass TLS options to chaincode
-	// ----------------------------------------------------------------------------
-	// Note: The peer certificate is only baked into the image during the build
-	// phase (see core/chaincode/platforms).  This logic below merely assumes the
-	// image is already configured appropriately and is simply toggling the feature
-	// on or off.  If the peer's x509 has changed since the chaincode was deployed,
-	// the image may be stale and the admin will need to remove the current containers
-	// before restarting the peer.
-	// ----------------------------------------------------------------------------
-	var certKeyPair *accesscontrol.CertAndPrivKeyPair
-	if cs.peerTLS {
-		certKeyPair, err = cs.certGenerator.Generate(canName)
-		if err != nil {
-			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", canName))
-		}
-		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
-		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
-		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
-		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertPath))
-	} else {
-		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
-	}
-
-	if cs.chaincodeLogLevel != "" {
-		envs = append(envs, "CORE_CHAINCODE_LOGGING_LEVEL="+cs.chaincodeLogLevel)
-	}
-
-	if cs.shimLogLevel != "" {
-		envs = append(envs, "CORE_CHAINCODE_LOGGING_SHIM="+cs.shimLogLevel)
-	}
-
-	if cs.logFormat != "" {
-		envs = append(envs, "CORE_CHAINCODE_LOGGING_FORMAT="+cs.logFormat)
-	}
-	switch cLang {
-	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
-		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", cs.peerAddress)}
-	case pb.ChaincodeSpec_JAVA:
-		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", cs.peerAddress}
-	case pb.ChaincodeSpec_NODE:
-		args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", cs.peerAddress)}
-
-	default:
-		return nil, nil, nil, errors.Errorf("unknown chaincodeType: %s", cLang)
-	}
-
-	filesToUpload = cs.getTLSFiles(certKeyPair)
-
-	chaincodeLogger.Debugf("Executable is %s", args[0])
-	chaincodeLogger.Debugf("Args %v", args)
-	chaincodeLogger.Debugf("Envs %v", envs)
-	chaincodeLogger.Debugf("FilesToUpload %v", reflect.ValueOf(filesToUpload).MapKeys())
-
-	return args, envs, filesToUpload, nil
-}
-
-//---------- Begin - launchAndWaitForRegister related functionality --------
-
-// launcherIntf encapsulate chaincode execution. This helps with UT of
-// launchAndWaitForRegister.
-type launcherIntf interface {
-	launch(ctxt context.Context, notfiy chan bool) (container.VMCResp, error)
-}
-
-//ccLaucherImpl will use the container launcher mechanism to launch the actual chaincode
-type ccLauncherImpl struct {
-	support       *ChaincodeSupport
-	canonicalName string
-	version       string
-	cds           *pb.ChaincodeDeploymentSpec
-	builder       api.BuildSpecFactory
-}
-
-//launches the chaincode using the supplied context and notifier
-func (ccl *ccLauncherImpl) launch(ctxt context.Context, notify chan bool) (container.VMCResp, error) {
-	// launch the chaincode
-	args, env, filesToUpload, err := ccl.support.getLaunchConfigs(ccl.canonicalName, ccl.cds.ChaincodeSpec.Type)
-	if err != nil {
-		return container.VMCResp{}, err
-	}
-
-	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", ccl.canonicalName, ccl.support.peerNetworkID, ccl.support.peerID)
-	chaincodeLogger.Debugf("start container with args: %s", strings.Join(args, " "))
-	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
-
-	// set up the shadow handler JIT before container launch to
-	// reduce window of when an external chaincode can sneak in
-	// and use the launching context and make it its own
-	preLaunchFunc := func() error {
-		ccl.support.preLaunchSetup(ccl.canonicalName, notify)
-		return nil
-	}
-
-	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), ccl.support)
-	sir := container.StartContainerReq{
-		CCID: ccintf.CCID{
-			ChaincodeSpec: ccl.cds.ChaincodeSpec,
-			NetworkID:     ccl.support.peerNetworkID,
-			PeerID:        ccl.support.peerID,
-			Version:       ccl.version,
-		},
-		Builder:       ccl.builder,
-		Args:          args,
-		Env:           env,
-		FilesToUpload: filesToUpload,
-		PrelaunchFunc: preLaunchFunc,
-	}
-	vmtype, err := ccl.support.getVMType(ccl.cds)
-	if err != nil {
-		return container.VMCResp{}, err
-	}
-
-	return container.VMCProcess(ipcCtxt, vmtype, sir)
-}
-
 //launchAndWaitForRegister will launch container if not already running. Use
 //the targz to create the image if not found. It uses the supplied launcher
 //for launching the chaincode. UTs use the launcher freely to test various
 //conditions such as timeouts, failed launches and other errors
-func (cs *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, launcher launcherIntf) error {
+func (cs *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	canName := cccid.GetCanonicalName()
 	if canName == "" {
 		return errors.New("chaincode name not set")
@@ -390,20 +270,20 @@ func (cs *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid
 	//correctly
 	notfy := make(chan bool, 1)
 
+	// set up the shadow handler JIT before container launch to
+	// reduce window of when an external chaincode can sneak in
+	// and use the launching context and make it its own
+	preLaunchFunc := func() error {
+		cs.preLaunchSetup(canName, notfy)
+		return nil
+	}
+
 	errChan := make(chan error, 1)
 	go func() {
-		resp, err := launcher.launch(ctxt, notfy)
-		if err != nil || resp.Err != nil {
-			if err == nil {
-				err = resp.Err
-			}
-
-			//if the launch was successful and leads to proper registration,
-			//this error could be ignored in the select below. On the other
-			//hand the error might be triggered for select in which case
-			//the launch will be cleaned up
-			err = errors.WithMessage(err, "error starting container")
-			errChan <- err
+		launchCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), cs)
+		err := cs.ContainerRuntime.Start(launchCtxt, cccid, cds, preLaunchFunc, notfy)
+		if err != nil {
+			errChan <- errors.WithMessage(err, "error starting container")
 		}
 	}()
 
@@ -432,8 +312,6 @@ func (cs *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid
 	return err
 }
 
-//---------- End - launchAndWaitForRegister related functionality --------
-
 //Stop stops a chaincode if running
 func (cs *ChaincodeSupport) Stop(context context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	canName := cccid.GetCanonicalName()
@@ -441,30 +319,16 @@ func (cs *ChaincodeSupport) Stop(context context.Context, cccid *ccprovider.CCCo
 		return errors.New("chaincode name not set")
 	}
 
-	//stop the chaincode
-	sir := container.StopContainerReq{
-		CCID: ccintf.CCID{
-			ChaincodeSpec: cds.ChaincodeSpec,
-			NetworkID:     cs.peerNetworkID,
-			PeerID:        cs.peerID,
-			Version:       cccid.Version,
-		},
-		Timeout: 0,
-	}
+	defer func() {
+		err := cs.runningChaincodes.RemoveChaincode(canName)
+		if err != nil {
+			chaincodeLogger.Errorf("failed to remove running chaincode: %s", err)
+		}
+	}()
 
-	vmtype, _ := cs.getVMType(cds)
-	_, err := container.VMCProcess(context, vmtype, sir)
+	err := cs.ContainerRuntime.Stop(context, cccid, cds)
 	if err != nil {
-		err = errors.WithMessage(err, "error stopping container")
-		//but proceed to cleanup
-	}
-
-	err2 := cs.runningChaincodes.RemoveChaincode(canName)
-	if err != nil {
-		return err
-	}
-	if err2 != nil {
-		return err2
+		return errors.WithMessage(err, "error stopping container")
 	}
 
 	return nil
@@ -546,16 +410,7 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 			}
 		}
 
-		launcher := &ccLauncherImpl{
-			support:       cs,
-			canonicalName: cccid.GetCanonicalName(),
-			version:       cccid.Version,
-			cds:           cds,
-			builder: func() (io.Reader, error) {
-				return platforms.GenerateDockerBuild(cds)
-			},
-		}
-		err := cs.launchAndWaitForRegister(context, cccid, cds, launcher)
+		err := cs.launchAndWaitForRegister(context, cccid, cds)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed: %+v", err)
 			return cID, cMsg, err
