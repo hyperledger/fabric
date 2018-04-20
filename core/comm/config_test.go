@@ -14,6 +14,10 @@ import (
 
 func TestConfig(t *testing.T) {
 	t.Parallel()
-	// check the defaults
-	assert.EqualValues(t, keepaliveOptions, DefaultKeepaliveOptions())
+
+	serverOptions := ServerKeepaliveOptions(nil)
+	assert.NotNil(t, serverOptions)
+
+	clientOptions := ClientKeepaliveOptions(nil)
+	assert.NotNil(t, clientOptions)
 }

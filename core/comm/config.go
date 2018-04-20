@@ -19,7 +19,7 @@ var (
 	MaxRecvMsgSize = 100 * 1024 * 1024
 	MaxSendMsgSize = 100 * 1024 * 1024
 	// Default peer keepalive options
-	keepaliveOptions = &KeepaliveOptions{
+	DefaultKeepaliveOptions = &KeepaliveOptions{
 		ClientInterval:    time.Duration(1) * time.Minute,  // 1 min
 		ClientTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
 		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
@@ -102,18 +102,12 @@ type KeepaliveOptions struct {
 	ServerMinInterval time.Duration
 }
 
-// DefaultKeepaliveOptions returns sane default keepalive settings for gRPC
-// servers and clients
-func DefaultKeepaliveOptions() *KeepaliveOptions {
-	return keepaliveOptions
-}
-
 // ServerKeepaliveOptions returns gRPC keepalive options for server.  If
 // opts is nil, the default keepalive options are returned
 func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {
 	// use default keepalive options if nil
 	if ka == nil {
-		ka = keepaliveOptions
+		ka = DefaultKeepaliveOptions
 	}
 	var serverOpts []grpc.ServerOption
 	kap := keepalive.ServerParameters{
@@ -135,7 +129,7 @@ func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {
 func ClientKeepaliveOptions(ka *KeepaliveOptions) []grpc.DialOption {
 	// use default keepalive options if nil
 	if ka == nil {
-		ka = keepaliveOptions
+		ka = DefaultKeepaliveOptions
 	}
 
 	var dialOpts []grpc.DialOption

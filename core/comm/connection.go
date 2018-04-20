@@ -194,7 +194,7 @@ func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled b
 		opts = ClientKeepaliveOptions(ka)
 	} else {
 		// set to the default options
-		opts = ClientKeepaliveOptions(DefaultKeepaliveOptions())
+		opts = ClientKeepaliveOptions(DefaultKeepaliveOptions)
 	}
 
 	if tslEnabled {
