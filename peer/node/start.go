@@ -584,7 +584,14 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	authenticator := accesscontrol.NewAuthenticator(ca)
-	chaincodeSupport := chaincode.NewChaincodeSupport(ccEndpoint, userRunsCC, ccStartupTimeout, ca.CertBytes(), authenticator)
+	chaincodeSupport := chaincode.NewChaincodeSupport(
+		chaincode.GlobalConfig(),
+		ccEndpoint,
+		userRunsCC,
+		ccStartupTimeout,
+		ca.CertBytes(),
+		authenticator,
+	)
 	chaincode.SideEffectInitialize(chaincodeSupport)
 
 	ccSrv := pb.ChaincodeSupportServer(chaincodeSupport)
