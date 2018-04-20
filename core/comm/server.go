@@ -79,7 +79,7 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 
 			//set up our TLS config
 			if len(secureConfig.CipherSuites) == 0 {
-				secureConfig.CipherSuites = tlsCipherSuites
+				secureConfig.CipherSuites = DefaultTLSCipherSuites
 			}
 			getCert := func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 				cert := grpcServer.serverCertificate.Load().(tls.Certificate)
