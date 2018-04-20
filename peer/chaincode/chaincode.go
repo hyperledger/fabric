@@ -53,7 +53,6 @@ var (
 	chaincodeUsr          string // Not used
 	chaincodeQueryRaw     bool
 	chaincodeQueryHex     bool
-	customIDGenAlg        string
 	channelID             string
 	chaincodeVersion      string
 	policy                string
@@ -96,8 +95,6 @@ func resetFlags() {
 		fmt.Sprint("Version of the chaincode specified in install/instantiate/upgrade commands"))
 	flags.StringVarP(&chaincodeUsr, "username", "u", common.UndefinedParamValue,
 		fmt.Sprint("Username for chaincode operations when security is enabled"))
-	flags.StringVarP(&customIDGenAlg, "tid", "t", common.UndefinedParamValue,
-		fmt.Sprint("Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64"))
 	flags.StringVarP(&channelID, "channelID", "C", "",
 		fmt.Sprint("The channel on which this command should be executed"))
 	flags.StringVarP(&policy, "policy", "P", common.UndefinedParamValue,
