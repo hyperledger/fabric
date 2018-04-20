@@ -1,7 +1,7 @@
 // Copyright IBM Corp. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-package config
+package localconfig
 
 import (
 	"fmt"
@@ -12,32 +12,16 @@ import (
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
-	cf "github.com/hyperledger/fabric/core/config"
+	coreconfig "github.com/hyperledger/fabric/core/config"
 
 	"github.com/Shopify/sarama"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
-const (
-	pkgLogID = "orderer/common/config"
+// Prefix for environment variables.
+const Prefix = "ORDERER"
 
-	// Prefix identifies the prefix for the orderer-related ENV vars.
-	Prefix = "ORDERER"
-)
-
-var (
-	logger *logging.Logger
-
-	configName string
-)
-
-func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
-	flogging.SetModuleLevel(pkgLogID, "ERROR")
-
-	configName = strings.ToLower(Prefix)
-}
+var logger = flogging.MustGetLogger("localconfig")
 
 // TopLevel directly corresponds to the orderer config YAML.
 // Note, for non 1-1 mappings, you may append
@@ -234,30 +218,26 @@ var Defaults = TopLevel{
 	},
 }
 
-// Load parses the orderer.yaml file and environment, producing a struct suitable for config use, returning error on failure
+// Load parses the orderer YAML file and environment, producing
+// a struct suitable for config use, returning error on failure.
 func Load() (*TopLevel, error) {
 	config := viper.New()
-	cf.InitViper(config, configName)
-
-	// for environment variables
+	coreconfig.InitViper(config, "orderer")
 	config.SetEnvPrefix(Prefix)
 	config.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	config.SetEnvKeyReplacer(replacer)
 
-	err := config.ReadInConfig()
-	if err != nil {
+	if err := config.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("Error reading configuration: %s", err)
 	}
 
 	var uconf TopLevel
-	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
-	if err != nil {
+	if err := viperutil.EnhancedExactUnmarshal(config, &uconf); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
 	}
 
 	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
-
 	return &uconf, nil
 }
 
@@ -266,10 +246,10 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		// Translate any paths
 		c.General.TLS.RootCAs = translateCAs(configDir, c.General.TLS.RootCAs)
 		c.General.TLS.ClientRootCAs = translateCAs(configDir, c.General.TLS.ClientRootCAs)
-		cf.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
-		cf.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
-		cf.TranslatePathInPlace(configDir, &c.General.GenesisFile)
-		cf.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
+		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
+		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
+		coreconfig.TranslatePathInPlace(configDir, &c.General.GenesisFile)
+		coreconfig.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
 	}()
 
 	for {
@@ -381,7 +361,7 @@ func (c *TopLevel) completeInitialization(configDir string) {
 func translateCAs(configDir string, certificateAuthorities []string) []string {
 	var results []string
 	for _, ca := range certificateAuthorities {
-		result := cf.TranslatePath(configDir, ca)
+		result := coreconfig.TranslatePath(configDir, ca)
 		results = append(results, result)
 	}
 	return results

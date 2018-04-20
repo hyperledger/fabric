@@ -1,8 +1,5 @@
-/*
-Copyright IBM Corp. 2017 All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 package server
 
@@ -70,7 +67,7 @@ func Main() {
 		return
 	}
 
-	conf, err := config.Load()
+	conf, err := localconfig.Load()
 	if err != nil {
 		logger.Error("failed to parse config: ", err)
 		os.Exit(1)
@@ -83,7 +80,7 @@ func Main() {
 }
 
 // Start provides a layer of abstraction for benchmark test
-func Start(cmd string, conf *config.TopLevel) {
+func Start(cmd string, conf *localconfig.TopLevel) {
 	signer := localmsp.NewSigner()
 	serverConfig := initializeServerConfig(conf)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
@@ -120,13 +117,13 @@ func Start(cmd string, conf *config.TopLevel) {
 }
 
 // Set the logging level
-func initializeLoggingLevel(conf *config.TopLevel) {
+func initializeLoggingLevel(conf *localconfig.TopLevel) {
 	flogging.InitBackend(flogging.SetFormat(conf.General.LogFormat), os.Stderr)
 	flogging.InitFromSpec(conf.General.LogLevel)
 }
 
 // Start the profiling service if enabled.
-func initializeProfilingService(conf *config.TopLevel) {
+func initializeProfilingService(conf *localconfig.TopLevel) {
 	if conf.General.Profile.Enabled {
 		go func() {
 			logger.Info("Starting Go pprof profiling service on:", conf.General.Profile.Address)
@@ -136,7 +133,7 @@ func initializeProfilingService(conf *config.TopLevel) {
 	}
 }
 
-func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
+func initializeServerConfig(conf *localconfig.TopLevel) comm.ServerConfig {
 	// secure server config
 	secureOpts := &comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
@@ -194,7 +191,7 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 	return comm.ServerConfig{SecOpts: secureOpts, KaOpts: kaOpts}
 }
 
-func initializeBootstrapChannel(conf *config.TopLevel, lf blockledger.Factory) {
+func initializeBootstrapChannel(conf *localconfig.TopLevel, lf blockledger.Factory) {
 	var genesisBlock *cb.Block
 
 	// Select the bootstrapping mechanism
@@ -222,7 +219,7 @@ func initializeBootstrapChannel(conf *config.TopLevel, lf blockledger.Factory) {
 	}
 }
 
-func initializeGrpcServer(conf *config.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
+func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
 		logger.Fatal("Failed to listen:", err)
@@ -237,7 +234,7 @@ func initializeGrpcServer(conf *config.TopLevel, serverConfig comm.ServerConfig)
 	return grpcServer
 }
 
-func initializeLocalMsp(conf *config.TopLevel) {
+func initializeLocalMsp(conf *localconfig.TopLevel) {
 	// Load local MSP
 	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
@@ -245,7 +242,7 @@ func initializeLocalMsp(conf *config.TopLevel) {
 	}
 }
 
-func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalSigner,
+func initializeMultichannelRegistrar(conf *localconfig.TopLevel, signer crypto.LocalSigner,
 	callbacks ...func(bundle *channelconfig.Bundle)) *multichannel.Registrar {
 	lf, _ := createLedgerFactory(conf)
 	// Are we bootstrapping?

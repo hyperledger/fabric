@@ -1,8 +1,5 @@
-/*
-Copyright IBM Corp. 2017 All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 package server
 
@@ -30,18 +27,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	flogging.SetModuleLevel(pkgLogID, "DEBUG")
-}
-
 func TestInitializeLoggingLevel(t *testing.T) {
 	initializeLoggingLevel(
-		&config.TopLevel{
+		&localconfig.TopLevel{
 			// We specify the package name here, in contrast to what's expected
 			// in production usage. We do this so as to prevent the unwanted
 			// global log level setting in tests of this package (for example,
 			// the benchmark-related ones) that would occur otherwise.
-			General: config.General{LogLevel: "foo=debug"},
+			General: localconfig.General{LogLevel: "foo=debug"},
 		},
 	)
 	assert.Equal(t, flogging.GetModuleLevel("foo"), "DEBUG")
@@ -55,14 +48,14 @@ func TestInitializeProfilingService(t *testing.T) {
 		return l.Addr().String()
 	}()
 	initializeProfilingService(
-		&config.TopLevel{
-			General: config.General{
+		&localconfig.TopLevel{
+			General: localconfig.General{
 				LogLevel: "debug",
-				Profile: config.Profile{
+				Profile: localconfig.Profile{
 					Enabled: true,
 					Address: listenAddr,
 				}},
-			Kafka: config.Kafka{Verbose: true},
+			Kafka: localconfig.Kafka{Verbose: true},
 		},
 	)
 	time.Sleep(500 * time.Millisecond)
@@ -76,9 +69,9 @@ func TestInitializeProfilingService(t *testing.T) {
 }
 
 func TestInitializeServerConfig(t *testing.T) {
-	conf := &config.TopLevel{
-		General: config.General{
-			TLS: config.TLS{
+	conf := &localconfig.TopLevel{
+		General: localconfig.General{
+			TLS: localconfig.TLS{
 				Enabled:            true,
 				ClientAuthRequired: true,
 				Certificate:        "main.go",
@@ -94,7 +87,7 @@ func TestInitializeServerConfig(t *testing.T) {
 	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerInterval)
 	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerTimeout)
 	testDuration := 10 * time.Second
-	conf.General.Keepalive = config.Keepalive{
+	conf.General.Keepalive = localconfig.Keepalive{
 		ServerMinInterval: testDuration,
 		ServerInterval:    testDuration,
 		ServerTimeout:     testDuration,
@@ -128,9 +121,9 @@ func TestInitializeServerConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Panics(t, func() {
 				initializeServerConfig(
-					&config.TopLevel{
-						General: config.General{
-							TLS: config.TLS{
+					&localconfig.TopLevel{
+						General: localconfig.General{
+							TLS: localconfig.TLS{
 								Enabled:            true,
 								ClientAuthRequired: true,
 								Certificate:        tc.certificate,
@@ -168,16 +161,16 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 
 			fileLedgerLocation, _ := ioutil.TempDir("", "test-ledger")
 			ledgerFactory, _ := createLedgerFactory(
-				&config.TopLevel{
-					General: config.General{LedgerType: tc.ledgerType},
-					FileLedger: config.FileLedger{
+				&localconfig.TopLevel{
+					General: localconfig.General{LedgerType: tc.ledgerType},
+					FileLedger: localconfig.FileLedger{
 						Location: fileLedgerLocation,
 					},
 				},
 			)
 
-			bootstrapConfig := &config.TopLevel{
-				General: config.General{
+			bootstrapConfig := &localconfig.TopLevel{
+				General: localconfig.General{
 					GenesisMethod:  tc.genesisMethod,
 					GenesisProfile: "SampleSingleMSPSolo",
 					GenesisFile:    "genesisblock",
@@ -203,8 +196,8 @@ func TestInitializeLocalMsp(t *testing.T) {
 		assert.NotPanics(t, func() {
 			localMSPDir, _ := configtest.GetDevMspDir()
 			initializeLocalMsp(
-				&config.TopLevel{
-					General: config.General{
+				&localconfig.TopLevel{
+					General: localconfig.General{
 						LocalMSPDir: localMSPDir,
 						LocalMSPID:  "SampleOrg",
 						BCCSP: &factory.FactoryOpts{
@@ -226,8 +219,8 @@ func TestInitializeLocalMsp(t *testing.T) {
 		}()
 		assert.Panics(t, func() {
 			initializeLocalMsp(
-				&config.TopLevel{
-					General: config.General{
+				&localconfig.TopLevel{
+					General: localconfig.General{
 						LocalMSPDir: "",
 						LocalMSPID:  "",
 					},
@@ -255,11 +248,11 @@ func TestInitializeGrpcServer(t *testing.T) {
 	}()
 	host := strings.Split(listenAddr, ":")[0]
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
-	conf := &config.TopLevel{
-		General: config.General{
+	conf := &localconfig.TopLevel{
+		General: localconfig.General{
 			ListenAddress: host,
 			ListenPort:    uint16(port),
-			TLS: config.TLS{
+			TLS: localconfig.TLS{
 				Enabled:            false,
 				ClientAuthRequired: false,
 			},
@@ -282,11 +275,11 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		return l.Addr().String()
 	}()
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
-	conf := &config.TopLevel{
-		General: config.General{
+	conf := &localconfig.TopLevel{
+		General: localconfig.General{
 			ListenAddress: "localhost",
 			ListenPort:    uint16(port),
-			TLS: config.TLS{
+			TLS: localconfig.TLS{
 				Enabled:            false,
 				ClientAuthRequired: false,
 			},
@@ -311,11 +304,11 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	assert.Equal(t, 0, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
 	grpcServer.Listener().Close()
 
-	conf = &config.TopLevel{
-		General: config.General{
+	conf = &localconfig.TopLevel{
+		General: localconfig.General{
 			ListenAddress: "localhost",
 			ListenPort:    uint16(port),
-			TLS: config.TLS{
+			TLS: localconfig.TLS{
 				Enabled:            true,
 				ClientAuthRequired: true,
 				PrivateKey:         filepath.Join(".", "testdata", "tls", "server.key"),
@@ -344,11 +337,11 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	grpcServer.Listener().Close()
 }
 
-func genesisConfig(t *testing.T) *config.TopLevel {
+func genesisConfig(t *testing.T) *localconfig.TopLevel {
 	t.Helper()
 	localMSPDir, _ := configtest.GetDevMspDir()
-	return &config.TopLevel{
-		General: config.General{
+	return &localconfig.TopLevel{
+		General: localconfig.General{
 			LedgerType:     "ram",
 			GenesisMethod:  "provisional",
 			GenesisProfile: "SampleDevModeSolo",
