@@ -21,16 +21,16 @@ var systemChaincodes = []*SystemChaincode{
 		Enabled:           true,
 		Name:              "cscc",
 		Path:              "github.com/hyperledger/fabric/core/scc/cscc",
-		InitArgs:          [][]byte{[]byte("")},
-		Chaincode:         &cscc.PeerConfiger{},
+		InitArgs:          nil,
+		Chaincode:         cscc.NewAsChaincode,
 		InvokableExternal: true, // cscc is invoked to join a channel
 	},
 	{
 		Enabled:           true,
 		Name:              "lscc",
 		Path:              "github.com/hyperledger/fabric/core/scc/lscc",
-		InitArgs:          [][]byte{[]byte("")},
-		Chaincode:         lscc.NewLifeCycleSysCC(),
+		InitArgs:          nil,
+		Chaincode:         lscc.NewAsChaincode,
 		InvokableExternal: true, // lscc is invoked to deploy new chaincodes
 		InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
 	},
@@ -38,22 +38,22 @@ var systemChaincodes = []*SystemChaincode{
 		Enabled:   true,
 		Name:      "escc",
 		Path:      "github.com/hyperledger/fabric/core/scc/escc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &escc.EndorserOneValidSignature{},
+		InitArgs:  nil,
+		Chaincode: escc.NewAsChaincode,
 	},
 	{
 		Enabled:   true,
 		Name:      "vscc",
 		Path:      "github.com/hyperledger/fabric/core/scc/vscc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &vscc.ValidatorOneValidSignature{},
+		InitArgs:  nil,
+		Chaincode: vscc.NewAsChaincode,
 	},
 	{
 		Enabled:           true,
 		Name:              "qscc",
 		Path:              "github.com/hyperledger/fabric/core/chaincode/qscc",
-		InitArgs:          [][]byte{[]byte("")},
-		Chaincode:         &qscc.LedgerQuerier{},
+		InitArgs:          nil,
+		Chaincode:         qscc.NewAsChaincode,
 		InvokableExternal: true, // qscc can be invoked to retrieve blocks
 		InvokableCC2CC:    true, // qscc can be invoked to retrieve blocks also by a cc
 	},

@@ -141,7 +141,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 			Name:      "sample_syscc",
 			Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
 			InitArgs:  [][]byte{},
-			Chaincode: &SampleSysCC{},
+			Chaincode: func() shim.Chaincode { return &SampleSysCC{} },
 		},
 	}
 

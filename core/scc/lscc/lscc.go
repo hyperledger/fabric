@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package lscc
@@ -123,8 +113,16 @@ type lifeCycleSysCC struct {
 	support Support
 }
 
-func NewLifeCycleSysCC() *lifeCycleSysCC {
-	return &lifeCycleSysCC{support: &supportImpl{}}
+func New() *lifeCycleSysCC {
+	return &lifeCycleSysCC{
+		support:       &supportImpl{},
+		policyChecker: policyprovider.GetPolicyChecker(),
+		sccprovider:   sysccprovider.GetSystemChaincodeProvider(),
+	}
+}
+
+func NewAsChaincode() shim.Chaincode {
+	return New()
 }
 
 //-------------- helper functions ------------------
@@ -598,13 +596,8 @@ func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 
 //-------------- the chaincode stub interface implementation ----------
 
-//Init only initializes the system chaincode provider
+//Init is mostly useless for SCC
 func (lscc *lifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
-	lscc.sccprovider = sysccprovider.GetSystemChaincodeProvider()
-
-	// Init policy checker for access control
-	lscc.policyChecker = policyprovider.GetPolicyChecker()
-
 	return shim.Success(nil)
 }
 

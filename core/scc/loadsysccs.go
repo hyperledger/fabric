@@ -53,7 +53,7 @@ func loadSysCCsWithConfig(configs []*PluginConfig) {
 			Enabled:           conf.Enabled,
 			Name:              conf.Name,
 			Path:              conf.Path,
-			Chaincode:         *plugin,
+			Chaincode:         func() shim.Chaincode { return *plugin },
 			InvokableExternal: conf.InvokableExternal,
 			InvokableCC2CC:    conf.InvokableCC2CC,
 		}
