@@ -55,7 +55,7 @@ func TestContainerRuntimeLaunchConfigArgs(t *testing.T) {
 	}{
 		{"car-chaincode", pb.ChaincodeSpec_CAR, []string{"chaincode", "-peer.address=peer-address"}, ""},
 		{"golang-chaincode", pb.ChaincodeSpec_GOLANG, []string{"chaincode", "-peer.address=peer-address"}, ""},
-		{"java-chaincode", pb.ChaincodeSpec_JAVA, []string{"java", "-jar", "chaincode.jar", "--peerAddress", "peer-address"}, ""},
+		{"java-chaincode", pb.ChaincodeSpec_JAVA, []string{"/root/chaincode-java/start", "--peerAddress", "peer-address"}, ""},
 		{"node-chaincode", pb.ChaincodeSpec_NODE, []string{"/bin/sh", "-c", "cd /usr/local/src; npm start -- --peer.address peer-address"}, ""},
 		{"unknown-chaincode", pb.ChaincodeSpec_Type(999), []string{}, "unknown chaincodeType: 999"},
 	}

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package java_test
@@ -22,12 +12,22 @@ import (
 	"compress/gzip"
 	"testing"
 
+	"strings"
+
+	"io/ioutil"
+	"os"
+
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
 
-var chaincodePath = "testdata/SimpleSample"
+const chaincodePathFolder = "testdata"
+const chaincodePath = chaincodePathFolder + "/chaincode.jar"
+
+const expected = `
+ADD codepackage.tgz /root/chaincode-java/chaincode`
+
 var spec = &pb.ChaincodeSpec{
 	Type: pb.ChaincodeSpec_JAVA,
 	ChaincodeId: &pb.ChaincodeID{
@@ -35,12 +35,6 @@ var spec = &pb.ChaincodeSpec{
 		Path: chaincodePath},
 	Input: &pb.ChaincodeInput{
 		Args: [][]byte{[]byte("f")}}}
-
-var expected = `
-ADD codepackage.tgz /root/chaincode
-RUN  cd /root/chaincode/src && gradle -b build.gradle clean && gradle -b build.gradle build
-RUN  cp /root/chaincode/src/build/chaincode.jar /root
-RUN  cp /root/chaincode/src/build/libs/* /root/libs`
 
 func TestValidateSpec(t *testing.T) {
 	platform := java.Platform{}
@@ -60,28 +54,58 @@ func TestGetDeploymentPayload(t *testing.T) {
 	spec.ChaincodeId.Path = "pathdoesnotexist"
 
 	_, err := platform.GetDeploymentPayload(spec)
-	assert.Contains(t, err.Error(), "code does not exist")
+	assert.Contains(t, err.Error(), "no such file or directory")
 
 	spec.ChaincodeId.Path = chaincodePath
+	_, err = os.Stat(chaincodePath)
+	if os.IsNotExist(err) {
+		createTestJar(t)
+		defer os.RemoveAll(chaincodePathFolder)
+	}
+
 	payload, err := platform.GetDeploymentPayload(spec)
 	assert.NoError(t, err)
 	assert.NotZero(t, len(payload))
+
+	is := bytes.NewReader(payload)
+	gr, err := gzip.NewReader(is)
+	if err != nil {
+		assert.Failf(t, "Can't open zip stream %s", err.Error())
+	}
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			break
+		}
+
+		if strings.Contains(header.Name, "chaincode.jar") {
+			return
+		}
+	}
+	assert.NoError(t, err, "Error while looking for jar in tar file")
+	assert.Fail(t, "Didn't find expected jar")
+
 }
 
 func TestGenerateDockerfile(t *testing.T) {
 	platform := java.Platform{}
-	cds := &pb.ChaincodeDeploymentSpec{
-		CodePackage: []byte{}}
-
-	_, err := platform.GenerateDockerfile(cds)
-	assert.Error(t, err)
 
 	spec.ChaincodeId.Path = chaincodePath
+	_, err := os.Stat(chaincodePath)
+	if os.IsNotExist(err) {
+		createTestJar(t)
+		defer os.RemoveAll(chaincodePathFolder)
+	}
 	payload, err := platform.GetDeploymentPayload(spec)
 	if err != nil {
 		t.Fatalf("failed to get Java CC payload: %s", err)
 	}
-	cds.CodePackage = payload
+	cds := &pb.ChaincodeDeploymentSpec{
+		CodePackage: payload}
 
 	dockerfile, err := platform.GenerateDockerfile(cds)
 	assert.NoError(t, err)
@@ -96,4 +120,13 @@ func TestGenerateDockerBuild(t *testing.T) {
 
 	err := platform.GenerateDockerBuild(cds, tw)
 	assert.NoError(t, err)
+}
+
+func createTestJar(t *testing.T) {
+	os.MkdirAll(chaincodePathFolder, 0755)
+	// No need for real jar at this point, so any binary file will work
+	err := ioutil.WriteFile(chaincodePath, []byte("Hello, world"), 0644)
+	if err != nil {
+		assert.Fail(t, "Can't create test jar file", err.Error())
+	}
 }
