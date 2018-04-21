@@ -44,7 +44,7 @@
 BASE_VERSION = 1.2.0
 PREV_VERSION = 1.1.0
 CHAINTOOL_RELEASE=1.1.1
-BASEIMAGE_RELEASE=0.4.7
+BASEIMAGE_RELEASE=0.4.8
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
@@ -72,7 +72,7 @@ endif
 
 PKGNAME = github.com/$(PROJECT_NAME)
 CGO_FLAGS = CGO_CFLAGS=" "
-ARCH=$(shell uname -m)
+ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
 
 # defined in common/metadata/metadata.go
@@ -199,7 +199,7 @@ profile: unit-test-clean peer-docker testenv
 test-cmd:
 	@echo "go test -tags \"$(GO_TAGS)\""
 
-docker: docker-thirdparty $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
+docker: $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
 
 native: peer orderer configtxgen cryptogen configtxlator
 
@@ -336,16 +336,13 @@ release/darwin-amd64: $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS)) 
 release/linux-amd64: GOOS=linux
 release/linux-amd64: $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS)) release/linux-amd64/install
 
-release/%-amd64: DOCKER_ARCH=x86_64
 release/%-amd64: GOARCH=amd64
 release/linux-%: GOOS=linux
 
 release/linux-ppc64le: GOARCH=ppc64le
-release/linux-ppc64le: DOCKER_ARCH=ppc64le
 release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS)) release/linux-ppc64le/install
 
 release/linux-s390x: GOARCH=s390x
-release/linux-s390x: DOCKER_ARCH=s390x
 release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
 
 release/%/bin/configtxlator: $(PROJECT_FILES)
@@ -381,7 +378,7 @@ release/%/install: $(PROJECT_FILES)
 	mkdir -p $(@D)/bin
 	@cat $(@D)/../templates/get-docker-images.in \
 		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
-		| sed -e 's/_ARCH_/$(DOCKER_ARCH)/g' \
+		| sed -e 's/_ARCH_/$(GOARCH)/g' \
 		| sed -e 's/_VERSION_/$(PROJECT_VERSION)/g' \
 		| sed -e 's/_BASE_DOCKER_TAG_/$(BASE_DOCKER_TAG)/g' \
 		> $(@D)/bin/get-docker-images.sh

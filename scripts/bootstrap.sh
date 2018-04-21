@@ -11,12 +11,11 @@ export VERSION=1.1.0
 export CA_VERSION=$VERSION
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
 export THIRDPARTY_IMAGE_VERSION=0.4.6
-export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
-#Set MARCH variable i.e ppc64le,s390x,x86_64,i386
-MARCH=`uname -m`
+export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
+export MARCH=$(uname -m)
 
 printHelp() {
-  echo "Usage: bootstrap.sh [<version>] [<ca_version>] [-d -s -b]"
+  echo "Usage: bootstrap.sh [<version>] [<ca_version>] [<thirdparty_version>][-d -s -b]"
   echo
   echo "-d - bypass docker image download"
   echo "-s - bypass fabric-samples repo clone"
@@ -114,6 +113,7 @@ binaryIncrementalDownload() {
 binaryDownload() {
       local BINARY_FILE=$1
       local URL=$2
+      echo "===> Downloading: " ${URL}
       # Check if a previous failure occurred and the file was partially downloaded
       if [ -e ${BINARY_FILE} ]; then
           echo "==> Partial binary file found. Resuming download..."
@@ -174,19 +174,30 @@ BINARIES=true
 
 # Parse commandline args pull out
 # version and/or ca-version strings first
-if echo $1 | grep -P -q '\d'; then
+if echo $1 | grep -q '\d'; then
   VERSION=$1;shift
-  if echo $1 | grep -P -q '\d'; then
+  if echo $1 | grep -q '\d'; then
     CA_VERSION=$1;shift
+    if echo $1 | grep -q '\d'; then
+      THIRDPARTY_IMAGE_VERSION=$1;shift
+    fi
   fi
+fi
+
+# prior to 1.2.0 architecture was determined by uname -m
+if [[ $VERSION =~ ^1\.[0-1]\.* ]]; then
+  export FABRIC_TAG=${MARCH}-${VERSION}
+  export CA_TAG=${MARCH}-${CA_VERSION}
+  export THIRDPARTY_TAG=${MARCH}-${THIRDPARTY_IMAGE_VERSION}
+else
+  # starting with 1.2.0, multi-arch images will be default
+  : ${CA_TAG:="$CA_VERSION"}
+  : ${FABRIC_TAG:="$VERSION"}
+  : ${THIRDPARTY_TAG:="$THIRDPARTY_IMAGE_VERSION"}
 fi
 
 BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
 CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
-
-: ${CA_TAG:="$MARCH-$CA_VERSION"}
-: ${FABRIC_TAG:="$MARCH-$VERSION"}
-: ${THIRDPARTY_TAG:="$MARCH-$THIRDPARTY_IMAGE_VERSION"}
 
 # then parse opts
 while getopts "h?dsb" opt; do

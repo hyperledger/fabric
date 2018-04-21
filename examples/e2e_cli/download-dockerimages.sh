@@ -12,9 +12,6 @@
 # hyperledger/fabric-<image> latest tag
 ##################################################
 
-#Set ARCH variable i.e ppc64le,s390x,x86_64,i386
-ARCH=`uname -m`
-
 dockerFabricPull() {
   local FABRIC_TAG=$1
   for IMAGES in peer orderer couchdb ccenv javaenv kafka tools zookeeper; do
@@ -46,9 +43,9 @@ usage() {
       echo
       echo
       echo "EXAMPLE:"
-      echo "./download-dockerimages.sh -c x86_64-1.0.0-beta -f x86_64-1.0.0-beta"
+      echo "./download-dockerimages.sh -c 1.1.1 -f 1.1.0"
       echo
-      echo "By default, pulls fabric-ca and fabric 1.0.0-beta docker images"
+      echo "By default, pulls the 'latest' fabric-ca and fabric docker images"
       echo "from hyperledger dockerhub"
       exit 0
 }
@@ -68,8 +65,8 @@ while getopts "\?hc:f:" opt; do
   esac
 done
 
-: ${CA_TAG:="$ARCH-1.0.0-beta"}
-: ${FABRIC_TAG:="$ARCH-1.0.0-beta"}
+: ${CA_TAG:="latest"}
+: ${FABRIC_TAG:="latest"}
 
 echo "===> Pulling fabric Images"
 dockerFabricPull ${FABRIC_TAG}

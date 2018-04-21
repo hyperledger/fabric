@@ -16,7 +16,7 @@ export FABRIC_ROOT=$PWD/../..
 export FABRIC_CFG_PATH=$PWD
 echo
 
-OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
+OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | awk '{print tolower($0)}')
 
 ## Using docker-compose template replace private key file names with constants
 function replacePrivateKey () {
@@ -100,4 +100,3 @@ function generateChannelArtifacts() {
 generateCerts
 replacePrivateKey
 generateChannelArtifacts
-

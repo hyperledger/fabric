@@ -101,25 +101,25 @@ successfully, you should see an output similar to the following:
 
   REPOSITORY                     TAG                   IMAGE ID            CREATED             SIZE
   hyperledger/fabric-couchdb     latest                e2df4dd39ca9        38 minutes ago      1.51 GB
-  hyperledger/fabric-couchdb     x86_64-1.0.0-beta     e2df4dd39ca9        38 minutes ago      1.51 GB
+  hyperledger/fabric-couchdb     amd64-1.1.0           e2df4dd39ca9        38 minutes ago      1.51 GB
   hyperledger/fabric-kafka       latest                08af4d797266        40 minutes ago      1.3 GB
-  hyperledger/fabric-kafka       x86_64-1.0.0-beta     08af4d797266        40 minutes ago      1.3 GB
+  hyperledger/fabric-kafka       amd64-1.1.0           08af4d797266        40 minutes ago      1.3 GB
   hyperledger/fabric-zookeeper   latest                444e9e695367        40 minutes ago      1.31 GB
-  hyperledger/fabric-zookeeper   x86_64-1.0.0-beta     444e9e695367        40 minutes ago      1.31 GB
+  hyperledger/fabric-zookeeper   amd64-1.1.0           444e9e695367        40 minutes ago      1.31 GB
   hyperledger/fabric-testenv     latest                8678d3101930        41 minutes ago      1.41 GB
-  hyperledger/fabric-testenv     x86_64-1.0.0-beta     8678d3101930        41 minutes ago      1.41 GB
+  hyperledger/fabric-testenv     amd64-1.1.0           8678d3101930        41 minutes ago      1.41 GB
   hyperledger/fabric-buildenv    latest                60911392c82e        41 minutes ago      1.33 GB
-  hyperledger/fabric-buildenv    x86_64-1.0.0-beta     60911392c82e        41 minutes ago      1.33 GB
+  hyperledger/fabric-buildenv    amd64-1.1.0           60911392c82e        41 minutes ago      1.33 GB
   hyperledger/fabric-orderer     latest                2afab937b9cc        41 minutes ago      182 MB
-  hyperledger/fabric-orderer     x86_64-1.0.0-beta     2afab937b9cc        41 minutes ago      182 MB
+  hyperledger/fabric-orderer     amd64-1.1.0           2afab937b9cc        41 minutes ago      182 MB
   hyperledger/fabric-peer        latest                9560e58e8089        41 minutes ago      185 MB
-  hyperledger/fabric-peer        x86_64-1.0.0-beta     9560e58e8089        41 minutes ago      185 MB
+  hyperledger/fabric-peer        amd64-1.1.0           9560e58e8089        41 minutes ago      185 MB
   hyperledger/fabric-javaenv     latest                881ca5219fad        42 minutes ago      1.43 GB
-  hyperledger/fabric-javaenv     x86_64-1.0.0-beta     881ca5219fad        42 minutes ago      1.43 GB
+  hyperledger/fabric-javaenv     amd64-1.1.0           881ca5219fad        42 minutes ago      1.43 GB
   hyperledger/fabric-ccenv       latest                28af77ffe9e9        43 minutes ago      1.29 GB
-  hyperledger/fabric-ccenv       x86_64-1.0.0-beta     28af77ffe9e9        43 minutes ago      1.29 GB
-  hyperledger/fabric-baseimage   x86_64-0.3.0          f4751a503f02        3 months ago        1.27 GB
-  hyperledger/fabric-baseos      x86_64-0.3.0          c3a4cf3b3350        3 months ago        161 MB
+  hyperledger/fabric-ccenv       amd64-1.1.0           28af77ffe9e9        43 minutes ago      1.29 GB
+  hyperledger/fabric-baseimage   amd64-0.4.8           f4751a503f02        3 months ago        1.27 GB
+  hyperledger/fabric-baseos      amd64-0.4.8           c3a4cf3b3350        3 months ago        161 MB
 
 If you failed to compile the ``fabric-testenv`` image, then you can
 perform a ``make clean`` followed by another ``make docker``.
