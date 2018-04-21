@@ -1,20 +1,7 @@
-/*
-Copyright IBM Corp. 2016 All Rights Reserved.
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package config
+package localconfig
 
 import (
 	"fmt"
@@ -24,15 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	flogging.SetModuleLevel(pkgLogID, "DEBUG")
-}
 
 func TestLoadGoodConfig(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
@@ -130,6 +111,6 @@ func TestSystemChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 	conf, _ := Load()
-	assert.Equal(t, genesisconfig.TestChainID, conf.General.SystemChannel,
-		"Expected default system channel ID to be '%s', got '%s' instead", genesisconfig.TestChainID, conf.General.SystemChannel)
+	assert.Equal(t, Defaults.General.SystemChannel, conf.General.SystemChannel,
+		"Expected default system channel ID to be '%s', got '%s' instead", Defaults.General.SystemChannel, conf.General.SystemChannel)
 }

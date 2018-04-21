@@ -1,8 +1,5 @@
-/*
-Copyright IBM Corp. All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 package server
 
@@ -16,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	perf "github.com/hyperledger/fabric/orderer/common/performance"
@@ -111,18 +108,18 @@ const (
 	// be less than 13 KB.
 	AbsoluteMaxBytes  = 16 // KB
 	PreferredMaxBytes = 10 // KB
-	ChannelProfile    = localconfig.SampleSingleMSPChannelProfile
+	ChannelProfile    = genesisconfig.SampleSingleMSPChannelProfile
 )
 
 var envvars = map[string]string{
-	"ORDERER_GENERAL_GENESISPROFILE":                            localconfig.SampleDevModeSoloProfile,
-	"ORDERER_GENERAL_LEDGERTYPE":                                "file",
-	"ORDERER_GENERAL_LOGLEVEL":                                  "error",
-	"ORDERER_KAFKA_VERBOSE":                                     "false",
-	localconfig.Prefix + "_ORDERER_BATCHSIZE_MAXMESSAGECOUNT":   strconv.Itoa(MaxMessageCount),
-	localconfig.Prefix + "_ORDERER_BATCHSIZE_ABSOLUTEMAXBYTES":  strconv.Itoa(AbsoluteMaxBytes) + " KB",
-	localconfig.Prefix + "_ORDERER_BATCHSIZE_PREFERREDMAXBYTES": strconv.Itoa(PreferredMaxBytes) + " KB",
-	localconfig.Prefix + "_ORDERER_KAFKA_BROKERS":               "[localhost:9092]",
+	"ORDERER_GENERAL_GENESISPROFILE":                              genesisconfig.SampleDevModeSoloProfile,
+	"ORDERER_GENERAL_LEDGERTYPE":                                  "file",
+	"ORDERER_GENERAL_LOGLEVEL":                                    "error",
+	"ORDERER_KAFKA_VERBOSE":                                       "false",
+	genesisconfig.Prefix + "_ORDERER_BATCHSIZE_MAXMESSAGECOUNT":   strconv.Itoa(MaxMessageCount),
+	genesisconfig.Prefix + "_ORDERER_BATCHSIZE_ABSOLUTEMAXBYTES":  strconv.Itoa(AbsoluteMaxBytes) + " KB",
+	genesisconfig.Prefix + "_ORDERER_BATCHSIZE_PREFERREDMAXBYTES": strconv.Itoa(PreferredMaxBytes) + " KB",
+	genesisconfig.Prefix + "_ORDERER_KAFKA_BROKERS":               "[localhost:9092]",
 }
 
 type factors struct {
@@ -263,7 +260,7 @@ func TestOrdererBenchmarkKafkaBroadcast(t *testing.T) {
 		defer os.Unsetenv(key)
 	}
 
-	os.Setenv("ORDERER_GENERAL_GENESISPROFILE", localconfig.SampleDevModeKafkaProfile)
+	os.Setenv("ORDERER_GENERAL_GENESISPROFILE", genesisconfig.SampleDevModeKafkaProfile)
 	defer os.Unsetenv("ORDERER_GENERAL_GENESISPROFILE")
 
 	var (
@@ -311,7 +308,7 @@ func TestOrdererBenchmarkKafkaDeliver(t *testing.T) {
 		defer os.Unsetenv(key)
 	}
 
-	os.Setenv("ORDERER_GENERAL_GENESISPROFILE", localconfig.SampleDevModeKafkaProfile)
+	os.Setenv("ORDERER_GENERAL_GENESISPROFILE", genesisconfig.SampleDevModeKafkaProfile)
 	defer os.Unsetenv("ORDERER_GENERAL_GENESISPROFILE")
 
 	var (
@@ -362,7 +359,7 @@ func benchmarkOrderer(
 	defer cleanup()
 
 	// Initialization shared by all orderers
-	conf, err := config.Load()
+	conf, err := localconfig.Load()
 	if err != nil {
 		t.Fatal("failed to load config")
 	}
@@ -372,7 +369,7 @@ func benchmarkOrderer(
 	perf.InitializeServerPool(numOfOrderer)
 
 	// Load sample channel profile
-	channelProfile := localconfig.Load(ChannelProfile)
+	channelProfile := genesisconfig.Load(ChannelProfile)
 
 	// Calculate intermediate variables used internally. See the comment at the beginning
 	// of this file for the purpose of these vars.
@@ -409,7 +406,7 @@ func benchmarkOrderer(
 		//
 		// We need to make a copy of config here so that multiple orderers won't refer to
 		// the same config object by address.
-		localConf := config.TopLevel(*conf)
+		localConf := localconfig.TopLevel(*conf)
 		if localConf.General.LedgerType != "ram" {
 			tempDir, err := ioutil.TempDir("", "fabric-benchmark-test-")
 			assert.NoError(t, err, "Should be able to create temp dir")
