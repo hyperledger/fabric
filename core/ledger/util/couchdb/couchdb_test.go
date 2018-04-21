@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016, 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package couchdb
@@ -29,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/integration/runner"
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -67,14 +58,20 @@ type Asset struct {
 var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
 
 func TestMain(m *testing.M) {
+	os.Exit(testMain(m))
+}
+
+func testMain(m *testing.M) int {
 	// Read the core.yaml file for default config.
 	ledgertestutil.SetupCoreYAMLConfig()
 
 	// Switch to CouchDB
+	couchAddress, cleanup := couchDBSetup()
+	defer cleanup()
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
+	defer viper.Set("ledger.state.stateDatabase", "goleveldb")
 
-	// both vagrant and CI have couchdb configured at host "couchdb"
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
+	viper.Set("ledger.state.couchDBConfig.couchDBAddress", couchAddress)
 	// Replace with correct username/password such as
 	// admin/admin if user security is enabled on couchdb.
 	viper.Set("ledger.state.couchDBConfig.username", "")
@@ -92,11 +89,21 @@ func TestMain(m *testing.M) {
 	couchDBDef = GetCouchDBDefinition()
 
 	//run the tests
-	result := m.Run()
+	return m.Run()
+}
 
-	//revert to default goleveldb
-	viper.Set("ledger.state.stateDatabase", "goleveldb")
-	os.Exit(result)
+func couchDBSetup() (addr string, cleanup func()) {
+	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
+	if set {
+		return externalCouch, func() {}
+	}
+
+	couchDB := &runner.CouchDB{}
+	if err := couchDB.Start(); err != nil {
+		err := fmt.Errorf("failed to start couchDB: %s", err)
+		panic(err)
+	}
+	return couchDB.Address(), func() { couchDB.Stop() }
 }
 
 func TestDBConnectionDef(t *testing.T) {
@@ -980,7 +987,7 @@ func TestIndexOperations(t *testing.T) {
 	for _, elem := range *listResult {
 		testutil.AssertEquals(t, elem.DesignDocument, "indexSizeSortDoc")
 		testutil.AssertEquals(t, elem.Name, "indexSizeSortName")
-		//ensure the index defintion is correct,  CouchDB 2.1.1 will also return "partial_filter_selector":{}
+		//ensure the index definition is correct,  CouchDB 2.1.1 will also return "partial_filter_selector":{}
 		testutil.AssertEquals(t, strings.Contains(elem.Definition, `"fields":[{"size":"desc"}]`), true)
 	}
 

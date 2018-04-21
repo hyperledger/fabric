@@ -8,10 +8,7 @@ required = [
     "github.com/golang/protobuf/protoc-gen-go"
 ]
 
-# Need to ignore directories that are not ignored by default
 ignored = [
-    "github.com/hyperledger/fabric/build",
-    "github.com/hyperledger/fabric/build/*",
 ]
 
 [[constraint]]
@@ -129,6 +126,10 @@ ignored = [
 [[constraint]]
   name = "gopkg.in/yaml.v2"
   revision = "a3f3340b5840cee44f372bddb5880fcbc419b46a"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/tedsuo/ifrit"
 
 [prune]
   go-tests = true
