@@ -34,6 +34,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
+	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -239,30 +241,38 @@ func serve(args []string) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
 	}
 
-	serverEndorser := endorser.NewEndorserServer(
-		privDataDist,
-		&endorser.SupportImpl{
-			Peer:             peer.Default,
-			PeerSupport:      peer.DefaultSupport,
-			ChaincodeSupport: chaincodeSupport,
-		},
-	)
+	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
+	serializedIdentity, err := signingIdentity.Serialize()
+	if err != nil {
+		logger.Panicf("Failed serializing self identity: %v", err)
+	}
+
 	libConf := library.Config{}
 	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
 		return errors.WithMessage(err, "could not load YAML config")
 	}
-	authFilters := library.InitRegistry(libConf).Lookup(library.Auth).([]authHandler.Filter)
+	reg := library.InitRegistry(libConf)
+
+	authFilters := reg.Lookup(library.Auth).([]authHandler.Filter)
+	endorserSupport := &endorser.SupportImpl{
+		SignerSupport:    signingIdentity,
+		Peer:             peer.Default,
+		PeerSupport:      peer.DefaultSupport,
+		ChaincodeSupport: chaincodeSupport,
+	}
+	pluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
+	signingIdentityFetcher := (endorsement3.SigningIdentityFetcher)(endorserSupport)
+	channelStateRetriever := endorser.ChannelStateRetriever(endorserSupport)
+	pluginMapper := endorser.MapBasedPluginMapper(pluginsByName)
+	pluginEndorser := endorser.NewPluginEndorser(channelStateRetriever, signingIdentityFetcher, pluginMapper)
+	endorserSupport.PluginEndorser = pluginEndorser
+	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport)
 	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
 
 	// Initialize gossip component
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
-
-	serializedIdentity, err := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	if err != nil {
-		logger.Panicf("Failed serializing self identity: %v", err)
-	}
 
 	messageCryptoService := peergossip.NewMCS(
 		peer.NewChannelPolicyManagerGetter(),

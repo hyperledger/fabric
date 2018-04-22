@@ -42,6 +42,6 @@ func (r *HandlerLibrary) DefaultDecorator() decoration.Decorator {
 	return decorator.NewDecorator()
 }
 
-func (r *HandlerLibrary) ESCC() endorsement.PluginFactory {
-	return &builtin.DefaultESCCFactory{}
+func (r *HandlerLibrary) DefaultEndorsement() endorsement.PluginFactory {
+	return &builtin.DefaultEndorsementFactory{}
 }

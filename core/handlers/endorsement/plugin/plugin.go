@@ -10,28 +10,28 @@ import (
 	"errors"
 	"fmt"
 
-	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
-	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
+	. "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // To build the plugin,
 // run:
-//    go build -buildmode=plugin -o escc.so escc_plugin.go
+//    go build -buildmode=plugin -o escc.so plugin.go
 
-// DefaultESCCFactory returns an endorsement plugin factory which returns plugins
+// DefaultEndorsementFactory returns an endorsement plugin factory which returns plugins
 // that behave as the default endorsement system chaincode
-type DefaultESCCFactory struct {
+type DefaultEndorsementFactory struct {
 }
 
 // New returns an endorsement plugin that behaves as the default endorsement system chaincode
-func (*DefaultESCCFactory) New() endorsement2.Plugin {
-	return &DefaultESCC{}
+func (*DefaultEndorsementFactory) New() Plugin {
+	return &DefaultEndorsement{}
 }
 
-// DefaultESCC is an endorsement plugin that behaves as the default endorsement system chaincode
-type DefaultESCC struct {
-	endorsement3.SigningIdentityFetcher
+// DefaultEndorsement is an endorsement plugin that behaves as the default endorsement system chaincode
+type DefaultEndorsement struct {
+	SigningIdentityFetcher
 }
 
 // Endorse signs the given payload(ProposalResponsePayload bytes), and optionally mutates it.
@@ -39,7 +39,7 @@ type DefaultESCC struct {
 // The Endorsement: A signature over the payload, and an identity that is used to verify the signature
 // The payload that was given as input (could be modified within this function)
 // Or error on failure
-func (e *DefaultESCC) Endorse(prpBytes []byte, sp *peer.SignedProposal) (*peer.Endorsement, []byte, error) {
+func (e *DefaultEndorsement) Endorse(prpBytes []byte, sp *peer.SignedProposal) (*peer.Endorsement, []byte, error) {
 	signer, err := e.SigningIdentityForRequest(sp)
 	if err != nil {
 		return nil, nil, errors.New(fmt.Sprintf("failed fetching signing identity: %v", err))
@@ -60,9 +60,9 @@ func (e *DefaultESCC) Endorse(prpBytes []byte, sp *peer.SignedProposal) (*peer.E
 }
 
 // Init injects dependencies into the instance of the Plugin
-func (e *DefaultESCC) Init(dependencies ...endorsement2.Dependency) error {
+func (e *DefaultEndorsement) Init(dependencies ...Dependency) error {
 	for _, dep := range dependencies {
-		sIDFetcher, isSigningIdentityFetcher := dep.(endorsement3.SigningIdentityFetcher)
+		sIDFetcher, isSigningIdentityFetcher := dep.(SigningIdentityFetcher)
 		if !isSigningIdentityFetcher {
 			continue
 		}
@@ -73,6 +73,6 @@ func (e *DefaultESCC) Init(dependencies ...endorsement2.Dependency) error {
 }
 
 // NewPluginFactory is the function ran by the plugin infrastructure to create an endorsement plugin factory.
-func NewPluginFactory() endorsement2.PluginFactory {
-	return &DefaultESCCFactory{}
+func NewPluginFactory() PluginFactory {
+	return &DefaultEndorsementFactory{}
 }

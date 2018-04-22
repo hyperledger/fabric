@@ -9,14 +9,18 @@ package endorser
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger"
 	mc "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
 )
 
 type MockSupport struct {
+	*mock.Mock
+	*endorser.PluginEndorser
 	IsSysCCAndNotInvokableExternalRv bool
 	IsSysCCRv                        bool
 	ExecuteCDSResp                   *pb.Response
@@ -37,6 +41,24 @@ type MockSupport struct {
 	IsJavaErr                        error
 	GetApplicationConfigRv           channelconfig.Application
 	GetApplicationConfigBoolRv       bool
+}
+
+func (s *MockSupport) Serialize() ([]byte, error) {
+	args := s.Called()
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (s *MockSupport) NewQueryCreator(channel string) (endorser.QueryCreator, error) {
+	panic("implement me")
+}
+
+func (s *MockSupport) Sign(message []byte) ([]byte, error) {
+	args := s.Called(message)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (s *MockSupport) ChannelState(channel string) (endorser.QueryCreator, error) {
+	panic("implement me")
 }
 
 func (s *MockSupport) IsSysCCAndNotInvokableExternal(name string) bool {

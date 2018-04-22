@@ -9,7 +9,6 @@ package scc
 import (
 	//import system chaincodes here
 	"github.com/hyperledger/fabric/core/scc/cscc"
-	"github.com/hyperledger/fabric/core/scc/escc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
 	"github.com/hyperledger/fabric/core/scc/vscc"
@@ -33,13 +32,6 @@ var systemChaincodes = []*SystemChaincode{
 		Chaincode:         lscc.NewAsChaincode,
 		InvokableExternal: true, // lscc is invoked to deploy new chaincodes
 		InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
-	},
-	{
-		Enabled:   true,
-		Name:      "escc",
-		Path:      "github.com/hyperledger/fabric/core/scc/escc",
-		InitArgs:  nil,
-		Chaincode: escc.NewAsChaincode,
 	},
 	{
 		Enabled:   true,
