@@ -1165,6 +1165,28 @@ Troubleshooting
 
    Select ``y``.
 
+-  If you see an error similar to the following:
+
+   .. code:: bash
+
+      /bin/bash: ./scripts/script.sh: /bin/bash^M: bad interpreter: No such file or directory
+
+   Ensure that the file in question (**script.sh** in this example) is encoded
+   in the Unix format. This was most likely caused by not setting
+   ``core.autocrlf`` to ``false`` in your Git configuration (see
+   :ref:`windows-extras`). There are several ways of fixing this. If you have
+   access to the vim editor for instance, open the file:
+
+   .. code:: bash
+
+      vim ./fabric-samples/first-network/scripts/script.sh
+
+   Then change its format by executing the following vim command:
+
+   .. code:: bash
+
+      :set ff=unix
+
 .. note:: If you continue to see errors, share your logs on the
           **fabric-questions** channel on
           `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__
