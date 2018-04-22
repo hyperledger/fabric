@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package txvalidator
+package txvalidator_test
 
 import (
 	"errors"
@@ -20,13 +20,13 @@ import (
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -45,11 +45,14 @@ func signedByAnyMember(ids []string) []byte {
 	return utils.MarshalOrPanic(p)
 }
 
-func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
-	return setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{})
+func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, txvalidator.Validator) {
+	plugin := &mocks.Plugin{}
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	return setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
 }
 
-func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicationCapabilities) (ledger.PeerLedger, Validator) {
+func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicationCapabilities, plugin *mocks.Plugin) (ledger.PeerLedger, txvalidator.Validator) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/validatortest")
 	ledgermgmt.InitializeTestEnv()
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
@@ -61,8 +64,12 @@ func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicati
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	ccprov := &ccprovider.MockCcProviderImpl{ExecuteResultProvider: executeChaincodeProvider}
-	theValidator := NewTxValidator(vcs, ccprov, mp)
+	pm := &mocks.PluginMapper{}
+	factory := &mocks.PluginFactory{}
+	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(factory)
+	factory.On("New").Return(plugin)
+
+	theValidator := txvalidator.NewTxValidator(vcs, mp, pm)
 
 	return theLedger, theValidator
 }
@@ -205,8 +212,11 @@ func TestInvokeOK(t *testing.T) {
 }
 
 func TestInvokeNoRWSet(t *testing.T) {
+	plugin := &mocks.Plugin{}
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
 	t.Run("Pre-1.2Capability", func(t *testing.T) {
-		l, v := setupLedgerAndValidator(t)
+		l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
 
@@ -217,15 +227,16 @@ func TestInvokeNoRWSet(t *testing.T) {
 		tx := getEnv(ccID, nil, createRWset(t), t)
 		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
-		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
-		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
 		err := v.Validate(b)
 		assert.NoError(t, err)
 		assertValid(b, t)
 	})
 
+	// No need to define validation behavior for the previous test case because pre 1.2 we don't validate transactions
+	// that have no write set.
+	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("tx is invalid")).Once()
 	t.Run("Post-1.2Capability", func(t *testing.T) {
-		l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+		l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
 
@@ -236,8 +247,6 @@ func TestInvokeNoRWSet(t *testing.T) {
 		tx := getEnv(ccID, nil, createRWset(t), t)
 		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
-		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
-		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
 		err := v.Validate(b)
 		assert.NoError(t, err)
 		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
@@ -245,9 +254,13 @@ func TestInvokeNoRWSet(t *testing.T) {
 }
 
 func TestChaincodeEvent(t *testing.T) {
+	plugin := &mocks.Plugin{}
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
 	t.Run("PreV1.2", func(t *testing.T) {
 		t.Run("MisMatchedName", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false})
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false}, plugin)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -264,7 +277,7 @@ func TestChaincodeEvent(t *testing.T) {
 		})
 
 		t.Run("BadBytes", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false})
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false}, plugin)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -281,7 +294,7 @@ func TestChaincodeEvent(t *testing.T) {
 		})
 
 		t.Run("GoodPath", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false})
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false}, plugin)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -300,7 +313,7 @@ func TestChaincodeEvent(t *testing.T) {
 
 	t.Run("PostV1.2", func(t *testing.T) {
 		t.Run("MisMatchedName", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -317,7 +330,7 @@ func TestChaincodeEvent(t *testing.T) {
 		})
 
 		t.Run("BadBytes", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -334,7 +347,7 @@ func TestChaincodeEvent(t *testing.T) {
 		})
 
 		t.Run("GoodPath", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -353,11 +366,14 @@ func TestChaincodeEvent(t *testing.T) {
 }
 
 func TestInvokeOKPvtDataOnly(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
+	plugin := &mocks.Plugin{}
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
 	defer ledgermgmt.CleanupTestEnv()
 	defer l.Close()
 
-	v.(*txValidator).support.(struct {
+	v.(*txvalidator.TxValidator).Support.(struct {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}).ACVal = &mockconfig.MockApplicationCapabilities{PrivateChannelDataRv: true}
@@ -376,8 +392,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	tx := getEnv(ccID, nil, rwsetBytes, t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
-	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
-	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
+	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("tx is invalid"))
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -748,8 +763,8 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	ccprov := &ccprovider.MockCcProviderImpl{ExecuteResultProvider: executeChaincodeProvider}
-	validator := NewTxValidator(vcs, ccprov, mp)
+	pm := &mocks.PluginMapper{}
+	validator := txvalidator.NewTxValidator(vcs, mp, pm)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -778,8 +793,14 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	ccprov := &ccprovider.MockCcProviderImpl{ExecuteResultProvider: executeChaincodeProvider}
-	validator := NewTxValidator(vcs, ccprov, mp)
+	pm := &mocks.PluginMapper{}
+	factory := &mocks.PluginFactory{}
+	plugin := &mocks.Plugin{}
+	factory.On("New").Return(plugin)
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("invalid tx"))
+	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(factory)
+	validator := txvalidator.NewTxValidator(vcs, mp, pm)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -802,44 +823,15 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	// Keep default callback
-	c := executeChaincodeProvider.getCallback()
-	executeChaincodeProvider.setCallback(func() (*peer.Response, *peer.ChaincodeEvent, error) {
-		return &peer.Response{Status: shim.ERROR}, nil, nil
-	})
 	err := validator.Validate(b)
 	// Restore default callback
-	executeChaincodeProvider.setCallback(c)
 	assert.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
-}
-
-type ccResultCallback func() (*peer.Response, *peer.ChaincodeEvent, error)
-
-type ccExecuteChaincode struct {
-	executeChaincodeCalback ccResultCallback
-}
-
-func (cc *ccExecuteChaincode) ExecuteChaincodeResult() (*peer.Response, *peer.ChaincodeEvent, error) {
-	return cc.executeChaincodeCalback()
-}
-
-func (cc *ccExecuteChaincode) getCallback() ccResultCallback {
-	return cc.executeChaincodeCalback
-}
-
-func (cc *ccExecuteChaincode) setCallback(calback ccResultCallback) {
-	cc.executeChaincodeCalback = calback
 }
 
 var signer msp.SigningIdentity
 
 var signerSerialized []byte
-
-var executeChaincodeProvider = &ccExecuteChaincode{
-	executeChaincodeCalback: func() (*peer.Response, *peer.ChaincodeEvent, error) {
-		return &peer.Response{Status: shim.OK}, nil, nil
-	},
-}
 
 func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()

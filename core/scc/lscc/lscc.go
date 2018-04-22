@@ -127,15 +127,8 @@ func New(sccp sysccprovider.SystemChaincodeProvider, aclProvider aclmgmt.ACLProv
 	}
 }
 
-//-------------- helper functions ------------------
-//create the chaincode on the given chain
-
 //create the chaincode on the given chain
 func (lscc *lifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData) error {
-	if !lscc.sccprovider.IsSysCC(string(cd.Vscc)) {
-		return fmt.Errorf("%s is not a valid validation system chaincode", string(cd.Vscc))
-	}
-
 	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
 		return err

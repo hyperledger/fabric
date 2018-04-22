@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
-	"github.com/hyperledger/fabric/core/scc/vscc"
 )
 
 func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider) []*SystemChaincode {
@@ -34,13 +33,6 @@ func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclP
 			Chaincode:         lscc.New(p, aclProvider),
 			InvokableExternal: true, // lscc is invoked to deploy new chaincodes
 			InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
-		},
-		{
-			Enabled:   true,
-			Name:      "vscc",
-			Path:      "github.com/hyperledger/fabric/core/scc/vscc",
-			InitArgs:  nil,
-			Chaincode: vscc.New(p),
 		},
 		{
 			Enabled:           true,

@@ -66,17 +66,21 @@ func TestDeDeploySysCC(t *testing.T) {
 func TestIsSysCC(t *testing.T) {
 	assert.True(t, (newTestProvider()).IsSysCC("lscc"))
 	assert.False(t, (newTestProvider()).IsSysCC("noSCC"))
+	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
+	assert.True(t, (newTestProvider()).IsSysCC("escc"))
+	assert.True(t, (newTestProvider()).IsSysCC("vscc"))
 }
 
 func TestIsSysCCAndNotInvokableCC2CC(t *testing.T) {
-	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
 	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("lscc"))
+	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("escc"))
+	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("vscc"))
 	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("cscc"))
 }
 
 func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
 	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("cscc"))
-	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
+	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("escc"))
 	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("vscc"))
 }
 

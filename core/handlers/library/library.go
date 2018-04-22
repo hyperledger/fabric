@@ -11,8 +11,10 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/auth/filter"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	"github.com/hyperledger/fabric/core/handlers/decoration/decorator"
-	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
+	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	. "github.com/hyperledger/fabric/core/handlers/validation/builtin"
 )
 
 // HandlerLibrary is used to assert
@@ -44,4 +46,8 @@ func (r *HandlerLibrary) DefaultDecorator() decoration.Decorator {
 
 func (r *HandlerLibrary) DefaultEndorsement() endorsement.PluginFactory {
 	return &builtin.DefaultEndorsementFactory{}
+}
+
+func (r *HandlerLibrary) DefaultValidation() validation.PluginFactory {
+	return &DefaultValidationFactory{}
 }
