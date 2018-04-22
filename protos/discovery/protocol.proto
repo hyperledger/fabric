@@ -133,9 +133,20 @@ message PeerMembershipResult {
 }
 
 // ChaincodeQuery requests ChaincodeQueryResults for a given
-// list of chaincodes
+// list of chaincode invocations.
+// Each invocation is a separate one, and the endorsement policy
+// is evaluated independantly for each given interest.
 message ChaincodeQuery {
-    repeated string chaincodes = 1;
+    repeated ChaincodeInterest interests = 1;
+}
+
+// ChaincodeInterest defines an interest about an endorsement
+// for a specific single chaincode invocation.
+// Multiple chaincode names indicate chaincode to chaincode invocations.
+// Collections indicate the chaincode invocation includes collections.
+message ChaincodeInterest {
+    repeated string chaincode_names  = 1;
+    repeated string collection_names = 2;
 }
 
 // ChaincodeQueryResult contains EndorsementDescriptors for
