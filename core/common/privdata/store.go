@@ -77,9 +77,6 @@ func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCri
 	if err != nil {
 		return nil, err
 	}
-	if collections == nil {
-		return nil, nil
-	}
 
 	for _, cconf := range collections.Config {
 		switch cconf := cconf.Payload.(type) {
