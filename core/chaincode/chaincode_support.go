@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -394,8 +393,8 @@ func (cs *ChaincodeSupport) GetCDS(ctxt context.Context, txid string, signedProp
 	return res.Payload, nil
 }
 
-// GetChaincodeDefinition returns resourcesconfig.ChaincodeDefinition for the chaincode with the supplied name
-func (cs *ChaincodeSupport) GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (resourcesconfig.ChaincodeDefinition, error) {
+// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
+func (cs *ChaincodeSupport) GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error) {
 	version := util.GetSysCCVersion()
 	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
 	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})

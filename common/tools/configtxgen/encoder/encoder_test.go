@@ -9,7 +9,6 @@ package encoder
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -18,7 +17,6 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
@@ -103,18 +101,6 @@ func TestChannelCreateWithResources(t *testing.T) {
 		assert.NotNil(t, configUpdate)
 		assert.Nil(t, configUpdate.IsolatedData)
 	})
-
-	t.Run("AtV1.1", func(t *testing.T) {
-		createConfig := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-		createConfig.Application.Capabilities[capabilities.ApplicationResourcesTreeExperimental] = true
-
-		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
-		assert.NoError(t, err)
-		assert.NotNil(t, configUpdate)
-		assert.NotNil(t, configUpdate.IsolatedData)
-		assert.NotEmpty(t, configUpdate.IsolatedData[pb.ResourceConfigSeedDataKey])
-	})
-
 }
 
 func TestNegativeChannelCreateConfigUpdate(t *testing.T) {

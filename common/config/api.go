@@ -22,7 +22,4 @@ type Config interface {
 type Manager interface {
 	// GetChannelConfig defines methods that are related to channel configuration
 	GetChannelConfig(channel string) Config
-
-	// GetResourceConfig defines methods that are related to resource configuration
-	GetResourceConfig(channel string) Config
 }

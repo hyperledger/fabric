@@ -9,7 +9,6 @@ package peer
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
@@ -27,7 +26,6 @@ type Operations interface {
 	GetLedger(cid string) ledger.PeerLedger
 	GetMSPIDs(cid string) []string
 	GetPolicyManager(cid string) policies.Manager
-	GetResourcesConfig(cid string) resourcesconfig.Resources
 	InitChain(cid string)
 	Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider)
 }
@@ -40,7 +38,6 @@ type peerImpl struct {
 	getLedger            func(cid string) ledger.PeerLedger
 	getMSPIDs            func(cid string) []string
 	getPolicyManager     func(cid string) policies.Manager
-	getResourcesConfig   func(cid string) resourcesconfig.Resources
 	initChain            func(cid string)
 	initialize           func(init func(string), sccp sysccprovider.SystemChaincodeProvider)
 }
@@ -55,7 +52,6 @@ var Default Operations = &peerImpl{
 	getLedger:            GetLedger,
 	getMSPIDs:            GetMSPIDs,
 	getPolicyManager:     GetPolicyManager,
-	getResourcesConfig:   GetResourcesConfig,
 	initChain:            InitChain,
 	initialize:           Initialize,
 }
@@ -73,10 +69,7 @@ func (p *peerImpl) GetCurrConfigBlock(cid string) *common.Block  { return p.getC
 func (p *peerImpl) GetLedger(cid string) ledger.PeerLedger       { return p.getLedger(cid) }
 func (p *peerImpl) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
 func (p *peerImpl) GetPolicyManager(cid string) policies.Manager { return p.getPolicyManager(cid) }
-func (p *peerImpl) GetResourcesConfig(cid string) resourcesconfig.Resources {
-	return p.getResourcesConfig(cid)
-}
-func (p *peerImpl) InitChain(cid string) { p.initChain(cid) }
+func (p *peerImpl) InitChain(cid string)                         { p.initChain(cid) }
 func (p *peerImpl) Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider) {
 	p.initialize(init, sccp)
 }

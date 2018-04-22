@@ -374,16 +374,6 @@ func (v *txValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 			logger.Debugf("config transaction received for chain %s", channel)
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_PEER_RESOURCE_UPDATE {
-			// FIXME: in the context of FAB-7341, we should introduce validation
-			//        for this kind of transaction here. For now we just ignore this
-			//        type of transaction and delegate its validation to other components
-
-			results <- &blockValidationResult{
-				tIdx: tIdx,
-				err:  nil,
-			}
-			return
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
 				common.HeaderType(chdr.Type), block.Header.Number, tIdx)

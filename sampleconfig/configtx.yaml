@@ -379,7 +379,7 @@ Application: &ApplicationDefaults
         #---Miscellanesous peer function to policy mapping for access control---#
 
         #ACL policy for invoking chaincodes on peer
-        peer/Proposal: /Channel/Application/Writers
+        peer/Propose: /Channel/Application/Writers
 
         #ACL policy for chaincode to chaincode invocation
         peer/ChaincodeToChaincode: /Channel/Application/Readers
@@ -399,7 +399,7 @@ Application: &ApplicationDefaults
     # Policies defines the set of policies at this level of the config tree
     # For Application policies, their canonical path is
     #   /Channel/Application/<PolicyName>
-    Policies:
+    Policies: &ApplicationDefaultPolicies
         Readers:
             Type: ImplicitMeta
             Rule: "ANY Readers"

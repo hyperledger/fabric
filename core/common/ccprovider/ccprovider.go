@@ -384,6 +384,30 @@ func (cccid *CCContext) GetCanonicalName() string {
 	return cccid.canonicalName
 }
 
+//-------- ChaincodeDefinition - interface for ChaincodeData ------
+// ChaincodeDefinition describes all of the necessary information for a peer to decide whether to endorse
+// a proposal and whether to validate a transaction, for a particular chaincode.
+type ChaincodeDefinition interface {
+	// CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
+	CCName() string
+
+	// Hash returns the hash of the chaincode.
+	Hash() []byte
+
+	// CCVersion returns the version of the chaincode.
+	CCVersion() string
+
+	// Validation returns how to validate transactions for this chaincode.
+	// The string returned is the name of the validation method (usually 'vscc')
+	// and the bytes returned are the argument to the validation (in the case of
+	// 'vscc', this is a marshaled pb.VSCCArgs message).
+	Validation() (string, []byte)
+
+	// Endorsement returns how to endorse proposals for this chaincode.
+	// The string returns is the name of the endorsement method (usually 'escc').
+	Endorsement() string
+}
+
 //-------- ChaincodeData is stored on the LSCC -------
 
 // ChaincodeData defines the datastructure for chaincodes to be serialized by proto
@@ -415,8 +439,6 @@ type ChaincodeData struct {
 	// InstantiationPolicy for the chaincode
 	InstantiationPolicy []byte `protobuf:"bytes,8,opt,name=instantiation_policy,proto3"`
 }
-
-// implement functions needed by resourcesconfig.ChaincodeDefinition
 
 // CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
 func (cd *ChaincodeData) CCName() string {
