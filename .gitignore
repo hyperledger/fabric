@@ -1,3 +1,7 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
 # Local build binaries
 node-cli/node-cli
 *.pyc
@@ -13,6 +17,8 @@ tags
 .tags
 .vagrant/
 /build
+/manifests
+/scripts/manifests
 /release/darwin-amd64
 /release/linux-amd64
 /release/linux-s390x
