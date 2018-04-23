@@ -52,8 +52,8 @@ type Support interface {
 	// GetTransactionByID retrieves a transaction by id
 	GetTransactionByID(chid, txID string) (*pb.ProcessedTransaction, error)
 
-	//IsSysCC returns true if the name matches a system chaincode's
-	//system chaincode names are system, chain wide
+	// IsSysCC returns true if the name matches a system chaincode's
+	// system chaincode names are system, chain wide
 	IsSysCC(name string) bool
 
 	//Execute - execute proposal, return original response of chaincode
@@ -62,8 +62,8 @@ type Support interface {
 	// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
 	GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, error)
 
-	//CheckACL checks the ACL for the resource for the Channel using the
-	//SignedProposal from which an id can be extracted for testing against a policy
+	// CheckACL checks the ACL for the resource for the channel using the
+	// SignedProposal from which an id can be extracted for testing against a policy
 	CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error
 
 	// IsJavaCC returns true if the CDS package bytes describe a chaincode
@@ -111,7 +111,7 @@ func NewEndorserServer(privDist privateDataDistributor, s Support) *Endorser {
 	return e
 }
 
-//call specified chaincode (system or user)
+// call specified chaincode (system or user)
 func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*pb.Response, *pb.ChaincodeEvent, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s version: %s", chainID, txid, cid, version)
 	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, txid)
@@ -123,7 +123,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
 	}
 
-	//is this a system chaincode
+	// is this a system chaincode
 	scc := e.s.IsSysCC(cid.Name)
 
 	res, ccevent, err = e.s.Execute(ctxt, chainID, cid.Name, version, txid, scc, signedProp, prop, cis)
@@ -131,21 +131,21 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		return nil, nil, err
 	}
 
-	//per doc anything < 400 can be sent as TX.
-	//fabric errors will always be >= 400 (ie, unambiguous errors )
-	//"lscc" will respond with status 200 or 500 (ie, unambiguous OK or ERROR)
+	// per doc anything < 400 can be sent as TX.
+	// fabric errors will always be >= 400 (ie, unambiguous errors )
+	// "lscc" will respond with status 200 or 500 (ie, unambiguous OK or ERROR)
 	if res.Status >= shim.ERRORTHRESHOLD {
 		return res, nil, nil
 	}
 
-	//----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LSCC ------
-	//if this a call to deploy a chaincode, We need a mechanism
-	//to pass TxSimulator into LSCC. Till that is worked out this
-	//special code does the actual deploy, upgrade here so as to collect
-	//all state under one TxSimulator
+	// ----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LSCC ------
+	// if this a call to deploy a chaincode, We need a mechanism
+	// to pass TxSimulator into LSCC. Till that is worked out this
+	// special code does the actual deploy, upgrade here so as to collect
+	// all state under one TxSimulator
 	//
-	//NOTE that if there's an error all simulation, including the chaincode
-	//table changes in lscc will be thrown away
+	// NOTE that if there's an error all simulation, including the chaincode
+	// table changes in lscc will be thrown away
 	if cid.Name == "lscc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
 		var cds *pb.ChaincodeDeploymentSpec
 		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
@@ -153,7 +153,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 			return nil, nil, err
 		}
 
-		//this should not be a system chaincode
+		// this should not be a system chaincode
 		if e.s.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
 			return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, chainID)
 		}
@@ -163,25 +163,25 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 			return nil, nil, err
 		}
 	}
-	//----- END -------
+	// ----- END -------
 
 	return res, ccevent, err
 }
 
-//TO BE REMOVED WHEN JAVA CC IS ENABLED
-//disableJavaCCInst if trying to install, instantiate or upgrade Java CC
+// TO BE REMOVED WHEN JAVA CC IS ENABLED
+// disableJavaCCInst if trying to install, instantiate or upgrade Java CC
 func (e *Endorser) DisableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvocationSpec) error {
-	//if not lscc we don't care
+	// if not lscc we don't care
 	if cid.Name != "lscc" {
 		return nil
 	}
 
-	//non-nil spec ? leave it to callers to handle error if this is an error
+	// non-nil spec ? leave it to callers to handle error if this is an error
 	if cis.ChaincodeSpec == nil || cis.ChaincodeSpec.Input == nil {
 		return nil
 	}
 
-	//should at least have a command arg, leave it to callers if this is an error
+	// should at least have a command arg, leave it to callers if this is an error
 	if len(cis.ChaincodeSpec.Input.Args) < 1 {
 		return nil
 	}
@@ -193,7 +193,7 @@ func (e *Endorser) DisableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 	case "deploy", "upgrade":
 		argNo = 2
 	default:
-		//what else can it be ? leave it caller to handle it if error
+		// what else can it be ? leave it caller to handle it if error
 		return nil
 	}
 
@@ -205,7 +205,7 @@ func (e *Endorser) DisableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 		endorserLogger.Debug("java chaincode enabled")
 	} else {
 		endorserLogger.Debug("java chaincode disabled")
-		//finally, if JAVA not enabled error out
+		// finally, if JAVA not enabled error out
 		isjava, err := e.s.IsJavaCC(cis.ChaincodeSpec.Input.Args[argNo])
 		if err != nil {
 			return err
@@ -215,23 +215,23 @@ func (e *Endorser) DisableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 		}
 	}
 
-	//not a java install, instantiate or upgrade op
+	// not a java install, instantiate or upgrade op
 	return nil
 }
 
-//SimulateProposal simulates the proposal by calling the chaincode
+// SimulateProposal simulates the proposal by calling the chaincode
 func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), cid)
 	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
-	//we do expect the payload to be a ChaincodeInvocationSpec
-	//if we are supporting other payloads in future, this be glaringly point
-	//as something that should change
+	// we do expect the payload to be a ChaincodeInvocationSpec
+	// if we are supporting other payloads in future, this be glaringly point
+	// as something that should change
 	cis, err := putils.GetChaincodeInvocationSpec(prop)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	//disable Java install,instantiate,upgrade for now
+	// disable Java install,instantiate,upgrade for now
 	if err = e.DisableJavaCCInst(cid, cis); err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -254,7 +254,7 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 		version = util.GetSysCCVersion()
 	}
 
-	//---3. execute the proposal and get simulation results
+	// ---3. execute the proposal and get simulation results
 	var simResult *ledger.TxSimulationResults
 	var pubSimResBytes []byte
 	var res *pb.Response
@@ -298,7 +298,7 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 	return cdLedger, res, pubSimResBytes, ccevent, nil
 }
 
-//endorse the proposal by calling the ESCC
+// endorse the proposal by calling the ESCC
 func (e *Endorser) endorseProposal(_ context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), ccid)
 	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
@@ -306,7 +306,7 @@ func (e *Endorser) endorseProposal(_ context.Context, chainID string, txid strin
 	isSysCC := cd == nil
 	// 1) extract the name of the escc that is requested to endorse this chaincode
 	var escc string
-	//ie, "lscc" or system chaincodes
+	// ie, "lscc" or system chaincodes
 	if isSysCC {
 		escc = "escc"
 	} else {
@@ -349,7 +349,7 @@ func (e *Endorser) endorseProposal(_ context.Context, chainID string, txid strin
 	return e.s.EndorseWithPlugin(ctx)
 }
 
-//preProcess checks the tx proposal headers, uniqueness and ACL
+// preProcess checks the tx proposal headers, uniqueness and ACL
 func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, error) {
 	vr := &validateResult{}
 	// at first, we check whether the message is valid
@@ -424,10 +424,10 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 // ProcessProposal process the Proposal
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	addr := util.ExtractRemoteAddress(ctx)
-	endorserLogger.Debug("Entering: Got request from", addr)
-	defer endorserLogger.Debugf("Exit: request from", addr)
+	endorserLogger.Debug("Entering: request from", addr)
+	defer endorserLogger.Debug("Exit: request from", addr)
 
-	//0 -- check and validate
+	// 0 -- check and validate
 	vr, err := e.preProcess(signedProp)
 	if err != nil {
 		resp := vr.resp
@@ -462,14 +462,14 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// around separately, since eventually it gets added to context anyways
 		ctx = context.WithValue(ctx, chaincode.HistoryQueryExecutorKey, historyQueryExecutor)
 	}
-	//this could be a request to a chainless SysCC
+	// this could be a request to a chainless SysCC
 
 	// TODO: if the proposal has an extension, it will be of type ChaincodeAction;
 	//       if it's present it means that no simulation is to be performed because
 	//       we're trying to emulate a submitting peer. On the other hand, we need
 	//       to validate the supplied action before endorsing it
 
-	//1 -- simulate
+	// 1 -- simulate
 	cd, res, simulationResult, ccevent, err := e.SimulateProposal(ctx, chainID, txid, signedProp, prop, hdrExt.ChaincodeId, txsim)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
@@ -493,11 +493,11 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		}
 	}
 
-	//2 -- endorse and get a marshalled ProposalResponse message
+	// 2 -- endorse and get a marshalled ProposalResponse message
 	var pResp *pb.ProposalResponse
 
-	//TODO till we implement global ESCC, CSCC for system chaincodes
-	//chainless proposals (such as CSCC) don't have to be endorsed
+	// TODO till we implement global ESCC, CSCC for system chaincodes
+	// chainless proposals (such as CSCC) don't have to be endorsed
 	if chainID == "" {
 		pResp = &pb.ProposalResponse{Response: res}
 	} else {
