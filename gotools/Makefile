@@ -18,17 +18,18 @@ OBJDIR ?= build
 TMP_GOPATH=$(OBJDIR)/gopath
 GOBIN=$(abspath $(TMP_GOPATH)/bin)
 
-GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml misspell
+GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml misspell manifest-tool
 GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
 
 # go tool->path mapping
 go.fqp.govendor  := github.com/kardianos/govendor
-go.fqp.golint    := github.com/golang/lint/golint
+go.fqp.golint    := golang.org/x/lint/golint
 go.fqp.goimports := golang.org/x/tools/cmd/goimports
 go.fqp.ginkgo    := github.com/onsi/ginkgo/ginkgo
 go.fqp.gocov     := github.com/axw/gocov/...
 go.fqp.misspell  := github.com/client9/misspell/cmd/misspell
 go.fqp.gocov-xml:= github.com/AlekSi/gocov-xml
+go.fqp.manifest-tool := github.com/estesp/manifest-tool
 all: $(GOTOOLS_BIN)
 
 install: $(GOTOOLS_BIN)
