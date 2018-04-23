@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -27,7 +28,7 @@ func New() *LedgerQuerier {
 }
 
 // NewAsChaincode wraps New() to return a shim.Chaincode.
-func NewAsChaincode() shim.Chaincode {
+func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 	return New()
 }
 

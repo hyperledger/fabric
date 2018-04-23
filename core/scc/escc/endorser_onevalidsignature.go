@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -27,7 +28,7 @@ func New() *EndorserOneValidSignature {
 }
 
 // NewAsChaincode wraps New() to return it as a chaincode
-func NewAsChaincode() shim.Chaincode {
+func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 	return New()
 }
 

@@ -38,18 +38,16 @@ const (
 
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
-func New() *ValidatorOneValidSignature {
-	vos := &ValidatorOneValidSignature{
-		sccprovider: sysccprovider.GetSystemChaincodeProvider(),
+func New(sccp sysccprovider.SystemChaincodeProvider) *ValidatorOneValidSignature {
+	return &ValidatorOneValidSignature{
+		sccprovider:     sccp,
+		collectionStore: privdata.NewSimpleCollectionStore(&collectionStoreSupport{sccp}),
 	}
-	vos.collectionStore = privdata.NewSimpleCollectionStore(&collectionStoreSupport{vos.sccprovider})
-	return vos
-
 }
 
 // NewAsChaincode wraps New() to return a shim.Chaincode
-func NewAsChaincode() shim.Chaincode {
-	return New()
+func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
+	return New(sccp)
 }
 
 // ValidatorOneValidSignature implements the default transaction validation policy,

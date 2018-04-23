@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/mocks/scc/lscc"
@@ -98,7 +97,7 @@ func TestInstall(t *testing.T) {
 	// TODO cceventmgmt singleton should be refactored out of peer in the future. See CR 16549 for details.
 	cceventmgmt.Initialize()
 
-	scc := New()
+	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -175,7 +174,7 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1{}0", path, false, false, true, InvalidVersionErr("1{}0").Error(), nil, nil)
 	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil)
 
-	scc := New()
+	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -193,7 +192,7 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode exists example02", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -202,7 +201,7 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -211,7 +210,7 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -220,7 +219,7 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "escc is not a valid endorsement system chaincode", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -232,7 +231,7 @@ func TestDeploy(t *testing.T) {
 
 func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub) {
 	if scc == nil {
-		scc = New()
+		scc = New(NewMockProvider())
 		scc.support = &lscc.MockSupport{}
 		stub = shim.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
@@ -320,7 +319,7 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error(), nil, nil)
 	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil)
 
-	scc := New()
+	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -330,7 +329,7 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -338,7 +337,7 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -349,7 +348,7 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
 
-	scc = New()
+	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -363,7 +362,7 @@ func TestUpgrade(t *testing.T) {
 
 func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub) {
 	if scc == nil {
-		scc = New()
+		scc = New(NewMockProvider())
 		scc.support = &lscc.MockSupport{}
 		stub = shim.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
@@ -409,7 +408,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 }
 
 func TestGETCCINFO(t *testing.T) {
-	scc := New()
+	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -445,7 +444,7 @@ func TestGETCCINFO(t *testing.T) {
 }
 
 func TestGETCHAINCODES(t *testing.T) {
-	scc := New()
+	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -474,7 +473,7 @@ func TestGETCHAINCODES(t *testing.T) {
 }
 
 func TestGETINSTALLEDCHAINCODES(t *testing.T) {
-	scc := New()
+	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -533,7 +532,7 @@ func TestGETINSTALLEDCHAINCODES(t *testing.T) {
 }
 
 func TestNewLifeCycleSysCC(t *testing.T) {
-	scc := New()
+	scc := New(NewMockProvider())
 	assert.NotNil(t, scc)
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -544,7 +543,7 @@ func TestNewLifeCycleSysCC(t *testing.T) {
 }
 
 func TestGetChaincodeData(t *testing.T) {
-	scc := New()
+	scc := New(NewMockProvider())
 	assert.NotNil(t, scc)
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -559,7 +558,7 @@ func TestGetChaincodeData(t *testing.T) {
 }
 
 func TestExecuteInstall(t *testing.T) {
-	scc := New()
+	scc := New(NewMockProvider())
 	assert.NotNil(t, scc)
 	stub := shim.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -624,6 +623,15 @@ var id msp.SigningIdentity
 var chainid string = util.GetTestChainID()
 var mockAclProvider *mocks.MockACLProvider
 
+func NewMockProvider() *mscc.MocksccProviderImpl {
+	return (&mscc.MocksccProviderFactory{
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &config.MockApplication{
+			CapabilitiesRv: &config.MockApplicationCapabilities{},
+		},
+	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+}
+
 func TestMain(m *testing.M) {
 	var err error
 	msptesttools.LoadMSPSetupForTesting()
@@ -635,15 +643,6 @@ func TestMain(m *testing.M) {
 
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
-
-	sysccprovider.RegisterSystemChaincodeProviderFactory(
-		&mscc.MocksccProviderFactory{
-			ApplicationConfigBool: true,
-			ApplicationConfigRv: &config.MockApplication{
-				CapabilitiesRv: &config.MockApplicationCapabilities{},
-			},
-		},
-	)
 	aclmgmt.RegisterACLProvider(mockAclProvider)
 
 	os.Exit(m.Run())

@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	cutils "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	per "github.com/hyperledger/fabric/core/peer"
@@ -196,7 +195,7 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 }
 
 func TestInit(t *testing.T) {
-	v := New()
+	v := New(NewMockProvider())
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -245,7 +244,7 @@ func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
 }
 
 func TestInvoke(t *testing.T) {
-	v := New()
+	v := New(NewMockProvider())
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		t.Fatalf("vscc init failed with %s", res.Message)
@@ -369,16 +368,16 @@ func TestInvoke(t *testing.T) {
 
 func TestInvalidFunction(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -425,16 +424,16 @@ func TestInvalidFunction(t *testing.T) {
 
 func TestRWSetTooBig(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -494,16 +493,16 @@ func TestRWSetTooBig(t *testing.T) {
 
 func TestValidateDeployFail(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -783,16 +782,16 @@ func TestValidateDeployFail(t *testing.T) {
 
 func TestAlreadyDeployed(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -862,16 +861,16 @@ func TestAlreadyDeployed(t *testing.T) {
 
 func TestValidateDeployNoLedger(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		QErr: fmt.Errorf("Simulated error"),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -920,16 +919,16 @@ func TestValidateDeployNoLedger(t *testing.T) {
 
 func TestValidateDeployOK(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -978,16 +977,16 @@ func TestValidateDeployOK(t *testing.T) {
 
 func TestValidateDeployWithPolicies(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1066,16 +1065,16 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 
 func TestInvalidUpgrade(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1122,16 +1121,16 @@ func TestInvalidUpgrade(t *testing.T) {
 
 func TestValidateUpgradeOK(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1203,16 +1202,16 @@ func TestValidateUpgradeOK(t *testing.T) {
 
 func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1282,16 +1281,16 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 
 func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1379,17 +1378,16 @@ func TestValidateUpgradeWithNewFailAllIP(t *testing.T) {
 
 func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{V1_1ValidationRv: v11capability}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	// create the validator
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1477,16 +1475,16 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 
 func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	State := make(map[string]map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+	mp := (&scc.MocksccProviderFactory{
 		Qe: lm.NewMockQueryExecutor(State),
 		ApplicationConfigBool: true,
 		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New()
+	lccc := lscc.New(mp)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1593,9 +1591,9 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 
 	State := make(map[string]map[string][]byte)
 	State["lscc"] = make(map[string][]byte)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{Qe: lm.NewMockQueryExecutor(State)})
+	mp := (&scc.MocksccProviderFactory{Qe: lm.NewMockQueryExecutor(State)}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
-	v := New()
+	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
 	r1 := stub.MockInit("1", [][]byte{})
@@ -1665,12 +1663,17 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 
 var lccctestpath = "/tmp/lscc-validation-test"
 
+func NewMockProvider() *scc.MocksccProviderImpl {
+	return (&scc.MocksccProviderFactory{
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &mc.MockApplication{
+			CapabilitiesRv: &mc.MockApplicationCapabilities{},
+		},
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+}
+
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lccctestpath)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	})
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	mspGetter := func(cid string) []string {

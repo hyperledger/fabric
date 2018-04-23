@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +54,7 @@ func loadSysCCsWithConfig(configs []*PluginConfig) {
 			Enabled:           conf.Enabled,
 			Name:              conf.Name,
 			Path:              conf.Path,
-			Chaincode:         func() shim.Chaincode { return *plugin },
+			Chaincode:         func(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode { return *plugin },
 			InvokableExternal: conf.InvokableExternal,
 			InvokableCC2CC:    conf.InvokableCC2CC,
 		}

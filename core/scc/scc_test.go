@@ -104,14 +104,14 @@ func TestRegisterSysCC(t *testing.T) {
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
-		Chaincode: func() shim.Chaincode { return nil },
+		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
 	})
 	assert.NoError(t, err)
 	_, err = registerSysCC(&SystemChaincode{
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
-		Chaincode: func() shim.Chaincode { return nil },
+		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
 	})
 	assert.Error(t, err)
 	assert.Contains(t, "path already registered", err)
