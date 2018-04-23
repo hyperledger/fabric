@@ -330,9 +330,9 @@ func serve(args []string) error {
 	peer.Initialize(func(cid string) {
 		logger.Debugf("Deploying system CC, for chain <%s>", cid)
 		scc.DeploySysCCs(cid)
-		sub, err := lifecycle.NewChannelSubscription(cid, func() (cc.Query, error) {
+		sub, err := lifecycle.NewChannelSubscription(cid, cc.QueryCreatorFunc(func() (cc.Query, error) {
 			return peer.GetLedger(cid).NewQueryExecutor()
-		})
+		}))
 		if err != nil {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
