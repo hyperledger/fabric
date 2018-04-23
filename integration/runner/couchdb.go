@@ -95,6 +95,7 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	hostConfig := &docker.HostConfig{
+		AutoRemove: true,
 		PortBindings: map[docker.Port][]docker.PortBinding{
 			c.ContainerPort: []docker.PortBinding{{
 				HostIP:   c.HostIP,
@@ -134,10 +135,9 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		c.ContainerPort.Port(),
 	)
 
-	err = c.streamLogs()
-	if err != nil {
-		return err
-	}
+	streamCtx, streamCancel := context.WithCancel(context.Background())
+	defer streamCancel()
+	go c.streamLogs(streamCtx)
 
 	containerExit := c.wait()
 	ctx, cancel := context.WithTimeout(context.Background(), c.StartTimeout)
@@ -211,20 +211,25 @@ func (c *CouchDB) wait() <-chan error {
 	return exitCh
 }
 
-func (c *CouchDB) streamLogs() error {
+func (c *CouchDB) streamLogs(ctx context.Context) {
 	if c.ErrorStream == nil && c.OutputStream == nil {
-		return nil
+		return
 	}
 
 	logOptions := docker.LogsOptions{
+		Context:      ctx,
 		Container:    c.containerID,
+		Follow:       true,
 		ErrorStream:  c.ErrorStream,
 		OutputStream: c.OutputStream,
 		Stderr:       c.ErrorStream != nil,
 		Stdout:       c.OutputStream != nil,
 	}
 
-	return c.Client.Logs(logOptions)
+	err := c.Client.Logs(logOptions)
+	if err != nil {
+		fmt.Fprintf(c.ErrorStream, "log stream ended with error: %s", err)
+	}
 }
 
 // Address returns the address successfully used by the readiness check.
@@ -275,10 +280,5 @@ func (c *CouchDB) Stop() error {
 		return err
 	}
 
-	return c.Client.RemoveContainer(
-		docker.RemoveContainerOptions{
-			ID:    c.containerID,
-			Force: true,
-		},
-	)
+	return nil
 }
