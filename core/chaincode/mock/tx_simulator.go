@@ -637,6 +637,22 @@ func (fake *TxSimulator) ExecuteQueryOnPrivateDataCallCount() int {
 	return len(fake.executeQueryOnPrivateDataArgsForCall)
 }
 
+func (fake *TxSimulator) GetStateMetadata(namespace, key string) (map[string][]byte, error) {
+	return nil, nil
+}
+
+func (fake *TxSimulator) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+	return nil, nil
+}
+
+func (fake *TxSimulator) SetStateMetadata(namespace, key, metakey string, metadata []byte) error {
+	return nil
+}
+
+func (fake *TxSimulator) SetPrivateMetadata(namespace, collection, key, metakey string, metadata []byte) error {
+	return nil
+}
+
 func (fake *TxSimulator) ExecuteQueryOnPrivateDataArgsForCall(i int) (string, string, string) {
 	fake.executeQueryOnPrivateDataMutex.RLock()
 	defer fake.executeQueryOnPrivateDataMutex.RUnlock()

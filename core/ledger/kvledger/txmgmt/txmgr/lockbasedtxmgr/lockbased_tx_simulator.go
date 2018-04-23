@@ -61,6 +61,11 @@ func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) err
 	return nil
 }
 
+// SetStateMetadata implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) SetStateMetadata(namespace, key, metakey string, metadata []byte) error {
+	return errors.New("not implemented")
+}
+
 // DeleteState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) DeleteState(ns string, key string) error {
 	return s.SetState(ns, key, nil)
@@ -89,6 +94,11 @@ func (s *lockBasedTxSimulator) SetPrivateData(ns, coll, key string, value []byte
 	}
 	s.writePerformed = true
 	return s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
+}
+
+// SetPrivateMetadata implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) SetPrivateMetadata(namespace, collection, key, metakey string, metadata []byte) error {
+	return errors.New("not implemented")
 }
 
 // DeletePrivateData implements method in interface `ledger.TxSimulator`

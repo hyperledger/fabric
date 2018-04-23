@@ -17,6 +17,8 @@ limitations under the License.
 package lockbasedtxmgr
 
 import (
+	"errors"
+
 	"github.com/hyperledger/fabric/common/ledger"
 )
 
@@ -35,6 +37,11 @@ func newQueryExecutor(txmgr *LockBasedTxMgr, txid string) *lockBasedQueryExecuto
 // GetState implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetState(ns string, key string) ([]byte, error) {
 	return q.helper.getState(ns, key)
+}
+
+// GetStateMetadata implements method in interface `ledger.QueryExecutor`
+func (q *lockBasedQueryExecutor) GetStateMetadata(namespace, key string) (map[string][]byte, error) {
+	return nil, errors.New("not implemented")
 }
 
 // GetStateMultipleKeys implements method in interface `ledger.QueryExecutor`
@@ -58,6 +65,11 @@ func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (ledger.R
 // GetPrivateData implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetPrivateData(namespace, collection, key string) ([]byte, error) {
 	return q.helper.getPrivateData(namespace, collection, key)
+}
+
+// GetPrivateMetadata implements method in interface `ledger.QueryExecutor`
+func (q *lockBasedQueryExecutor) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+	return nil, errors.New("not implemented")
 }
 
 // GetPrivateDataMultipleKeys implements method in interface `ledger.QueryExecutor`

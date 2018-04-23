@@ -99,6 +99,8 @@ type ValidatedLedger interface {
 type QueryExecutor interface {
 	// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	GetState(namespace string, key string) ([]byte, error)
+	// GetStateMetadata returns the metadata for given namespace and key
+	GetStateMetadata(namespace, key string) (map[string][]byte, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
 	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
@@ -114,6 +116,8 @@ type QueryExecutor interface {
 	ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error)
 	// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
+	// GetPrivateMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
+	GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error)
 	// GetPrivateDataMultipleKeys gets the values for the multiple private data items in a single call
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error)
 	// GetPrivateDataRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
@@ -144,6 +148,8 @@ type TxSimulator interface {
 	QueryExecutor
 	// SetState sets the given value for the given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	SetState(namespace string, key string, value []byte) error
+	// SetStateMetadata sets the metadata for the given namespace and key.
+	SetStateMetadata(namespace, key, metakey string, metadata []byte) error
 	// DeleteState deletes the given namespace and key
 	DeleteState(namespace string, key string) error
 	// SetMultipleKeys sets the values for multiple keys in a single call
@@ -152,6 +158,8 @@ type TxSimulator interface {
 	ExecuteUpdate(query string) error
 	// SetPrivateData sets the given value to a key in the private data state represented by the tuple <namespace, collection, key>
 	SetPrivateData(namespace, collection, key string, value []byte) error
+	// SetPrivateMetadata sets the given metadata to a key in the private data state represented by the tuple <namespace, collection, key>
+	SetPrivateMetadata(namespace, collection, key, metakey string, metadata []byte) error
 	// SetPrivateDataMultipleKeys sets the values for multiple keys in the private data space in a single call
 	SetPrivateDataMultipleKeys(namespace, collection string, kvs map[string][]byte) error
 	// DeletePrivateData deletes the given tuple <namespace, collection, key> from private data

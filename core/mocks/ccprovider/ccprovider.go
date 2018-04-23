@@ -111,6 +111,22 @@ func (m *MockTxSim) SetPrivateDataMultipleKeys(namespace, collection string, kvs
 	return nil
 }
 
+func (m *MockTxSim) GetStateMetadata(namespace, key string) (map[string][]byte, error) {
+	return nil, nil
+}
+
+func (m *MockTxSim) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+	return nil, nil
+}
+
+func (m *MockTxSim) SetStateMetadata(namespace, key, metakey string, metadata []byte) error {
+	return nil
+}
+
+func (m *MockTxSim) SetPrivateMetadata(namespace, collection, key, metakey string, metadata []byte) error {
+	return nil
+}
+
 // GetContext does nothing
 func (c *MockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error) {
 	return nil, &MockTxSim{}, nil

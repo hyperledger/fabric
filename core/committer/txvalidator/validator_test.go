@@ -719,6 +719,14 @@ func (exec *mockQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, 
 func (exec *mockQueryExecutor) Done() {
 }
 
+func (exec *mockQueryExecutor) GetStateMetadata(namespace, key string) (map[string][]byte, error) {
+	return nil, nil
+}
+
+func (exec *mockQueryExecutor) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+	return nil, nil
+}
+
 // TestLedgerIsNoAvailable simulates and provides a test for following scenario,
 // which is based on FAB-535. Test checks the validation path which expects that
 // DB won't available while trying to lookup for VSCC from LCCC and therefore
