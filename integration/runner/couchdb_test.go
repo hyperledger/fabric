@@ -40,8 +40,6 @@ var _ = Describe("CouchDB Runner", func() {
 		stopResponse    string
 		waitStatus      int
 		waitResponse    string
-		deleteStatus    int
-		deleteResponse  string
 
 		waitChan chan struct{}
 		client   *docker.Client
@@ -69,6 +67,13 @@ var _ = Describe("CouchDB Runner", func() {
 		waitChan = make(chan struct{}, 1)
 		dockerServer = ghttp.NewServer()
 		dockerServer.Writer = GinkgoWriter
+
+		dockerServer.RouteToHandler("GET", "/version", ghttp.CombineHandlers(
+			ghttp.VerifyRequest("GET", "/version"),
+			ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{
+				"ApiVersion": "1.29",
+			}),
+		))
 
 		createStatus = http.StatusCreated
 		createResponse = &docker.Container{
@@ -104,7 +109,7 @@ var _ = Describe("CouchDB Runner", func() {
 
 		logsStatus = http.StatusOK
 		dockerServer.RouteToHandler("GET", "/containers/container-id/logs", ghttp.CombineHandlers(
-			ghttp.VerifyRequest("GET", "/containers/container-id/logs", "stderr=1&stdout=1&tail=all"),
+			ghttp.VerifyRequest("GET", "/containers/container-id/logs", "follow=1&stderr=1&stdout=1&tail=all"),
 			ghttp.RespondWithPtr(&logsStatus, &logsResponse),
 		))
 
@@ -123,12 +128,6 @@ var _ = Describe("CouchDB Runner", func() {
 		dockerServer.RouteToHandler("POST", "/containers/container-id/wait", ghttp.CombineHandlers(
 			ghttp.RespondWithPtr(&waitStatus, &waitResponse),
 			func(w http.ResponseWriter, r *http.Request) { <-waitChan },
-		))
-
-		deleteStatus = http.StatusNoContent
-		dockerServer.RouteToHandler("DELETE", "/containers/container-id", ghttp.CombineHandlers(
-			ghttp.VerifyRequest("DELETE", "/containers/container-id", "force=1"),
-			ghttp.RespondWithPtr(&deleteStatus, &deleteResponse),
 		))
 
 		client, err = docker.NewClient(dockerServer.URL())
@@ -203,7 +202,7 @@ var _ = Describe("CouchDB Runner", func() {
 	It("can be started and stopped with ifrit", func() {
 		process = ifrit.Invoke(couchDB)
 		Eventually(process.Ready()).Should(BeClosed())
-		Expect(dockerServer.ReceivedRequests()).To(HaveLen(5))
+		Expect(dockerServer.ReceivedRequests()).To(HaveLen(6))
 
 		process.Signal(syscall.SIGTERM)
 		Eventually(process.Wait()).Should(Receive())
@@ -214,7 +213,7 @@ var _ = Describe("CouchDB Runner", func() {
 	It("can be started and stopped without ifrit", func() {
 		err := couchDB.Start()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(dockerServer.ReceivedRequests()).To(HaveLen(5))
+		Expect(dockerServer.ReceivedRequests()).To(HaveLen(6))
 
 		err = couchDB.Stop()
 		Expect(err).NotTo(HaveOccurred())
@@ -232,6 +231,7 @@ var _ = Describe("CouchDB Runner", func() {
 					Image: "hyperledger/fabric-couchdb:latest",
 				},
 				HostConfig: &docker.HostConfig{
+					AutoRemove: true,
 					PortBindings: map[docker.Port][]docker.PortBinding{
 						docker.Port("5984/tcp"): []docker.PortBinding{{
 							HostIP:   "127.0.0.1",
@@ -336,9 +336,10 @@ var _ = Describe("CouchDB Runner", func() {
 			logsStatus = http.StatusConflict
 		})
 
-		It("returns an error", func() {
+		It("it records the error", func() {
 			err := couchDB.Start()
-			Expect(err).To(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(errBuffer).Should(gbytes.Say(`log stream ended with error: API error`))
 		})
 	})
 
@@ -396,20 +397,6 @@ var _ = Describe("CouchDB Runner", func() {
 
 			process.Signal(syscall.SIGTERM)
 			Eventually(process.Wait()).Should(Receive(Equal(&docker.Error{Status: http.StatusGone})))
-		})
-	})
-
-	Context("when removing the container fails", func() {
-		BeforeEach(func() {
-			deleteStatus = http.StatusNotFound
-		})
-
-		It("returns an error", func() {
-			err := couchDB.Start()
-			Expect(err).NotTo(HaveOccurred())
-
-			err = couchDB.Stop()
-			Expect(err).To(HaveOccurred())
 		})
 	})
 

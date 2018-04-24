@@ -29,7 +29,7 @@ ignored = [
 
 [[constraint]]
   name = "github.com/fsouza/go-dockerclient"
-  version = "docker-1.9/go-1.4"
+  version = "1.0.0"
 
 [[constraint]]
   branch = "master"
