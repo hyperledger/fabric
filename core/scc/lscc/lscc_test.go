@@ -402,6 +402,13 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 
 		expectVer := "1"
 		assert.Equal(t, newVer, expectVer, fmt.Sprintf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer))
+
+		chaincodeEvent := <-stub.ChaincodeEventsChannel
+		assert.Equal(t, UPGRADE, chaincodeEvent.EventName)
+		lifecycleEvent := &pb.LifecycleEvent{}
+		err = proto.Unmarshal(chaincodeEvent.Payload, lifecycleEvent)
+		assert.NoError(t, err)
+		assert.Equal(t, newccname, lifecycleEvent.ChaincodeName)
 	} else {
 		assert.Equal(t, expectedErrorMsg, string(res.Message))
 	}

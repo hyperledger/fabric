@@ -29,6 +29,7 @@ It has these top-level messages:
 	ChaincodeSpec
 	ChaincodeDeploymentSpec
 	ChaincodeInvocationSpec
+	LifecycleEvent
 	ChaincodeEvent
 	ChaincodeMessage
 	GetState
