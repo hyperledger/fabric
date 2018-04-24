@@ -9,11 +9,11 @@ package metrics
 import (
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/core/config/configtest"
+	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -155,6 +155,7 @@ func TestStartInvalidReporter(t *testing.T) {
 
 func TestStartAndClose(t *testing.T) {
 	t.Parallel()
+	gt := NewGomegaWithT(t)
 	defer Shutdown()
 	opts := Opts{
 		Enabled:  true,
@@ -166,10 +167,9 @@ func TestStartAndClose(t *testing.T) {
 			FlushBytes:    512,
 		}}
 	Init(opts)
-	go Start()
-	time.Sleep(1 * time.Second)
 	assert.NotNil(t, RootScope)
-	assert.Equal(t, uint32(1), atomic.LoadUint32(&started))
+	go Start()
+	gt.Eventually(isRunning).Should(BeTrue())
 }
 
 func TestNoOpScopeMetrics(t *testing.T) {
