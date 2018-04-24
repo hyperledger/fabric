@@ -11,9 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -28,54 +26,52 @@ func init() {
 	ccprovider.RegisterChaincodeProviderFactory(&ccprovider2.MockCcProviderFactory{})
 }
 
-func newTestProvider() sysccprovider.SystemChaincodeProvider {
-	return (&ProviderImpl{Peer: peer.Default, PeerSupport: peer.DefaultSupport})
+func newTestProvider() *Provider {
+	p := NewProvider(peer.Default, peer.DefaultSupport, inproccontroller.NewRegistry())
+	for _, cc := range CreateSysCCs(p) {
+		p.RegisterSysCC(cc)
+	}
+	return p
 }
 
 func TestDeploy(t *testing.T) {
-	DeploySysCCs("")
+	p := newTestProvider()
+	p.DeploySysCCs("")
 	f := func() {
-		DeploySysCCs("a")
+		p.DeploySysCCs("a")
 	}
 	assert.Panics(t, f)
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
 	err := peer.MockCreateChain("a")
 	fmt.Println(err)
-	deploySysCC("a", &SystemChaincode{
+	(&SystemChaincode{
 		Enabled: true,
 		Name:    "lscc",
-	})
+	}).deploySysCC("a")
 }
 
 func TestDeDeploySysCC(t *testing.T) {
-	DeDeploySysCCs("")
+	p := newTestProvider()
+	p.DeDeploySysCCs("")
 	f := func() {
-		DeDeploySysCCs("a")
+		p.DeDeploySysCCs("a")
 	}
 	assert.NotPanics(t, f)
 }
 
 func TestIsSysCC(t *testing.T) {
-	assert.True(t, IsSysCC("lscc"))
-	assert.False(t, IsSysCC("noSCC"))
 	assert.True(t, (newTestProvider()).IsSysCC("lscc"))
 	assert.False(t, (newTestProvider()).IsSysCC("noSCC"))
 }
 
 func TestIsSysCCAndNotInvokableCC2CC(t *testing.T) {
-	assert.False(t, IsSysCCAndNotInvokableCC2CC("lscc"))
-	assert.True(t, IsSysCC("cscc"))
-	assert.True(t, IsSysCCAndNotInvokableCC2CC("cscc"))
 	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
 	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("lscc"))
 	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("cscc"))
 }
 
 func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
-	assert.False(t, IsSysCCAndNotInvokableExternal("cscc"))
-	assert.True(t, IsSysCC("cscc"))
-	assert.True(t, IsSysCCAndNotInvokableExternal("vscc"))
 	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("cscc"))
 	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
 	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("vscc"))
@@ -87,30 +83,25 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestMockRegisterAndResetSysCCs(t *testing.T) {
-	orig := MockRegisterSysCCs([]*SystemChaincode{}, inproccontroller.NewRegistry())
-	assert.NotEmpty(t, orig)
-	MockResetSysCCs(orig)
-	assert.Equal(t, len(orig), len(systemChaincodes))
-}
-
 func TestRegisterSysCC(t *testing.T) {
-	assert.NotPanics(t, func() { RegisterSysCCs(inproccontroller.NewRegistry()) }, "expected successful init")
+	assert.NotPanics(t, func() { CreateSysCCs(newTestProvider()) }, "expected successful init")
 
-	ipRegistry := inproccontroller.NewRegistry()
-	_, err := registerSysCC(&SystemChaincode{
+	p := &Provider{
+		Registrar: inproccontroller.NewRegistry(),
+	}
+	_, err := p.registerSysCC(&SystemChaincode{
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
-		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
-	}, nil, ipRegistry)
+		Chaincode: nil,
+	})
 	assert.NoError(t, err)
-	_, err = registerSysCC(&SystemChaincode{
+	_, err = p.registerSysCC(&SystemChaincode{
 		Name:      "lscc",
 		Path:      "path",
 		Enabled:   true,
-		Chaincode: func(sysccprovider.SystemChaincodeProvider) shim.Chaincode { return nil },
-	}, nil, ipRegistry)
+		Chaincode: nil,
+	})
 	assert.Error(t, err)
 	assert.Contains(t, "path already registered", err)
 }

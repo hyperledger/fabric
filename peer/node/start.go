@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
@@ -109,13 +108,6 @@ var nodeStartCmd = &cobra.Command{
 		cmd.SilenceUsage = true
 		return serve(args)
 	},
-}
-
-//start chaincodes
-func initSysCCs() {
-	//deploy system chaincodes
-	scc.DeploySysCCs("")
-	logger.Infof("Deployed system chaincodes")
 }
 
 func serve(args []string) error {
@@ -262,6 +254,7 @@ func serve(args []string) error {
 		Peer:             peer.Default,
 		PeerSupport:      peer.DefaultSupport,
 		ChaincodeSupport: chaincodeSupport,
+		SysCCProvider:    sccp,
 	}
 	pluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
 	signingIdentityFetcher := (endorsement3.SigningIdentityFetcher)(endorserSupport)
@@ -330,7 +323,11 @@ func serve(args []string) error {
 	defer service.GetGossipService().Stop()
 
 	//initialize system chaincodes
-	initSysCCs()
+
+	//deploy system chaincodes
+	sccp.DeploySysCCs("")
+	logger.Infof("Deployed system chaincodes")
+
 	installedCCs := func() ([]ccdef.InstalledChaincode, error) {
 		return cc.InstalledCCs(ccprovider.GetCCsPath(), ioutil.ReadDir, ccprovider.LoadPackage)
 	}
@@ -346,7 +343,7 @@ func serve(args []string) error {
 	//this brings up all the chains
 	peer.Initialize(func(cid string) {
 		logger.Debugf("Deploying system CC, for chain <%s>", cid)
-		scc.DeploySysCCs(cid)
+		sccp.DeploySysCCs(cid)
 		sub, err := lifecycle.NewChannelSubscription(cid, cc.QueryCreatorFunc(func() (cc.Query, error) {
 			return peer.GetLedger(cid).NewQueryExecutor()
 		}))
@@ -586,7 +583,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) (*chaincode.ChaincodeSupport, sysccprovider.SystemChaincodeProvider) {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) (*chaincode.ChaincodeSupport, *scc.Provider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -614,7 +611,11 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	sccp := scc.RegisterSysCCs(ipRegistry)
+	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
+	sccs := scc.CreateSysCCs(sccp)
+	for _, cc := range sccs {
+		sccp.RegisterSysCC(cc)
+	}
 	chaincodeSupport.SetSysCCProvider(sccp)
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 

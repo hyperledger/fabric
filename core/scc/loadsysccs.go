@@ -14,7 +14,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +34,7 @@ var once sync.Once
 var sccPlugins []*SystemChaincode
 
 // loadSysCCs reads system chaincode plugin configuration and loads them
-func loadSysCCs() []*SystemChaincode {
+func loadSysCCs(p *Provider) []*SystemChaincode {
 	once.Do(func() {
 		var config []*PluginConfig
 		err := viperutil.EnhancedExactUnmarshalKey("chaincode.systemPlugins", &config)
@@ -54,7 +53,7 @@ func loadSysCCsWithConfig(configs []*PluginConfig) {
 			Enabled:           conf.Enabled,
 			Name:              conf.Name,
 			Path:              conf.Path,
-			Chaincode:         func(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode { return *plugin },
+			Chaincode:         *plugin,
 			InvokableExternal: conf.InvokableExternal,
 			InvokableCC2CC:    conf.InvokableCC2CC,
 		}

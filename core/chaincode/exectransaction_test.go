@@ -78,7 +78,9 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetApplicationConfigBoolRv: true,
 	}
-	sccp := &scc.ProviderImpl{Peer: peer.Default, PeerSupport: msi}
+
+	ipRegistry := inproccontroller.NewRegistry()
+	sccp := &scc.Provider{Peer: peer.Default, PeerSupport: msi, Registrar: ipRegistry}
 
 	mockAclProvider = &aclmocks.MockACLProvider{}
 	mockAclProvider.Reset()
@@ -119,7 +121,6 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()
 	config.StartupTimeout = 3 * time.Minute
-	ipRegistry := inproccontroller.NewRegistry()
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -142,15 +143,17 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
-	scc.RegisterSysCCs(ipRegistry)
+	for _, cc := range scc.CreateSysCCs(sccp) {
+		sccp.RegisterSysCC(cc)
+	}
 
 	for _, id := range chainIDs {
-		scc.DeDeploySysCCs(id)
+		sccp.DeDeploySysCCs(id)
 		if err = peer.MockCreateChain(id); err != nil {
 			closeListenerAndSleep(lis)
 			return nil, nil, nil, err
 		}
-		scc.DeploySysCCs(id)
+		sccp.DeploySysCCs(id)
 		// any chain other than the default testchainid does not have a MSP set up -> create one
 		if id != util.GetTestChainID() {
 			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))
@@ -166,7 +169,6 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 func finitPeer(lis net.Listener, chainIDs ...string) {
 	if lis != nil {
 		for _, c := range chainIDs {
-			scc.DeDeploySysCCs(c)
 			if lgr := peer.GetLedger(c); lgr != nil {
 				lgr.Close()
 			}

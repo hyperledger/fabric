@@ -33,6 +33,7 @@ type SupportImpl struct {
 	Peer             peer.Operations
 	PeerSupport      peer.Support
 	ChaincodeSupport *chaincode.ChaincodeSupport
+	SysCCProvider    *scc.Provider
 }
 
 func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
@@ -50,7 +51,7 @@ func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (SigningIden
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
 // ia system chaincode and it NOT invokable
 func (s *SupportImpl) IsSysCCAndNotInvokableExternal(name string) bool {
-	return scc.IsSysCCAndNotInvokableExternal(name)
+	return s.SysCCProvider.IsSysCCAndNotInvokableExternal(name)
 }
 
 // GetTxSimulator returns the transaction simulator for the specified ledger
@@ -90,7 +91,7 @@ func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransa
 // IsSysCC returns true if the name matches a system chaincode's
 // system chaincode names are system, chain wide
 func (s *SupportImpl) IsSysCC(name string) bool {
-	return scc.IsSysCC(name)
+	return s.SysCCProvider.IsSysCC(name)
 }
 
 // Execute a proposal and return the chaincode response

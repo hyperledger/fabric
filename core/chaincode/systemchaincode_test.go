@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
@@ -35,7 +34,6 @@ type oldSysCCInfo struct {
 }
 
 func (osyscc *oldSysCCInfo) reset() {
-	scc.MockResetSysCCs(osyscc.origSystemCC)
 	viper.Set("chaincode.system", osyscc.origSysCCWhitelist)
 }
 
@@ -142,19 +140,19 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 			},
 		),
 	)
+	sccp := &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: ipRegistry}
+	chaincodeSupport.SetSysCCProvider(sccp)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	go grpcServer.Serve(lis)
 
 	//set systemChaincodes to sample
-	sysccs := []*scc.SystemChaincode{
-		{
-			Enabled:   true,
-			Name:      "sample_syscc",
-			Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
-			InitArgs:  [][]byte{},
-			Chaincode: func(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode { return &SampleSysCC{} },
-		},
+	syscc := &scc.SystemChaincode{
+		Enabled:   true,
+		Name:      "sample_syscc",
+		Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
+		InitArgs:  [][]byte{},
+		Chaincode: &SampleSysCC{},
 	}
 
 	sysccinfo := &oldSysCCInfo{origSysCCWhitelist: viper.GetStringMapString("chaincode.system")}
@@ -162,16 +160,16 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	// System chaincode has to be enabled
 	viper.Set("chaincode.system", map[string]string{"sample_syscc": "true"})
 
-	sysccinfo.origSystemCC = scc.MockRegisterSysCCs(sysccs, ipRegistry)
+	sccp.RegisterSysCC(syscc)
 
 	/////^^^ system initialization completed ^^^
 	return sysccinfo, lis, chaincodeSupport, nil
 }
 
 func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string, chaincodeSupport *ChaincodeSupport) error {
-	scc.DeploySysCCs(chainID)
+	chaincodeSupport.sccp.(*scc.Provider).DeploySysCCs(chainID)
 
-	defer scc.DeDeploySysCCs(chainID)
+	defer chaincodeSupport.sccp.(*scc.Provider).DeDeploySysCCs(chainID)
 
 	url := "github.com/hyperledger/fabric/core/scc/sample_syscc"
 

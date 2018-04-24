@@ -150,7 +150,8 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		GetApplicationConfigBoolRv: true,
 	}
 
-	sccp := &scc.ProviderImpl{Peer: peer.Default, PeerSupport: msi}
+	ipRegistry := inproccontroller.NewRegistry()
+	sccp := &scc.Provider{Peer: peer.Default, PeerSupport: msi, Registrar: ipRegistry}
 
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
@@ -171,7 +172,6 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	config := GlobalConfig()
 	config.StartupTimeout = 10 * time.Second
 	config.ExecuteTimeout = 1 * time.Second
-	ipRegistry := inproccontroller.NewRegistry()
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		"0.0.0.0:7052",
@@ -193,15 +193,16 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
-	scc.RegisterSysCCs(ipRegistry)
+	for _, cc := range scc.CreateSysCCs(sccp) {
+		sccp.RegisterSysCC(cc)
+	}
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
-		scc.DeDeploySysCCs(id)
 		if err := peer.MockCreateChain(id); err != nil {
 			return nil, err
 		}
-		scc.DeploySysCCs(id)
+		sccp.DeploySysCCs(id)
 		// any chain other than the default testchainid does not have a MSP set up -> create one
 		if id != util.GetTestChainID() {
 			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))
@@ -214,7 +215,6 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 
 func finitMockPeer(chainIDs ...string) {
 	for _, c := range chainIDs {
-		scc.DeDeploySysCCs(c)
 		if lgr := peer.GetLedger(c); lgr != nil {
 			lgr.Close()
 		}
@@ -1088,7 +1088,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
-	h := Handler{txContexts: NewTransactionContexts(), sccp: &scc.ProviderImpl{Peer: peer.Default, PeerSupport: peer.DefaultSupport}}
+	h := Handler{txContexts: NewTransactionContexts(), sccp: &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: inproccontroller.NewRegistry()}}
 
 	chnl := "test"
 	txid := "1"
