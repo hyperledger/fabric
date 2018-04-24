@@ -117,6 +117,31 @@ type ChaincodeStub struct {
 	delStateReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetStateValidationParameterStub        func(key string, ep []byte) error
+	setStateValidationParameterMutex       sync.RWMutex
+	setStateValidationParameterArgsForCall []struct {
+		key string
+		ep  []byte
+	}
+	setStateValidationParameterReturns struct {
+		result1 error
+	}
+	setStateValidationParameterReturnsOnCall map[int]struct {
+		result1 error
+	}
+	GetStateValidationParameterStub        func(key string) ([]byte, error)
+	getStateValidationParameterMutex       sync.RWMutex
+	getStateValidationParameterArgsForCall []struct {
+		key string
+	}
+	getStateValidationParameterReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getStateValidationParameterReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	GetStateByRangeStub        func(startKey, endKey string) (shim.StateQueryIteratorInterface, error)
 	getStateByRangeMutex       sync.RWMutex
 	getStateByRangeArgsForCall []struct {
@@ -238,6 +263,33 @@ type ChaincodeStub struct {
 	}
 	delPrivateDataReturnsOnCall map[int]struct {
 		result1 error
+	}
+	SetPrivateDataValidationParameterStub        func(collection, key string, ep []byte) error
+	setPrivateDataValidationParameterMutex       sync.RWMutex
+	setPrivateDataValidationParameterArgsForCall []struct {
+		collection string
+		key        string
+		ep         []byte
+	}
+	setPrivateDataValidationParameterReturns struct {
+		result1 error
+	}
+	setPrivateDataValidationParameterReturnsOnCall map[int]struct {
+		result1 error
+	}
+	GetPrivateDataValidationParameterStub        func(collection, key string) ([]byte, error)
+	getPrivateDataValidationParameterMutex       sync.RWMutex
+	getPrivateDataValidationParameterArgsForCall []struct {
+		collection string
+		key        string
+	}
+	getPrivateDataValidationParameterReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getPrivateDataValidationParameterReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
 	}
 	GetPrivateDataByRangeStub        func(collection, startKey, endKey string) (shim.StateQueryIteratorInterface, error)
 	getPrivateDataByRangeMutex       sync.RWMutex
@@ -817,6 +869,111 @@ func (fake *ChaincodeStub) DelStateReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *ChaincodeStub) SetStateValidationParameter(key string, ep []byte) error {
+	var epCopy []byte
+	if ep != nil {
+		epCopy = make([]byte, len(ep))
+		copy(epCopy, ep)
+	}
+	fake.setStateValidationParameterMutex.Lock()
+	ret, specificReturn := fake.setStateValidationParameterReturnsOnCall[len(fake.setStateValidationParameterArgsForCall)]
+	fake.setStateValidationParameterArgsForCall = append(fake.setStateValidationParameterArgsForCall, struct {
+		key string
+		ep  []byte
+	}{key, epCopy})
+	fake.recordInvocation("SetStateValidationParameter", []interface{}{key, epCopy})
+	fake.setStateValidationParameterMutex.Unlock()
+	if fake.SetStateValidationParameterStub != nil {
+		return fake.SetStateValidationParameterStub(key, ep)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.setStateValidationParameterReturns.result1
+}
+
+func (fake *ChaincodeStub) SetStateValidationParameterCallCount() int {
+	fake.setStateValidationParameterMutex.RLock()
+	defer fake.setStateValidationParameterMutex.RUnlock()
+	return len(fake.setStateValidationParameterArgsForCall)
+}
+
+func (fake *ChaincodeStub) SetStateValidationParameterArgsForCall(i int) (string, []byte) {
+	fake.setStateValidationParameterMutex.RLock()
+	defer fake.setStateValidationParameterMutex.RUnlock()
+	return fake.setStateValidationParameterArgsForCall[i].key, fake.setStateValidationParameterArgsForCall[i].ep
+}
+
+func (fake *ChaincodeStub) SetStateValidationParameterReturns(result1 error) {
+	fake.SetStateValidationParameterStub = nil
+	fake.setStateValidationParameterReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ChaincodeStub) SetStateValidationParameterReturnsOnCall(i int, result1 error) {
+	fake.SetStateValidationParameterStub = nil
+	if fake.setStateValidationParameterReturnsOnCall == nil {
+		fake.setStateValidationParameterReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.setStateValidationParameterReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ChaincodeStub) GetStateValidationParameter(key string) ([]byte, error) {
+	fake.getStateValidationParameterMutex.Lock()
+	ret, specificReturn := fake.getStateValidationParameterReturnsOnCall[len(fake.getStateValidationParameterArgsForCall)]
+	fake.getStateValidationParameterArgsForCall = append(fake.getStateValidationParameterArgsForCall, struct {
+		key string
+	}{key})
+	fake.recordInvocation("GetStateValidationParameter", []interface{}{key})
+	fake.getStateValidationParameterMutex.Unlock()
+	if fake.GetStateValidationParameterStub != nil {
+		return fake.GetStateValidationParameterStub(key)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getStateValidationParameterReturns.result1, fake.getStateValidationParameterReturns.result2
+}
+
+func (fake *ChaincodeStub) GetStateValidationParameterCallCount() int {
+	fake.getStateValidationParameterMutex.RLock()
+	defer fake.getStateValidationParameterMutex.RUnlock()
+	return len(fake.getStateValidationParameterArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetStateValidationParameterArgsForCall(i int) string {
+	fake.getStateValidationParameterMutex.RLock()
+	defer fake.getStateValidationParameterMutex.RUnlock()
+	return fake.getStateValidationParameterArgsForCall[i].key
+}
+
+func (fake *ChaincodeStub) GetStateValidationParameterReturns(result1 []byte, result2 error) {
+	fake.GetStateValidationParameterStub = nil
+	fake.getStateValidationParameterReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetStateValidationParameterReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.GetStateValidationParameterStub = nil
+	if fake.getStateValidationParameterReturnsOnCall == nil {
+		fake.getStateValidationParameterReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getStateValidationParameterReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *ChaincodeStub) GetStateByRange(startKey string, endKey string) (shim.StateQueryIteratorInterface, error) {
 	fake.getStateByRangeMutex.Lock()
 	ret, specificReturn := fake.getStateByRangeReturnsOnCall[len(fake.getStateByRangeArgsForCall)]
@@ -1293,6 +1450,113 @@ func (fake *ChaincodeStub) DelPrivateDataReturnsOnCall(i int, result1 error) {
 	fake.delPrivateDataReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *ChaincodeStub) SetPrivateDataValidationParameter(collection string, key string, ep []byte) error {
+	var epCopy []byte
+	if ep != nil {
+		epCopy = make([]byte, len(ep))
+		copy(epCopy, ep)
+	}
+	fake.setPrivateDataValidationParameterMutex.Lock()
+	ret, specificReturn := fake.setPrivateDataValidationParameterReturnsOnCall[len(fake.setPrivateDataValidationParameterArgsForCall)]
+	fake.setPrivateDataValidationParameterArgsForCall = append(fake.setPrivateDataValidationParameterArgsForCall, struct {
+		collection string
+		key        string
+		ep         []byte
+	}{collection, key, epCopy})
+	fake.recordInvocation("SetPrivateDataValidationParameter", []interface{}{collection, key, epCopy})
+	fake.setPrivateDataValidationParameterMutex.Unlock()
+	if fake.SetPrivateDataValidationParameterStub != nil {
+		return fake.SetPrivateDataValidationParameterStub(collection, key, ep)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.setPrivateDataValidationParameterReturns.result1
+}
+
+func (fake *ChaincodeStub) SetPrivateDataValidationParameterCallCount() int {
+	fake.setPrivateDataValidationParameterMutex.RLock()
+	defer fake.setPrivateDataValidationParameterMutex.RUnlock()
+	return len(fake.setPrivateDataValidationParameterArgsForCall)
+}
+
+func (fake *ChaincodeStub) SetPrivateDataValidationParameterArgsForCall(i int) (string, string, []byte) {
+	fake.setPrivateDataValidationParameterMutex.RLock()
+	defer fake.setPrivateDataValidationParameterMutex.RUnlock()
+	return fake.setPrivateDataValidationParameterArgsForCall[i].collection, fake.setPrivateDataValidationParameterArgsForCall[i].key, fake.setPrivateDataValidationParameterArgsForCall[i].ep
+}
+
+func (fake *ChaincodeStub) SetPrivateDataValidationParameterReturns(result1 error) {
+	fake.SetPrivateDataValidationParameterStub = nil
+	fake.setPrivateDataValidationParameterReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ChaincodeStub) SetPrivateDataValidationParameterReturnsOnCall(i int, result1 error) {
+	fake.SetPrivateDataValidationParameterStub = nil
+	if fake.setPrivateDataValidationParameterReturnsOnCall == nil {
+		fake.setPrivateDataValidationParameterReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.setPrivateDataValidationParameterReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ChaincodeStub) GetPrivateDataValidationParameter(collection string, key string) ([]byte, error) {
+	fake.getPrivateDataValidationParameterMutex.Lock()
+	ret, specificReturn := fake.getPrivateDataValidationParameterReturnsOnCall[len(fake.getPrivateDataValidationParameterArgsForCall)]
+	fake.getPrivateDataValidationParameterArgsForCall = append(fake.getPrivateDataValidationParameterArgsForCall, struct {
+		collection string
+		key        string
+	}{collection, key})
+	fake.recordInvocation("GetPrivateDataValidationParameter", []interface{}{collection, key})
+	fake.getPrivateDataValidationParameterMutex.Unlock()
+	if fake.GetPrivateDataValidationParameterStub != nil {
+		return fake.GetPrivateDataValidationParameterStub(collection, key)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getPrivateDataValidationParameterReturns.result1, fake.getPrivateDataValidationParameterReturns.result2
+}
+
+func (fake *ChaincodeStub) GetPrivateDataValidationParameterCallCount() int {
+	fake.getPrivateDataValidationParameterMutex.RLock()
+	defer fake.getPrivateDataValidationParameterMutex.RUnlock()
+	return len(fake.getPrivateDataValidationParameterArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetPrivateDataValidationParameterArgsForCall(i int) (string, string) {
+	fake.getPrivateDataValidationParameterMutex.RLock()
+	defer fake.getPrivateDataValidationParameterMutex.RUnlock()
+	return fake.getPrivateDataValidationParameterArgsForCall[i].collection, fake.getPrivateDataValidationParameterArgsForCall[i].key
+}
+
+func (fake *ChaincodeStub) GetPrivateDataValidationParameterReturns(result1 []byte, result2 error) {
+	fake.GetPrivateDataValidationParameterStub = nil
+	fake.getPrivateDataValidationParameterReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetPrivateDataValidationParameterReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.GetPrivateDataValidationParameterStub = nil
+	if fake.getPrivateDataValidationParameterReturnsOnCall == nil {
+		fake.getPrivateDataValidationParameterReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getPrivateDataValidationParameterReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *ChaincodeStub) GetPrivateDataByRange(collection string, startKey string, endKey string) (shim.StateQueryIteratorInterface, error) {
@@ -1790,6 +2054,10 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.putStateMutex.RUnlock()
 	fake.delStateMutex.RLock()
 	defer fake.delStateMutex.RUnlock()
+	fake.setStateValidationParameterMutex.RLock()
+	defer fake.setStateValidationParameterMutex.RUnlock()
+	fake.getStateValidationParameterMutex.RLock()
+	defer fake.getStateValidationParameterMutex.RUnlock()
 	fake.getStateByRangeMutex.RLock()
 	defer fake.getStateByRangeMutex.RUnlock()
 	fake.getStateByPartialCompositeKeyMutex.RLock()
@@ -1808,6 +2076,10 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.putPrivateDataMutex.RUnlock()
 	fake.delPrivateDataMutex.RLock()
 	defer fake.delPrivateDataMutex.RUnlock()
+	fake.setPrivateDataValidationParameterMutex.RLock()
+	defer fake.setPrivateDataValidationParameterMutex.RUnlock()
+	fake.getPrivateDataValidationParameterMutex.RLock()
+	defer fake.getPrivateDataValidationParameterMutex.RUnlock()
 	fake.getPrivateDataByRangeMutex.RLock()
 	defer fake.getPrivateDataByRangeMutex.RUnlock()
 	fake.getPrivateDataByPartialCompositeKeyMutex.RLock()
@@ -1846,3 +2118,5 @@ func (fake *ChaincodeStub) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ shim.ChaincodeStubInterface = new(ChaincodeStub)

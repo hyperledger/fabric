@@ -456,6 +456,18 @@ func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
 	return stub.handler.handleGetState(collection, key, stub.ChannelId, stub.TxID)
 }
 
+// SetStateValidationParameter documentation can be found in interfaces.go
+func (stub *ChaincodeStub) SetStateValidationParameter(key string, ep []byte) error {
+	// TODO: implement
+	return nil
+}
+
+// GetStateValidationParameter documentation can be found in interfaces.go
+func (stub *ChaincodeStub) GetStateValidationParameter(key string) ([]byte, error) {
+	// TODO: implement
+	return nil, nil
+}
+
 // PutState documentation can be found in interfaces.go
 func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 	if key == "" {
@@ -553,6 +565,18 @@ func (stub *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (
 		channelId: stub.ChannelId,
 		txid:      stub.TxID,
 		response:  response}}, nil
+}
+
+// GetPrivateDataValidationParameter documentation can be found in interfaces.go
+func (stub *ChaincodeStub) GetPrivateDataValidationParameter(collection, key string) ([]byte, error) {
+	// TODO: implement
+	return nil, nil
+}
+
+// SetPrivateDataValidationParameter documentation can be found in interfaces.go
+func (stub *ChaincodeStub) SetPrivateDataValidationParameter(collection, key string, ep []byte) error {
+	// TODO: implement
+	return nil
 }
 
 // CommonIterator documentation can be found in interfaces.go

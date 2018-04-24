@@ -27,6 +27,9 @@ type Chaincode interface {
 	Invoke(stub ChaincodeStubInterface) pb.Response
 }
 
+//go:generate counterfeiter -o ../../scc/lscc/mock/chaincode_stub.go --fake-name ChaincodeStub . ChaincodeStubInterface
+//go:generate counterfeiter -o ../../chaincode/lifecycle/mock/chaincode_stub.go --fake-name ChaincodeStub . ChaincodeStubInterface
+
 // ChaincodeStubInterface is used by deployable chaincode apps to access and
 // modify their ledgers
 type ChaincodeStubInterface interface {
@@ -96,6 +99,14 @@ type ChaincodeStubInterface interface {
 	// the transaction proposal. The `key` and its value will be deleted from
 	// the ledger when the transaction is validated and successfully committed.
 	DelState(key string) error
+
+	// SetStateValidationParameter sets the key-level endorsement policy for `key`.
+	SetStateValidationParameter(key string, ep []byte) error
+
+	// GetStateValidationParameter retrieves the key-level endorsement policy
+	// for `key`. Note that this will introduce a read dependency on `key` in
+	// the transaction's readset.
+	GetStateValidationParameter(key string) ([]byte, error)
 
 	// GetStateByRange returns a range iterator over a set of keys in the
 	// ledger. The iterator can be used to iterate over all keys
@@ -185,6 +196,15 @@ type ChaincodeStubInterface interface {
 	// transient store. The `key` and its value will be deleted from the collection
 	// when the transaction is validated and successfully committed.
 	DelPrivateData(collection, key string) error
+
+	// SetPrivateDataValidationParameter sets the key-level endorsement policy
+	// for the private data specified by `key`.
+	SetPrivateDataValidationParameter(collection, key string, ep []byte) error
+
+	// GetPrivateDataValidationParameter retrieves the key-level endorsement
+	// policy for the private data specified by `key`. Note that this introduces
+	// a read dependency on `key` in the transaction's readset.
+	GetPrivateDataValidationParameter(collection, key string) ([]byte, error)
 
 	// GetPrivateDataByRange returns a range iterator over a set of keys in a
 	// given private collection. The iterator can be used to iterate over all keys
