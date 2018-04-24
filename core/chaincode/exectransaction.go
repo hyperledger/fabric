@@ -28,7 +28,7 @@ import (
 )
 
 //Execute - execute proposal, return original response of chaincode
-func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -89,7 +89,7 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 
 // ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
 // Mostly used by unit-test.
-func (cs *ChaincodeSupport) ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) ([]byte, *pb.ChaincodeEvent, error) {
 	res, event, err := cs.ExecuteSpec(ctxt, cccid, spec)
 	if err != nil {
 		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s error: %+v", cccid.Name, err)

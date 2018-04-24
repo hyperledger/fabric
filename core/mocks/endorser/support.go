@@ -9,6 +9,7 @@ package endorser
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	mc "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/protos/common"
@@ -63,7 +64,7 @@ func (s *MockSupport) IsSysCC(name string) bool {
 	return s.IsSysCCRv
 }
 
-func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
 	if spec != nil {
 		if _, istype := spec.(*pb.ChaincodeDeploymentSpec); istype {
 			return s.ExecuteCDSResp, s.ExecuteCDSEvent, s.ExecuteCDSError

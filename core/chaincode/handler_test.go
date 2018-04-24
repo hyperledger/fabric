@@ -49,14 +49,14 @@ func TestGetQueryResponse(t *testing.T) {
 
 	for _, tc := range testCases {
 		handler := &Handler{}
-		transactionContext := &transactionContext{
+		TransactionContext := &TransactionContext{
 			queryIteratorMap:    make(map[string]ledger.ResultsIterator),
 			pendingQueryResults: make(map[string]*pendingQueryResult),
 		}
 		queryID := "test"
 		t.Run(fmt.Sprintf("%d", tc.expectedResultCount), func(t *testing.T) {
 			resultsIterator := &MockResultsIterator{}
-			handler.initializeQueryContext(transactionContext, queryID, resultsIterator)
+			handler.initializeQueryContext(TransactionContext, queryID, resultsIterator)
 			if tc.expectedResultCount > 0 {
 				resultsIterator.On("Next").Return(queryResult, nil).Times(tc.expectedResultCount)
 			}
@@ -64,7 +64,7 @@ func TestGetQueryResponse(t *testing.T) {
 			resultsIterator.On("Close").Return().Once()
 			totalResultCount := 0
 			for hasMoreCount := 0; hasMoreCount <= tc.expectedHasMoreCount; hasMoreCount++ {
-				queryResponse, _ := getQueryResponse(handler, transactionContext, resultsIterator, queryID)
+				queryResponse, _ := getQueryResponse(handler, TransactionContext, resultsIterator, queryID)
 				assert.NotNil(t, queryResponse.GetResults())
 				if queryResponse.GetHasMore() {
 					t.Logf("Got %d results and more are expected.", len(queryResponse.GetResults()))
