@@ -62,8 +62,8 @@ func TestEncodeDecodeValueAndVersion(t *testing.T) {
 }
 
 func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := statedb.EncodeValue(value, version)
-	val, ver := statedb.DecodeValue(encodedValue)
+	encodedValue := EncodeValue(value, version)
+	val, ver := DecodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)
 	testutil.AssertEquals(t, ver, version)
 }
