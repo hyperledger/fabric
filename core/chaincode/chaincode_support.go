@@ -18,15 +18,12 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
 
 type key string
 
 const (
-	// DevModeUserRunsChaincode property allows user to run chaincode in development environment
-	DevModeUserRunsChaincode       string = "dev"
 	chaincodeStartupTimeoutDefault int    = 5000
 	peerAddressDefault             string = "0.0.0.0:7052"
 
@@ -434,11 +431,4 @@ func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCCo
 	chrte.handler.deleteTxContext(msg.ChannelId, msg.Txid)
 
 	return ccresp, err
-}
-
-// IsDevMode returns true if the peer was configured with development-mode enabled
-func IsDevMode() bool {
-	mode := viper.GetString("chaincode.mode")
-
-	return mode == DevModeUserRunsChaincode
 }

@@ -84,3 +84,15 @@ func getLogLevelFromViper(key string) string {
 
 	return levelString
 }
+
+// DevModeUserRunsChaincode enables chaincode execution in a development
+// environment
+const DevModeUserRunsChaincode string = "dev"
+
+// IsDevMode returns true if the peer was configured with development-mode
+// enabled.
+func IsDevMode() bool {
+	mode := viper.GetString("chaincode.mode")
+
+	return mode == DevModeUserRunsChaincode
+}
