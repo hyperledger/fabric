@@ -13,7 +13,8 @@ go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter
 go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
 go.fqp.goimports     := golang.org/x/tools/cmd/goimports
-go.fqp.golint        := github.com/golang/lint/golint
+#-----temporarty workaround for FAB-9667---
+#go.fqp.golint        := github.com/golang/lint/golint
 go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
 go.fqp.manifest-tool       := github.com/estesp/manifest-tool
@@ -24,6 +25,11 @@ gotools-install: $(patsubst %,$(GOTOOLS_BINDIR)/%, $(GOTOOLS))
 .PHONY: gotools-clean
 gotools-clean:
 	-@rm -rf $(BUILD_DIR)/gotools
+
+#-----temporarty workaround for FAB-9667---
+gotool.golint:
+	@git clone https://github.com/golang/lint.git $(GOTOOLS_GOPATH)/src/golang.org/x/lint
+	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install golang.org/x/lint/golint
 
 # Special override for protoc-gen-go since we want to use the version vendored with the project
 gotool.protoc-gen-go:
