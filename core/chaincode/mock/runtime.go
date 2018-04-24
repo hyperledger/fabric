@@ -10,14 +10,12 @@ import (
 )
 
 type Runtime struct {
-	StartStub        func(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error
+	StartStub        func(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
-		ctxt          context.Context
-		cccid         *ccprovider.CCContext
-		cds           *pb.ChaincodeDeploymentSpec
-		preLaunchFunc func() error
-		notify        chan bool
+		ctxt  context.Context
+		cccid *ccprovider.CCContext
+		cds   *pb.ChaincodeDeploymentSpec
 	}
 	startReturns struct {
 		result1 error
@@ -42,20 +40,18 @@ type Runtime struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Runtime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
+func (fake *Runtime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
-		ctxt          context.Context
-		cccid         *ccprovider.CCContext
-		cds           *pb.ChaincodeDeploymentSpec
-		preLaunchFunc func() error
-		notify        chan bool
-	}{ctxt, cccid, cds, preLaunchFunc, notify})
-	fake.recordInvocation("Start", []interface{}{ctxt, cccid, cds, preLaunchFunc, notify})
+		ctxt  context.Context
+		cccid *ccprovider.CCContext
+		cds   *pb.ChaincodeDeploymentSpec
+	}{ctxt, cccid, cds})
+	fake.recordInvocation("Start", []interface{}{ctxt, cccid, cds})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(ctxt, cccid, cds, preLaunchFunc, notify)
+		return fake.StartStub(ctxt, cccid, cds)
 	}
 	if specificReturn {
 		return ret.result1
@@ -69,10 +65,10 @@ func (fake *Runtime) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *Runtime) StartArgsForCall(i int) (context.Context, *ccprovider.CCContext, *pb.ChaincodeDeploymentSpec, func() error, chan bool) {
+func (fake *Runtime) StartArgsForCall(i int) (context.Context, *ccprovider.CCContext, *pb.ChaincodeDeploymentSpec) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
-	return fake.startArgsForCall[i].ctxt, fake.startArgsForCall[i].cccid, fake.startArgsForCall[i].cds, fake.startArgsForCall[i].preLaunchFunc, fake.startArgsForCall[i].notify
+	return fake.startArgsForCall[i].ctxt, fake.startArgsForCall[i].cccid, fake.startArgsForCall[i].cds
 }
 
 func (fake *Runtime) StartReturns(result1 error) {

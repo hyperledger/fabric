@@ -54,8 +54,6 @@ type ccProviderImpl struct {
 	cs *ChaincodeSupport
 }
 
-var _ ccprovider.ChaincodeProvider = &ccProviderImpl{}
-
 // ccProviderContextImpl contains the state that is passed around to calls to methods of ccProviderImpl
 type ccProviderContextImpl struct {
 	ctx *ccprovider.CCContext

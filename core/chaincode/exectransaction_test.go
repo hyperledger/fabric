@@ -25,9 +25,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	mc "github.com/hyperledger/fabric/common/mocks/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/aclmgmt"
+	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
@@ -37,6 +40,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/policy/mocks"
@@ -67,6 +71,16 @@ func testForSkip(t *testing.T) {
 func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), error) {
 	//start clean
 	finitPeer(nil, chainIDs...)
+
+	msi := &cmp.MockSupportImpl{
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+		GetApplicationConfigBoolRv: true,
+	}
+	sccp := &scc.ProviderImpl{Peer: peer.Default, PeerSupport: msi}
+
+	mockAclProvider = &aclmocks.MockACLProvider{}
+	mockAclProvider.Reset()
+	aclmgmt.RegisterACLProvider(mockAclProvider)
 
 	peer.MockInitialize()
 
@@ -102,6 +116,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincodeSupport.SetSysCCProvider(sccp)
 	SideEffectInitialize(chaincodeSupport)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 

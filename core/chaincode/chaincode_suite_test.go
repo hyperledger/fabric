@@ -49,3 +49,13 @@ type certGenerator interface {
 type processor interface {
 	Processor
 }
+
+// Helpers to access unexported state.
+
+func SetHandlerTxContexts(h *Handler, txContexts *TransactionContexts) {
+	h.txCtxs = txContexts
+}
+
+func InitializeQueryContext(h *Handler, txContext *TransactionContext, queryID string, resultsIterator commonledger.ResultsIterator) {
+	h.initializeQueryContext(txContext, queryID, resultsIterator)
+}

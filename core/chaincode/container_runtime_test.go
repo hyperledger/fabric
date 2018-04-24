@@ -183,11 +183,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 			ExecEnv: tc.execEnv,
 		}
 
-		// FIXME NOTE: These are temporary while performing the refactor.
-		preLaunchFunc := func() error { return errors.New("yep, this is me") }
-		notify := make(chan bool)
-
-		err := cr.Start(context.Background(), ccctx, cds, preLaunchFunc, notify)
+		err := cr.Start(context.Background(), ccctx, cds)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
@@ -201,8 +197,6 @@ func TestContainerRuntimeStart(t *testing.T) {
 		assert.Equal(t, startReq.Args, []string{"chaincode", "-peer.address=peer.example.com"})
 		assert.Equal(t, startReq.Env, []string{"CORE_CHAINCODE_ID_NAME=context-name:context-version", "CORE_PEER_TLS_ENABLED=false"})
 		assert.Nil(t, startReq.FilesToUpload)
-		assert.NotNil(t, startReq.PrelaunchFunc)
-		assert.EqualError(t, startReq.PrelaunchFunc(), "yep, this is me")
 		assert.Equal(t, startReq.CCID, ccintf.CCID{
 			ChaincodeSpec: cds.ChaincodeSpec,
 			Version:       "context-version",
@@ -242,7 +236,7 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			},
 		}
 
-		err := cr.Start(context.Background(), ccctx, cds, nil, nil)
+		err := cr.Start(context.Background(), ccctx, cds)
 		assert.EqualError(t, err, tc.errValue)
 	}
 }
