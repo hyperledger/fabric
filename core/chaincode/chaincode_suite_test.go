@@ -34,3 +34,18 @@ type historyQueryExecutor interface {
 type resultsIterator interface {
 	commonledger.ResultsIterator
 }
+
+//go:generate counterfeiter -o mock/runtime.go --fake-name Runtime . chaincodeRuntime
+type chaincodeRuntime interface {
+	Runtime
+}
+
+//go:generate counterfeiter -o mock/cert_generator.go --fake-name CertGenerator . certGenerator
+type certGenerator interface {
+	CertGenerator
+}
+
+//go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
+type processor interface {
+	Processor
+}
