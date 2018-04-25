@@ -79,6 +79,7 @@ func (v *TreeVertex) Clone() *TreeVertex {
 	copy := &TreeVertex{
 		Id:          v.Id,
 		Descendants: descendants,
+		Data:        v.Data,
 	}
 	return copy
 }
