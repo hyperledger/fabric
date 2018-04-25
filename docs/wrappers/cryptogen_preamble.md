@@ -1,4 +1,4 @@
-## cryptogen
+# cryptogen
 
 `cryptogen` is an utility for generating Hyperledger Fabric key material.
 It is provided as a means of preconfiguring a network for testing purposes.

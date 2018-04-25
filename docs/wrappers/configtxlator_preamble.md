@@ -1,4 +1,4 @@
-## configtxlator
+# configtxlator
 
 The `configtxlator` command allows users to translate between protobuf and JSON
 versions of fabric data structures and create config updates.  The command may

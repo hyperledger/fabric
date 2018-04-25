@@ -1,4 +1,4 @@
-## configtxlator
+# configtxlator
 
 The `configtxlator` command allows users to translate between protobuf and JSON
 versions of fabric data structures and create config updates.  The command may
@@ -15,7 +15,7 @@ The `configtxlator` tool has five sub-commands, as follows:
   * compute_update
   * version
 
-### configtxlator start
+## configtxlator start
 ```
 usage: configtxlator start [<flags>]
 
@@ -30,7 +30,7 @@ Flags:
 ```
 
 
-### configtxlator proto_encode
+## configtxlator proto_encode
 ```
 usage: configtxlator proto_encode --type=TYPE [<flags>]
 
@@ -47,7 +47,7 @@ Flags:
 ```
 
 
-### configtxlator proto_decode
+## configtxlator proto_decode
 ```
 usage: configtxlator proto_decode --type=TYPE [<flags>]
 
@@ -64,7 +64,7 @@ Flags:
 ```
 
 
-### configtxlator compute_update
+## configtxlator compute_update
 ```
 usage: configtxlator compute_update --channel_id=CHANNEL_ID [<flags>]
 
@@ -82,7 +82,7 @@ Flags:
 ```
 
 
-### configtxlator version
+## configtxlator version
 ```
 usage: configtxlator version
 
