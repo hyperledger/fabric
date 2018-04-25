@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,7 +39,9 @@ var DefaultNamer NameFunc = UniqueName
 // UniqueName is a NamerFunc that generates base-32 enocded UUIDs for container
 // names.
 func UniqueName() string {
-	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(util.GenerateBytesUUID())
+	uuid := util.GenerateBytesUUID()
+	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(uuid)
+	return strings.ToLower(encoded)
 }
 
 // CouchDB manages the execution of an instance of a dockerized CounchDB
