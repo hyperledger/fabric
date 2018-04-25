@@ -113,6 +113,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	}
 
 	ccStartupTimeout := time.Duration(3) * time.Minute
+	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
