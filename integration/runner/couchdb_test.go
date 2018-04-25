@@ -156,11 +156,14 @@ var _ = Describe("CouchDB Runner", func() {
 	})
 
 	It("starts and stops a docker container with the specified image", func() {
+		containerName := runner.DefaultNamer()
+
 		By("using a real docker daemon")
 		client, err := docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 		couchDB.Client = nil
 		couchDB.StartTimeout = 0
+		couchDB.Name = containerName
 
 		By("starting couch DB")
 		process = ifrit.Invoke(couchDB)
@@ -168,9 +171,9 @@ var _ = Describe("CouchDB Runner", func() {
 		Consistently(process.Wait()).ShouldNot(Receive())
 
 		By("inspecting the container by name")
-		container, err := client.InspectContainer("container-name")
+		container, err := client.InspectContainer(containerName)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(container.Name).To(Equal("/container-name"))
+		Expect(container.Name).To(Equal("/" + containerName))
 		Expect(container.State.Status).To(Equal("running"))
 		Expect(container.Config).NotTo(BeNil())
 		Expect(container.Config.Image).To(Equal("hyperledger/fabric-couchdb:latest"))
@@ -195,8 +198,10 @@ var _ = Describe("CouchDB Runner", func() {
 		Eventually(process.Wait()).Should(Receive(BeNil()))
 		process = nil
 
-		_, err = client.InspectContainer("container-name")
-		Expect(err).To(MatchError("No such container: container-name"))
+		Eventually(func() error {
+			_, err = client.InspectContainer(containerName)
+			return err
+		}).Should(MatchError("No such container: " + containerName))
 	})
 
 	It("can be started and stopped with ifrit", func() {
