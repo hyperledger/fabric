@@ -47,6 +47,7 @@ func NewChaincodeSupport(
 	packageProvider PackageProvider,
 	aclProvider ACLProvider,
 	processor Processor,
+	sccp sysccprovider.SystemChaincodeProvider,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
 		UserRunsCC:      userRunsCC,
@@ -54,6 +55,7 @@ func NewChaincodeSupport(
 		ExecuteTimeout:  config.ExecuteTimeout,
 		HandlerRegistry: NewHandlerRegistry(userRunsCC),
 		ACLProvider:     aclProvider,
+		sccp:            sccp,
 	}
 
 	// Keep TestQueries working
@@ -84,14 +86,6 @@ func NewChaincodeSupport(
 	}
 
 	return cs
-}
-
-// SetSysCCProvider is a bit of a hack to make a latent dependency of ChaincodeSupport
-// be an explicit dependency.  Because the chaincode support must be registered before
-// the sysccprovider implementation can be created, we cannot make the sccp part of the
-// constructor for ChaincodeSupport.
-func (cs *ChaincodeSupport) SetSysCCProvider(sccp sysccprovider.SystemChaincodeProvider) {
-	cs.sccp = sccp
 }
 
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into ready state.

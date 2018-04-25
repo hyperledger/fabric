@@ -186,9 +186,9 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
+		sccp,
 	)
 	SideEffectInitialize(chaincodeSupport)
-	chaincodeSupport.SetSysCCProvider(sccp)
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})

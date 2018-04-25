@@ -135,8 +135,8 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
+		sccp,
 	)
-	chaincodeSupport.SetSysCCProvider(sccp)
 	SideEffectInitialize(chaincodeSupport)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 

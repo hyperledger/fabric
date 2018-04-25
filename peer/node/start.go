@@ -590,6 +590,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 
 	authenticator := accesscontrol.NewAuthenticator(ca)
 	ipRegistry := inproccontroller.NewRegistry()
+	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
 		ccEndpoint,
@@ -602,6 +603,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 			dockercontroller.ContainerType: dockercontroller.NewProvider(),
 			inproccontroller.ContainerType: ipRegistry,
 		}),
+		sccp,
 	)
 	chaincode.SideEffectInitialize(chaincodeSupport)
 
@@ -611,12 +613,10 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
 	sccs := scc.CreateSysCCs(sccp)
 	for _, cc := range sccs {
 		sccp.RegisterSysCC(cc)
 	}
-	chaincodeSupport.SetSysCCProvider(sccp)
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 
 	return chaincodeSupport, sccp

@@ -211,6 +211,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 				inproccontroller.ContainerType: inproccontroller.NewRegistry(),
 			},
 		),
+		mp,
 	)
 
 	// Init the policy checker

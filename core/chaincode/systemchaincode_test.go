@@ -125,6 +125,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	config := GlobalConfig()
 	config.ExecuteTimeout = 5 * time.Second
 	ipRegistry := inproccontroller.NewRegistry()
+	sccp := &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: ipRegistry}
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -139,9 +140,8 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
+		sccp,
 	)
-	sccp := &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: ipRegistry}
-	chaincodeSupport.SetSysCCProvider(sccp)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	go grpcServer.Serve(lis)
