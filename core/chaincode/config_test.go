@@ -84,6 +84,19 @@ func TestGlobalConfigInvalidLogLevel(t *testing.T) {
 	assert.Equal(t, "INFO", config.ShimLogLevel)
 }
 
+func TestIsDevMode(t *testing.T) {
+	cleanup := capture()
+	defer cleanup()
+
+	viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
+	assert.True(t, chaincode.IsDevMode())
+
+	viper.Set("chaincode.mode", "empty")
+	assert.False(t, chaincode.IsDevMode())
+	viper.Set("chaincode.mode", "nonsense")
+	assert.False(t, chaincode.IsDevMode())
+}
+
 func capture() (restore func()) {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
