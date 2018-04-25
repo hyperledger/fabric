@@ -21,56 +21,29 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 )
 
-// ProviderFactory implements the sysccprovider.SystemChaincodeProviderFactory
-// interface and returns instances of sysccprovider.SystemChaincodeProvider
-type ProviderFactory struct {
-	Peer        peer.Operations
-	PeerSupport peer.Support
-}
-
-// NewSystemChaincodeProvider returns pointers to ProviderFactory as an
-// implementer of the sysccprovider.SystemChaincodeProvider interface
-func (c *ProviderFactory) NewSystemChaincodeProvider() sysccprovider.SystemChaincodeProvider {
-	return &sccProviderImpl{
-		Peer:        c.Peer,
-		PeerSupport: c.PeerSupport,
-	}
-}
-
-// init is called when this package is loaded. This implementation registers the factory
-func init() {
-	sysccprovider.RegisterSystemChaincodeProviderFactory(
-		&ProviderFactory{
-			Peer:        peer.Default,
-			PeerSupport: peer.DefaultSupport,
-		},
-	)
-}
-
 // ccProviderImpl is an implementation of the ccprovider.ChaincodeProvider interface
-type sccProviderImpl struct {
+type ProviderImpl struct {
 	Peer        peer.Operations
 	PeerSupport peer.Support
 }
 
 // IsSysCC returns true if the supplied chaincode is a system chaincode
-func (c *sccProviderImpl) IsSysCC(name string) bool {
+func (c *ProviderImpl) IsSysCC(name string) bool {
 	return IsSysCC(name)
 }
 
 // IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode is
 // ia system chaincode and it NOT invokable through a cc2cc invocation
-func (c *sccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
+func (c *ProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
 	return IsSysCCAndNotInvokableCC2CC(name)
 }
 
 // GetQueryExecutorForLedger returns a query executor for the specified channel
-func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
+func (c *ProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
 	l := c.Peer.GetLedger(cid)
 	if l == nil {
 		return nil, fmt.Errorf("Could not retrieve ledger for channel %s", cid)
@@ -81,20 +54,20 @@ func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExe
 
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
 // ia system chaincode and it NOT invokable
-func (c *sccProviderImpl) IsSysCCAndNotInvokableExternal(name string) bool {
+func (c *ProviderImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 	// call the static method of the same name
 	return IsSysCCAndNotInvokableExternal(name)
 }
 
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
-func (c *sccProviderImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+func (c *ProviderImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	return c.PeerSupport.GetApplicationConfig(cid)
 }
 
 // Returns the policy manager associated to the passed channel
 // and whether the policy manager exists
-func (c *sccProviderImpl) PolicyManager(channelID string) (policies.Manager, bool) {
+func (c *ProviderImpl) PolicyManager(channelID string) (policies.Manager, bool) {
 	m := c.Peer.GetPolicyManager(channelID)
 	return m, (m != nil)
 }

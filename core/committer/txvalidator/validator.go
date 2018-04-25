@@ -90,11 +90,11 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(support Support) Validator {
+func NewTxValidator(support Support, sccp sysccprovider.SystemChaincodeProvider) Validator {
 	// Encapsulates interface implementation
 	return &txValidator{
 		support: support,
-		vscc:    newVSCCValidator(support)}
+		vscc:    newVSCCValidator(support, sccp)}
 }
 
 func (v *txValidator) chainExists(chain string) bool {

@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/library"
@@ -223,7 +224,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
-	chaincodeSupport := registerChaincodeSupport(ccSrv, ccEndpoint, ca)
+	chaincodeSupport, sccp := registerChaincodeSupport(ccSrv, ccEndpoint, ca)
 	go ccSrv.Start()
 
 	logger.Debugf("Running peer")
@@ -337,7 +338,7 @@ func serve(args []string) error {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
-	})
+	}, sccp)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, messageCryptoService, lifecycle)
@@ -569,7 +570,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) *chaincode.ChaincodeSupport {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) (*chaincode.ChaincodeSupport, sysccprovider.SystemChaincodeProvider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -600,10 +601,11 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	scc.RegisterSysCCs()
+	sccp := scc.RegisterSysCCs()
+	chaincodeSupport.SetSysCCProvider(sccp)
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 
-	return chaincodeSupport
+	return chaincodeSupport, sccp
 }
 
 func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {

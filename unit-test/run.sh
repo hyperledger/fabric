@@ -7,11 +7,6 @@
 
 # regexes for packages to exclude from unit test
 excluded_packages=(
-    # XXX Remove me in next commit
-    # The chaincode tests run locally, but consistently fail
-    # in CI for this commit.  The next commit is happy in CI,
-    # So, disabling for the moment, will enable in the next
-    "github.com/hyperledger/fabric/core/chaincode"
 )
 
 # regexes for packages that must be run serially

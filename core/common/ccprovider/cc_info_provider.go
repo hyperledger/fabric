@@ -15,14 +15,14 @@ import (
 )
 
 // IsChaincodeDeployed returns true if the chaincode with given name and version is deployed
-func IsChaincodeDeployed(chainid, ccName, ccVersion string, ccHash []byte) (bool, error) {
-	sccprovider := sysccprovider.GetSystemChaincodeProvider()
-	qe, err := sccprovider.GetQueryExecutorForLedger(chainid)
+func IsChaincodeDeployed(chainid, ccName, ccVersion string, ccHash []byte, sccp sysccprovider.SystemChaincodeProvider) (bool, error) {
+	qe, err := sccp.GetQueryExecutorForLedger(chainid)
 	if err != nil {
 		return false, fmt.Errorf("Could not retrieve QueryExecutor for channel %s, error %s", chainid, err)
 	}
 	defer qe.Done()
 
+	// XXX We are leaking details of the LSCC table structure to other parts of the code, and this is terrible
 	chaincodeDataBytes, err := qe.GetState("lscc", ccName)
 	if err != nil {
 		return false, fmt.Errorf("Could not retrieve state for chaincode %s on channel %s, error %s", ccName, chainid, err)

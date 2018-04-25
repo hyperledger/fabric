@@ -86,6 +86,8 @@ type Handler struct {
 	registered     bool
 	readyNotify    chan bool
 
+	sccp sysccprovider.SystemChaincodeProvider
+
 	//chan to pass error in sync and nonsync mode
 	errChan chan error
 
@@ -226,7 +228,7 @@ func (h *Handler) cleanupQueryContext(txContext *TransactionContext, queryID str
 func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, ccIns *sysccprovider.ChaincodeInstance) error {
 	// ensure that we don't invoke a system chaincode
 	// that is not invokable through a cc2cc invocation
-	if sysccprovider.GetSystemChaincodeProvider().IsSysCCAndNotInvokableCC2CC(ccIns.ChaincodeName) {
+	if h.sccp.IsSysCCAndNotInvokableCC2CC(ccIns.ChaincodeName) {
 		return errors.Errorf("system chaincode %s cannot be invoked with a cc2cc invocation", ccIns.ChaincodeName)
 	}
 
@@ -237,7 +239,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 	// - an application chaincode (and we still need to determine
 	//   whether the invoker can invoke it)
 
-	if sysccprovider.GetSystemChaincodeProvider().IsSysCC(ccIns.ChaincodeName) {
+	if h.sccp.IsSysCC(ccIns.ChaincodeName) {
 		// Allow this call
 		return nil
 	}
@@ -354,11 +356,11 @@ func (h *Handler) processStream() error {
 func HandleChaincodeStream(chaincodeSupport *ChaincodeSupport, ctxt context.Context, stream ccintf.ChaincodeStream) error {
 	deadline, ok := ctxt.Deadline()
 	chaincodeLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
-	h := newChaincodeSupportHandler(chaincodeSupport, stream)
+	h := newChaincodeSupportHandler(chaincodeSupport, stream, chaincodeSupport.sccp)
 	return h.processStream()
 }
 
-func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStream ccintf.ChaincodeStream) *Handler {
+func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStream ccintf.ChaincodeStream, sccp sysccprovider.SystemChaincodeProvider) *Handler {
 	v := &Handler{
 		ChatStream:         peerChatStream,
 		handlerSupport:     chaincodeSupport,
@@ -368,6 +370,7 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		activeTransactions: NewActiveTransactions(),
 		keepalive:          chaincodeSupport.keepalive,
 		userRunsCC:         chaincodeSupport.userRunsCC,
+		sccp:               sccp,
 	}
 
 	v.readyStateHandlers = stateHandlers{
@@ -1027,7 +1030,7 @@ func (h *Handler) getTxContextForMessage(channelID string, txid string, msgType 
 	//   If calledCcIns is not an SCC, isValidTxSim should be called which will return an err.
 	//   We do not want to propagate calls to user CCs when the original call was to a SCC
 	//   without a channel context (ie, no ledger context).
-	if isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcIns.ChaincodeName); !isscc {
+	if isscc := h.sccp.IsSysCC(calledCcIns.ChaincodeName); !isscc {
 		// normal path - UCC invocation with an empty ("") channel: isValidTxSim will return an error
 		return h.isValidTxSim("", txid, fmtStr, args)
 	}
@@ -1163,7 +1166,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 				shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 
 			//is the chaincode a system chaincode ?
-			isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcIns.ChaincodeName)
+			isscc := h.sccp.IsSysCC(calledCcIns.ChaincodeName)
 
 			var version string
 			if !isscc {

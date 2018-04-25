@@ -18,7 +18,6 @@ import (
 //MockInitialize resets chains for test env
 func MockInitialize() {
 	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
-	chains.list = nil
 	chains.list = make(map[string]*chain)
 	chainInitializer = func(string) { return }
 }
@@ -46,7 +45,9 @@ func MockCreateChain(cid string) error {
 					Policy: &mockpolicies.Policy{},
 				},
 				ConfigtxValidatorVal: &mockconfigtx.Validator{},
+				ApplicationConfigVal: &mockchannelconfig.MockApplication{CapabilitiesRv: &mockchannelconfig.MockApplicationCapabilities{}},
 			},
+
 			ledger: ledger,
 		},
 	}
