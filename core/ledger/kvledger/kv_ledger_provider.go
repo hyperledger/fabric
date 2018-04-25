@@ -291,6 +291,7 @@ func (s *idStore) ledgerIDExists(ledgerID string) (bool, error) {
 func (s *idStore) getAllLedgerIds() ([]string, error) {
 	var ids []string
 	itr := s.db.GetIterator(nil, nil)
+	defer itr.Release()
 	itr.First()
 	for itr.Valid() {
 		if bytes.Equal(itr.Key(), underConstructionLedgerKey) {
