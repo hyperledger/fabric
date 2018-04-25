@@ -42,6 +42,7 @@ import (
 var logger = flogging.MustGetLogger("lscc")
 
 const (
+
 	//chaincode lifecycle commands
 
 	//INSTALL install command
@@ -592,7 +593,9 @@ func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	if err != nil {
 		return nil, err
 	}
-
+	lifecycleEvent := &pb.LifecycleEvent{ChaincodeName: chaincodeName}
+	lifecycleEventBytes := utils.MarshalOrPanic(lifecycleEvent)
+	stub.SetEvent(UPGRADE, lifecycleEventBytes)
 	return cdfs, nil
 }
 

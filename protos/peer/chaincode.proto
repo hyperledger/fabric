@@ -104,3 +104,8 @@ message ChaincodeInvocationSpec {
     // Currently, SHA256 with BASE64 is supported (e.g. idGenerationAlg='sha256base64')
     string id_generation_alg = 2;
 }
+
+// LifecycleEvent is used as the payload of the chaincode event emitted by LSCC
+message LifecycleEvent {
+    string chaincode_name = 1;
+}

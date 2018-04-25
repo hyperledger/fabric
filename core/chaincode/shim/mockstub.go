@@ -59,6 +59,9 @@ type MockStub struct {
 	ChannelID string
 
 	PvtState map[string]map[string][]byte
+
+	// channel to store ChaincodeEvents
+	ChaincodeEventsChannel chan *pb.ChaincodeEvent
 }
 
 func (stub *MockStub) GetTxID() string {
@@ -362,8 +365,8 @@ func (stub *MockStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	return stub.TxTimestamp, nil
 }
 
-// Not implemented
 func (stub *MockStub) SetEvent(name string, payload []byte) error {
+	stub.ChaincodeEventsChannel <- &pb.ChaincodeEvent{EventName: name, Payload: payload}
 	return nil
 }
 
@@ -377,6 +380,7 @@ func NewMockStub(name string, cc Chaincode) *MockStub {
 	s.PvtState = make(map[string]map[string][]byte)
 	s.Invokables = make(map[string]*MockStub)
 	s.Keys = list.New()
+	s.ChaincodeEventsChannel = make(chan *pb.ChaincodeEvent, 100) //define large capacity for non-blocking setEvent calls.
 
 	return s
 }
