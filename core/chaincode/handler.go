@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -40,20 +39,6 @@ const (
 )
 
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
-
-type TransactionContext struct {
-	chainID          string
-	signedProp       *pb.SignedProposal
-	proposal         *pb.Proposal
-	responseNotifier chan *pb.ChaincodeMessage
-
-	// tracks open iterators used for range queries
-	queryIteratorMap    map[string]commonledger.ResultsIterator
-	pendingQueryResults map[string]*PendingQueryResult
-
-	txsimulator          ledger.TxSimulator
-	historyQueryExecutor ledger.HistoryQueryExecutor
-}
 
 type stateHandlers map[pb.ChaincodeMessage_Type]func(*pb.ChaincodeMessage)
 
@@ -194,28 +179,6 @@ func (h *Handler) getTxContext(chainID, txid string) *TransactionContext {
 
 func (h *Handler) deleteTxContext(chainID, txid string) {
 	h.txCtxs.Delete(chainID, txid)
-}
-
-func (h *Handler) initializeQueryContext(txContext *TransactionContext, queryID string,
-	queryIterator commonledger.ResultsIterator) {
-	h.Lock()
-	defer h.Unlock()
-	txContext.queryIteratorMap[queryID] = queryIterator
-	txContext.pendingQueryResults[queryID] = &PendingQueryResult{batch: make([]*pb.QueryResultBytes, 0)}
-}
-
-func (h *Handler) getQueryIterator(txContext *TransactionContext, queryID string) commonledger.ResultsIterator {
-	h.Lock()
-	defer h.Unlock()
-	return txContext.queryIteratorMap[queryID]
-}
-
-func (h *Handler) cleanupQueryContext(txContext *TransactionContext, queryID string) {
-	h.Lock()
-	defer h.Unlock()
-	txContext.queryIteratorMap[queryID].Close()
-	delete(txContext.queryIteratorMap, queryID)
-	delete(txContext.pendingQueryResults, queryID)
 }
 
 // Check if the transactor is allow to call this chaincode on this channel
@@ -476,9 +439,7 @@ func (h *Handler) notify(msg *pb.ChaincodeMessage) {
 		tctx.responseNotifier <- msg
 
 		// clean up queryIteratorMap
-		for _, v := range tctx.queryIteratorMap {
-			v.Close()
-		}
+		tctx.CloseQueryIterators()
 	}
 }
 
@@ -607,7 +568,7 @@ func (h *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 
 		errHandler := func(err error, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
 			if iter != nil {
-				h.cleanupQueryContext(txContext, iterID)
+				txContext.CleanupQueryContext(iterID)
 			}
 			payload := []byte(err.Error())
 			chaincodeLogger.Errorf(errFmt, errArgs...)
@@ -627,10 +588,10 @@ func (h *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		h.initializeQueryContext(txContext, iterID, rangeIter)
+		txContext.InitializeQueryContext(iterID, rangeIter)
 
 		var payload *pb.QueryResponse
-		payload, err = getQueryResponse(h, txContext, rangeIter, iterID)
+		payload, err = getQueryResponse(txContext, rangeIter, iterID)
 		if err != nil {
 			errHandler(err, rangeIter, "Failed to get query result. Sending %s", pb.ChaincodeMessage_ERROR)
 			return
@@ -651,32 +612,31 @@ func (h *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 const maxResultLimit = 100
 
 //getQueryResponse takes an iterator and fetch state to construct QueryResponse
-func getQueryResponse(h *Handler, txContext *TransactionContext, iter commonledger.ResultsIterator,
-	iterID string) (*pb.QueryResponse, error) {
+func getQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator, iterID string) (*pb.QueryResponse, error) {
 	pendingQueryResults := txContext.pendingQueryResults[iterID]
 	for {
 		queryResult, err := iter.Next()
 		switch {
 		case err != nil:
 			chaincodeLogger.Errorf("Failed to get query result from iterator")
-			h.cleanupQueryContext(txContext, iterID)
+			txContext.CleanupQueryContext(iterID)
 			return nil, err
 		case queryResult == nil:
 			// nil response from iterator indicates end of query results
 			batch := pendingQueryResults.Cut()
-			h.cleanupQueryContext(txContext, iterID)
+			txContext.CleanupQueryContext(iterID)
 			return &pb.QueryResponse{Results: batch, HasMore: false, Id: iterID}, nil
 		case pendingQueryResults.Size() == maxResultLimit:
 			// max number of results queued up, cut batch, then add current result to pending batch
 			batch := pendingQueryResults.Cut()
 			if err := pendingQueryResults.Add(queryResult); err != nil {
-				h.cleanupQueryContext(txContext, iterID)
+				txContext.CleanupQueryContext(iterID)
 				return nil, err
 			}
 			return &pb.QueryResponse{Results: batch, HasMore: true, Id: iterID}, nil
 		default:
 			if err := pendingQueryResults.Add(queryResult); err != nil {
-				h.cleanupQueryContext(txContext, iterID)
+				txContext.CleanupQueryContext(iterID)
 				return nil, err
 			}
 		}
@@ -703,7 +663,7 @@ func (h *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 
 		errHandler := func(payload []byte, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
 			if iter != nil {
-				h.cleanupQueryContext(txContext, queryStateNext.Id)
+				txContext.CleanupQueryContext(queryStateNext.Id)
 			}
 			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChannelId: msg.ChannelId}
@@ -723,14 +683,14 @@ func (h *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		queryIter := h.getQueryIterator(txContext, queryStateNext.Id)
+		queryIter := txContext.GetQueryIterator(queryStateNext.Id)
 
 		if queryIter == nil {
 			errHandler([]byte("query iterator not found"), nil, "query iterator not found. Sending %s", pb.ChaincodeMessage_ERROR)
 			return
 		}
 
-		payload, err := getQueryResponse(h, txContext, queryIter, queryStateNext.Id)
+		payload, err := getQueryResponse(txContext, queryIter, queryStateNext.Id)
 		if err != nil {
 			errHandler([]byte(err.Error()), queryIter, "Failed to get query result. Sending %s", pb.ChaincodeMessage_ERROR)
 			return
@@ -779,9 +739,9 @@ func (h *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		iter := h.getQueryIterator(txContext, queryStateClose.Id)
+		iter := txContext.GetQueryIterator(queryStateClose.Id)
 		if iter != nil {
-			h.cleanupQueryContext(txContext, queryStateClose.Id)
+			txContext.CleanupQueryContext(queryStateClose.Id)
 		}
 
 		payload := &pb.QueryResponse{HasMore: false, Id: queryStateClose.Id}
@@ -817,7 +777,7 @@ func (h *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 
 		errHandler := func(payload []byte, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
 			if iter != nil {
-				h.cleanupQueryContext(txContext, iterID)
+				txContext.CleanupQueryContext(iterID)
 			}
 			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChannelId: msg.ChannelId}
@@ -852,10 +812,10 @@ func (h *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		h.initializeQueryContext(txContext, iterID, executeIter)
+		txContext.InitializeQueryContext(iterID, executeIter)
 
 		var payload *pb.QueryResponse
-		payload, err = getQueryResponse(h, txContext, executeIter, iterID)
+		payload, err = getQueryResponse(txContext, executeIter, iterID)
 		if err != nil {
 			errHandler([]byte(err.Error()), executeIter, "Failed to get query result. Sending %s", pb.ChaincodeMessage_ERROR)
 			return
@@ -894,7 +854,7 @@ func (h *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 
 		errHandler := func(payload []byte, iter commonledger.ResultsIterator, errFmt string, errArgs ...interface{}) {
 			if iter != nil {
-				h.cleanupQueryContext(txContext, iterID)
+				txContext.CleanupQueryContext(iterID)
 			}
 			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChannelId: msg.ChannelId}
@@ -921,10 +881,10 @@ func (h *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		h.initializeQueryContext(txContext, iterID, historyIter)
+		txContext.InitializeQueryContext(iterID, historyIter)
 
 		var payload *pb.QueryResponse
-		payload, err = getQueryResponse(h, txContext, historyIter, iterID)
+		payload, err = getQueryResponse(txContext, historyIter, iterID)
 
 		if err != nil {
 			errHandler([]byte(err.Error()), historyIter, "Failed to get query result. Sending %s", pb.ChaincodeMessage_ERROR)

@@ -21,17 +21,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-type key string
-
 const (
 	chaincodeStartupTimeoutDefault int    = 5000
 	peerAddressDefault             string = "0.0.0.0:7052"
-
-	//TXSimulatorKey is used to attach ledger simulation context
-	TXSimulatorKey key = "txsimulatorkey"
-
-	//HistoryQueryExecutorKey is used to attach ledger history query executor context
-	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
 )
 
 // CertGenerator generate client certificates for chaincode

@@ -16,6 +16,18 @@ import (
 	"golang.org/x/net/context"
 )
 
+type key string
+
+const (
+	// TXSimulatorKey is the context key used to provide a ledger.TxSimulator
+	// from the endorser to the chaincode.
+	TXSimulatorKey key = "txsimulatorkey"
+
+	// HistoryQueryExecutorKey is the context key used to provide a
+	// ledger.HistoryQueryExecutor from the endorser to the chaincode.
+	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
+)
+
 // TransactionContexts maintains active transaction contexts for a Handler.
 type TransactionContexts struct {
 	mutex    sync.Mutex
@@ -29,19 +41,19 @@ func NewTransactionContexts() *TransactionContexts {
 	}
 }
 
-// NewTransactionContextID creates a transaction identifier that is scoped to a chain.
-func NewTransactionContextID(chainID, txID string) string {
+// contextID creates a transaction identifier that is scoped to a chain.
+func contextID(chainID, txID string) string {
 	return chainID + txID
 }
 
-// Create creates a new TransactionContext for the specified chain, transaction
-// ID, and proposals. An error is returned when a transaction context has
-// already been created for the specified chain and transaction ID.
-func (c *TransactionContexts) Create(ctx context.Context, chainID, txID string, signedProp *pb.SignedProposal, prop *pb.Proposal) (*TransactionContext, error) {
+// Create creates a new TransactionContext for the specified chain and
+// transaction ID. An error is returned when a transaction context has already
+// been created for the specified chain and transaction ID.
+func (c *TransactionContexts) Create(ctx context.Context, chainID, txID string, signedProp *pb.SignedProposal, proposal *pb.Proposal) (*TransactionContext, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	ctxID := NewTransactionContextID(chainID, txID)
+	ctxID := contextID(chainID, txID)
 	if c.contexts[ctxID] != nil {
 		return nil, errors.Errorf("txid: %s(%s) exists", txID, chainID)
 	}
@@ -49,7 +61,7 @@ func (c *TransactionContexts) Create(ctx context.Context, chainID, txID string, 
 	txctx := &TransactionContext{
 		chainID:              chainID,
 		signedProp:           signedProp,
-		proposal:             prop,
+		proposal:             proposal,
 		responseNotifier:     make(chan *pb.ChaincodeMessage, 1),
 		queryIteratorMap:     map[string]commonledger.ResultsIterator{},
 		pendingQueryResults:  map[string]*PendingQueryResult{},
@@ -78,7 +90,7 @@ func getHistoryQueryExecutor(ctx context.Context) ledger.HistoryQueryExecutor {
 // Get retrieves the transaction context associated with the chain and
 // transaction ID.
 func (c *TransactionContexts) Get(chainID, txID string) *TransactionContext {
-	ctxID := NewTransactionContextID(chainID, txID)
+	ctxID := contextID(chainID, txID)
 	c.mutex.Lock()
 	tc := c.contexts[ctxID]
 	c.mutex.Unlock()
@@ -88,7 +100,7 @@ func (c *TransactionContexts) Get(chainID, txID string) *TransactionContext {
 // Delete removes the transaction context associated with the specified chain
 // and transaction ID.
 func (c *TransactionContexts) Delete(chainID, txID string) {
-	ctxID := NewTransactionContextID(chainID, txID)
+	ctxID := contextID(chainID, txID)
 	c.mutex.Lock()
 	delete(c.contexts, ctxID)
 	c.mutex.Unlock()
@@ -100,8 +112,6 @@ func (c *TransactionContexts) Close() {
 	defer c.mutex.Unlock()
 
 	for _, txctx := range c.contexts {
-		for _, v := range txctx.queryIteratorMap {
-			v.Close()
-		}
+		txctx.CloseQueryIterators()
 	}
 }
