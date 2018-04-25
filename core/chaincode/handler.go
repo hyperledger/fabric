@@ -49,15 +49,10 @@ type TransactionContext struct {
 
 	// tracks open iterators used for range queries
 	queryIteratorMap    map[string]commonledger.ResultsIterator
-	pendingQueryResults map[string]*pendingQueryResult
+	pendingQueryResults map[string]*PendingQueryResult
 
 	txsimulator          ledger.TxSimulator
 	historyQueryExecutor ledger.HistoryQueryExecutor
-}
-
-type pendingQueryResult struct {
-	batch []*pb.QueryResultBytes
-	count int
 }
 
 type stateHandlers map[pb.ChaincodeMessage_Type]func(*pb.ChaincodeMessage)
@@ -206,7 +201,7 @@ func (h *Handler) initializeQueryContext(txContext *TransactionContext, queryID 
 	h.Lock()
 	defer h.Unlock()
 	txContext.queryIteratorMap[queryID] = queryIterator
-	txContext.pendingQueryResults[queryID] = &pendingQueryResult{batch: make([]*pb.QueryResultBytes, 0)}
+	txContext.pendingQueryResults[queryID] = &PendingQueryResult{batch: make([]*pb.QueryResultBytes, 0)}
 }
 
 func (h *Handler) getQueryIterator(txContext *TransactionContext, queryID string) commonledger.ResultsIterator {
@@ -668,42 +663,24 @@ func getQueryResponse(h *Handler, txContext *TransactionContext, iter commonledg
 			return nil, err
 		case queryResult == nil:
 			// nil response from iterator indicates end of query results
-			batch := pendingQueryResults.cut()
+			batch := pendingQueryResults.Cut()
 			h.cleanupQueryContext(txContext, iterID)
 			return &pb.QueryResponse{Results: batch, HasMore: false, Id: iterID}, nil
-		case pendingQueryResults.count == maxResultLimit:
+		case pendingQueryResults.Size() == maxResultLimit:
 			// max number of results queued up, cut batch, then add current result to pending batch
-			batch := pendingQueryResults.cut()
-			if err := pendingQueryResults.add(queryResult); err != nil {
+			batch := pendingQueryResults.Cut()
+			if err := pendingQueryResults.Add(queryResult); err != nil {
 				h.cleanupQueryContext(txContext, iterID)
 				return nil, err
 			}
 			return &pb.QueryResponse{Results: batch, HasMore: true, Id: iterID}, nil
 		default:
-			if err := pendingQueryResults.add(queryResult); err != nil {
+			if err := pendingQueryResults.Add(queryResult); err != nil {
 				h.cleanupQueryContext(txContext, iterID)
 				return nil, err
 			}
 		}
 	}
-}
-
-func (p *pendingQueryResult) cut() []*pb.QueryResultBytes {
-	batch := p.batch
-	p.batch = nil
-	p.count = 0
-	return batch
-}
-
-func (p *pendingQueryResult) add(queryResult commonledger.QueryResult) error {
-	queryResultBytes, err := proto.Marshal(queryResult.(proto.Message))
-	if err != nil {
-		chaincodeLogger.Errorf("Failed to get encode query result as bytes")
-		return err
-	}
-	p.batch = append(p.batch, &pb.QueryResultBytes{ResultBytes: queryResultBytes})
-	p.count = len(p.batch)
-	return nil
 }
 
 // Handles query to ledger for query state next
