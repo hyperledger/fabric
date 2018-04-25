@@ -105,7 +105,7 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 	ccStartupTimeout := time.Duration(3) * time.Minute
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	theChaincodeSupport = NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	theChaincodeSupport = NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
 	SideEffectInitialize(theChaincodeSupport)
 	pb.RegisterChaincodeSupportServer(grpcServer, theChaincodeSupport)
 

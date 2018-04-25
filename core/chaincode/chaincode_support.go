@@ -8,18 +8,14 @@ package chaincode
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -70,6 +66,7 @@ func (cs *ChaincodeSupport) preLaunchSetup(chaincode string, notify chan bool) {
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
 func NewChaincodeSupport(
+	config *Config,
 	peerAddress string,
 	userrunsCC bool,
 	ccstartuptimeout time.Duration,
@@ -77,92 +74,41 @@ func NewChaincodeSupport(
 	certGenerator CertGenerator,
 ) *ChaincodeSupport {
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
-	pnid := viper.GetString("peer.networkId")
-	pid := viper.GetString("peer.id")
 
-	theChaincodeSupport := &ChaincodeSupport{
-		caCert:        caCert,
-		peerNetworkID: pnid,
-		peerID:        pid,
+	cs := &ChaincodeSupport{
+		caCert:           caCert,
+		peerNetworkID:    config.PeerNetworkID,
+		peerID:           config.PeerID,
+		userRunsCC:       userrunsCC,
+		ccStartupTimeout: ccstartuptimeout,
+		keepalive:        config.Keepalive,
+		executetimeout:   config.ExecuteTimeout,
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
 		},
 	}
 
-	theChaincodeSupport.userRunsCC = userrunsCC
-	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
-	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
-
-	kadef := 0
-	if ka := viper.GetString("chaincode.keepalive"); ka == "" {
-		theChaincodeSupport.keepalive = time.Duration(kadef) * time.Second
-	} else {
-		t, terr := strconv.Atoi(ka)
-		if terr != nil {
-			chaincodeLogger.Errorf("Invalid keepalive value %s (%s) defaulting to %d", ka, terr, kadef)
-			t = kadef
-		} else if t <= 0 {
-			chaincodeLogger.Debugf("Turn off keepalive(value %s)", ka)
-			t = kadef
-		}
-		theChaincodeSupport.keepalive = time.Duration(t) * time.Second
-	}
-
-	//default chaincode execute timeout is 30 secs
-	execto := time.Duration(30) * time.Second
-	if eto := viper.GetDuration("chaincode.executetimeout"); eto <= time.Duration(1)*time.Second {
-		chaincodeLogger.Errorf("Invalid execute timeout value %s (should be at least 1s); defaulting to %s", eto, execto)
-	} else {
-		chaincodeLogger.Debugf("Setting execute timeout value to %s", eto)
-		execto = eto
-	}
-
-	theChaincodeSupport.executetimeout = execto
-
-	viper.SetEnvPrefix("CORE")
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-
-	theChaincodeSupport.chaincodeLogLevel = getLogLevelFromViper("level")
-	theChaincodeSupport.shimLogLevel = getLogLevelFromViper("shim")
-	theChaincodeSupport.logFormat = viper.GetString("chaincode.logging.format")
-
 	// Keep TestQueries working
-	if !theChaincodeSupport.peerTLS {
+	if !config.TLSEnabled {
 		certGenerator = nil
 	}
 
-	theChaincodeSupport.ContainerRuntime = &ContainerRuntime{
+	cs.ContainerRuntime = &ContainerRuntime{
 		CertGenerator: certGenerator,
 		Processor:     ProcessFunc(container.VMCProcess),
 		CACert:        caCert,
 		PeerAddress:   peerAddress,
-		PeerID:        pid,
-		PeerNetworkID: pnid,
+		PeerID:        config.PeerID,
+		PeerNetworkID: config.PeerNetworkID,
 		CommonEnv: []string{
-			"CORE_CHAINCODE_LOGGING_LEVEL=" + theChaincodeSupport.chaincodeLogLevel,
-			"CORE_CHAINCODE_LOGGING_SHIM=" + theChaincodeSupport.shimLogLevel,
-			"CORE_CHAINCODE_LOGGING_FORMAT=" + theChaincodeSupport.logFormat,
+			"CORE_CHAINCODE_LOGGING_LEVEL=" + config.LogLevel,
+			"CORE_CHAINCODE_LOGGING_SHIM=" + config.ShimLogLevel,
+			"CORE_CHAINCODE_LOGGING_FORMAT=" + config.LogFormat,
 		},
 	}
 
-	return theChaincodeSupport
-}
-
-// getLogLevelFromViper gets the chaincode container log levels from viper
-func getLogLevelFromViper(module string) string {
-	levelString := viper.GetString("chaincode.logging." + module)
-	_, err := logging.LogLevel(levelString)
-
-	if err == nil {
-		chaincodeLogger.Debugf("CORE_CHAINCODE_%s set to level %s", strings.ToUpper(module), levelString)
-	} else {
-		chaincodeLogger.Warningf("CORE_CHAINCODE_%s has invalid log level %s. defaulting to %s", strings.ToUpper(module), levelString, flogging.DefaultLevel())
-		levelString = flogging.DefaultLevel()
-	}
-	return levelString
+	return cs
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
@@ -174,12 +120,8 @@ type ChaincodeSupport struct {
 	peerNetworkID     string
 	peerID            string
 	keepalive         time.Duration
-	chaincodeLogLevel string
-	shimLogLevel      string
-	logFormat         string
 	executetimeout    time.Duration
 	userRunsCC        bool
-	peerTLS           bool
 	ContainerRuntime  Runtime
 }
 

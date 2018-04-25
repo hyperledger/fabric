@@ -3,6 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package cscc
 
 import (
@@ -195,7 +196,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincode.NewChaincodeSupport(peerEndpoint, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincode.NewChaincodeSupport(chaincode.GlobalConfig(), peerEndpoint, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
 
 	// Init the policy checker
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{

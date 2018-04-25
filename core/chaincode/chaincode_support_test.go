@@ -172,7 +172,7 @@ func initMockPeer(chainIDs ...string) error {
 	ccStartupTimeout := time.Duration(10) * time.Second
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	theChaincodeSupport = NewChaincodeSupport("0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	theChaincodeSupport = NewChaincodeSupport(GlobalConfig(), "0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
 	SideEffectInitialize(theChaincodeSupport)
 	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
 
@@ -893,12 +893,9 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 	}
 
 	newCCSupport := &ChaincodeSupport{
-		peerTLS:           false,
-		chaincodeLogLevel: "debug",
-		shimLogLevel:      "info",
-		ccStartupTimeout:  time.Duration(10) * time.Second,
-		peerNetworkID:     "networkID",
-		peerID:            "peerID",
+		ccStartupTimeout: time.Duration(10) * time.Second,
+		peerNetworkID:    "networkID",
+		peerID:           "peerID",
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
@@ -928,12 +925,9 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 	}
 
 	newCCSupport := &ChaincodeSupport{
-		peerTLS:           false,
-		chaincodeLogLevel: "debug",
-		shimLogLevel:      "info",
-		ccStartupTimeout:  500 * time.Millisecond,
-		peerNetworkID:     "networkID",
-		peerID:            "peerID",
+		ccStartupTimeout: 500 * time.Millisecond,
+		peerNetworkID:    "networkID",
+		peerID:           "peerID",
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
@@ -962,12 +956,9 @@ func TestLaunchAndWaitNotificationError(t *testing.T) {
 	}
 
 	newCCSupport := &ChaincodeSupport{
-		peerTLS:           false,
-		chaincodeLogLevel: "debug",
-		shimLogLevel:      "info",
-		ccStartupTimeout:  10 * time.Second,
-		peerNetworkID:     "networkID",
-		peerID:            "peerID",
+		ccStartupTimeout: 10 * time.Second,
+		peerNetworkID:    "networkID",
+		peerID:           "peerID",
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
@@ -995,12 +986,9 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 	}
 
 	newCCSupport := &ChaincodeSupport{
-		peerTLS:           false,
-		chaincodeLogLevel: "debug",
-		shimLogLevel:      "info",
-		ccStartupTimeout:  time.Duration(10) * time.Second,
-		peerNetworkID:     "networkID",
-		peerID:            "peerID",
+		ccStartupTimeout: time.Duration(10) * time.Second,
+		peerNetworkID:    "networkID",
+		peerID:           "peerID",
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
