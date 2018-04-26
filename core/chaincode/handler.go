@@ -66,6 +66,7 @@ type stateHandlers map[pb.ChaincodeMessage_Type]func(*pb.ChaincodeMessage)
 type handlerSupport interface {
 	deregisterHandler(*Handler) error
 	registerHandler(*Handler) error
+	ready(*Handler)
 
 	GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (resourcesconfig.ChaincodeDefinition, error)
 	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeID, *pb.ChaincodeInput, error)
@@ -83,8 +84,6 @@ type Handler struct {
 	ccInstance  *sysccprovider.ChaincodeInstance
 
 	handlerSupport handlerSupport
-	registered     bool
-	readyNotify    chan bool
 
 	sccp sysccprovider.SystemChaincodeProvider
 
@@ -252,11 +251,8 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 	return aclmgmt.GetACLProvider().CheckACL(resources.Peer_ChaincodeToChaincode, ccIns.ChainID, signedProp)
 }
 
-func (h *Handler) deregister() error {
-	if h.registered {
-		h.handlerSupport.deregisterHandler(h)
-	}
-	return nil
+func (h *Handler) deregister() {
+	h.handlerSupport.deregisterHandler(h)
 }
 
 func (h *Handler) waitForKeepaliveTimer() <-chan time.Time {
@@ -264,8 +260,9 @@ func (h *Handler) waitForKeepaliveTimer() <-chan time.Time {
 		c := time.After(h.keepalive)
 		return c
 	}
-	//no one will signal this channel, listener blocks forever
-	c := make(chan time.Time, 1)
+
+	// no one will signal this channel, listener blocks forever
+	c := make(chan time.Time)
 	return c
 }
 
@@ -418,6 +415,7 @@ func (h *Handler) sendReady() error {
 	}
 
 	h.state = ready
+	h.handlerSupport.ready(h)
 
 	chaincodeLogger.Debugf("Changed to state ready for chaincode %+v", h.ChaincodeID)
 
@@ -426,35 +424,12 @@ func (h *Handler) sendReady() error {
 
 //notifyDuringStartup will send ready on registration
 func (h *Handler) notifyDuringStartup(val bool) {
-	//if USER_RUNS_CC readyNotify will be nil
-	if h.readyNotify != nil {
-		if val {
-			//if send failed, notify failure which will initiate
-			//tearing down
-			if err := h.sendReady(); err != nil {
-				val = false
-			}
+	if val {
+		//if send failed, notify failure which will initiate
+		//tearing down
+		if err := h.sendReady(); err != nil {
+			chaincodeLogger.Debugf("sendReady failed: %s", err)
 		}
-		h.readyNotify <- val
-		return
-	}
-
-	chaincodeLogger.Debug("nothing to notify (dev mode ?)")
-
-	//In theory, we don't even need a devmode flag in the peer anymore
-	//as the chaincode is brought up without any context (ledger context
-	//in particular). What this means is we can have - in theory - a nondev
-	//environment where we can attach a chaincode manually. This could be
-	//useful .... but for now lets just be conservative and allow manual
-	//chaincode only in dev mode (ie, peer started with --peer-chaincodedev=true)
-	if h.userRunsCC {
-		if val {
-			h.sendReady()
-		} else {
-			chaincodeLogger.Errorf("(dev mode) Error during startup .. not sending READY")
-		}
-	} else {
-		chaincodeLogger.Warningf("trying to manually run chaincode when not in devmode ?")
 	}
 }
 
@@ -1276,6 +1251,31 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
+// TODO move execute timeout to handler constructor
+func (h *Handler) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
+	chaincodeLogger.Debugf("Entry")
+	defer chaincodeLogger.Debugf("Exit")
+
+	notfy, err := h.sendExecuteMessage(ctxt, cccid.ChainID, msg, cccid.SignedProposal, cccid.Proposal)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
+	}
+
+	var ccresp *pb.ChaincodeMessage
+	select {
+	case ccresp = <-notfy:
+		//response is sent to user or calling chaincode. ChaincodeMessage_ERROR
+		//are typically treated as error
+	case <-time.After(timeout):
+		err = errors.New("timeout expired while executing transaction")
+	}
+
+	// our responsibility to delete transaction context if sendExecuteMessage succeeded
+	h.deleteTxContext(msg.ChannelId, msg.Txid)
+
+	return ccresp, err
+}
+
 func (h *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *pb.ChaincodeMessage, signedProp *pb.SignedProposal, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
 	txctx, err := h.createTxContext(ctxt, chainID, msg.Txid, signedProp, prop)
 	if err != nil {
@@ -1292,4 +1292,8 @@ func (h *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *
 	h.serialSendAsync(msg, true)
 
 	return txctx.responseNotifier, nil
+}
+
+func (h *Handler) Close() {
+	h.txCtxs.Close()
 }

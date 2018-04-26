@@ -166,7 +166,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	ccStartupTimeout := time.Duration(10) * time.Second
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), "0.0.0.0:7052", false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), "0.0.0.0:7052", true, ccStartupTimeout, ca.CertBytes(), certGenerator)
 	SideEffectInitialize(chaincodeSupport)
 	chaincodeSupport.SetSysCCProvider(sccp)
 	chaincodeSupport.executetimeout = time.Duration(1) * time.Second
@@ -303,7 +303,6 @@ func execCC(t *testing.T, ctxt context.Context, ccSide *mockpeer.MockCCComm, ccc
 func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *ChaincodeSupport) (*mockpeer.MockCCComm, *mockpeer.MockCCComm) {
 	peerSide, ccSide := setupcc(ccname)
 	defer mockPeerCCSupport.RemoveCC(ccname)
-	chaincodeSupport.userRunsCC = true
 	flogging.SetModuleLevel("chaincode", "debug")
 	//register peer side with ccsupport
 	go func() {
@@ -995,10 +994,10 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 
 //success case
 func TestLaunchAndWaitSuccess(t *testing.T) {
+	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
-		preLaunchFunc()
-		notify <- true
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec) error {
+		handlerRegistry.Ready("testcc:0")
 		return nil
 	}
 
@@ -1006,10 +1005,7 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 		ccStartupTimeout: time.Duration(10) * time.Second,
 		peerNetworkID:    "networkID",
 		peerID:           "peerID",
-		runningChaincodes: &runningChaincodes{
-			chaincodeMap:  make(map[string]*chaincodeRTEnv),
-			launchStarted: make(map[string]bool),
-		},
+		handlerRegistry:  handlerRegistry,
 		ContainerRuntime: fakeRuntime,
 	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
@@ -1018,7 +1014,7 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//actual test - everythings good
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
+	err := newCCSupport.launchAndWaitForReady(context.Background(), cccid, cds)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -1027,10 +1023,8 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestLaunchAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
-		preLaunchFunc()
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec) error {
 		time.Sleep(time.Second)
-		notify <- true
 		return nil
 	}
 
@@ -1038,10 +1032,7 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 		ccStartupTimeout: 500 * time.Millisecond,
 		peerNetworkID:    "networkID",
 		peerID:           "peerID",
-		runningChaincodes: &runningChaincodes{
-			chaincodeMap:  make(map[string]*chaincodeRTEnv),
-			launchStarted: make(map[string]bool),
-		},
+		handlerRegistry:  NewHandlerRegistry(false),
 		ContainerRuntime: fakeRuntime,
 	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
@@ -1050,38 +1041,7 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//the actual test - timeout 1000 > 500
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
-	if err == nil {
-		t.Fatalf("expected error but succeeded")
-	}
-}
-
-//test notification error case
-func TestLaunchAndWaitNotificationError(t *testing.T) {
-	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
-		preLaunchFunc()
-		notify <- false
-		return nil
-	}
-
-	newCCSupport := &ChaincodeSupport{
-		ccStartupTimeout: 10 * time.Second,
-		peerNetworkID:    "networkID",
-		peerID:           "peerID",
-		runningChaincodes: &runningChaincodes{
-			chaincodeMap:  make(map[string]*chaincodeRTEnv),
-			launchStarted: make(map[string]bool),
-		},
-		ContainerRuntime: fakeRuntime,
-	}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
-	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
-	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
-
-	//the actual test - notify false
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
+	err := newCCSupport.launchAndWaitForReady(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -1090,19 +1050,15 @@ func TestLaunchAndWaitNotificationError(t *testing.T) {
 //test container return error
 func TestLaunchAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
-		preLaunchFunc()
-		return errors.New("Bad lunch; upset stomache")
+	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec) error {
+		return errors.New("Bad lunch; upset stomach")
 	}
 
 	newCCSupport := &ChaincodeSupport{
 		ccStartupTimeout: time.Duration(10) * time.Second,
 		peerNetworkID:    "networkID",
 		peerID:           "peerID",
-		runningChaincodes: &runningChaincodes{
-			chaincodeMap:  make(map[string]*chaincodeRTEnv),
-			launchStarted: make(map[string]bool),
-		},
+		handlerRegistry:  NewHandlerRegistry(false),
 		ContainerRuntime: fakeRuntime,
 	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
@@ -1111,10 +1067,11 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//actual test - container launch gives error
-	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds)
+	err := newCCSupport.launchAndWaitForReady(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
+	assert.EqualError(t, err, "error starting container: Bad lunch; upset stomach")
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
@@ -1333,8 +1290,6 @@ func TestCCFramework(t *testing.T) {
 	//chaincode support should not allow dups
 	if err := chaincodeSupport.registerHandler(&Handler{ChaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, sccp: chaincodeSupport.sccp}); err == nil {
 		t.Fatalf("expected re-register to fail")
-	} else if err, _ := err.(*DuplicateChaincodeHandlerError); err == nil {
-		t.Fatalf("expected DuplicateChaincodeHandlerError")
 	}
 
 	//call's init and does some PUT (after doing some negative testing)

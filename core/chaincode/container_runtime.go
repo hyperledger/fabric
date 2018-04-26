@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -49,8 +48,7 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a container runtime environment.
-// NOTE: preLaunchFunc and notify are here to keep tests running and will be removed in future CR's
-func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, preLaunchFunc func() error, notify chan bool) error {
+func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
 
 	lc, err := c.LaunchConfig(cname, cds.ChaincodeSpec.Type)
@@ -69,7 +67,6 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,
-		PrelaunchFunc: api.PrelaunchFunc(preLaunchFunc), // TODO: Get rid of this
 		CCID: ccintf.CCID{
 			ChaincodeSpec: cds.ChaincodeSpec,
 			NetworkID:     c.PeerNetworkID,
