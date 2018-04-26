@@ -3,9 +3,9 @@ Glossary
 ===========================
 
 Terminology is important, so that all Hyperledger Fabric users and developers
-agree on what we mean by each specific term. What is chaincode, for example.
-The documentation will reference the glossary as needed, but feel free to
-read the entire thing in one sitting if you like; it's pretty enlightening!
+agree on what we mean by each specific term. What is a smart contract for
+example. The documentation will reference the glossary as needed, but feel free
+to read the entire thing in one sitting if you like; it's pretty enlightening!
 
 .. _Anchor-Peer:
 
@@ -46,8 +46,7 @@ file system.
 Chaincode
 ---------
 
-Chaincode is software, running on a ledger, to encode assets and the transaction
-instructions (business logic) for modifying the assets.
+See Smart-Contract_.
 
 .. _Channel:
 
@@ -239,7 +238,6 @@ channel, who then distribute them to other peers within the same member cluster.
 Ledger
 ------
 THIS REQUIRES UPDATING
-ADD SMART CONTRACT REFERENCE AND GLOSSARY ITEM
 
 A ledger consists of two distinct, though related, parts -- a "blockchain" and
 the "state database", also known as "world state". Unlike other ledgers,
@@ -369,6 +367,17 @@ processing, membership services, node traversal and event handling.
 Currently, the two officially supported SDKs are for Node.js and Java, while three
 more -- Python, Go and REST -- are not yet official but can still be downloaded
 and tested.
+
+.. _Smart-Contract:
+
+Smart Contract
+--------------
+
+A smart contract is code -- invoked by a client application external to the
+blockchain network -- that manages access and modifications to a set of
+key-value pairs in the :ref:`World-State`. In Hyperledger Fabric, smart
+contracts are referred to as chaincode. Smart contract chaincode is installed
+onto peer nodes and instantiated to one or more channels.
 
 .. _State-DB:
 
