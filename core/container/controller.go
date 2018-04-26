@@ -21,6 +21,10 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
+type VMProvider interface {
+	NewVM() api.VM
+}
+
 type refCountedLock struct {
 	refCount int
 	lock     *sync.RWMutex
@@ -34,6 +38,7 @@ type VMController struct {
 	sync.RWMutex
 	// Handlers for each chaincode
 	containerLocks map[string]*refCountedLock
+	vmProviders    map[string]VMProvider
 }
 
 var vmLogger = flogging.MustGetLogger("container")
@@ -42,6 +47,10 @@ var vmLogger = flogging.MustGetLogger("container")
 func NewVMController() *VMController {
 	return &VMController{
 		containerLocks: make(map[string]*refCountedLock),
+		vmProviders: map[string]VMProvider{
+			DOCKER: dockercontroller.NewProvider(),
+			SYSTEM: inproccontroller.NewProvider(),
+		},
 	}
 }
 
@@ -52,17 +61,11 @@ const (
 )
 
 func (vmc *VMController) newVM(typ string) api.VM {
-	var v api.VM
-
-	switch typ {
-	case DOCKER:
-		v = dockercontroller.NewDockerVM()
-	case SYSTEM:
-		v = &inproccontroller.InprocVM{}
-	default:
+	v, ok := vmc.vmProviders[typ]
+	if !ok {
 		vmLogger.Panicf("Programming error: unsupported VM type: %s", typ)
 	}
-	return v
+	return v.NewVM()
 }
 
 func (vmc *VMController) lockContainer(id string) {
