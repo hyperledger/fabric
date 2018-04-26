@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	"github.com/hyperledger/fabric/core/handlers/validation/api"
 )
 
 var logger = flogging.MustGetLogger("core/handlers")
@@ -40,16 +41,18 @@ const (
 	// passed to the chaincode
 	Decoration
 	Endorsement
+	Validation
 
-	authPluginFactory        = "NewFilter"
-	decoratorPluginFactory   = "NewDecorator"
-	endorsementPluginFactory = "NewPluginFactory"
+	authPluginFactory      = "NewFilter"
+	decoratorPluginFactory = "NewDecorator"
+	pluginFactory          = "NewPluginFactory"
 )
 
 type registry struct {
 	filters    []auth.Filter
 	decorators []decoration.Decorator
 	endorsers  map[string]endorsement2.PluginFactory
+	validators map[string]validation.PluginFactory
 }
 
 var once sync.Once
@@ -61,6 +64,7 @@ type Config struct {
 	AuthFilters []*HandlerConfig `mapstructure:"authFilters" yaml:"authFilters"`
 	Decorators  []*HandlerConfig `mapstructure:"decorators" yaml:"decorators"`
 	Endorsers   PluginMapping    `mapstructure:"endorsers" yaml:"endorsers"`
+	Validators  PluginMapping    `mapstructure:"validators" yaml:"validators"`
 }
 
 type PluginMapping map[string]*HandlerConfig
@@ -75,7 +79,10 @@ type HandlerConfig struct {
 // of the registry
 func InitRegistry(c Config) Registry {
 	once.Do(func() {
-		reg = registry{endorsers: make(map[string]endorsement2.PluginFactory)}
+		reg = registry{
+			endorsers:  make(map[string]endorsement2.PluginFactory),
+			validators: make(map[string]validation.PluginFactory),
+		}
 		reg.loadHandlers(c)
 	})
 	return &reg
@@ -92,6 +99,10 @@ func (r *registry) loadHandlers(c Config) {
 
 	for chaincodeID, config := range c.Endorsers {
 		r.evaluateModeAndLoad(config, Endorsement, chaincodeID)
+	}
+
+	for chaincodeID, config := range c.Validators {
+		r.evaluateModeAndLoad(config, Validation, chaincodeID)
 	}
 }
 
@@ -124,6 +135,11 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 			logger.Panicf("expected 1 argument in extraArgs")
 		}
 		r.endorsers[extraArgs[0]] = inst.(endorsement2.PluginFactory)
+	} else if handlerType == Validation {
+		if len(extraArgs) != 1 {
+			logger.Panicf("expected 1 argument in extraArgs")
+		}
+		r.validators[extraArgs[0]] = inst.(validation.PluginFactory)
 	}
 }
 
@@ -143,6 +159,8 @@ func (r *registry) loadPlugin(pluginPath string, handlerType HandlerType, extraA
 		r.initDecoratorPlugin(p)
 	} else if handlerType == Endorsement {
 		r.initEndorsementPlugin(p, extraArgs...)
+	} else if handlerType == Validation {
+		r.initValidationPlugin(p, extraArgs...)
 	}
 }
 
@@ -183,20 +201,40 @@ func (r *registry) initEndorsementPlugin(p *plugin.Plugin, extraArgs ...string) 
 	if len(extraArgs) != 1 {
 		logger.Panicf("expected 1 argument in extraArgs")
 	}
-	factorySymbol, err := p.Lookup(endorsementPluginFactory)
+	factorySymbol, err := p.Lookup(pluginFactory)
 	if err != nil {
-		panicWithLookupError(endorsementPluginFactory, err)
+		panicWithLookupError(pluginFactory, err)
 	}
 
 	constructor, ok := factorySymbol.(func() endorsement2.PluginFactory)
 	if !ok {
-		panicWithDefinitionError(endorsementPluginFactory)
+		panicWithDefinitionError(pluginFactory)
 	}
 	factory := constructor()
 	if factory == nil {
 		logger.Panicf("factory instance returned nil")
 	}
 	r.endorsers[extraArgs[0]] = factory
+}
+
+func (r *registry) initValidationPlugin(p *plugin.Plugin, extraArgs ...string) {
+	if len(extraArgs) != 1 {
+		logger.Panicf("expected 1 argument in extraArgs")
+	}
+	factorySymbol, err := p.Lookup(pluginFactory)
+	if err != nil {
+		panicWithLookupError(pluginFactory, err)
+	}
+
+	constructor, ok := factorySymbol.(func() validation.PluginFactory)
+	if !ok {
+		panicWithDefinitionError(pluginFactory)
+	}
+	factory := constructor()
+	if factory == nil {
+		logger.Panicf("factory instance returned nil")
+	}
+	r.validators[extraArgs[0]] = factory
 }
 
 // panicWithLookupError panics when a handler constructor lookup fails
@@ -221,6 +259,8 @@ func (r *registry) Lookup(handlerType HandlerType) interface{} {
 		return r.decorators
 	} else if handlerType == Endorsement {
 		return r.endorsers
+	} else if handlerType == Validation {
+		return r.validators
 	}
 
 	return nil

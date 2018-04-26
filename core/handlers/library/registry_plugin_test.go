@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,6 +29,7 @@ const (
 	authPluginPackage      = "github.com/hyperledger/fabric/core/handlers/auth/plugin"
 	decoratorPluginPackage = "github.com/hyperledger/fabric/core/handlers/decoration/plugin"
 	endorsementTestPlugin  = "github.com/hyperledger/fabric/core/handlers/endorsement/testdata/"
+	validationTestPlugin   = "github.com/hyperledger/fabric/core/handlers/validation/testdata/"
 )
 
 func TestLoadAuthPlugin(t *testing.T) {
@@ -97,6 +99,30 @@ func TestEndorsementPlugin(t *testing.T) {
 	_, output, err = instance.Endorse([]byte{1, 2, 3}, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{1, 2, 3}, output)
+}
+
+func TestValidationPlugin(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "")
+	assert.NoError(t, err, "Could not create temp directory for plugins")
+	defer os.Remove(testDir)
+
+	pluginPath := strings.Join([]string{testDir, "/", "validationplugin.so"}, "")
+
+	cmd := exec.Command("go", "build", "-o", pluginPath, "-buildmode=plugin",
+		validationTestPlugin)
+	output, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "Could not build plugin: "+string(output))
+
+	testReg := registry{validators: make(map[string]validation.PluginFactory)}
+	testReg.loadPlugin(pluginPath, Validation, "vscc")
+	mapping := testReg.Lookup(Validation).(map[string]validation.PluginFactory)
+	factory := mapping["vscc"]
+	assert.NotNil(t, factory)
+	instance := factory.New()
+	assert.NotNil(t, instance)
+	assert.NoError(t, instance.Init())
+	err = instance.Validate(nil, "", 0, 0)
+	assert.NoError(t, err)
 }
 
 func TestLoadPluginInvalidPath(t *testing.T) {
