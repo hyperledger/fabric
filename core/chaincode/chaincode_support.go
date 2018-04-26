@@ -11,7 +11,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
@@ -287,4 +290,148 @@ func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCCo
 	}
 
 	return ccresp, nil
+}
+
+//Execute - execute proposal, return original response of chaincode
+func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+	var err error
+	var cds *pb.ChaincodeDeploymentSpec
+	var ci *pb.ChaincodeInvocationSpec
+
+	//init will call the Init method of a on a chain
+	cctyp := pb.ChaincodeMessage_INIT
+	if cds, _ = spec.(*pb.ChaincodeDeploymentSpec); cds == nil {
+		if ci, _ = spec.(*pb.ChaincodeInvocationSpec); ci == nil {
+			panic("Execute should be called with deployment or invocation spec")
+		}
+		cctyp = pb.ChaincodeMessage_TRANSACTION
+	}
+
+	_, cMsg, err := cs.Launch(ctxt, cccid, spec)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cMsg.Decorations = cccid.ProposalDecorations
+
+	var ccMsg *pb.ChaincodeMessage
+	ccMsg, err = createCCMessage(cctyp, cccid.ChainID, cccid.TxID, cMsg)
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "failed to create chaincode message")
+	}
+
+	resp, err := cs.Execute(ctxt, cccid, ccMsg, cs.executetimeout)
+	if err != nil {
+		// Rollback transaction
+		return nil, nil, errors.WithMessage(err, "failed to execute transaction")
+	} else if resp == nil {
+		// Rollback transaction
+		return nil, nil, errors.Errorf("failed to receive a response for txid (%s)", cccid.TxID)
+	}
+
+	if resp.ChaincodeEvent != nil {
+		resp.ChaincodeEvent.ChaincodeId = cccid.Name
+		resp.ChaincodeEvent.TxId = cccid.TxID
+	}
+
+	if resp.Type == pb.ChaincodeMessage_COMPLETED {
+		res := &pb.Response{}
+		unmarshalErr := proto.Unmarshal(resp.Payload, res)
+		if unmarshalErr != nil {
+			return nil, nil, errors.Wrap(unmarshalErr, fmt.Sprintf("failed to unmarshal response for txid (%s)", cccid.TxID))
+		}
+
+		// Success
+		return res, resp.ChaincodeEvent, nil
+	} else if resp.Type == pb.ChaincodeMessage_ERROR {
+		// Rollback transaction
+		return nil, resp.ChaincodeEvent, errors.Errorf("transaction returned with failure: %s", string(resp.Payload))
+	}
+
+	//TODO - this should never happen ... a panic is more appropriate but will save that for future
+	return nil, nil, errors.Errorf("receive a response for txid (%s) but in invalid state (%d)", cccid.TxID, resp.Type)
+}
+
+// ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
+// Mostly used by unit-test.
+func (cs *ChaincodeSupport) ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) ([]byte, *pb.ChaincodeEvent, error) {
+	res, event, err := cs.ExecuteSpec(ctxt, cccid, spec)
+	if err != nil {
+		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s error: %+v", cccid.Name, err)
+		return nil, nil, err
+	}
+
+	if res == nil {
+		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s get nil response without error", cccid.Name)
+		return nil, nil, err
+	}
+
+	if res.Status != shim.OK {
+		return nil, nil, errors.New(res.Message)
+	}
+
+	return res.Payload, event, nil
+}
+
+//create a chaincode invocation spec
+func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
+	var err error
+	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: ccname}, Input: &pb.ChaincodeInput{Args: args}}}
+	if nil != err {
+		return nil, err
+	}
+	return spec, nil
+}
+
+// GetCDS retrieves a chaincode deployment spec for the required chaincode
+func (cs *ChaincodeSupport) GetCDS(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
+	version := util.GetSysCCVersion()
+	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
+	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("execute getdepspec(%s, %s) of LSCC error", chainID, chaincodeID))
+	}
+	if res.Status != shim.OK {
+		return nil, errors.Errorf("get ChaincodeDeploymentSpec for %s/%s from LSCC error: %s", chaincodeID, chainID, res.Message)
+	}
+
+	return res.Payload, nil
+}
+
+// GetChaincodeDefinition returns resourcesconfig.ChaincodeDefinition for the chaincode with the supplied name
+func (cs *ChaincodeSupport) GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (resourcesconfig.ChaincodeDefinition, error) {
+	version := util.GetSysCCVersion()
+	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
+	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
+	if err == nil {
+		if res.Status != shim.OK {
+			return nil, errors.New(res.Message)
+		}
+		cd := &ccprovider.ChaincodeData{}
+		err = proto.Unmarshal(res.Payload, cd)
+		if err != nil {
+			return nil, err
+		}
+		return cd, nil
+	}
+
+	return nil, err
+}
+
+// ExecuteChaincode executes a given chaincode given chaincode name and arguments
+func (cs *ChaincodeSupport) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
+	var spec *pb.ChaincodeInvocationSpec
+	var err error
+	var res *pb.Response
+	var ccevent *pb.ChaincodeEvent
+
+	spec, err = createCIS(cccid.Name, args)
+	res, ccevent, err = cs.ExecuteSpec(ctxt, cccid, spec)
+	if err != nil {
+		err = errors.WithMessage(err, "error executing chaincode")
+		chaincodeLogger.Errorf("%+v", err)
+		return nil, nil, err
+	}
+
+	return res, ccevent, err
 }
