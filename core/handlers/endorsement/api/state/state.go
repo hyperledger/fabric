@@ -13,7 +13,6 @@ import (
 
 // State defines interaction with the world state
 type State interface {
-	endorsement.Dependency
 	// GetPrivateDataMultipleKeys gets the values for the multiple private data items in a single call
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error)
 
@@ -22,4 +21,12 @@ type State interface {
 
 	// GetTransientByTXID gets the values private data associated with the given txID
 	GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWriteSet, error)
+}
+
+// StateFetcher retrieves an instance of a state
+type StateFetcher interface {
+	endorsement.Dependency
+
+	// FetchState fetches state
+	FetchState() (State, error)
 }
