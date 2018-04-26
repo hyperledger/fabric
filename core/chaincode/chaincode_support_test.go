@@ -164,6 +164,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	peer.MockSetMSPIDGetter(mspGetter)
 
 	ccStartupTimeout := time.Duration(10) * time.Second
+	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), "0.0.0.0:7052", true, ccStartupTimeout, ca.CertBytes(), certGenerator)

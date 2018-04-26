@@ -21,11 +21,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-const (
-	chaincodeStartupTimeoutDefault int    = 5000
-	peerAddressDefault             string = "0.0.0.0:7052"
-)
-
 // CertGenerator generate client certificates for chaincode
 type CertGenerator interface {
 	// Generate returns a certificate and private key and associates
@@ -48,8 +43,6 @@ func NewChaincodeSupport(
 	caCert []byte,
 	certGenerator CertGenerator,
 ) *ChaincodeSupport {
-	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
-
 	cs := &ChaincodeSupport{
 		caCert:           caCert,
 		peerNetworkID:    config.PeerNetworkID,

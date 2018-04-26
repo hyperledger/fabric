@@ -212,6 +212,9 @@ func serve(args []string) error {
 	abServer := peer.NewDeliverEventsServer(mutualTLS, policyCheckerProvider, &peer.DeliverChainManager{})
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
+	// Setup chaincode path
+	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
+
 	// enable the cache of chaincode info
 	ccprovider.EnableCCInfoCache()
 
