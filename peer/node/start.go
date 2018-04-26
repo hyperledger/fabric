@@ -596,6 +596,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		ca.CertBytes(),
 		authenticator,
 		&ccprovider.CCInfoFSImpl{},
+		aclmgmt.GetACLProvider(),
 	)
 	chaincode.SideEffectInitialize(chaincodeSupport)
 

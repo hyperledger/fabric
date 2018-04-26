@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -121,7 +122,16 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator, &ccprovider.CCInfoFSImpl{})
+	chaincodeSupport := NewChaincodeSupport(
+		GlobalConfig(),
+		peerAddress,
+		false,
+		ccStartupTimeout,
+		ca.CertBytes(),
+		certGenerator,
+		&ccprovider.CCInfoFSImpl{},
+		aclmgmt.GetACLProvider(),
+	)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	go grpcServer.Serve(lis)

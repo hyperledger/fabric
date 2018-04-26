@@ -52,6 +52,7 @@ func NewChaincodeSupport(
 	caCert []byte,
 	certGenerator CertGenerator,
 	packageProvider PackageProvider,
+	aclProvider ACLProvider,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
 		caCert:           caCert,
@@ -63,6 +64,7 @@ func NewChaincodeSupport(
 		executetimeout:   config.ExecuteTimeout,
 		handlerRegistry:  NewHandlerRegistry(userrunsCC),
 		PackageProvider:  packageProvider,
+		ACLProvider:      aclProvider,
 	}
 
 	// Keep TestQueries working
@@ -100,6 +102,7 @@ type ChaincodeSupport struct {
 	userRunsCC       bool
 	ContainerRuntime Runtime
 	PackageProvider  PackageProvider
+	ACLProvider      ACLProvider
 	sccp             sysccprovider.SystemChaincodeProvider
 }
 

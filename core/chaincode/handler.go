@@ -18,7 +18,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -41,6 +40,12 @@ const (
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
 
 type stateHandlers map[pb.ChaincodeMessage_Type]func(*pb.ChaincodeMessage)
+
+// ACLProvider is responsible for performing access control checks when invoking
+// chaincode.
+type ACLProvider interface {
+	CheckACL(resName string, channelID string, idinfo interface{}) error
+}
 
 // internal interface to scope dependencies on ChaincodeSupport
 type handlerSupport interface {
@@ -83,6 +88,8 @@ type Handler struct {
 
 	keepalive  time.Duration
 	userRunsCC bool
+
+	aclProvider ACLProvider
 }
 
 func shorttxid(txid string) string {
@@ -206,7 +213,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 		return errors.Errorf("signed proposal must not be nil from caller [%s]", ccIns.String())
 	}
 
-	return aclmgmt.GetACLProvider().CheckACL(resources.Peer_ChaincodeToChaincode, ccIns.ChainID, signedProp)
+	return h.aclProvider.CheckACL(resources.Peer_ChaincodeToChaincode, ccIns.ChainID, signedProp)
 }
 
 func (h *Handler) deregister() {
@@ -325,6 +332,7 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		activeTransactions: NewActiveTransactions(),
 		keepalive:          chaincodeSupport.keepalive,
 		userRunsCC:         chaincodeSupport.userRunsCC,
+		aclProvider:        chaincodeSupport.ACLProvider,
 		sccp:               sccp,
 	}
 
