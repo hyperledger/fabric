@@ -51,7 +51,7 @@ func TestGetQueryResponse(t *testing.T) {
 		handler := &Handler{}
 		TransactionContext := &TransactionContext{
 			queryIteratorMap:    make(map[string]ledger.ResultsIterator),
-			pendingQueryResults: make(map[string]*pendingQueryResult),
+			pendingQueryResults: make(map[string]*PendingQueryResult),
 		}
 		queryID := "test"
 		t.Run(fmt.Sprintf("%d", tc.expectedResultCount), func(t *testing.T) {
@@ -65,7 +65,6 @@ func TestGetQueryResponse(t *testing.T) {
 			totalResultCount := 0
 			for hasMoreCount := 0; hasMoreCount <= tc.expectedHasMoreCount; hasMoreCount++ {
 				queryResponse, _ := getQueryResponse(handler, TransactionContext, resultsIterator, queryID)
-				assert.NotNil(t, queryResponse.GetResults())
 				if queryResponse.GetHasMore() {
 					t.Logf("Got %d results and more are expected.", len(queryResponse.GetResults()))
 				} else {

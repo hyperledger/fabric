@@ -53,7 +53,7 @@ var _ = Describe("TransactionContexts", func() {
 			Expect(txContext.responseNotifier).NotTo(BeNil())
 			Expect(txContext.responseNotifier).NotTo(BeClosed())
 			Expect(txContext.queryIteratorMap).To(Equal(map[string]commonledger.ResultsIterator{}))
-			Expect(txContext.pendingQueryResults).To(Equal(map[string]*pendingQueryResult{}))
+			Expect(txContext.pendingQueryResults).To(Equal(map[string]*PendingQueryResult{}))
 			Expect(txContext.txsimulator).To(Equal(fakeTxSimulator))
 			Expect(txContext.historyQueryExecutor).To(Equal(fakeHistoryQueryExecutor))
 		})

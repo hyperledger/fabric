@@ -52,7 +52,7 @@ func (c *TransactionContexts) Create(ctx context.Context, chainID, txID string, 
 		proposal:             prop,
 		responseNotifier:     make(chan *pb.ChaincodeMessage, 1),
 		queryIteratorMap:     map[string]commonledger.ResultsIterator{},
-		pendingQueryResults:  map[string]*pendingQueryResult{},
+		pendingQueryResults:  map[string]*PendingQueryResult{},
 		txsimulator:          getTxSimulator(ctx),
 		historyQueryExecutor: getHistoryQueryExecutor(ctx),
 	}
