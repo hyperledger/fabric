@@ -241,14 +241,50 @@ func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName strin
 	return nil
 }
 
-// validateDeployRWSetAndCollection performs validation of the rwset
+func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfig) error {
+	newCollectionsMap := make(map[string]bool, len(newCollectionConfigs))
+	// Process each collection config from a set of collection configs
+	for _, newCollectionConfig := range newCollectionConfigs {
+
+		newCollection := newCollectionConfig.GetStaticCollectionConfig()
+		if newCollection == nil {
+			return fmt.Errorf("unknown collection configuration type")
+		}
+
+		// Ensure that there are no duplicate collection names
+		collectionName := newCollection.GetName()
+		if _, ok := newCollectionsMap[collectionName]; !ok {
+			newCollectionsMap[collectionName] = true
+		} else {
+			return fmt.Errorf("collection-name: %s -- found duplicate collection configuration", collectionName)
+		}
+
+		// Validate gossip related parameters present in the collection config
+		maximumPeerCount := newCollection.GetMaximumPeerCount()
+		requiredPeerCount := newCollection.GetRequiredPeerCount()
+		if maximumPeerCount < requiredPeerCount {
+			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+				collectionName, maximumPeerCount, requiredPeerCount)
+		}
+		if requiredPeerCount < 0 {
+			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be lesser than zero (%d)",
+				collectionName, maximumPeerCount, requiredPeerCount)
+
+		}
+	}
+	return nil
+}
+
+// validateRWSetAndCollection performs validation of the rwset
 // of an LSCC deploy operation and then it validates any collection
 // configuration
-func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
+func (vscc *ValidatorOneValidSignature) validateRWSetAndCollection(
 	lsccrwset *kvrwset.KVRWSet,
 	cdRWSet *ccprovider.ChaincodeData,
 	lsccArgs [][]byte,
-	chid, ccid string,
+	lsccFunc string,
+	ac channelconfig.ApplicationCapabilities,
+	channelName string,
 ) error {
 	/********************************************/
 	/* security check 0.a - validation of rwset */
@@ -261,9 +297,9 @@ func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
 	/**********************************************************/
 	/* security check 0.b - validation of the collection data */
 	/**********************************************************/
-	var collectionsConfigArgs []byte
+	var collectionsConfigArg []byte
 	if len(lsccArgs) > 5 {
-		collectionsConfigArgs = lsccArgs[5]
+		collectionsConfigArg = lsccArgs[5]
 	}
 
 	var collectionsConfigLedger []byte
@@ -277,31 +313,47 @@ func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
 		collectionsConfigLedger = lsccrwset.Writes[1].Value
 	}
 
-	if !bytes.Equal(collectionsConfigArgs, collectionsConfigLedger) {
-		return errors.Errorf("collection configuration mismatch for chaincode %s:%s",
-			cdRWSet.Name, cdRWSet.Version)
+	if !bytes.Equal(collectionsConfigArg, collectionsConfigLedger) {
+		return errors.Errorf("collection configuration mismatch for chaincode %s:%s arg: %s writeset: %s",
+			cdRWSet.Name, cdRWSet.Version, collectionsConfigArg, collectionsConfigLedger)
 	}
 
-	ccp, err := vscc.collectionStore.RetrieveCollectionConfigPackage(common.CollectionCriteria{Channel: chid, Namespace: ccid})
-	if err != nil {
-		// fail if we get any error other than NoSuchCollectionError
-		// because it means something went wrong while looking up the
-		// older collection
-		if _, ok := err.(privdata.NoSuchCollectionError); !ok {
-			return errors.WithMessage(err, fmt.Sprintf("unable to check whether collection existed earlier for chaincode %s:%s",
-				cdRWSet.Name, cdRWSet.Version))
+	// The following condition check addded in v1.1 may not be needed as it is not possible to have the chaincodeName~collection key in
+	// the lscc namespace before a chaincode deploy. To avoid forks in v1.2, the following condition is retained.
+	if lsccFunc == lscc.DEPLOY {
+		ccp, err := vscc.collectionStore.RetrieveCollectionConfigPackage(common.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name})
+		if err != nil {
+			// fail if we get any error other than NoSuchCollectionError
+			// because it means something went wrong while looking up the
+			// older collection
+			if _, ok := err.(privdata.NoSuchCollectionError); !ok {
+				return errors.WithMessage(err, fmt.Sprintf("unable to check whether collection existed earlier for chaincode %s:%s",
+					cdRWSet.Name, cdRWSet.Version))
+			}
+		}
+		if ccp != nil {
+			return errors.Errorf("collection data should not exist for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
 		}
 	}
-	if ccp != nil {
-		return errors.Errorf("collection data should not exist for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
-	}
 
-	if collectionsConfigArgs != nil {
-		collections := &common.CollectionConfigPackage{}
-		err := proto.Unmarshal(collectionsConfigArgs, collections)
+	// TODO: Once the new chaincode lifecycle is available (FAB-8724), the following validation
+	// and other validation performed in ValidateLSCCInvocation can be moved to LSCC itself.
+	newCollectionConfigPackage := &common.CollectionConfigPackage{}
+
+	if collectionsConfigArg != nil {
+		err := proto.Unmarshal(collectionsConfigArg, newCollectionConfigPackage)
 		if err != nil {
 			return errors.Errorf("invalid collection configuration supplied for chaincode %s:%s",
 				cdRWSet.Name, cdRWSet.Version)
+		}
+	} else {
+		return nil
+	}
+
+	if ac.V1_2Validation() {
+		newCollectionConfigs := newCollectionConfigPackage.GetConfig()
+		if err := validateNewCollectionConfigs(newCollectionConfigs); err != nil {
+			return err
 		}
 	}
 
@@ -410,7 +462,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 		if len(lsccrwset.Writes) < 1 {
 			return errors.New("LSCC must issue at least one single putState upon deploy/upgrade")
 		}
-		// the first key name must be the chaincode id
+		// the first key name must be the chaincode id provided in the deployment spec
 		if lsccrwset.Writes[0].Key != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
 			return fmt.Errorf("Expected key %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, lsccrwset.Writes[0].Key)
 		}
@@ -420,11 +472,11 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 		if err != nil {
 			return fmt.Errorf("Unmarhsalling of ChaincodeData failed, error %s", err)
 		}
-		// the name must match
+		// the chaincode name in the lsccwriteset must match the chaincode name in the deployment spec
 		if cdRWSet.Name != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
 			return fmt.Errorf("Expected cc name %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, cdRWSet.Name)
 		}
-		// the version must match
+		// the chaincode version in the lsccwriteset must match the chaincode version in the deployment spec
 		if cdRWSet.Version != cdsArgs.ChaincodeSpec.ChaincodeId.Version {
 			return fmt.Errorf("Expected cc version %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Version, cdRWSet.Version)
 		}
@@ -444,7 +496,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			/****************************************************************************/
 			if ac.PrivateChannelData() {
 				// do extra validation for collections
-				err = vscc.validateDeployRWSetAndCollection(lsccrwset, cdRWSet, lsccArgs, chid, cdsArgs.ChaincodeSpec.ChaincodeId.Name)
+				err = vscc.validateRWSetAndCollection(lsccrwset, cdRWSet, lsccArgs, lsccFunc, ac, chid)
 				if err != nil {
 					return err
 				}
