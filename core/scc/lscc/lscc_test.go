@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/mocks/config"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
@@ -165,14 +166,14 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 func TestDeploy(t *testing.T) {
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
-	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil)
-	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil)
-	testDeploy(t, "example02", "1.0", path, false, false, false, "cannot get package for chaincode (example02:1.0)", nil, nil)
-	testDeploy(t, "example02", "0", path, true, false, true, EmptyChaincodeNameErr("").Error(), nil, nil)
-	testDeploy(t, "example02", "0", path, false, true, true, EmptyVersionErr("example02").Error(), nil, nil)
-	testDeploy(t, "example02.go", "0", path, false, false, true, InvalidChaincodeNameErr("example02.go").Error(), nil, nil)
-	testDeploy(t, "example02", "1{}0", path, false, false, true, InvalidVersionErr("1{}0").Error(), nil, nil)
-	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil)
+	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil, nil)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil, nil)
+	testDeploy(t, "example02", "1.0", path, false, false, false, "cannot get package for chaincode (example02:1.0)", nil, nil, nil)
+	testDeploy(t, "example02", "0", path, true, false, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, false, true, true, EmptyVersionErr("example02").Error(), nil, nil, nil)
+	testDeploy(t, "example02.go", "0", path, false, false, true, InvalidChaincodeNameErr("example02.go").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "1{}0", path, false, false, true, InvalidVersionErr("1{}0").Error(), nil, nil, nil)
+	testDeploy(t, "example02", "0", path, true, true, true, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -189,8 +190,8 @@ func TestDeploy(t *testing.T) {
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(DEPLOY), []byte("chain"), []byte("barf")}, nil)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
-	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub)
-	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode exists example02", scc, stub)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, nil)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode exists example02", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -199,7 +200,7 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyErr = errors.New("barf")
 
-	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -208,7 +209,7 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 	scc.support.(*lscc.MockSupport).CheckInstantiationPolicyErr = errors.New("barf")
 
-	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -217,7 +218,7 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 	scc.sccprovider.(*mscc.MocksccProviderImpl).SysCCMap = map[string]bool{"escc": false}
 
-	testDeploy(t, "example02", "1.0", path, false, false, true, "escc is not a valid endorsement system chaincode", scc, stub)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "escc is not a valid endorsement system chaincode", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -226,10 +227,111 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 	scc.sccprovider.(*mscc.MocksccProviderImpl).SysCCMap = map[string]bool{"vscc": false, "escc": true}
 
-	testDeploy(t, "example02", "1.0", path, false, false, true, "vscc is not a valid validation system chaincode", scc, stub)
+	testDeploy(t, "example02", "1.0", path, false, false, true, "vscc is not a valid validation system chaincode", scc, stub, nil)
+
+	scc = New(NewMockProvider())
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+
+	// As the PrivateChannelData is disabled, the following error message is expected due to the presence of
+	// collectionConfigBytes in the stub.args
+	errMessage := InvalidArgsLenErr(7).Error()
+	testDeploy(t, "example02", "1.0", path, false, false, true, InvalidArgsLenErr(7).Error(), scc, stub, []byte("collections"))
+
+	// Enable PrivateChannelData
+	mocksccProvider := (&mscc.MocksccProviderFactory{
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &config.MockApplication{
+			CapabilitiesRv: &config.MockApplicationCapabilities{
+				PrivateChannelDataRv: true,
+			},
+		},
+	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+
+	scc = New(mocksccProvider)
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+
+	// As the PrivateChannelData is enabled and collectionConfigBytes is invalid, the following error
+	// message is expected.
+	errMessage = "invalid collection configuration supplied for chaincode example02:1.0"
+	testDeploy(t, "example02", "1.0", path, false, false, true, errMessage, scc, stub, []byte("invalid collection"))
+	// Should contain an entry for the chaincodeData only
+	assert.Equal(t, 1, len(stub.State))
+	_, ok := stub.State["example02"]
+	assert.Equal(t, true, ok)
+
+	collName1 := "mycollection1"
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	var requiredPeerCount, maximumPeerCount int32
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
+
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	scc = New(mocksccProvider)
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+
+	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
+	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, ccpBytes)
+	// Should contain two entries: one for the chaincodeData and another for the collectionConfigBytes
+	assert.Equal(t, 2, len(stub.State))
+	_, ok = stub.State["example02"]
+	assert.Equal(t, true, ok)
+	actualccpBytes, ok := stub.State["example02~collection"]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, ccpBytes, actualccpBytes)
+
+	scc = New(mocksccProvider)
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+
+	// As the PrivateChannelData is enabled and collectionConfigBytes is nil, no error is expected
+	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, []byte("nil"))
+	// Should contain an entry for the chaincodeData only. As the collectionConfigBytes is nil, it
+	// is ignored
+	assert.Equal(t, 1, len(stub.State))
+	_, ok = stub.State["example02"]
+	assert.Equal(t, true, ok)
 }
 
-func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub) {
+func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
+	requiredPeerCount int32, maximumPeerCount int32,
+) *common.CollectionConfig {
+	signaturePolicy := &common.CollectionPolicyConfig_SignaturePolicy{
+		SignaturePolicy: signaturePolicyEnvelope,
+	}
+	accessPolicy := &common.CollectionPolicyConfig{
+		Payload: signaturePolicy,
+	}
+
+	return &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			&common.StaticCollectionConfig{
+				Name:              collectionName,
+				MemberOrgsPolicy:  accessPolicy,
+				RequiredPeerCount: requiredPeerCount,
+				MaximumPeerCount:  maximumPeerCount,
+			},
+		},
+	}
+}
+
+func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub, collectionConfigBytes []byte) {
 	if scc == nil {
 		scc = New(NewMockProvider())
 		scc.support = &lscc.MockSupport{}
@@ -265,7 +367,16 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	b := utils.MarshalOrPanic(cds)
 
 	sProp2, _ := putils.MockSignedEndorserProposal2OrPanic(chainid, &pb.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	var args [][]byte
+	if len(collectionConfigBytes) > 0 {
+		if bytes.Compare(collectionConfigBytes, []byte("nil")) == 0 {
+			args = [][]byte{[]byte(DEPLOY), []byte("test"), b, nil, []byte("escc"), []byte("vscc"), nil}
+		} else {
+			args = [][]byte{[]byte(DEPLOY), []byte("test"), b, nil, []byte("escc"), []byte("vscc"), collectionConfigBytes}
+		}
+	} else {
+		args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	}
 	res := stub.MockInvokeWithSignedProposal("1", args, sProp2)
 
 	if expectedErrorMsg == "" {
@@ -311,13 +422,13 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 func TestUpgrade(t *testing.T) {
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
-	testUpgrade(t, "example02", "0", "example02", "1", path, "", nil, nil)
-	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error(), nil, nil)
-	testUpgrade(t, "example02", "0", "example02", "0", path, IdenticalVersionErr("example02").Error(), nil, nil)
-	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("example03").Error(), nil, nil)
-	testUpgrade(t, "example02", "0", "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), nil, nil)
-	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error(), nil, nil)
-	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil)
+	testUpgrade(t, "example02", "0", "example02", "1", path, "", nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example02", "0", path, IdenticalVersionErr("example02").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("example03").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error(), nil, nil, nil)
+	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error(), nil, nil, nil)
 
 	scc := New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -327,7 +438,7 @@ func TestUpgrade(t *testing.T) {
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyErr = errors.New("barf")
 
-	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
+	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -335,7 +446,7 @@ func TestUpgrade(t *testing.T) {
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
-	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub)
+	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -346,7 +457,7 @@ func TestUpgrade(t *testing.T) {
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
 	scc.support.(*lscc.MockSupport).CheckInstantiationPolicyMap = map[string]error{"example020": errors.New("barf")}
 
-	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
+	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
 	scc = New(NewMockProvider())
 	scc.support = &lscc.MockSupport{}
@@ -357,10 +468,93 @@ func TestUpgrade(t *testing.T) {
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
 	scc.support.(*lscc.MockSupport).CheckInstantiationPolicyMap = map[string]error{"example021": errors.New("barf")}
 
-	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub)
+	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
+
+	// Enable PrivateChannelData
+	mocksccProvider := (&mscc.MocksccProviderFactory{
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &config.MockApplication{
+			CapabilitiesRv: &config.MockApplicationCapabilities{
+				PrivateChannelDataRv: true,
+			},
+		},
+	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+
+	scc = New(mocksccProvider)
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+	scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+
+	collName1 := "mycollection1"
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	var requiredPeerCount, maximumPeerCount int32
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
+
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
+	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, ccpBytes)
+	// Should contain an entry for the chaincodeData only as the V1_2Validation is disabled.
+	// Only in V1_2Validation, collection upgrades are allowed. Note that V1_2Validation
+	// would be replaced with CollectionUpgrade capability.
+	assert.Equal(t, 1, len(stub.State))
+	_, ok := stub.State["example02"]
+	assert.Equal(t, true, ok)
+
+	// Enable PrivateChannelData and V1_2Validation
+	mocksccProvider = (&mscc.MocksccProviderFactory{
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &config.MockApplication{
+			CapabilitiesRv: &config.MockApplicationCapabilities{
+				PrivateChannelDataRv: true,
+				V1_2ValidationRv:     true,
+			},
+		},
+	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+
+	scc = New(mocksccProvider)
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+	scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+
+	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
+	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, []byte("nil"))
+	// Should contain an entry for the chaincodeData only as the collectionConfigBytes is nil
+	assert.Equal(t, 1, len(stub.State))
+	_, ok = stub.State["example02"]
+	assert.Equal(t, true, ok)
+
+	scc = New(mocksccProvider)
+	scc.support = &lscc.MockSupport{}
+	stub = shim.NewMockStub("lscc", scc)
+	res = stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
+	scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
+
+	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
+	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, ccpBytes)
+	// Should contain two entries: one for the chaincodeData and another for the collectionConfigBytes
+	// as the V1_2Validation is enabled. Only in V1_2Validation, collection upgrades are allowed.
+	// Note that V1_2Validation would be replaced with CollectionUpgrade capability.
+	assert.Equal(t, 2, len(stub.State))
+	_, ok = stub.State["example02"]
+	assert.Equal(t, true, ok)
+	actualccpBytes, ok := stub.State["example02~collection"]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, ccpBytes, actualccpBytes)
 }
 
-func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub) {
+func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string, scc *lifeCycleSysCC, stub *shim.MockStub, collectionConfigBytes []byte) {
 	if scc == nil {
 		scc = New(NewMockProvider())
 		scc.support = &lscc.MockSupport{}
@@ -389,7 +583,16 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 	assert.NoError(t, err)
 	newb := utils.MarshalOrPanic(newCds)
 
-	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
+	if len(collectionConfigBytes) > 0 {
+		if bytes.Compare(collectionConfigBytes, []byte("nil")) == 0 {
+			args = [][]byte{[]byte(UPGRADE), []byte("test"), newb, nil, []byte("escc"), []byte("vscc"), nil}
+		} else {
+			args = [][]byte{[]byte(UPGRADE), []byte("test"), newb, nil, []byte("escc"), []byte("vscc"), collectionConfigBytes}
+		}
+	} else {
+		args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
+	}
+
 	res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 	if expectedErrorMsg == "" {
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -618,11 +821,6 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	stub.MockTransactionStart("foo")
 	err = scc.putChaincodeCollectionData(stub, cd, ccpBytes)
 	assert.NoError(t, err)
-	stub.MockTransactionEnd("foo")
-
-	stub.MockTransactionStart("foo")
-	err = scc.putChaincodeCollectionData(stub, cd, ccpBytes)
-	assert.Error(t, err)
 	stub.MockTransactionEnd("foo")
 }
 

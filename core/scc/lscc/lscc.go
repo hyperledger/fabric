@@ -176,15 +176,6 @@ func (lscc *lifeCycleSysCC) putChaincodeCollectionData(stub shim.ChaincodeStubIn
 
 	key := privdata.BuildCollectionKVSKey(cd.Name)
 
-	existingCollection, err := stub.GetState(key)
-	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("unable to check whether collection existed earlier for chaincode %s:%s", cd.Name, cd.Version))
-	}
-	// currently, collections are immutable. Support for collection upgrade will be added later
-	if existingCollection != nil {
-		return errors.Errorf("collection data should not exist for chaincode %s:%s", cd.Name, cd.Version)
-	}
-
 	err = stub.PutState(key, collectionConfigBytes)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("error putting collection for chaincode %s:%s", cd.Name, cd.Version))
@@ -459,17 +450,21 @@ func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(
 	policy, escc, vscc, collectionConfigBytes []byte,
 	function string,
 ) (*ccprovider.ChaincodeData, error) {
-	if err := lscc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+
+	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
+	chaincodeVersion := cds.ChaincodeSpec.ChaincodeId.Version
+
+	if err := lscc.isValidChaincodeName(chaincodeName); err != nil {
 		return nil, err
 	}
 
-	if err := lscc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+	if err := lscc.isValidChaincodeVersion(chaincodeName, chaincodeVersion); err != nil {
 		return nil, err
 	}
 
-	ccpack, err := lscc.support.GetChaincodeFromLocalStorage(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
+	ccpack, err := lscc.support.GetChaincodeFromLocalStorage(chaincodeName, chaincodeVersion)
 	if err != nil {
-		retErrMsg := fmt.Sprintf("cannot get package for chaincode (%s:%s)", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
+		retErrMsg := fmt.Sprintf("cannot get package for chaincode (%s:%s)", chaincodeName, chaincodeVersion)
 		logger.Errorf("%s-err:%s", retErrMsg, err)
 		return nil, fmt.Errorf("%s", retErrMsg)
 	}
@@ -479,7 +474,7 @@ func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(
 	case DEPLOY:
 		return lscc.executeDeploy(stub, chainname, cds, policy, escc, vscc, cd, ccpack, collectionConfigBytes)
 	case UPGRADE:
-		return lscc.executeUpgrade(stub, chainname, cds, policy, escc, vscc, cd, ccpack)
+		return lscc.executeUpgrade(stub, chainname, cds, policy, escc, vscc, cd, ccpack, collectionConfigBytes)
 	default:
 		logger.Panicf("Programming error, unexpected function '%s'", function)
 		panic("") // unreachable code
@@ -499,9 +494,10 @@ func (lscc *lifeCycleSysCC) executeDeploy(
 	collectionConfigBytes []byte,
 ) (*ccprovider.ChaincodeData, error) {
 	//just test for existence of the chaincode in the LSCC
-	_, err := lscc.getCCInstance(stub, cds.ChaincodeSpec.ChaincodeId.Name)
+	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
+	_, err := lscc.getCCInstance(stub, chaincodeName)
 	if err == nil {
-		return nil, ExistsErr(cds.ChaincodeSpec.ChaincodeId.Name)
+		return nil, ExistsErr(chaincodeName)
 	}
 
 	//retain chaincode specific data and fill channel specific ones
@@ -538,7 +534,8 @@ func (lscc *lifeCycleSysCC) executeDeploy(
 }
 
 // executeUpgrade implements the "upgrade" Invoke transaction.
-func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, cdfs *ccprovider.ChaincodeData, ccpackfs ccprovider.CCPackage) (*ccprovider.ChaincodeData, error) {
+func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, cdfs *ccprovider.ChaincodeData, ccpackfs ccprovider.CCPackage, collectionConfigBytes []byte) (*ccprovider.ChaincodeData, error) {
+
 	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
 
 	// check for existence of chaincode instance only (it has to exist on the channel)
@@ -557,7 +554,7 @@ func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 
 	//do not upgrade if same version
 	if cdLedger.Version == cds.ChaincodeSpec.ChaincodeId.Version {
-		return nil, IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
+		return nil, IdenticalVersionErr(chaincodeName)
 	}
 
 	//do not upgrade if instantiation policy is violated
@@ -593,6 +590,22 @@ func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	if err != nil {
 		return nil, err
 	}
+
+	ac, exists := lscc.sccprovider.GetApplicationConfig(chainName)
+	if !exists {
+		logger.Panicf("programming error, non-existent appplication config for channel '%s'", chainName)
+	}
+
+	// TODO: Instead of V1_2Validation(), we should be using something like CollectionUpdate().
+	// For time being, V1_2Validation() is used. Need to submit a separate CR to introduce a
+	// new capability named CollectionUpdate.
+	if ac.Capabilities().V1_2Validation() {
+		err = lscc.putChaincodeCollectionData(stub, cdfs, collectionConfigBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	lifecycleEvent := &pb.LifecycleEvent{ChaincodeName: chaincodeName}
 	lifecycleEventBytes := utils.MarshalOrPanic(lifecycleEvent)
 	stub.SetEvent(UPGRADE, lifecycleEventBytes)
