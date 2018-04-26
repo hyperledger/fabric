@@ -6,11 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 
 package validation
 
-import "github.com/hyperledger/fabric/core/handlers/validation/api"
+import (
+	"github.com/hyperledger/fabric/core/handlers/validation/api"
+)
 
 // State defines interaction with the world state
 type State interface {
-	validation.Dependency
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
 
@@ -20,6 +21,14 @@ type State interface {
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
+}
+
+// StateFetcher retrieves an instance of a state
+type StateFetcher interface {
+	validation.Dependency
+
+	// FetchState fetches state
+	FetchState() (State, error)
 }
 
 // ResultsIterator - an iterator for query result set
