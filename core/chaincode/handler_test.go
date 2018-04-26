@@ -18,7 +18,6 @@ import (
 )
 
 func TestGetQueryResponse(t *testing.T) {
-
 	queryResult := &queryresult.KV{
 		Key:       "key",
 		Namespace: "namespace",
@@ -48,15 +47,14 @@ func TestGetQueryResponse(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		handler := &Handler{}
-		TransactionContext := &TransactionContext{
+		transactionContext := &TransactionContext{
 			queryIteratorMap:    make(map[string]ledger.ResultsIterator),
 			pendingQueryResults: make(map[string]*PendingQueryResult),
 		}
 		queryID := "test"
 		t.Run(fmt.Sprintf("%d", tc.expectedResultCount), func(t *testing.T) {
 			resultsIterator := &MockResultsIterator{}
-			handler.initializeQueryContext(TransactionContext, queryID, resultsIterator)
+			transactionContext.InitializeQueryContext(queryID, resultsIterator)
 			if tc.expectedResultCount > 0 {
 				resultsIterator.On("Next").Return(queryResult, nil).Times(tc.expectedResultCount)
 			}
@@ -64,7 +62,7 @@ func TestGetQueryResponse(t *testing.T) {
 			resultsIterator.On("Close").Return().Once()
 			totalResultCount := 0
 			for hasMoreCount := 0; hasMoreCount <= tc.expectedHasMoreCount; hasMoreCount++ {
-				queryResponse, _ := getQueryResponse(handler, TransactionContext, resultsIterator, queryID)
+				queryResponse, _ := getQueryResponse(transactionContext, resultsIterator, queryID)
 				if queryResponse.GetHasMore() {
 					t.Logf("Got %d results and more are expected.", len(queryResponse.GetResults()))
 				} else {

@@ -189,7 +189,7 @@ var _ = Describe("HandlerRegistry", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			chaincode.SetHandlerTxContexts(handler, transactionContexts)
-			chaincode.InitializeQueryContext(handler, txContext, "query-id", fakeResultsIterator)
+			txContext.InitializeQueryContext("query-id", fakeResultsIterator)
 
 			_, err = hr.Launching("chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
