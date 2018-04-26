@@ -75,7 +75,7 @@ function generateChannelArtifacts() {
 	echo "##########################################################"
 	# Note: For some unknown reason (at least for now) the block file can't be
 	# named orderer.genesis.block or the orderer will fail to launch!
-	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -channelID e2e-orderer-syschan -outputBlock ./channel-artifacts/genesis.block
 
 	echo
 	echo "#################################################################"

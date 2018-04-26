@@ -15,14 +15,11 @@
 Profiles:
 
     TwoOrgsOrdererGenesis:
-        Capabilities:
-            <<: *ChannelCapabilities
+        <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
             Organizations:
                 - *OrdererOrg
-            Capabilities:
-                <<: *OrdererCapabilities
         Consortiums:
             SampleConsortium:
                 Organizations:
@@ -35,8 +32,6 @@ Profiles:
             Organizations:
                 - *Org1
                 - *Org2
-            Capabilities:
-                <<: *ApplicationCapabilities
 
 ################################################################################
 #
@@ -61,6 +56,20 @@ Organizations:
         # MSPDir is the filesystem path which contains the MSP configuration
         MSPDir: crypto-config/ordererOrganizations/example.com/msp
 
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+
     - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
@@ -70,6 +79,20 @@ Organizations:
         ID: Org1MSP
 
         MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin')"
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
@@ -88,12 +111,59 @@ Organizations:
 
         MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
 
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.peer')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin')"
+
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
             # for cross org gossip communication.  Note, this value is only
             # encoded in the genesis block in the Application section context
             - Host: peer0.org2.example.com
               Port: 7051
+
+################################################################################
+#
+#   CHANNEL
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for channel related parameters.
+#
+################################################################################
+Channel: &ChannelDefaults
+    # Policies defines the set of policies at this level of the config tree
+    # For Channel policies, their canonical path is
+    #   /Channel/<PolicyName>
+    Policies:
+        # Who may invoke the 'Deliver' API
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        # Who may invoke the 'Broadcast' API
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        # By default, who may modify elements at this config level
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+
+    # Capabilities describes the channel level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *ChannelCapabilities
 
 ################################################################################
 #
@@ -144,6 +214,31 @@ Orderer: &OrdererDefaults
     # the orderer side of the network
     Organizations:
 
+    # Policies defines the set of policies at this level of the config tree
+    # For Orderer policies, their canonical path is
+    #   /Channel/Orderer/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        # BlockValidation specifies what signatures must be included in the block
+        # from the orderer for the peer to validate it.
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+    # Capabilities describes the orderer level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *OrdererCapabilities
+
 ################################################################################
 #
 #   SECTION: Application
@@ -157,6 +252,27 @@ Application: &ApplicationDefaults
     # Organizations is the list of orgs which are defined as participants on
     # the application side of the network
     Organizations:
+
+    # Policies defines the set of policies at this level of the config tree
+    # For Application policies, their canonical path is
+    #   /Channel/Application/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+    # Capabilities describes the application level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *ApplicationCapabilities
+
 ################################################################################
 #
 #   SECTION: Capabilities
