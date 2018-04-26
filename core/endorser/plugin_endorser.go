@@ -13,10 +13,19 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
+	"github.com/hyperledger/fabric/core/transientstore"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
+
+// go:generate mockery -dir core/endorser/ -name TransientStoreRetriever -case underscore -output core/endorser/mocks/
+// go:generate mockery -dir core/transientstore/ -name Store -case underscore -output core/endorser/mocks/
+// TransientStoreRetriever retrieves transient stores
+type TransientStoreRetriever interface {
+	// StoreForChannel returns the transient store for the given channel
+	StoreForChannel(channel string) transientstore.Store
+}
 
 // go:generate mockery -dir core/endorser/ -name ChannelStateRetriever -case underscore -output core/endorser/mocks/
 // ChannelStateRetriever retrieves Channel state
@@ -58,13 +67,23 @@ func (c Context) String() string {
 	return fmt.Sprintf("{plugin: %s, channel: %s, tx: %s, chaincode: %s}", c.PluginName, c.Channel, c.TxID, c.ChaincodeID.Name)
 }
 
+// PluginSupport aggregates the support interfaces
+// needed for the operation of the plugin endorser
+type PluginSupport struct {
+	ChannelStateRetriever
+	endorsement3.SigningIdentityFetcher
+	PluginMapper
+	TransientStoreRetriever
+}
+
 // NewPluginEndorser endorses with using a plugin
-func NewPluginEndorser(csr ChannelStateRetriever, sif endorsement3.SigningIdentityFetcher, pluginMapper PluginMapper) *PluginEndorser {
+func NewPluginEndorser(ps *PluginSupport) *PluginEndorser {
 	return &PluginEndorser{
-		SigningIdentityFetcher: sif,
-		PluginMapper:           pluginMapper,
-		pluginChannelMapping:   make(map[PluginName]*pluginsByChannel),
-		ChannelStateRetriever:  csr,
+		SigningIdentityFetcher:  ps.SigningIdentityFetcher,
+		PluginMapper:            ps.PluginMapper,
+		pluginChannelMapping:    make(map[PluginName]*pluginsByChannel),
+		ChannelStateRetriever:   ps.ChannelStateRetriever,
+		TransientStoreRetriever: ps.TransientStoreRetriever,
 	}
 }
 
@@ -111,7 +130,11 @@ func (pbc *pluginsByChannel) initPlugin(plugin endorsement.Plugin, channel strin
 		if err != nil {
 			return nil, errors.Wrap(err, "failed obtaining channel state")
 		}
-		dependencies = append(dependencies, &ChannelState{QueryCreator: query})
+		store := pbc.pe.TransientStoreRetriever.StoreForChannel(channel)
+		if store == nil {
+			return nil, errors.Errorf("transient store for channel %s was not initialized", channel)
+		}
+		dependencies = append(dependencies, &ChannelState{QueryCreator: query, Store: store})
 	}
 	// Add the SigningIdentityFetcher as a dependency
 	dependencies = append(dependencies, pbc.pe.SigningIdentityFetcher)
@@ -129,6 +152,7 @@ type PluginEndorser struct {
 	pluginChannelMapping map[PluginName]*pluginsByChannel
 	ChannelStateRetriever
 	endorsement3.SigningIdentityFetcher
+	TransientStoreRetriever
 }
 
 // EndorseWithPlugin endorses the response with a plugin

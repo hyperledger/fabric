@@ -9,7 +9,9 @@ package endorser
 import (
 	"github.com/hyperledger/fabric/core/handlers/endorsement/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/pkg/errors"
 )
 
 // go:generate mockery -dir core/endorser/ -name QueryCreator -case underscore -output core/endorser/mocks/
@@ -20,6 +22,7 @@ type QueryCreator interface {
 
 // ChannelState defines state operations
 type ChannelState struct {
+	transientstore.Store
 	QueryCreator
 }
 
@@ -32,16 +35,35 @@ func (cs *ChannelState) FetchState() (endorsement.State, error) {
 
 	return &StateContext{
 		QueryExecutor: qe,
+		Store:         cs.Store,
 	}, nil
 }
 
 // StateContext defines an execution context that interacts with the state
 type StateContext struct {
+	transientstore.Store
 	ledger.QueryExecutor
 }
 
 // GetTransientByTXID returns the private data associated with this transaction ID.
-// Currently not implemented yet, see: https://jira.hyperledger.org/browse/FAB-9675
-func (*StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWriteSet, error) {
-	panic("Not implemented")
+func (sc *StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWriteSet, error) {
+	scanner, err := sc.Store.GetTxPvtRWSetByTxid(txID, nil)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var data []*rwset.TxPvtReadWriteSet
+	for {
+		res, err := scanner.NextWithConfig()
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		if res == nil {
+			break
+		}
+		if res.PvtSimulationResultsWithConfig == nil {
+			return nil, errors.New("received nil private simulation results")
+		}
+		data = append(data, res.PvtSimulationResultsWithConfig.PvtRwset)
+	}
+	return data, nil
 }

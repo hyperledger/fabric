@@ -563,7 +563,12 @@ func attachPluginEndorser(support *em.MockSupport) {
 	sif.On("SigningIdentityForRequest", mock.Anything).Return(support, nil)
 	pm := &mocks.PluginMapper{}
 	pm.On("PluginFactoryByName", mock.Anything).Return(&builtin.DefaultEndorsementFactory{})
-	support.PluginEndorser = endorser.NewPluginEndorser(csr, sif, pm)
+	support.PluginEndorser = endorser.NewPluginEndorser(&endorser.PluginSupport{
+		ChannelStateRetriever:   csr,
+		SigningIdentityFetcher:  sif,
+		PluginMapper:            pm,
+		TransientStoreRetriever: mockTransientStoreRetriever,
+	})
 }
 
 func TestEndorseWithPlugin(t *testing.T) {
