@@ -195,7 +195,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincode.NewChaincodeSupport(chaincode.GlobalConfig(), peerEndpoint, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincode.NewChaincodeSupport(chaincode.GlobalConfig(), peerEndpoint, false, ccStartupTimeout, ca.CertBytes(), certGenerator, &ccprovider.CCInfoFSImpl{})
 
 	// Init the policy checker
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{

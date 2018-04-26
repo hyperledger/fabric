@@ -121,7 +121,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator, &ccprovider.CCInfoFSImpl{})
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	go grpcServer.Serve(lis)

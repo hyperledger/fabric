@@ -37,6 +37,12 @@ type Runtime interface {
 	Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
 }
 
+// PackageProvider is responsible for getting the chaincode package from
+// the filesystem.
+type PackageProvider interface {
+	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
+}
+
 // NewChaincodeSupport creates a new ChaincodeSupport instance
 func NewChaincodeSupport(
 	config *Config,
@@ -45,6 +51,7 @@ func NewChaincodeSupport(
 	ccstartuptimeout time.Duration,
 	caCert []byte,
 	certGenerator CertGenerator,
+	packageProvider PackageProvider,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
 		caCert:           caCert,
@@ -55,6 +62,7 @@ func NewChaincodeSupport(
 		keepalive:        config.Keepalive,
 		executetimeout:   config.ExecuteTimeout,
 		handlerRegistry:  NewHandlerRegistry(userrunsCC),
+		PackageProvider:  packageProvider,
 	}
 
 	// Keep TestQueries working
@@ -91,6 +99,7 @@ type ChaincodeSupport struct {
 	executetimeout   time.Duration
 	userRunsCC       bool
 	ContainerRuntime Runtime
+	PackageProvider  PackageProvider
 	sccp             sysccprovider.SystemChaincodeProvider
 }
 
@@ -228,7 +237,7 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 		if cds.CodePackage == nil {
 			//no code bytes for these situations
 			if !(cs.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) {
-				ccpack, err := ccprovider.GetChaincodeFromFS(cID.Name, cID.Version)
+				ccpack, err := cs.PackageProvider.GetChaincode(cID.Name, cID.Version)
 				if err != nil {
 					return cID, cMsg, err
 				}

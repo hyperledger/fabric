@@ -116,7 +116,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), peerAddress, false, ccStartupTimeout, ca.CertBytes(), certGenerator, &ccprovider.CCInfoFSImpl{})
 	chaincodeSupport.SetSysCCProvider(sccp)
 	SideEffectInitialize(chaincodeSupport)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
