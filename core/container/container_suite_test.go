@@ -7,7 +7,6 @@ package container_test
 
 import (
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -21,17 +20,17 @@ type vmProvider interface {
 
 //go:generate counterfeiter -o mock/vm.go --fake-name VM . vm
 type vm interface {
-	api.VM
+	container.VM
 }
 
 //go:generate counterfeiter -o mock/vm_req.go --fake-name VMCReq . vmcReq
 type vmcReq interface {
-	container.VMCReqIntf
+	container.VMCReq
 }
 
 //go:generate counterfeiter -o mock/builder.go --fake-name Builder . builder
 type builder interface {
-	api.Builder
+	container.Builder
 }
 
 func TestContainer(t *testing.T) {

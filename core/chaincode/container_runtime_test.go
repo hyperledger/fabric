@@ -16,6 +16,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -162,8 +164,8 @@ func TestContainerRuntimeStart(t *testing.T) {
 		execEnv pb.ChaincodeDeploymentSpec_ExecutionEnvironment
 		vmType  string
 	}{
-		{pb.ChaincodeDeploymentSpec_DOCKER, container.DOCKER},
-		{pb.ChaincodeDeploymentSpec_SYSTEM, container.SYSTEM},
+		{pb.ChaincodeDeploymentSpec_DOCKER, dockercontroller.ContainerType},
+		{pb.ChaincodeDeploymentSpec_SYSTEM, inproccontroller.ContainerType},
 	}
 
 	for _, tc := range tests {
@@ -245,8 +247,8 @@ func TestContainerRuntimeStop(t *testing.T) {
 		execEnv pb.ChaincodeDeploymentSpec_ExecutionEnvironment
 		vmType  string
 	}{
-		{pb.ChaincodeDeploymentSpec_DOCKER, container.DOCKER},
-		{pb.ChaincodeDeploymentSpec_SYSTEM, container.SYSTEM},
+		{pb.ChaincodeDeploymentSpec_DOCKER, dockercontroller.ContainerType},
+		{pb.ChaincodeDeploymentSpec_SYSTEM, inproccontroller.ContainerType},
 	}
 
 	for _, tc := range tests {

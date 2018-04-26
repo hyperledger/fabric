@@ -8,21 +8,32 @@ package container
 
 import (
 	"fmt"
+	"io"
 	"sync"
 
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type VMProvider interface {
-	NewVM() api.VM
+	NewVM() VM
+}
+
+type Builder interface {
+	Build() (io.Reader, error)
+}
+
+//VM is an abstract virtual image for supporting arbitrary virual machines
+type VM interface {
+	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
+	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
+	Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
+	Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error
+	GetVMName(ccID ccintf.CCID, format func(string) (string, error)) (string, error)
 }
 
 type refCountedLock struct {
@@ -44,23 +55,14 @@ type VMController struct {
 var vmLogger = flogging.MustGetLogger("container")
 
 // NewVMController creates a new instance of VMController
-func NewVMController() *VMController {
+func NewVMController(vmProviders map[string]VMProvider) *VMController {
 	return &VMController{
 		containerLocks: make(map[string]*refCountedLock),
-		vmProviders: map[string]VMProvider{
-			DOCKER: dockercontroller.NewProvider(),
-			SYSTEM: inproccontroller.NewProvider(),
-		},
+		vmProviders:    vmProviders,
 	}
 }
 
-//constants for supported containers
-const (
-	DOCKER = "Docker"
-	SYSTEM = "System"
-)
-
-func (vmc *VMController) newVM(typ string) api.VM {
+func (vmc *VMController) newVM(typ string) VM {
 	v, ok := vmc.vmProviders[typ]
 	if !ok {
 		vmLogger.Panicf("Programming error: unsupported VM type: %s", typ)
@@ -103,25 +105,25 @@ func (vmc *VMController) unlockContainer(id string) {
 	vmc.Unlock()
 }
 
-//VMCReqIntf - all requests should implement this interface.
+//VMCReq - all requests should implement this interface.
 //The context should be passed and tested at each layer till we stop
 //note that we'd stop on the first method on the stack that does not
 //take context
-type VMCReqIntf interface {
-	Do(ctxt context.Context, v api.VM) error
+type VMCReq interface {
+	Do(ctxt context.Context, v VM) error
 	GetCCID() ccintf.CCID
 }
 
 //StartContainerReq - properties for starting a container.
 type StartContainerReq struct {
 	ccintf.CCID
-	Builder       api.Builder
+	Builder       Builder
 	Args          []string
 	Env           []string
 	FilesToUpload map[string][]byte
 }
 
-func (si StartContainerReq) Do(ctxt context.Context, v api.VM) error {
+func (si StartContainerReq) Do(ctxt context.Context, v VM) error {
 	return v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
 }
 
@@ -139,7 +141,7 @@ type StopContainerReq struct {
 	Dontremove bool
 }
 
-func (si StopContainerReq) Do(ctxt context.Context, v api.VM) error {
+func (si StopContainerReq) Do(ctxt context.Context, v VM) error {
 	return v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove)
 }
 
@@ -155,7 +157,7 @@ func (si StopContainerReq) GetCCID() ccintf.CCID {
 //context can be cancelled. VMCProcess will try to cancel calling functions if it can
 //For instance docker clients api's such as BuildImage are not cancelable.
 //In all cases VMCProcess will wait for the called go routine to return
-func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReqIntf) error {
+func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq) error {
 	v := vmc.newVM(vmtype)
 	if v == nil {
 		return fmt.Errorf("Unknown VM type %s", vmtype)

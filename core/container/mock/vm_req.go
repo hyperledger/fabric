@@ -4,17 +4,17 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/container/api"
+	container_test "github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"golang.org/x/net/context"
 )
 
 type VMCReq struct {
-	DoStub        func(ctxt context.Context, v api.VM) error
+	DoStub        func(ctxt context.Context, v container_test.VM) error
 	doMutex       sync.RWMutex
 	doArgsForCall []struct {
 		ctxt context.Context
-		v    api.VM
+		v    container_test.VM
 	}
 	doReturns struct {
 		result1 error
@@ -35,12 +35,12 @@ type VMCReq struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VMCReq) Do(ctxt context.Context, v api.VM) error {
+func (fake *VMCReq) Do(ctxt context.Context, v container_test.VM) error {
 	fake.doMutex.Lock()
 	ret, specificReturn := fake.doReturnsOnCall[len(fake.doArgsForCall)]
 	fake.doArgsForCall = append(fake.doArgsForCall, struct {
 		ctxt context.Context
-		v    api.VM
+		v    container_test.VM
 	}{ctxt, v})
 	fake.recordInvocation("Do", []interface{}{ctxt, v})
 	fake.doMutex.Unlock()
@@ -59,7 +59,7 @@ func (fake *VMCReq) DoCallCount() int {
 	return len(fake.doArgsForCall)
 }
 
-func (fake *VMCReq) DoArgsForCall(i int) (context.Context, api.VM) {
+func (fake *VMCReq) DoArgsForCall(i int) (context.Context, container_test.VM) {
 	fake.doMutex.RLock()
 	defer fake.doMutex.RUnlock()
 	return fake.doArgsForCall[i].ctxt, fake.doArgsForCall[i].v

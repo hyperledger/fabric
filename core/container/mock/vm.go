@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/container/api"
+	container_test "github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"golang.org/x/net/context"
 )
@@ -26,7 +26,7 @@ type VM struct {
 	deployReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StartStub        func(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder api.Builder) error
+	StartStub        func(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container_test.Builder) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		ctxt          context.Context
@@ -34,7 +34,7 @@ type VM struct {
 		args          []string
 		env           []string
 		filesToUpload map[string][]byte
-		builder       api.Builder
+		builder       container_test.Builder
 	}
 	startReturns struct {
 		result1 error
@@ -151,7 +151,7 @@ func (fake *VM) DeployReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder api.Builder) error {
+func (fake *VM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container_test.Builder) error {
 	var argsCopy []string
 	if args != nil {
 		argsCopy = make([]string, len(args))
@@ -170,7 +170,7 @@ func (fake *VM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env
 		args          []string
 		env           []string
 		filesToUpload map[string][]byte
-		builder       api.Builder
+		builder       container_test.Builder
 	}{ctxt, ccid, argsCopy, envCopy, filesToUpload, builder})
 	fake.recordInvocation("Start", []interface{}{ctxt, ccid, argsCopy, envCopy, filesToUpload, builder})
 	fake.startMutex.Unlock()
@@ -189,7 +189,7 @@ func (fake *VM) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *VM) StartArgsForCall(i int) (context.Context, ccintf.CCID, []string, []string, map[string][]byte, api.Builder) {
+func (fake *VM) StartArgsForCall(i int) (context.Context, ccintf.CCID, []string, []string, map[string][]byte, container_test.Builder) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	return fake.startArgsForCall[i].ctxt, fake.startArgsForCall[i].ccid, fake.startArgsForCall[i].args, fake.startArgsForCall[i].env, fake.startArgsForCall[i].filesToUpload, fake.startArgsForCall[i].builder

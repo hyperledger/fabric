@@ -35,6 +35,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -125,7 +127,12 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
-		container.NewVMController(),
+		container.NewVMController(
+			map[string]container.VMProvider{
+				dockercontroller.ContainerType: dockercontroller.NewProvider(),
+				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+			},
+		),
 	)
 	chaincodeSupport.SetSysCCProvider(sccp)
 	SideEffectInitialize(chaincodeSupport)

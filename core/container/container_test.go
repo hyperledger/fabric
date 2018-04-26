@@ -115,4 +115,34 @@ var _ = Describe("Container", func() {
 			})
 		})
 	})
+
+	Describe("VMController", func() {
+		var (
+			ctxt         = context.Background()
+			vmProvider   *mock.VMProvider
+			vmController *container.VMController
+			vmcReq       *mock.VMCReq
+		)
+
+		BeforeEach(func() {
+			vmProvider = &mock.VMProvider{}
+			vmController = container.NewVMController(map[string]container.VMProvider{
+				"FakeProvider": vmProvider,
+			})
+			vmProvider.NewVMReturns(&mock.VM{})
+			vmcReq = &mock.VMCReq{}
+		})
+
+		Describe("Process", func() {
+			It("Panics if there is no underlying VM provider", func() {
+				Expect(func() { vmController.Process(ctxt, "Unknown-Type", nil) }).To(Panic())
+				Expect(vmProvider.NewVMCallCount()).To(Equal(0))
+			})
+			It("Returns no error if the underlying VM provider is successful", func() {
+				err := vmController.Process(ctxt, "FakeProvider", vmcReq)
+				Expect(vmProvider.NewVMCallCount()).To(Equal(1))
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
 })

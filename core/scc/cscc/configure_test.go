@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -205,7 +206,11 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
-		container.NewVMController(),
+		container.NewVMController(
+			map[string]container.VMProvider{
+				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+			},
+		),
 	)
 
 	// Init the policy checker

@@ -33,13 +33,17 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	container "github.com/hyperledger/fabric/core/container/api"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
+
+// ContainerType is the string which the docker container type
+// is registered with the container.VMController
+const ContainerType = "DOCKER"
 
 var (
 	dockerLogger = flogging.MustGetLogger("dockercontroller")

@@ -9,12 +9,12 @@ import (
 )
 
 type Processor struct {
-	ProcessStub        func(ctxt context.Context, vmtype string, req container.VMCReqIntf) error
+	ProcessStub        func(ctxt context.Context, vmtype string, req container.VMCReq) error
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
 		ctxt   context.Context
 		vmtype string
-		req    container.VMCReqIntf
+		req    container.VMCReq
 	}
 	processReturns struct {
 		result1 error
@@ -26,13 +26,13 @@ type Processor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Processor) Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) error {
+func (fake *Processor) Process(ctxt context.Context, vmtype string, req container.VMCReq) error {
 	fake.processMutex.Lock()
 	ret, specificReturn := fake.processReturnsOnCall[len(fake.processArgsForCall)]
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
 		ctxt   context.Context
 		vmtype string
-		req    container.VMCReqIntf
+		req    container.VMCReq
 	}{ctxt, vmtype, req})
 	fake.recordInvocation("Process", []interface{}{ctxt, vmtype, req})
 	fake.processMutex.Unlock()
@@ -51,7 +51,7 @@ func (fake *Processor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
-func (fake *Processor) ProcessArgsForCall(i int) (context.Context, string, container.VMCReqIntf) {
+func (fake *Processor) ProcessArgsForCall(i int) (context.Context, string, container.VMCReq) {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
 	return fake.processArgsForCall[i].ctxt, fake.processArgsForCall[i].vmtype, fake.processArgsForCall[i].req

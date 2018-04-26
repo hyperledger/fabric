@@ -12,12 +12,16 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	container "github.com/hyperledger/fabric/core/container/api"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"golang.org/x/net/context"
 )
+
+// ContainerType is the string which the inproc container type
+// is registered with the container.VMController
+const ContainerType = "SYSTEM"
 
 // Provider implements container.VMProvider
 type Provider struct{}

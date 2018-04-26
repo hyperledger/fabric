@@ -32,6 +32,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
@@ -40,6 +41,31 @@ import (
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+// This test used to be part of an integration style test in core/container, moved to here
+func TestRealPath(t *testing.T) {
+	coreutil.SetupTestConfig()
+	ctxt := context.Background()
+	dc := NewDockerVM()
+	ccid := ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}
+	reader := getCodeChainBytesInMem()
+
+	err := dc.Deploy(ctxt, ccid, nil, nil, reader)
+	require.NoError(t, err)
+
+	err = dc.Start(ctxt, ccid, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	// Stop, killing, and deleting
+	err = dc.Stop(ctxt, ccid, 0, true, true)
+	require.NoError(t, err)
+
+	err = dc.Start(ctxt, ccid, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	// Stop, killing, but not deleting
+	_ = dc.Stop(ctxt, ccid, 0, false, true)
+}
 
 func TestHostConfig(t *testing.T) {
 	coreutil.SetupTestConfig()
@@ -58,6 +84,7 @@ func TestGetDockerHostConfig(t *testing.T) {
 	os.Setenv("CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE", "overlay")
 	os.Setenv("CORE_VM_DOCKER_HOSTCONFIG_CPUSHARES", fmt.Sprint(1024*1024*1024*2))
 	coreutil.SetupTestConfig()
+	hostConfig = nil // There is a cached global singleton for docker host config, the other tests can collide with
 	hostConfig := getDockerHostConfig()
 	testutil.AssertNotNil(t, hostConfig)
 	testutil.AssertEquals(t, hostConfig.NetworkMode, "overlay")

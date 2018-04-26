@@ -19,6 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -132,7 +134,12 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
-		container.NewVMController(),
+		container.NewVMController(
+			map[string]container.VMProvider{
+				dockercontroller.ContainerType: dockercontroller.NewProvider(),
+				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+			},
+		),
 	)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 

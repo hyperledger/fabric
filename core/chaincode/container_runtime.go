@@ -18,6 +18,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -25,7 +27,7 @@ import (
 
 // Processor processes vm and container requests.
 type Processor interface {
-	Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) error
+	Process(ctxt context.Context, vmtype string, req container.VMCReq) error
 }
 
 // CertGenerator generates client certificates for chaincode.
@@ -112,9 +114,9 @@ func (c *ContainerRuntime) Stop(ctxt context.Context, cccid *ccprovider.CCContex
 
 func getVMType(cds *pb.ChaincodeDeploymentSpec) string {
 	if cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM {
-		return container.SYSTEM
+		return inproccontroller.ContainerType
 	}
-	return container.DOCKER
+	return dockercontroller.ContainerType
 }
 
 const (

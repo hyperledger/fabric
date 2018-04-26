@@ -35,6 +35,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	cmp "github.com/hyperledger/fabric/core/mocks/peer"
@@ -177,7 +179,12 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
-		container.NewVMController(),
+		container.NewVMController(
+			map[string]container.VMProvider{
+				dockercontroller.ContainerType: dockercontroller.NewProvider(),
+				inproccontroller.ContainerType: inproccontroller.NewProvider(),
+			},
+		),
 	)
 	SideEffectInitialize(chaincodeSupport)
 	chaincodeSupport.SetSysCCProvider(sccp)
