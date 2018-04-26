@@ -229,7 +229,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID,
 
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
-	args []string, env []string, filesToUpload map[string][]byte, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
+	args []string, env []string, filesToUpload map[string][]byte, builder container.BuildSpecFactory) error {
 	imageName, err := vm.GetVMName(ccid, formatImageName)
 	if err != nil {
 		return err
@@ -384,12 +384,6 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 
 		if err != nil {
 			return fmt.Errorf("Error uploading files to the container instance %s: %s", containerName, err)
-		}
-	}
-
-	if prelaunchFunc != nil {
-		if err = prelaunchFunc(); err != nil {
-			return err
 		}
 	}
 

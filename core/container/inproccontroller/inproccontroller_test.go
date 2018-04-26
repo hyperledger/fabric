@@ -463,7 +463,7 @@ func TestStart(t *testing.T) {
 
 	typeRegistry["path"] = ipc
 
-	err := vm.Start(mockContext, ccid, args, env, files, mockBuilder, nil)
+	err := vm.Start(mockContext, ccid, args, env, files, mockBuilder)
 	assert.Nil(t, err, "err should be nil")
 }
 
