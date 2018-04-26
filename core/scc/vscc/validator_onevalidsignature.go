@@ -491,8 +491,16 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 
 		switch lsccFunc {
 		case lscc.DEPLOY:
+
+			/******************************************************************/
+			/* security check 1 - cc not in the LCCC table of instantiated cc */
+			/******************************************************************/
+			if ccExistsOnLedger {
+				return fmt.Errorf("Chaincode %s is already instantiated", cdsArgs.ChaincodeSpec.ChaincodeId.Name)
+			}
+
 			/****************************************************************************/
-			/* security check 0.a - validation of rwset (and of collections if enabled) */
+			/* security check 2 - validation of rwset (and of collections if enabled) */
 			/****************************************************************************/
 			if ac.PrivateChannelData() {
 				// do extra validation for collections
@@ -508,7 +516,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			}
 
 			/*****************************************************/
-			/* security check 1 - check the instantiation policy */
+			/* security check 3 - check the instantiation policy */
 			/*****************************************************/
 			pol := cdRWSet.InstantiationPolicy
 			if pol == nil {
@@ -522,13 +530,6 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			err = vscc.checkInstantiationPolicy(chid, env, pol, payl)
 			if err != nil {
 				return err
-			}
-
-			/******************************************************************/
-			/* security check 2 - cc not in the LCCC table of instantiated cc */
-			/******************************************************************/
-			if ccExistsOnLedger {
-				return fmt.Errorf("Chaincode %s is already instantiated", cdsArgs.ChaincodeSpec.ChaincodeId.Name)
 			}
 
 		case lscc.UPGRADE:
@@ -547,8 +548,15 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 				return fmt.Errorf("Upgrading non-existent chaincode %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name)
 			}
 
+			/**********************************************************/
+			/* security check 2 - existing cc's version was different */
+			/**********************************************************/
+			if cdLedger.Version == cdsArgs.ChaincodeSpec.ChaincodeId.Version {
+				return fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.ChaincodeSpec.ChaincodeId.Version)
+			}
+
 			/*****************************************************/
-			/* security check 2 - check the instantiation policy */
+			/* security check 3 - check the instantiation policy */
 			/*****************************************************/
 			pol := cdLedger.InstantiationPolicy
 			if pol == nil {
@@ -562,13 +570,6 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			err = vscc.checkInstantiationPolicy(chid, env, pol, payl)
 			if err != nil {
 				return err
-			}
-
-			/**********************************************************/
-			/* security check 3 - existing cc's version was different */
-			/**********************************************************/
-			if cdLedger.Version == cdsArgs.ChaincodeSpec.ChaincodeId.Version {
-				return fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.ChaincodeSpec.ChaincodeId.Version)
 			}
 
 			/******************************************************************/
