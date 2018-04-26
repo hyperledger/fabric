@@ -126,7 +126,7 @@ Traditional authentication mechanisms rely on **digital signature mechanisms**, 
 as the name suggests, allow a party to digitally **sign** its messages. Digital
 signatures also provide guarantees on the integrity of the signed message.
 
-Technically speaking, digital signature mechanisms require require for each party to
+Technically speaking, digital signature mechanisms require for each party to
 hold two cryptographically connected keys: a public key that is made widely available,
 and acts as authentication anchor, and a private key that is used to produce
 **digital signatures** on messages. Recipients of digitally signed messages can verify
