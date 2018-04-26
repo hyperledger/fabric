@@ -21,6 +21,9 @@ type State interface {
 
 	// GetTransientByTXID gets the values private data associated with the given txID
 	GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWriteSet, error)
+
+	// Done releases resources occupied by the State
+	Done()
 }
 
 // StateFetcher retrieves an instance of a state

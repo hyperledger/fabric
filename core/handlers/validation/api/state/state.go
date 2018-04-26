@@ -21,6 +21,9 @@ type State interface {
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
+
+	// Done releases resources occupied by the State
+	Done()
 }
 
 // StateFetcher retrieves an instance of a state
