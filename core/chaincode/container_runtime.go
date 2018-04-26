@@ -28,14 +28,6 @@ type Processor interface {
 	Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error)
 }
 
-// ProcessFunc adapts a function to satisfy the Processor interface.
-type ProcessFunc func(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error)
-
-// Process processes vm and container requests.
-func (v ProcessFunc) Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error) {
-	return v(ctxt, vmtype, req)
-}
-
 // CertGenerator generates client certificates for chaincode.
 type CertGenerator interface {
 	// Generate returns a certificate and private key and associates

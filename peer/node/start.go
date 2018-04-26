@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
@@ -597,6 +598,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		authenticator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
+		container.NewVMController(),
 	)
 	chaincode.SideEffectInitialize(chaincodeSupport)
 

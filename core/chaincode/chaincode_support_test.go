@@ -177,6 +177,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
+		container.NewVMController(),
 	)
 	SideEffectInitialize(chaincodeSupport)
 	chaincodeSupport.SetSysCCProvider(sccp)

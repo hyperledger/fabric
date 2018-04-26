@@ -38,8 +38,11 @@ type VMController struct {
 
 var vmLogger = flogging.MustGetLogger("container")
 
-var vmcontroller = &VMController{
-	containerLocks: make(map[string]*refCountedLock),
+// NewVMController creates a new instance of VMController
+func NewVMController() *VMController {
+	return &VMController{
+		containerLocks: make(map[string]*refCountedLock),
+	}
 }
 
 //constants for supported containers
@@ -64,37 +67,37 @@ func (vmc *VMController) newVM(typ string) api.VM {
 
 func (vmc *VMController) lockContainer(id string) {
 	//get the container lock under global lock
-	vmcontroller.Lock()
+	vmc.Lock()
 	var refLck *refCountedLock
 	var ok bool
-	if refLck, ok = vmcontroller.containerLocks[id]; !ok {
+	if refLck, ok = vmc.containerLocks[id]; !ok {
 		refLck = &refCountedLock{refCount: 1, lock: &sync.RWMutex{}}
-		vmcontroller.containerLocks[id] = refLck
+		vmc.containerLocks[id] = refLck
 	} else {
 		refLck.refCount++
 		vmLogger.Debugf("refcount %d (%s)", refLck.refCount, id)
 	}
-	vmcontroller.Unlock()
+	vmc.Unlock()
 	vmLogger.Debugf("waiting for container(%s) lock", id)
 	refLck.lock.Lock()
 	vmLogger.Debugf("got container (%s) lock", id)
 }
 
 func (vmc *VMController) unlockContainer(id string) {
-	vmcontroller.Lock()
-	if refLck, ok := vmcontroller.containerLocks[id]; ok {
+	vmc.Lock()
+	if refLck, ok := vmc.containerLocks[id]; ok {
 		if refLck.refCount <= 0 {
 			panic("refcnt <= 0")
 		}
 		refLck.lock.Unlock()
 		if refLck.refCount--; refLck.refCount == 0 {
 			vmLogger.Debugf("container lock deleted(%s)", id)
-			delete(vmcontroller.containerLocks, id)
+			delete(vmc.containerLocks, id)
 		}
 	} else {
 		vmLogger.Debugf("no lock to unlock(%s)!!", id)
 	}
-	vmcontroller.Unlock()
+	vmc.Unlock()
 }
 
 //VMCReqIntf - all requests should implement this interface.
@@ -165,7 +168,7 @@ func (si StopContainerReq) getCCID() ccintf.CCID {
 	return si.CCID
 }
 
-//VMCProcess should be used as follows
+//Process should be used as follows
 //   . construct a context
 //   . construct req of the right type (e.g., CreateImageReq)
 //   . call it in a go routine
@@ -173,8 +176,8 @@ func (si StopContainerReq) getCCID() ccintf.CCID {
 //context can be cancelled. VMCProcess will try to cancel calling functions if it can
 //For instance docker clients api's such as BuildImage are not cancelable.
 //In all cases VMCProcess will wait for the called go routine to return
-func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (VMCResp, error) {
-	v := vmcontroller.newVM(vmtype)
+func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReqIntf) (VMCResp, error) {
+	v := vmc.newVM(vmtype)
 	if v == nil {
 		return VMCResp{}, fmt.Errorf("Unknown VM type %s", vmtype)
 	}
@@ -189,9 +192,9 @@ func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (VMCResp, e
 			resp = VMCResp{Err: err}
 			return
 		}
-		vmcontroller.lockContainer(id)
+		vmc.lockContainer(id)
 		resp = req.do(ctxt, v)
-		vmcontroller.unlockContainer(id)
+		vmc.unlockContainer(id)
 	}()
 
 	select {
