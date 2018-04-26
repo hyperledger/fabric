@@ -280,7 +280,7 @@ transaction endorsement (Section 2) assuming one blob per ``deliver``
 event. These are easily extended to blocks, assuming that a ``deliver``
 event for a block corresponds to a sequence of individual ``deliver``
 events for each blob within a block, according to the above mentioned
-deterministic ordering of blobs within a blocs.
+deterministic ordering of blobs within a block.
 
 **Ordering service properties**
 
