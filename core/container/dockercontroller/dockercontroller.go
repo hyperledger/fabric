@@ -229,7 +229,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID,
 
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
-	args []string, env []string, filesToUpload map[string][]byte, builder container.BuildSpecFactory) error {
+	args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
 	imageName, err := vm.GetVMName(ccid, formatImageName)
 	if err != nil {
 		return err
@@ -261,7 +261,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 				dockerLogger.Debugf("start-could not find image <%s> (container id <%s>), because of <%s>..."+
 					"attempt to recreate image", imageName, containerName, err)
 
-				reader, err1 := builder()
+				reader, err1 := builder.Build()
 				if err1 != nil {
 					dockerLogger.Errorf("Error creating image builder for image <%s> (container id <%s>), "+
 						"because of <%s>", imageName, containerName, err1)

@@ -140,7 +140,9 @@ func Test_Start(t *testing.T) {
 		t.Fatal()
 	}
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
-	bldr := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
+	bldr := &mockBuilder{
+		buildFunc: func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) },
+	}
 
 	// case 4: start called with builder and dockerClient.CreateContainer returns
 	// docker.noSuchImgErr and dockerClient.Start returns error
@@ -281,6 +283,14 @@ func getMockClient() (dockerClient, error) {
 		return nil, errors.New("Failed to get client")
 	}
 	return &mockClient{noSuchImgErrReturned: false}, nil
+}
+
+type mockBuilder struct {
+	buildFunc func() (io.Reader, error)
+}
+
+func (m *mockBuilder) Build() (io.Reader, error) {
+	return m.buildFunc()
 }
 
 type mockClient struct {

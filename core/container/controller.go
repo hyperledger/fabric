@@ -122,7 +122,7 @@ type VMCResp struct {
 //StartContainerReq - properties for starting a container.
 type StartContainerReq struct {
 	ccintf.CCID
-	Builder       api.BuildSpecFactory
+	Builder       api.Builder
 	Args          []string
 	Env           []string
 	FilesToUpload map[string][]byte
