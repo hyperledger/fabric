@@ -76,11 +76,7 @@ func (p *Provider) registerSysCC(syscc *SystemChaincode) (bool, error) {
 	version := util.GetSysCCVersion()
 
 	ccid := &ccintf.CCID{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{
-				Name: syscc.Name,
-			},
-		},
+		Name:    syscc.Name,
 		Version: version,
 	}
 	err := p.Registrar.Register(ccid, syscc.Chaincode)

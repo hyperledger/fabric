@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/mock"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 
 	. "github.com/onsi/ginkgo"
@@ -29,7 +28,7 @@ var _ = Describe("Container", func() {
 
 		BeforeEach(func() {
 			startReq = &container.StartContainerReq{
-				CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "start-name"}}},
+				CCID: ccintf.CCID{Name: "start-name"},
 				Args: []string{"foo", "bar"},
 				Env:  []string{"Bar", "Foo"},
 				FilesToUpload: map[string][]byte{
@@ -79,7 +78,7 @@ var _ = Describe("Container", func() {
 
 		BeforeEach(func() {
 			stopReq = &container.StopContainerReq{
-				CCID:       ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "stop-name"}}},
+				CCID:       ccintf.CCID{Name: "stop-name"},
 				Timeout:    283,
 				Dontkill:   true,
 				Dontremove: false,

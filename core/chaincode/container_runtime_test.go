@@ -179,6 +179,9 @@ func TestContainerRuntimeStart(t *testing.T) {
 		cds := &pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				Type: pb.ChaincodeSpec_GOLANG,
+				ChaincodeId: &pb.ChaincodeID{
+					Name: "chaincode-id-name",
+				},
 			},
 			ExecEnv: tc.execEnv,
 		}
@@ -198,8 +201,8 @@ func TestContainerRuntimeStart(t *testing.T) {
 		assert.Equal(t, startReq.Env, []string{"CORE_CHAINCODE_ID_NAME=context-name:context-version", "CORE_PEER_TLS_ENABLED=false"})
 		assert.Nil(t, startReq.FilesToUpload)
 		assert.Equal(t, startReq.CCID, ccintf.CCID{
-			ChaincodeSpec: cds.ChaincodeSpec,
-			Version:       "context-version",
+			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
+			Version: "context-version",
 		})
 	}
 }
@@ -228,6 +231,9 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		cds := &pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				Type: tc.chaincodeType,
+				ChaincodeId: &pb.ChaincodeID{
+					Name: "chaincode-id-name",
+				},
 			},
 		}
 
@@ -255,6 +261,9 @@ func TestContainerRuntimeStop(t *testing.T) {
 		cds := &pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				Type: pb.ChaincodeSpec_GOLANG,
+				ChaincodeId: &pb.ChaincodeID{
+					Name: "chaincode-id-name",
+				},
 			},
 			ExecEnv: tc.execEnv,
 		}
@@ -272,8 +281,8 @@ func TestContainerRuntimeStop(t *testing.T) {
 		assert.Equal(t, stopReq.Timeout, uint(0))
 		assert.Equal(t, stopReq.Dontremove, false)
 		assert.Equal(t, stopReq.CCID, ccintf.CCID{
-			ChaincodeSpec: cds.ChaincodeSpec,
-			Version:       "context-version",
+			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
+			Version: "context-version",
 		})
 	}
 }
@@ -299,6 +308,9 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		cds := &pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
 				Type: pb.ChaincodeSpec_GOLANG,
+				ChaincodeId: &pb.ChaincodeID{
+					Name: "chaincode-id-name",
+				},
 			},
 		}
 

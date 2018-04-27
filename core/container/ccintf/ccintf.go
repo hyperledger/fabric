@@ -11,6 +11,8 @@ package ccintf
 //Currently inproccontroller uses it. dockercontroller does not.
 
 import (
+	"fmt"
+
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 )
@@ -34,20 +36,14 @@ func GetCCHandlerKey() string {
 
 //CCID encapsulates chaincode ID
 type CCID struct {
-	ChaincodeSpec *pb.ChaincodeSpec
-	Version       string
+	Name    string
+	Version string
 }
 
-//GetName returns canonical chaincode name based on chain name
+//GetName returns canonical chaincode name based on the fields of CCID
 func (ccid *CCID) GetName() string {
-	if ccid.ChaincodeSpec == nil {
-		panic("nil chaincode spec")
-	}
-
-	name := ccid.ChaincodeSpec.ChaincodeId.Name
 	if ccid.Version != "" {
-		name = name + "-" + ccid.Version
+		return fmt.Sprintf("%s-%s", ccid.Name, ccid.Version)
 	}
-
-	return name
+	return ccid.Name
 }

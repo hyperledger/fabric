@@ -63,7 +63,7 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 		return err
 	}
 
-	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", cname)
+	chaincodeLogger.Debugf("start container: %s", cname)
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
@@ -74,8 +74,8 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,
 		CCID: ccintf.CCID{
-			ChaincodeSpec: cds.ChaincodeSpec,
-			Version:       cccid.Version,
+			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
+			Version: cccid.Version,
 		},
 	}
 
@@ -92,8 +92,8 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 func (c *ContainerRuntime) Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	scr := container.StopContainerReq{
 		CCID: ccintf.CCID{
-			ChaincodeSpec: cds.ChaincodeSpec,
-			Version:       cccid.Version,
+			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
+			Version: cccid.Version,
 		},
 		Timeout:    0,
 		Dontremove: false,
