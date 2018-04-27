@@ -16,14 +16,17 @@ type Argument interface {
 }
 
 // Dependency marks a dependency passed to the Init() method
-type Dependency interface {
-}
+type Dependency interface{}
+
+// ContextDatum defines additional data that is passed from the validator
+// into the Validate() invocation
+type ContextDatum interface{}
 
 // Plugin validates transactions
 type Plugin interface {
 	// Validate returns nil if the action at the given position inside the transaction
 	// at the given position in the given block is valid, or an error if not.
-	Validate(block *common.Block, namespace string, txPosition int, actionPosition int) error
+	Validate(block *common.Block, namespace string, txPosition int, actionPosition int, contextData ...ContextDatum) error
 
 	// Init injects dependencies into the instance of the Plugin
 	Init(dependencies ...Dependency) error
@@ -32,4 +35,17 @@ type Plugin interface {
 // PluginFactory creates a new instance of a Plugin
 type PluginFactory interface {
 	New() Plugin
+}
+
+// VSCCExecutionFailureError indicates that the validation
+// failed because of an execution problem, and thus
+// the transaction validation status could not be computed
+type VSCCExecutionFailureError struct {
+	Reason string
+}
+
+// Error conveys this is an error, and also contains
+// the reason for the error
+func (e VSCCExecutionFailureError) Error() string {
+	return e.Reason
 }
