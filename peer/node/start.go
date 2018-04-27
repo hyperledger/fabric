@@ -600,7 +600,10 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
 		container.NewVMController(map[string]container.VMProvider{
-			dockercontroller.ContainerType: dockercontroller.NewProvider(),
+			dockercontroller.ContainerType: dockercontroller.NewProvider(
+				viper.GetString("peer.id"),
+				viper.GetString("peer.networkId"),
+			),
 			inproccontroller.ContainerType: ipRegistry,
 		}),
 		sccp,

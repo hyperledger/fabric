@@ -68,8 +68,6 @@ func NewChaincodeSupport(
 		Processor:     processor,
 		CACert:        caCert,
 		PeerAddress:   peerAddress,
-		PeerID:        config.PeerID,
-		PeerNetworkID: config.PeerNetworkID,
 		CommonEnv: []string{
 			"CORE_CHAINCODE_LOGGING_LEVEL=" + config.LogLevel,
 			"CORE_CHAINCODE_LOGGING_SHIM=" + config.ShimLogLevel,

@@ -182,7 +182,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		aclmgmt.GetACLProvider(),
 		container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockercontroller.NewProvider(),
+				dockercontroller.ContainerType: dockercontroller.NewProvider("", ""),
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),

@@ -44,8 +44,6 @@ type ContainerRuntime struct {
 	CACert        []byte
 	CommonEnv     []string
 	PeerAddress   string
-	PeerID        string
-	PeerNetworkID string
 }
 
 type platformBuilder struct {
@@ -65,7 +63,7 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 		return err
 	}
 
-	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", cname, c.PeerNetworkID, c.PeerID)
+	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", cname)
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
@@ -77,8 +75,6 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 		FilesToUpload: lc.Files,
 		CCID: ccintf.CCID{
 			ChaincodeSpec: cds.ChaincodeSpec,
-			NetworkID:     c.PeerNetworkID,
-			PeerID:        c.PeerID,
 			Version:       cccid.Version,
 		},
 	}
@@ -97,8 +93,6 @@ func (c *ContainerRuntime) Stop(ctxt context.Context, cccid *ccprovider.CCContex
 	scr := container.StopContainerReq{
 		CCID: ccintf.CCID{
 			ChaincodeSpec: cds.ChaincodeSpec,
-			NetworkID:     c.PeerNetworkID,
-			PeerID:        c.PeerID,
 			Version:       cccid.Version,
 		},
 		Timeout:    0,

@@ -22,8 +22,6 @@ const (
 )
 
 type Config struct {
-	PeerNetworkID  string
-	PeerID         string
 	TLSEnabled     bool
 	Keepalive      time.Duration
 	ExecuteTimeout time.Duration
@@ -45,8 +43,6 @@ func (c *Config) load() {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
-	c.PeerNetworkID = viper.GetString("peer.networkId")
-	c.PeerID = viper.GetString("peer.id")
 	c.TLSEnabled = viper.GetBool("peer.tls.enabled")
 
 	c.Keepalive = toSeconds(viper.GetString("chaincode.keepalive"), 0)

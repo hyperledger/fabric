@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package dockercontroller
@@ -46,7 +36,7 @@ import (
 func TestRealPath(t *testing.T) {
 	coreutil.SetupTestConfig()
 	ctxt := context.Background()
-	dc := NewDockerVM()
+	dc := NewDockerVM("", "")
 	ccid := ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}
 	reader := getCodeChainBytesInMem()
 
@@ -249,27 +239,73 @@ func Test_Destroy(t *testing.T) {
 
 type testCase struct {
 	name           string
+	vm             *DockerVM
 	ccid           ccintf.CCID
 	formatFunc     func(string) (string, error)
 	expectedOutput string
 }
 
 func TestGetVMName(t *testing.T) {
-	dvm := DockerVM{}
-	var tc []testCase
-
-	tc = append(tc,
-		testCase{"mycc", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-mycc-1.0"))))},
-		testCase{"mycc-nonetworkid", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, PeerID: "peer1", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "peer1-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("peer1-mycc-1.0"))))},
-		testCase{"myCC-UCids", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev-Peer0-myCC-1.0"))))},
-		testCase{"myCC-idsWithSpecialChars", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev$dev", PeerID: "Peer*0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-dev-peer-0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev$dev-Peer*0-myCC-1.0"))))},
-		testCase{"mycc-nopeerid", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, NetworkID: "dev", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-mycc-1.0"))))},
-		testCase{"myCC-LCids", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-myCC-1.0"))))},
-		testCase{"myCC-preserveCase", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, nil, fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0")},
-		testCase{"invalidCharsFormatFunction", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatInvalidChars, fmt.Sprintf("%s", "inv-lid-character--")})
+	tc := []testCase{
+		{
+			name:           "mycc",
+			vm:             &DockerVM{NetworkID: "dev", PeerID: "peer0"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, Version: "1.0"},
+			formatFunc:     formatImageName,
+			expectedOutput: fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-mycc-1.0")))),
+		},
+		{
+			name:           "mycc-nonetworkid",
+			vm:             &DockerVM{PeerID: "peer1"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, Version: "1.0"},
+			formatFunc:     formatImageName,
+			expectedOutput: fmt.Sprintf("%s-%s", "peer1-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("peer1-mycc-1.0")))),
+		},
+		{
+			name:           "myCC-UCids",
+			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, Version: "1.0"},
+			formatFunc:     formatImageName,
+			expectedOutput: fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev-Peer0-myCC-1.0")))),
+		},
+		{
+			name:           "myCC-idsWithSpecialChars",
+			vm:             &DockerVM{NetworkID: "Dev$dev", PeerID: "Peer*0"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, Version: "1.0"},
+			formatFunc:     formatImageName,
+			expectedOutput: fmt.Sprintf("%s-%s", "dev-dev-peer-0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev$dev-Peer*0-myCC-1.0")))),
+		},
+		{
+			name:           "mycc-nopeerid",
+			vm:             &DockerVM{NetworkID: "dev"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, Version: "1.0"},
+			formatFunc:     formatImageName,
+			expectedOutput: fmt.Sprintf("%s-%s", "dev-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-mycc-1.0")))),
+		},
+		{
+			name:           "myCC-LCids",
+			vm:             &DockerVM{NetworkID: "dev", PeerID: "peer0"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, Version: "1.0"},
+			formatFunc:     formatImageName,
+			expectedOutput: fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-myCC-1.0")))),
+		},
+		{
+			name:           "myCC-preserveCase",
+			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, Version: "1.0"},
+			formatFunc:     nil,
+			expectedOutput: fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0")},
+		{
+			name:           "invalidCharsFormatFunction",
+			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
+			ccid:           ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, Version: "1.0"},
+			formatFunc:     formatInvalidChars,
+			expectedOutput: fmt.Sprintf("%s", "inv-lid-character--"),
+		},
+	}
 
 	for _, test := range tc {
-		name, err := dvm.GetVMName(test.ccid, test.formatFunc)
+		name, err := test.vm.GetVMName(test.ccid, test.formatFunc)
 		assert.Nil(t, err, "Expected nil error")
 		assert.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
 	}

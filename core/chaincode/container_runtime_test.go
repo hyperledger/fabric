@@ -171,10 +171,8 @@ func TestContainerRuntimeStart(t *testing.T) {
 	for _, tc := range tests {
 		fakeProcessor := &mock.Processor{}
 		cr := &chaincode.ContainerRuntime{
-			Processor:     fakeProcessor,
-			PeerAddress:   "peer.example.com",
-			PeerID:        "peer-id",
-			PeerNetworkID: "peer-network-id",
+			Processor:   fakeProcessor,
+			PeerAddress: "peer.example.com",
 		}
 
 		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
@@ -202,8 +200,6 @@ func TestContainerRuntimeStart(t *testing.T) {
 		assert.Equal(t, startReq.CCID, ccintf.CCID{
 			ChaincodeSpec: cds.ChaincodeSpec,
 			Version:       "context-version",
-			NetworkID:     "peer-network-id",
-			PeerID:        "peer-id",
 		})
 	}
 }
@@ -224,10 +220,8 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		fakeProcessor.ProcessReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
-			Processor:     fakeProcessor,
-			PeerAddress:   "peer.example.com",
-			PeerID:        "peer-id",
-			PeerNetworkID: "peer-network-id",
+			Processor:   fakeProcessor,
+			PeerAddress: "peer.example.com",
 		}
 
 		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
@@ -254,9 +248,7 @@ func TestContainerRuntimeStop(t *testing.T) {
 	for _, tc := range tests {
 		fakeProcessor := &mock.Processor{}
 		cr := &chaincode.ContainerRuntime{
-			Processor:     fakeProcessor,
-			PeerID:        "peer-id",
-			PeerNetworkID: "peer-network-id",
+			Processor: fakeProcessor,
 		}
 
 		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
@@ -282,8 +274,6 @@ func TestContainerRuntimeStop(t *testing.T) {
 		assert.Equal(t, stopReq.CCID, ccintf.CCID{
 			ChaincodeSpec: cds.ChaincodeSpec,
 			Version:       "context-version",
-			NetworkID:     "peer-network-id",
-			PeerID:        "peer-id",
 		})
 	}
 }
@@ -302,9 +292,7 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		fakeProcessor.ProcessReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
-			Processor:     fakeProcessor,
-			PeerID:        "peer-id",
-			PeerNetworkID: "peer-network-id",
+			Processor: fakeProcessor,
 		}
 
 		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)

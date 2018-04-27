@@ -31,8 +31,6 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("chaincode.logging.shim", "WARNING")
 
 	config := chaincode.GlobalConfig()
-	assert.Equal(t, "test-peer-network-id", config.PeerNetworkID)
-	assert.Equal(t, "test-peer-id", config.PeerID)
 	assert.Equal(t, true, config.TLSEnabled)
 	assert.Equal(t, 50*time.Second, config.Keepalive)
 	assert.Equal(t, 20*time.Hour, config.ExecuteTimeout)
