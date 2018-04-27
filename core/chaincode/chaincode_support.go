@@ -169,19 +169,19 @@ func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContex
 }
 
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into ready state.
-func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
+func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeInput, error) {
 	cname := cccid.GetCanonicalName()
 	cID := spec.GetChaincodeSpec().ChaincodeId
 	cMsg := spec.GetChaincodeSpec().Input
 
 	if cs.HandlerRegistry.Handler(cname) != nil {
-		return cID, cMsg, nil
+		return cMsg, nil
 	}
 
 	cds, _ := spec.(*pb.ChaincodeDeploymentSpec)
 	if cds == nil {
 		if cccid.Syscc {
-			return cID, cMsg, errors.Errorf("a syscc should be running (it cannot be launched) %s", cname)
+			return cMsg, errors.Errorf("a syscc should be running (it cannot be launched) %s", cname)
 		}
 
 		if cs.userRunsCC {
@@ -192,10 +192,10 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 		//(this will also validate the ID from the LSCC if we're not using the config-tree approach)
 		depPayload, err := cs.GetCDS(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
 		if err != nil {
-			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("could not get ChaincodeDeploymentSpec for %s", cname))
+			return cMsg, errors.WithMessage(err, fmt.Sprintf("could not get ChaincodeDeploymentSpec for %s", cname))
 		}
 		if depPayload == nil {
-			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("nil ChaincodeDeploymentSpec for %s", cname))
+			return cMsg, errors.WithMessage(err, fmt.Sprintf("nil ChaincodeDeploymentSpec for %s", cname))
 		}
 
 		cds = &pb.ChaincodeDeploymentSpec{}
@@ -203,7 +203,7 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 		//Get lang from original deployment
 		err = proto.Unmarshal(depPayload, cds)
 		if err != nil {
-			return cID, cMsg, errors.Wrap(err, fmt.Sprintf("failed to unmarshal deployment transactions for %s", cname))
+			return cMsg, errors.Wrap(err, fmt.Sprintf("failed to unmarshal deployment transactions for %s", cname))
 		}
 	}
 
@@ -225,7 +225,7 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 			if !(cs.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) {
 				ccpack, err := cs.PackageProvider.GetChaincode(cID.Name, cID.Version)
 				if err != nil {
-					return cID, cMsg, err
+					return cMsg, err
 				}
 
 				cds = ccpack.GetDepSpec()
@@ -236,13 +236,13 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 		err := cs.launchAndWaitForReady(context, cccid, cds)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForReady failed: %+v", err)
-			return cID, cMsg, err
+			return cMsg, err
 		}
 	}
 
-	chaincodeLogger.Debug("LaunchChaincode complete")
+	chaincodeLogger.Debug("launch complete")
 
-	return cID, cMsg, nil
+	return cMsg, nil
 }
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
@@ -302,7 +302,7 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 		cctyp = pb.ChaincodeMessage_TRANSACTION
 	}
 
-	_, cMsg, err := cs.Launch(ctxt, cccid, spec)
+	cMsg, err := cs.Launch(ctxt, cccid, spec)
 	if err != nil {
 		return nil, nil, err
 	}

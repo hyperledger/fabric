@@ -55,7 +55,7 @@ type Registry interface {
 // internal interface to scope dependencies on ChaincodeSupport
 type handlerSupport interface {
 	GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error)
-	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeID, *pb.ChaincodeInput, error)
+	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeInput, error)
 	Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error)
 }
 
@@ -1118,7 +1118,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s",
 				shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 			cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
-			_, chaincodeInput, launchErr := h.handlerSupport.Launch(ctxt, cccid, cciSpec)
+			chaincodeInput, launchErr := h.handlerSupport.Launch(ctxt, cccid, cciSpec)
 			if launchErr != nil {
 				payload := []byte(launchErr.Error())
 				chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s",
