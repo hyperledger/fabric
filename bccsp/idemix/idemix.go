@@ -100,3 +100,39 @@ type Revocation interface {
 	// is used in this epoch.
 	Verify(pk *ecdsa.PublicKey, cri []byte, epoch int, alg bccsp.RevocationAlgorithm) error
 }
+
+// SignatureScheme is a local interface to decouple from the idemix implementation
+// the sign-related operations
+type SignatureScheme interface {
+	// Sign creates a new idemix signature (Schnorr-type signature).
+	// The attributes slice steers which attributes are disclosed:
+	// If attributes[i].Type == bccsp.IdemixHiddenAttribute then attribute i remains hidden and otherwise it is disclosed.
+	// We require the revocation handle to remain undisclosed (i.e., attributes[rhIndex] == bccsp.IdemixHiddenAttribute).
+	// Parameters are to be understood as follow:
+	// cred: the serialized version of an idemix credential;
+	// sk: the user secret key;
+	// (Nym, RNym): Nym key-pair;
+	// ipk: issuer public key;
+	// attributes: as described above;
+	// msg: the message to be signed;
+	// rhIndex: revocation handle index relative to attributes;
+	// cri: the serialized version of the Credential Revocation Information (it contains the epoch this signature
+	// is created in reference to).
+	Sign(cred []byte, sk Big, Nym Ecp, RNym Big, ipk IssuerPublicKey, attributes []bccsp.IdemixAttribute,
+		msg []byte, rhIndex int, cri []byte) ([]byte, error)
+
+	// Verify verifies an idemix signature.
+	// The attribute slice steers which attributes it expects to be disclosed
+	// If attributes[i].Type == bccsp.IdemixHiddenAttribute then attribute i remains hidden and otherwise
+	// attributes[i].Value is expected to contain the disclosed attribute value.
+	// In other words, this function will check that if attribute i is disclosed, the i-th attribute equals attributes[i].Value.
+	// Parameters are to be understood as follow:
+	// ipk: issuer public key;
+	// signature: signature to verify;
+	// msg: message signed;
+	// attributes: as described above;
+	// rhIndex: revocation handle index relative to attributes;
+	// revocationPublicKey: revocation public key;
+	// epoch: revocation epoch.
+	Verify(ipk IssuerPublicKey, signature, msg []byte, attributes []bccsp.IdemixAttribute, rhIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) error
+}
