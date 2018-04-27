@@ -274,6 +274,29 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	err = validatePeerConnectionParameters("invoke")
 	assert.NoError(err)
 
+	// failure - connection profile doesn't exist
+	resetFlags()
+	connectionProfile = "blah"
+	err = validatePeerConnectionParameters("invoke")
+	assert.Error(err)
+	assert.Contains(err.Error(), "error reading connection profile")
+
+	// failure - connection profile has peer defined in channel config but
+	// not in peer config
+	resetFlags()
+	channelID = "mychannel"
+	connectionProfile = "../common/testdata/connectionprofile-uneven.yaml"
+	err = validatePeerConnectionParameters("invoke")
+	assert.Error(err)
+	assert.Contains(err.Error(), "defined in the channel config but doesn't have associated peer config")
+
+	// success - connection profile exists
+	resetFlags()
+	channelID = "mychannel"
+	connectionProfile = "../common/testdata/connectionprofile.yaml"
+	err = validatePeerConnectionParameters("invoke")
+	assert.NoError(err)
+
 	// cleanup pflags and viper
 	resetFlags()
 	viper.Reset()

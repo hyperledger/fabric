@@ -65,6 +65,7 @@ var (
 	collectionConfigBytes []byte
 	peerAddresses         []string
 	tlsRootCertFiles      []string
+	connectionProfile     string
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -116,6 +117,8 @@ func resetFlags() {
 		fmt.Sprint("The addresses of the peers to connect to"))
 	flags.StringArrayVarP(&tlsRootCertFiles, "tlsRootCertFiles", "", []string{common.UndefinedParamValue},
 		fmt.Sprint("If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag"))
+	flags.StringVarP(&connectionProfile, "connectionProfile", "", common.UndefinedParamValue,
+		fmt.Sprint("Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information"))
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

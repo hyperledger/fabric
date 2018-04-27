@@ -52,6 +52,7 @@ func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"version",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 	}
 	attachFlags(chaincodeInstallCmd, flagList)
 

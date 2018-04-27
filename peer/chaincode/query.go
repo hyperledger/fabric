@@ -33,6 +33,7 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"channelID",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 	}
 	attachFlags(chaincodeQueryCmd, flagList)
 

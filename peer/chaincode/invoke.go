@@ -32,6 +32,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"channelID",
 		"peerAddresses",
 		"tlsRootCertFiles",
+		"connectionProfile",
 	}
 	attachFlags(chaincodeInvokeCmd, flagList)
 
