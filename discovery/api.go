@@ -48,7 +48,7 @@ type GossipSupport interface {
 // for chaincodes
 type EndorsementSupport interface {
 	// PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-	PeersForEndorsement(chaincode string, channel common.ChainID) (*discovery2.EndorsementDescriptor, error)
+	PeersForEndorsement(channel common.ChainID, interest *discovery2.ChaincodeInterest) (*discovery2.EndorsementDescriptor, error)
 }
 
 // ConfigSupport provides access to channel configuration
