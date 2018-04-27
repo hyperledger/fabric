@@ -25,7 +25,7 @@ import (
 
 // Processor processes vm and container requests.
 type Processor interface {
-	Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error)
+	Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) error
 }
 
 // CertGenerator generates client certificates for chaincode.
@@ -82,9 +82,8 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 	}
 
 	vmtype := getVMType(cds)
-	resp, err := c.Processor.Process(ctxt, vmtype, scr)
-	err = selectError(&resp, err)
-	if err != nil {
+
+	if err := c.Processor.Process(ctxt, vmtype, scr); err != nil {
 		return errors.WithMessage(err, "error starting container")
 	}
 
@@ -104,9 +103,7 @@ func (c *ContainerRuntime) Stop(ctxt context.Context, cccid *ccprovider.CCContex
 		Dontremove: false,
 	}
 
-	resp, err := c.Processor.Process(ctxt, getVMType(cds), scr)
-	err = selectError(&resp, err)
-	if err != nil {
+	if err := c.Processor.Process(ctxt, getVMType(cds), scr); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 
@@ -118,17 +115,6 @@ func getVMType(cds *pb.ChaincodeDeploymentSpec) string {
 		return container.SYSTEM
 	}
 	return container.DOCKER
-}
-
-func selectError(resp *container.VMCResp, err error) error {
-	switch {
-	case err != nil:
-		return err
-	case resp.Err != nil:
-		return resp.Err
-	default:
-		return nil
-	}
 }
 
 const (

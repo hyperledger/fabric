@@ -209,18 +209,17 @@ func TestContainerRuntimeStart(t *testing.T) {
 func TestContainerRuntimeStartErrors(t *testing.T) {
 	tests := []struct {
 		chaincodeType pb.ChaincodeSpec_Type
-		processResp   container.VMCResp
 		processErr    error
 		errValue      string
 	}{
-		{pb.ChaincodeSpec_Type(999), container.VMCResp{}, nil, "unknown chaincodeType: 999"},
-		{pb.ChaincodeSpec_GOLANG, container.VMCResp{}, errors.New("process-failed"), "error starting container: process-failed"},
-		{pb.ChaincodeSpec_GOLANG, container.VMCResp{Err: errors.New("error-in-response")}, nil, "error starting container: error-in-response"},
+		{pb.ChaincodeSpec_Type(999), nil, "unknown chaincodeType: 999"},
+		{pb.ChaincodeSpec_GOLANG, errors.New("process-failed"), "error starting container: process-failed"},
+		{pb.ChaincodeSpec_GOLANG, errors.New("error-in-response"), "error starting container: error-in-response"},
 	}
 
 	for _, tc := range tests {
 		fakeProcessor := &mock.Processor{}
-		fakeProcessor.ProcessReturns(tc.processResp, tc.processErr)
+		fakeProcessor.ProcessReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
 			Processor:     fakeProcessor,
@@ -289,17 +288,16 @@ func TestContainerRuntimeStop(t *testing.T) {
 
 func TestContainerRuntimeStopErrors(t *testing.T) {
 	tests := []struct {
-		processResp container.VMCResp
-		processErr  error
-		errValue    string
+		processErr error
+		errValue   string
 	}{
-		{container.VMCResp{}, errors.New("process-failed"), "error stopping container: process-failed"},
-		{container.VMCResp{Err: errors.New("error-in-response")}, nil, "error stopping container: error-in-response"},
+		{errors.New("process-failed"), "error stopping container: process-failed"},
+		{errors.New("error-in-response-is-ignored"), "error stopping container: error-in-response-is-ignored"},
 	}
 
 	for _, tc := range tests {
 		fakeProcessor := &mock.Processor{}
-		fakeProcessor.ProcessReturns(tc.processResp, tc.processErr)
+		fakeProcessor.ProcessReturns(tc.processErr)
 
 		cr := &chaincode.ContainerRuntime{
 			Processor:     fakeProcessor,

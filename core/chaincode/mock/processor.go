@@ -9,7 +9,7 @@ import (
 )
 
 type Processor struct {
-	ProcessStub        func(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error)
+	ProcessStub        func(ctxt context.Context, vmtype string, req container.VMCReqIntf) error
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
 		ctxt   context.Context
@@ -17,18 +17,16 @@ type Processor struct {
 		req    container.VMCReqIntf
 	}
 	processReturns struct {
-		result1 container.VMCResp
-		result2 error
+		result1 error
 	}
 	processReturnsOnCall map[int]struct {
-		result1 container.VMCResp
-		result2 error
+		result1 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Processor) Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error) {
+func (fake *Processor) Process(ctxt context.Context, vmtype string, req container.VMCReqIntf) error {
 	fake.processMutex.Lock()
 	ret, specificReturn := fake.processReturnsOnCall[len(fake.processArgsForCall)]
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
@@ -42,9 +40,9 @@ func (fake *Processor) Process(ctxt context.Context, vmtype string, req containe
 		return fake.ProcessStub(ctxt, vmtype, req)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	return fake.processReturns.result1, fake.processReturns.result2
+	return fake.processReturns.result1
 }
 
 func (fake *Processor) ProcessCallCount() int {
@@ -59,26 +57,23 @@ func (fake *Processor) ProcessArgsForCall(i int) (context.Context, string, conta
 	return fake.processArgsForCall[i].ctxt, fake.processArgsForCall[i].vmtype, fake.processArgsForCall[i].req
 }
 
-func (fake *Processor) ProcessReturns(result1 container.VMCResp, result2 error) {
+func (fake *Processor) ProcessReturns(result1 error) {
 	fake.ProcessStub = nil
 	fake.processReturns = struct {
-		result1 container.VMCResp
-		result2 error
-	}{result1, result2}
+		result1 error
+	}{result1}
 }
 
-func (fake *Processor) ProcessReturnsOnCall(i int, result1 container.VMCResp, result2 error) {
+func (fake *Processor) ProcessReturnsOnCall(i int, result1 error) {
 	fake.ProcessStub = nil
 	if fake.processReturnsOnCall == nil {
 		fake.processReturnsOnCall = make(map[int]struct {
-			result1 container.VMCResp
-			result2 error
+			result1 error
 		})
 	}
 	fake.processReturnsOnCall[i] = struct {
-		result1 container.VMCResp
-		result2 error
-	}{result1, result2}
+		result1 error
+	}{result1}
 }
 
 func (fake *Processor) Invocations() map[string][][]interface{} {

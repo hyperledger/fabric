@@ -10,7 +10,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -51,14 +50,8 @@ type CreateImageReq struct {
 	Env    []string
 }
 
-func (bp CreateImageReq) do(ctxt context.Context, v api.VM) VMCResp {
-	var resp VMCResp
-	if err := v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader); err != nil {
-		resp = VMCResp{Err: err}
-	} else {
-		resp = VMCResp{}
-	}
-	return resp
+func (bp CreateImageReq) do(ctxt context.Context, v api.VM) error {
+	return v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader)
 }
 func (bp CreateImageReq) getCCID() ccintf.CCID {
 	return bp.CCID
@@ -75,10 +68,9 @@ func createEnv() *VMController {
 
 	//create a the image needed for the rest of the tests obj and send it to Process
 	cir := CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}, Reader: tarRdr}
-	resp, err := vmc.Process(ctxt, "Docker", cir)
-	eResp := VMCResp{}
-	if err != nil || resp != eResp {
-		panic(fmt.Sprintf("err: %s, resp: %s", err, resp))
+	err = vmc.Process(ctxt, "Docker", cir)
+	if err != nil {
+		panic(err)
 	}
 	return vmc
 }
@@ -93,11 +85,9 @@ func TestVMCStartContainer(t *testing.T) {
 	vmc := createEnv()
 
 	sir := StartContainerReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}}
-	_, err := vmc.Process(ctxt, "Docker", sir)
+	err := vmc.Process(ctxt, "Docker", sir)
 	if err != nil {
-		t.Fail()
-		t.Logf("Error starting container: %s", err)
-		return
+		t.Fatalf("Error starting container: %s", err)
 	}
 	stopr := StopContainerReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}, Timeout: 0, Dontremove: true}
 	vmc.Process(ctxt, "Docker", stopr)
@@ -113,16 +103,9 @@ func TestVMCCreateAndStartContainer(t *testing.T) {
 	vmc.Process(ctxt, "Docker", stopir)
 
 	startir := StartContainerReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}}
-	r, err := vmc.Process(ctxt, "Docker", startir)
+	err := vmc.Process(ctxt, "Docker", startir)
 	if err != nil {
-		t.Fail()
-		t.Logf("Error starting container: %s", err)
-		return
-	}
-	if r.Err != nil {
-		t.Fail()
-		t.Logf("docker error starting container: %s", r.Err)
-		return
+		t.Fatalf("Error starting container: %s", err)
 	}
 }
 
@@ -132,11 +115,9 @@ func TestVMCSyncStartContainer(t *testing.T) {
 
 	//creat a StartImageReq obj and send it to Process
 	sir := StartContainerReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}}
-	_, err := vmc.Process(ctxt, "Docker", sir)
+	err := vmc.Process(ctxt, "Docker", sir)
 	if err != nil {
-		t.Fail()
-		t.Logf("Error starting container: %s", err)
-		return
+		t.Fatalf("Error starting container: %s", err)
 	}
 	stopr := StopContainerReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}, Timeout: 0, Dontremove: true}
 	vmc.Process(ctxt, "Docker", stopr)
@@ -147,11 +128,9 @@ func TestVMCStopContainer(t *testing.T) {
 	vmc := createEnv()
 
 	sir := StopContainerReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "simple"}}}, Timeout: 0}
-	_, err := vmc.Process(ctxt, "Docker", sir)
+	err := vmc.Process(ctxt, "Docker", sir)
 	if err != nil {
-		t.Fail()
-		t.Logf("Error stopping container: %s", err)
-		return
+		t.Fatalf("Error stopping container: %s", err)
 	}
 }
 

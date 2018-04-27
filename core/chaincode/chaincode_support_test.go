@@ -226,22 +226,22 @@ func mockChaincodeStreamGetter(name string) (shim.PeerChaincodeStream, error) {
 
 type mockCCLauncher struct {
 	execTime *time.Duration
-	resp     container.VMCResp
+	resp     error
 	retErr   error
 	notfyb   bool
 }
 
-func (ccl *mockCCLauncher) launch(ctxt context.Context, notfy chan bool) (container.VMCResp, error) {
+func (ccl *mockCCLauncher) launch(ctxt context.Context, notfy chan bool) error {
 	if ccl.execTime != nil {
 		time.Sleep(*ccl.execTime)
 	}
 
 	//no error on launch, notify
-	if ccl.resp.Err == nil {
+	if ccl.resp == nil {
 		notfy <- ccl.notfyb
 	}
 
-	return ccl.resp, ccl.retErr
+	return ccl.retErr
 }
 
 func setupcc(name string) (*mockpeer.MockCCComm, *mockpeer.MockCCComm) {

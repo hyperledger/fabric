@@ -108,15 +108,8 @@ func (vmc *VMController) unlockContainer(id string) {
 //note that we'd stop on the first method on the stack that does not
 //take context
 type VMCReqIntf interface {
-	do(ctxt context.Context, v api.VM) VMCResp
+	do(ctxt context.Context, v api.VM) error
 	getCCID() ccintf.CCID
-}
-
-//VMCResp - response from requests. resp field is a anon interface.
-//It can hold any response. err should be tested first
-type VMCResp struct {
-	Err  error
-	Resp interface{}
 }
 
 //StartContainerReq - properties for starting a container.
@@ -128,16 +121,8 @@ type StartContainerReq struct {
 	FilesToUpload map[string][]byte
 }
 
-func (si StartContainerReq) do(ctxt context.Context, v api.VM) VMCResp {
-	var resp VMCResp
-
-	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder); err != nil {
-		resp = VMCResp{Err: err}
-	} else {
-		resp = VMCResp{}
-	}
-
-	return resp
+func (si StartContainerReq) do(ctxt context.Context, v api.VM) error {
+	return v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
 }
 
 func (si StartContainerReq) getCCID() ccintf.CCID {
@@ -154,16 +139,8 @@ type StopContainerReq struct {
 	Dontremove bool
 }
 
-func (si StopContainerReq) do(ctxt context.Context, v api.VM) VMCResp {
-	var resp VMCResp
-
-	if err := v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove); err != nil {
-		resp = VMCResp{Err: err}
-	} else {
-		resp = VMCResp{}
-	}
-
-	return resp
+func (si StopContainerReq) do(ctxt context.Context, v api.VM) error {
+	return v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove)
 }
 
 func (si StopContainerReq) getCCID() ccintf.CCID {
@@ -178,34 +155,34 @@ func (si StopContainerReq) getCCID() ccintf.CCID {
 //context can be cancelled. VMCProcess will try to cancel calling functions if it can
 //For instance docker clients api's such as BuildImage are not cancelable.
 //In all cases VMCProcess will wait for the called go routine to return
-func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReqIntf) (VMCResp, error) {
+func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReqIntf) error {
 	v := vmc.newVM(vmtype)
 	if v == nil {
-		return VMCResp{}, fmt.Errorf("Unknown VM type %s", vmtype)
+		return fmt.Errorf("Unknown VM type %s", vmtype)
 	}
 
-	c := make(chan struct{})
-	var resp VMCResp
+	c := make(chan error)
 	go func() {
-		defer close(c)
-
 		id, err := v.GetVMName(req.getCCID(), nil)
 		if err != nil {
-			resp = VMCResp{Err: err}
+			c <- err
 			return
 		}
 		vmc.lockContainer(id)
-		resp = req.do(ctxt, v)
+		err = req.do(ctxt, v)
 		vmc.unlockContainer(id)
+		c <- err
 	}()
 
 	select {
-	case <-c:
-		return resp, nil
+	case err := <-c:
+		return err
 	case <-ctxt.Done():
 		//TODO cancel req.do ... (needed) ?
+		// XXX This logic doesn't make much sense, why return the context error if it's canceled,
+		// but still wait for the request to complete, and ignore its error
 		<-c
-		return VMCResp{}, ctxt.Err()
+		return ctxt.Err()
 	}
 }
 
