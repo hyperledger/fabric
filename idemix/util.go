@@ -25,6 +25,9 @@ var GenG2 = FP256BN.NewECP2fp2s(
 	FP256BN.NewFP2bigs(FP256BN.NewBIGints(FP256BN.CURVE_Pxa), FP256BN.NewBIGints(FP256BN.CURVE_Pxb)),
 	FP256BN.NewFP2bigs(FP256BN.NewBIGints(FP256BN.CURVE_Pya), FP256BN.NewBIGints(FP256BN.CURVE_Pyb)))
 
+// GenGT is a generator of Group GT
+var GenGT = FP256BN.Fexp(FP256BN.Ate(GenG2, GenG1))
+
 // GroupOrder is the order of the groups
 var GroupOrder = FP256BN.NewBIGints(FP256BN.CURVE_Order)
 
