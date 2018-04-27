@@ -159,10 +159,6 @@ func (cs *ChaincodeSupport) launchAndWaitForReady(ctx context.Context, cccid *cc
 //Stop stops a chaincode if running
 func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
-	if cname == "" {
-		return errors.New("chaincode name not set")
-	}
-
 	defer cs.HandlerRegistry.Deregister(cname)
 
 	err := cs.ContainerRuntime.Stop(ctx, cccid, cds)
@@ -274,14 +270,14 @@ func createCCMessage(typ pb.ChaincodeMessage_Type, cid string, txid string, cMsg
 func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
-	canName := cccid.GetCanonicalName()
+	cname := cccid.GetCanonicalName()
 
-	chaincodeLogger.Debugf("chaincode canonical name: %s", canName)
+	chaincodeLogger.Debugf("chaincode canonical name: %s", cname)
 	//we expect the chaincode to be running... sanity check
-	handler := cs.HandlerRegistry.Handler(canName)
+	handler := cs.HandlerRegistry.Handler(cname)
 	if handler == nil {
-		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", canName)
-		return nil, errors.Errorf("cannot execute transaction for %s", canName)
+		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", cname)
+		return nil, errors.Errorf("cannot execute transaction for %s", cname)
 	}
 
 	ccresp, err := handler.Execute(ctxt, cccid, msg, timeout)
