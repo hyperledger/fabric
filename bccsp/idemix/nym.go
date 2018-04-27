@@ -82,6 +82,10 @@ type nymPublicKey struct {
 	pk Ecp
 }
 
+func NewNymPublicKey(pk Ecp) *nymPublicKey {
+	return &nymPublicKey{pk: pk}
+}
+
 func (k *nymPublicKey) Bytes() ([]byte, error) {
 	return k.pk.Bytes()
 }

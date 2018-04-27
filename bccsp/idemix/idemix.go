@@ -136,3 +136,13 @@ type SignatureScheme interface {
 	// epoch: revocation epoch.
 	Verify(ipk IssuerPublicKey, signature, msg []byte, attributes []bccsp.IdemixAttribute, rhIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) error
 }
+
+// NymSignatureScheme is a local interface to decouple from the idemix implementation
+// the nym sign-related operations
+type NymSignatureScheme interface {
+	// Sign creates a new idemix pseudonym signature
+	Sign(sk Big, Nym Ecp, RNym Big, ipk IssuerPublicKey, digest []byte) ([]byte, error)
+
+	// Verify verifies an idemix NymSignature
+	Verify(pk IssuerPublicKey, Nym Ecp, signature, digest []byte) error
+}
