@@ -47,12 +47,14 @@ type ACLProvider interface {
 	CheckACL(resName string, channelID string, idinfo interface{}) error
 }
 
+type Registry interface {
+	Register(*Handler) error
+	Ready(cname string)
+	Deregister(cname string) error
+}
+
 // internal interface to scope dependencies on ChaincodeSupport
 type handlerSupport interface {
-	deregisterHandler(*Handler) error
-	registerHandler(*Handler) error
-	ready(*Handler)
-
 	GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (resourcesconfig.ChaincodeDefinition, error)
 	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeID, *pb.ChaincodeInput, error)
 	Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error)
@@ -89,6 +91,7 @@ type Handler struct {
 	keepalive  time.Duration
 	userRunsCC bool
 
+	registry    Registry
 	aclProvider ACLProvider
 }
 
@@ -217,7 +220,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 }
 
 func (h *Handler) deregister() {
-	h.handlerSupport.deregisterHandler(h)
+	h.registry.Deregister(h.ChaincodeID.Name)
 }
 
 func (h *Handler) waitForKeepaliveTimer() <-chan time.Time {
@@ -333,6 +336,7 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		keepalive:          chaincodeSupport.keepalive,
 		userRunsCC:         chaincodeSupport.userRunsCC,
 		aclProvider:        chaincodeSupport.ACLProvider,
+		registry:           chaincodeSupport.HandlerRegistry,
 		sccp:               sccp,
 	}
 
@@ -381,7 +385,7 @@ func (h *Handler) sendReady() error {
 	}
 
 	h.state = ready
-	h.handlerSupport.ready(h)
+	h.registry.Ready(h.ChaincodeID.Name)
 
 	chaincodeLogger.Debugf("Changed to state ready for chaincode %+v", h.ChaincodeID)
 
@@ -411,7 +415,7 @@ func (h *Handler) handleRegister(msg *pb.ChaincodeMessage) {
 
 	// Now register with the chaincodeSupport
 	h.ChaincodeID = chaincodeID
-	err = h.handlerSupport.registerHandler(h)
+	err = h.registry.Register(h)
 	if err != nil {
 		h.notifyDuringStartup(false)
 		return
