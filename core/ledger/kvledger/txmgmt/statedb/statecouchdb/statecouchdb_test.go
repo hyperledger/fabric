@@ -118,18 +118,6 @@ func TestIterator(t *testing.T) {
 	commontests.TestIterator(t, env.DBProvider)
 }
 
-func TestEncodeDecodeValueAndVersion(t *testing.T) {
-	testValueAndVersionEncoding(t, []byte("value1"), version.NewHeight(1, 2))
-	testValueAndVersionEncoding(t, []byte{}, version.NewHeight(50, 50))
-}
-
-func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := statedb.EncodeValue(value, version)
-	val, ver := statedb.DecodeValue(encodedValue)
-	testutil.AssertEquals(t, val, value)
-	testutil.AssertEquals(t, ver, version)
-}
-
 // The following tests are unique to couchdb, they are not used in leveldb
 //  query test
 func TestQuery(t *testing.T) {
