@@ -56,7 +56,7 @@ type Registry interface {
 type handlerSupport interface {
 	GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error)
 	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeInput, error)
-	Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error)
+	execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error)
 }
 
 // Handler responsible for management of Peer's side of chaincode stream
@@ -1133,7 +1133,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			ccMsg, _ := createCCMessage(pb.ChaincodeMessage_TRANSACTION, calledCcIns.ChainID, msg.Txid, chaincodeInput)
 
 			// Execute the chaincode... this CANNOT be an init at least for now
-			response, execErr := h.handlerSupport.Execute(ctxt, cccid, ccMsg, timeout)
+			response, execErr := h.handlerSupport.execute(ctxt, cccid, ccMsg, timeout)
 
 			//payload is marshalled and send to the calling chaincode's shim which unmarshals and
 			//sends it to chaincode

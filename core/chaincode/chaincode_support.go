@@ -42,7 +42,7 @@ type PackageProvider interface {
 	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
 }
 
-// NewChaincodeSupport creates a new ChaincodeSupport instance
+// NewChaincodeSupport creates a new ChaincodeSupport instance.
 func NewChaincodeSupport(
 	config *Config,
 	peerAddress string,
@@ -108,7 +108,7 @@ type ChaincodeSupport struct {
 // SetSysCCProvider is a bit of a hack to make a latent dependency of ChaincodeSupport
 // be an explicit dependency.  Because the chaincode support must be registered before
 // the sysccprovider implementation can be created, we cannot make the sccp part of the
-// constructor for ChaincodeSupport
+// constructor for ChaincodeSupport.
 func (cs *ChaincodeSupport) SetSysCCProvider(sccp sysccprovider.SystemChaincodeProvider) {
 	cs.sccp = sccp
 }
@@ -141,7 +141,7 @@ func (cs *ChaincodeSupport) launchAndWaitForReady(ctx context.Context, cccid *cc
 	case <-ready:
 	case err = <-launchFail:
 	case <-time.After(cs.ccStartupTimeout):
-		err = errors.Errorf("timeout expired while starting chaincode %s(tx:%s)", cname, cccid.TxID)
+		err = errors.Errorf("timeout expired while starting chaincode %s for transaction %s", cname, cccid.TxID)
 	}
 
 	if err != nil {
@@ -155,7 +155,7 @@ func (cs *ChaincodeSupport) launchAndWaitForReady(ctx context.Context, cccid *cc
 	return nil
 }
 
-//Stop stops a chaincode if running
+// Stop stops a chaincode if running.
 func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
 	defer cs.HandlerRegistry.Deregister(cname)
@@ -256,27 +256,29 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 }
 
 // createCCMessage creates a transaction message.
-func createCCMessage(typ pb.ChaincodeMessage_Type, cid string, txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 	payload, err := proto.Marshal(cMsg)
 	if err != nil {
-		fmt.Printf(err.Error())
 		return nil, err
 	}
-	return &pb.ChaincodeMessage{Type: typ, Payload: payload, Txid: txid, ChannelId: cid}, nil
+	ccmsg := &pb.ChaincodeMessage{
+		Type:      messageType,
+		Payload:   payload,
+		Txid:      txid,
+		ChannelId: cid,
+	}
+	return ccmsg, nil
 }
 
-// Execute executes a transaction and waits for it to complete until a timeout value.
-func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
-	chaincodeLogger.Debugf("Entry")
-	defer chaincodeLogger.Debugf("Exit")
+// execute executes a transaction and waits for it to complete until a timeout value.
+func (cs *ChaincodeSupport) execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	cname := cccid.GetCanonicalName()
+	chaincodeLogger.Debugf("canonical name: %s", cname)
 
-	chaincodeLogger.Debugf("chaincode canonical name: %s", cname)
-	//we expect the chaincode to be running... sanity check
 	handler := cs.HandlerRegistry.Handler(cname)
 	if handler == nil {
-		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", cname)
-		return nil, errors.Errorf("cannot execute transaction for %s", cname)
+		chaincodeLogger.Debugf("chaincode is not running: %s", cname)
+		return nil, errors.Errorf("unable to invoke chaincode %s", cname)
 	}
 
 	ccresp, err := handler.Execute(ctxt, cccid, msg, timeout)
@@ -289,17 +291,15 @@ func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCCo
 
 //Execute - execute proposal, return original response of chaincode
 func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
-	var err error
-	var cds *pb.ChaincodeDeploymentSpec
-	var ci *pb.ChaincodeInvocationSpec
+	var cctyp pb.ChaincodeMessage_Type
 
-	//init will call the Init method of a on a chain
-	cctyp := pb.ChaincodeMessage_INIT
-	if cds, _ = spec.(*pb.ChaincodeDeploymentSpec); cds == nil {
-		if ci, _ = spec.(*pb.ChaincodeInvocationSpec); ci == nil {
-			panic("Execute should be called with deployment or invocation spec")
-		}
+	switch spec.(type) {
+	case *pb.ChaincodeDeploymentSpec: // init
+		cctyp = pb.ChaincodeMessage_INIT
+	case *pb.ChaincodeInvocationSpec: // invoke
 		cctyp = pb.ChaincodeMessage_TRANSACTION
+	default:
+		return nil, nil, errors.New("a deployment or invocation spec is required")
 	}
 
 	cMsg, err := cs.Launch(ctxt, cccid, spec)
@@ -308,20 +308,17 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 	}
 
 	cMsg.Decorations = cccid.ProposalDecorations
-
-	var ccMsg *pb.ChaincodeMessage
-	ccMsg, err = createCCMessage(cctyp, cccid.ChainID, cccid.TxID, cMsg)
+	ccMsg, err := createCCMessage(cctyp, cccid.ChainID, cccid.TxID, cMsg)
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
 
-	resp, err := cs.Execute(ctxt, cccid, ccMsg, cs.executetimeout)
+	resp, err := cs.execute(ctxt, cccid, ccMsg, cs.executetimeout)
 	if err != nil {
-		// Rollback transaction
-		return nil, nil, errors.WithMessage(err, "failed to execute transaction")
-	} else if resp == nil {
-		// Rollback transaction
-		return nil, nil, errors.Errorf("failed to receive a response for txid (%s)", cccid.TxID)
+		return nil, nil, errors.WithMessage(err, "failed to execute transaction %s")
+	}
+	if resp == nil {
+		return nil, nil, errors.Errorf("nil response from transaction %s", cccid.TxID)
 	}
 
 	if resp.ChaincodeEvent != nil {
@@ -329,80 +326,77 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 		resp.ChaincodeEvent.TxId = cccid.TxID
 	}
 
-	if resp.Type == pb.ChaincodeMessage_COMPLETED {
+	switch resp.Type {
+	case pb.ChaincodeMessage_COMPLETED:
 		res := &pb.Response{}
-		unmarshalErr := proto.Unmarshal(resp.Payload, res)
-		if unmarshalErr != nil {
-			return nil, nil, errors.Wrap(unmarshalErr, fmt.Sprintf("failed to unmarshal response for txid (%s)", cccid.TxID))
+		err := proto.Unmarshal(resp.Payload, res)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to unmarshal response for transaction %s", cccid.TxID)
 		}
-
-		// Success
 		return res, resp.ChaincodeEvent, nil
-	} else if resp.Type == pb.ChaincodeMessage_ERROR {
-		// Rollback transaction
-		return nil, resp.ChaincodeEvent, errors.Errorf("transaction returned with failure: %s", string(resp.Payload))
-	}
 
-	//TODO - this should never happen ... a panic is more appropriate but will save that for future
-	return nil, nil, errors.Errorf("receive a response for txid (%s) but in invalid state (%d)", cccid.TxID, resp.Type)
-}
+	case pb.ChaincodeMessage_ERROR:
+		return nil, resp.ChaincodeEvent, errors.Errorf("transaction returned with failure: %s", resp.Payload)
 
-//create a chaincode invocation spec
-func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
-	var err error
-	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: ccname}, Input: &pb.ChaincodeInput{Args: args}}}
-	if nil != err {
-		return nil, err
+	default:
+		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.Type, cccid.TxID)
 	}
-	return spec, nil
 }
 
 // GetCDS retrieves a chaincode deployment spec for the required chaincode
 func (cs *ChaincodeSupport) GetCDS(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
 	version := util.GetSysCCVersion()
 	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
-	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+
+	args := util.ToChaincodeArgs("getdepspec", chainID, chaincodeID)
+	res, _, err := cs.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("execute getdepspec(%s, %s) of LSCC error", chainID, chaincodeID))
+		return nil, errors.Wrapf(err, "getdepspec %s/%s", chainID, chaincodeID)
 	}
 	if res.Status != shim.OK {
-		return nil, errors.Errorf("get ChaincodeDeploymentSpec for %s/%s from LSCC error: %s", chaincodeID, chainID, res.Message)
+		return nil, errors.Errorf("getdepspec %s/%s: %s", chainID, chaincodeID, res.Message)
 	}
 
 	return res.Payload, nil
 }
 
-// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
+// GetChaincodeDefinition returns a resourcesconfig.ChaincodeDefinition for the chaincode
+// associated with the provided channel and name.
 func (cs *ChaincodeSupport) GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error) {
 	version := util.GetSysCCVersion()
 	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
-	res, _, err := cs.ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
-	if err == nil {
-		if res.Status != shim.OK {
-			return nil, errors.New(res.Message)
-		}
-		cd := &ccprovider.ChaincodeData{}
-		err = proto.Unmarshal(res.Payload, cd)
-		if err != nil {
-			return nil, err
-		}
-		return cd, nil
+
+	args := util.ToChaincodeArgs("getccdata", chainID, chaincodeID)
+	res, _, err := cs.ExecuteChaincode(ctxt, cccid, args)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getccdata %s/%s", chainID, chaincodeID)
+	}
+	if res.Status != shim.OK {
+		return nil, errors.Errorf("getccdata %s/%s: %s", chainID, chaincodeID, res.Message)
 	}
 
-	return nil, err
+	cd := &ccprovider.ChaincodeData{}
+	err = proto.Unmarshal(res.Payload, cd)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal chaincode definition")
+	}
+
+	return cd, nil
 }
 
-// ExecuteChaincode executes a given chaincode given chaincode name and arguments
+// ExecuteChaincode invokes chaincode with the provided arguments.
 func (cs *ChaincodeSupport) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
-	var spec *pb.ChaincodeInvocationSpec
-	var err error
-	var res *pb.Response
-	var ccevent *pb.ChaincodeEvent
+	invocationSpec := &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_GOLANG,
+			ChaincodeId: &pb.ChaincodeID{Name: cccid.Name},
+			Input:       &pb.ChaincodeInput{Args: args},
+		},
+	}
 
-	spec, err = createCIS(cccid.Name, args)
-	res, ccevent, err = cs.ExecuteSpec(ctxt, cccid, spec)
+	res, ccevent, err := cs.ExecuteSpec(ctxt, cccid, invocationSpec)
 	if err != nil {
-		err = errors.WithMessage(err, "error executing chaincode")
+		err = errors.WithMessage(err, "error invoking chaincode")
 		chaincodeLogger.Errorf("%+v", err)
 		return nil, nil, err
 	}
