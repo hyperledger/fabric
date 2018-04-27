@@ -214,8 +214,8 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 		errValue      string
 	}{
 		{pb.ChaincodeSpec_Type(999), container.VMCResp{}, nil, "unknown chaincodeType: 999"},
-		{pb.ChaincodeSpec_GOLANG, container.VMCResp{}, errors.New("process-failed"), "process-failed"},
-		{pb.ChaincodeSpec_GOLANG, container.VMCResp{Err: errors.New("error-in-response")}, nil, "error-in-response"},
+		{pb.ChaincodeSpec_GOLANG, container.VMCResp{}, errors.New("process-failed"), "error starting container: process-failed"},
+		{pb.ChaincodeSpec_GOLANG, container.VMCResp{Err: errors.New("error-in-response")}, nil, "error starting container: error-in-response"},
 	}
 
 	for _, tc := range tests {
@@ -294,7 +294,7 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		errValue    string
 	}{
 		{container.VMCResp{}, errors.New("process-failed"), "error stopping container: process-failed"},
-		{container.VMCResp{Err: errors.New("error-in-response-is-ignored")}, nil, ""},
+		{container.VMCResp{Err: errors.New("error-in-response")}, nil, "error stopping container: error-in-response"},
 	}
 
 	for _, tc := range tests {

@@ -77,11 +77,9 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 
 	vmtype := getVMType(cds)
 	resp, err := c.Processor.Process(ctxt, vmtype, scr)
+	err = selectError(&resp, err)
 	if err != nil {
-		return err
-	}
-	if resp.Err != nil {
-		return resp.Err
+		return errors.WithMessage(err, "error starting container")
 	}
 
 	return nil
@@ -100,7 +98,8 @@ func (c *ContainerRuntime) Stop(ctxt context.Context, cccid *ccprovider.CCContex
 		Dontremove: false,
 	}
 
-	_, err := c.Processor.Process(ctxt, getVMType(cds), scr)
+	resp, err := c.Processor.Process(ctxt, getVMType(cds), scr)
+	err = selectError(&resp, err)
 	if err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
@@ -113,6 +112,17 @@ func getVMType(cds *pb.ChaincodeDeploymentSpec) string {
 		return container.SYSTEM
 	}
 	return container.DOCKER
+}
+
+func selectError(resp *container.VMCResp, err error) error {
+	switch {
+	case err != nil:
+		return err
+	case resp.Err != nil:
+		return resp.Err
+	default:
+		return nil
+	}
 }
 
 const (
