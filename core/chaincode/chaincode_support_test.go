@@ -167,7 +167,16 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
-	chaincodeSupport := NewChaincodeSupport(GlobalConfig(), "0.0.0.0:7052", true, ccStartupTimeout, ca.CertBytes(), certGenerator)
+	chaincodeSupport := NewChaincodeSupport(
+		GlobalConfig(),
+		"0.0.0.0:7052",
+		true,
+		ccStartupTimeout,
+		ca.CertBytes(),
+		certGenerator,
+		&ccprovider.CCInfoFSImpl{},
+		aclmgmt.GetACLProvider(),
+	)
 	SideEffectInitialize(chaincodeSupport)
 	chaincodeSupport.SetSysCCProvider(sccp)
 	chaincodeSupport.executetimeout = time.Duration(1) * time.Second
@@ -1006,7 +1015,7 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 		ccStartupTimeout: time.Duration(10) * time.Second,
 		peerNetworkID:    "networkID",
 		peerID:           "peerID",
-		handlerRegistry:  handlerRegistry,
+		HandlerRegistry:  handlerRegistry,
 		ContainerRuntime: fakeRuntime,
 	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
@@ -1033,7 +1042,7 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 		ccStartupTimeout: 500 * time.Millisecond,
 		peerNetworkID:    "networkID",
 		peerID:           "peerID",
-		handlerRegistry:  NewHandlerRegistry(false),
+		HandlerRegistry:  NewHandlerRegistry(false),
 		ContainerRuntime: fakeRuntime,
 	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
@@ -1059,7 +1068,7 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 		ccStartupTimeout: time.Duration(10) * time.Second,
 		peerNetworkID:    "networkID",
 		peerID:           "peerID",
-		handlerRegistry:  NewHandlerRegistry(false),
+		HandlerRegistry:  NewHandlerRegistry(false),
 		ContainerRuntime: fakeRuntime,
 	}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
@@ -1289,7 +1298,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//chaincode support should not allow dups
-	if err := chaincodeSupport.registerHandler(&Handler{ChaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, sccp: chaincodeSupport.sccp}); err == nil {
+	if err := chaincodeSupport.HandlerRegistry.Register(&Handler{ChaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, sccp: chaincodeSupport.sccp}); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}
 

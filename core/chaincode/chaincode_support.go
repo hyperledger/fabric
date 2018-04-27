@@ -37,6 +37,12 @@ type Runtime interface {
 	Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
 }
 
+// PackageProvider is responsible for getting the chaincode package from
+// the filesystem.
+type PackageProvider interface {
+	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
+}
+
 // NewChaincodeSupport creates a new ChaincodeSupport instance
 func NewChaincodeSupport(
 	config *Config,
@@ -45,6 +51,8 @@ func NewChaincodeSupport(
 	ccstartuptimeout time.Duration,
 	caCert []byte,
 	certGenerator CertGenerator,
+	packageProvider PackageProvider,
+	aclProvider ACLProvider,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
 		caCert:           caCert,
@@ -54,7 +62,9 @@ func NewChaincodeSupport(
 		ccStartupTimeout: ccstartuptimeout,
 		keepalive:        config.Keepalive,
 		executetimeout:   config.ExecuteTimeout,
-		handlerRegistry:  NewHandlerRegistry(userrunsCC),
+		HandlerRegistry:  NewHandlerRegistry(userrunsCC),
+		PackageProvider:  packageProvider,
+		ACLProvider:      aclProvider,
 	}
 
 	// Keep TestQueries working
@@ -82,7 +92,6 @@ func NewChaincodeSupport(
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
 	caCert           []byte
-	handlerRegistry  *HandlerRegistry
 	peerAddress      string
 	ccStartupTimeout time.Duration
 	peerNetworkID    string
@@ -91,6 +100,9 @@ type ChaincodeSupport struct {
 	executetimeout   time.Duration
 	userRunsCC       bool
 	ContainerRuntime Runtime
+	PackageProvider  PackageProvider
+	ACLProvider      ACLProvider
+	HandlerRegistry  *HandlerRegistry
 	sccp             sysccprovider.SystemChaincodeProvider
 }
 
@@ -102,24 +114,12 @@ func (cs *ChaincodeSupport) SetSysCCProvider(sccp sysccprovider.SystemChaincodeP
 	cs.sccp = sccp
 }
 
-func (cs *ChaincodeSupport) registerHandler(chaincodehandler *Handler) error {
-	return cs.handlerRegistry.Register(chaincodehandler)
-}
-
-func (cs *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
-	return cs.handlerRegistry.Deregister(chaincodehandler.ChaincodeID.GetName())
-}
-
-func (cs *ChaincodeSupport) ready(chaincodehandler *Handler) {
-	cs.handlerRegistry.Ready(chaincodehandler.ChaincodeID.GetName())
-}
-
 // launchAndWaitForReady launches a container for the specified chaincode
 // context if one is not already running. It then waits for the chaincode
 // registration to complete or for the process to time out.
 func (cs *ChaincodeSupport) launchAndWaitForReady(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
-	ready, err := cs.handlerRegistry.Launching(cname)
+	ready, err := cs.HandlerRegistry.Launching(cname)
 	if err != nil {
 		return err
 	}
@@ -159,11 +159,7 @@ func (cs *ChaincodeSupport) launchAndWaitForReady(ctx context.Context, cccid *cc
 //Stop stops a chaincode if running
 func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
-	if cname == "" {
-		return errors.New("chaincode name not set")
-	}
-
-	defer cs.handlerRegistry.Deregister(cname)
+	defer cs.HandlerRegistry.Deregister(cname)
 
 	err := cs.ContainerRuntime.Stop(ctx, cccid, cds)
 	if err != nil {
@@ -179,7 +175,7 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 	cID := spec.GetChaincodeSpec().ChaincodeId
 	cMsg := spec.GetChaincodeSpec().Input
 
-	if cs.handlerRegistry.Handler(cname) != nil {
+	if cs.HandlerRegistry.Handler(cname) != nil {
 		return cID, cMsg, nil
 	}
 
@@ -228,7 +224,7 @@ func (cs *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CC
 		if cds.CodePackage == nil {
 			//no code bytes for these situations
 			if !(cs.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) {
-				ccpack, err := ccprovider.GetChaincodeFromFS(cID.Name, cID.Version)
+				ccpack, err := cs.PackageProvider.GetChaincode(cID.Name, cID.Version)
 				if err != nil {
 					return cID, cMsg, err
 				}
@@ -274,14 +270,14 @@ func createCCMessage(typ pb.ChaincodeMessage_Type, cid string, txid string, cMsg
 func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
-	canName := cccid.GetCanonicalName()
+	cname := cccid.GetCanonicalName()
 
-	chaincodeLogger.Debugf("chaincode canonical name: %s", canName)
+	chaincodeLogger.Debugf("chaincode canonical name: %s", cname)
 	//we expect the chaincode to be running... sanity check
-	handler := cs.handlerRegistry.Handler(canName)
+	handler := cs.HandlerRegistry.Handler(cname)
 	if handler == nil {
-		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", canName)
-		return nil, errors.Errorf("cannot execute transaction for %s", canName)
+		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", cname)
+		return nil, errors.Errorf("cannot execute transaction for %s", cname)
 	}
 
 	ccresp, err := handler.Execute(ctxt, cccid, msg, timeout)
