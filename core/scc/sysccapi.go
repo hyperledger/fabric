@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/net/context"
@@ -86,8 +87,6 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 		return nil
 	}
 
-	var err error
-
 	ccprov := ccprovider.GetChaincodeProvider()
 
 	txid := util.GenerateUUID()
@@ -126,7 +125,10 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
 
-	_, _, err = ccprov.ExecuteWithErrorFilter(ctxt, cccid, chaincodeDeploymentSpec)
+	resp, _, err := ccprov.Execute(ctxt, cccid, chaincodeDeploymentSpec)
+	if err == nil && resp.Status != shim.OK {
+		err = errors.New(resp.Message)
+	}
 
 	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name, chainID, syscc.Path)
 

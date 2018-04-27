@@ -348,27 +348,6 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 	return nil, nil, errors.Errorf("receive a response for txid (%s) but in invalid state (%d)", cccid.TxID, resp.Type)
 }
 
-// ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
-// Mostly used by unit-test.
-func (cs *ChaincodeSupport) ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) ([]byte, *pb.ChaincodeEvent, error) {
-	res, event, err := cs.ExecuteSpec(ctxt, cccid, spec)
-	if err != nil {
-		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s error: %+v", cccid.Name, err)
-		return nil, nil, err
-	}
-
-	if res == nil {
-		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s get nil response without error", cccid.Name)
-		return nil, nil, err
-	}
-
-	if res.Status != shim.OK {
-		return nil, nil, errors.New(res.Message)
-	}
-
-	return res.Payload, event, nil
-}
-
 //create a chaincode invocation spec
 func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
 	var err error

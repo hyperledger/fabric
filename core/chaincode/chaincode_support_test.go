@@ -295,7 +295,10 @@ func endTx(t *testing.T, cccid *ccprovider.CCContext, txsim ledger.TxSimulator, 
 func execCC(t *testing.T, ctxt context.Context, ccSide *mockpeer.MockCCComm, cccid *ccprovider.CCContext, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
 	ccSide.SetResponses(respSet)
 
-	_, _, err := chaincodeSupport.ExecuteWithErrorFilter(ctxt, cccid, cis)
+	resp, _, err := chaincodeSupport.ExecuteSpec(ctxt, cccid, cis)
+	if err == nil && resp.Status != shim.OK {
+		err = errors.New(resp.Message)
+	}
 
 	if err == nil && expectExecErr {
 		t.Fatalf("expected error but succeeded")
@@ -382,7 +385,7 @@ func deployCC(t *testing.T, ctx context.Context, cccid *ccprovider.CCContext, sp
 	lsccid := ccprovider.NewCCContext(cccid.ChainID, lsccSpec.ChaincodeSpec.ChaincodeId.Name, sysCCVers, cccid.TxID, true, sprop, prop)
 
 	//write to lscc
-	if _, _, err := chaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, lsccSpec); err != nil {
+	if _, _, err := chaincodeSupport.ExecuteSpec(ctx, lsccid, lsccSpec); err != nil {
 		t.Fatalf("Error deploying chaincode %v (err: %s)", cccid, err)
 	}
 }
@@ -513,7 +516,6 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	execCC(t, ctxt, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
 	//get the extra var and delete it
-	//NOTE- we are calling ExecuteWithErrorFilter which returns error if chaincode returns ERROR response
 	respSet = &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,

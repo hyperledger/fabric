@@ -89,11 +89,6 @@ func (c *ccProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec c
 	return c.cs.ExecuteSpec(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
 }
 
-// ExecuteWithErrorFilter executes the chaincode given context and spec and returns payload
-func (c *ccProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec ccprovider.ChaincodeSpecGetter) ([]byte, *pb.ChaincodeEvent, error) {
-	return c.cs.ExecuteWithErrorFilter(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
-}
-
 // Stop stops the chaincode given context and spec
 func (c *ccProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *pb.ChaincodeDeploymentSpec) error {
 	if c.cs != nil {
