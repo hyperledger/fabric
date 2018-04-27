@@ -93,3 +93,9 @@ func (ap *ApplicationProvider) V1_2Validation() bool {
 func (ap *ApplicationProvider) MetadataLifecycle() bool {
 	return ap.v12LifecycleExperimental
 }
+
+// KeyLevelEndorsement returns true if this channel supports endorsement
+// policies expressible at a ledger key granularity, as described in FAB-8812
+func (ap *ApplicationProvider) KeyLevelEndorsement() bool {
+	return ap.v12
+}
