@@ -3,36 +3,36 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix_test
+package handlers_test
 
 import (
 	"errors"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
-	"github.com/hyperledger/fabric/bccsp/idemix/mock"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Nym Signature", func() {
+var _ = Describe("Signature", func() {
 
 	Describe("when creating a signature", func() {
 
 		var (
-			NymSigner           *idemix.NymSigner
-			fakeSignatureScheme *mock.NymSignatureScheme
+			Signer              *handlers.Signer
+			fakeSignatureScheme *mock.SignatureScheme
 			nymSK               bccsp.Key
 		)
 
 		BeforeEach(func() {
-			fakeSignatureScheme = &mock.NymSignatureScheme{}
-			NymSigner = &idemix.NymSigner{NymSignatureScheme: fakeSignatureScheme}
+			fakeSignatureScheme = &mock.SignatureScheme{}
+			Signer = &handlers.Signer{SignatureScheme: fakeSignatureScheme}
 
 			var err error
 			sk := &mock.Big{}
 			sk.BytesReturns([]byte{1, 2, 3, 4}, nil)
-			nymSK, err = idemix.NewNymSecretKey(sk, nil, false)
+			nymSK, err = handlers.NewNymSecretKey(sk, nil, false)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -46,12 +46,12 @@ var _ = Describe("Nym Signature", func() {
 			})
 
 			It("returns no error and a signature", func() {
-				signature, err := NymSigner.Sign(
-					idemix.NewUserSecretKey(nil, false),
+				signature, err := Signer.Sign(
+					handlers.NewUserSecretKey(nil, false),
 					[]byte("a digest"),
-					&bccsp.IdemixNymSignerOpts{
+					&bccsp.IdemixSignerOpts{
 						Nym:      nymSK,
-						IssuerPK: idemix.NewIssuerPublicKey(nil),
+						IssuerPK: handlers.NewIssuerPublicKey(nil),
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -66,12 +66,12 @@ var _ = Describe("Nym Signature", func() {
 			})
 
 			It("returns an error", func() {
-				signature, err := NymSigner.Sign(
-					idemix.NewUserSecretKey(nil, false),
+				signature, err := Signer.Sign(
+					handlers.NewUserSecretKey(nil, false),
 					[]byte("a digest"),
-					&bccsp.IdemixNymSignerOpts{
+					&bccsp.IdemixSignerOpts{
 						Nym:      nymSK,
-						IssuerPK: idemix.NewIssuerPublicKey(nil),
+						IssuerPK: handlers.NewIssuerPublicKey(nil),
 					},
 				)
 				Expect(err).To(MatchError("sign error"))
@@ -83,12 +83,12 @@ var _ = Describe("Nym Signature", func() {
 
 			Context("and the user secret key is nil", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
+					signature, err := Signer.Sign(
 						nil,
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{
+						&bccsp.IdemixSignerOpts{
 							Nym:      nymSK,
-							IssuerPK: idemix.NewIssuerPublicKey(nil),
+							IssuerPK: handlers.NewIssuerPublicKey(nil),
 						},
 					)
 					Expect(err).To(MatchError("invalid key, expected *userSecretKey"))
@@ -98,12 +98,12 @@ var _ = Describe("Nym Signature", func() {
 
 			Context("and the user secret key is not of type *userSecretKey", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewIssuerPublicKey(nil),
+					signature, err := Signer.Sign(
+						handlers.NewIssuerPublicKey(nil),
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{
+						&bccsp.IdemixSignerOpts{
 							Nym:      nymSK,
-							IssuerPK: idemix.NewIssuerPublicKey(nil),
+							IssuerPK: handlers.NewIssuerPublicKey(nil),
 						},
 					)
 					Expect(err).To(MatchError("invalid key, expected *userSecretKey"))
@@ -111,37 +111,52 @@ var _ = Describe("Nym Signature", func() {
 				})
 			})
 
-			Context("and the option is nil", func() {
+			Context("and the digest is empty", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewUserSecretKey(nil, false),
-						[]byte("a digest"),
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
 						nil,
+						&bccsp.IdemixSignerOpts{
+							Nym:      nymSK,
+							IssuerPK: handlers.NewIssuerPublicKey(nil),
+						},
 					)
-					Expect(err).To(MatchError("invalid options, expected *IdemixNymSignerOpts"))
+					Expect(err).To(MatchError("invalid digest, it must not be empty"))
 					Expect(signature).To(BeNil())
 				})
 			})
 
-			Context("and the option is not of type *IdemixNymSignerOpts", func() {
+			Context("and the option is nil", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewUserSecretKey(nil, false),
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
+						[]byte("a digest"),
+						nil,
+					)
+					Expect(err).To(MatchError("invalid options, expected *IdemixSignerOpts"))
+					Expect(signature).To(BeNil())
+				})
+			})
+
+			Context("and the option is not of type *IdemixSignerOpts", func() {
+				It("returns error", func() {
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
 						[]byte("a digest"),
 						&bccsp.IdemixCRISignerOpts{},
 					)
-					Expect(err).To(MatchError("invalid options, expected *IdemixNymSignerOpts"))
+					Expect(err).To(MatchError("invalid options, expected *IdemixSignerOpts"))
 					Expect(signature).To(BeNil())
 				})
 			})
 
 			Context("and the nym is nil", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewUserSecretKey(nil, false),
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{
-							IssuerPK: idemix.NewIssuerPublicKey(nil),
+						&bccsp.IdemixSignerOpts{
+							IssuerPK: handlers.NewIssuerPublicKey(nil),
 						},
 					)
 					Expect(err).To(MatchError("invalid options, missing nym key"))
@@ -151,12 +166,12 @@ var _ = Describe("Nym Signature", func() {
 
 			Context("and the nym is not of type *nymSecretKey", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewUserSecretKey(nil, false),
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{
-							Nym:      idemix.NewIssuerPublicKey(nil),
-							IssuerPK: idemix.NewIssuerPublicKey(nil),
+						&bccsp.IdemixSignerOpts{
+							Nym:      handlers.NewIssuerPublicKey(nil),
+							IssuerPK: handlers.NewIssuerPublicKey(nil),
 						},
 					)
 					Expect(err).To(MatchError("invalid nym key, expected *nymSecretKey"))
@@ -166,10 +181,10 @@ var _ = Describe("Nym Signature", func() {
 
 			Context("and the IssuerPk is nil", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewUserSecretKey(nil, false),
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{
+						&bccsp.IdemixSignerOpts{
 							Nym: nymSK,
 						},
 					)
@@ -180,12 +195,12 @@ var _ = Describe("Nym Signature", func() {
 
 			Context("and the IssuerPk is not of type *issuerPublicKey", func() {
 				It("returns error", func() {
-					signature, err := NymSigner.Sign(
-						idemix.NewUserSecretKey(nil, false),
+					signature, err := Signer.Sign(
+						handlers.NewUserSecretKey(nil, false),
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{
+						&bccsp.IdemixSignerOpts{
 							Nym:      nymSK,
-							IssuerPK: idemix.NewUserSecretKey(nil, false),
+							IssuerPK: handlers.NewUserSecretKey(nil, false),
 						},
 					)
 					Expect(err).To(MatchError("invalid issuer public key, expected *issuerPublicKey"))
@@ -198,13 +213,13 @@ var _ = Describe("Nym Signature", func() {
 	Describe("when verifying a signature", func() {
 
 		var (
-			NymVerifier         *idemix.NymVerifier
-			fakeSignatureScheme *mock.NymSignatureScheme
+			Verifier            *handlers.Verifier
+			fakeSignatureScheme *mock.SignatureScheme
 		)
 
 		BeforeEach(func() {
-			fakeSignatureScheme = &mock.NymSignatureScheme{}
-			NymVerifier = &idemix.NymVerifier{NymSignatureScheme: fakeSignatureScheme}
+			fakeSignatureScheme = &mock.SignatureScheme{}
+			Verifier = &handlers.Verifier{SignatureScheme: fakeSignatureScheme}
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
@@ -213,12 +228,12 @@ var _ = Describe("Nym Signature", func() {
 			})
 
 			It("returns no error and valid signature", func() {
-				valid, err := NymVerifier.Verify(
-					idemix.NewNymPublicKey(nil),
+				valid, err := Verifier.Verify(
+					handlers.NewIssuerPublicKey(nil),
 					[]byte("a signature"),
 					[]byte("a digest"),
-					&bccsp.IdemixNymSignerOpts{
-						IssuerPK: idemix.NewIssuerPublicKey(nil),
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -232,12 +247,12 @@ var _ = Describe("Nym Signature", func() {
 			})
 
 			It("returns an error", func() {
-				valid, err := NymVerifier.Verify(
-					idemix.NewNymPublicKey(nil),
+				valid, err := Verifier.Verify(
+					handlers.NewIssuerPublicKey(nil),
 					[]byte("a signature"),
 					[]byte("a digest"),
-					&bccsp.IdemixNymSignerOpts{
-						IssuerPK: idemix.NewIssuerPublicKey(nil),
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
 					},
 				)
 				Expect(err).To(MatchError("verify error"))
@@ -247,39 +262,41 @@ var _ = Describe("Nym Signature", func() {
 
 		Context("and the parameters are not well formed", func() {
 
-			Context("and the nym public key is nil", func() {
+			Context("and the issuer public key is nil", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
+					valid, err := Verifier.Verify(
 						nil,
 						[]byte("fake signature"),
 						nil,
-						&bccsp.IdemixNymSignerOpts{IssuerPK: idemix.NewIssuerPublicKey(nil)},
+						&bccsp.IdemixSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 					)
-					Expect(err).To(MatchError("invalid key, expected *nymPublicKey"))
+					Expect(err).To(MatchError("invalid key, expected *issuerPublicKey"))
 					Expect(valid).To(BeFalse())
 				})
 			})
 
-			Context("and the nym public key is not of type *nymPublicKey", func() {
+			Context("and the issuer public key is not of type *issuerPublicKey", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
-						idemix.NewUserSecretKey(nil, false),
+					valid, err := Verifier.Verify(
+						handlers.NewUserSecretKey(nil, false),
 						[]byte("fake signature"),
 						nil,
-						&bccsp.IdemixNymSignerOpts{IssuerPK: idemix.NewIssuerPublicKey(nil)},
+						&bccsp.IdemixSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 					)
-					Expect(err).To(MatchError("invalid key, expected *nymPublicKey"))
+					Expect(err).To(MatchError("invalid key, expected *issuerPublicKey"))
 					Expect(valid).To(BeFalse())
 				})
 			})
 
 			Context("and the signature is empty", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
-						idemix.NewNymPublicKey(nil),
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
 						nil,
 						[]byte("a digest"),
-						&bccsp.IdemixNymSignerOpts{IssuerPK: idemix.NewIssuerPublicKey(nil)},
+						&bccsp.IdemixSignerOpts{
+							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+						},
 					)
 					Expect(err).To(MatchError("invalid signature, it must not be empty"))
 					Expect(valid).To(BeFalse())
@@ -288,54 +305,52 @@ var _ = Describe("Nym Signature", func() {
 
 			Context("and the option is empty", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
-						idemix.NewNymPublicKey(nil),
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
 						[]byte("a signature"),
 						[]byte("a digest"),
 						nil,
 					)
-					Expect(err).To(MatchError("invalid options, expected *IdemixNymSignerOpts"))
+					Expect(err).To(MatchError("invalid options, expected *IdemixSignerOpts"))
 					Expect(valid).To(BeFalse())
 				})
 			})
 
-			Context("and the option is not of type *IdemixNymSignerOpts", func() {
+			Context("and the option is not of type *IdemixSignerOpts", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
-						idemix.NewNymPublicKey(nil),
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
 						[]byte("a signature"),
 						[]byte("a digest"),
 						&bccsp.IdemixCredentialRequestSignerOpts{},
 					)
-					Expect(err).To(MatchError("invalid options, expected *IdemixNymSignerOpts"))
+					Expect(err).To(MatchError("invalid options, expected *IdemixSignerOpts"))
 					Expect(valid).To(BeFalse())
 				})
 			})
 
-			Context("and the option's issuer public key is empty", func() {
+			Context("and the option's revocation public key is empty", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
-						idemix.NewNymPublicKey(nil),
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
-						&bccsp.IdemixNymSignerOpts{},
+						&bccsp.IdemixSignerOpts{},
 					)
-					Expect(err).To(MatchError("invalid options, missing issuer public key"))
+					Expect(err).To(MatchError("invalid options, expected *revocationPublicKey"))
 					Expect(valid).To(BeFalse())
 				})
 			})
 
-			Context("and the option's issuer public key is not of type *issuerPublicKey", func() {
+			Context("and the option's revocation public key is not of type *revocationPublicKey", func() {
 				It("returns error", func() {
-					valid, err := NymVerifier.Verify(
-						idemix.NewNymPublicKey(nil),
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
-						&bccsp.IdemixNymSignerOpts{
-							IssuerPK: idemix.NewNymPublicKey(nil),
-						},
+						&bccsp.IdemixSignerOpts{RevocationPublicKey: handlers.NewUserSecretKey(nil, false)},
 					)
-					Expect(err).To(MatchError("invalid issuer public key, expected *issuerPublicKey"))
+					Expect(err).To(MatchError("invalid options, expected *revocationPublicKey"))
 					Expect(valid).To(BeFalse())
 				})
 			})

@@ -3,9 +3,11 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix
+package handlers
 
 import (
+	"reflect"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
 )
@@ -32,8 +34,8 @@ func (c *CredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.Si
 	if !ok {
 		return nil, errors.New("invalid options, expected IssuerPK as *issuerPublicKey")
 	}
-	if len(digest) != 0 {
-		return nil, errors.New("invalid digest, it must be empty")
+	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
+		return nil, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 
 	return c.CredRequest.Sign(userSecretKey.sk, issuerPK.pk)
@@ -50,8 +52,8 @@ func (c *CredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte
 	if !ok {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
-	if len(digest) != 0 {
-		return false, errors.New("invalid digest, it must be empty")
+	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
+		return false, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 
 	err := c.CredRequest.Verify(signature, issuerPublicKey.pk)
@@ -104,8 +106,8 @@ func (v *CredentialVerifier) Verify(k bccsp.Key, signature, digest []byte, opts 
 	if !ok {
 		return false, errors.New("invalid issuer public key, expected *issuerPublicKey")
 	}
-	if len(digest) != 0 {
-		return false, errors.New("invalid digest, it must be empty")
+	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
+		return false, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 	if len(signature) == 0 {
 		return false, errors.New("invalid signature, it must not be empty")

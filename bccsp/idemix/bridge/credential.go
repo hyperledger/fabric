@@ -8,12 +8,11 @@ package bridge
 import (
 	"bytes"
 
-	"github.com/hyperledger/fabric-amcl/amcl"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	"github.com/pkg/errors"
 )
@@ -29,7 +28,7 @@ type Credential struct {
 // a serialised  credential request, and a list of attribute values.
 // Notice that attributes should not contain attributes whose type is IdemixHiddenAttribute
 // cause the credential needs to carry all the attribute values.
-func (c *Credential) Sign(key idemix.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) (res []byte, err error) {
+func (c *Credential) Sign(key handlers.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) (res []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -45,7 +44,7 @@ func (c *Credential) Sign(key idemix.IssuerSecretKey, credentialRequest []byte, 
 	cr := &cryptolib.CredRequest{}
 	err = proto.Unmarshal(credentialRequest, cr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed unmarshalling credential request")
 	}
 
 	attrValues := make([]*FP256BN.BIG, len(attributes))
@@ -62,7 +61,7 @@ func (c *Credential) Sign(key idemix.IssuerSecretKey, credentialRequest []byte, 
 
 	cred, err := cryptolib.NewCredential(iisk.SK, cr, attrValues, c.NewRand())
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "failed creating new credential")
 	}
 
 	return proto.Marshal(cred)
@@ -72,7 +71,7 @@ func (c *Credential) Sign(key idemix.IssuerSecretKey, credentialRequest []byte, 
 // in input the user secret key (sk), the issuer public key (ipk), the serialised credential (credential),
 // and a list of attributes. The list of attributes is optional, in case it is specified, Verify
 // checks that the credential carries the specified attributes.
-func (*Credential) Verify(sk idemix.Big, ipk idemix.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) (err error) {
+func (*Credential) Verify(sk handlers.Big, ipk handlers.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)

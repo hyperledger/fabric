@@ -3,7 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix_test
+package handlers_test
 
 import (
 	"crypto/ecdsa"
@@ -12,9 +12,10 @@ import (
 	"crypto/x509"
 	"math/big"
 
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
+
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
-	"github.com/hyperledger/fabric/bccsp/idemix/mock"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -24,7 +25,7 @@ var _ = Describe("Revocation", func() {
 
 	Describe("when creating an revocation key-pair", func() {
 		var (
-			RevocationKeyGen *idemix.RevocationKeyGen
+			RevocationKeyGen *handlers.RevocationKeyGen
 
 			fakeRevocation          *mock.Revocation
 			fakeRevocationSecretKey bccsp.Key
@@ -33,7 +34,7 @@ var _ = Describe("Revocation", func() {
 		BeforeEach(func() {
 			fakeRevocation = &mock.Revocation{}
 
-			RevocationKeyGen = &idemix.RevocationKeyGen{}
+			RevocationKeyGen = &handlers.RevocationKeyGen{}
 			RevocationKeyGen.Revocation = fakeRevocation
 		})
 
@@ -62,7 +63,7 @@ var _ = Describe("Revocation", func() {
 
 				fakeRevocation.NewKeyReturns(idemixRevocationKey, nil)
 
-				fakeRevocationSecretKey = idemix.NewRevocationSecretKey(idemixRevocationKey, false)
+				fakeRevocationSecretKey = handlers.NewRevocationSecretKey(idemixRevocationKey, false)
 			})
 
 			AfterEach(func() {
@@ -91,7 +92,7 @@ var _ = Describe("Revocation", func() {
 			Context("and the secret key is exportable", func() {
 				BeforeEach(func() {
 					RevocationKeyGen.Exportable = true
-					fakeRevocationSecretKey = idemix.NewRevocationSecretKey(idemixRevocationKey, true)
+					fakeRevocationSecretKey = handlers.NewRevocationSecretKey(idemixRevocationKey, true)
 				})
 
 				It("returns no error and a key", func() {
@@ -110,7 +111,7 @@ var _ = Describe("Revocation", func() {
 			Context("and the secret key is not exportable", func() {
 				BeforeEach(func() {
 					RevocationKeyGen.Exportable = false
-					fakeRevocationSecretKey = idemix.NewRevocationSecretKey(idemixRevocationKey, false)
+					fakeRevocationSecretKey = handlers.NewRevocationSecretKey(idemixRevocationKey, false)
 				})
 
 				It("returns no error and a key", func() {
@@ -146,13 +147,13 @@ var _ = Describe("CRI", func() {
 	Describe("when creating a CRI", func() {
 
 		var (
-			CriSigner      *idemix.CriSigner
+			CriSigner      *handlers.CriSigner
 			fakeRevocation *mock.Revocation
 		)
 
 		BeforeEach(func() {
 			fakeRevocation = &mock.Revocation{}
-			CriSigner = &idemix.CriSigner{Revocation: fakeRevocation}
+			CriSigner = &handlers.CriSigner{Revocation: fakeRevocation}
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
@@ -166,8 +167,8 @@ var _ = Describe("CRI", func() {
 
 			It("returns no error and a signature", func() {
 				signature, err := CriSigner.Sign(
-					idemix.NewRevocationSecretKey(nil, false),
-					nil,
+					handlers.NewRevocationSecretKey(nil, false),
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -183,8 +184,8 @@ var _ = Describe("CRI", func() {
 
 			It("returns an error", func() {
 				signature, err := CriSigner.Sign(
-					idemix.NewRevocationSecretKey(nil, false),
-					nil,
+					handlers.NewRevocationSecretKey(nil, false),
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).To(MatchError("sign error"))
@@ -209,7 +210,7 @@ var _ = Describe("CRI", func() {
 			Context("and the revocation secret key is not of type *revocationSecretKey", func() {
 				It("returns error", func() {
 					signature, err := CriSigner.Sign(
-						idemix.NewIssuerPublicKey(nil),
+						handlers.NewIssuerPublicKey(nil),
 						nil,
 						nil,
 					)
@@ -224,7 +225,7 @@ var _ = Describe("CRI", func() {
 
 				It("returns an error", func() {
 					signature, err := CriSigner.Sign(
-						idemix.NewRevocationSecretKey(nil, false),
+						handlers.NewRevocationSecretKey(nil, false),
 						nil,
 						nil,
 					)
@@ -233,17 +234,14 @@ var _ = Describe("CRI", func() {
 				})
 			})
 
-			Context("and the digest is not empty", func() {
-				BeforeEach(func() {
-				})
-
+			Context("and the digest is not the idemix empty digest", func() {
 				It("returns an error", func() {
 					signature, err := CriSigner.Sign(
-						idemix.NewRevocationSecretKey(nil, false),
+						handlers.NewRevocationSecretKey(nil, false),
 						[]byte{1, 2, 3, 4},
 						&bccsp.IdemixCRISignerOpts{},
 					)
-					Expect(err).To(MatchError("invalid digest, it must be empty"))
+					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
 					Expect(signature).To(BeNil())
 				})
 			})
@@ -253,13 +251,13 @@ var _ = Describe("CRI", func() {
 	Describe("when verifying a CRI", func() {
 
 		var (
-			CriVerifier    *idemix.CriVerifier
+			CriVerifier    *handlers.CriVerifier
 			fakeRevocation *mock.Revocation
 		)
 
 		BeforeEach(func() {
 			fakeRevocation = &mock.Revocation{}
-			CriVerifier = &idemix.CriVerifier{Revocation: fakeRevocation}
+			CriVerifier = &handlers.CriVerifier{Revocation: fakeRevocation}
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
@@ -269,9 +267,9 @@ var _ = Describe("CRI", func() {
 
 			It("returns no error and valid signature", func() {
 				valid, err := CriVerifier.Verify(
-					idemix.NewRevocationPublicKey(nil),
+					handlers.NewRevocationPublicKey(nil),
 					[]byte("fake signature"),
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -286,9 +284,9 @@ var _ = Describe("CRI", func() {
 
 			It("returns an error", func() {
 				valid, err := CriVerifier.Verify(
-					idemix.NewRevocationPublicKey(nil),
+					handlers.NewRevocationPublicKey(nil),
 					[]byte("fake signature"),
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).To(MatchError("verify error"))
@@ -314,7 +312,7 @@ var _ = Describe("CRI", func() {
 			Context("and the user secret key is not of type *revocationPublicKey", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
-						idemix.NewIssuerPublicKey(nil),
+						handlers.NewIssuerPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
 						&bccsp.IdemixCRISignerOpts{},
@@ -324,15 +322,15 @@ var _ = Describe("CRI", func() {
 				})
 			})
 
-			Context("and the digest is not nil", func() {
+			Context("and the digest is not the idemix empty digest", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
-						idemix.NewRevocationPublicKey(nil),
+						handlers.NewRevocationPublicKey(nil),
 						[]byte("fake signature"),
 						[]byte{1, 2, 3, 4},
 						&bccsp.IdemixCRISignerOpts{},
 					)
-					Expect(err).To(MatchError("invalid digest, it must be empty"))
+					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
 					Expect(valid).To(BeFalse())
 				})
 			})
@@ -340,9 +338,9 @@ var _ = Describe("CRI", func() {
 			Context("and the signature is empty", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
-						idemix.NewRevocationPublicKey(nil),
+						handlers.NewRevocationPublicKey(nil),
 						nil,
-						nil,
+						bccsp.IdemixEmptyDigest(),
 						&bccsp.IdemixCRISignerOpts{},
 					)
 					Expect(err).To(MatchError("invalid signature, it must not be empty"))
@@ -353,7 +351,7 @@ var _ = Describe("CRI", func() {
 			Context("and the option is empty", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
-						idemix.NewRevocationPublicKey(nil),
+						handlers.NewRevocationPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
 						nil,
@@ -366,7 +364,7 @@ var _ = Describe("CRI", func() {
 			Context("and the option is not of type *IdemixCRISignerOpts", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
-						idemix.NewRevocationPublicKey(nil),
+						handlers.NewRevocationPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
 						&bccsp.IdemixCredentialRequestSignerOpts{},

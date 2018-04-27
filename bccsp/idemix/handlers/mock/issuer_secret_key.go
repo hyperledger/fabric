@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type IssuerSecretKey struct {
@@ -19,14 +19,14 @@ type IssuerSecretKey struct {
 		result1 []byte
 		result2 error
 	}
-	PublicStub        func() idemix.IssuerPublicKey
+	PublicStub        func() handlers.IssuerPublicKey
 	publicMutex       sync.RWMutex
 	publicArgsForCall []struct{}
 	publicReturns     struct {
-		result1 idemix.IssuerPublicKey
+		result1 handlers.IssuerPublicKey
 	}
 	publicReturnsOnCall map[int]struct {
-		result1 idemix.IssuerPublicKey
+		result1 handlers.IssuerPublicKey
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -75,7 +75,7 @@ func (fake *IssuerSecretKey) BytesReturnsOnCall(i int, result1 []byte, result2 e
 	}{result1, result2}
 }
 
-func (fake *IssuerSecretKey) Public() idemix.IssuerPublicKey {
+func (fake *IssuerSecretKey) Public() handlers.IssuerPublicKey {
 	fake.publicMutex.Lock()
 	ret, specificReturn := fake.publicReturnsOnCall[len(fake.publicArgsForCall)]
 	fake.publicArgsForCall = append(fake.publicArgsForCall, struct{}{})
@@ -96,22 +96,22 @@ func (fake *IssuerSecretKey) PublicCallCount() int {
 	return len(fake.publicArgsForCall)
 }
 
-func (fake *IssuerSecretKey) PublicReturns(result1 idemix.IssuerPublicKey) {
+func (fake *IssuerSecretKey) PublicReturns(result1 handlers.IssuerPublicKey) {
 	fake.PublicStub = nil
 	fake.publicReturns = struct {
-		result1 idemix.IssuerPublicKey
+		result1 handlers.IssuerPublicKey
 	}{result1}
 }
 
-func (fake *IssuerSecretKey) PublicReturnsOnCall(i int, result1 idemix.IssuerPublicKey) {
+func (fake *IssuerSecretKey) PublicReturnsOnCall(i int, result1 handlers.IssuerPublicKey) {
 	fake.PublicStub = nil
 	if fake.publicReturnsOnCall == nil {
 		fake.publicReturnsOnCall = make(map[int]struct {
-			result1 idemix.IssuerPublicKey
+			result1 handlers.IssuerPublicKey
 		})
 	}
 	fake.publicReturnsOnCall[i] = struct {
-		result1 idemix.IssuerPublicKey
+		result1 handlers.IssuerPublicKey
 	}{result1}
 }
 
@@ -141,4 +141,4 @@ func (fake *IssuerSecretKey) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.IssuerSecretKey = new(IssuerSecretKey)
+var _ handlers.IssuerSecretKey = new(IssuerSecretKey)

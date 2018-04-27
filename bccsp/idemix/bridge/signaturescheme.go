@@ -8,12 +8,11 @@ package bridge
 import (
 	"crypto/ecdsa"
 
-	"github.com/hyperledger/fabric-amcl/amcl"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	"github.com/pkg/errors"
 )
@@ -26,7 +25,7 @@ type SignatureScheme struct {
 // Sign produces an idemix-signature with the respect to the passed serialised credential (cred),
 // user secret key (sk), pseudonym public key (Nym) and secret key (RNym), issuer public key (ipk),
 // and attributes to be disclosed.
-func (s *SignatureScheme) Sign(cred []byte, sk idemix.Big, Nym idemix.Ecp, RNym idemix.Big, ipk idemix.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
+func (s *SignatureScheme) Sign(cred []byte, sk handlers.Big, Nym handlers.Ecp, RNym handlers.Big, ipk handlers.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
 	msg []byte, rhIndex int, criRaw []byte) (res []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -55,13 +54,13 @@ func (s *SignatureScheme) Sign(cred []byte, sk idemix.Big, Nym idemix.Ecp, RNym 
 	credential := &cryptolib.Credential{}
 	err = proto.Unmarshal(cred, credential)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed unmarshalling credential")
 	}
 
 	cri := &cryptolib.CredentialRevocationInformation{}
 	err = proto.Unmarshal(criRaw, cri)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed unmarshalling credential revocation information")
 	}
 
 	disclosure := make([]byte, len(attributes))
@@ -85,7 +84,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk idemix.Big, Nym idemix.Ecp, RNym 
 		cri,
 		s.NewRand())
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "failed creating new signature")
 	}
 
 	return proto.Marshal(sig)
@@ -93,7 +92,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk idemix.Big, Nym idemix.Ecp, RNym 
 
 // Verify checks that an idemix signature is valid with the respect to the passed issuer public key, digest, attributes,
 // revocation index (rhIndex), revocation public key, and epoch.
-func (*SignatureScheme) Verify(ipk idemix.IssuerPublicKey, signature, digest []byte, attributes []bccsp.IdemixAttribute, rhIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) (err error) {
+func (*SignatureScheme) Verify(ipk handlers.IssuerPublicKey, signature, digest []byte, attributes []bccsp.IdemixAttribute, rhIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)

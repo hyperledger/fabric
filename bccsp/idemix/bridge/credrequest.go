@@ -8,7 +8,7 @@ package bridge
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	"github.com/pkg/errors"
 )
@@ -22,7 +22,7 @@ type CredRequest struct {
 
 // Sign produces an idemix credential request. It takes in input a user secret key and
 // an issuer public key.
-func (cr *CredRequest) Sign(sk idemix.Big, ipk idemix.IssuerPublicKey) (res []byte, err error) {
+func (cr *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey) (res []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -52,7 +52,7 @@ func (cr *CredRequest) Sign(sk idemix.Big, ipk idemix.IssuerPublicKey) (res []by
 
 // Verify checks that the passed credential request is valid with the respect to the passed
 // issuer public key.
-func (*CredRequest) Verify(credentialRequest []byte, ipk idemix.IssuerPublicKey) (err error) {
+func (*CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPublicKey) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)

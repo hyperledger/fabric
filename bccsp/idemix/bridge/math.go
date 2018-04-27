@@ -25,6 +25,9 @@ type Ecp struct {
 }
 
 func (o *Ecp) Bytes() ([]byte, error) {
+	// To store a non-compressed elliptic curve point, we need to allocate
+	// enough space for the x and y coordinate, therefore two elements in the
+	// base field
 	res := make([]byte, 2*idemix.FieldBytes+1)
 	o.E.ToBytes(res, false)
 

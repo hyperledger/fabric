@@ -6,18 +6,18 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type SignatureScheme struct {
-	SignStub        func(cred []byte, sk idemix.Big, Nym idemix.Ecp, RNym idemix.Big, ipk idemix.IssuerPublicKey, attributes []bccsp.IdemixAttribute, msg []byte, rhIndex int, cri []byte) ([]byte, error)
+	SignStub        func(cred []byte, sk handlers.Big, Nym handlers.Ecp, RNym handlers.Big, ipk handlers.IssuerPublicKey, attributes []bccsp.IdemixAttribute, msg []byte, rhIndex int, cri []byte) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
 		cred       []byte
-		sk         idemix.Big
-		Nym        idemix.Ecp
-		RNym       idemix.Big
-		ipk        idemix.IssuerPublicKey
+		sk         handlers.Big
+		Nym        handlers.Ecp
+		RNym       handlers.Big
+		ipk        handlers.IssuerPublicKey
 		attributes []bccsp.IdemixAttribute
 		msg        []byte
 		rhIndex    int
@@ -31,10 +31,10 @@ type SignatureScheme struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(pk idemix.IssuerPublicKey, signature, digest []byte, attributes []bccsp.IdemixAttribute, hIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) error
+	VerifyStub        func(pk handlers.IssuerPublicKey, signature, digest []byte, attributes []bccsp.IdemixAttribute, hIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
-		pk                  idemix.IssuerPublicKey
+		pk                  handlers.IssuerPublicKey
 		signature           []byte
 		digest              []byte
 		attributes          []bccsp.IdemixAttribute
@@ -52,7 +52,7 @@ type SignatureScheme struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SignatureScheme) Sign(cred []byte, sk idemix.Big, Nym idemix.Ecp, RNym idemix.Big, ipk idemix.IssuerPublicKey, attributes []bccsp.IdemixAttribute, msg []byte, rhIndex int, cri []byte) ([]byte, error) {
+func (fake *SignatureScheme) Sign(cred []byte, sk handlers.Big, Nym handlers.Ecp, RNym handlers.Big, ipk handlers.IssuerPublicKey, attributes []bccsp.IdemixAttribute, msg []byte, rhIndex int, cri []byte) ([]byte, error) {
 	var credCopy []byte
 	if cred != nil {
 		credCopy = make([]byte, len(cred))
@@ -77,10 +77,10 @@ func (fake *SignatureScheme) Sign(cred []byte, sk idemix.Big, Nym idemix.Ecp, RN
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
 		cred       []byte
-		sk         idemix.Big
-		Nym        idemix.Ecp
-		RNym       idemix.Big
-		ipk        idemix.IssuerPublicKey
+		sk         handlers.Big
+		Nym        handlers.Ecp
+		RNym       handlers.Big
+		ipk        handlers.IssuerPublicKey
 		attributes []bccsp.IdemixAttribute
 		msg        []byte
 		rhIndex    int
@@ -103,7 +103,7 @@ func (fake *SignatureScheme) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
-func (fake *SignatureScheme) SignArgsForCall(i int) ([]byte, idemix.Big, idemix.Ecp, idemix.Big, idemix.IssuerPublicKey, []bccsp.IdemixAttribute, []byte, int, []byte) {
+func (fake *SignatureScheme) SignArgsForCall(i int) ([]byte, handlers.Big, handlers.Ecp, handlers.Big, handlers.IssuerPublicKey, []bccsp.IdemixAttribute, []byte, int, []byte) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
 	return fake.signArgsForCall[i].cred, fake.signArgsForCall[i].sk, fake.signArgsForCall[i].Nym, fake.signArgsForCall[i].RNym, fake.signArgsForCall[i].ipk, fake.signArgsForCall[i].attributes, fake.signArgsForCall[i].msg, fake.signArgsForCall[i].rhIndex, fake.signArgsForCall[i].cri
@@ -131,7 +131,7 @@ func (fake *SignatureScheme) SignReturnsOnCall(i int, result1 []byte, result2 er
 	}{result1, result2}
 }
 
-func (fake *SignatureScheme) Verify(pk idemix.IssuerPublicKey, signature []byte, digest []byte, attributes []bccsp.IdemixAttribute, hIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) error {
+func (fake *SignatureScheme) Verify(pk handlers.IssuerPublicKey, signature []byte, digest []byte, attributes []bccsp.IdemixAttribute, hIndex int, revocationPublicKey *ecdsa.PublicKey, epoch int) error {
 	var signatureCopy []byte
 	if signature != nil {
 		signatureCopy = make([]byte, len(signature))
@@ -150,7 +150,7 @@ func (fake *SignatureScheme) Verify(pk idemix.IssuerPublicKey, signature []byte,
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
-		pk                  idemix.IssuerPublicKey
+		pk                  handlers.IssuerPublicKey
 		signature           []byte
 		digest              []byte
 		attributes          []bccsp.IdemixAttribute
@@ -175,7 +175,7 @@ func (fake *SignatureScheme) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *SignatureScheme) VerifyArgsForCall(i int) (idemix.IssuerPublicKey, []byte, []byte, []bccsp.IdemixAttribute, int, *ecdsa.PublicKey, int) {
+func (fake *SignatureScheme) VerifyArgsForCall(i int) (handlers.IssuerPublicKey, []byte, []byte, []bccsp.IdemixAttribute, int, *ecdsa.PublicKey, int) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	return fake.verifyArgsForCall[i].pk, fake.verifyArgsForCall[i].signature, fake.verifyArgsForCall[i].digest, fake.verifyArgsForCall[i].attributes, fake.verifyArgsForCall[i].hIndex, fake.verifyArgsForCall[i].revocationPublicKey, fake.verifyArgsForCall[i].epoch
@@ -226,4 +226,4 @@ func (fake *SignatureScheme) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.SignatureScheme = new(SignatureScheme)
+var _ handlers.SignatureScheme = new(SignatureScheme)

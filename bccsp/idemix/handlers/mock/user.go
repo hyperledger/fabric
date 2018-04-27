@@ -4,42 +4,42 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type User struct {
-	NewKeyStub        func() (idemix.Big, error)
+	NewKeyStub        func() (handlers.Big, error)
 	newKeyMutex       sync.RWMutex
 	newKeyArgsForCall []struct{}
 	newKeyReturns     struct {
-		result1 idemix.Big
+		result1 handlers.Big
 		result2 error
 	}
 	newKeyReturnsOnCall map[int]struct {
-		result1 idemix.Big
+		result1 handlers.Big
 		result2 error
 	}
-	MakeNymStub        func(sk idemix.Big, key idemix.IssuerPublicKey) (idemix.Ecp, idemix.Big, error)
+	MakeNymStub        func(sk handlers.Big, key handlers.IssuerPublicKey) (handlers.Ecp, handlers.Big, error)
 	makeNymMutex       sync.RWMutex
 	makeNymArgsForCall []struct {
-		sk  idemix.Big
-		key idemix.IssuerPublicKey
+		sk  handlers.Big
+		key handlers.IssuerPublicKey
 	}
 	makeNymReturns struct {
-		result1 idemix.Ecp
-		result2 idemix.Big
+		result1 handlers.Ecp
+		result2 handlers.Big
 		result3 error
 	}
 	makeNymReturnsOnCall map[int]struct {
-		result1 idemix.Ecp
-		result2 idemix.Big
+		result1 handlers.Ecp
+		result2 handlers.Big
 		result3 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *User) NewKey() (idemix.Big, error) {
+func (fake *User) NewKey() (handlers.Big, error) {
 	fake.newKeyMutex.Lock()
 	ret, specificReturn := fake.newKeyReturnsOnCall[len(fake.newKeyArgsForCall)]
 	fake.newKeyArgsForCall = append(fake.newKeyArgsForCall, struct{}{})
@@ -60,34 +60,34 @@ func (fake *User) NewKeyCallCount() int {
 	return len(fake.newKeyArgsForCall)
 }
 
-func (fake *User) NewKeyReturns(result1 idemix.Big, result2 error) {
+func (fake *User) NewKeyReturns(result1 handlers.Big, result2 error) {
 	fake.NewKeyStub = nil
 	fake.newKeyReturns = struct {
-		result1 idemix.Big
+		result1 handlers.Big
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *User) NewKeyReturnsOnCall(i int, result1 idemix.Big, result2 error) {
+func (fake *User) NewKeyReturnsOnCall(i int, result1 handlers.Big, result2 error) {
 	fake.NewKeyStub = nil
 	if fake.newKeyReturnsOnCall == nil {
 		fake.newKeyReturnsOnCall = make(map[int]struct {
-			result1 idemix.Big
+			result1 handlers.Big
 			result2 error
 		})
 	}
 	fake.newKeyReturnsOnCall[i] = struct {
-		result1 idemix.Big
+		result1 handlers.Big
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *User) MakeNym(sk idemix.Big, key idemix.IssuerPublicKey) (idemix.Ecp, idemix.Big, error) {
+func (fake *User) MakeNym(sk handlers.Big, key handlers.IssuerPublicKey) (handlers.Ecp, handlers.Big, error) {
 	fake.makeNymMutex.Lock()
 	ret, specificReturn := fake.makeNymReturnsOnCall[len(fake.makeNymArgsForCall)]
 	fake.makeNymArgsForCall = append(fake.makeNymArgsForCall, struct {
-		sk  idemix.Big
-		key idemix.IssuerPublicKey
+		sk  handlers.Big
+		key handlers.IssuerPublicKey
 	}{sk, key})
 	fake.recordInvocation("MakeNym", []interface{}{sk, key})
 	fake.makeNymMutex.Unlock()
@@ -106,33 +106,33 @@ func (fake *User) MakeNymCallCount() int {
 	return len(fake.makeNymArgsForCall)
 }
 
-func (fake *User) MakeNymArgsForCall(i int) (idemix.Big, idemix.IssuerPublicKey) {
+func (fake *User) MakeNymArgsForCall(i int) (handlers.Big, handlers.IssuerPublicKey) {
 	fake.makeNymMutex.RLock()
 	defer fake.makeNymMutex.RUnlock()
 	return fake.makeNymArgsForCall[i].sk, fake.makeNymArgsForCall[i].key
 }
 
-func (fake *User) MakeNymReturns(result1 idemix.Ecp, result2 idemix.Big, result3 error) {
+func (fake *User) MakeNymReturns(result1 handlers.Ecp, result2 handlers.Big, result3 error) {
 	fake.MakeNymStub = nil
 	fake.makeNymReturns = struct {
-		result1 idemix.Ecp
-		result2 idemix.Big
+		result1 handlers.Ecp
+		result2 handlers.Big
 		result3 error
 	}{result1, result2, result3}
 }
 
-func (fake *User) MakeNymReturnsOnCall(i int, result1 idemix.Ecp, result2 idemix.Big, result3 error) {
+func (fake *User) MakeNymReturnsOnCall(i int, result1 handlers.Ecp, result2 handlers.Big, result3 error) {
 	fake.MakeNymStub = nil
 	if fake.makeNymReturnsOnCall == nil {
 		fake.makeNymReturnsOnCall = make(map[int]struct {
-			result1 idemix.Ecp
-			result2 idemix.Big
+			result1 handlers.Ecp
+			result2 handlers.Big
 			result3 error
 		})
 	}
 	fake.makeNymReturnsOnCall[i] = struct {
-		result1 idemix.Ecp
-		result2 idemix.Big
+		result1 handlers.Ecp
+		result2 handlers.Big
 		result3 error
 	}{result1, result2, result3}
 }
@@ -163,4 +163,4 @@ func (fake *User) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.User = new(User)
+var _ handlers.User = new(User)

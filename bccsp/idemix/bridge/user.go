@@ -7,7 +7,7 @@ package bridge
 
 import (
 	"github.com/hyperledger/fabric-amcl/amcl"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	"github.com/pkg/errors"
 )
@@ -18,7 +18,7 @@ type User struct {
 }
 
 // NewKey generates an idemix user secret key
-func (u *User) NewKey() (res idemix.Big, err error) {
+func (u *User) NewKey() (res handlers.Big, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -32,7 +32,7 @@ func (u *User) NewKey() (res idemix.Big, err error) {
 }
 
 // MakeNym generates a new pseudonym key-pair derived from the passed user secret key (sk) and issuer public key (ipk)
-func (u *User) MakeNym(sk idemix.Big, ipk idemix.IssuerPublicKey) (r1 idemix.Ecp, r2 idemix.Big, err error) {
+func (u *User) MakeNym(sk handlers.Big, ipk handlers.IssuerPublicKey) (r1 handlers.Ecp, r2 handlers.Big, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			r1 = nil

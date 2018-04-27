@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type Ecp struct {
@@ -90,4 +90,4 @@ func (fake *Ecp) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.Ecp = new(Ecp)
+var _ handlers.Ecp = new(Ecp)

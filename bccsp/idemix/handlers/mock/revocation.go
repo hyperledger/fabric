@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type Revocation struct {
@@ -241,4 +241,4 @@ func (fake *Revocation) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.Revocation = new(Revocation)
+var _ handlers.Revocation = new(Revocation)
