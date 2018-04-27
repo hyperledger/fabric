@@ -84,23 +84,33 @@ message CredRequest {
 // and a zero-knowledge proof of knowledge of a credential
 // and the corresponding user secret together with the attribute values
 // Nonce - a fresh nonce used for the signature
-// Nym - a fresh pseudonym (a commitment to to the user secert)
+// Nym - a fresh pseudonym (a commitment to to the user secret)
 // ProofSRNym - a zero-knowledge proof of knowledge of the
 // user secret inside Nym
 message Signature {
-	ECP APrime = 1;
-	ECP ABar = 2;
-	ECP BPrime = 3;
-	bytes ProofC = 4;
-	bytes ProofSSk = 5;
-	bytes ProofSE = 6;
-	bytes ProofSR2 = 7;
-	bytes ProofSR3 = 8;
-	bytes ProofSSPrime = 9;
-	repeated bytes ProofSAttrs = 10;
-	bytes Nonce = 11;
-	ECP Nym = 12;
-	bytes ProofSRNym = 13;
+    ECP APrime = 1;
+    ECP ABar = 2;
+    ECP BPrime = 3;
+    bytes ProofC = 4;
+    bytes ProofSSk = 5;
+    bytes ProofSE = 6;
+    bytes ProofSR2 = 7;
+    bytes ProofSR3 = 8;
+    bytes ProofSSPrime = 9;
+    repeated bytes ProofSAttrs = 10;
+    bytes Nonce = 11;
+    ECP Nym = 12;
+    bytes ProofSRNym = 13;
+    ECP2 RevocationEpochPK = 14;
+    bytes RevocationPKSig = 15;
+    int64 Epoch = 16;
+    NonRevokedProof NonRevokedProof = 17;
+}
+
+// NonRevokedProof contains proof that the credential is not revoked
+message NonRevokedProof {
+    int32 RevocationAlg = 1;
+    bytes NonRevokedProof = 2;
 }
 
 // NymSignature specifies a signature object that signs a message

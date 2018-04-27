@@ -11,6 +11,10 @@ import (
 	"encoding/hex"
 	"time"
 
+	"crypto/ecdsa"
+
+	"crypto/elliptic"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
@@ -48,16 +52,21 @@ const (
 	AttributeNameRevocationHandle = "RevocationHandle"
 )
 
+// index of the revocation handle attribute in the credential
+const rhIndex = 3
+
 // discloseFlags will be passed to the idemix signing and verification routines.
 // It informs idemix to disclose both attributes (OU and Role) when signing,
 // while hiding attributes EnrollmentID and RevocationHandle.
 var discloseFlags = []byte{1, 1, 0, 0}
 
 type idemixmsp struct {
-	ipk    *idemix.IssuerPublicKey
-	rng    *amcl.RAND
-	signer *idemixSigningIdentity
-	name   string
+	ipk          *idemix.IssuerPublicKey
+	rng          *amcl.RAND
+	signer       *idemixSigningIdentity
+	name         string
+	revocationPK *ecdsa.PublicKey
+	epoch        int
 }
 
 // newIdemixMsp creates a new instance of idemixmsp
@@ -119,6 +128,14 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 
 	msp.rng = rng
 
+	// get the revocation public key from the config
+	revPkX, revPkY := elliptic.Unmarshal(elliptic.P384(), conf.RevocationPk)
+	msp.revocationPK = &ecdsa.PublicKey{
+		Curve: elliptic.P384(),
+		X:     revPkX,
+		Y:     revPkY,
+	}
+
 	if conf.Signer == nil {
 		// No credential in config, so we don't setup a default signer
 		mspLogger.Debug("idemix msp setup as verification only msp (no key material found)")
@@ -178,8 +195,14 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.Wrap(err, "Credential is not cryptographically valid")
 	}
 
+	cri := &idemix.CredentialRevocationInformation{}
+	err = proto.Unmarshal(conf.Signer.CredentialRevocationInformation, cri)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal credential revocation information")
+	}
+
 	// Create the cryptographic evidence that this identity is valid
-	proof, err := idemix.NewSignature(cred, sk, Nym, RandNym, ipk, discloseFlags, nil, rng)
+	proof, err := idemix.NewSignature(cred, sk, Nym, RandNym, ipk, discloseFlags, nil, rhIndex, cri, rng)
 	if err != nil {
 		return errors.Wrap(err, "Failed to setup cryptographic proof of identity")
 	}
@@ -285,7 +308,7 @@ func (id *idemixidentity) verifyProof() error {
 	ouBytes := []byte(id.OU.OrganizationalUnitIdentifier)
 	attributeValues := []*FP256BN.BIG{idemix.HashModOrder(ouBytes), FP256BN.NewBIGint(int(id.Role.Role))}
 
-	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues)
+	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues, rhIndex, id.msp.revocationPK, id.msp.epoch)
 }
 
 func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {

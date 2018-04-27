@@ -116,6 +116,12 @@ message IdemixMSPConfig {
 
     // signer may contain crypto material to configure a default signer
     IdemixMSPSignerConfig signer = 3;
+
+    // RevocationPk is the public key used for revocation of credentials
+    bytes RevocationPk = 4;
+
+    // Epoch represents the current epoch (time interval) used for revocation
+    int64 Epoch = 5;
 }
 
 // IdemixMSPSIgnerConfig contains the crypto material to set up an idemix signing identity

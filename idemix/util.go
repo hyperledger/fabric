@@ -51,6 +51,10 @@ func HashModOrder(data []byte) *FP256BN.BIG {
 	return digestBig
 }
 
+func appendBytes(data []byte, index int, bytesToAdd []byte) int {
+	copy(data[index:], bytesToAdd)
+	return index + len(bytesToAdd)
+}
 func appendBytesG1(data []byte, index int, E *FP256BN.ECP) int {
 	length := 2*FieldBytes + 1
 	E.ToBytes(data[index : index+length])
