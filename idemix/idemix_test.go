@@ -108,6 +108,27 @@ func TestIdemix(t *testing.T) {
 	assert.Error(t, cred.Ver(sk, key.IPk), "credential with nil attribute should be invalid")
 	cred.Attrs = attrsBackup
 
+	// Generate a revocation key pair
+	revocationKey, err := GenerateLongTermRevocationKey()
+	assert.NoError(t, err)
+
+	// Create CRI that contains no revocation mechanism
+	epoch := 0
+	cri, err := CreateCRI(revocationKey, []*FP256BN.BIG{}, epoch, ALG_NO_REVOCATION, rng)
+	assert.NoError(t, err)
+	err = VerifyEpochPK(&revocationKey.PublicKey, cri.EpochPK, cri.EpochPKSig, int(cri.Epoch), RevocationAlgorithm(cri.RevocationAlg))
+	assert.NoError(t, err)
+
+	// make sure that epoch pk is not valid in future epoch
+	err = VerifyEpochPK(&revocationKey.PublicKey, cri.EpochPK, cri.EpochPKSig, int(cri.Epoch)+1, RevocationAlgorithm(cri.RevocationAlg))
+	assert.Error(t, err)
+
+	// Test bad input
+	_, err = CreateCRI(nil, []*FP256BN.BIG{}, epoch, ALG_NO_REVOCATION, rng)
+	assert.Error(t, err)
+	_, err = CreateCRI(revocationKey, []*FP256BN.BIG{}, epoch, ALG_NO_REVOCATION, nil)
+	assert.Error(t, err)
+
 	// Test signing no disclosure
 	Nym, RandNym := MakeNym(sk, key.IPk, rng)
 
