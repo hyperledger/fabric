@@ -293,6 +293,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 				go func() {
 					var in2 *pb.ChaincodeMessage
 					in2, err = stream.Recv()
+					errc <- err
 					msgAvail <- in2
 				}()
 			}
@@ -303,7 +304,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 					continue
 				}
 				//no, bail
-				err = errors.Wrap(sendErr, fmt.Sprintf("error sending %s", in.Type.String()))
+				err = errors.Wrap(sendErr, "error sending")
 				return
 			case in = <-msgAvail:
 				if err == io.EOF {
