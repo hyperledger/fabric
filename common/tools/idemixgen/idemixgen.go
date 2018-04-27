@@ -12,10 +12,15 @@ package main
 // the Identity Mixer MSP
 
 import (
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"crypto/elliptic"
+
+	"crypto/ecdsa"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/idemixgen/idemixca"
@@ -29,6 +34,7 @@ import (
 const (
 	IdemixDirIssuer             = "ca"
 	IdemixConfigIssuerSecretKey = "IssuerSecretKey"
+	IdemixConfigRevocationKey   = "RevocationKey"
 )
 
 // command line flags
@@ -54,6 +60,12 @@ func main() {
 		isk, ipk, err := idemixca.GenerateIssuerKey()
 		handleError(err)
 
+		revocationKey, err := idemix.GenerateLongTermRevocationKey()
+		handleError(err)
+		revocationKeyBytes, err := x509.MarshalECPrivateKey(revocationKey)
+		handleError(err)
+		revocationPkBytes := elliptic.Marshal(elliptic.P384(), revocationKey.X, revocationKey.Y)
+
 		// Prevent overwriting the existing key
 		path := filepath.Join(IdemixDirIssuer)
 		checkDirectoryNotExists(path, fmt.Sprintf("Directory %s already exists", path))
@@ -65,11 +77,13 @@ func main() {
 		handleError(os.Mkdir(IdemixDirIssuer, 0770))
 		handleError(os.Mkdir(msp.IdemixConfigDirMsp, 0770))
 		writeFile(filepath.Join(IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
+		writeFile(filepath.Join(IdemixDirIssuer, IdemixConfigRevocationKey), revocationKeyBytes)
 		writeFile(filepath.Join(IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey), ipk)
+		writeFile(filepath.Join(msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), revocationPkBytes)
 		writeFile(filepath.Join(msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipk)
 
 	case genSignerConfig.FullCommand():
-		config, err := idemixca.GenerateSignerConfig(*genCredIsAdmin, *genCredOU, *genCredEnrollmentId, *genCredRevocationHandle, readIssuerKey())
+		config, err := idemixca.GenerateSignerConfig(*genCredIsAdmin, *genCredOU, *genCredEnrollmentId, *genCredRevocationHandle, readIssuerKey(), readRevocationKey())
 		handleError(err)
 
 		path := msp.IdemixConfigDirUser
@@ -108,6 +122,18 @@ func readIssuerKey() *idemix.IssuerKey {
 	ipk := &idemix.IssuerPublicKey{}
 	handleError(proto.Unmarshal(ipkBytes, ipk))
 	key := &idemix.IssuerKey{isk, ipk}
+
+	return key
+}
+
+func readRevocationKey() *ecdsa.PrivateKey {
+	path := filepath.Join(IdemixDirIssuer, IdemixConfigRevocationKey)
+	keyBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
+	}
+	key, err := x509.ParseECPrivateKey(keyBytes)
+	handleError(err)
 
 	return key
 }

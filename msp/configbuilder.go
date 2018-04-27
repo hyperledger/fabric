@@ -358,10 +358,11 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 }
 
 const (
-	IdemixConfigDirMsp              = "msp"
-	IdemixConfigDirUser             = "user"
-	IdemixConfigFileIssuerPublicKey = "IssuerPublicKey"
-	IdemixConfigFileSigner          = "SignerConfig"
+	IdemixConfigDirMsp                  = "msp"
+	IdemixConfigDirUser                 = "user"
+	IdemixConfigFileIssuerPublicKey     = "IssuerPublicKey"
+	IdemixConfigFileRevocationPublicKey = "RevocationPublicKey"
+	IdemixConfigFileSigner              = "SignerConfig"
 )
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP

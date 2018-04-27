@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"crypto/elliptic"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/idemix"
 	m "github.com/hyperledger/fabric/msp"
@@ -28,21 +30,24 @@ func TestIdemixCa(t *testing.T) {
 	isk, ipkBytes, err := GenerateIssuerKey()
 	assert.NoError(t, err)
 
+	revocationkey, err := idemix.GenerateLongTermRevocationKey()
+	assert.NoError(t, err)
+
 	ipk := &idemix.IssuerPublicKey{}
 	err = proto.Unmarshal(ipkBytes, ipk)
 	assert.NoError(t, err)
 
-	writeVerifierToFile(ipkBytes)
+	writeVerifierToFile(ipkBytes, elliptic.Marshal(elliptic.P384(), revocationkey.X, revocationkey.Y))
 
 	key := &idemix.IssuerKey{isk, ipk}
 
-	conf, err := GenerateSignerConfig(false, "OU1", "enrollmentid1", 1, key)
+	conf, err := GenerateSignerConfig(false, "OU1", "enrollmentid1", 1, key, revocationkey)
 	assert.NoError(t, err)
 	cleanupSigner()
 	assert.NoError(t, writeSignerToFile(conf))
 	assert.NoError(t, setupMSP())
 
-	conf, err = GenerateSignerConfig(true, "OU1", "enrollmentid2", 1234, key)
+	conf, err = GenerateSignerConfig(true, "OU1", "enrollmentid2", 1234, key, revocationkey)
 	assert.NoError(t, err)
 	cleanupSigner()
 	assert.NoError(t, writeSignerToFile(conf))
@@ -52,10 +57,10 @@ func TestIdemixCa(t *testing.T) {
 	cleanupVerifier()
 	assert.Error(t, setupMSP())
 
-	_, err = GenerateSignerConfig(true, "", "enrollmentid", 1, key)
+	_, err = GenerateSignerConfig(true, "", "enrollmentid", 1, key, revocationkey)
 	assert.EqualError(t, err, "the OU attribute value is empty")
 
-	_, err = GenerateSignerConfig(true, "OU1", "", 1, key)
+	_, err = GenerateSignerConfig(true, "OU1", "", 1, key, revocationkey)
 	assert.EqualError(t, err, "the enrollment id value is empty")
 }
 
@@ -76,12 +81,17 @@ func cleanupVerifier() {
 	os.RemoveAll(filepath.Join(testDir, m.IdemixConfigDirMsp))
 }
 
-func writeVerifierToFile(ipkBytes []byte) error {
+func writeVerifierToFile(ipkBytes []byte, revpkBytes []byte) error {
 	err := os.Mkdir(filepath.Join(testDir, m.IdemixConfigDirMsp), os.ModePerm)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileIssuerPublicKey), ipkBytes, 0644)
+	err = ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileIssuerPublicKey), ipkBytes, 0644)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileRevocationPublicKey), revpkBytes, 0644)
 }
 
 func writeSignerToFile(signerBytes []byte) error {
@@ -101,6 +111,10 @@ func setupMSP() error {
 		return errors.Wrap(err, "Getting MSP failed")
 	}
 	mspConfig, err := m.GetIdemixMspConfig(testDir, "TestName")
+
+	if err != nil {
+		return err
+	}
 
 	return msp.Setup(mspConfig)
 }
