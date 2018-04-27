@@ -375,7 +375,7 @@ been provided by Org1's peer P1!".
 Phase 1 ends when the application receives signed proposal responses from
 sufficient peers. We note that different peers can return different and
 therefore inconsistent transaction responses to the application *for the same
-transaction proposal*. It might simply be that the result was generated a
+transaction proposal*. It might simply be that the result was generated at
 different time on different peers with ledgers at different states -- in which
 case an application can simply request a more up-to-date proposal response. Less
 likely, but much more seriously, results might be different because the chaincode is *non-deterministic*. Non-determinism is the enemy of chaincodes
@@ -485,7 +485,12 @@ the transaction has been endorsed by the required organizations according to the
 example, some transactions may only need to be endorsed by a single
 organization, whereas others may require multiple endorsements before they are
 considered valid. This process of validation verifies that all relevant
-organizations have generated the same outcome or result.
+organizations have generated the same outcome or result. Also note that this
+validation is different than the endorsement check in phase 1, where it is the
+application that receives the response from endorsing peers and makes the
+decision to send the proposal transactions. In case the application violates
+the endorsement policy by sending wrong transactions, the peer is still able to
+reject the transaction in the validation process of phase 3.
 
 If a transaction has been endorsed correctly, the peer will attempt to apply it
 to the ledger. To do this, a peer must perform a ledger consistency check to
