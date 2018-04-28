@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/transientstore"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -23,6 +24,7 @@ import (
 var logger = flogging.MustGetLogger("transientstore")
 
 var emptyValue = []byte{}
+var nilByte = byte('\x00')
 
 // ErrStoreEmpty is used to indicate that there are no entries in transient store
 var ErrStoreEmpty = errors.New("Transient store is empty")
@@ -43,6 +45,12 @@ type RWSetScanner interface {
 	// It may return nil, nil when it has no further data, and also may return an error
 	// on failure
 	Next() (*EndorserPvtSimulationResults, error)
+	// NextWithConfig returns the next EndorserPvtSimulationResultsWithConfig from the RWSetScanner.
+	// It may return nil, nil when it has no further data, and also may return an error
+	// on failure
+	// TODO: Once the related gossip changes are made as per FAB-5096, remove the above function
+	// and rename the below function to Next form NextWithConfig.
+	NextWithConfig() (*EndorserPvtSimulationResultsWithConfig, error)
 	// Close frees the resources associated with this RWSetScanner
 	Close()
 }
@@ -54,6 +62,11 @@ type Store interface {
 	// Persist stores the private write set of a transaction in the transient store
 	// based on txid and the block height the private data was received at
 	Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
+	// TODO: Once the related gossip changes are made as per FAB-5096, remove the above function
+	// and rename the below function to Persist form PersistWithConfig.
+	// PersistWithConfig stores the private write set of a transaction along with the collection config
+	// in the transient store based on txid and the block height the private data was received at
+	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// write sets persisted from different endorsers (via Gossip)
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error)
@@ -73,9 +86,16 @@ type Store interface {
 }
 
 // EndorserPvtSimulationResults captures the details of the simulation results specific to an endorser
+// TODO: Once the related gossip changes are made as per FAB-5096, remove this struct
 type EndorserPvtSimulationResults struct {
 	ReceivedAtBlockHeight uint64
 	PvtSimulationResults  *rwset.TxPvtReadWriteSet
+}
+
+// EndorserPvtSimulationResultsWithConfig captures the details of the simulation results specific to an endorser
+type EndorserPvtSimulationResultsWithConfig struct {
+	ReceivedAtBlockHeight          uint64
+	PvtSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo
 }
 
 //////////////////////////////////////////////
@@ -120,6 +140,7 @@ func (provider *storeProvider) Close() {
 
 // Persist stores the private write set of a transaction in the transient store
 // based on txid and the block height the private data was received at
+// TODO: Once the related gossip changes are made as per FAB-5096, remove this function.
 func (s *store) Persist(txid string, blockHeight uint64,
 	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 
@@ -141,7 +162,7 @@ func (s *store) Persist(txid string, blockHeight uint64,
 	// Create two index: (i) by txid, and (ii) by height
 
 	// Create compositeKey for purge index by height with appropriate prefix, blockHeight,
-	// txid, uuid and store the compositeKey (purge index) with a null byte as value. Note that
+	// txid, uuid and store the compositeKey (purge index) with a nil byte as value. Note that
 	// the purge index is used to remove orphan entries in the transient store (which are not removed
 	// by PurgeTxids()) using BTL policy by PurgeByHeight(). Note that orphan entries are due to transaction
 	// that gets endorsed but not submitted by the client for commit)
@@ -149,9 +170,64 @@ func (s *store) Persist(txid string, blockHeight uint64,
 	dbBatch.Put(compositeKeyPurgeIndexByHeight, emptyValue)
 
 	// Create compositeKey for purge index by txid with appropriate prefix, txid, uuid,
-	// blockHeight and store the compositeKey (purge index) with a null byte as value.
+	// blockHeight and store the compositeKey (purge index) with a nil byte as value.
 	// Though compositeKeyPvtRWSet itself can be used to purge private write set by txid,
-	// we create a separate composite key with a null byte as value. The reason is that
+	// we create a separate composite key with a nil byte as value. The reason is that
+	// if we use compositeKeyPvtRWSet, we unnecessarily read (potentially large) private write
+	// set associated with the key from db. Note that this purge index is used to remove non-orphan
+	// entries in the transient store and is used by PurgeTxids()
+	// Note: We can create compositeKeyPurgeIndexByTxid by just replacing the prefix of compositeKeyPvtRWSet
+	// with purgeIndexByTxidPrefix. For code readability and to be expressive, we use a
+	// createCompositeKeyForPurgeIndexByTxid() instead.
+	compositeKeyPurgeIndexByTxid := createCompositeKeyForPurgeIndexByTxid(txid, uuid, blockHeight)
+	dbBatch.Put(compositeKeyPurgeIndexByTxid, emptyValue)
+
+	return s.db.WriteBatch(dbBatch, true)
+}
+
+// PersistWithConfig stores the private write set of a transaction along with the collection config
+// in the transient store based on txid and the block height the private data was received at
+// TODO: Once the related gossip changes are made as per FAB-5096, rename this function to Persist
+// form PersistWithConfig.
+func (s *store) PersistWithConfig(txid string, blockHeight uint64,
+	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error {
+
+	logger.Debugf("Persisting private data to transient store for txid = %s", txid)
+
+	dbBatch := leveldbhelper.NewUpdateBatch()
+
+	// Create compositeKey with appropriate prefix, txid, uuid and blockHeight
+	// Due to the fact that the txid may have multiple private write sets persisted from different
+	// endorsers (via Gossip), we postfix an uuid with the txid to avoid collision.
+	uuid := util.GenerateUUID()
+	compositeKeyPvtRWSet := createCompositeKeyForPvtRWSet(txid, uuid, blockHeight)
+	privateSimulationResultsWithConfigBytes, err := proto.Marshal(privateSimulationResultsWithConfig)
+	if err != nil {
+		return err
+	}
+
+	// Note that some rwset.TxPvtReadWriteSet may exist in the transient store immediately after
+	// upgrading the peer to v1.2. In order to differentiate between new proto and old proto while
+	// retrieving, a nil byte is prepended to the new proto, i.e., privateSimulationResultsWithConfigBytes,
+	// as a marshaled message can never start with a nil byte. In v1.3, we can avoid prepending the
+	// nil byte.
+	value := append([]byte{nilByte}, privateSimulationResultsWithConfigBytes...)
+	dbBatch.Put(compositeKeyPvtRWSet, value)
+
+	// Create two index: (i) by txid, and (ii) by height
+
+	// Create compositeKey for purge index by height with appropriate prefix, blockHeight,
+	// txid, uuid and store the compositeKey (purge index) with a nil byte as value. Note that
+	// the purge index is used to remove orphan entries in the transient store (which are not removed
+	// by PurgeTxids()) using BTL policy by PurgeByHeight(). Note that orphan entries are due to transaction
+	// that gets endorsed but not submitted by the client for commit)
+	compositeKeyPurgeIndexByHeight := createCompositeKeyForPurgeIndexByHeight(blockHeight, txid, uuid)
+	dbBatch.Put(compositeKeyPurgeIndexByHeight, emptyValue)
+
+	// Create compositeKey for purge index by txid with appropriate prefix, txid, uuid,
+	// blockHeight and store the compositeKey (purge index) with a nil byte as value.
+	// Though compositeKeyPvtRWSet itself can be used to purge private write set by txid,
+	// we create a separate composite key with a nil byte as value. The reason is that
 	// if we use compositeKeyPvtRWSet, we unnecessarily read (potentially large) private write
 	// set associated with the key from db. Note that this purge index is used to remove non-orphan
 	// entries in the transient store and is used by PurgeTxids()
@@ -288,6 +364,7 @@ func (s *store) Shutdown() {
 
 // Next moves the iterator to the next key/value pair.
 // It returns whether the iterator is exhausted.
+// TODO: Once the related gossip changes are made as per FAB-5096, remove this function
 func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
@@ -305,6 +382,43 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	return &EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight: blockHeight,
 		PvtSimulationResults:  filteredTxPvtRWSet,
+	}, nil
+}
+
+// Next moves the iterator to the next key/value pair.
+// It returns whether the iterator is exhausted.
+// TODO: Once the related gossip changes are made as per FAB-5096, rename this function to Next
+func (scanner *RwsetScanner) NextWithConfig() (*EndorserPvtSimulationResultsWithConfig, error) {
+	if !scanner.dbItr.Next() {
+		return nil, nil
+	}
+	dbKey := scanner.dbItr.Key()
+	dbVal := scanner.dbItr.Value()
+	_, blockHeight := splitCompositeKeyOfPvtRWSet(dbKey)
+
+	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
+	filteredTxPvtRWSet := &rwset.TxPvtReadWriteSet{}
+	txPvtRWSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{}
+
+	if dbVal[0] == nilByte {
+		// new proto, i.e., TxPvtReadWriteSetWithConfigInfo
+		if err := proto.Unmarshal(dbVal[1:], txPvtRWSetWithConfig); err != nil {
+			return nil, err
+		}
+		filteredTxPvtRWSet = pvtdatastorage.TrimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
+	} else {
+		// old proto, i.e., TxPvtReadWriteSet
+		if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
+			return nil, err
+		}
+		filteredTxPvtRWSet = pvtdatastorage.TrimPvtWSet(txPvtRWSet, scanner.filter)
+	}
+
+	txPvtRWSetWithConfig.PvtRwset = filteredTxPvtRWSet
+
+	return &EndorserPvtSimulationResultsWithConfig{
+		ReceivedAtBlockHeight:          blockHeight,
+		PvtSimulationResultsWithConfig: txPvtRWSetWithConfig,
 	}, nil
 }
 

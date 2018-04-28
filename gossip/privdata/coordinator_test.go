@@ -137,6 +137,10 @@ func (scanner *mockRWSetScanner) Next() (*transientstore.EndorserPvtSimulationRe
 	return res, nil
 }
 
+func (scanner *mockRWSetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
+	return nil, nil
+}
+
 func (*mockRWSetScanner) Close() {
 }
 
