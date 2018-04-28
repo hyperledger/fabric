@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
 
@@ -29,7 +30,7 @@ var sysccLogger = flogging.MustGetLogger("sccapi")
 // Registrar provides a way for system chaincodes to be registered
 type Registrar interface {
 	// Register registers a system chaincode
-	Register(path string, cc shim.Chaincode) error
+	Register(ccid *ccintf.CCID, cc shim.Chaincode) error
 }
 
 // SystemChaincode defines the metadata needed to initialize system chaincode
@@ -71,7 +72,18 @@ func (p *Provider) registerSysCC(syscc *SystemChaincode) (bool, error) {
 		return false, nil
 	}
 
-	err := p.Registrar.Register(syscc.Path, syscc.Chaincode)
+	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
+	version := util.GetSysCCVersion()
+
+	ccid := &ccintf.CCID{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name: syscc.Name,
+			},
+		},
+		Version: version,
+	}
+	err := p.Registrar.Register(ccid, syscc.Chaincode)
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {
@@ -120,6 +132,7 @@ func (syscc *SystemChaincode) deploySysCC(chainID string) error {
 
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
 
+	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
 	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
@@ -145,6 +158,7 @@ func (syscc *SystemChaincode) deDeploySysCC(chainID string) error {
 
 	ccprov := ccprovider.GetChaincodeProvider()
 
+	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
 	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil, nil)

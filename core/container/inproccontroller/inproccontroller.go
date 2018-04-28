@@ -70,13 +70,15 @@ func (r *Registry) NewVM() container.VM {
 }
 
 //Register registers system chaincode with given path. The deploy should be called to initialize
-func (r *Registry) Register(path string, cc shim.Chaincode) error {
-	tmp := r.typeRegistry[path]
+func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
+	name := ccid.GetName()
+	inprocLogger.Debugf("Registering chaincode instance: %s", name)
+	tmp := r.typeRegistry[name]
 	if tmp != nil {
-		return SysCCRegisteredErr(path)
+		return SysCCRegisteredErr(name)
 	}
 
-	r.typeRegistry[path] = &inprocContainer{chaincode: cc}
+	r.typeRegistry[name] = &inprocContainer{chaincode: cc}
 	return nil
 }
 
@@ -107,7 +109,8 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 
 //Deploy verifies chaincode is registered and creates an instance for it. Currently only one instance can be created
 func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
-	path := ccid.ChaincodeSpec.ChaincodeId.Path
+	path := ccid.GetName()
+	inprocLogger.Debugf("Deploying chaincode instance: %s", path)
 
 	ipctemplate := vm.registry.typeRegistry[path]
 	if ipctemplate == nil {
@@ -179,7 +182,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 
 //Start starts a previously registered system codechain
 func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
-	path := ccid.ChaincodeSpec.ChaincodeId.Path
+	path := ccid.GetName()
 
 	ipctemplate := vm.registry.typeRegistry[path]
 
@@ -222,7 +225,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 
 //Stop stops a system codechain
 func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	path := ccid.ChaincodeSpec.ChaincodeId.Path
+	path := ccid.GetName()
 
 	ipctemplate := vm.registry.typeRegistry[path]
 	if ipctemplate == nil {

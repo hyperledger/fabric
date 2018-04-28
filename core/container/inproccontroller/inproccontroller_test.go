@@ -39,17 +39,29 @@ func TestError(t *testing.T) {
 func TestRegisterSuccess(t *testing.T) {
 	r := NewRegistry()
 	shim := MockShim{}
-	err := r.Register("path", shim)
+	err := r.Register(&ccintf.CCID{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name: "name",
+			},
+		},
+	}, shim)
 
 	assert.Nil(t, err, "err should be nil")
-	assert.Equal(t, r.typeRegistry["path"].chaincode, shim, "shim should be correct")
+	assert.Equal(t, r.typeRegistry["name"].chaincode, shim, "shim should be correct")
 }
 
 func TestRegisterError(t *testing.T) {
 	r := NewRegistry()
-	r.typeRegistry["path"] = &inprocContainer{}
+	r.typeRegistry["name"] = &inprocContainer{}
 	shim := MockShim{}
-	err := r.Register("path", shim)
+	err := r.Register(&ccintf.CCID{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name: "name",
+			},
+		},
+	}, shim)
 
 	assert.NotNil(t, err, "err should not be nil")
 }
@@ -139,7 +151,7 @@ func TestDeployNotRegistered(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
+				Name: "name",
 			},
 		},
 	}
@@ -157,7 +169,7 @@ func TestDeployNotRegistered(t *testing.T) {
 	err := vm.Deploy(mockContext, ccid, args, env, mockReader)
 
 	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "path not registered. Please register the system chaincode in inprocinstances.go", "error message should be correct")
+	assert.Equal(t, err.Error(), "name not registered. Please register the system chaincode in inprocinstances.go", "error message should be correct")
 }
 
 func TestDeployNoChaincodeInstance(t *testing.T) {
@@ -168,7 +180,7 @@ func TestDeployNoChaincodeInstance(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
+				Name: "name",
 			},
 		},
 	}
@@ -181,11 +193,11 @@ func TestDeployNoChaincodeInstance(t *testing.T) {
 
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
 
-	r.typeRegistry["path"] = ipc
+	r.typeRegistry["name"] = ipc
 
 	err := vm.Deploy(mockContext, ccid, args, env, mockReader)
 	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "path system chaincode does not contain chaincode instance")
+	assert.Equal(t, err.Error(), "name system chaincode does not contain chaincode instance")
 }
 
 func TestDeployChaincode(t *testing.T) {
@@ -196,7 +208,7 @@ func TestDeployChaincode(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
+				Name: "name",
 			},
 		},
 	}
@@ -211,7 +223,7 @@ func TestDeployChaincode(t *testing.T) {
 
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
 
-	r.typeRegistry["path"] = ipc
+	r.typeRegistry["name"] = ipc
 
 	err := vm.Deploy(mockContext, ccid, args, env, mockReader)
 	assert.Nil(t, err, "err should be nil")
@@ -399,7 +411,7 @@ func TestStart(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
+				Name: "name",
 			},
 		},
 	}
@@ -414,7 +426,7 @@ func TestStart(t *testing.T) {
 
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
 
-	r.typeRegistry["path"] = ipc
+	r.typeRegistry["name"] = ipc
 
 	err := vm.Start(mockContext, ccid, args, env, files, nil)
 	assert.Nil(t, err, "err should be nil")
@@ -428,7 +440,6 @@ func TestStop(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
 				Name: "name",
 			},
 		},
@@ -446,7 +457,7 @@ func TestStop(t *testing.T) {
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: stopChan}
 	ipc.running = true
 
-	r.typeRegistry["path"] = ipc
+	r.typeRegistry["name-1"] = ipc
 	r.instRegistry["name-1"] = ipc
 
 	go func() {
@@ -466,7 +477,6 @@ func TestStopNoIPCTemplate(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
 				Name: "name",
 			},
 		},
@@ -475,7 +485,7 @@ func TestStopNoIPCTemplate(t *testing.T) {
 
 	err := vm.Stop(mockContext, ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "path not registered", "error should be correct")
+	assert.Equal(t, err.Error(), "name-1 not registered", "error should be correct")
 }
 
 func TestStopNoIPC(t *testing.T) {
@@ -486,7 +496,6 @@ func TestStopNoIPC(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
 				Name: "name",
 			},
 		},
@@ -503,7 +512,7 @@ func TestStopNoIPC(t *testing.T) {
 	stopChan := make(chan struct{})
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: stopChan}
 
-	r.typeRegistry["path"] = ipc
+	r.typeRegistry["name-1"] = ipc
 
 	err := vm.Stop(mockContext, ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
@@ -518,7 +527,6 @@ func TestStopIPCNotRunning(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
 				Name: "name",
 			},
 		},
@@ -535,7 +543,7 @@ func TestStopIPCNotRunning(t *testing.T) {
 	stopChan := make(chan struct{})
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: stopChan}
 
-	r.typeRegistry["path"] = ipc
+	r.typeRegistry["name-1"] = ipc
 	r.instRegistry["name-1"] = ipc
 
 	err := vm.Stop(mockContext, ccid, 1000, true, true)
@@ -549,7 +557,6 @@ func TestDestroy(t *testing.T) {
 	ccid := ccintf.CCID{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			ChaincodeId: &pb.ChaincodeID{
-				Path: "path",
 				Name: "name",
 			},
 		},

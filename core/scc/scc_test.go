@@ -103,5 +103,5 @@ func TestRegisterSysCC(t *testing.T) {
 		Chaincode: nil,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, "path already registered", err)
+	assert.Contains(t, "lscc-latest already registered", err)
 }
