@@ -34,6 +34,7 @@
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - dist-clean - clean release packages for all target platforms
 #   - unit-test-clean - cleans unit test state (particularly from docker)
+#   - basic-checks - performs basic checks like license, spelling and linter
 
 PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION = 1.0.7
@@ -99,6 +100,8 @@ include docker-env.mk
 all: native docker checks
 
 checks: license spelling linter unit-test behave
+
+basic-checks: license spelling linter
 
 desk-check: license spelling linter verify behave
 
