@@ -113,7 +113,7 @@ ignored = [
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "=1.10.0"
+  version = "=1.11.3"
 
 [[constraint]]
   name = "gopkg.in/alecthomas/kingpin.v2"
