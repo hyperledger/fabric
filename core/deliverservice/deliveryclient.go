@@ -126,19 +126,19 @@ func (d *deliverServiceImpl) UpdateEndpoints(chainID string, endpoints []string)
 func (d *deliverServiceImpl) validateConfiguration() error {
 	conf := d.conf
 	if len(conf.Endpoints) == 0 {
-		return errors.New("No endpoints specified")
+		return errors.New("no endpoints specified")
 	}
 	if conf.Gossip == nil {
-		return errors.New("No gossip provider specified")
+		return errors.New("no gossip provider specified")
 	}
 	if conf.ABCFactory == nil {
-		return errors.New("No AtomicBroadcast factory specified")
+		return errors.New("no AtomicBroadcast factory specified")
 	}
 	if conf.ConnFactory == nil {
-		return errors.New("No connection factory specified")
+		return errors.New("no connection factory specified")
 	}
 	if conf.CryptoSvc == nil {
-		return errors.New("No crypto service specified")
+		return errors.New("no crypto service specified")
 	}
 	return nil
 }
@@ -256,7 +256,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		if viper.GetBool("peer.tls.enabled") {
 			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
 			if err != nil {
-				return nil, fmt.Errorf("Failed obtaining credentials for channel %s: %v", channelID, err)
+				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
 			}
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
 		} else {

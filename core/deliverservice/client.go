@@ -100,9 +100,9 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 		return resp, nil
 	}
 	if bc.shouldStop() {
-		return nil, errors.New("Client is closing")
+		return nil, errors.New("client is closing")
 	}
-	return nil, fmt.Errorf("Attempts (%d) or elapsed time (%v) exhausted", attempt, totalRetryTime)
+	return nil, fmt.Errorf("attempts (%d) or elapsed time (%v) exhausted", attempt, totalRetryTime)
 }
 
 func (bc *broadcastClient) doAction(action func() (interface{}, error)) (interface{}, error) {
