@@ -260,6 +260,10 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		if simResult, err = txsim.GetTxSimulationResults(); err != nil {
 			return nil, nil, nil, nil, err
 		}
+		// As soon the simulation result is collected, we should close txsim
+		// so that the acquired shared lock on the database can be released.
+		// NOTE: this txsim object was created in ProcessProposal()
+		txsim.Done()
 
 		if simResult.PvtSimulationResults != nil {
 			if cid.Name == "lscc" {
@@ -460,6 +464,15 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		if txsim, err = e.s.GetTxSimulator(chainID, txid); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
+		// txsim acquires a shared lock on the stateDB. As this would impact the block commits (i.e., commit
+		// of valid write-sets to the stateDB), we must release the lock as early as possible.
+		// Hence, this txsim object is closed in simulateProposal() as soon as the tx is simulated and
+		// rwset is collected before gossip dissemination if required for privateData. For safety, we
+		// add the following defer statement and is useful when an error occur. Note that calling
+		// txsim.Done() more than once does not cause any issue. If the txsim is already
+		// released, the following txsim.Done() simply returns.
+		defer txsim.Done()
+
 		if historyQueryExecutor, err = e.s.GetHistoryQueryExecutor(chainID); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
@@ -467,8 +480,6 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// TODO shouldn't we also add txsim to context here as well? Rather than passing txsim parameter
 		// around separately, since eventually it gets added to context anyways
 		ctx = context.WithValue(ctx, chaincode.HistoryQueryExecutorKey, historyQueryExecutor)
-
-		defer txsim.Done()
 	}
 	//this could be a request to a chainless SysCC
 
@@ -509,6 +520,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if chainID == "" {
 		pResp = &pb.ProposalResponse{Response: res}
 	} else {
+		//Note: To endorseProposal(), we pass the released txsim. Hence, an error would occur if we try to use this txsim
 		pResp, err = e.endorseProposal(ctx, chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
 		if err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
