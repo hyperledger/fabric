@@ -50,10 +50,10 @@ type CreateImageReq struct {
 	Env    []string
 }
 
-func (bp CreateImageReq) do(ctxt context.Context, v api.VM) error {
+func (bp CreateImageReq) Do(ctxt context.Context, v api.VM) error {
 	return v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader)
 }
-func (bp CreateImageReq) getCCID() ccintf.CCID {
+func (bp CreateImageReq) GetCCID() ccintf.CCID {
 	return bp.CCID
 }
 

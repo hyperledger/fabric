@@ -108,8 +108,8 @@ func (vmc *VMController) unlockContainer(id string) {
 //note that we'd stop on the first method on the stack that does not
 //take context
 type VMCReqIntf interface {
-	do(ctxt context.Context, v api.VM) error
-	getCCID() ccintf.CCID
+	Do(ctxt context.Context, v api.VM) error
+	GetCCID() ccintf.CCID
 }
 
 //StartContainerReq - properties for starting a container.
@@ -121,11 +121,11 @@ type StartContainerReq struct {
 	FilesToUpload map[string][]byte
 }
 
-func (si StartContainerReq) do(ctxt context.Context, v api.VM) error {
+func (si StartContainerReq) Do(ctxt context.Context, v api.VM) error {
 	return v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
 }
 
-func (si StartContainerReq) getCCID() ccintf.CCID {
+func (si StartContainerReq) GetCCID() ccintf.CCID {
 	return si.CCID
 }
 
@@ -139,11 +139,11 @@ type StopContainerReq struct {
 	Dontremove bool
 }
 
-func (si StopContainerReq) do(ctxt context.Context, v api.VM) error {
+func (si StopContainerReq) Do(ctxt context.Context, v api.VM) error {
 	return v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove)
 }
 
-func (si StopContainerReq) getCCID() ccintf.CCID {
+func (si StopContainerReq) GetCCID() ccintf.CCID {
 	return si.CCID
 }
 
@@ -163,13 +163,13 @@ func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq
 
 	c := make(chan error)
 	go func() {
-		id, err := v.GetVMName(req.getCCID(), nil)
+		id, err := v.GetVMName(req.GetCCID(), nil)
 		if err != nil {
 			c <- err
 			return
 		}
 		vmc.lockContainer(id)
-		err = req.do(ctxt, v)
+		err = req.Do(ctxt, v)
 		vmc.unlockContainer(id)
 		c <- err
 	}()
