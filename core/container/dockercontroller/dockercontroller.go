@@ -190,7 +190,7 @@ func (vm *DockerVM) createContainer(ctxt context.Context, client dockerClient,
 
 func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID,
 	args []string, env []string, reader io.Reader) error {
-	id, err := vm.GetVMName(ccid, formatImageName)
+	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID,
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 	args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
-	imageName, err := vm.GetVMName(ccid, formatImageName)
+	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
 	}
@@ -246,10 +246,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 		return err
 	}
 
-	containerName, err := vm.GetVMName(ccid, nil)
-	if err != nil {
-		return err
-	}
+	containerName := vm.GetVMName(ccid)
 
 	attachStdout := viper.GetBool("vm.docker.attachStdout")
 
@@ -405,10 +402,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 
 //Stop stops a running chaincode
 func (vm *DockerVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	id, err := vm.GetVMName(ccid, nil)
-	if err != nil {
-		return err
-	}
+	id := vm.GetVMName(ccid)
 
 	client, err := vm.getClientFnc()
 	if err != nil {
@@ -451,7 +445,7 @@ func (vm *DockerVM) stopInternal(ctxt context.Context, client dockerClient,
 
 //Destroy destroys an image
 func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
-	id, err := vm.GetVMName(ccid, formatImageName)
+	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
 	}
@@ -477,7 +471,33 @@ func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 // GetVMName generates the VM name from peer information. It accepts a format
 // function parameter to allow different formatting based on the desired use of
 // the name.
-func (vm *DockerVM) GetVMName(ccid ccintf.CCID, format func(string) (string, error)) (string, error) {
+func (vm *DockerVM) GetVMName(ccid ccintf.CCID) string {
+	// replace any invalid characters with "-" (either in network id, peer id, or in the
+	// entire name returned by any format function)
+	return vmRegExp.ReplaceAllString(vm.preFormatImageName(ccid), "-")
+}
+
+// GetVMNameForDocker formats the docker image from peer information. This is
+// needed to keep image (repository) names unique in a single host, multi-peer
+// environment (such as a development environment). It computes the hash for the
+// supplied image name and then appends it to the lowercase image name to ensure
+// uniqueness.
+func (vm *DockerVM) GetVMNameForDocker(ccid ccintf.CCID) (string, error) {
+	name := vm.preFormatImageName(ccid)
+	hash := hex.EncodeToString(util.ComputeSHA256([]byte(name)))
+	saniName := vmRegExp.ReplaceAllString(name, "-")
+	imageName := strings.ToLower(fmt.Sprintf("%s-%s", saniName, hash))
+
+	// Check that name complies with Docker's repository naming rules
+	if !imageRegExp.MatchString(imageName) {
+		dockerLogger.Errorf("Error constructing Docker VM Name. '%s' breaks Docker's repository naming rules", name)
+		return imageName, fmt.Errorf("Error constructing Docker VM Name. '%s' breaks Docker's repository naming rules", imageName)
+	}
+
+	return imageName, nil
+}
+
+func (vm *DockerVM) preFormatImageName(ccid ccintf.CCID) string {
 	name := ccid.GetName()
 
 	if vm.NetworkID != "" && vm.PeerID != "" {
@@ -488,36 +508,5 @@ func (vm *DockerVM) GetVMName(ccid ccintf.CCID, format func(string) (string, err
 		name = fmt.Sprintf("%s-%s", vm.PeerID, name)
 	}
 
-	if format != nil {
-		formattedName, err := format(name)
-		if err != nil {
-			return formattedName, err
-		}
-		name = formattedName
-	}
-
-	// replace any invalid characters with "-" (either in network id, peer id, or in the
-	// entire name returned by any format function)
-	name = vmRegExp.ReplaceAllString(name, "-")
-
-	return name, nil
-}
-
-// formatImageName formats the docker image from peer information. This is
-// needed to keep image (repository) names unique in a single host, multi-peer
-// environment (such as a development environment). It computes the hash for the
-// supplied image name and then appends it to the lowercase image name to ensure
-// uniqueness.
-func formatImageName(name string) (string, error) {
-	hash := hex.EncodeToString(util.ComputeSHA256([]byte(name)))
-	name = vmRegExp.ReplaceAllString(name, "-")
-	imageName := strings.ToLower(fmt.Sprintf("%s-%s", name, hash))
-
-	// Check that name complies with Docker's repository naming rules
-	if !imageRegExp.MatchString(imageName) {
-		dockerLogger.Errorf("Error constructing Docker VM Name. '%s' breaks Docker's repository naming rules", name)
-		return imageName, fmt.Errorf("Error constructing Docker VM Name. '%s' breaks Docker's repository naming rules", imageName)
-	}
-
-	return imageName, nil
+	return name
 }

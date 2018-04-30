@@ -33,7 +33,7 @@ type VM interface {
 	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
 	Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
 	Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error
-	GetVMName(ccID ccintf.CCID, format func(string) (string, error)) (string, error)
+	GetVMName(ccID ccintf.CCID) string
 }
 
 type refCountedLock struct {
@@ -165,13 +165,9 @@ func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq
 
 	c := make(chan error)
 	go func() {
-		id, err := v.GetVMName(req.GetCCID(), nil)
-		if err != nil {
-			c <- err
-			return
-		}
+		id := v.GetVMName(req.GetCCID())
 		vmc.lockContainer(id)
-		err = req.Do(ctxt, v)
+		err := req.Do(ctxt, v)
 		vmc.unlockContainer(id)
 		c <- err
 	}()

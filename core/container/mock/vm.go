@@ -71,19 +71,16 @@ type VM struct {
 	destroyReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetVMNameStub        func(ccID ccintf.CCID, format func(string) (string, error)) (string, error)
+	GetVMNameStub        func(ccID ccintf.CCID) string
 	getVMNameMutex       sync.RWMutex
 	getVMNameArgsForCall []struct {
-		ccID   ccintf.CCID
-		format func(string) (string, error)
+		ccID ccintf.CCID
 	}
 	getVMNameReturns struct {
 		result1 string
-		result2 error
 	}
 	getVMNameReturnsOnCall map[int]struct {
 		result1 string
-		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -317,22 +314,21 @@ func (fake *VM) DestroyReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) GetVMName(ccID ccintf.CCID, format func(string) (string, error)) (string, error) {
+func (fake *VM) GetVMName(ccID ccintf.CCID) string {
 	fake.getVMNameMutex.Lock()
 	ret, specificReturn := fake.getVMNameReturnsOnCall[len(fake.getVMNameArgsForCall)]
 	fake.getVMNameArgsForCall = append(fake.getVMNameArgsForCall, struct {
-		ccID   ccintf.CCID
-		format func(string) (string, error)
-	}{ccID, format})
-	fake.recordInvocation("GetVMName", []interface{}{ccID, format})
+		ccID ccintf.CCID
+	}{ccID})
+	fake.recordInvocation("GetVMName", []interface{}{ccID})
 	fake.getVMNameMutex.Unlock()
 	if fake.GetVMNameStub != nil {
-		return fake.GetVMNameStub(ccID, format)
+		return fake.GetVMNameStub(ccID)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	return fake.getVMNameReturns.result1, fake.getVMNameReturns.result2
+	return fake.getVMNameReturns.result1
 }
 
 func (fake *VM) GetVMNameCallCount() int {
@@ -341,32 +337,29 @@ func (fake *VM) GetVMNameCallCount() int {
 	return len(fake.getVMNameArgsForCall)
 }
 
-func (fake *VM) GetVMNameArgsForCall(i int) (ccintf.CCID, func(string) (string, error)) {
+func (fake *VM) GetVMNameArgsForCall(i int) ccintf.CCID {
 	fake.getVMNameMutex.RLock()
 	defer fake.getVMNameMutex.RUnlock()
-	return fake.getVMNameArgsForCall[i].ccID, fake.getVMNameArgsForCall[i].format
+	return fake.getVMNameArgsForCall[i].ccID
 }
 
-func (fake *VM) GetVMNameReturns(result1 string, result2 error) {
+func (fake *VM) GetVMNameReturns(result1 string) {
 	fake.GetVMNameStub = nil
 	fake.getVMNameReturns = struct {
 		result1 string
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
-func (fake *VM) GetVMNameReturnsOnCall(i int, result1 string, result2 error) {
+func (fake *VM) GetVMNameReturnsOnCall(i int, result1 string) {
 	fake.GetVMNameStub = nil
 	if fake.getVMNameReturnsOnCall == nil {
 		fake.getVMNameReturnsOnCall = make(map[int]struct {
 			result1 string
-			result2 error
 		})
 	}
 	fake.getVMNameReturnsOnCall[i] = struct {
 		result1 string
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
 func (fake *VM) Invocations() map[string][][]interface{} {

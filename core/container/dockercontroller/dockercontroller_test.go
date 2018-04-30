@@ -241,72 +241,69 @@ type testCase struct {
 	name           string
 	vm             *DockerVM
 	ccid           ccintf.CCID
-	formatFunc     func(string) (string, error)
 	expectedOutput string
 }
 
-func TestGetVMName(t *testing.T) {
+func TestGetVMNameForDocker(t *testing.T) {
 	tc := []testCase{
 		{
 			name:           "mycc",
 			vm:             &DockerVM{NetworkID: "dev", PeerID: "peer0"},
 			ccid:           ccintf.CCID{Name: "mycc", Version: "1.0"},
-			formatFunc:     formatImageName,
 			expectedOutput: fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-mycc-1.0")))),
 		},
 		{
 			name:           "mycc-nonetworkid",
 			vm:             &DockerVM{PeerID: "peer1"},
 			ccid:           ccintf.CCID{Name: "mycc", Version: "1.0"},
-			formatFunc:     formatImageName,
 			expectedOutput: fmt.Sprintf("%s-%s", "peer1-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("peer1-mycc-1.0")))),
 		},
 		{
 			name:           "myCC-UCids",
 			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
 			ccid:           ccintf.CCID{Name: "myCC", Version: "1.0"},
-			formatFunc:     formatImageName,
 			expectedOutput: fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev-Peer0-myCC-1.0")))),
 		},
 		{
 			name:           "myCC-idsWithSpecialChars",
 			vm:             &DockerVM{NetworkID: "Dev$dev", PeerID: "Peer*0"},
 			ccid:           ccintf.CCID{Name: "myCC", Version: "1.0"},
-			formatFunc:     formatImageName,
 			expectedOutput: fmt.Sprintf("%s-%s", "dev-dev-peer-0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev$dev-Peer*0-myCC-1.0")))),
 		},
 		{
 			name:           "mycc-nopeerid",
 			vm:             &DockerVM{NetworkID: "dev"},
 			ccid:           ccintf.CCID{Name: "mycc", Version: "1.0"},
-			formatFunc:     formatImageName,
 			expectedOutput: fmt.Sprintf("%s-%s", "dev-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-mycc-1.0")))),
 		},
 		{
 			name:           "myCC-LCids",
 			vm:             &DockerVM{NetworkID: "dev", PeerID: "peer0"},
 			ccid:           ccintf.CCID{Name: "myCC", Version: "1.0"},
-			formatFunc:     formatImageName,
 			expectedOutput: fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-myCC-1.0")))),
-		},
-		{
-			name:           "myCC-preserveCase",
-			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
-			ccid:           ccintf.CCID{Name: "myCC", Version: "1.0"},
-			formatFunc:     nil,
-			expectedOutput: fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0")},
-		{
-			name:           "invalidCharsFormatFunction",
-			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
-			ccid:           ccintf.CCID{Name: "myCC", Version: "1.0"},
-			formatFunc:     formatInvalidChars,
-			expectedOutput: fmt.Sprintf("%s", "inv-lid-character--"),
 		},
 	}
 
 	for _, test := range tc {
-		name, err := test.vm.GetVMName(test.ccid, test.formatFunc)
+		name, err := test.vm.GetVMNameForDocker(test.ccid)
 		assert.Nil(t, err, "Expected nil error")
+		assert.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
+	}
+
+}
+
+func TestGetVMName(t *testing.T) {
+	tc := []testCase{
+		{
+			name:           "myCC-preserveCase",
+			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
+			ccid:           ccintf.CCID{Name: "myCC", Version: "1.0"},
+			expectedOutput: fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0"),
+		},
+	}
+
+	for _, test := range tc {
+		name := test.vm.GetVMName(test.ccid)
 		assert.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
 	}
 
@@ -427,8 +424,4 @@ func (c *mockClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
 		return errors.New("Error removing container")
 	}
 	return nil
-}
-
-func formatInvalidChars(name string) (string, error) {
-	return "inv@lid*character$/", nil
 }

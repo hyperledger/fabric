@@ -121,7 +121,7 @@ func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 		return fmt.Errorf(fmt.Sprintf("%s system chaincode does not contain chaincode instance", path))
 	}
 
-	instName, _ := vm.GetVMName(ccid, nil)
+	instName := vm.GetVMName(ccid)
 	_, err := vm.getInstance(ctxt, ipctemplate, instName, args, env)
 
 	//FUTURE ... here is where we might check code for safety
@@ -190,7 +190,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 		return fmt.Errorf(fmt.Sprintf("%s not registered", path))
 	}
 
-	instName, _ := vm.GetVMName(ccid, nil)
+	instName := vm.GetVMName(ccid)
 
 	ipc, err := vm.getInstance(ctxt, ipctemplate, instName, args, env)
 
@@ -232,7 +232,7 @@ func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, d
 		return fmt.Errorf("%s not registered", path)
 	}
 
-	instName, _ := vm.GetVMName(ccid, nil)
+	instName := vm.GetVMName(ccid)
 
 	ipc := vm.registry.instRegistry[instName]
 
@@ -260,14 +260,6 @@ func (vm *InprocVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 // GetVMName ignores the peer and network name as it just needs to be unique in
 // process.  It accepts a format function parameter to allow different
 // formatting based on the desired use of the name.
-func (vm *InprocVM) GetVMName(ccid ccintf.CCID, format func(string) (string, error)) (string, error) {
-	name := ccid.GetName()
-	if format != nil {
-		formattedName, err := format(name)
-		if err != nil {
-			return formattedName, err
-		}
-		name = formattedName
-	}
-	return name, nil
+func (vm *InprocVM) GetVMName(ccid ccintf.CCID) string {
+	return ccid.GetName()
 }
