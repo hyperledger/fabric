@@ -94,24 +94,16 @@ func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo
 }
 
 // AddToHashedReadSet adds a key and corresponding version to the hashed read-set
-func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) error {
-	kvReadHash, err := newPvtKVReadHash(key, version)
-	if err != nil {
-		return err
-	}
+func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) {
+	kvReadHash := newPvtKVReadHash(key, version)
 	b.getOrCreateCollHashedRwBuilder(ns, coll).readMap[key] = kvReadHash
-	return nil
 }
 
 // AddToPvtAndHashedWriteSet adds a key and value to the private and hashed write-set
-func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) error {
-	kvWrite, kvWriteHash, err := newPvtKVWriteAndHash(key, value)
-	if err != nil {
-		return err
-	}
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) {
+	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, value)
 	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
 	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
-	return nil
 }
 
 // GetTxSimulationResults returns the proto bytes of public rwset
