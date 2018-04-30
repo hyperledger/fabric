@@ -67,8 +67,10 @@ func TestEndorserNilProp(t *testing.T) {
 		GetTxSimulatorRv:           &ccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
 	})
 
-	_, err := es.ProcessProposal(context.Background(), nil)
+	pResp, err := es.ProcessProposal(context.Background(), nil)
 	assert.Error(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Equal(t, "nil arguments", pResp.Response.Message)
 }
 
 func TestEndorserUninvokableSysCC(t *testing.T) {
@@ -83,8 +85,10 @@ func TestEndorserUninvokableSysCC(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Equal(t, "chaincode ccid cannot be invoked through a proposal", pResp.Response.Message)
 }
 
 func TestEndorserCCInvocationFailed(t *testing.T) {
@@ -95,14 +99,16 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 1000, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+		ExecuteResp:                &pb.Response{Status: 1000, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "Chaincode Error"},
 		GetTxSimulatorRv:           &ccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1000, pResp.Response.Status)
+	assert.Regexp(t, "Chaincode Error", pResp.Response.Message)
 }
 
 func TestEndorserNoCCDef(t *testing.T) {
@@ -119,8 +125,10 @@ func TestEndorserNoCCDef(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Regexp(t, "make sure the chaincode", pResp.Response.Message)
 }
 
 func TestEndorserBadInstPolicy(t *testing.T) {
@@ -138,8 +146,9 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
 }
 
 func TestEndorserSysCC(t *testing.T) {
@@ -157,8 +166,9 @@ func TestEndorserSysCC(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
+	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
 func TestEndorserCCInvocationError(t *testing.T) {
@@ -175,8 +185,9 @@ func TestEndorserCCInvocationError(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
 }
 
 func TestEndorserLSCCBadType(t *testing.T) {
@@ -201,8 +212,10 @@ func TestEndorserLSCCBadType(t *testing.T) {
 	)
 	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Equal(t, "Unknown chaincodeType: UNDEFINED", pResp.Response.Message)
 }
 
 func TestEndorserDupTXId(t *testing.T) {
@@ -218,8 +231,10 @@ func TestEndorserDupTXId(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Regexp(t, "duplicate transaction found", pResp.Response.Message)
 }
 
 func TestEndorserBadACL(t *testing.T) {
@@ -237,8 +252,9 @@ func TestEndorserBadACL(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
 }
 
 func TestEndorserGoodPathEmptyChannel(t *testing.T) {
@@ -255,8 +271,9 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 
 	signedProp := getSignedPropWithCHIdAndArgs("", "ccid", "0", [][]byte{[]byte("args")}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
+	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
 func TestEndorserLSCCInitFails(t *testing.T) {
@@ -282,8 +299,9 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 	)
 	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
 }
 
 func TestEndorserLSCCDeploySysCC(t *testing.T) {
@@ -312,8 +330,10 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 	)
 	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Equal(t, "attempting to deploy a system chaincode barf/testchainid", pResp.Response.Message)
 }
 
 func TestEndorserLSCCJava1(t *testing.T) {
@@ -343,8 +363,10 @@ func TestEndorserLSCCJava1(t *testing.T) {
 	)
 	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Equal(t, "Java chaincode is work-in-progress and disabled", pResp.Response.Message)
 }
 
 func TestEndorserLSCCJava2(t *testing.T) {
@@ -374,8 +396,9 @@ func TestEndorserLSCCJava2(t *testing.T) {
 	)
 	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
 }
 
 func TestEndorserGoodPathWEvents(t *testing.T) {
@@ -393,8 +416,9 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
+	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
 func TestEndorserBadChannel(t *testing.T) {
@@ -411,8 +435,10 @@ func TestEndorserBadChannel(t *testing.T) {
 
 	signedProp := getSignedPropWithCHID("ccid", "0", "barfchain", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
+	assert.EqualValues(t, 500, pResp.Response.Status)
+	assert.Equal(t, "access denied: channel [barfchain] creator org [SampleOrg]", pResp.Response.Message)
 }
 
 func TestEndorserGoodPath(t *testing.T) {
@@ -429,8 +455,9 @@ func TestEndorserGoodPath(t *testing.T) {
 
 	signedProp := getSignedProp("ccid", "0", t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
+	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
 func TestEndorserLSCC(t *testing.T) {
@@ -455,8 +482,9 @@ func TestEndorserLSCC(t *testing.T) {
 	)
 	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	_, err := es.ProcessProposal(context.Background(), signedProp)
+	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
+	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
 func TestSimulateProposal(t *testing.T) {
@@ -499,11 +527,6 @@ func TestEndorserJavaChecks(t *testing.T) {
 	assert.NoError(t, err)
 	err = es.(*Endorser).disableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install")}}}})
 	assert.Error(t, err)
-}
-
-func TestChaincodeError_Error(t *testing.T) {
-	ce := &chaincodeError{status: 1, msg: "foo"}
-	assert.Equal(t, ce.Error(), "chaincode error (status: 1, message: foo)")
 }
 
 var signer msp.SigningIdentity

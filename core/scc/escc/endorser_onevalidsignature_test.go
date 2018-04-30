@@ -159,14 +159,14 @@ func TestInvoke(t *testing.T) {
 	// Failed path: status code = 500
 	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, failRes, []byte("test")}
 	res := stub.MockInvoke("1", args)
-	assert.NotEqual(t, res.Status, shim.OK, "Invoke should have failed with status code: %d", ccFailResponse.Status)
-	assert.Contains(t, res.Message, fmt.Sprintf("Status code less than %d will be endorsed", shim.ERRORTHRESHOLD))
+	assert.NotEqual(t, res.Status, shim.OK, "Invoke should have failed with status code: %d", failResponse.Status)
+	assert.Equal(t, res, *failResponse)
 
 	// Failed path: status code = 400
 	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, ccFailRes, []byte("test")}
 	res = stub.MockInvoke("1", args)
 	assert.NotEqual(t, res.Status, shim.OK, "Invoke should have failed with status code: %d", ccFailResponse.Status)
-	assert.Contains(t, res.Message, fmt.Sprintf("Status code less than %d will be endorsed", shim.ERRORTHRESHOLD))
+	assert.Equal(t, res, *ccFailResponse)
 
 	// Successful path - create a proposal
 	cs := &pb.ChaincodeSpec{

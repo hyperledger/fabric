@@ -146,7 +146,7 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 
 		cmd := invokeCmd(mockCF)
 		addFlags(cmd)
-		args := []string{"-n", "example02", "-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
+		args := []string{"-C", "mychannel", "-n", "example02", "-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
 		cmd.SetArgs(args)
 
 		// set logger to logger with a backend that writes to a byte buffer
@@ -160,7 +160,7 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		buffer.Reset()
 
 		err = cmd.Execute()
-		assert.NoError(t, err)
+		assert.Nil(t, err)
 		assert.Regexp(t, "Endorsement failure during invoke", buffer.String())
 		assert.Regexp(t, fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), buffer.String())
 	}

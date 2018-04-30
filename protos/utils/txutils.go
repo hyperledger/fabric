@@ -288,7 +288,7 @@ func CreateProposalResponseFailure(hdrbytes []byte, payl []byte, response *peer.
 	resp := &peer.ProposalResponse{
 		// Timestamp: TODO!
 		Payload:  prpBytes,
-		Response: &peer.Response{Status: 500, Message: "Chaincode Error"}}
+		Response: response}
 
 	return resp, nil
 }

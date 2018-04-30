@@ -114,7 +114,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 	}
 
 	if invoke {
-		if proposalResp.Response.Status >= shim.ERROR {
+		if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
 			logger.Debugf("ESCC invoke result: %v", proposalResp)
 			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
 			if err != nil {
@@ -140,6 +140,8 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 	} else {
 		if proposalResp == nil {
 			return fmt.Errorf("error query %s by endorsing: %s", chainFuncName, err)
+		} else if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
+			return fmt.Errorf("error query %s by endorsing: %s", chainFuncName, proposalResp.Response)
 		}
 
 		if chaincodeQueryRaw && chaincodeQueryHex {
@@ -473,7 +475,7 @@ func ChaincodeInvokeOrQuery(
 
 	if invoke {
 		if proposalResp != nil {
-			if proposalResp.Response.Status >= shim.ERROR {
+			if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
 				return proposalResp, nil
 			}
 			// assemble a signed transaction (it's an Envelope message)
