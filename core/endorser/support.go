@@ -105,7 +105,10 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 	if txsim != nil {
 		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
 	}
-	return s.ChaincodeSupport.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+	lifecycle := &chaincode.Lifecycle{
+		Executor: s.ChaincodeSupport,
+	}
+	return lifecycle.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 }
 
 // CheckACL checks the ACL for the resource for the channel using the

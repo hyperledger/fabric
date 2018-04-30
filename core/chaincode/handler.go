@@ -54,8 +54,7 @@ type Registry interface {
 
 // internal interface to scope dependencies on ChaincodeSupport
 type handlerSupport interface {
-	GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error)
-	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeInput, error)
+	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error
 	execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error)
 }
 
@@ -70,6 +69,7 @@ type Handler struct {
 	ccInstance  *sysccprovider.ChaincodeInstance
 
 	handlerSupport handlerSupport
+	lifecycle      *Lifecycle
 
 	sccp sysccprovider.SystemChaincodeProvider
 
@@ -336,6 +336,7 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		userRunsCC:         chaincodeSupport.userRunsCC,
 		aclProvider:        chaincodeSupport.ACLProvider,
 		registry:           chaincodeSupport.HandlerRegistry,
+		lifecycle:          &Lifecycle{Executor: chaincodeSupport},
 		sccp:               sccp,
 	}
 
@@ -1094,7 +1095,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			var version string
 			if !isscc {
 				//if its a user chaincode, get the details
-				cd, err := h.handlerSupport.GetChaincodeDefinition(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcIns.ChainID, calledCcIns.ChaincodeName)
+				cd, err := h.lifecycle.GetChaincodeDefinition(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcIns.ChainID, calledCcIns.ChaincodeName)
 				if err != nil {
 					errHandler([]byte(err.Error()), "[%s]Failed to get chaincode data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 					return
@@ -1115,10 +1116,12 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			cccid := ccprovider.NewCCContext(calledCcIns.ChainID, calledCcIns.ChaincodeName, version, msg.Txid, false, txContext.signedProp, txContext.proposal)
 
 			// Launch the new chaincode if not already running
-			chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s",
-				shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
+			chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s", shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
+
 			cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
-			chaincodeInput, launchErr := h.handlerSupport.Launch(ctxt, cccid, cciSpec)
+			chaincodeInput := cciSpec.GetChaincodeSpec().Input
+
+			launchErr := h.handlerSupport.Launch(ctxt, cccid, cciSpec)
 			if launchErr != nil {
 				payload := []byte(launchErr.Error())
 				chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s",

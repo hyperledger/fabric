@@ -112,15 +112,15 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		return nil, nil, nil, fmt.Errorf("Error starting peer listener %s", err)
 	}
 
-	ccStartupTimeout := time.Duration(3) * time.Minute
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
+	config := GlobalConfig()
+	config.StartupTimeout = 3 * time.Minute
 	chaincodeSupport := NewChaincodeSupport(
-		GlobalConfig(),
+		config,
 		peerAddress,
 		false,
-		ccStartupTimeout,
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},

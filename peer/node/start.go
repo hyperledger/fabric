@@ -578,21 +578,11 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
 
-	//get chaincode startup timeout
-	ccStartupTimeout := viper.GetDuration("chaincode.startuptimeout")
-	if ccStartupTimeout < time.Duration(5)*time.Second {
-		logger.Warningf("Invalid chaincode startup timeout value %s (should be at least 5s); defaulting to 5s", ccStartupTimeout)
-		ccStartupTimeout = time.Duration(5) * time.Second
-	} else {
-		logger.Debugf("Chaincode startup timeout value set to %s", ccStartupTimeout)
-	}
-
 	authenticator := accesscontrol.NewAuthenticator(ca)
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
 		ccEndpoint,
 		userRunsCC,
-		ccStartupTimeout,
 		ca.CertBytes(),
 		authenticator,
 		&ccprovider.CCInfoFSImpl{},

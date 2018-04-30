@@ -8,6 +8,7 @@ package chaincode
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -48,6 +49,26 @@ type certGenerator interface {
 //go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
 type processor interface {
 	Processor
+}
+
+//go:generate counterfeiter -o mock/executor.go --fake-name Executor . executor
+type executor interface {
+	Executor
+}
+
+//go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . packageProvider
+type packageProvider interface {
+	PackageProvider
+}
+
+//go:generate counterfeiter -o mock/cc_package.go --fake-name CCPackage . ccpackage
+type ccpackage interface {
+	ccprovider.CCPackage
+}
+
+//go:generate counterfeiter -o mock/launch_registry.go --fake-name LaunchRegistry . launchRegistry
+type launchRegistry interface {
+	LaunchRegistry
 }
 
 // Helpers to access unexported state.

@@ -119,14 +119,14 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 		return nil, nil, nil, err
 	}
 
-	ccStartupTimeout := time.Duration(5000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
+	config := GlobalConfig()
+	config.ExecuteTimeout = 5 * time.Second
 	chaincodeSupport := NewChaincodeSupport(
-		GlobalConfig(),
+		config,
 		peerAddress,
 		false,
-		ccStartupTimeout,
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},

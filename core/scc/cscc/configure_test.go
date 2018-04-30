@@ -192,14 +192,14 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	peerEndpoint := "localhost:13611"
 
-	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
+	config := chaincode.GlobalConfig()
+	config.StartupTimeout = 30 * time.Second
 	chaincode.NewChaincodeSupport(
-		chaincode.GlobalConfig(),
+		config,
 		peerEndpoint,
 		false,
-		ccStartupTimeout,
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
