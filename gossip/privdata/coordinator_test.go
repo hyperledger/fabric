@@ -327,8 +327,20 @@ func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privda
 	panic("implement me")
 }
 
-func (cs *collectionStore) RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
-	panic("implement me")
+func (cs *collectionStore) RetrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+	return &common.CollectionConfigPackage{
+		Config: []*common.CollectionConfig{
+			{
+				Payload: &common.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &common.StaticCollectionConfig{
+						Name:              cc.Collection,
+						MaximumPeerCount:  1,
+						RequiredPeerCount: 1,
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 type collectionAccessPolicy struct {

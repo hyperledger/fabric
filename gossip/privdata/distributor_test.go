@@ -87,9 +87,9 @@ func TestDistributor(t *testing.T) {
 		Collection: "c2",
 	}).andIsLenient()
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1", "c2").create()
-	err := d.Distribute("tx1", pvtData[0].WriteSet, cs)
+	err := d.Distribute("tx1", pvtData[0].WriteSet, cs, 0)
 	assert.NoError(t, err)
-	err = d.Distribute("tx2", pvtData[1].WriteSet, cs)
+	err = d.Distribute("tx2", pvtData[1].WriteSet, cs, 0)
 	assert.NoError(t, err)
 
 	assertACL := func(pp *proto.PrivatePayload, sc gossip2.SendCriteria) {
@@ -116,14 +116,14 @@ func TestDistributor(t *testing.T) {
 
 	// Bad path: dependencies (gossip and others) don't work properly
 	g.err = errors.New("failed obtaining filter")
-	err = d.Distribute("tx1", pvtData[0].WriteSet, cs)
+	err = d.Distribute("tx1", pvtData[0].WriteSet, cs, 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed obtaining filter")
 
 	g.Mock = mock.Mock{}
 	g.On("SendByCriteria", mock.Anything, mock.Anything).Return(errors.New("failed sending"))
 	g.err = nil
-	err = d.Distribute("tx1", pvtData[0].WriteSet, cs)
+	err = d.Distribute("tx1", pvtData[0].WriteSet, cs, 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed disseminating 2 out of 2 private RWSets")
 }

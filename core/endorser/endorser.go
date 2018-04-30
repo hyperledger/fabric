@@ -31,7 +31,7 @@ var endorserLogger = flogging.MustGetLogger("endorser")
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
 
-type privateDataDistributor func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error
+type privateDataDistributor func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error
 
 // Support contains functions that the endorser requires to execute its tasks
 type Support interface {
@@ -266,7 +266,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 				// TODO: remove once we can store collection configuration outside of LSCC
 				return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
 			}
-			if err := e.distributePrivateData(chainID, txid, simResult.PvtSimulationResults); err != nil {
+			if err := e.distributePrivateData(chainID, txid, simResult.PvtSimulationResults, simResult.SimulationBlkHt); err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}

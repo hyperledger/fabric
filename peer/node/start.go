@@ -235,8 +235,8 @@ func serve(args []string) error {
 	// Start the Admin server
 	startAdminServer(listenAddr, peerServer.Server())
 
-	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
-		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)
+	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
 	}
 
 	serverEndorser := endorser.NewEndorserServer(

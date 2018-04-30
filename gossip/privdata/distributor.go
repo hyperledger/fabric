@@ -38,7 +38,7 @@ type gossipAdapter interface {
 // PvtDataDistributor interface to defines API of distributing private data
 type PvtDataDistributor interface {
 	// Distribute broadcast reliably private data read write set based on policies
-	Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) error
+	Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore, blkHt uint64) error
 }
 
 // distributorImpl the implementation of the private data distributor interface
@@ -57,8 +57,8 @@ func NewDistributor(chainID string, gossip gossipAdapter) PvtDataDistributor {
 }
 
 // Distribute broadcast reliably private data read write set based on policies
-func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) error {
-	disseminationPlan, err := d.computeDisseminationPlan(txID, privData, cs)
+func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore, blkHt uint64) error {
+	disseminationPlan, err := d.computeDisseminationPlan(txID, privData, cs, blkHt)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -70,7 +70,10 @@ type dissemination struct {
 	criteria gossip2.SendCriteria
 }
 
-func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) ([]*dissemination, error) {
+func (d *distributorImpl) computeDisseminationPlan(txID string,
+	privData *rwset.TxPvtReadWriteSet,
+	cs privdata.CollectionStore,
+	blkHt uint64) ([]*dissemination, error) {
 	var disseminationPlan []*dissemination
 	for _, pvtRwset := range privData.NsPvtRwset {
 		namespace := pvtRwset.Namespace
@@ -94,7 +97,13 @@ func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.
 				return nil, errors.Errorf("No collection access policy filter computed for %v", cc)
 			}
 
-			pvtDataMsg, err := d.createPrivateDataMessage(txID, namespace, collection.CollectionName, collection.Rwset)
+			colCP, err := cs.RetrieveCollectionConfigPackage(cc)
+			if err != nil {
+				logger.Error("Failed to load collection config package, collection criteria", cc, "error", err)
+				return nil, errors.WithMessage(err, fmt.Sprintf("collection config package, for %v not found", cc))
+			}
+
+			pvtDataMsg, err := d.createPrivateDataMessage(txID, namespace, collection, colCP, blkHt)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -163,7 +172,10 @@ func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error 
 	return nil
 }
 
-func (d *distributorImpl) createPrivateDataMessage(txID, namespace, collectionName string, rwset []byte) (*proto.SignedGossipMessage, error) {
+func (d *distributorImpl) createPrivateDataMessage(txID, namespace string,
+	collection *rwset.CollectionPvtReadWriteSet,
+	ccp *common.CollectionConfigPackage,
+	blkHt uint64) (*proto.SignedGossipMessage, error) {
 	msg := &proto.GossipMessage{
 		Channel: []byte(d.chainID),
 		Nonce:   util.RandomUInt64(),
@@ -171,10 +183,12 @@ func (d *distributorImpl) createPrivateDataMessage(txID, namespace, collectionNa
 		Content: &proto.GossipMessage_PrivateData{
 			PrivateData: &proto.PrivateDataMessage{
 				Payload: &proto.PrivatePayload{
-					Namespace:      namespace,
-					CollectionName: collectionName,
-					TxId:           txID,
-					PrivateRwset:   rwset,
+					Namespace:         namespace,
+					CollectionName:    collection.CollectionName,
+					TxId:              txID,
+					PrivateRwset:      collection.Rwset,
+					PrivateSimHeight:  blkHt,
+					CollectionConfigs: ccp,
 				},
 			},
 		},
