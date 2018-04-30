@@ -1005,7 +1005,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 }
 
 //success case
-func TestLaunchAndWaitSuccess(t *testing.T) {
+func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec) error {
@@ -1024,14 +1024,14 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//actual test - everythings good
-	err := launcher.launchAndWaitForReady(context.Background(), cccid, cds)
+	err := launcher.startAndWaitForReady(context.Background(), cccid, cds)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
 }
 
 //test timeout error
-func TestLaunchAndWaitTimeout(t *testing.T) {
+func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec) error {
 		time.Sleep(time.Second)
@@ -1049,14 +1049,14 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//the actual test - timeout 1000 > 500
-	err := launcher.launchAndWaitForReady(context.Background(), cccid, cds)
+	err := launcher.startAndWaitForReady(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
 }
 
 //test container return error
-func TestLaunchAndWaitLaunchError(t *testing.T) {
+func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ context.Context, _ *ccprovider.CCContext, _ *pb.ChaincodeDeploymentSpec) error {
 		return errors.New("Bad lunch; upset stomach")
@@ -1073,7 +1073,7 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
 
 	//actual test - container launch gives error
-	err := launcher.launchAndWaitForReady(context.Background(), cccid, cds)
+	err := launcher.startAndWaitForReady(context.Background(), cccid, cds)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -1324,7 +1324,7 @@ func TestCCFramework(t *testing.T) {
 	getHistory(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//just use the previous certGenerator for generating TLS key/pair
-	cr := chaincodeSupport.ContainerRuntime.(*ContainerRuntime)
+	cr := chaincodeSupport.Runtime.(*ContainerRuntime)
 	getLaunchConfigs(t, cr)
 
 	ccSide.Quit()

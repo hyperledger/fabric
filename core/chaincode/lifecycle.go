@@ -26,7 +26,7 @@ type Lifecycle struct {
 	Executor Executor
 }
 
-// GetCDS retrieves a chaincode deployment spec for the specified chaincode.
+// GetChaincodeDeploymentSpec retrieves a chaincode deployment spec for the specified chaincode.
 func (l *Lifecycle) GetChaincodeDeploymentSpec(
 	ctx context.Context,
 	txid string,

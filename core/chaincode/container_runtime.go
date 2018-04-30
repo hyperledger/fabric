@@ -36,6 +36,13 @@ func (v ProcessFunc) Process(ctxt context.Context, vmtype string, req container.
 	return v(ctxt, vmtype, req)
 }
 
+// CertGenerator generates client certificates for chaincode.
+type CertGenerator interface {
+	// Generate returns a certificate and private key and associates
+	// the hash of the certificates with the given chaincode name
+	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
+}
+
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
 	CertGenerator CertGenerator
@@ -47,7 +54,7 @@ type ContainerRuntime struct {
 	PeerNetworkID string
 }
 
-// Start launches chaincode in a container runtime environment.
+// Start launches chaincode in a runtime environment.
 func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
 
@@ -60,7 +67,6 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
-	// ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), ccl.support)
 	builder := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
 	scr := container.StartContainerReq{
 		Builder:       builder,

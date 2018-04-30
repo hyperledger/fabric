@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
@@ -21,46 +20,40 @@ import (
 	"golang.org/x/net/context"
 )
 
-// CertGenerator generate client certificates for chaincode
-type CertGenerator interface {
-	// Generate returns a certificate and private key and associates
-	// the hash of the certificates with the given chaincode name
-	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
-}
-
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
 	Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
 	Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
 }
 
-// PackageProvider is responsible for getting the chaincode package from
-// the filesystem.
-type PackageProvider interface {
-	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
+// ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
+type ChaincodeSupport struct {
+	Keepalive       time.Duration
+	ExecuteTimeout  time.Duration
+	UserRunsCC      bool
+	Runtime         Runtime
+	ACLProvider     ACLProvider
+	HandlerRegistry *HandlerRegistry
+	Launcher        *Launcher
+	sccp            sysccprovider.SystemChaincodeProvider
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance.
 func NewChaincodeSupport(
 	config *Config,
 	peerAddress string,
-	userrunsCC bool,
+	userRunsCC bool,
 	caCert []byte,
 	certGenerator CertGenerator,
 	packageProvider PackageProvider,
 	aclProvider ACLProvider,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
-		caCert:           caCert,
-		peerNetworkID:    config.PeerNetworkID,
-		peerID:           config.PeerID,
-		userRunsCC:       userrunsCC,
-		ccStartupTimeout: config.StartupTimeout,
-		keepalive:        config.Keepalive,
-		executetimeout:   config.ExecuteTimeout,
-		HandlerRegistry:  NewHandlerRegistry(userrunsCC),
-		PackageProvider:  packageProvider,
-		ACLProvider:      aclProvider,
+		UserRunsCC:      userRunsCC,
+		Keepalive:       config.Keepalive,
+		ExecuteTimeout:  config.ExecuteTimeout,
+		HandlerRegistry: NewHandlerRegistry(userRunsCC),
+		ACLProvider:     aclProvider,
 	}
 
 	// Keep TestQueries working
@@ -68,7 +61,7 @@ func NewChaincodeSupport(
 		certGenerator = nil
 	}
 
-	cs.ContainerRuntime = &ContainerRuntime{
+	cs.Runtime = &ContainerRuntime{
 		CertGenerator: certGenerator,
 		Processor:     ProcessFunc(container.VMCProcess),
 		CACert:        caCert,
@@ -83,32 +76,14 @@ func NewChaincodeSupport(
 	}
 
 	cs.Launcher = &Launcher{
-		Runtime:         cs.ContainerRuntime,
+		Runtime:         cs.Runtime,
 		Registry:        cs.HandlerRegistry,
-		PackageProvider: cs.PackageProvider,
+		PackageProvider: packageProvider,
 		Lifecycle:       &Lifecycle{Executor: cs},
 		StartupTimeout:  config.StartupTimeout,
 	}
 
 	return cs
-}
-
-// ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
-type ChaincodeSupport struct {
-	caCert           []byte
-	peerAddress      string
-	ccStartupTimeout time.Duration
-	peerNetworkID    string
-	peerID           string
-	keepalive        time.Duration
-	executetimeout   time.Duration
-	userRunsCC       bool
-	ContainerRuntime Runtime
-	PackageProvider  PackageProvider
-	ACLProvider      ACLProvider
-	HandlerRegistry  *HandlerRegistry
-	Launcher         *Launcher
-	sccp             sysccprovider.SystemChaincodeProvider
 }
 
 // SetSysCCProvider is a bit of a hack to make a latent dependency of ChaincodeSupport
@@ -127,7 +102,7 @@ func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCCont
 	}
 
 	// TODO: There has to be a better way to do this...
-	if cs.userRunsCC && !cccid.Syscc {
+	if cs.UserRunsCC && !cccid.Syscc {
 		chaincodeLogger.Error(
 			"You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?",
 		)
@@ -146,7 +121,7 @@ func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContex
 	cname := cccid.GetCanonicalName()
 	defer cs.HandlerRegistry.Deregister(cname)
 
-	err := cs.ContainerRuntime.Stop(ctx, cccid, cds)
+	err := cs.Runtime.Stop(ctx, cccid, cds)
 	if err != nil {
 		return err
 	}
@@ -179,23 +154,24 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 	return ccmsg, nil
 }
 
-// execute executes a transaction and waits for it to complete until a timeout value.
-func (cs *ChaincodeSupport) execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
-	cname := cccid.GetCanonicalName()
-	chaincodeLogger.Debugf("canonical name: %s", cname)
-
-	handler := cs.HandlerRegistry.Handler(cname)
-	if handler == nil {
-		chaincodeLogger.Debugf("chaincode is not running: %s", cname)
-		return nil, errors.Errorf("unable to invoke chaincode %s", cname)
+// ExecuteChaincode invokes chaincode with the provided arguments.
+func (cs *ChaincodeSupport) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
+	invocationSpec := &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_GOLANG,
+			ChaincodeId: &pb.ChaincodeID{Name: cccid.Name},
+			Input:       &pb.ChaincodeInput{Args: args},
+		},
 	}
 
-	ccresp, err := handler.Execute(ctxt, cccid, msg, timeout)
+	res, ccevent, err := cs.ExecuteSpec(ctxt, cccid, invocationSpec)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
+		err = errors.WithMessage(err, "error invoking chaincode")
+		chaincodeLogger.Errorf("%+v", err)
+		return nil, nil, err
 	}
 
-	return ccresp, nil
+	return res, ccevent, err
 }
 
 //Execute - execute proposal, return original response of chaincode
@@ -222,7 +198,7 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 		return nil, nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
 
-	resp, err := cs.execute(ctxt, cccid, ccMsg, cs.executetimeout)
+	resp, err := cs.execute(ctxt, cccid, ccMsg)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to execute transaction %s", cccid.TxID)
 	}
@@ -252,22 +228,21 @@ func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.
 	}
 }
 
-// ExecuteChaincode invokes chaincode with the provided arguments.
-func (cs *ChaincodeSupport) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
-	invocationSpec := &pb.ChaincodeInvocationSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeId: &pb.ChaincodeID{Name: cccid.Name},
-			Input:       &pb.ChaincodeInput{Args: args},
-		},
+// execute executes a transaction and waits for it to complete until a timeout value.
+func (cs *ChaincodeSupport) execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
+	cname := cccid.GetCanonicalName()
+	chaincodeLogger.Debugf("canonical name: %s", cname)
+
+	handler := cs.HandlerRegistry.Handler(cname)
+	if handler == nil {
+		chaincodeLogger.Debugf("chaincode is not running: %s", cname)
+		return nil, errors.Errorf("unable to invoke chaincode %s", cname)
 	}
 
-	res, ccevent, err := cs.ExecuteSpec(ctxt, cccid, invocationSpec)
+	ccresp, err := handler.Execute(ctxt, cccid, msg, cs.ExecuteTimeout)
 	if err != nil {
-		err = errors.WithMessage(err, "error invoking chaincode")
-		chaincodeLogger.Errorf("%+v", err)
-		return nil, nil, err
+		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
 	}
 
-	return res, ccevent, err
+	return ccresp, nil
 }

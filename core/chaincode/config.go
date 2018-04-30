@@ -56,7 +56,7 @@ func (c *Config) load() {
 	}
 	c.StartupTimeout = viper.GetDuration("chaincode.startuptimeout")
 	if c.StartupTimeout < minimumStartupTimeout {
-		c.StartupTimeout = 5 * time.Second
+		c.StartupTimeout = minimumStartupTimeout
 	}
 
 	c.LogFormat = viper.GetString("chaincode.logging.format")

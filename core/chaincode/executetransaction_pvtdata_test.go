@@ -276,8 +276,8 @@ func TestQueriesPrivateData(t *testing.T) {
 	//the peer should handle this gracefully and not die
 
 	//save the original timeout and set a new timeout of 1 sec
-	origTimeout := chaincodeSupport.executetimeout
-	chaincodeSupport.executetimeout = time.Duration(1) * time.Second
+	origTimeout := chaincodeSupport.ExecuteTimeout
+	chaincodeSupport.ExecuteTimeout = time.Duration(1) * time.Second
 
 	//chaincode to sleep for 2 secs with timeout 1
 	args = util.ToChaincodeArgs(f, "marble001", "marble002", "2000")
@@ -292,7 +292,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 
 	//restore timeout
-	chaincodeSupport.executetimeout = origTimeout
+	chaincodeSupport.ExecuteTimeout = origTimeout
 
 	// querying for all marbles will return 101 marbles
 	// this query should return exactly 101 results (one call to Next())

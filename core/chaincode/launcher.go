@@ -15,11 +15,18 @@ import (
 	"golang.org/x/net/context"
 )
 
+// LaunchRegistry tracks launching chaincode instances.
 type LaunchRegistry interface {
 	Launching(cname string) (<-chan struct{}, error)
 	Deregister(cname string) error
 }
 
+// PackageProvider gets chaincode packages from the filesystem.
+type PackageProvider interface {
+	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
+}
+
+// Launcher is responsible for launching chaincode runtimes.
 type Launcher struct {
 	Runtime         Runtime
 	Registry        LaunchRegistry
@@ -28,6 +35,7 @@ type Launcher struct {
 	StartupTimeout  time.Duration
 }
 
+// Launch chaincode with the appropriate runtime.
 func (l *Launcher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error {
 	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
 	cds, _ := spec.(*pb.ChaincodeDeploymentSpec)
@@ -47,9 +55,9 @@ func (l *Launcher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec
 		cds = ccpack.GetDepSpec()
 	}
 
-	err := l.launchAndWaitForReady(ctx, cccid, cds)
+	err := l.startAndWaitForReady(ctx, cccid, cds)
 	if err != nil {
-		chaincodeLogger.Errorf("launchAndWaitForReady failed: %+v", err)
+		chaincodeLogger.Errorf("startAndWiatForReady failed: %+v", err)
 		return err
 	}
 
@@ -72,7 +80,7 @@ func (l *Launcher) getDeploymentSpec(ctx context.Context, cccid *ccprovider.CCCo
 	return cds, nil
 }
 
-func (l *Launcher) launchAndWaitForReady(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (l *Launcher) startAndWaitForReady(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
 	ready, err := l.Registry.Launching(cname)
 	if err != nil {

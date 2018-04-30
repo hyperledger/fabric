@@ -55,7 +55,7 @@ type Registry interface {
 // internal interface to scope dependencies on ChaincodeSupport
 type handlerSupport interface {
 	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error
-	execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error)
+	execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error)
 }
 
 // Handler responsible for management of Peer's side of chaincode stream
@@ -87,8 +87,7 @@ type Handler struct {
 	readyStateHandlers  stateHandlers
 	createStateHandlers stateHandlers
 
-	keepalive  time.Duration
-	userRunsCC bool
+	keepalive time.Duration
 
 	registry    Registry
 	aclProvider ACLProvider
@@ -332,8 +331,7 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		errChan:            make(chan error, 1),
 		txCtxs:             NewTransactionContexts(),
 		activeTransactions: NewActiveTransactions(),
-		keepalive:          chaincodeSupport.keepalive,
-		userRunsCC:         chaincodeSupport.userRunsCC,
+		keepalive:          chaincodeSupport.Keepalive,
 		aclProvider:        chaincodeSupport.ACLProvider,
 		registry:           chaincodeSupport.HandlerRegistry,
 		lifecycle:          &Lifecycle{Executor: chaincodeSupport},
@@ -1130,13 +1128,10 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 				return
 			}
 
-			// TODO: Need to handle timeout correctly
-			timeout := time.Duration(30000) * time.Millisecond
-
 			ccMsg, _ := createCCMessage(pb.ChaincodeMessage_TRANSACTION, calledCcIns.ChainID, msg.Txid, chaincodeInput)
 
 			// Execute the chaincode... this CANNOT be an init at least for now
-			response, execErr := h.handlerSupport.execute(ctxt, cccid, ccMsg, timeout)
+			response, execErr := h.handlerSupport.execute(ctxt, cccid, ccMsg)
 
 			//payload is marshalled and send to the calling chaincode's shim which unmarshals and
 			//sends it to chaincode
@@ -1202,7 +1197,6 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
-// TODO move execute timeout to handler constructor
 func (h *Handler) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
