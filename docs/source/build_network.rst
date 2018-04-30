@@ -49,28 +49,38 @@ Here's the help text for the ``byfn.sh`` script:
 
 .. code:: bash
 
-  ./byfn.sh --help
   Usage:
-  byfn.sh up|down|restart|generate [-c <channel name>] [-t <timeout>] [-d <delay>] [-f <docker-compose-file>] [-s <dbtype>]
-  byfn.sh -h|--help (print this message)
-    -m <mode> - one of 'up', 'down', 'restart' or 'generate'
-      - 'up' - bring up the network with docker-compose up
-      - 'down' - clear the network with docker-compose down
-      - 'restart' - restart the network
-      - 'generate' - generate required certificates and genesis block
-    -c <channel name> - channel name to use (defaults to "mychannel")
-    -t <timeout> - CLI timeout duration in seconds (defaults to 10)
-    -d <delay> - delay duration in seconds (defaults to 3)
-    -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)
-    -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
-    -l <language> - the chaincode language: golang (default) or node
-    -a - don't ask for confirmation before proceeding
+    byfn.sh <mode> [-c <channel name>] [-t <timeout>] [-d <delay>] [-f <docker-compose-file>] [-s <dbtype>] [-l <language>] [-i <imagetag>] [-v]
+      <mode> - one of 'up', 'down', 'restart', 'generate' or 'upgrade'
+        - 'up' - bring up the network with docker-compose up
+        - 'down' - clear the network with docker-compose down
+        - 'restart' - restart the network
+        - 'generate' - generate required certificates and genesis block
+        - 'upgrade'  - upgrade the network from v1.0.x to v1.1
+      -c <channel name> - channel name to use (defaults to "mychannel")
+      -t <timeout> - CLI timeout duration in seconds (defaults to 10)
+      -d <delay> - delay duration in seconds (defaults to 3)
+      -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)
+      -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
+      -l <language> - the chaincode language: golang (default) or node
+      -i <imagetag> - the tag to be used to launch the network (defaults to "latest")
+      -v - verbose mode
+    byfn.sh -h (print this message)
 
-    Typically, one would first generate the required certificates and
-    genesis block, then bring up the network. e.g.:
+  Typically, one would first generate the required certificates and
+  genesis block, then bring up the network. e.g.:
 
-	byfn.sh -m generate -c mychannel
-	byfn.sh -m up -c mychannel -s couchdb
+	  byfn.sh generate -c mychannel
+	  byfn.sh up -c mychannel -s couchdb
+          byfn.sh up -c mychannel -s couchdb -i 1.1.0-alpha
+	  byfn.sh up -l node
+	  byfn.sh down -c mychannel
+          byfn.sh upgrade -c mychannel
+
+  Taking all defaults:
+	  byfn.sh generate
+	  byfn.sh up
+	  byfn.sh down
 
 If you choose not to supply a channel name, then the
 script will use a default name of ``mychannel``.  The CLI timeout parameter
@@ -85,7 +95,7 @@ Ready to give it a go? Okay then! Execute the following command:
 
 .. code:: bash
 
-  ./byfn.sh -m generate
+  ./byfn.sh generate
 
 You will see a brief description as to what will occur, along with a yes/no command line
 prompt. Respond with a ``y`` or hit the return key to execute the described action.
@@ -147,7 +157,7 @@ Next, you can bring the network up with one of the following commands:
 
 .. code:: bash
 
-  ./byfn.sh -m up
+  ./byfn.sh up
 
 The above command will compile Golang chaincode images and spin up the corresponding
 containers.  Go is the default chaincode language, however there is also support
@@ -159,7 +169,7 @@ chaincode, pass the following command instead:
   # we use the -l flag to specify the chaincode language
   # forgoing the -l flag will default to Golang
 
-  ./byfn.sh -m up -l node
+  ./byfn.sh up -l node
 
 .. note:: View the `Hyperledger Fabric Shim <https://fabric-shim.github.io/ChaincodeStub.html>`__
           documentation for more info on the node.js chaincode shim APIs.
@@ -222,7 +232,7 @@ and four artifacts, and delete the chaincode images from your Docker Registry:
 
 .. code:: bash
 
-  ./byfn.sh -m down
+  ./byfn.sh down
 
 Once again, you will be prompted to continue, respond with a ``y`` or hit the return key:
 
@@ -1083,7 +1093,7 @@ Troubleshooting
 
    .. code:: bash
 
-      ./byfn.sh -m down
+      ./byfn.sh down
 
    .. note:: You **will** see errors if you do not remove old containers
              and images.
@@ -1146,7 +1156,7 @@ Troubleshooting
 
    .. code:: bash
 
-       ./byfn.sh -m down
+       ./byfn.sh down
 
 -  If you see an error stating that you still have "active endpoints", then prune
    your Docker networks.  This will wipe your previous networks and start you with a
