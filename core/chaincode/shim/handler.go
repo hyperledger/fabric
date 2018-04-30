@@ -329,6 +329,45 @@ func (handler *Handler) handleGetState(collection string, key string, channelId 
 	return nil, errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
+func (handler *Handler) handleGetStateMetadata(collection string, key string, channelID string, txID string) (map[string][]byte, error) {
+	// Construct payload for GET_STATE_METADATA
+	payloadBytes, _ := proto.Marshal(&pb.GetStateMetadata{Collection: collection, Key: key})
+
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_METADATA, Payload: payloadBytes, Txid: txID, ChannelId: channelID}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_METADATA)
+
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelID, txID)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("[%s]error sending GET_STATE_METADATA", shorttxid(txID)))
+	}
+
+	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+		// Success response
+		chaincodeLogger.Debugf("[%s]GetStateMetadata received payload %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
+		var mdResult pb.StateMetadataResult
+		err := proto.Unmarshal(responseMsg.Payload, &mdResult)
+		if err != nil {
+			chaincodeLogger.Errorf("[%s]GetStateMetadata could not unmarshal result", shorttxid(responseMsg.Txid))
+			return nil, errors.New("Could not unmarshal metadata response")
+		}
+		metadata := make(map[string][]byte)
+		for _, md := range mdResult.Entries {
+			metadata[md.Metakey] = md.Value
+		}
+
+		return metadata, nil
+	}
+	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+		// Error response
+		chaincodeLogger.Errorf("[%s]GetStateMetadata received error %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
+		return nil, errors.New(string(responseMsg.Payload[:]))
+	}
+
+	// Incorrect chaincode message received
+	chaincodeLogger.Errorf("[%s]Incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, errors.Errorf("[%s]incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+}
+
 // TODO: Implement a method to set multiple keys at a time [FAB-1244]
 // handlePutState communicates with the peer to put state information into the ledger.
 func (handler *Handler) handlePutState(collection string, key string, value []byte, channelId string, txid string) error {
@@ -359,6 +398,37 @@ func (handler *Handler) handlePutState(collection string, key string, value []by
 	// Incorrect chaincode message received
 	chaincodeLogger.Errorf("[%s] Incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 	return errors.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+}
+
+func (handler *Handler) handlePutStateMetadataEntry(collection string, key string, metakey string, metadata []byte, channelID string, txID string) error {
+	// Construct payload for PUT_STATE_METADATA
+	md := &pb.StateMetadata{Metakey: metakey, Value: metadata}
+	payloadBytes, _ := proto.Marshal(&pb.PutStateMetadata{Collection: collection, Key: key, Metadata: md})
+
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE_METADATA, Payload: payloadBytes, Txid: txID, ChannelId: channelID}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_PUT_STATE_METADATA)
+
+	// Execute the request and get response
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelID, txID)
+	if err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("[%s]error sending PUT_STATE_METADATA", msg.Txid))
+	}
+
+	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+		// Success response
+		chaincodeLogger.Debugf("[%s]Received %s. Successfully updated state metadata", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
+		return nil
+	}
+
+	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+		// Error response
+		chaincodeLogger.Errorf("[%s]Received %s. Payload: %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR, responseMsg.Payload)
+		return errors.New(string(responseMsg.Payload[:]))
+	}
+
+	// Incorrect chaincode message received
+	chaincodeLogger.Errorf("[%s]Incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return errors.Errorf("[%s]incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
 // handleDelState communicates with the peer to delete a key from the state in the ledger.

@@ -51,13 +51,14 @@ const (
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
 type ChaincodeStub struct {
-	TxID           string
-	ChannelId      string
-	chaincodeEvent *pb.ChaincodeEvent
-	args           [][]byte
-	handler        *Handler
-	signedProposal *pb.SignedProposal
-	proposal       *pb.Proposal
+	TxID                       string
+	ChannelId                  string
+	chaincodeEvent             *pb.ChaincodeEvent
+	args                       [][]byte
+	handler                    *Handler
+	signedProposal             *pb.SignedProposal
+	proposal                   *pb.Proposal
+	validationParameterMetakey string
 
 	// Additional fields extracted from the signedProposal
 	creator   []byte
@@ -395,6 +396,7 @@ func (stub *ChaincodeStub) init(handler *Handler, channelId string, txid string,
 	stub.handler = handler
 	stub.signedProposal = signedProposal
 	stub.decorations = input.Decorations
+	stub.validationParameterMetakey = pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 
 	// TODO: sanity check: verify that every call to init with a nil
 	// signedProposal is a legitimate one, meaning it is an internal call
@@ -458,13 +460,18 @@ func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
 
 // SetStateValidationParameter documentation can be found in interfaces.go
 func (stub *ChaincodeStub) SetStateValidationParameter(key string, ep []byte) error {
-	// TODO: implement
-	return nil
+	return stub.handler.handlePutStateMetadataEntry("", key, stub.validationParameterMetakey, ep, stub.ChannelId, stub.TxID)
 }
 
 // GetStateValidationParameter documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetStateValidationParameter(key string) ([]byte, error) {
-	// TODO: implement
+	md, err := stub.handler.handleGetStateMetadata("", key, stub.ChannelId, stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	if ep, ok := md[stub.validationParameterMetakey]; ok {
+		return ep, nil
+	}
 	return nil, nil
 }
 
@@ -569,14 +576,19 @@ func (stub *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (
 
 // GetPrivateDataValidationParameter documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetPrivateDataValidationParameter(collection, key string) ([]byte, error) {
-	// TODO: implement
+	md, err := stub.handler.handleGetStateMetadata(collection, key, stub.ChannelId, stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	if ep, ok := md[stub.validationParameterMetakey]; ok {
+		return ep, nil
+	}
 	return nil, nil
 }
 
 // SetPrivateDataValidationParameter documentation can be found in interfaces.go
 func (stub *ChaincodeStub) SetPrivateDataValidationParameter(collection, key string, ep []byte) error {
-	// TODO: implement
-	return nil
+	return stub.handler.handlePutStateMetadataEntry(collection, key, stub.validationParameterMetakey, ep, stub.ChannelId, stub.TxID)
 }
 
 // CommonIterator documentation can be found in interfaces.go

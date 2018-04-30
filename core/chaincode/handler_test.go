@@ -480,6 +480,107 @@ var _ = Describe("Handler", func() {
 		})
 	})
 
+	Describe("HandlePutStateMetadata", func() {
+		var incomingMessage *pb.ChaincodeMessage
+		var request *pb.PutStateMetadata
+
+		BeforeEach(func() {
+			request = &pb.PutStateMetadata{
+				Key: "put-state-key",
+				Metadata: &pb.StateMetadata{
+					Metakey: "put-state-metakey",
+					Value:   []byte("put-state-metadata-value"),
+				},
+			}
+			payload, err := proto.Marshal(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			incomingMessage = &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_PUT_STATE_METADATA,
+				Payload:   payload,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}
+		})
+
+		It("returns a response message", func() {
+			resp, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_RESPONSE,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}))
+		})
+
+		Context("when unmarshaling the request fails", func() {
+			BeforeEach(func() {
+				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+			})
+		})
+
+		Context("when the collection is not provided", func() {
+			It("calls SetStateMetadata on the transaction simulator", func() {
+				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeTxSimulator.SetStateMetadataCallCount()).To(Equal(1))
+				ccname, key, value := fakeTxSimulator.SetStateMetadataArgsForCall(0)
+				Expect(ccname).To(Equal("cc-instance-name"))
+				Expect(key).To(Equal("put-state-key"))
+				Expect(value).To(Equal(map[string][]byte{"put-state-metakey": []byte("put-state-metadata-value")}))
+			})
+
+			Context("when SetStateMetadata fails", func() {
+				BeforeEach(func() {
+					fakeTxSimulator.SetStateMetadataReturns(errors.New("king-kong"))
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("king-kong"))
+				})
+			})
+		})
+
+		Context("when the collection is provided", func() {
+			BeforeEach(func() {
+				request.Collection = "collection-name"
+				payload, err := proto.Marshal(request)
+				Expect(err).NotTo(HaveOccurred())
+				incomingMessage.Payload = payload
+			})
+
+			It("calls SetPrivateDataMetadata on the transaction simulator", func() {
+				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeTxSimulator.SetPrivateDataMetadataCallCount()).To(Equal(1))
+				ccname, collection, key, value := fakeTxSimulator.SetPrivateDataMetadataArgsForCall(0)
+				Expect(ccname).To(Equal("cc-instance-name"))
+				Expect(collection).To(Equal("collection-name"))
+				Expect(key).To(Equal("put-state-key"))
+				Expect(value).To(Equal(map[string][]byte{"put-state-metakey": []byte("put-state-metadata-value")}))
+			})
+
+			Context("when SetPrivateDataMetadata fails", func() {
+				BeforeEach(func() {
+					fakeTxSimulator.SetPrivateDataMetadataReturns(errors.New("godzilla"))
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("godzilla"))
+				})
+			})
+		})
+	})
+
 	Describe("HandleDelState", func() {
 		var incomingMessage *pb.ChaincodeMessage
 		var request *pb.DelState
@@ -695,6 +796,134 @@ var _ = Describe("Handler", func() {
 					Txid:      "tx-id",
 					ChannelId: "channel-id",
 				}))
+			})
+		})
+	})
+
+	Describe("HandleGetStateMetadata", func() {
+		var (
+			incomingMessage  *pb.ChaincodeMessage
+			request          *pb.GetStateMetadata
+			expectedResponse *pb.ChaincodeMessage
+		)
+
+		BeforeEach(func() {
+			request = &pb.GetStateMetadata{
+				Key: "get-state-key",
+			}
+			payload, err := proto.Marshal(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			incomingMessage = &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_GET_STATE_METADATA,
+				Payload:   payload,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}
+
+			expectedResponse = &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_RESPONSE,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}
+		})
+
+		Context("when unmarshalling the request fails", func() {
+			BeforeEach(func() {
+				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+			})
+		})
+
+		Context("when collection is set", func() {
+			BeforeEach(func() {
+				request.Collection = "collection-name"
+				payload, err := proto.Marshal(request)
+				Expect(err).NotTo(HaveOccurred())
+				incomingMessage.Payload = payload
+
+				fakeTxSimulator.GetPrivateDataMetadataReturns(map[string][]byte{"get-state-metakey": []byte("get-private-metadata-response")}, nil)
+				responsePayload, err := proto.Marshal(&pb.StateMetadataResult{
+					Entries: []*pb.StateMetadata{{
+						Metakey: "get-state-metakey",
+						Value:   []byte("get-private-metadata-response"),
+					}},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				expectedResponse.Payload = responsePayload
+			})
+
+			It("calls GetPrivateDataMetadata on the transaction simulator", func() {
+				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeTxSimulator.GetPrivateDataMetadataCallCount()).To(Equal(1))
+				ccname, collection, key := fakeTxSimulator.GetPrivateDataMetadataArgsForCall(0)
+				Expect(ccname).To(Equal("cc-instance-name"))
+				Expect(collection).To(Equal("collection-name"))
+				Expect(key).To(Equal("get-state-key"))
+			})
+
+			Context("and GetPrivateDataMetadata fails", func() {
+				BeforeEach(func() {
+					fakeTxSimulator.GetPrivateDataMetadataReturns(nil, errors.New("french fries"))
+				})
+
+				It("returns the error from GetPrivateDataMetadata", func() {
+					_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("french fries"))
+				})
+			})
+
+			It("returns the response message from GetPrivateDataMetadata", func() {
+				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(Equal(expectedResponse))
+			})
+		})
+
+		Context("when collection is not set", func() {
+			BeforeEach(func() {
+				fakeTxSimulator.GetStateMetadataReturns(map[string][]byte{"get-state-metakey": []byte("get-state-metadata-response")}, nil)
+				responsePayload, err := proto.Marshal(&pb.StateMetadataResult{
+					Entries: []*pb.StateMetadata{{
+						Metakey: "get-state-metakey",
+						Value:   []byte("get-state-metadata-response"),
+					}},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				expectedResponse.Payload = responsePayload
+			})
+
+			It("calls GetStateMetadata on the transaction simulator", func() {
+				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeTxSimulator.GetStateMetadataCallCount()).To(Equal(1))
+				ccname, key := fakeTxSimulator.GetStateMetadataArgsForCall(0)
+				Expect(ccname).To(Equal("cc-instance-name"))
+				Expect(key).To(Equal("get-state-key"))
+			})
+
+			Context("and GetStateMetadata fails", func() {
+				BeforeEach(func() {
+					fakeTxSimulator.GetStateMetadataReturns(nil, errors.New("tomato"))
+				})
+
+				It("returns the error from GetStateMetadata", func() {
+					_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("tomato"))
+				})
+			})
+
+			It("returns the response from GetStateMetadata", func() {
+				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(Equal(expectedResponse))
 			})
 		})
 	})

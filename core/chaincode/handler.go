@@ -205,6 +205,10 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 	case pb.ChaincodeMessage_QUERY_STATE_CLOSE:
 		go h.HandleTransaction(msg, h.HandleQueryStateClose)
 
+	case pb.ChaincodeMessage_GET_STATE_METADATA:
+		go h.HandleTransaction(msg, h.HandleGetStateMetadata)
+	case pb.ChaincodeMessage_PUT_STATE_METADATA:
+		go h.HandleTransaction(msg, h.HandlePutStateMetadata)
 	default:
 		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
 	}
@@ -559,6 +563,40 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
+// Handles query to ledger to get state metadata
+func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	getStateMetadata := &pb.GetStateMetadata{}
+	err := proto.Unmarshal(msg.Payload, getStateMetadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
+	}
+
+	chaincodeName := h.ChaincodeName()
+	chaincodeLogger.Debugf("[%s] getting state metadata for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), chaincodeName, getStateMetadata.Key, txContext.ChainID)
+
+	var metadata map[string][]byte
+	if isCollectionSet(getStateMetadata.Collection) {
+		metadata, err = txContext.TXSimulator.GetPrivateDataMetadata(chaincodeName, getStateMetadata.Collection, getStateMetadata.Key)
+	} else {
+		metadata, err = txContext.TXSimulator.GetStateMetadata(chaincodeName, getStateMetadata.Key)
+	}
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var metadataResult pb.StateMetadataResult
+	for metakey := range metadata {
+		md := &pb.StateMetadata{Metakey: metakey, Value: metadata[metakey]}
+		metadataResult.Entries = append(metadataResult.Entries, md)
+	}
+	res, err := proto.Marshal(&metadataResult)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Send response msg back to chaincode. GetState will not trigger event
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
 // Handles query to ledger to rage query state
 func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	getStateByRange := &pb.GetStateByRange{}
@@ -770,6 +808,29 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 		err = txContext.TXSimulator.SetPrivateData(chaincodeName, putState.Collection, putState.Key, putState.Value)
 	} else {
 		err = txContext.TXSimulator.SetState(chaincodeName, putState.Key, putState.Value)
+	}
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	putStateMetadata := &pb.PutStateMetadata{}
+	err := proto.Unmarshal(msg.Payload, putStateMetadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
+	}
+
+	metadata := make(map[string][]byte)
+	metadata[putStateMetadata.Metadata.Metakey] = putStateMetadata.Metadata.Value
+
+	chaincodeName := h.ChaincodeName()
+	if isCollectionSet(putStateMetadata.Collection) {
+		err = txContext.TXSimulator.SetPrivateDataMetadata(chaincodeName, putStateMetadata.Collection, putStateMetadata.Key, metadata)
+	} else {
+		err = txContext.TXSimulator.SetStateMetadata(chaincodeName, putStateMetadata.Key, metadata)
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)

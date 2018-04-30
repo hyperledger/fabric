@@ -93,6 +93,10 @@ func (t *shimTestCC) Invoke(stub ChaincodeStubInterface) pb.Response {
 		return t.historyq(stub, args)
 	} else if function == "richq" {
 		return t.richq(stub, args)
+	} else if function == "putep" {
+		return t.putEP(stub)
+	} else if function == "getep" {
+		return t.getEP(stub)
 	}
 
 	return Error("Invalid invoke function name. Expecting \"invoke\" \"delete\" \"query\"")
@@ -346,6 +350,24 @@ func (t *shimTestCC) historyq(stub ChaincodeStubInterface, args []string) pb.Res
 	buffer.WriteString("]")
 
 	return Success(buffer.Bytes())
+}
+
+func (t *shimTestCC) putEP(stub ChaincodeStubInterface) pb.Response {
+	args := stub.GetArgs()
+	err := stub.SetStateValidationParameter(string(args[1]), args[2])
+	if err != nil {
+		return Error(err.Error())
+	}
+	return Success(nil)
+}
+
+func (t *shimTestCC) getEP(stub ChaincodeStubInterface) pb.Response {
+	args := stub.GetArgs()
+	ep, err := stub.GetStateValidationParameter(string(args[1]))
+	if err != nil {
+		return Error(err.Error())
+	}
+	return Success(ep)
 }
 
 // Test Go shim functionality that can be tested outside of a real chaincode
@@ -913,6 +935,101 @@ func TestInvoke(t *testing.T) {
 
 	//wait for done
 	processDone(t, done, false)
+}
+
+func TestSetKeyEP(t *testing.T) {
+	streamGetter = mockChaincodeStreamGetter
+	cc := &shimTestCC{}
+	ccname := "shimTestCC"
+	peerSide := setupcc(ccname, cc)
+	defer mockPeerCCSupport.RemoveCC(ccname)
+	//start the shim+chaincode
+	go Start(cc)
+
+	done := setuperror()
+
+	errorFunc := func(ind int, err error) {
+		done <- err
+	}
+
+	peerDone := make(chan struct{})
+	defer close(peerDone)
+
+	//start the mock peer
+	go func() {
+		respSet := &mockpeer.MockResponseSet{
+			DoneFunc:  errorFunc,
+			ErrorFunc: errorFunc,
+			Responses: []*mockpeer.MockResponse{
+				{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
+			},
+		}
+		peerSide.SetResponses(respSet)
+		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
+		err := peerSide.Run(peerDone)
+		assert.NoError(t, err, "peer side run failed")
+	}()
+
+	//wait for init
+	processDone(t, done, false)
+
+	channelId := "testchannel"
+
+	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: "1", ChannelId: channelId})
+
+	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, Decorations: nil}
+	payload := utils.MarshalOrPanic(ci)
+	respSet := &mockpeer.MockResponseSet{
+		DoneFunc:  errorFunc,
+		ErrorFunc: errorFunc,
+		Responses: []*mockpeer.MockResponse{
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelId}, nil}},
+	}
+	peerSide.SetResponses(respSet)
+
+	//use the payload computed from prev init
+	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INIT, Payload: payload, Txid: "2", ChannelId: channelId})
+
+	processDone(t, done, false)
+
+	// set an ep for A
+	respSet = &mockpeer.MockResponseSet{
+		DoneFunc:  errorFunc,
+		ErrorFunc: errorFunc,
+		Responses: []*mockpeer.MockResponse{
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE_METADATA, Txid: "4", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: nil, Txid: "4", ChannelId: channelId}},
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelId}, nil}},
+	}
+	peerSide.SetResponses(respSet)
+
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("putep"), []byte("A"), []byte("epA")}, Decorations: nil}
+	payload = utils.MarshalOrPanic(ci)
+
+	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "4", ChannelId: channelId})
+
+	//wait for done
+	processDone(t, done, false)
+
+	// set an ep for A
+	respSet = &mockpeer.MockResponseSet{
+		DoneFunc:  errorFunc,
+		ErrorFunc: errorFunc,
+		Responses: []*mockpeer.MockResponse{
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_METADATA, Txid: "5", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("epA"), Txid: "5", ChannelId: channelId}},
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5", ChannelId: channelId}, nil}},
+	}
+	peerSide.SetResponses(respSet)
+
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("getep"), []byte("A")}, Decorations: nil}
+	payload = utils.MarshalOrPanic(ci)
+
+	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "5", ChannelId: channelId})
+
+	//wait for done
+	processDone(t, done, false)
+
 }
 
 func TestStartInProc(t *testing.T) {
