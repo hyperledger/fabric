@@ -29,11 +29,8 @@ type Builder interface {
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
 	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
 	Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
-	Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error
-	GetVMName(ccID ccintf.CCID) string
 }
 
 type refCountedLock struct {
@@ -165,7 +162,8 @@ func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq
 
 	c := make(chan error)
 	go func() {
-		id := v.GetVMName(req.GetCCID())
+		ccid := req.GetCCID()
+		id := ccid.GetName()
 		vmc.lockContainer(id)
 		err := req.Do(ctxt, v)
 		vmc.unlockContainer(id)

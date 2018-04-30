@@ -131,74 +131,6 @@ func (r MockReader) Read(p []byte) (n int, err error) {
 	return 1, nil
 }
 
-func TestDeployNotRegistered(t *testing.T) {
-	mockContext := MockContext{}
-	r := NewRegistry()
-	vm := NewInprocVM(r)
-
-	ccid := ccintf.CCID{Name: "name"}
-
-	mockInprocContainer := &inprocContainer{
-		chaincode: MockShim{},
-	}
-
-	args := []string{"a", "b"}
-	env := []string{"a", "b"}
-	mockReader := MockReader{}
-	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
-	r.instRegistry["instName"] = ipc
-
-	err := vm.Deploy(mockContext, ccid, args, env, mockReader)
-
-	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "name not registered. Please register the system chaincode in inprocinstances.go", "error message should be correct")
-}
-
-func TestDeployNoChaincodeInstance(t *testing.T) {
-	mockContext := MockContext{}
-	r := NewRegistry()
-	vm := NewInprocVM(r)
-
-	ccid := ccintf.CCID{Name: "name"}
-
-	mockInprocContainer := &inprocContainer{}
-
-	args := []string{"a", "b"}
-	env := []string{"a", "b"}
-	mockReader := MockReader{}
-
-	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
-
-	r.typeRegistry["name"] = ipc
-
-	err := vm.Deploy(mockContext, ccid, args, env, mockReader)
-	assert.NotNil(t, err, "err should not be nil")
-	assert.Equal(t, err.Error(), "name system chaincode does not contain chaincode instance")
-}
-
-func TestDeployChaincode(t *testing.T) {
-	mockContext := MockContext{}
-	r := NewRegistry()
-	vm := NewInprocVM(r)
-
-	ccid := ccintf.CCID{Name: "name"}
-
-	mockInprocContainer := &inprocContainer{
-		chaincode: MockShim{},
-	}
-
-	args := []string{"a", "b"}
-	env := []string{"a", "b"}
-	mockReader := MockReader{}
-
-	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
-
-	r.typeRegistry["name"] = ipc
-
-	err := vm.Deploy(mockContext, ccid, args, env, mockReader)
-	assert.Nil(t, err, "err should be nil")
-}
-
 type MockCCSupport struct {
 }
 
@@ -496,15 +428,4 @@ func TestStopIPCNotRunning(t *testing.T) {
 	err := vm.Stop(mockContext, ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
 	assert.Equal(t, err.Error(), "name-1 not running", "error should be correct")
-}
-
-func TestDestroy(t *testing.T) {
-	vm := NewInprocVM(NewRegistry())
-	mockContext := MockContext{}
-	ccid := ccintf.CCID{
-		Name:    "name",
-		Version: "1",
-	}
-	err := vm.Destroy(mockContext, ccid, true, true)
-	assert.Nil(t, err, "err should be nil")
 }

@@ -213,25 +213,6 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID,
 	return nil
 }
 
-//Deploy use the reader containing targz to create a docker image
-//for docker inputbuf is tar reader ready for use by docker.Client
-//the stream from end client to peer could directly be this tar stream
-//talk to docker daemon using docker Client and build the image
-func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID,
-	args []string, env []string, reader io.Reader) error {
-
-	client, err := vm.getClientFnc()
-	switch err {
-	case nil:
-		if err = vm.deployImage(client, ccid, args, env, reader); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("Error creating docker client: %s", err)
-	}
-	return nil
-}
-
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 	args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
@@ -440,31 +421,6 @@ func (vm *DockerVM) stopInternal(ctxt context.Context, client dockerClient,
 			dockerLogger.Debugf("Removed container %s", id)
 		}
 	}
-	return err
-}
-
-//Destroy destroys an image
-func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
-	id, err := vm.GetVMNameForDocker(ccid)
-	if err != nil {
-		return err
-	}
-
-	client, err := vm.getClientFnc()
-	if err != nil {
-		dockerLogger.Errorf("destroy-cannot create client %s", err)
-		return err
-	}
-	id = strings.Replace(id, ":", "_", -1)
-
-	err = client.RemoveImageExtended(id, docker.RemoveImageOptions{Force: force, NoPrune: noprune})
-
-	if err != nil {
-		dockerLogger.Errorf("error while destroying image: %s", err)
-	} else {
-		dockerLogger.Debugf("Destroyed image %s", id)
-	}
-
 	return err
 }
 

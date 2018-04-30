@@ -8,7 +8,6 @@ package inproccontroller
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -105,29 +104,6 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 	vm.registry.instRegistry[instName] = ipc
 	inprocLogger.Debugf("chaincode instance created for %s", instName)
 	return ipc, nil
-}
-
-//Deploy verifies chaincode is registered and creates an instance for it. Currently only one instance can be created
-func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
-	path := ccid.GetName()
-	inprocLogger.Debugf("Deploying chaincode instance: %s", path)
-
-	ipctemplate := vm.registry.typeRegistry[path]
-	if ipctemplate == nil {
-		return fmt.Errorf(fmt.Sprintf("%s not registered. Please register the system chaincode in inprocinstances.go", path))
-	}
-
-	if ipctemplate.chaincode == nil {
-		return fmt.Errorf(fmt.Sprintf("%s system chaincode does not contain chaincode instance", path))
-	}
-
-	instName := vm.GetVMName(ccid)
-	_, err := vm.getInstance(ctxt, ipctemplate, instName, args, env)
-
-	//FUTURE ... here is where we might check code for safety
-	inprocLogger.Debugf("registered : %s", path)
-
-	return err
 }
 
 func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args []string, env []string, ccSupport ccintf.CCSupport) error {
@@ -248,12 +224,6 @@ func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, d
 
 	delete(vm.registry.instRegistry, instName)
 	//TODO stop
-	return nil
-}
-
-//Destroy destroys an image
-func (vm *InprocVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
-	//not implemented
 	return nil
 }
 

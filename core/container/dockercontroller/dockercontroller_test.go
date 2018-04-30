@@ -33,17 +33,13 @@ import (
 )
 
 // This test used to be part of an integration style test in core/container, moved to here
-func TestRealPath(t *testing.T) {
+func TestIntegrationPath(t *testing.T) {
 	coreutil.SetupTestConfig()
 	ctxt := context.Background()
 	dc := NewDockerVM("", "")
 	ccid := ccintf.CCID{Name: "simple"}
-	reader := getCodeChainBytesInMem()
 
-	err := dc.Deploy(ctxt, ccid, nil, nil, reader)
-	require.NoError(t, err)
-
-	err = dc.Start(ctxt, ccid, nil, nil, nil, nil)
+	err := dc.Start(ctxt, ccid, nil, nil, nil, InMemBuilder{})
 	require.NoError(t, err)
 
 	// Stop, killing, and deleting
@@ -83,34 +79,6 @@ func TestGetDockerHostConfig(t *testing.T) {
 	testutil.AssertEquals(t, hostConfig.LogConfig.Config["max-file"], "5")
 	testutil.AssertEquals(t, hostConfig.Memory, int64(1024*1024*1024*2))
 	testutil.AssertEquals(t, hostConfig.CPUShares, int64(1024*1024*1024*2))
-}
-
-func Test_Deploy(t *testing.T) {
-	dvm := DockerVM{}
-	ccid := ccintf.CCID{Name: "simple"}
-	//get the tarball for codechain
-	tarRdr := getCodeChainBytesInMem()
-	args := make([]string, 1)
-	env := make([]string, 1)
-	ctx := context.Background()
-
-	// getMockClient returns error
-	getClientErr = true
-	dvm.getClientFnc = getMockClient
-	err := dvm.Deploy(ctx, ccid, args, env, tarRdr)
-	testerr(t, err, false)
-	getClientErr = false
-
-	// Failure case: dockerClient.BuildImage returns error
-	buildErr = true
-	dvm.getClientFnc = getMockClient
-	err = dvm.Deploy(ctx, ccid, args, env, tarRdr)
-	testerr(t, err, false)
-	buildErr = false
-
-	// Success case
-	err = dvm.Deploy(ctx, ccid, args, env, tarRdr)
-	testerr(t, err, true)
 }
 
 func Test_Start(t *testing.T) {
@@ -213,30 +181,6 @@ func Test_Stop(t *testing.T) {
 	testerr(t, err, true)
 }
 
-func Test_Destroy(t *testing.T) {
-	dvm := DockerVM{}
-	ccid := ccintf.CCID{Name: "simple"}
-	ctx := context.Background()
-
-	// Failure cases
-	// Case 1: getMockClient returns error
-	getClientErr = true
-	dvm.getClientFnc = getMockClient
-	err := dvm.Destroy(ctx, ccid, true, true)
-	testerr(t, err, false)
-	getClientErr = false
-
-	// Case 2: dockerClient.RemoveImageExtended returns error
-	removeImgErr = true
-	err = dvm.Destroy(ctx, ccid, true, true)
-	testerr(t, err, false)
-	removeImgErr = false
-
-	// Success case
-	err = dvm.Destroy(ctx, ccid, true, true)
-	testerr(t, err, true)
-}
-
 type testCase struct {
 	name           string
 	vm             *DockerVM
@@ -314,7 +258,9 @@ func TestGetVMName(t *testing.T) {
 	assert.NotNil(t, err, "Expected error")
 }*/
 
-func getCodeChainBytesInMem() io.Reader {
+type InMemBuilder struct{}
+
+func (imb InMemBuilder) Build() (io.Reader, error) {
 	startTime := time.Now()
 	inputbuf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(inputbuf)
@@ -327,7 +273,7 @@ func getCodeChainBytesInMem() io.Reader {
 	tr.Write([]byte(dockerFileContents))
 	tr.Close()
 	gw.Close()
-	return inputbuf
+	return inputbuf, nil
 }
 
 func testerr(t *testing.T, err error, succ bool) {
