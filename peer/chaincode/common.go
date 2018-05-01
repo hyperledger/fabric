@@ -423,9 +423,6 @@ func ChaincodeInvokeOrQuery(
 ) (*pb.ProposalResponse, error) {
 	// Build the ChaincodeInvocationSpec message
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
-	if customIDGenAlg != common.UndefinedParamValue {
-		invocation.IdGenerationAlg = customIDGenAlg
-	}
 
 	creator, err := signer.Serialize()
 	if err != nil {

@@ -19,7 +19,6 @@ syntax = "proto3";
 package protos;
 option java_package = "org.hyperledger.fabric.protos.peer";
 option go_package = "github.com/hyperledger/fabric/protos/peer";
-import "google/protobuf/timestamp.proto";
 
 
 // Confidentiality Levels
@@ -77,6 +76,9 @@ message ChaincodeSpec {
 // Specify the deployment of a chaincode.
 // TODO: Define `codePackage`.
 message ChaincodeDeploymentSpec {
+    // Prevent removed tag re-use
+    reserved 2;
+    reserved "effective_date";
 
     enum ExecutionEnvironment {
         DOCKER = 0;
@@ -84,8 +86,6 @@ message ChaincodeDeploymentSpec {
     }
 
     ChaincodeSpec chaincode_spec = 1;
-    // Controls when the chaincode becomes executable.
-    google.protobuf.Timestamp effective_date = 2;
     bytes code_package = 3;
     ExecutionEnvironment exec_env=  4;
 
@@ -93,16 +93,11 @@ message ChaincodeDeploymentSpec {
 
 // Carries the chaincode function and its arguments.
 message ChaincodeInvocationSpec {
+    // Prevent removed tag re-use
+    reserved 2;
+    reserved "id_generation_alg";
 
     ChaincodeSpec chaincode_spec = 1;
-    // This field can contain a user-specified ID generation algorithm
-    // If supplied, this will be used to generate a ID
-    // If not supplied (left empty), sha256base64 will be used
-    // The algorithm consists of two parts:
-    //  1, a hash function
-    //  2, a decoding used to decode user (string) input to bytes
-    // Currently, SHA256 with BASE64 is supported (e.g. idGenerationAlg='sha256base64')
-    string id_generation_alg = 2;
 }
 
 // LifecycleEvent is used as the payload of the chaincode event emitted by LSCC
