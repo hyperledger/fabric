@@ -74,5 +74,5 @@ type launchRegistry interface {
 // Helpers to access unexported state.
 
 func SetHandlerTxContexts(h *Handler, txContexts *TransactionContexts) {
-	h.txCtxs = txContexts
+	h.txContexts = txContexts
 }

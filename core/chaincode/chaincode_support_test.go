@@ -1081,7 +1081,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
-	h := Handler{txCtxs: NewTransactionContexts(), sccp: &scc.ProviderImpl{Peer: peer.Default, PeerSupport: peer.DefaultSupport}}
+	h := Handler{txContexts: NewTransactionContexts(), sccp: &scc.ProviderImpl{Peer: peer.Default, PeerSupport: peer.DefaultSupport}}
 
 	chnl := "test"
 	txid := "1"
@@ -1184,7 +1184,7 @@ func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid stri
 	// get a context for this txsim
 	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
 	// create a new txContext in the handler to be retrieved by the tested function (ie: getTxContextForMessage)
-	newTxCtxt, err := h.createTxContext(ctxt, chnl, txid, nil, nil)
+	newTxCtxt, err := h.txContexts.Create(ctxt, chnl, txid, nil, nil)
 	if err != nil {
 		t.Fatalf("Error creating TxContext by the handler for cc %s and channel '%s': %s", ccName, chnl, err)
 	}
