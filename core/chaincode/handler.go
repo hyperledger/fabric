@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -103,6 +104,13 @@ type UUIDGeneratorFunc func() string
 
 func (u UUIDGeneratorFunc) New() string { return u() }
 
+// ApplicationConfigRetriever to retrieve the application configuration for a channel
+type ApplicationConfigRetriever interface {
+	// GetApplicationConfig returns the channelconfig.Application for the channel
+	// and whether the Application config exists
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
+}
+
 // Handler implements the peer side of the chaincode stream.
 type Handler struct {
 	// Keepalive specifies the interval at which keep-alive messages are sent.
@@ -142,6 +150,8 @@ type Handler struct {
 	// ccInstances holds information about the chaincode instance associated with
 	// the peer.
 	ccInstance *sysccprovider.ChaincodeInstance
+
+	appConfig ApplicationConfigRetriever
 
 	// serialLock is used to serialize sends across the grpc chat stream.
 	serialLock sync.Mutex
@@ -1010,6 +1020,11 @@ func (h *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.P
 
 func (h *Handler) State() State { return h.state }
 func (h *Handler) Close()       { h.TXContexts.Close() }
+
+// GetApplicationConfig implements the method of the same name in the handlerSupport interface
+func (h *Handler) GetApplicationConfig(chainID string) (channelconfig.Application, bool) {
+	return h.appConfig.GetApplicationConfig(chainID)
+}
 
 type State int
 
