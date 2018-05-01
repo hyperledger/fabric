@@ -33,6 +33,8 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"waitForEvent",
+		"waitForEventTimeout",
 	}
 	attachFlags(chaincodeInvokeCmd, flagList)
 
