@@ -9,6 +9,7 @@ package chaincode
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -69,6 +70,11 @@ type ccpackage interface {
 //go:generate counterfeiter -o mock/launch_registry.go --fake-name LaunchRegistry . launchRegistry
 type launchRegistry interface {
 	LaunchRegistry
+}
+
+//go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
+type chaincodeStream interface {
+	ccintf.ChaincodeStream
 }
 
 // Helpers to access unexported state.
