@@ -922,10 +922,10 @@ func isCollectionSet(collection string) bool {
 	return true
 }
 
-func (h *Handler) getTxContextForMessage(channelID string, txid string, msgType string, payload []byte, fmtStr string, args ...interface{}) (*TransactionContext, *pb.ChaincodeMessage) {
+func (h *Handler) getTxContextForMessage(channelID string, txid string, msgType pb.ChaincodeMessage_Type, payload []byte, fmtStr string, args ...interface{}) (*TransactionContext, *pb.ChaincodeMessage) {
 	// if we have a channelID, just get the txsim from isValidTxSim
 	// if this is NOT an INVOKE_CHAINCODE, then let isValidTxSim handle retrieving the txContext
-	if channelID != "" || msgType != pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
+	if channelID != "" || msgType != pb.ChaincodeMessage_INVOKE_CHAINCODE {
 		return h.isValidTxSim(channelID, txid, fmtStr, args)
 	}
 
@@ -980,7 +980,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 
 		var triggerNextStateMsg *pb.ChaincodeMessage
 		var txContext *TransactionContext
-		txContext, triggerNextStateMsg = h.getTxContextForMessage(msg.ChannelId, msg.Txid, msg.Type.String(), msg.Payload,
+		txContext, triggerNextStateMsg = h.getTxContextForMessage(msg.ChannelId, msg.Txid, msg.Type, msg.Payload,
 			"[%s]No ledger context for %s. Sending %s", shorttxid(msg.Txid), msg.Type, pb.ChaincodeMessage_ERROR)
 
 		defer func() {
@@ -1000,7 +1000,8 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 		var err error
 		var res []byte
 
-		if msg.Type.String() == pb.ChaincodeMessage_PUT_STATE.String() {
+		switch msg.Type {
+		case pb.ChaincodeMessage_PUT_STATE:
 			putState := &pb.PutState{}
 			unmarshalErr := proto.Unmarshal(msg.Payload, putState)
 			if unmarshalErr != nil {
@@ -1014,7 +1015,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 				err = txContext.txsimulator.SetState(chaincodeID, putState.Key, putState.Value)
 			}
 
-		} else if msg.Type.String() == pb.ChaincodeMessage_DEL_STATE.String() {
+		case pb.ChaincodeMessage_DEL_STATE:
 			// Invoke ledger to delete state
 			delState := &pb.DelState{}
 			unmarshalErr := proto.Unmarshal(msg.Payload, delState)
@@ -1028,7 +1029,8 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			} else {
 				err = txContext.txsimulator.DeleteState(chaincodeID, delState.Key)
 			}
-		} else if msg.Type.String() == pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
+
+		case pb.ChaincodeMessage_INVOKE_CHAINCODE:
 			chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.Txid))
 			chaincodeSpec := &pb.ChaincodeSpec{}
 			unmarshalErr := proto.Unmarshal(msg.Payload, chaincodeSpec)
