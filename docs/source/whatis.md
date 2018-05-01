@@ -85,7 +85,7 @@ Further, since all transactions are executed sequentially by all nodes, performa
 Fabric introduces a new architecture for transactions that we call **execute-order-validate**. It addresses the resiliency, flexibility, scalability, performance and confidentiality challenges faced by the order-execute model. It separates the transaction flow into three steps:
 
 - executing a transaction and checking its correctness, thereby endorsing it;
-- rdering transactions through a consensus protocol; and
+- ordering transactions through a consensus protocol; and
 - transactions validated against an application-specific endorsement policy and committed to the ledger
 
 This design departs radically from the order-execute paradigm in that Fabric executes transactions before reaching final agreement on their order.
