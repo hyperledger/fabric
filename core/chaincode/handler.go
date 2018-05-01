@@ -141,6 +141,8 @@ type Handler struct {
 	LedgerGetter LedgerGetter
 	// UUIDGenerator is used to generate UUIDs
 	UUIDGenerator UUIDGenerator
+	// AppConfig is used to retrieve the application config for a channel
+	AppConfig ApplicationConfigRetriever
 
 	// state holds the current handler state. It will be created, established, or
 	// ready.
@@ -150,8 +152,6 @@ type Handler struct {
 	// ccInstances holds information about the chaincode instance associated with
 	// the peer.
 	ccInstance *sysccprovider.ChaincodeInstance
-
-	appConfig ApplicationConfigRetriever
 
 	// serialLock is used to serialize sends across the grpc chat stream.
 	serialLock sync.Mutex
@@ -544,6 +544,29 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	return false
 }
 
+func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
+	ac, there := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+	var err error
+	if !there {
+		err = errors.Errorf("[%s]Failed to get application config for invoked chaincode. Sending %s",
+			shorttxid(msg.Txid),
+			pb.ChaincodeMessage_ERROR,
+		)
+		chaincodeLogger.Errorf(err.Error())
+		return err
+	}
+
+	if !ac.Capabilities().KeyLevelEndorsement() {
+		err = errors.Errorf("[%s]Request to invoke metadata function not supported. Sending %s",
+			shorttxid(msg.Txid),
+			pb.ChaincodeMessage_ERROR,
+		)
+		chaincodeLogger.Errorf(err.Error())
+		return err
+	}
+	return nil
+}
+
 // Handles query to ledger to get state
 func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	key := string(msg.Payload)
@@ -575,8 +598,13 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 
 // Handles query to ledger to get state metadata
 func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	err := h.checkMetadataCap(msg)
+	if err != nil {
+		return nil, errors.Wrap(err, "metadata not supported")
+	}
+
 	getStateMetadata := &pb.GetStateMetadata{}
-	err := proto.Unmarshal(msg.Payload, getStateMetadata)
+	err = proto.Unmarshal(msg.Payload, getStateMetadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
@@ -827,8 +855,13 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 }
 
 func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	err := h.checkMetadataCap(msg)
+	if err != nil {
+		return nil, errors.Wrap(err, "metadata not supported")
+	}
+
 	putStateMetadata := &pb.PutStateMetadata{}
-	err := proto.Unmarshal(msg.Payload, putStateMetadata)
+	err = proto.Unmarshal(msg.Payload, putStateMetadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
@@ -1023,7 +1056,7 @@ func (h *Handler) Close()       { h.TXContexts.Close() }
 
 // GetApplicationConfig implements the method of the same name in the handlerSupport interface
 func (h *Handler) GetApplicationConfig(chainID string) (channelconfig.Application, bool) {
-	return h.appConfig.GetApplicationConfig(chainID)
+	return h.AppConfig.GetApplicationConfig(chainID)
 }
 
 type State int

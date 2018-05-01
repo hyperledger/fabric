@@ -137,6 +137,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		),
 		sccp,
 		pr,
+		peer.DefaultSupport,
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)

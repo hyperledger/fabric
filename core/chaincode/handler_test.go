@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -40,6 +41,7 @@ var _ = Describe("Handler", func() {
 		fakeInvoker                    *mock.Invoker
 		fakeLedgerGetter               *mock.LedgerGetter
 		fakeHandlerRegistry            *fake.Registry
+		fakeApplicationConfigRetriever *fake.ApplicationConfigRetriever
 
 		responseNotifier chan *pb.ChaincodeMessage
 		txContext        *chaincode.TransactionContext
@@ -76,6 +78,12 @@ var _ = Describe("Handler", func() {
 		fakeContextRegistry.GetReturns(txContext)
 		fakeContextRegistry.CreateReturns(txContext, nil)
 
+		fakeApplicationConfigRetriever = &fake.ApplicationConfigRetriever{}
+		applicationCapability := &config.MockApplication{
+			CapabilitiesRv: &config.MockApplicationCapabilities{KeyLevelEndorsementRv: true},
+		}
+		fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
+
 		handler = &chaincode.Handler{
 			ACLProvider:                fakeACLProvider,
 			ActiveTransactions:         fakeTransactionRegistry,
@@ -91,6 +99,7 @@ var _ = Describe("Handler", func() {
 			UUIDGenerator: chaincode.UUIDGeneratorFunc(func() string {
 				return "generated-query-id"
 			}),
+			AppConfig: fakeApplicationConfigRetriever,
 		}
 		chaincode.SetHandlerChatStream(handler, fakeChatStream)
 		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "test-handler-name"})

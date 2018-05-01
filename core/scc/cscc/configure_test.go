@@ -233,6 +233,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		),
 		mp,
 		platforms.NewRegistry(&golang.Platform{}),
+		peer.DefaultSupport,
 	)
 
 	// Init the policy checker
