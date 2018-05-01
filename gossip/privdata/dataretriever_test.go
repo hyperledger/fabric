@@ -56,6 +56,10 @@ func (mock *mockedRWSetScanner) Next() (*transientstore.EndorserPvtSimulationRes
 	return args.Get(0).(*transientstore.EndorserPvtSimulationResults), args.Error(1)
 }
 
+func (mock *mockedRWSetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
+	return nil, nil
+}
+
 /*
 	Test checks following scenario, it tries to obtain private data for
 	given block sequence which is greater than available ledger height,
