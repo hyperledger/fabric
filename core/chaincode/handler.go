@@ -30,9 +30,9 @@ import (
 type state string
 
 const (
-	created     state = "created"     //start state
-	established state = "established" //in: CREATED, rcv:  REGISTER, send: REGISTERED
-	ready       state = "ready"       //in:ESTABLISHED, rcv:COMPLETED
+	created     state = "created"     // start state
+	established state = "established" // in:CREATED,     rcv:REGISTER,  send: REGISTERED
+	ready       state = "ready"       // in:ESTABLISHED, rcv:COMPLETED
 
 )
 
@@ -58,7 +58,7 @@ type handlerSupport interface {
 
 // Handler responsible for management of Peer's side of chaincode stream
 type Handler struct {
-	//peer to shim grpc serializer. User only in serialSend
+	// peer to shim grpc serializer. User only in serialSend
 	serialLock  sync.Mutex
 	ChatStream  ccintf.ChaincodeStream
 	state       state
@@ -70,7 +70,7 @@ type Handler struct {
 
 	sccp sysccprovider.SystemChaincodeProvider
 
-	//chan to pass error in sync and nonsync mode
+	// chan to pass error in sync and nonsync mode
 	errChan chan error
 
 	// Map of tx txid to either invoke tx. Each tx will be
@@ -165,13 +165,13 @@ func shorttxid(txid string) string {
 	return txid[0:8]
 }
 
-//gets chaincode instance from the canonical name of the chaincode.
-//Called exactly once per chaincode when registering chaincode.
-//This is needed for the "one-instance-per-chain" model when
-//starting up the chaincode for each chain. It will still
-//work for the "one-instance-for-all-chains" as the version
-//and suffix will just be absent (also note that LSCC reserves
-//"/:[]${}" as special chars mainly for such namespace uses)
+// gets chaincode instance from the canonical name of the chaincode.
+// Called exactly once per chaincode when registering chaincode.
+// This is needed for the "one-instance-per-chain" model when
+// starting up the chaincode for each chain. It will still
+// work for the "one-instance-for-all-chains" as the version
+// and suffix will just be absent (also note that LSCC reserves
+// "/:[]${}" as special chars mainly for such namespace uses)
 func (h *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
 	h.ccInstance = getChaincodeInstance(cid.Name)
 }
@@ -180,7 +180,7 @@ func getChaincodeInstance(ccName string) *sysccprovider.ChaincodeInstance {
 	b := []byte(ccName)
 	ci := &sysccprovider.ChaincodeInstance{}
 
-	//compute suffix (ie, chain name)
+	// compute suffix (ie, chain name)
 	i := bytes.IndexByte(b, '/')
 	if i >= 0 {
 		if i < len(b)-1 {
@@ -189,7 +189,7 @@ func getChaincodeInstance(ccName string) *sysccprovider.ChaincodeInstance {
 		b = b[:i]
 	}
 
-	//compute version
+	// compute version
 	i = bytes.IndexByte(b, ':')
 	if i >= 0 {
 		if i < len(b)-1 {
@@ -207,7 +207,7 @@ func (h *Handler) getCCRootName() string {
 	return h.ccInstance.ChaincodeName
 }
 
-//serialSend serializes msgs so gRPC will be happy
+// serialSend serializes msgs so gRPC will be happy
 func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
@@ -220,11 +220,11 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return err
 }
 
-//serialSendAsync serves the same purpose as serialSend (serialize msgs so gRPC will
-//be happy). In addition, it is also asynchronous so send-remoterecv--localrecv loop
-//can be nonblocking. Only errors need to be handled and these are handled by
-//communication on supplied error channel. A typical use will be a non-blocking or
-//nil channel
+// serialSendAsync serves the same purpose as serialSend (serialize msgs so gRPC will
+// be happy). In addition, it is also asynchronous so send-remoterecv--localrecv loop
+// can be nonblocking. Only errors need to be handled and these are handled by
+// communication on supplied error channel. A typical use will be a non-blocking or
+// nil channel
 func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, sendErr bool) {
 	go func() {
 		if err := h.serialSend(msg); err != nil {
@@ -235,9 +235,9 @@ func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, sendErr bool) {
 	}()
 }
 
-//transaction context id should be composed of chainID and txid. While
-//needed for CC-2-CC, it also allows users to concurrently send proposals
-//with the same TXID to the SAME CC on multiple channels
+// transaction context id should be composed of chainID and txid. While
+// needed for CC-2-CC, it also allows users to concurrently send proposals
+// with the same TXID to the SAME CC on multiple channels
 func (h *Handler) getTxCtxId(chainID string, txid string) string {
 	return chainID + txid
 }
@@ -300,7 +300,7 @@ func (h *Handler) waitForKeepaliveTimer() <-chan time.Time {
 func (h *Handler) processStream() error {
 	defer h.deregister()
 
-	//holds return values from gRPC Recv below
+	// holds return values from gRPC Recv below
 	type recvMsg struct {
 		msg *pb.ChaincodeMessage
 		err error
@@ -311,11 +311,11 @@ func (h *Handler) processStream() error {
 	var in *pb.ChaincodeMessage
 	var err error
 
-	//recv is used to spin Recv routine after previous received msg
-	//has been processed
+	// recv is used to spin Recv routine after previous received msg
+	// has been processed
 	recv := true
 
-	//catch send errors and bail now that sends aren't synchronous
+	// catch send errors and bail now that sends aren't synchronous
 	for {
 		in = nil
 		err = nil
@@ -365,8 +365,8 @@ func (h *Handler) processStream() error {
 				continue
 			}
 
-			//if no error message from serialSend, KEEPALIVE happy, and don't care about error
-			//(maybe it'll work later)
+			// if no error message from serialSend, KEEPALIVE happy, and don't care about error
+			// (maybe it'll work later)
 			h.serialSendAsync(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE}, false)
 			continue
 		}
@@ -396,12 +396,12 @@ func (h *Handler) deleteTXIDEntry(channelID, txid string) {
 	h.activeTransactions.Remove(channelID, txid)
 }
 
-//sendReady sends READY to chaincode serially (just like REGISTER)
+// sendReady sends READY to chaincode serially (just like REGISTER)
 func (h *Handler) sendReady() error {
 	chaincodeLogger.Debugf("sending READY for chaincode %+v", h.ChaincodeID)
 	ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY}
 
-	//if error in sending tear down the h
+	// if error in sending tear down the h
 	if err := h.serialSend(ccMsg); err != nil {
 		chaincodeLogger.Errorf("error sending READY (%s) for chaincode %+v", err, h.ChaincodeID)
 		return err
@@ -415,11 +415,11 @@ func (h *Handler) sendReady() error {
 	return nil
 }
 
-//notifyDuringStartup will send ready on registration
+// notifyDuringStartup will send ready on registration
 func (h *Handler) notifyDuringStartup(val bool) {
 	if val {
-		//if send failed, notify failure which will initiate
-		//tearing down
+		// if send failed, notify failure which will initiate
+		// tearing down
 		if err := h.sendReady(); err != nil {
 			chaincodeLogger.Debugf("sendReady failed: %s", err)
 		}
@@ -444,8 +444,8 @@ func (h *Handler) handleRegister(msg *pb.ChaincodeMessage) {
 		return
 	}
 
-	//get the component parts so we can use the root chaincode
-	//name in keys
+	// get the component parts so we can use the root chaincode
+	// name in keys
 	h.decomposeRegisteredName(h.ChaincodeID)
 
 	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, chaincodeID, pb.ChaincodeMessage_REGISTERED)
@@ -459,7 +459,7 @@ func (h *Handler) handleRegister(msg *pb.ChaincodeMessage) {
 
 	chaincodeLogger.Debugf("Changed state to established for %+v", h.ChaincodeID)
 
-	//for dev mode this will also move to ready automatically
+	// for dev mode this will also move to ready automatically
 	h.notifyDuringStartup(true)
 }
 
@@ -487,7 +487,7 @@ func (h *Handler) isValidTxSim(channelID string, txid string, fmtStr string, arg
 	return txContext, nil
 }
 
-//register Txid to prevent overlapping handle messages from chaincode
+// register Txid to prevent overlapping handle messages from chaincode
 func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	// Check if this is the unique state request from this chaincode txid
 	if uniqueReq := h.createTXIDEntry(msg.ChannelId, msg.Txid); !uniqueReq {
@@ -498,7 +498,7 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	return true
 }
 
-//deregister current txid on completion
+// deregister current txid on completion
 func (h *Handler) deRegisterTxid(msg, serialSendMsg *pb.ChaincodeMessage, serial bool) {
 	h.deleteTXIDEntry(msg.ChannelId, msg.Txid)
 	chaincodeLogger.Debugf("[%s]send %s(serial-%t)", shorttxid(serialSendMsg.Txid), serialSendMsg.Type, serial)
@@ -551,7 +551,7 @@ func (h *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 				shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChannelId: msg.ChannelId}
 		} else if res == nil {
-			//The state object being requested does not exist
+			// The state object being requested does not exist
 			chaincodeLogger.Debugf("[%s]No state associated with key: %s. Sending %s with an empty payload",
 				shorttxid(msg.Txid), key, pb.ChaincodeMessage_RESPONSE)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}
@@ -643,7 +643,7 @@ func (h *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 
 const maxResultLimit = 100
 
-//getQueryResponse takes an iterator and fetch state to construct QueryResponse
+// getQueryResponse takes an iterator and fetch state to construct QueryResponse
 func getQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator, iterID string) (*pb.QueryResponse, error) {
 	pendingQueryResults := txContext.pendingQueryResults[iterID]
 	for {
@@ -944,8 +944,8 @@ func isCollectionSet(collection string) bool {
 }
 
 func (h *Handler) getTxContextForMessage(channelID string, txid string, msgType string, payload []byte, fmtStr string, args ...interface{}) (*TransactionContext, *pb.ChaincodeMessage) {
-	//if we have a channelID, just get the txsim from isValidTxSim
-	//if this is NOT an INVOKE_CHAINCODE, then let isValidTxSim handle retrieving the txContext
+	// if we have a channelID, just get the txsim from isValidTxSim
+	// if this is NOT an INVOKE_CHAINCODE, then let isValidTxSim handle retrieving the txContext
 	if channelID != "" || msgType != pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
 		return h.isValidTxSim(channelID, txid, fmtStr, args)
 	}
@@ -1109,12 +1109,12 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s",
 				shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 
-			//is the chaincode a system chaincode ?
+			// is the chaincode a system chaincode ?
 			isscc := h.sccp.IsSysCC(calledCcIns.ChaincodeName)
 
 			var version string
 			if !isscc {
-				//if its a user chaincode, get the details
+				// if its a user chaincode, get the details
 				cd, err := h.lifecycle.GetChaincodeDefinition(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcIns.ChainID, calledCcIns.ChaincodeName)
 				if err != nil {
 					errHandler([]byte(err.Error()), "[%s]Failed to get chaincode data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
@@ -1129,7 +1129,7 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 					return
 				}
 			} else {
-				//this is a system cc, just call it directly
+				// this is a system cc, just call it directly
 				version = util.GetSysCCVersion()
 			}
 
@@ -1155,8 +1155,8 @@ func (h *Handler) handleModState(msg *pb.ChaincodeMessage) {
 			// Execute the chaincode... this CANNOT be an init at least for now
 			response, execErr := h.handlerSupport.execute(ctxt, cccid, ccMsg)
 
-			//payload is marshalled and send to the calling chaincode's shim which unmarshals and
-			//sends it to chaincode
+			// payload is marshalled and send to the calling chaincode's shim which unmarshals and
+			// sends it to chaincode
 			res = nil
 			if execErr != nil {
 				err = execErr
@@ -1206,8 +1206,8 @@ func (h *Handler) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg
 	var ccresp *pb.ChaincodeMessage
 	select {
 	case ccresp = <-notfy:
-		//response is sent to user or calling chaincode. ChaincodeMessage_ERROR
-		//are typically treated as error
+		// response is sent to user or calling chaincode. ChaincodeMessage_ERROR
+		// are typically treated as error
 	case <-time.After(timeout):
 		err = errors.New("timeout expired while executing transaction")
 	}
@@ -1225,7 +1225,7 @@ func (h *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *
 	}
 	chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type)
 
-	//if security is disabled the context elements will just be nil
+	// if security is disabled the context elements will just be nil
 	if err = h.setChaincodeProposal(signedProp, prop, msg); err != nil {
 		return nil, err
 	}
