@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -150,24 +149,6 @@ func TestArrayToChaincodeArgs(t *testing.T) {
 		if bytes.Compare(expected[i], actual[i]) != 0 {
 			t.Fatalf("Got %v, expected %v", actual, expected)
 		}
-	}
-}
-
-// This test checks go-logging is thread safe with regard to
-// concurrent SetLevel invocation and log invocations.
-// Fails without the concurrency fix (adding RWLock to level.go)
-// In case the go-logging will be overwritten and its concurrency fix
-// will be regressed, this test should fail.
-func TestConcurrencyNotFail(t *testing.T) {
-	logger := logging.MustGetLogger("test")
-	go func() {
-		for i := 0; i < 100; i++ {
-			logging.SetLevel(logging.Level(logging.DEBUG), "test")
-		}
-	}()
-
-	for i := 0; i < 100; i++ {
-		logger.Info("")
 	}
 }
 
