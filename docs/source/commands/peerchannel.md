@@ -1,4 +1,4 @@
-## peer channel
+# peer channel
 
 The `peer channel` command allows administrators to perform channel related
 operations on a peer, such as joining a channel or listing the channels to which
@@ -16,7 +16,7 @@ The `peer channel` command has the following subcommands:
   * signconfigtx
   * update
 
-### peer channel
+## peer channel
 ```
 Operate a channel: create|fetch|join|list|update|signconfigtx|getinfo.
 
@@ -49,7 +49,7 @@ Use "peer channel [command] --help" for more information about a command.
 ```
 
 
-### peer channel create
+## peer channel create
 ```
 Create a channel
 
@@ -74,7 +74,7 @@ Global Flags:
 ```
 
 
-### peer channel fetch
+## peer channel fetch
 ```
 Fetch a specified block, writing it to a file.
 
@@ -97,7 +97,7 @@ Global Flags:
 ```
 
 
-### peer channel getinfo
+## peer channel getinfo
 ```
 get blockchain information of a specified channel. Requires '-c'.
 
@@ -120,7 +120,7 @@ Global Flags:
 ```
 
 
-### peer channel join
+## peer channel join
 ```
 Joins the peer to a channel.
 
@@ -143,7 +143,7 @@ Global Flags:
 ```
 
 
-### peer channel list
+## peer channel list
 ```
 List of channels peer has joined.
 
@@ -165,7 +165,7 @@ Global Flags:
 ```
 
 
-### peer channel signconfigtx
+## peer channel signconfigtx
 ```
 Signs the supplied configtx update file in place on the filesystem. Requires '-f'.
 
@@ -188,7 +188,7 @@ Global Flags:
 ```
 
 
-### peer channel update
+## peer channel update
 ```
 Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'.
 

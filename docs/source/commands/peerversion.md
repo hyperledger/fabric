@@ -1,4 +1,4 @@
-## peer version
+# peer version
 
 The `peer version` command displays the version information of the peer. It displays version, Go version, OS/architecture,
 if experimental features are turned on, and chaincode information. For example:

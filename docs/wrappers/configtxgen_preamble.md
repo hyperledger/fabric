@@ -1,4 +1,4 @@
-## configtxgen
+# configtxgen
 
 The `configtxgen` command allows users to create and inspect channel config
 related artifacts.  The content of the generated artifacts is dictated by the

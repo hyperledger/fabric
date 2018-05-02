@@ -1,4 +1,4 @@
-## configtxgen
+# configtxgen
 
 The `configtxgen` command allows users to create and inspect channel config
 related artifacts.  The content of the generated artifacts is dictated by the
@@ -9,13 +9,13 @@ contents of `configtx.yaml`.
 The `configtxgen` tool has no sub-commands, but supports flags which can be set
 to accomplish a number of tasks.
 
-### configtxgen
+## configtxgen
 ```
 Usage of configtxgen:
   -asOrg string
     	Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set
   -channelID string
-    	The channel ID to use in the configtx (default "testchainid")
+    	The channel ID to use in the configtx
   -inspectBlock string
     	Prints the configuration contained in the block at the specified path
   -inspectChannelCreateTx string

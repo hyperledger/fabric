@@ -1,4 +1,4 @@
-## peer logging
+# peer logging
 
 The `peer logging` subcommand allows administrators to dynamically view and
 configure the log levels of a peer.
@@ -17,7 +17,7 @@ to the different logging operations that are relevant to a peer.
 Each peer logging subcommand is described together with its options in its own
 section in this topic.
 
-### peer logging
+## peer logging
 ```
 Log levels: getlevel|setlevel|revertlevels.
 
@@ -39,7 +39,7 @@ Use "peer logging [command] --help" for more information about a command.
 ```
 
 
-### peer logging getlevel
+## peer logging getlevel
 ```
 Returns the logging level of the requested module logger. Note: the module name should exactly match the name that is displayed in the logs.
 
@@ -54,7 +54,7 @@ Global Flags:
 ```
 
 
-### peer logging revertlevels
+## peer logging revertlevels
 ```
 Reverts the logging levels to the levels at the end of peer startup
 
@@ -69,7 +69,7 @@ Global Flags:
 ```
 
 
-### peer logging setlevel
+## peer logging setlevel
 ```
 Sets the logging level for all modules that match the regular expression.
 

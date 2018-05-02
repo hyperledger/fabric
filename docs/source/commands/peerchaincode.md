@@ -1,4 +1,4 @@
-## peer chaincode
+# peer chaincode
 
 The `peer chaincode` command allows administrators to perform chaincode
 related operations on a peer, such as installing, instantiating, invoking,
@@ -53,7 +53,7 @@ flags are
 
 * `-o` or `--orderer <string>`
 
-  Ordering service endpoint specified as `<hostname or IP address>:<port>`
+  Ordering service endpoint specifed as `<hostname or IP address>:<port>`
 
 * `--ordererTLSHostnameOverride <string>`
 
@@ -71,7 +71,7 @@ flags are
 
   Default logging level and overrides, see `core.yaml` for full syntax
 
-### peer chaincode install
+## peer chaincode install
 ```
 Package the specified chaincode into a deployment spec and save it on the peer's path.
 
@@ -79,12 +79,14 @@ Usage:
   peer chaincode install [flags]
 
 Flags:
-  -c, --ctor string      Constructor message for the chaincode in JSON format (default "{}")
-  -h, --help             help for install
-  -l, --lang string      Language the chaincode is written in (default "golang")
-  -n, --name string      Name of the chaincode
-  -p, --path string      Path to chaincode
-  -v, --version string   Version of the chaincode specified in install/instantiate/upgrade commands
+  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
+  -h, --help                           help for install
+  -l, --lang string                    Language the chaincode is written in (default "golang")
+  -n, --name string                    Name of the chaincode
+  -p, --path string                    Path to chaincode
+      --peerAddresses stringArray      The addresses of the peers to connect to
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+  -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -99,7 +101,7 @@ Global Flags:
 ```
 
 
-### peer chaincode instantiate
+## peer chaincode instantiate
 ```
 Deploy the specified chaincode to the network.
 
@@ -107,16 +109,18 @@ Usage:
   peer chaincode instantiate [flags]
 
 Flags:
-  -C, --channelID string            The channel on which this command should be executed
-      --collections-config string   The file containing the configuration for the chaincode's collection
-  -c, --ctor string                 Constructor message for the chaincode in JSON format (default "{}")
-  -E, --escc string                 The name of the endorsement system chaincode to be used for this chaincode
-  -h, --help                        help for instantiate
-  -l, --lang string                 Language the chaincode is written in (default "golang")
-  -n, --name string                 Name of the chaincode
-  -P, --policy string               The endorsement policy associated to this chaincode
-  -v, --version string              Version of the chaincode specified in install/instantiate/upgrade commands
-  -V, --vscc string                 The name of the verification system chaincode to be used for this chaincode
+  -C, --channelID string               The channel on which this command should be executed
+      --collections-config string      The file containing the configuration for the chaincode's collection
+  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
+  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
+  -h, --help                           help for instantiate
+  -l, --lang string                    Language the chaincode is written in (default "golang")
+  -n, --name string                    Name of the chaincode
+      --peerAddresses stringArray      The addresses of the peers to connect to
+  -P, --policy string                  The endorsement policy associated to this chaincode
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+  -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
+  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -131,7 +135,7 @@ Global Flags:
 ```
 
 
-### peer chaincode invoke
+## peer chaincode invoke
 ```
 Invoke the specified chaincode. It will try to commit the endorsed transaction to the network.
 
@@ -139,10 +143,12 @@ Usage:
   peer chaincode invoke [flags]
 
 Flags:
-  -C, --channelID string   The channel on which this command should be executed
-  -c, --ctor string        Constructor message for the chaincode in JSON format (default "{}")
-  -h, --help               help for invoke
-  -n, --name string        Name of the chaincode
+  -C, --channelID string               The channel on which this command should be executed
+  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
+  -h, --help                           help for invoke
+  -n, --name string                    Name of the chaincode
+      --peerAddresses stringArray      The addresses of the peers to connect to
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -157,7 +163,7 @@ Global Flags:
 ```
 
 
-### peer chaincode list
+## peer chaincode list
 ```
 Get the instantiated chaincodes in the channel if specify channel, or get installed chaincodes on the peer
 
@@ -165,10 +171,12 @@ Usage:
   peer chaincode list [flags]
 
 Flags:
-  -C, --channelID string   The channel on which this command should be executed
-  -h, --help               help for list
-      --installed          Get the installed chaincodes on a peer
-      --instantiated       Get the instantiated chaincodes on a channel
+  -C, --channelID string               The channel on which this command should be executed
+  -h, --help                           help for list
+      --installed                      Get the installed chaincodes on a peer
+      --instantiated                   Get the instantiated chaincodes on a channel
+      --peerAddresses stringArray      The addresses of the peers to connect to
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -183,7 +191,7 @@ Global Flags:
 ```
 
 
-### peer chaincode package
+## peer chaincode package
 ```
 Package the specified chaincode into a deployment spec.
 
@@ -214,7 +222,7 @@ Global Flags:
 ```
 
 
-### peer chaincode query
+## peer chaincode query
 ```
 Get endorsed result of chaincode function call and print it. It won't generate transaction.
 
@@ -222,13 +230,15 @@ Usage:
   peer chaincode query [flags]
 
 Flags:
-  -C, --channelID string   The channel on which this command should be executed
-  -c, --ctor string        Constructor message for the chaincode in JSON format (default "{}")
-  -h, --help               help for query
-  -x, --hex                If true, output the query value byte array in hexadecimal. Incompatible with --raw
-  -n, --name string        Name of the chaincode
-  -r, --raw                If true, output the query value as raw bytes, otherwise format as a printable string
-  -t, --tid string         Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64
+  -C, --channelID string               The channel on which this command should be executed
+  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
+  -h, --help                           help for query
+  -x, --hex                            If true, output the query value byte array in hexadecimal. Incompatible with --raw
+  -n, --name string                    Name of the chaincode
+      --peerAddresses stringArray      The addresses of the peers to connect to
+  -r, --raw                            If true, output the query value as raw bytes, otherwise format as a printable string
+  -t, --tid string                     Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -243,7 +253,7 @@ Global Flags:
 ```
 
 
-### peer chaincode signpackage
+## peer chaincode signpackage
 ```
 Sign the specified chaincode package
 
@@ -266,7 +276,7 @@ Global Flags:
 ```
 
 
-### peer chaincode upgrade
+## peer chaincode upgrade
 ```
 Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.
 
@@ -274,16 +284,18 @@ Usage:
   peer chaincode upgrade [flags]
 
 Flags:
-  -C, --channelID string   The channel on which this command should be executed
-  -c, --ctor string        Constructor message for the chaincode in JSON format (default "{}")
-  -E, --escc string        The name of the endorsement system chaincode to be used for this chaincode
-  -h, --help               help for upgrade
-  -l, --lang string        Language the chaincode is written in (default "golang")
-  -n, --name string        Name of the chaincode
-  -p, --path string        Path to chaincode
-  -P, --policy string      The endorsement policy associated to this chaincode
-  -v, --version string     Version of the chaincode specified in install/instantiate/upgrade commands
-  -V, --vscc string        The name of the verification system chaincode to be used for this chaincode
+  -C, --channelID string               The channel on which this command should be executed
+  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
+  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
+  -h, --help                           help for upgrade
+  -l, --lang string                    Language the chaincode is written in (default "golang")
+  -n, --name string                    Name of the chaincode
+  -p, --path string                    Path to chaincode
+      --peerAddresses stringArray      The addresses of the peers to connect to
+  -P, --policy string                  The endorsement policy associated to this chaincode
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+  -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
+  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint

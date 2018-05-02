@@ -1,4 +1,4 @@
-## cryptogen
+# cryptogen
 
 `cryptogen` is an utility for generating Hyperledger Fabric key material.
 It is provided as a means of preconfiguring a network for testing purposes.
@@ -15,7 +15,7 @@ The ``cryptogen`` command has five subcommands, as follows:
   * version
 
 
-### cryptogen help
+## cryptogen help
 ```
 usage: cryptogen [<flags>] <command> [<args> ...]
 
@@ -44,7 +44,7 @@ Commands:
 ```
 
 
-### cryptogen generate
+## cryptogen generate
 ```
 usage: cryptogen generate [<flags>]
 
@@ -59,7 +59,7 @@ Flags:
 ```
 
 
-### cryptogen showtemplate
+## cryptogen showtemplate
 ```
 usage: cryptogen showtemplate
 
@@ -71,7 +71,7 @@ Flags:
 ```
 
 
-### cryptogen extend
+## cryptogen extend
 ```
 usage: cryptogen extend [<flags>]
 
@@ -86,7 +86,7 @@ Flags:
 ```
 
 
-### cryptogen version
+## cryptogen version
 ```
 usage: cryptogen version
 

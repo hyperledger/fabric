@@ -1,4 +1,4 @@
-## peer logging
+# peer logging
 
 The `peer logging` subcommand allows administrators to dynamically view and
 configure the log levels of a peer.

@@ -1,4 +1,4 @@
-## peer chaincode
+# peer chaincode
 
 The `peer chaincode` command allows administrators to perform chaincode
 related operations on a peer, such as installing, instantiating, invoking,

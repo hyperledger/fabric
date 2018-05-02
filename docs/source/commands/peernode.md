@@ -1,4 +1,4 @@
-## peer node
+# peer node
 
 The `peer node` command allows an administrator to start a peer node or check
 the status of a peer node.
@@ -10,7 +10,7 @@ The `peer node` command has the following subcommands:
   * start
   * status
 
-### peer node start
+## peer node start
 ```
 Starts a node that interacts with the network.
 
@@ -27,7 +27,7 @@ Global Flags:
 ```
 
 
-### peer node status
+## peer node status
 ```
 Returns the status of the running node.
 
