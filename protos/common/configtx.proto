@@ -14,13 +14,6 @@ option java_package = "org.hyperledger.fabric.protos.common";
 
 package common;
 
-// ConfigType is an enumeration of possible types for the config.  The type field in the config is
-// an int32 for extensibility, but this enum type should generally be used to populate it
-enum ConfigType {
-	CHANNEL = 0;  // The original and default configuration type, defines parameters for the operation of a channel
-	RESOURCE = 1; // Defines a set of resource names, and their mapping to policies which restrict access to those resources
-}
-
 // ConfigEnvelope is designed to contain _all_ configuration for a chain with no dependency
 // on previous configuration transactions.
 //
@@ -60,9 +53,12 @@ message ConfigPolicySchema {}
 
 // Config represents the config for a particular channel
 message Config {
+    // Prevent removed tag re-use
+    reserved 3;
+    reserved "type";
+
     uint64 sequence = 1;
     ConfigGroup channel_group = 2; // channel_group is a bad name for this, it should be changed to root when API breakage is allowed
-    int32 type = 3;
 }
 
 message ConfigUpdateEnvelope {
@@ -80,10 +76,13 @@ message ConfigUpdateEnvelope {
 // 4. Each policy is checked against the signatures from the ConfigUpdateEnvelope, any failing to verify are rejected
 // 5. The write_set is applied to the Config and the ConfigGroupSchema verifies that the updates were legal
 message ConfigUpdate {
+    // Prevent removed tag re-use
+    reserved 4;
+    reserved "type";
+
     string channel_id = 1;                // Which channel this config update is for
     ConfigGroup read_set = 2;             // ReadSet explicitly lists the portion of the config which was read, this should be sparse with only Version set
     ConfigGroup write_set = 3;            // WriteSet lists the portion of the config which was written, this should included updated Versions
-    int32 type = 4;                       // The type of config this update is intended for (usually a value from ConfigType enum) , must match the type in the Config message
     map<string, bytes> isolated_data = 5; // Data which is not to be reflected in the resulting Config, but is still needed for some other purpose.  For instance, rscc_seed_data
 }
 

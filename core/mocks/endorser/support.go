@@ -8,7 +8,6 @@ package endorser
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	mc "github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -26,7 +25,7 @@ type MockSupport struct {
 	ExecuteResp                      *pb.Response
 	ExecuteEvent                     *pb.ChaincodeEvent
 	ExecuteError                     error
-	ChaincodeDefinitionRv            resourcesconfig.ChaincodeDefinition
+	ChaincodeDefinitionRv            ccprovider.ChaincodeDefinition
 	ChaincodeDefinitionError         error
 	GetTxSimulatorRv                 *mc.MockTxSim
 	GetTxSimulatorErr                error
@@ -74,7 +73,7 @@ func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid str
 	return s.ExecuteResp, s.ExecuteEvent, s.ExecuteError
 }
 
-func (s *MockSupport) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (resourcesconfig.ChaincodeDefinition, error) {
+func (s *MockSupport) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, error) {
 	return s.ChaincodeDefinitionRv, s.ChaincodeDefinitionError
 }
 
@@ -86,7 +85,7 @@ func (s *MockSupport) IsJavaCC(buf []byte) (bool, error) {
 	return s.IsJavaRV, s.IsJavaErr
 }
 
-func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
+func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error {
 	return s.CheckInstantiationPolicyError
 }
 

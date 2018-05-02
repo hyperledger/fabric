@@ -698,54 +698,6 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
 }
 
-func TestValidationResourceUpdate(t *testing.T) {
-	theLedger := new(mockLedger)
-	sup := &mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}
-
-	vcs := struct {
-		*mocktxvalidator.Support
-		*semaphore.Weighted
-	}{sup, semaphore.NewWeighted(10)}
-	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	validator := NewTxValidator(vcs, mp)
-
-	ccID := "mycc"
-	tx := getEnvWithType(ccID, createRWset(t, ccID), common.HeaderType_PEER_RESOURCE_UPDATE, t)
-
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
-
-	cd := &ccp.ChaincodeData{
-		Name:    ccID,
-		Version: ccVersion,
-		Vscc:    "vscc",
-		Policy:  signedByAnyMember([]string{"SampleOrg"}),
-	}
-
-	cdbytes := utils.MarshalOrPanic(cd)
-
-	queryExecutor := new(mockQueryExecutor)
-	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
-	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
-
-	b1 := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-	b2 := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-
-	// Keep default callback
-	c := executeChaincodeProvider.getCallback()
-	executeChaincodeProvider.setCallback(func() (*peer.Response, *peer.ChaincodeEvent, error) {
-		return &peer.Response{Status: shim.ERROR}, nil, nil
-	})
-	err := validator.Validate(b1)
-	assert.NoError(t, err)
-	sup.ACVal = &mockconfig.MockApplicationCapabilities{ResourcesTreeRv: true}
-	err = validator.Validate(b2)
-	assert.NoError(t, err)
-	// Restore default callback
-	executeChaincodeProvider.setCallback(c)
-	assertInvalid(b1, t, peer.TxValidationCode_UNSUPPORTED_TX_PAYLOAD)
-	assertValid(b2, t)
-}
-
 type ccResultCallback func() (*peer.Response, *peer.ChaincodeEvent, error)
 
 type ccExecuteChaincode struct {

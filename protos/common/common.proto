@@ -37,6 +37,11 @@ enum Status {
 }
 
 enum HeaderType {
+    // Prevent removed tag re-use
+    // Uncomment after fabric-baseimage moves to 3.5.1
+    // reserved 7;
+    // reserved "PEER_RESOURCE_UPDATE";
+
     MESSAGE = 0;                   // Used for messages which are signed but opaque
     CONFIG = 1;                    // Used for messages which express the channel config
     CONFIG_UPDATE = 2;             // Used for transactions which update the channel config
@@ -44,7 +49,6 @@ enum HeaderType {
     ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
     DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
     CHAINCODE_PACKAGE = 6;         // Used for packaging chaincode artifacts for install
-    PEER_RESOURCE_UPDATE = 7;      // Used for encoding updates to the peer resource configuration
     PEER_ADMIN_OPERATION = 8;      // Used for invoking an administrative operation on a peer
 }
 

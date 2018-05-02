@@ -246,7 +246,7 @@ func getConfigBlock(chainID []byte) pb.Response {
 	return shim.Success(blockBytes)
 }
 
-// getConfigTree returns the current channel and resources configuration for the specified chainID.
+// getConfigTree returns the current channel configuration for the specified chainID.
 // If the peer doesn't belong to the chain, returns error
 func (e *PeerConfiger) getConfigTree(chainID []byte) pb.Response {
 	if chainID == nil {
@@ -256,11 +256,7 @@ func (e *PeerConfiger) getConfigTree(chainID []byte) pb.Response {
 	if channelCfg == nil {
 		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
 	}
-	resCfg := e.configMgr.GetResourceConfig(string(chainID)).ConfigProto()
-	if resCfg == nil {
-		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
-	}
-	agCfg := &pb.ConfigTree{ChannelConfig: channelCfg, ResourcesConfig: resCfg}
+	agCfg := &pb.ConfigTree{ChannelConfig: channelCfg}
 	configBytes, err := utils.Marshal(agCfg)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -306,8 +302,6 @@ func supportByType(pc *PeerConfiger, chainID []byte, env *common.Envelope) (conf
 	switch common.HeaderType(channelHdr.Type) {
 	case common.HeaderType_CONFIG_UPDATE:
 		return pc.configMgr.GetChannelConfig(string(chainID)), nil
-	case common.HeaderType_PEER_RESOURCE_UPDATE:
-		return pc.configMgr.GetResourceConfig(string(chainID)), nil
 	}
 	return nil, errors.Errorf("invalid payload header type: %d", channelHdr.Type)
 }

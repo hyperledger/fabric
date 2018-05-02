@@ -140,7 +140,7 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 
 //-------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
 
-//resource getter gets resourcesconfig.Resources given channel ID
+//resource getter gets channelconfig.Resources given channel ID
 type resourceGetter func(channelID string) channelconfig.Resources
 
 //resource provider that uses the resource configuration information to provide ACL support

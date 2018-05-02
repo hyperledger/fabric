@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/common/util"
@@ -381,11 +380,6 @@ func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *
 		return nil, errors.Wrapf(err, "could not turn channel application profile into application group")
 	}
 
-	agc, err := channelconfig.NewApplicationConfig(ag, channelconfig.NewMSPConfigHandler(msp.MSPv1_1))
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not parse application to application group")
-	}
-
 	var template, newChannelGroup *cb.ConfigGroup
 
 	if orderingSystemChannelGroup != nil {
@@ -448,33 +442,6 @@ func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *
 		Value: utils.MarshalOrPanic(&cb.Consortium{
 			Name: conf.Consortium,
 		}),
-	}
-
-	// If this channel uses the new lifecycle config, specify the seed data
-	if agc.Capabilities().ResourcesTree() {
-		defaultModPolicy := policies.ChannelApplicationAdmins
-		if conf.Application.Resources != nil {
-			defaultModPolicy = conf.Application.Resources.DefaultModPolicy
-		}
-		updt.IsolatedData = map[string][]byte{
-			pb.ResourceConfigSeedDataKey: utils.MarshalOrPanic(&cb.Config{
-				Type: int32(cb.ConfigType_RESOURCE),
-				ChannelGroup: &cb.ConfigGroup{
-					Groups: map[string]*cb.ConfigGroup{
-						resourcesconfig.ChaincodesGroupKey: {
-							ModPolicy: defaultModPolicy,
-						},
-						resourcesconfig.PeerPoliciesGroupKey: {
-							ModPolicy: defaultModPolicy,
-						},
-						resourcesconfig.APIsGroupKey: {
-							ModPolicy: defaultModPolicy,
-						},
-					},
-					ModPolicy: defaultModPolicy,
-				},
-			}),
-		}
 	}
 
 	return updt, nil

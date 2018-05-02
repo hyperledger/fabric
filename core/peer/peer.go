@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -49,8 +48,7 @@ var peerServer *comm.GRPCServer
 
 var configTxProcessor = newConfigTxProcessor()
 var ConfigTxProcessors = customtx.Processors{
-	common.HeaderType_CONFIG:               configTxProcessor,
-	common.HeaderType_PEER_RESOURCE_UPDATE: configTxProcessor,
+	common.HeaderType_CONFIG: configTxProcessor,
 }
 
 // singleton instance to manage credentials for the peer across channel config changes
@@ -63,7 +61,7 @@ type gossipSupport struct {
 }
 
 type chainSupport struct {
-	bundleSource *resourcesconfig.BundleSource
+	bundleSource *channelconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
 	ledger     ledger.PeerLedger
@@ -101,19 +99,14 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 
 		channelconfig.LogSanityChecks(bundle)
 
-		err = cs.bundleSource.ChannelConfig().ValidateNew(bundle)
+		err = cs.bundleSource.ValidateNew(bundle)
 		if err != nil {
 			return err
 		}
 
 		capabilitiesSupportedOrPanic(bundle)
 
-		rBundle, err := cs.bundleSource.NewFromChannelConfig(bundle)
-		if err != nil {
-			return err
-		}
-
-		cs.bundleSource.Update(rBundle)
+		cs.bundleSource.Update(bundle)
 	}
 	return nil
 }
@@ -144,7 +137,7 @@ func (cs *chainSupport) GetMSPIDs(cid string) []string {
 // Sequence passes through to the underlying configtx.Validator
 func (cs *chainSupport) Sequence() uint64 {
 	sb := cs.bundleSource.StableBundle()
-	return sb.ConfigtxValidator().Sequence() + sb.ChannelConfig().ConfigtxValidator().Sequence()
+	return sb.ConfigtxValidator().Sequence()
 }
 func (cs *chainSupport) Reader() blockledger.Reader {
 	return cs.fileLedger
@@ -292,16 +285,16 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, sccp sy
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
-	gossipCallbackWrapper := func(bundle *resourcesconfig.Bundle) {
-		ac, ok := bundle.ChannelConfig().ApplicationConfig()
+	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
+		ac, ok := bundle.ApplicationConfig()
 		if !ok {
 			// TODO, handle a missing ApplicationConfig more gracefully
 			ac = nil
 		}
 		gossipEventer.ProcessConfigUpdate(&gossipSupport{
-			Validator:   bundle.ChannelConfig().ConfigtxValidator(),
+			Validator:   bundle.ConfigtxValidator(),
 			Application: ac,
-			Channel:     bundle.ChannelConfig().ChannelConfig(),
+			Channel:     bundle.ChannelConfig(),
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
 			// TODO: this is a place-holder that would somehow make the MSP layer suspect
@@ -312,13 +305,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, sccp sy
 		})
 	}
 
-	trustedRootsCallbackWrapper := func(bundle *resourcesconfig.Bundle) {
-		updateTrustedRoots(bundle.ChannelConfig())
+	trustedRootsCallbackWrapper := func(bundle *channelconfig.Bundle) {
+		updateTrustedRoots(bundle)
 	}
 
-	mspCallback := func(bundle *resourcesconfig.Bundle) {
+	mspCallback := func(bundle *channelconfig.Bundle) {
 		// TODO remove once all references to mspmgmt are gone from peer code
-		mspmgmt.XXXSetMSPManager(cid, bundle.ChannelConfig().MSPManager())
+		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
 	ac, ok := bundle.ApplicationConfig()
@@ -332,35 +325,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, sccp sy
 		fileLedger:  fileledger.NewFileLedger(fileLedgerBlockStore{ledger}),
 	}
 
-	peerSingletonCallback := func(bundle *resourcesconfig.Bundle) {
-		ac, ok := bundle.ChannelConfig().ApplicationConfig()
+	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
+		ac, ok := bundle.ApplicationConfig()
 		if !ok {
 			ac = nil
 		}
 		cs.Application = ac
-		cs.Resources = bundle.ChannelConfig()
+		cs.Resources = bundle
 	}
 
-	resConf := &common.Config{ChannelGroup: &common.ConfigGroup{}}
-	if ac != nil && ac.Capabilities().ResourcesTree() {
-		iResConf, err := retrievePersistedResourceConfig(ledger)
-
-		if err != nil {
-			return err
-		}
-
-		if iResConf != nil {
-			resConf = iResConf
-		}
-	}
-
-	rBundle, err := resourcesconfig.NewBundle(cid, resConf, bundle)
-	if err != nil {
-		return err
-	}
-
-	cs.bundleSource = resourcesconfig.NewBundleSource(
-		rBundle,
+	cs.bundleSource = channelconfig.NewBundleSource(
+		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
@@ -437,24 +412,13 @@ func GetLedger(cid string) ledger.PeerLedger {
 	return nil
 }
 
-// GetResourcesConfig returns the resources configuration of the chain with channel ID. Note that this
-// call returns nil if chain cid has not been created.
-func GetResourcesConfig(cid string) resourcesconfig.Resources {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cs.bundleSource.StableBundle()
-	}
-	return nil
-}
-
 // GetStableChannelConfig returns the stable channel configuration of the chain with channel ID.
 // Note that this call returns nil if chain cid has not been created.
 func GetStableChannelConfig(cid string) channelconfig.Resources {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
-		return c.cs.bundleSource.StableBundle().ChannelConfig()
+		return c.cs.bundleSource.StableBundle()
 	}
 	return nil
 }
@@ -764,21 +728,6 @@ func (*configSupport) GetChannelConfig(channel string) cc.Config {
 	chain := chains.list[channel]
 	if chain == nil {
 		peerLogger.Error("GetChannelConfig: channel", channel, "not found in the list of channels associated with this peer")
-		return nil
-	}
-	return chain.cs.bundleSource.ChannelConfig().ConfigtxValidator()
-}
-
-// GetResourceConfig returns an instance of a object that represents
-// current resource configuration tree of the specified channel. The
-// ConfigProto method of the returned object can be used to get the
-// proto representing the resource configuration.
-func (*configSupport) GetResourceConfig(channel string) cc.Config {
-	chains.RLock()
-	defer chains.RUnlock()
-	chain := chains.list[channel]
-	if chain == nil {
-		peerLogger.Error("GetResourceConfig: channel", channel, "not found in the list of channels associated with this peer")
 		return nil
 	}
 	return chain.cs.bundleSource.ConfigtxValidator()

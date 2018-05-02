@@ -8,7 +8,6 @@ package peer
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 )
 
 var supportFactory SupportFactory
@@ -24,10 +23,6 @@ type Support interface {
 	// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 	// and whether the Application config exists
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
-
-	// ChaincodeByName returns the definition (and whether they exist)
-	// for a chaincode in a specific channel
-	ChaincodeByName(chainname, ccname string) (resourcesconfig.ChaincodeDefinition, bool)
 }
 
 type supportImpl struct {
@@ -41,13 +36,4 @@ func (s *supportImpl) GetApplicationConfig(cid string) (channelconfig.Applicatio
 	}
 
 	return cc.ApplicationConfig()
-}
-
-func (s *supportImpl) ChaincodeByName(chainname, ccname string) (resourcesconfig.ChaincodeDefinition, bool) {
-	rc := s.operations.GetResourcesConfig(chainname)
-	if rc == nil {
-		return nil, false
-	}
-
-	return rc.ChaincodeRegistry().ChaincodeByName(ccname)
 }
