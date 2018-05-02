@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package txvalidator
@@ -100,7 +90,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 
 const ccVersion = "1.0"
 
-func getEnvWithType(ccID string, res []byte, pType common.HeaderType, t *testing.T) *common.Envelope {
+func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderType, t *testing.T) *common.Envelope {
 	// get a toy proposal
 	prop, err := getProposalWithType(ccID, pType)
 	assert.NoError(t, err)
@@ -108,7 +98,7 @@ func getEnvWithType(ccID string, res []byte, pType common.HeaderType, t *testing
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, res, nil, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, signer)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, signer)
 	assert.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -118,8 +108,8 @@ func getEnvWithType(ccID string, res []byte, pType common.HeaderType, t *testing
 	return tx
 }
 
-func getEnv(ccID string, res []byte, t *testing.T) *common.Envelope {
-	return getEnvWithType(ccID, res, common.HeaderType_ENDORSER_TRANSACTION, t)
+func getEnv(ccID string, event []byte, res []byte, t *testing.T) *common.Envelope {
+	return getEnvWithType(ccID, event, res, common.HeaderType_ENDORSER_TRANSACTION, t)
 }
 
 func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver string, policy []byte, t *testing.T) {
@@ -171,7 +161,7 @@ func TestInvokeBadRWSet(t *testing.T) {
 
 	ccID := "mycc"
 
-	tx := getEnv(ccID, []byte("barf"), t)
+	tx := getEnv(ccID, nil, []byte("barf"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -188,7 +178,7 @@ func TestInvokeNoPolicy(t *testing.T) {
 
 	putCCInfo(l, ccID, nil, t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -205,7 +195,7 @@ func TestInvokeOK(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -223,7 +213,7 @@ func TestInvokeNoRWSet(t *testing.T) {
 
 		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-		tx := getEnv(ccID, createRWset(t), t)
+		tx := getEnv(ccID, nil, createRWset(t), t)
 		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
@@ -242,7 +232,7 @@ func TestInvokeNoRWSet(t *testing.T) {
 
 		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-		tx := getEnv(ccID, createRWset(t), t)
+		tx := getEnv(ccID, nil, createRWset(t), t)
 		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 		v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
@@ -250,6 +240,114 @@ func TestInvokeNoRWSet(t *testing.T) {
 		err := v.Validate(b)
 		assert.NoError(t, err)
 		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+	})
+}
+
+func TestChaincodeEvent(t *testing.T) {
+	t.Run("PreV1.2", func(t *testing.T) {
+		t.Run("MisMatchedName", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false})
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			ccID := "mycc"
+
+			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+			err := v.Validate(b)
+			assert.NoError(t, err)
+			assertValid(b, t)
+		})
+
+		t.Run("BadBytes", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false})
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			ccID := "mycc"
+
+			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+			tx := getEnv(ccID, []byte("garbage"), createRWset(t), t)
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+			err := v.Validate(b)
+			assert.NoError(t, err)
+			assertValid(b, t)
+		})
+
+		t.Run("GoodPath", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false})
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			ccID := "mycc"
+
+			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+			err := v.Validate(b)
+			assert.NoError(t, err)
+			assertValid(b, t)
+		})
+	})
+
+	t.Run("PostV1.2", func(t *testing.T) {
+		t.Run("MisMatchedName", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			ccID := "mycc"
+
+			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+			err := v.Validate(b)
+			assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
+			assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
+		})
+
+		t.Run("BadBytes", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			ccID := "mycc"
+
+			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+			tx := getEnv(ccID, []byte("garbage"), createRWset(t), t)
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+			err := v.Validate(b)
+			assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
+			assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
+		})
+
+		t.Run("GoodPath", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true})
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			ccID := "mycc"
+
+			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+			err := v.Validate(b)
+			assert.NoError(t, err)
+			assertValid(b, t)
+		})
 	})
 }
 
@@ -274,7 +372,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	rwsetBytes, err := rwset.GetPubSimulationBytes()
 	assert.NoError(t, err)
 
-	tx := getEnv(ccID, rwsetBytes, t)
+	tx := getEnv(ccID, nil, rwsetBytes, t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
@@ -294,7 +392,7 @@ func TestInvokeOKSCC(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -311,7 +409,7 @@ func TestInvokeNOKWritesToLSCC(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID, "lscc"), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID, "lscc"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -328,7 +426,7 @@ func TestInvokeNOKWritesToESCC(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID, "escc"), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID, "escc"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -345,7 +443,7 @@ func TestInvokeNOKWritesToNotExt(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID, "notext"), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID, "notext"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -362,7 +460,7 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -379,7 +477,7 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -396,7 +494,7 @@ func TestInvokeNOKExpiredCC(t *testing.T) {
 
 	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -413,7 +511,7 @@ func TestInvokeNOKBogusActions(t *testing.T) {
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, []byte("barf"), t)
+	tx := getEnv(ccID, nil, []byte("barf"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -428,7 +526,7 @@ func TestInvokeNOKCCDoesntExist(t *testing.T) {
 
 	ccID := "mycc"
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -445,7 +543,7 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 
 	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
 
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
 
 	err := v.Validate(b)
@@ -638,7 +736,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	validator := NewTxValidator(vcs, mp)
 
 	ccID := "mycc"
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
 	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
 
@@ -667,7 +765,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	validator := NewTxValidator(vcs, mp)
 
 	ccID := "mycc"
-	tx := getEnv(ccID, createRWset(t, ccID), t)
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
 	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
 
