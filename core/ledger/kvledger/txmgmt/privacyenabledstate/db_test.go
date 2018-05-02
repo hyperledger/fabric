@@ -403,6 +403,8 @@ func TestCompositeKeyMap(t *testing.T) {
 	testutil.AssertEquals(t, ok, true)
 	_, ok = m[PvtdataCompositeKey{"ns2", "coll2", "key2"}]
 	testutil.AssertEquals(t, ok, true)
+	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key8888"}]
+	testutil.AssertEquals(t, ok, false)
 }
 
 func putPvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
