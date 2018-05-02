@@ -118,6 +118,15 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	alwaysEnforceOriginalNamespace := v.support.Capabilities().V1_2Validation()
 	if alwaysEnforceOriginalNamespace {
 		wrNamespace = append(wrNamespace, ccID)
+		if respPayload.Events != nil {
+			ccEvent := &peer.ChaincodeEvent{}
+			if err = proto.Unmarshal(respPayload.Events, ccEvent); err != nil {
+				return errors.Wrapf(err, "invalid chaincode event"), peer.TxValidationCode_INVALID_OTHER_REASON
+			}
+			if ccEvent.ChaincodeId != ccID {
+				return errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id"), peer.TxValidationCode_INVALID_OTHER_REASON
+			}
+		}
 	}
 
 	for _, ns := range txRWSet.NsRwSets {
