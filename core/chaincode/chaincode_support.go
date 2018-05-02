@@ -128,7 +128,22 @@ func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContex
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
 func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream ccintf.ChaincodeStream) error {
-	return HandleChaincodeStream(cs, ctxt, stream)
+	deadline, ok := ctxt.Deadline()
+	chaincodeLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
+
+	handler := &Handler{
+		Executor:           cs,
+		Lifecycle:          &Lifecycle{Executor: cs},
+		Keepalive:          cs.Keepalive,
+		Registry:           cs.HandlerRegistry,
+		ACLProvider:        cs.ACLProvider,
+		TXContexts:         NewTransactionContexts(),
+		ActiveTransactions: NewActiveTransactions(),
+
+		sccp: cs.sccp,
+	}
+
+	return handler.ProcessStream(stream)
 }
 
 // Register the bidi stream entry point called by chaincode to register with the Peer.
@@ -151,7 +166,7 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 	return ccmsg, nil
 }
 
-//Execute - execute proposal, return original response of chaincode
+// Execute - execute proposal, return original response of chaincode
 func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var cctyp pb.ChaincodeMessage_Type
 	switch spec.(type) {

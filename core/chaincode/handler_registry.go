@@ -91,17 +91,17 @@ func (r *HandlerRegistry) Handler(cname string) *Handler {
 func (r *HandlerRegistry) Register(h *Handler) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	key := h.ChaincodeID.Name
+	key := h.chaincodeID.Name
 
 	if r.handlers[key] != nil {
 		chaincodeLogger.Debugf("duplicate registered handler(key:%s) return error", key)
-		return errors.Errorf("duplicate chaincodeID: %s", h.ChaincodeID.Name)
+		return errors.Errorf("duplicate chaincodeID: %s", h.chaincodeID.Name)
 	}
 
 	// This chaincode was not launched by the peer but is attempting
 	// to register. Only allowed in development mode.
 	if r.launching[key] == nil && !r.allowUnsolicitedRegistration {
-		return errors.Errorf("peer will not accept external chaincode connection %v (except in dev mode)", h.ChaincodeID.Name)
+		return errors.Errorf("peer will not accept external chaincode connection %v (except in dev mode)", h.chaincodeID.Name)
 	}
 
 	r.handlers[key] = h

@@ -1088,7 +1088,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 }
 
 func TestGetTxContextFromHandler(t *testing.T) {
-	h := Handler{txContexts: NewTransactionContexts(), sccp: &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: inproccontroller.NewRegistry()}}
+	h := Handler{TXContexts: NewTransactionContexts(), sccp: &scc.Provider{Peer: peer.Default, PeerSupport: peer.DefaultSupport, Registrar: inproccontroller.NewRegistry()}}
 
 	chnl := "test"
 	txid := "1"
@@ -1190,7 +1190,7 @@ func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid stri
 	// get a context for this txsim
 	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
 	// create a new txContext in the handler to be retrieved by the tested function (ie: getTxContextForInvoke)
-	newTxCtxt, err := h.txContexts.Create(ctxt, chnl, txid, nil, nil)
+	newTxCtxt, err := h.TXContexts.Create(ctxt, chnl, txid, nil, nil)
 	if err != nil {
 		t.Fatalf("Error creating TxContext by the handler for cc %s and channel '%s': %s", ccName, chnl, err)
 	}
@@ -1300,7 +1300,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//chaincode support should not allow dups
-	handler := &Handler{ChaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, sccp: chaincodeSupport.sccp}
+	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, sccp: chaincodeSupport.sccp}
 	if err := chaincodeSupport.HandlerRegistry.Register(handler); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}

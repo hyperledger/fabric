@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -79,6 +80,6 @@ type chaincodeStream interface {
 
 // Helpers to access unexported state.
 
-func SetHandlerTxContexts(h *Handler, txContexts *TransactionContexts) {
-	h.txContexts = txContexts
+func SetHandlerChaincodeID(h *Handler, chaincodeID *pb.ChaincodeID) {
+	h.chaincodeID = chaincodeID
 }
