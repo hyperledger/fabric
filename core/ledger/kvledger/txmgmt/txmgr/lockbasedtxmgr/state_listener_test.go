@@ -8,15 +8,13 @@ package lockbasedtxmgr
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStateListener(t *testing.T) {
@@ -49,7 +47,6 @@ func TestStateListener(t *testing.T) {
 	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
 	assert.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
 	assert.Equal(t, 0, ml3.HandleStateUpdatesCallCount())
-
 	expectedLedgerid, expectedStateUpdate, expectedHt :=
 		testLedgerid,
 		ledger.StateUpdates{
@@ -59,7 +56,6 @@ func TestStateListener(t *testing.T) {
 		},
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml1, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
-
 	expectedLedgerid, expectedStateUpdate, expectedHt =
 		testLedgerid,
 		ledger.StateUpdates{
@@ -68,7 +64,6 @@ func TestStateListener(t *testing.T) {
 		},
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml2, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
-
 	txmgr.Commit()
 	assert.Equal(t, 1, ml1.StateCommitDoneCallCount())
 	assert.Equal(t, 1, ml2.StateCommitDoneCallCount())

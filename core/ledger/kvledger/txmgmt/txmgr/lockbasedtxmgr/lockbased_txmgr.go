@@ -8,15 +8,16 @@ package lockbasedtxmgr
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 var logger = flogging.MustGetLogger("lockbasedtxmgr")
@@ -24,12 +25,13 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // LockBasedTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
-	ledgerid       string
-	db             privacyenabledstate.DB
-	validator      validator.Validator
-	stateListeners []ledger.StateListener
-	commitRWLock   sync.RWMutex
-	current        *current
+	ledgerid        string
+	db              privacyenabledstate.DB
+	pvtdataPurgeMgr *pvtdataPurgeMgr
+	validator       validator.Validator
+	stateListeners  []ledger.StateListener
+	commitRWLock    sync.RWMutex
+	current         *current
 }
 
 type current struct {
@@ -47,11 +49,16 @@ func (c *current) maxTxNumber() uint64 {
 }
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
-func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListeners []ledger.StateListener) *LockBasedTxMgr {
+func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListeners []ledger.StateListener, bookkeepingProvider bookkeeping.Provider) (*LockBasedTxMgr, error) {
 	db.Open()
 	txmgr := &LockBasedTxMgr{ledgerid: ledgerid, db: db, stateListeners: stateListeners}
+	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, bookkeepingProvider)
+	if err != nil {
+		return nil, err
+	}
+	txmgr.pvtdataPurgeMgr = &pvtdataPurgeMgr{pvtstatePurgeMgr, false}
 	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db)
-	return txmgr
+	return txmgr, nil
 }
 
 // GetLastSavepoint returns the block num recorded in savepoint,
@@ -117,18 +124,37 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
-	defer txmgr.reset()
+	// When using the purge manager for the first block commit after peer start, the asynchronous function
+	// 'PrepareForExpiringKeys' is invoked in-line. However, for the subsequent blocks commits, this function is invoked
+	// in advance for the next block
+	if !txmgr.pvtdataPurgeMgr.usedOnce {
+		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.current.blockNum())
+		txmgr.pvtdataPurgeMgr.usedOnce = true
+	}
+	defer func() {
+		txmgr.pvtdataPurgeMgr.BlockCommitDone()
+		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.current.blockNum() + 1)
+		txmgr.reset()
+		txmgr.commitRWLock.Unlock()
+	}()
+
 	logger.Debugf("Committing updates to state database")
 	txmgr.commitRWLock.Lock()
-	defer txmgr.commitRWLock.Unlock()
 	logger.Debugf("Write lock acquired for committing updates to state database")
 	if txmgr.current == nil {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
+
+	if err := txmgr.pvtdataPurgeMgr.DeleteExpiredAndUpdateBookkeeping(
+		txmgr.current.batch.PvtUpdates, txmgr.current.batch.HashUpdates); err != nil {
+		return err
+	}
+
 	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
 		return err
 	}
+
 	logger.Debugf("Updates committed to state database")
 	// In the case of error state listeners will not recieve this call - instead a peer panic is caused by the ledger upon receiveing
 	// an error from this function
@@ -198,4 +224,11 @@ func (txmgr *LockBasedTxMgr) reset() {
 	// ValidateAndPrepare(). Once the block is validated and committed, populated cache needs to
 	// be cleared.
 	defer txmgr.clearCache()
+}
+
+// pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
+// for usage of this additional flag, see the relevant comments in the txmgr.Commit() function above
+type pvtdataPurgeMgr struct {
+	pvtstatepurgemgmt.PurgeMgr
+	usedOnce bool
 }
