@@ -68,11 +68,6 @@ func GetHistoryLevelDBPath() string {
 	return filepath.Join(GetRootPath(), confHistoryLeveldb)
 }
 
-// GetPvtWritesetStorePath returns the filesystem path that is used for permanent storage of privare write-sets
-func GetPvtWritesetStorePath() string {
-	return filepath.Join(GetRootPath(), confPvtWritesetStore)
-}
-
 // GetBlockStorePath returns the filesystem path that is used for the chain block stores
 func GetBlockStorePath() string {
 	return filepath.Join(GetRootPath(), confChains)
@@ -81,6 +76,11 @@ func GetBlockStorePath() string {
 // GetPvtdataStorePath returns the filesystem path that is used for permanent storage of private write-sets
 func GetPvtdataStorePath() string {
 	return filepath.Join(GetRootPath(), confPvtdataStore)
+}
+
+// GetInternalBookkeeperPath returns the filesystem path that is used for bookkeeping the internal stuff by by KVledger (such as expiration time for pvt)
+func GetInternalBookkeeperPath() string {
+	return filepath.Join(GetRootPath(), "bookkeeper")
 }
 
 // GetMaxBlockfileSize returns maximum size of the block file
