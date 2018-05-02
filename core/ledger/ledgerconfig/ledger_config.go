@@ -108,6 +108,16 @@ func GetMaxBatchUpdateSize() int {
 	return maxBatchUpdateSize
 }
 
+// GetPvtdataStorePurgeInterval returns the interval in the terms of number of blocks
+// when the purge for the expired data would be performed
+func GetPvtdataStorePurgeInterval() uint64 {
+	purgeInterval := viper.GetInt("ledger.pvtdataStore.purgeInterval")
+	if purgeInterval <= 0 {
+		purgeInterval = 100
+	}
+	return uint64(purgeInterval)
+}
+
 //IsHistoryDBEnabled exposes the historyDatabase variable
 func IsHistoryDBEnabled() bool {
 	return viper.GetBool(confEnableHistoryDatabase)

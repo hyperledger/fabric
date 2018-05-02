@@ -7,12 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,7 +28,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestEmptyStore(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	env := NewTestStoreEnv(t, "TestEmptyStore")
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -33,11 +37,14 @@ func TestEmptyStore(t *testing.T) {
 }
 
 func TestStoreBasicCommitAndRetrieval(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval")
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
-	testData := samplePvtData(t, []uint64{2, 4})
+	testData := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
 
 	// no pvt data with block 0
 	assert.NoError(store.Prepare(0, nil))
@@ -67,10 +74,11 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	filter.Add("ns-1", "coll-1")
 	filter.Add("ns-2", "coll-2")
 	retrievedData, err = store.GetPvtDataByBlockNum(1, filter)
-	assert.Equal(1, len(retrievedData[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset))
-	assert.Equal(1, len(retrievedData[0].WriteSet.NsPvtRwset[1].CollectionPvtRwset))
-	assert.True(retrievedData[0].Has("ns-1", "coll-1"))
-	assert.True(retrievedData[0].Has("ns-2", "coll-2"))
+	expectedRetrievedData := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-2:coll-2"}),
+	}
+	testutil.AssertEquals(t, retrievedData, expectedRetrievedData)
 
 	// pvt data retrieval for block 2 should return ErrOutOfRange
 	retrievedData, err = store.GetPvtDataByBlockNum(2, nilFilter)
@@ -79,13 +87,149 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	assert.Nil(retrievedData)
 }
 
-func TestStoreState(t *testing.T) {
-	env := NewTestStoreEnv(t)
+func TestExpiryDataNotIncluded(t *testing.T) {
+	ledgerid := "TestExpiryDataNotIncluded"
+	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-1.coll-1", ledgerid), 1)
+	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-2.coll-2", ledgerid), 2)
+
+	env := NewTestStoreEnv(t, ledgerid)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
-	testData := samplePvtData(t, []uint64{0})
 
+	// no pvt data with block 0
+	assert.NoError(store.Prepare(0, nil))
+	assert.NoError(store.Commit())
+
+	// write pvt data for block 1
+	testDataForBlk1 := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
+	assert.NoError(store.Prepare(1, testDataForBlk1))
+	assert.NoError(store.Commit())
+
+	// write pvt data for block 2
+	testDataForBlk2 := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 5, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
+	assert.NoError(store.Prepare(2, testDataForBlk2))
+	assert.NoError(store.Commit())
+
+	retrievedData, _ := store.GetPvtDataByBlockNum(1, nil)
+	// block 1 data should still be not expired
+	testutil.AssertEquals(t, retrievedData, testDataForBlk1)
+
+	// Commit block 3 with no pvtdata
+	assert.NoError(store.Prepare(3, nil))
+	assert.NoError(store.Commit())
+
+	// After committing block 3, the data for "ns-1:coll1" of block 1 should have expired and should not be returned by the store
+	expectedPvtdataFromBlock1 := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
+	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
+	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock1)
+
+	// Commit block 4 with no pvtdata
+	assert.NoError(store.Prepare(4, nil))
+	assert.NoError(store.Commit())
+
+	// After committing block 4, the data for "ns-2:coll2" of block 1 should also have expired and should not be returned by the store
+	expectedPvtdataFromBlock1 = []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-2", "ns-2:coll-1"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1"}),
+	}
+	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
+	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock1)
+
+	// Now, for block 2, "ns-1:coll1" should also have expired
+	expectedPvtdataFromBlock2 := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 3, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 5, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
+	retrievedData, _ = store.GetPvtDataByBlockNum(2, nil)
+	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock2)
+}
+
+func TestStorePurge(t *testing.T) {
+	ledgerid := "TestStorePurge"
+	viper.Set("ledger.pvtdataStore.purgeInterval", 2)
+	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-1.coll-1", ledgerid), 1)
+	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-2.coll-2", ledgerid), 4)
+
+	env := NewTestStoreEnv(t, "TestStorePurge")
+	defer env.Cleanup()
+	assert := assert.New(t)
+	s := env.TestStore
+
+	// no pvt data with block 0
+	assert.NoError(s.Prepare(0, nil))
+	assert.NoError(s.Commit())
+
+	// write pvt data for block 1
+	testDataForBlk1 := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
+	assert.NoError(s.Prepare(1, testDataForBlk1))
+	assert.NoError(s.Commit())
+
+	// write pvt data for block 2
+	assert.NoError(s.Prepare(2, nil))
+	assert.NoError(s.Commit())
+	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store
+	testWaitForPurgerRoutineToFinish(s)
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-1", coll: "coll-1"}))
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
+
+	// write pvt data for block 3
+	assert.NoError(s.Prepare(3, nil))
+	assert.NoError(s.Commit())
+	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store (because purger should not be launched at block 3)
+	testWaitForPurgerRoutineToFinish(s)
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-1", coll: "coll-1"}))
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
+
+	// write pvt data for block 4
+	assert.NoError(s.Prepare(4, nil))
+	assert.NoError(s.Commit())
+	// data for ns-1:coll-1 should not exist in store (because purger should be launched at block 4) but ns-2:coll-2 should exist because it
+	// expires at block 5
+	testWaitForPurgerRoutineToFinish(s)
+	assert.False(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-1", coll: "coll-1"}))
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
+
+	// write pvt data for block 5
+	assert.NoError(s.Prepare(5, nil))
+	assert.NoError(s.Commit())
+	// ns-2:coll-2 should exist because though the data expires at block 5 but purger is launched every second block
+	testWaitForPurgerRoutineToFinish(s)
+	assert.False(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-1", coll: "coll-1"}))
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
+
+	// write pvt data for block 6
+	assert.NoError(s.Prepare(6, nil))
+	assert.NoError(s.Commit())
+	// ns-2:coll-2 should not exists now (because purger should be launched at block 6)
+	testWaitForPurgerRoutineToFinish(s)
+	assert.False(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-1", coll: "coll-1"}))
+	assert.False(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
+
+	// "ns-2:coll-1" should never have been purged (because, it was no btl was declared for this)
+	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-1", coll: "coll-2"}))
+}
+
+func TestStoreState(t *testing.T) {
+	env := NewTestStoreEnv(t, "TestStoreState")
+	defer env.Cleanup()
+	assert := assert.New(t)
+	store := env.TestStore
+	testData := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
+	}
 	_, ok := store.Prepare(1, testData).(*ErrIllegalArgs)
 	assert.True(ok)
 
@@ -98,7 +242,7 @@ func TestStoreState(t *testing.T) {
 }
 
 func TestInitLastCommittedBlock(t *testing.T) {
-	env := NewTestStoreEnv(t)
+	env := NewTestStoreEnv(t, "TestStoreState")
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -139,40 +283,28 @@ func testLastCommittedBlockHeight(expectedBlockHt uint64, assert *assert.Asserti
 	assert.Equal(expectedBlockHt, blkHt)
 }
 
-func samplePvtData(t *testing.T, txNums []uint64) []*ledger.TxPvtData {
-	pvtWriteSet := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
-	pvtWriteSet.NsPvtRwset = []*rwset.NsPvtReadWriteSet{
-		{
-			Namespace: "ns-1",
-			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-				{
-					CollectionName: "coll-1",
-					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll1"),
-				},
-				{
-					CollectionName: "coll-2",
-					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll2"),
-				},
-			},
-		},
+func testDataKeyExists(t *testing.T, s Store, dataKey *dataKey) bool {
+	dataKeyBytes := encodeDataKey(dataKey)
+	val, err := s.(*store).db.Get(dataKeyBytes)
+	assert.NoError(t, err)
+	return len(val) != 0
+}
 
-		{
-			Namespace: "ns-2",
-			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-				{
-					CollectionName: "coll-1",
-					Rwset:          []byte("RandomBytes-PvtRWSet-ns2-coll1"),
-				},
-				{
-					CollectionName: "coll-2",
-					Rwset:          []byte("RandomBytes-PvtRWSet-ns2-coll2"),
-				},
-			},
-		},
+func testWaitForPurgerRoutineToFinish(s Store) {
+	time.Sleep(1 * time.Second)
+	s.(*store).purgerLock.Lock()
+	s.(*store).purgerLock.Unlock()
+}
+
+func produceSamplePvtdata(t *testing.T, txNum uint64, nsColls []string) *ledger.TxPvtData {
+	builder := rwsetutil.NewRWSetBuilder()
+	for _, nsColl := range nsColls {
+		nsCollSplit := strings.Split(nsColl, ":")
+		ns := nsCollSplit[0]
+		coll := nsCollSplit[1]
+		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), []byte(fmt.Sprintf("value-%s-%s", ns, coll)))
 	}
-	var pvtData []*ledger.TxPvtData
-	for _, txNum := range txNums {
-		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: pvtWriteSet})
-	}
-	return pvtData
+	simRes, err := builder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	return &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: simRes.PvtSimulationResults}
 }

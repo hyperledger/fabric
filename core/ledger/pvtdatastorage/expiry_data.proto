@@ -1,0 +1,23 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/ledger/pvtdatastorage";
+
+package pvtdatastorage;
+
+message ExpiryData {
+    map<string, Collections>  map = 1;
+}
+
+message Collections {
+    map<string, TxNums> map = 1;
+}
+
+message TxNums {
+    repeated uint64 list = 1;
+}
