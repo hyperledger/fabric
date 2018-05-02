@@ -10,13 +10,12 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	"github.com/hyperledger/fabric/protos/transientstore"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
@@ -404,13 +403,13 @@ func (scanner *RwsetScanner) NextWithConfig() (*EndorserPvtSimulationResultsWith
 		if err := proto.Unmarshal(dbVal[1:], txPvtRWSetWithConfig); err != nil {
 			return nil, err
 		}
-		filteredTxPvtRWSet = pvtdatastorage.TrimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
+		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
 	} else {
 		// old proto, i.e., TxPvtReadWriteSet
 		if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
 			return nil, err
 		}
-		filteredTxPvtRWSet = pvtdatastorage.TrimPvtWSet(txPvtRWSet, scanner.filter)
+		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSet, scanner.filter)
 	}
 
 	txPvtRWSetWithConfig.PvtRwset = filteredTxPvtRWSet
