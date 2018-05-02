@@ -131,6 +131,9 @@ message IdemixMSPSignerConfig {
 
     // is_admin defines whether the default signer is admin or not
     bool is_admin = 4;
+
+    // enrollment_id contains the enrollment id of this signer
+    string enrollment_id = 5;
 }
 
 // SigningIdentityInfo represents the configuration information

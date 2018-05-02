@@ -36,13 +36,13 @@ func TestIdemixCa(t *testing.T) {
 
 	key := &idemix.IssuerKey{isk, ipk}
 
-	conf, err := GenerateSignerConfig(false, "OU1", key)
+	conf, err := GenerateSignerConfig(false, "OU1", "enrollmentid1", 1, key)
 	assert.NoError(t, err)
 	cleanupSigner()
 	assert.NoError(t, writeSignerToFile(conf))
 	assert.NoError(t, setupMSP())
 
-	conf, err = GenerateSignerConfig(true, "OU1", key)
+	conf, err = GenerateSignerConfig(true, "OU1", "enrollmentid2", 1234, key)
 	assert.NoError(t, err)
 	cleanupSigner()
 	assert.NoError(t, writeSignerToFile(conf))
@@ -52,8 +52,11 @@ func TestIdemixCa(t *testing.T) {
 	cleanupVerifier()
 	assert.Error(t, setupMSP())
 
-	_, err = GenerateSignerConfig(true, "", key)
+	_, err = GenerateSignerConfig(true, "", "enrollmentid", 1, key)
 	assert.EqualError(t, err, "the OU attribute value is empty")
+
+	_, err = GenerateSignerConfig(true, "OU1", "", 1, key)
+	assert.EqualError(t, err, "the enrollment id value is empty")
 }
 
 func cleanup() error {

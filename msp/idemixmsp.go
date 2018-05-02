@@ -21,16 +21,37 @@ import (
 )
 
 const (
+	// AttributeIndexOU contains the index of the OU attribute in the idemix credential attributes
+	AttributeIndexOU = iota
+
+	// AttributeIndexRole contains the index of the Role attribute in the idemix credential attributes
+	AttributeIndexRole
+
+	// AttributeIndexEnrollmentId contains the index of the Enrollment ID attribute in the idemix credential attributes
+	AttributeIndexEnrollmentId
+
+	// AttributeIndexRevocationHandle contains the index of the Revocation Handle attribute in the idemix credential attributes
+	AttributeIndexRevocationHandle
+)
+
+const (
 	// AttributeNameOU is the attribute name of the Organization Unit attribute
 	AttributeNameOU = "OU"
 
 	// AttributeNameRole is the attribute name of the Role attribute
 	AttributeNameRole = "Role"
+
+	// AttributeNameEnrollmentId is the attribute name of the Enrollment ID attribute
+	AttributeNameEnrollmentId = "EnrollmentID"
+
+	// AttributeNameRevocationHandle is the attribute name of the revocation handle attribute
+	AttributeNameRevocationHandle = "RevocationHandle"
 )
 
 // discloseFlags will be passed to the idemix signing and verification routines.
-// It informs idemix to disclose both attributes (OU and Role) when signing.
-var discloseFlags = []byte{1, 1}
+// It informs idemix to disclose both attributes (OU and Role) when signing,
+// while hiding attributes EnrollmentID and RevocationHandle.
+var discloseFlags = []byte{1, 1, 0, 0}
 
 type idemixmsp struct {
 	ipk    *idemix.IssuerPublicKey
@@ -77,8 +98,12 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.WithMessage(err, "setting the hash of the issuer public key failed")
 	}
 
-	if len(ipk.AttributeNames) < 2 || ipk.AttributeNames[0] != AttributeNameOU || ipk.AttributeNames[1] != AttributeNameRole {
-		return errors.Errorf("ipk must have have attributes OU and Role")
+	if len(ipk.AttributeNames) < 4 ||
+		ipk.AttributeNames[AttributeIndexOU] != AttributeNameOU ||
+		ipk.AttributeNames[AttributeIndexRole] != AttributeNameRole ||
+		ipk.AttributeNames[AttributeIndexEnrollmentId] != AttributeNameEnrollmentId ||
+		ipk.AttributeNames[AttributeIndexRevocationHandle] != AttributeNameRevocationHandle {
+		return errors.Errorf("issuer public key must have have attributes OU, Role, EnrollmentId, and RevocationHandle")
 	}
 
 	err = ipk.Check()
@@ -124,20 +149,27 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		CertifiersIdentifier:         ipk.Hash,
 	}
 
-	// Check if credential contains the right amount of attribute values (Role and OU)
-	if len(cred.Attrs) != 2 {
-		return errors.Errorf("Credential contains %d attribute values, but expected 2", len(cred.Attrs))
+	enrollmentId := conf.Signer.EnrollmentId
+
+	// Check if credential contains the right amount of attribute values (Role, OU, EnrollmentId, RevocationHandle)
+	if len(cred.Attrs) != 4 {
+		return errors.Errorf("Credential contains %d attribute values, but expected 4", len(cred.Attrs))
 	}
 
 	// Check if credential contains the correct OU attribute value
 	ouBytes := []byte(conf.Signer.OrganizationalUnitIdentifier)
-	if !bytes.Equal(idemix.BigToBytes(idemix.HashModOrder(ouBytes)), cred.Attrs[0]) {
+	if !bytes.Equal(idemix.BigToBytes(idemix.HashModOrder(ouBytes)), cred.Attrs[AttributeIndexOU]) {
 		return errors.New("Credential does not contain the correct OU attribute value")
 	}
 
-	// Check if credential contains the correct OU attribute value
-	if !bytes.Equal(idemix.BigToBytes(FP256BN.NewBIGint(int(role.Role))), cred.Attrs[1]) {
+	// Check if credential contains the correct Role attribute value
+	if !bytes.Equal(idemix.BigToBytes(FP256BN.NewBIGint(int(role.Role))), cred.Attrs[AttributeIndexRole]) {
 		return errors.New("Credential does not contain the correct Role attribute value")
+	}
+
+	// Check if credential contains the correct Enrollment ID attribute value
+	if !bytes.Equal(idemix.BigToBytes(idemix.HashModOrder([]byte(enrollmentId))), cred.Attrs[AttributeIndexEnrollmentId]) {
+		return errors.New("Credential does not contain the correct enrollment id attribute value")
 	}
 
 	// Verify that the credential is cryptographically valid
@@ -153,7 +185,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// Set up default signer
-	msp.signer = &idemixSigningIdentity{newIdemixIdentity(msp, Nym, role, ou, proof), rng, cred, sk, RandNym}
+	msp.signer = &idemixSigningIdentity{newIdemixIdentity(msp, Nym, role, ou, proof), rng, cred, sk, RandNym, enrollmentId}
 
 	return nil
 }
@@ -295,8 +327,8 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 		default:
 			return errors.Errorf("invalid MSP role type %d", int32(mspRole.Role))
 		}
-	// in this case we have to serialize this instance
-	// and compare it byte-by-byte with Principal
+		// in this case we have to serialize this instance
+		// and compare it byte-by-byte with Principal
 	case m.MSPPrincipal_IDENTITY:
 		mspLogger.Debugf("Checking if identity satisfies IDENTITY principal")
 		idBytes, err := id.Serialize()
@@ -473,10 +505,11 @@ func (id *idemixidentity) Serialize() ([]byte, error) {
 
 type idemixSigningIdentity struct {
 	*idemixidentity
-	rng     *amcl.RAND
-	Cred    *idemix.Credential
-	Sk      *FP256BN.BIG
-	RandNym *FP256BN.BIG
+	rng          *amcl.RAND
+	Cred         *idemix.Credential
+	Sk           *FP256BN.BIG
+	RandNym      *FP256BN.BIG
+	enrollmentId string
 }
 
 func (id *idemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
