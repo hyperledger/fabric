@@ -23,7 +23,6 @@ modularity and versatility for a broad set of industry use cases.
    command_ref
    architecture
    Fabric-FAQ
-   ordering-service-faq
    CONTRIBUTING
    glossary
    releases
