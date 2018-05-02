@@ -133,3 +133,32 @@ func checkItrResults(t *testing.T, itr ResultsIterator, expectedResults []*Versi
 	testutil.AssertNil(t, lastRes)
 	itr.Close()
 }
+
+// TestPaginatedRangeValidation tests queries with pagination
+func TestPaginatedRangeValidation(t *testing.T) {
+
+	queryOptions := make(map[string]interface{})
+	queryOptions["limit"] = int32(10)
+
+	err := ValidateRangeMetadata(queryOptions)
+	testutil.AssertNoError(t, err, "An error was thrown for a valid option")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["limit"] = float32(10.2)
+
+	err = ValidateRangeMetadata(queryOptions)
+	testutil.AssertError(t, err, "An should have been thrown for an invalid option")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["limit"] = "10"
+
+	err = ValidateRangeMetadata(queryOptions)
+	testutil.AssertError(t, err, "An should have been thrown for an invalid option")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["limit1"] = int32(10)
+
+	err = ValidateRangeMetadata(queryOptions)
+	testutil.AssertError(t, err, "An should have been thrown for an invalid option")
+
+}
