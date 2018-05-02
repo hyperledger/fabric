@@ -15,6 +15,23 @@ import (
 )
 
 func TestIdemix(t *testing.T) {
+	// Test weak BB sigs:
+	// Test KeyGen
+	rng, err := GetRand()
+	assert.NoError(t, err)
+	wbbsk, wbbpk := WBBKeyGen(rng)
+
+	// Get random message
+	testmsg := RandModOrder(rng)
+
+	// Test Signing
+	wbbsig := WBBSign(wbbsk, testmsg)
+
+	// Test Verification
+	err = WBBVerify(wbbpk, wbbsig, testmsg)
+	assert.NoError(t, err)
+
+	// Test idemix functionality
 	AttributeNames := []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
 	attrs := make([]*FP256BN.BIG, len(AttributeNames))
 	for i := range AttributeNames {
@@ -22,7 +39,6 @@ func TestIdemix(t *testing.T) {
 	}
 
 	// Test issuer key generation
-	rng, err := GetRand()
 	if err != nil {
 		t.Fatalf("Error getting rng: \"%s\"", err)
 		return
