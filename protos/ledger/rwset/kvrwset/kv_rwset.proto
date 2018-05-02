@@ -42,11 +42,34 @@ message KVRead {
     Version version = 2;
 }
 
+// KVMetadataWrite captures changes to metadata of a KVS key.
+// If KeepExistingMetadata is true, it is implied that metadata of the
+// previous version of this KVS key should be used, otherwise
+// they should be updated to the value specified in Metadata.
+message KVMetadataWrite {
+    bytes metadata = 1;
+    bool keep_existing_metadata = 2;
+}
+
 // KVWrite captures a write (update/delete) operation performed during transaction simulation
+// Four operations are supported:
+// 1) value update: if KeepExistingValue is false, the value is updated to Value.
+// 2) metadata update: if Metadata.KeepExistingMetadata is false, the metadata
+//    is updated to Metadata.Metadata
+// 3) medatadata deletion: if Metadata is nil, metadata is deleted
+// 4) deletion: if IsDelete is set, this key is removed from the ledger
+// Note that 1 and 2 may be combined.
 message KVWrite {
     string key = 1;
     bool is_delete = 2;
     bytes value = 3;
+	// The two values below have been added in v1.2. Note that their zero value
+	// describes a behaviour which is consistent with that of of pre-1.2 code:
+	// - if KeepExistingValue is false, the value is updated to Value (unless
+	//   IsDelete is true).
+	// - if Metadata is nil, metadata is deleted for this KVS key.
+    bool keep_existing_value = 4;
+    KVMetadataWrite metadata = 5;
 }
 
 // KVReadHash is similar to the KVRead in spirit. However, it captures the hash of the key instead of the key itself
@@ -57,11 +80,15 @@ message KVReadHash {
     Version version = 2;
 }
 
-// KVWriteHash is similar to the KVWrite in spiritcaptures a write (update/delete) operation performed during transaction simulation
+// KVWriteHash is similar to the KVWrite. It captures a write (update/delete) operation performed during transaction simulation
+// for a hashed key and to a hashed value. Note that metadata are stored in cleartext (no hash).
+// Similar considerations to KVWrite apply here.
 message KVWriteHash {
     bytes key_hash = 1;
     bool is_delete = 2;
     bytes value_hash = 3;
+    bool keep_existing_value = 4;
+    KVMetadataWrite metadata = 5;
 }
 
 // Version encapsulates the version of a Key
