@@ -26,8 +26,8 @@ type PackageProvider interface {
 	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
 }
 
-// Launcher is responsible for launching chaincode runtimes.
-type Launcher struct {
+// RuntimeLauncher is responsible for launching chaincode runtimes.
+type RuntimeLauncher struct {
 	Runtime         Runtime
 	Registry        LaunchRegistry
 	PackageProvider PackageProvider
@@ -36,26 +36,26 @@ type Launcher struct {
 }
 
 // Launch chaincode with the appropriate runtime.
-func (l *Launcher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error {
+func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error {
 	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
 	cds, _ := spec.(*pb.ChaincodeDeploymentSpec)
 	if cds == nil {
 		var err error
-		cds, err = l.getDeploymentSpec(ctx, cccid, chaincodeID)
+		cds, err = r.getDeploymentSpec(ctx, cccid, chaincodeID)
 		if err != nil {
 			return err
 		}
 	}
 
 	if cds.CodePackage == nil && cds.ExecEnv != pb.ChaincodeDeploymentSpec_SYSTEM {
-		ccpack, err := l.PackageProvider.GetChaincode(chaincodeID.Name, chaincodeID.Version)
+		ccpack, err := r.PackageProvider.GetChaincode(chaincodeID.Name, chaincodeID.Version)
 		if err != nil {
 			return errors.Wrap(err, "failed to get chaincode package")
 		}
 		cds = ccpack.GetDepSpec()
 	}
 
-	err := l.startAndWaitForReady(ctx, cccid, cds)
+	err := r.startAndWaitForReady(ctx, cccid, cds)
 	if err != nil {
 		chaincodeLogger.Errorf("startAndWiatForReady failed: %+v", err)
 		return err
@@ -66,13 +66,13 @@ func (l *Launcher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec
 	return nil
 }
 
-func (l *Launcher) getDeploymentSpec(ctx context.Context, cccid *ccprovider.CCContext, chaincodeID *pb.ChaincodeID) (*pb.ChaincodeDeploymentSpec, error) {
+func (r *RuntimeLauncher) getDeploymentSpec(ctx context.Context, cccid *ccprovider.CCContext, chaincodeID *pb.ChaincodeID) (*pb.ChaincodeDeploymentSpec, error) {
 	cname := cccid.GetCanonicalName()
 	if cccid.Syscc {
 		return nil, errors.Errorf("a syscc should be running (it cannot be launched) %s", cname)
 	}
 
-	cds, err := l.Lifecycle.GetChaincodeDeploymentSpec(ctx, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, chaincodeID.Name)
+	cds, err := r.Lifecycle.GetChaincodeDeploymentSpec(ctx, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, chaincodeID.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get deployment spec for %s", cname)
 	}
@@ -80,9 +80,9 @@ func (l *Launcher) getDeploymentSpec(ctx context.Context, cccid *ccprovider.CCCo
 	return cds, nil
 }
 
-func (l *Launcher) startAndWaitForReady(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (r *RuntimeLauncher) startAndWaitForReady(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
-	ready, err := l.Registry.Launching(cname)
+	ready, err := r.Registry.Launching(cname)
 	if err != nil {
 		return errors.Wrapf(err, "failed to register %s as launching", cname)
 	}
@@ -90,7 +90,7 @@ func (l *Launcher) startAndWaitForReady(ctx context.Context, cccid *ccprovider.C
 	launchFail := make(chan error, 1)
 	go func() {
 		chaincodeLogger.Debugf("chaincode %s is being launched", cname)
-		err := l.Runtime.Start(ctx, cccid, cds)
+		err := r.Runtime.Start(ctx, cccid, cds)
 		if err != nil {
 			launchFail <- errors.WithMessage(err, "error starting container")
 		}
@@ -99,14 +99,14 @@ func (l *Launcher) startAndWaitForReady(ctx context.Context, cccid *ccprovider.C
 	select {
 	case <-ready:
 	case err = <-launchFail:
-	case <-time.After(l.StartupTimeout):
+	case <-time.After(r.StartupTimeout):
 		err = errors.Errorf("timeout expired while starting chaincode %s for transaction %s", cname, cccid.TxID)
 	}
 
 	if err != nil {
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
-		defer l.Registry.Deregister(cname)
-		if err := l.Runtime.Stop(ctx, cccid, cds); err != nil {
+		defer r.Registry.Deregister(cname)
+		if err := r.Runtime.Stop(ctx, cccid, cds); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
 		return err

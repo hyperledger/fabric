@@ -25,6 +25,11 @@ type Runtime interface {
 	Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
 }
 
+// Launcher is used to launch chaincode runtimes.
+type Launcher interface {
+	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error
+}
+
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
 	Keepalive       time.Duration
@@ -33,7 +38,7 @@ type ChaincodeSupport struct {
 	Runtime         Runtime
 	ACLProvider     ACLProvider
 	HandlerRegistry *HandlerRegistry
-	Launcher        *Launcher
+	Launcher        Launcher
 	sccp            sysccprovider.SystemChaincodeProvider
 }
 
@@ -75,7 +80,7 @@ func NewChaincodeSupport(
 		},
 	}
 
-	cs.Launcher = &Launcher{
+	cs.Launcher = &RuntimeLauncher{
 		Runtime:         cs.Runtime,
 		Registry:        cs.HandlerRegistry,
 		PackageProvider: packageProvider,
