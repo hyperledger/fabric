@@ -4,10 +4,10 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode
+package chaincode_test
 
 import (
-	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
@@ -16,10 +16,10 @@ import (
 )
 
 var _ = Describe("TransactionContexts", func() {
-	var txContexts *TransactionContexts
+	var txContexts *chaincode.TransactionContexts
 
 	BeforeEach(func() {
-		txContexts = NewTransactionContexts()
+		txContexts = chaincode.NewTransactionContexts()
 	})
 
 	Describe("Create", func() {
@@ -39,23 +39,21 @@ var _ = Describe("TransactionContexts", func() {
 			fakeHistoryQueryExecutor = &mock.HistoryQueryExecutor{}
 
 			ctx = context.Background()
-			ctx = context.WithValue(ctx, TXSimulatorKey, fakeTxSimulator)
-			ctx = context.WithValue(ctx, HistoryQueryExecutorKey, fakeHistoryQueryExecutor)
+			ctx = context.WithValue(ctx, chaincode.TXSimulatorKey, fakeTxSimulator)
+			ctx = context.WithValue(ctx, chaincode.HistoryQueryExecutorKey, fakeHistoryQueryExecutor)
 		})
 
 		It("creates a new transaction context", func() {
 			txContext, err := txContexts.Create(ctx, "chainID", "transactionID", signedProp, proposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(txContext.chainID).To(Equal("chainID"))
-			Expect(txContext.signedProp).To(Equal(signedProp))
-			Expect(txContext.proposal).To(Equal(proposal))
-			Expect(txContext.responseNotifier).NotTo(BeNil())
-			Expect(txContext.responseNotifier).NotTo(BeClosed())
-			Expect(txContext.queryIteratorMap).To(Equal(map[string]commonledger.ResultsIterator{}))
-			Expect(txContext.pendingQueryResults).To(Equal(map[string]*PendingQueryResult{}))
-			Expect(txContext.txsimulator).To(Equal(fakeTxSimulator))
-			Expect(txContext.historyQueryExecutor).To(Equal(fakeHistoryQueryExecutor))
+			Expect(txContext.ChainID).To(Equal("chainID"))
+			Expect(txContext.SignedProp).To(Equal(signedProp))
+			Expect(txContext.Proposal).To(Equal(proposal))
+			Expect(txContext.ResponseNotifier).NotTo(BeNil())
+			Expect(txContext.ResponseNotifier).NotTo(BeClosed())
+			Expect(txContext.TXSimulator).To(Equal(fakeTxSimulator))
+			Expect(txContext.HistoryQueryExecutor).To(Equal(fakeHistoryQueryExecutor))
 		})
 
 		It("keeps track of the created context", func() {
@@ -80,7 +78,7 @@ var _ = Describe("TransactionContexts", func() {
 	})
 
 	Describe("Get", func() {
-		var c1, c2 *TransactionContext
+		var c1, c2 *chaincode.TransactionContext
 
 		BeforeEach(func() {
 			var err error
@@ -137,15 +135,15 @@ var _ = Describe("TransactionContexts", func() {
 
 			txContext, err := txContexts.Create(context.Background(), "chainID", "transactionID", nil, nil)
 			Expect(err).NotTo(HaveOccurred())
-			txContext.queryIteratorMap["key1"] = fakeIterators[0]
-			txContext.queryIteratorMap["key2"] = fakeIterators[1]
-			txContext.queryIteratorMap["key3"] = fakeIterators[2]
+			txContext.InitializeQueryContext("key1", fakeIterators[0])
+			txContext.InitializeQueryContext("key2", fakeIterators[1])
+			txContext.InitializeQueryContext("key3", fakeIterators[2])
 
 			txContext2, err := txContexts.Create(context.Background(), "chainID", "transactionID2", nil, nil)
 			Expect(err).NotTo(HaveOccurred())
-			txContext2.queryIteratorMap["key1"] = fakeIterators[3]
-			txContext2.queryIteratorMap["key2"] = fakeIterators[4]
-			txContext2.queryIteratorMap["key3"] = fakeIterators[5]
+			txContext2.InitializeQueryContext("key1", fakeIterators[3])
+			txContext2.InitializeQueryContext("key2", fakeIterators[4])
+			txContext2.InitializeQueryContext("key3", fakeIterators[5])
 		})
 
 		It("closes all iterators in iterator map", func() {
@@ -160,7 +158,7 @@ var _ = Describe("TransactionContexts", func() {
 
 		Context("when there are no contexts", func() {
 			BeforeEach(func() {
-				txContexts = NewTransactionContexts()
+				txContexts = chaincode.NewTransactionContexts()
 			})
 
 			It("keeps calm and carries on", func() {

@@ -4,14 +4,14 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode
+package chaincode_test
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -40,27 +40,27 @@ type resultsIterator interface {
 
 //go:generate counterfeiter -o mock/runtime.go --fake-name Runtime . chaincodeRuntime
 type chaincodeRuntime interface {
-	Runtime
+	chaincode.Runtime
 }
 
 //go:generate counterfeiter -o mock/cert_generator.go --fake-name CertGenerator . certGenerator
 type certGenerator interface {
-	CertGenerator
+	chaincode.CertGenerator
 }
 
 //go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
 type processor interface {
-	Processor
+	chaincode.Processor
 }
 
 //go:generate counterfeiter -o mock/executor.go --fake-name Executor . executor
 type executor interface {
-	Executor
+	chaincode.Executor
 }
 
 //go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . packageProvider
 type packageProvider interface {
-	PackageProvider
+	chaincode.PackageProvider
 }
 
 //go:generate counterfeiter -o mock/cc_package.go --fake-name CCPackage . ccpackage
@@ -70,7 +70,7 @@ type ccpackage interface {
 
 //go:generate counterfeiter -o mock/launch_registry.go --fake-name LaunchRegistry . launchRegistry
 type launchRegistry interface {
-	LaunchRegistry
+	chaincode.LaunchRegistry
 }
 
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
@@ -78,8 +78,59 @@ type chaincodeStream interface {
 	ccintf.ChaincodeStream
 }
 
-// Helpers to access unexported state.
+//go:generate counterfeiter -o mock/transaction_registry.go --fake-name TransactionRegistry . transactionRegistry
+type transactionRegistry interface {
+	chaincode.TransactionRegistry
+}
 
-func SetHandlerChaincodeID(h *Handler, chaincodeID *pb.ChaincodeID) {
-	h.chaincodeID = chaincodeID
+//go:generate counterfeiter -o mock/system_chaincode_provider.go --fake-name SystemCCProvider . systemCCProvider
+type systemCCProvider interface {
+	chaincode.SystemCCProvider
+}
+
+//go:generate counterfeiter -o mock/acl_provider.go --fake-name ACLProvider . aclProvider
+type aclProvider interface {
+	chaincode.ACLProvider
+}
+
+//go:generate counterfeiter -o mock/chaincode_definition_getter.go --fake-name ChaincodeDefinitionGetter . chaincodeDefinitionGetter
+type chaincodeDefinitionGetter interface {
+	chaincode.ChaincodeDefinitionGetter
+}
+
+//go:generate counterfeiter -o mock/policy_checker.go --fake-name PolicyChecker . policyChecker
+type policyChecker interface {
+	chaincode.PolicyChecker
+}
+
+//go:generate counterfeiter -o mock/ledger_getter.go --fake-name LedgerGetter . ledgerGetter
+type ledgerGetter interface {
+	chaincode.LedgerGetter
+}
+
+//go:generate counterfeiter -o mock/peer_ledger.go --fake-name PeerLedger . peerLedger
+type peerLedger interface {
+	ledger.PeerLedger
+}
+
+// NOTE: These are getting generated into the "fake" package to avoid import cycles. We need to revisit this.
+
+//go:generate counterfeiter -o fake/message_handler.go --fake-name MessageHandler . messageHandler
+type messageHandler interface {
+	chaincode.MessageHandler
+}
+
+//go:generate counterfeiter -o fake/context_registry.go --fake-name ContextRegistry  . contextRegistry
+type contextRegistry interface {
+	chaincode.ContextRegistry
+}
+
+//go:generate counterfeiter -o fake/query_response_builder.go --fake-name QueryResponseBuilder . queryResponseBuilder
+type queryResponseBuilder interface {
+	chaincode.QueryResponseBuilder
+}
+
+//go:generate counterfeiter -o fake/registry.go --fake-name Registry . registry
+type registry interface {
+	chaincode.Registry
 }

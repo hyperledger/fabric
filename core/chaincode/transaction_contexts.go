@@ -59,14 +59,14 @@ func (c *TransactionContexts) Create(ctx context.Context, chainID, txID string, 
 	}
 
 	txctx := &TransactionContext{
-		chainID:              chainID,
-		signedProp:           signedProp,
-		proposal:             proposal,
-		responseNotifier:     make(chan *pb.ChaincodeMessage, 1),
+		ChainID:              chainID,
+		SignedProp:           signedProp,
+		Proposal:             proposal,
+		ResponseNotifier:     make(chan *pb.ChaincodeMessage, 1),
+		TXSimulator:          getTxSimulator(ctx),
+		HistoryQueryExecutor: getHistoryQueryExecutor(ctx),
 		queryIteratorMap:     map[string]commonledger.ResultsIterator{},
 		pendingQueryResults:  map[string]*PendingQueryResult{},
-		txsimulator:          getTxSimulator(ctx),
-		historyQueryExecutor: getHistoryQueryExecutor(ctx),
 	}
 	c.contexts[ctxID] = txctx
 

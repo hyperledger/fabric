@@ -15,13 +15,12 @@ import (
 )
 
 type TransactionContext struct {
-	chainID          string
-	signedProp       *pb.SignedProposal
-	proposal         *pb.Proposal
-	responseNotifier chan *pb.ChaincodeMessage
-
-	txsimulator          ledger.TxSimulator
-	historyQueryExecutor ledger.HistoryQueryExecutor
+	ChainID              string
+	SignedProp           *pb.SignedProposal
+	Proposal             *pb.Proposal
+	ResponseNotifier     chan *pb.ChaincodeMessage
+	TXSimulator          ledger.TxSimulator
+	HistoryQueryExecutor ledger.HistoryQueryExecutor
 
 	// tracks open iterators used for range queries
 	queryMutex          sync.Mutex
