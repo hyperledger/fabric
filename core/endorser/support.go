@@ -100,7 +100,7 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 
 	switch spec.(type) {
 	case *pb.ChaincodeDeploymentSpec:
-		return s.ChaincodeSupport.ExecuteSpec(ctxt, cccid, spec)
+		return s.ChaincodeSupport.Execute(ctxt, cccid, spec)
 	case *pb.ChaincodeInvocationSpec:
 		cis := spec.(*pb.ChaincodeInvocationSpec)
 
@@ -110,7 +110,7 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 		cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
 		cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
 
-		return s.ChaincodeSupport.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
+		return s.ChaincodeSupport.Execute(ctxt, cccid, cis)
 	default:
 		panic("programming error, unkwnown spec type")
 	}

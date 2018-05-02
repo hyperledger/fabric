@@ -51,7 +51,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			response := &pb.Response{Status: shim.OK, Payload: deploymentSpecPayload}
-			fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+			fakeExecutor.ExecuteReturns(response, nil, nil)
 		})
 
 		It("invokes lscc getdepspec with the correct args", func() {
@@ -59,16 +59,24 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cds).To(Equal(deploymentSpec))
 
-			Expect(fakeExecutor.ExecuteChaincodeCallCount()).To(Equal(1))
-			ctx, cccid, args := fakeExecutor.ExecuteChaincodeArgsForCall(0)
+			Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
+			ctx, cccid, cis := fakeExecutor.ExecuteArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
 			Expect(cccid).To(Equal(ccprovider.NewCCContext("chain-id", "lscc", "latest", "tx-id", true, signedProp, proposal)))
-			Expect(args).To(Equal(util.ToChaincodeArgs("getdepspec", "chain-id", "chaincode-id")))
+			Expect(cis).To(Equal(&pb.ChaincodeInvocationSpec{
+				ChaincodeSpec: &pb.ChaincodeSpec{
+					Type:        pb.ChaincodeSpec_GOLANG,
+					ChaincodeId: &pb.ChaincodeID{Name: "lscc"},
+					Input: &pb.ChaincodeInput{
+						Args: util.ToChaincodeArgs("getdepspec", "chain-id", "chaincode-id"),
+					},
+				},
+			}))
 		})
 
 		Context("when the executor fails", func() {
 			BeforeEach(func() {
-				fakeExecutor.ExecuteChaincodeReturns(nil, nil, errors.New("mango-tango"))
+				fakeExecutor.ExecuteReturns(nil, nil, errors.New("mango-tango"))
 			})
 
 			It("returns a wrapped error", func() {
@@ -83,7 +91,7 @@ var _ = Describe("Lifecycle", func() {
 					Status:  shim.ERROR,
 					Message: "danger-danger",
 				}
-				fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+				fakeExecutor.ExecuteReturns(response, nil, nil)
 			})
 
 			It("returns a wrapped error", func() {
@@ -95,7 +103,7 @@ var _ = Describe("Lifecycle", func() {
 		Context("when the response contains a nil payload", func() {
 			BeforeEach(func() {
 				response := &pb.Response{Status: shim.OK, Payload: nil}
-				fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+				fakeExecutor.ExecuteReturns(response, nil, nil)
 			})
 
 			It("returns a wrapped error", func() {
@@ -107,7 +115,7 @@ var _ = Describe("Lifecycle", func() {
 		Context("when unmarshaling the payload fails", func() {
 			BeforeEach(func() {
 				response := &pb.Response{Status: shim.OK, Payload: []byte("bogus-payload")}
-				fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+				fakeExecutor.ExecuteReturns(response, nil, nil)
 			})
 
 			It("returns a wrapped error", func() {
@@ -132,7 +140,7 @@ var _ = Describe("Lifecycle", func() {
 				Status:  shim.OK,
 				Payload: payload,
 			}
-			fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+			fakeExecutor.ExecuteReturns(response, nil, nil)
 		})
 
 		It("invokes lscc getccdata with the correct args", func() {
@@ -140,16 +148,24 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cd).To(Equal(chaincodeData))
 
-			Expect(fakeExecutor.ExecuteChaincodeCallCount()).To(Equal(1))
-			ctx, cccid, args := fakeExecutor.ExecuteChaincodeArgsForCall(0)
+			Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
+			ctx, cccid, cis := fakeExecutor.ExecuteArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
 			Expect(cccid).To(Equal(ccprovider.NewCCContext("chain-id", "lscc", "latest", "tx-id", true, signedProp, proposal)))
-			Expect(args).To(Equal(util.ToChaincodeArgs("getccdata", "chain-id", "chaincode-id")))
+			Expect(cis).To(Equal(&pb.ChaincodeInvocationSpec{
+				ChaincodeSpec: &pb.ChaincodeSpec{
+					Type:        pb.ChaincodeSpec_GOLANG,
+					ChaincodeId: &pb.ChaincodeID{Name: "lscc"},
+					Input: &pb.ChaincodeInput{
+						Args: util.ToChaincodeArgs("getccdata", "chain-id", "chaincode-id"),
+					},
+				},
+			}))
 		})
 
 		Context("when the executor fails", func() {
 			BeforeEach(func() {
-				fakeExecutor.ExecuteChaincodeReturns(nil, nil, errors.New("mango-tango"))
+				fakeExecutor.ExecuteReturns(nil, nil, errors.New("mango-tango"))
 			})
 
 			It("returns a wrapped error", func() {
@@ -164,7 +180,7 @@ var _ = Describe("Lifecycle", func() {
 					Status:  shim.ERROR,
 					Message: "danger-danger",
 				}
-				fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+				fakeExecutor.ExecuteReturns(response, nil, nil)
 			})
 
 			It("returns a wrapped error", func() {
@@ -179,7 +195,7 @@ var _ = Describe("Lifecycle", func() {
 					Status:  shim.OK,
 					Payload: []byte("totally-bogus-payload"),
 				}
-				fakeExecutor.ExecuteChaincodeReturns(response, nil, nil)
+				fakeExecutor.ExecuteReturns(response, nil, nil)
 			})
 
 			It("returns a wrapped error", func() {

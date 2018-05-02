@@ -151,28 +151,8 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 	return ccmsg, nil
 }
 
-// ExecuteChaincode invokes chaincode with the provided arguments.
-func (cs *ChaincodeSupport) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
-	invocationSpec := &pb.ChaincodeInvocationSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeId: &pb.ChaincodeID{Name: cccid.Name},
-			Input:       &pb.ChaincodeInput{Args: args},
-		},
-	}
-
-	res, ccevent, err := cs.ExecuteSpec(ctxt, cccid, invocationSpec)
-	if err != nil {
-		err = errors.WithMessage(err, "error invoking chaincode")
-		chaincodeLogger.Errorf("%+v", err)
-		return nil, nil, err
-	}
-
-	return res, ccevent, err
-}
-
 //Execute - execute proposal, return original response of chaincode
-func (cs *ChaincodeSupport) ExecuteSpec(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var cctyp pb.ChaincodeMessage_Type
 	switch spec.(type) {
 	case *pb.ChaincodeDeploymentSpec:

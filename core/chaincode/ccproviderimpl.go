@@ -81,12 +81,20 @@ func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc boo
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
 func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return c.cs.ExecuteChaincode(ctxt, cccid.(*ccProviderContextImpl).ctx, args)
+	providerContext := cccid.(*ccProviderContextImpl)
+	invocationSpec := &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_GOLANG,
+			ChaincodeId: &pb.ChaincodeID{Name: providerContext.ctx.Name},
+			Input:       &pb.ChaincodeInput{Args: args},
+		},
+	}
+	return c.cs.Execute(ctxt, providerContext.ctx, invocationSpec)
 }
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
 func (c *ccProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return c.cs.ExecuteSpec(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+	return c.cs.Execute(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
 }
 
 // Stop stops the chaincode given context and spec
