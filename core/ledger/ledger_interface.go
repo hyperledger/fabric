@@ -121,11 +121,24 @@ type QueryExecutor interface {
 	GetStateMetadata(namespace, key string) (map[string][]byte, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
+	// GetStateRangeScanIteratorWithMetadata returns an iterator that contains all the key-values between given key ranges.
+	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
+	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
+	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
+	// metadata is a map of additional query parameters
+	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
+	GetStateRangeScanIteratorWithMetadata(namespace string, startKey, endKey string, metadata map[string]interface{}) (QueryResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
 	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error)
+	// ExecuteQueryWithMetadata executes the given query and returns an iterator that contains results of type specific to the underlying data store.
+	// metadata is a map of additional query parameters
+	// Only used for state databases that support query
+	// For a chaincode, the namespace corresponds to the chaincodeId
+	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
+	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (QueryResultsIterator, error)
 	// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
 	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
@@ -191,6 +204,13 @@ type TxSimulator interface {
 	// The public data simulation results are expected to be used as in V1 while the private data simulation results are expected
 	// to be used by the gossip to disseminate this to the other endorsers (in phase-2 of sidedb)
 	GetTxSimulationResults() (*TxSimulationResults, error)
+}
+
+// QueryResultsIterator - an iterator for query result set
+type QueryResultsIterator interface {
+	commonledger.ResultsIterator
+	// GetBookmarkAndClose returns a paging bookmark and releases resources occupied by the iterator
+	GetBookmarkAndClose() string
 }
 
 // TxPvtData encapsulates the transaction number and pvt write-set for a transaction

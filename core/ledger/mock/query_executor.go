@@ -8,7 +8,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
-type QueryExcutor struct {
+type QueryExecutor struct {
 	GetStateStub        func(namespace string, key string) ([]byte, error)
 	getStateMutex       sync.RWMutex
 	getStateArgsForCall []struct {
@@ -66,6 +66,22 @@ type QueryExcutor struct {
 		result1 [][]byte
 		result2 error
 	}
+	GetStateRangeScanIteratorWithMetadataStub        func(namespace string, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error)
+	getStateRangeScanIteratorWithMetadataMutex       sync.RWMutex
+	getStateRangeScanIteratorWithMetadataArgsForCall []struct {
+		namespace string
+		startKey  string
+		endKey    string
+		metadata  map[string]interface{}
+	}
+	getStateRangeScanIteratorWithMetadataReturns struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}
+	getStateRangeScanIteratorWithMetadataReturnsOnCall map[int]struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}
 	ExecuteQueryStub        func(namespace, query string) (commonledger.ResultsIterator, error)
 	executeQueryMutex       sync.RWMutex
 	executeQueryArgsForCall []struct {
@@ -78,6 +94,21 @@ type QueryExcutor struct {
 	}
 	executeQueryReturnsOnCall map[int]struct {
 		result1 commonledger.ResultsIterator
+		result2 error
+	}
+	ExecuteQueryWithMetadataStub        func(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error)
+	executeQueryWithMetadataMutex       sync.RWMutex
+	executeQueryWithMetadataArgsForCall []struct {
+		namespace string
+		query     string
+		metadata  map[string]interface{}
+	}
+	executeQueryWithMetadataReturns struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}
+	executeQueryWithMetadataReturnsOnCall map[int]struct {
+		result1 ledger.QueryResultsIterator
 		result2 error
 	}
 	GetPrivateDataStub        func(namespace, collection, key string) ([]byte, error)
@@ -163,7 +194,7 @@ type QueryExcutor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *QueryExcutor) GetState(namespace string, key string) ([]byte, error) {
+func (fake *QueryExecutor) GetState(namespace string, key string) ([]byte, error) {
 	fake.getStateMutex.Lock()
 	ret, specificReturn := fake.getStateReturnsOnCall[len(fake.getStateArgsForCall)]
 	fake.getStateArgsForCall = append(fake.getStateArgsForCall, struct {
@@ -181,19 +212,19 @@ func (fake *QueryExcutor) GetState(namespace string, key string) ([]byte, error)
 	return fake.getStateReturns.result1, fake.getStateReturns.result2
 }
 
-func (fake *QueryExcutor) GetStateCallCount() int {
+func (fake *QueryExecutor) GetStateCallCount() int {
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
 	return len(fake.getStateArgsForCall)
 }
 
-func (fake *QueryExcutor) GetStateArgsForCall(i int) (string, string) {
+func (fake *QueryExecutor) GetStateArgsForCall(i int) (string, string) {
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
 	return fake.getStateArgsForCall[i].namespace, fake.getStateArgsForCall[i].key
 }
 
-func (fake *QueryExcutor) GetStateReturns(result1 []byte, result2 error) {
+func (fake *QueryExecutor) GetStateReturns(result1 []byte, result2 error) {
 	fake.GetStateStub = nil
 	fake.getStateReturns = struct {
 		result1 []byte
@@ -201,7 +232,7 @@ func (fake *QueryExcutor) GetStateReturns(result1 []byte, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateReturnsOnCall(i int, result1 []byte, result2 error) {
+func (fake *QueryExecutor) GetStateReturnsOnCall(i int, result1 []byte, result2 error) {
 	fake.GetStateStub = nil
 	if fake.getStateReturnsOnCall == nil {
 		fake.getStateReturnsOnCall = make(map[int]struct {
@@ -215,7 +246,7 @@ func (fake *QueryExcutor) GetStateReturnsOnCall(i int, result1 []byte, result2 e
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+func (fake *QueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	ret, specificReturn := fake.getStateRangeScanIteratorReturnsOnCall[len(fake.getStateRangeScanIteratorArgsForCall)]
 	fake.getStateRangeScanIteratorArgsForCall = append(fake.getStateRangeScanIteratorArgsForCall, struct {
@@ -234,19 +265,19 @@ func (fake *QueryExcutor) GetStateRangeScanIterator(namespace string, startKey s
 	return fake.getStateRangeScanIteratorReturns.result1, fake.getStateRangeScanIteratorReturns.result2
 }
 
-func (fake *QueryExcutor) GetStateRangeScanIteratorCallCount() int {
+func (fake *QueryExecutor) GetStateRangeScanIteratorCallCount() int {
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
 	return len(fake.getStateRangeScanIteratorArgsForCall)
 }
 
-func (fake *QueryExcutor) GetStateRangeScanIteratorArgsForCall(i int) (string, string, string) {
+func (fake *QueryExecutor) GetStateRangeScanIteratorArgsForCall(i int) (string, string, string) {
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
 	return fake.getStateRangeScanIteratorArgsForCall[i].namespace, fake.getStateRangeScanIteratorArgsForCall[i].startKey, fake.getStateRangeScanIteratorArgsForCall[i].endKey
 }
 
-func (fake *QueryExcutor) GetStateRangeScanIteratorReturns(result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) GetStateRangeScanIteratorReturns(result1 commonledger.ResultsIterator, result2 error) {
 	fake.GetStateRangeScanIteratorStub = nil
 	fake.getStateRangeScanIteratorReturns = struct {
 		result1 commonledger.ResultsIterator
@@ -254,7 +285,7 @@ func (fake *QueryExcutor) GetStateRangeScanIteratorReturns(result1 commonledger.
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateRangeScanIteratorReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) GetStateRangeScanIteratorReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
 	fake.GetStateRangeScanIteratorStub = nil
 	if fake.getStateRangeScanIteratorReturnsOnCall == nil {
 		fake.getStateRangeScanIteratorReturnsOnCall = make(map[int]struct {
@@ -268,7 +299,7 @@ func (fake *QueryExcutor) GetStateRangeScanIteratorReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateMetadata(namespace string, key string) (map[string][]byte, error) {
+func (fake *QueryExecutor) GetStateMetadata(namespace string, key string) (map[string][]byte, error) {
 	fake.getStateMetadataMutex.Lock()
 	ret, specificReturn := fake.getStateMetadataReturnsOnCall[len(fake.getStateMetadataArgsForCall)]
 	fake.getStateMetadataArgsForCall = append(fake.getStateMetadataArgsForCall, struct {
@@ -286,19 +317,19 @@ func (fake *QueryExcutor) GetStateMetadata(namespace string, key string) (map[st
 	return fake.getStateMetadataReturns.result1, fake.getStateMetadataReturns.result2
 }
 
-func (fake *QueryExcutor) GetStateMetadataCallCount() int {
+func (fake *QueryExecutor) GetStateMetadataCallCount() int {
 	fake.getStateMetadataMutex.RLock()
 	defer fake.getStateMetadataMutex.RUnlock()
 	return len(fake.getStateMetadataArgsForCall)
 }
 
-func (fake *QueryExcutor) GetStateMetadataArgsForCall(i int) (string, string) {
+func (fake *QueryExecutor) GetStateMetadataArgsForCall(i int) (string, string) {
 	fake.getStateMetadataMutex.RLock()
 	defer fake.getStateMetadataMutex.RUnlock()
 	return fake.getStateMetadataArgsForCall[i].namespace, fake.getStateMetadataArgsForCall[i].key
 }
 
-func (fake *QueryExcutor) GetStateMetadataReturns(result1 map[string][]byte, result2 error) {
+func (fake *QueryExecutor) GetStateMetadataReturns(result1 map[string][]byte, result2 error) {
 	fake.GetStateMetadataStub = nil
 	fake.getStateMetadataReturns = struct {
 		result1 map[string][]byte
@@ -306,7 +337,7 @@ func (fake *QueryExcutor) GetStateMetadataReturns(result1 map[string][]byte, res
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateMetadataReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
+func (fake *QueryExecutor) GetStateMetadataReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
 	fake.GetStateMetadataStub = nil
 	if fake.getStateMetadataReturnsOnCall == nil {
 		fake.getStateMetadataReturnsOnCall = make(map[int]struct {
@@ -320,7 +351,7 @@ func (fake *QueryExcutor) GetStateMetadataReturnsOnCall(i int, result1 map[strin
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
+func (fake *QueryExecutor) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
 	var keysCopy []string
 	if keys != nil {
 		keysCopy = make([]string, len(keys))
@@ -343,19 +374,19 @@ func (fake *QueryExcutor) GetStateMultipleKeys(namespace string, keys []string) 
 	return fake.getStateMultipleKeysReturns.result1, fake.getStateMultipleKeysReturns.result2
 }
 
-func (fake *QueryExcutor) GetStateMultipleKeysCallCount() int {
+func (fake *QueryExecutor) GetStateMultipleKeysCallCount() int {
 	fake.getStateMultipleKeysMutex.RLock()
 	defer fake.getStateMultipleKeysMutex.RUnlock()
 	return len(fake.getStateMultipleKeysArgsForCall)
 }
 
-func (fake *QueryExcutor) GetStateMultipleKeysArgsForCall(i int) (string, []string) {
+func (fake *QueryExecutor) GetStateMultipleKeysArgsForCall(i int) (string, []string) {
 	fake.getStateMultipleKeysMutex.RLock()
 	defer fake.getStateMultipleKeysMutex.RUnlock()
 	return fake.getStateMultipleKeysArgsForCall[i].namespace, fake.getStateMultipleKeysArgsForCall[i].keys
 }
 
-func (fake *QueryExcutor) GetStateMultipleKeysReturns(result1 [][]byte, result2 error) {
+func (fake *QueryExecutor) GetStateMultipleKeysReturns(result1 [][]byte, result2 error) {
 	fake.GetStateMultipleKeysStub = nil
 	fake.getStateMultipleKeysReturns = struct {
 		result1 [][]byte
@@ -363,7 +394,7 @@ func (fake *QueryExcutor) GetStateMultipleKeysReturns(result1 [][]byte, result2 
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetStateMultipleKeysReturnsOnCall(i int, result1 [][]byte, result2 error) {
+func (fake *QueryExecutor) GetStateMultipleKeysReturnsOnCall(i int, result1 [][]byte, result2 error) {
 	fake.GetStateMultipleKeysStub = nil
 	if fake.getStateMultipleKeysReturnsOnCall == nil {
 		fake.getStateMultipleKeysReturnsOnCall = make(map[int]struct {
@@ -377,7 +408,61 @@ func (fake *QueryExcutor) GetStateMultipleKeysReturnsOnCall(i int, result1 [][]b
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) ExecuteQuery(namespace string, query string) (commonledger.ResultsIterator, error) {
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
+	ret, specificReturn := fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)]
+	fake.getStateRangeScanIteratorWithMetadataArgsForCall = append(fake.getStateRangeScanIteratorWithMetadataArgsForCall, struct {
+		namespace string
+		startKey  string
+		endKey    string
+		metadata  map[string]interface{}
+	}{namespace, startKey, endKey, metadata})
+	fake.recordInvocation("GetStateRangeScanIteratorWithMetadata", []interface{}{namespace, startKey, endKey, metadata})
+	fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
+	if fake.GetStateRangeScanIteratorWithMetadataStub != nil {
+		return fake.GetStateRangeScanIteratorWithMetadataStub(namespace, startKey, endKey, metadata)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getStateRangeScanIteratorWithMetadataReturns.result1, fake.getStateRangeScanIteratorWithMetadataReturns.result2
+}
+
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataCallCount() int {
+	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	return len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)
+}
+
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataArgsForCall(i int) (string, string, string, map[string]interface{}) {
+	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	return fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].namespace, fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].startKey, fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].endKey, fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].metadata
+}
+
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataReturns(result1 ledger.QueryResultsIterator, result2 error) {
+	fake.GetStateRangeScanIteratorWithMetadataStub = nil
+	fake.getStateRangeScanIteratorWithMetadataReturns = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
+	fake.GetStateRangeScanIteratorWithMetadataStub = nil
+	if fake.getStateRangeScanIteratorWithMetadataReturnsOnCall == nil {
+		fake.getStateRangeScanIteratorWithMetadataReturnsOnCall = make(map[int]struct {
+			result1 ledger.QueryResultsIterator
+			result2 error
+		})
+	}
+	fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[i] = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *QueryExecutor) ExecuteQuery(namespace string, query string) (commonledger.ResultsIterator, error) {
 	fake.executeQueryMutex.Lock()
 	ret, specificReturn := fake.executeQueryReturnsOnCall[len(fake.executeQueryArgsForCall)]
 	fake.executeQueryArgsForCall = append(fake.executeQueryArgsForCall, struct {
@@ -395,19 +480,19 @@ func (fake *QueryExcutor) ExecuteQuery(namespace string, query string) (commonle
 	return fake.executeQueryReturns.result1, fake.executeQueryReturns.result2
 }
 
-func (fake *QueryExcutor) ExecuteQueryCallCount() int {
+func (fake *QueryExecutor) ExecuteQueryCallCount() int {
 	fake.executeQueryMutex.RLock()
 	defer fake.executeQueryMutex.RUnlock()
 	return len(fake.executeQueryArgsForCall)
 }
 
-func (fake *QueryExcutor) ExecuteQueryArgsForCall(i int) (string, string) {
+func (fake *QueryExecutor) ExecuteQueryArgsForCall(i int) (string, string) {
 	fake.executeQueryMutex.RLock()
 	defer fake.executeQueryMutex.RUnlock()
 	return fake.executeQueryArgsForCall[i].namespace, fake.executeQueryArgsForCall[i].query
 }
 
-func (fake *QueryExcutor) ExecuteQueryReturns(result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) ExecuteQueryReturns(result1 commonledger.ResultsIterator, result2 error) {
 	fake.ExecuteQueryStub = nil
 	fake.executeQueryReturns = struct {
 		result1 commonledger.ResultsIterator
@@ -415,7 +500,7 @@ func (fake *QueryExcutor) ExecuteQueryReturns(result1 commonledger.ResultsIterat
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) ExecuteQueryReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) ExecuteQueryReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
 	fake.ExecuteQueryStub = nil
 	if fake.executeQueryReturnsOnCall == nil {
 		fake.executeQueryReturnsOnCall = make(map[int]struct {
@@ -429,7 +514,60 @@ func (fake *QueryExcutor) ExecuteQueryReturnsOnCall(i int, result1 commonledger.
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateData(namespace string, collection string, key string) ([]byte, error) {
+func (fake *QueryExecutor) ExecuteQueryWithMetadata(namespace string, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	fake.executeQueryWithMetadataMutex.Lock()
+	ret, specificReturn := fake.executeQueryWithMetadataReturnsOnCall[len(fake.executeQueryWithMetadataArgsForCall)]
+	fake.executeQueryWithMetadataArgsForCall = append(fake.executeQueryWithMetadataArgsForCall, struct {
+		namespace string
+		query     string
+		metadata  map[string]interface{}
+	}{namespace, query, metadata})
+	fake.recordInvocation("ExecuteQueryWithMetadata", []interface{}{namespace, query, metadata})
+	fake.executeQueryWithMetadataMutex.Unlock()
+	if fake.ExecuteQueryWithMetadataStub != nil {
+		return fake.ExecuteQueryWithMetadataStub(namespace, query, metadata)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.executeQueryWithMetadataReturns.result1, fake.executeQueryWithMetadataReturns.result2
+}
+
+func (fake *QueryExecutor) ExecuteQueryWithMetadataCallCount() int {
+	fake.executeQueryWithMetadataMutex.RLock()
+	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	return len(fake.executeQueryWithMetadataArgsForCall)
+}
+
+func (fake *QueryExecutor) ExecuteQueryWithMetadataArgsForCall(i int) (string, string, map[string]interface{}) {
+	fake.executeQueryWithMetadataMutex.RLock()
+	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	return fake.executeQueryWithMetadataArgsForCall[i].namespace, fake.executeQueryWithMetadataArgsForCall[i].query, fake.executeQueryWithMetadataArgsForCall[i].metadata
+}
+
+func (fake *QueryExecutor) ExecuteQueryWithMetadataReturns(result1 ledger.QueryResultsIterator, result2 error) {
+	fake.ExecuteQueryWithMetadataStub = nil
+	fake.executeQueryWithMetadataReturns = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *QueryExecutor) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
+	fake.ExecuteQueryWithMetadataStub = nil
+	if fake.executeQueryWithMetadataReturnsOnCall == nil {
+		fake.executeQueryWithMetadataReturnsOnCall = make(map[int]struct {
+			result1 ledger.QueryResultsIterator
+			result2 error
+		})
+	}
+	fake.executeQueryWithMetadataReturnsOnCall[i] = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *QueryExecutor) GetPrivateData(namespace string, collection string, key string) ([]byte, error) {
 	fake.getPrivateDataMutex.Lock()
 	ret, specificReturn := fake.getPrivateDataReturnsOnCall[len(fake.getPrivateDataArgsForCall)]
 	fake.getPrivateDataArgsForCall = append(fake.getPrivateDataArgsForCall, struct {
@@ -448,19 +586,19 @@ func (fake *QueryExcutor) GetPrivateData(namespace string, collection string, ke
 	return fake.getPrivateDataReturns.result1, fake.getPrivateDataReturns.result2
 }
 
-func (fake *QueryExcutor) GetPrivateDataCallCount() int {
+func (fake *QueryExecutor) GetPrivateDataCallCount() int {
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
 	return len(fake.getPrivateDataArgsForCall)
 }
 
-func (fake *QueryExcutor) GetPrivateDataArgsForCall(i int) (string, string, string) {
+func (fake *QueryExecutor) GetPrivateDataArgsForCall(i int) (string, string, string) {
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
 	return fake.getPrivateDataArgsForCall[i].namespace, fake.getPrivateDataArgsForCall[i].collection, fake.getPrivateDataArgsForCall[i].key
 }
 
-func (fake *QueryExcutor) GetPrivateDataReturns(result1 []byte, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataReturns(result1 []byte, result2 error) {
 	fake.GetPrivateDataStub = nil
 	fake.getPrivateDataReturns = struct {
 		result1 []byte
@@ -468,7 +606,7 @@ func (fake *QueryExcutor) GetPrivateDataReturns(result1 []byte, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataReturnsOnCall(i int, result1 []byte, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataReturnsOnCall(i int, result1 []byte, result2 error) {
 	fake.GetPrivateDataStub = nil
 	if fake.getPrivateDataReturnsOnCall == nil {
 		fake.getPrivateDataReturnsOnCall = make(map[int]struct {
@@ -482,7 +620,7 @@ func (fake *QueryExcutor) GetPrivateDataReturnsOnCall(i int, result1 []byte, res
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataMetadata(namespace string, collection string, key string) (map[string][]byte, error) {
+func (fake *QueryExecutor) GetPrivateDataMetadata(namespace string, collection string, key string) (map[string][]byte, error) {
 	fake.getPrivateDataMetadataMutex.Lock()
 	ret, specificReturn := fake.getPrivateDataMetadataReturnsOnCall[len(fake.getPrivateDataMetadataArgsForCall)]
 	fake.getPrivateDataMetadataArgsForCall = append(fake.getPrivateDataMetadataArgsForCall, struct {
@@ -501,19 +639,19 @@ func (fake *QueryExcutor) GetPrivateDataMetadata(namespace string, collection st
 	return fake.getPrivateDataMetadataReturns.result1, fake.getPrivateDataMetadataReturns.result2
 }
 
-func (fake *QueryExcutor) GetPrivateDataMetadataCallCount() int {
+func (fake *QueryExecutor) GetPrivateDataMetadataCallCount() int {
 	fake.getPrivateDataMetadataMutex.RLock()
 	defer fake.getPrivateDataMetadataMutex.RUnlock()
 	return len(fake.getPrivateDataMetadataArgsForCall)
 }
 
-func (fake *QueryExcutor) GetPrivateDataMetadataArgsForCall(i int) (string, string, string) {
+func (fake *QueryExecutor) GetPrivateDataMetadataArgsForCall(i int) (string, string, string) {
 	fake.getPrivateDataMetadataMutex.RLock()
 	defer fake.getPrivateDataMetadataMutex.RUnlock()
 	return fake.getPrivateDataMetadataArgsForCall[i].namespace, fake.getPrivateDataMetadataArgsForCall[i].collection, fake.getPrivateDataMetadataArgsForCall[i].key
 }
 
-func (fake *QueryExcutor) GetPrivateDataMetadataReturns(result1 map[string][]byte, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataMetadataReturns(result1 map[string][]byte, result2 error) {
 	fake.GetPrivateDataMetadataStub = nil
 	fake.getPrivateDataMetadataReturns = struct {
 		result1 map[string][]byte
@@ -521,7 +659,7 @@ func (fake *QueryExcutor) GetPrivateDataMetadataReturns(result1 map[string][]byt
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataMetadataReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataMetadataReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
 	fake.GetPrivateDataMetadataStub = nil
 	if fake.getPrivateDataMetadataReturnsOnCall == nil {
 		fake.getPrivateDataMetadataReturnsOnCall = make(map[int]struct {
@@ -535,7 +673,7 @@ func (fake *QueryExcutor) GetPrivateDataMetadataReturnsOnCall(i int, result1 map
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataMultipleKeys(namespace string, collection string, keys []string) ([][]byte, error) {
+func (fake *QueryExecutor) GetPrivateDataMultipleKeys(namespace string, collection string, keys []string) ([][]byte, error) {
 	var keysCopy []string
 	if keys != nil {
 		keysCopy = make([]string, len(keys))
@@ -559,19 +697,19 @@ func (fake *QueryExcutor) GetPrivateDataMultipleKeys(namespace string, collectio
 	return fake.getPrivateDataMultipleKeysReturns.result1, fake.getPrivateDataMultipleKeysReturns.result2
 }
 
-func (fake *QueryExcutor) GetPrivateDataMultipleKeysCallCount() int {
+func (fake *QueryExecutor) GetPrivateDataMultipleKeysCallCount() int {
 	fake.getPrivateDataMultipleKeysMutex.RLock()
 	defer fake.getPrivateDataMultipleKeysMutex.RUnlock()
 	return len(fake.getPrivateDataMultipleKeysArgsForCall)
 }
 
-func (fake *QueryExcutor) GetPrivateDataMultipleKeysArgsForCall(i int) (string, string, []string) {
+func (fake *QueryExecutor) GetPrivateDataMultipleKeysArgsForCall(i int) (string, string, []string) {
 	fake.getPrivateDataMultipleKeysMutex.RLock()
 	defer fake.getPrivateDataMultipleKeysMutex.RUnlock()
 	return fake.getPrivateDataMultipleKeysArgsForCall[i].namespace, fake.getPrivateDataMultipleKeysArgsForCall[i].collection, fake.getPrivateDataMultipleKeysArgsForCall[i].keys
 }
 
-func (fake *QueryExcutor) GetPrivateDataMultipleKeysReturns(result1 [][]byte, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataMultipleKeysReturns(result1 [][]byte, result2 error) {
 	fake.GetPrivateDataMultipleKeysStub = nil
 	fake.getPrivateDataMultipleKeysReturns = struct {
 		result1 [][]byte
@@ -579,7 +717,7 @@ func (fake *QueryExcutor) GetPrivateDataMultipleKeysReturns(result1 [][]byte, re
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataMultipleKeysReturnsOnCall(i int, result1 [][]byte, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataMultipleKeysReturnsOnCall(i int, result1 [][]byte, result2 error) {
 	fake.GetPrivateDataMultipleKeysStub = nil
 	if fake.getPrivateDataMultipleKeysReturnsOnCall == nil {
 		fake.getPrivateDataMultipleKeysReturnsOnCall = make(map[int]struct {
@@ -593,7 +731,7 @@ func (fake *QueryExcutor) GetPrivateDataMultipleKeysReturnsOnCall(i int, result1
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataRangeScanIterator(namespace string, collection string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+func (fake *QueryExecutor) GetPrivateDataRangeScanIterator(namespace string, collection string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	fake.getPrivateDataRangeScanIteratorMutex.Lock()
 	ret, specificReturn := fake.getPrivateDataRangeScanIteratorReturnsOnCall[len(fake.getPrivateDataRangeScanIteratorArgsForCall)]
 	fake.getPrivateDataRangeScanIteratorArgsForCall = append(fake.getPrivateDataRangeScanIteratorArgsForCall, struct {
@@ -613,19 +751,19 @@ func (fake *QueryExcutor) GetPrivateDataRangeScanIterator(namespace string, coll
 	return fake.getPrivateDataRangeScanIteratorReturns.result1, fake.getPrivateDataRangeScanIteratorReturns.result2
 }
 
-func (fake *QueryExcutor) GetPrivateDataRangeScanIteratorCallCount() int {
+func (fake *QueryExecutor) GetPrivateDataRangeScanIteratorCallCount() int {
 	fake.getPrivateDataRangeScanIteratorMutex.RLock()
 	defer fake.getPrivateDataRangeScanIteratorMutex.RUnlock()
 	return len(fake.getPrivateDataRangeScanIteratorArgsForCall)
 }
 
-func (fake *QueryExcutor) GetPrivateDataRangeScanIteratorArgsForCall(i int) (string, string, string, string) {
+func (fake *QueryExecutor) GetPrivateDataRangeScanIteratorArgsForCall(i int) (string, string, string, string) {
 	fake.getPrivateDataRangeScanIteratorMutex.RLock()
 	defer fake.getPrivateDataRangeScanIteratorMutex.RUnlock()
 	return fake.getPrivateDataRangeScanIteratorArgsForCall[i].namespace, fake.getPrivateDataRangeScanIteratorArgsForCall[i].collection, fake.getPrivateDataRangeScanIteratorArgsForCall[i].startKey, fake.getPrivateDataRangeScanIteratorArgsForCall[i].endKey
 }
 
-func (fake *QueryExcutor) GetPrivateDataRangeScanIteratorReturns(result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataRangeScanIteratorReturns(result1 commonledger.ResultsIterator, result2 error) {
 	fake.GetPrivateDataRangeScanIteratorStub = nil
 	fake.getPrivateDataRangeScanIteratorReturns = struct {
 		result1 commonledger.ResultsIterator
@@ -633,7 +771,7 @@ func (fake *QueryExcutor) GetPrivateDataRangeScanIteratorReturns(result1 commonl
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) GetPrivateDataRangeScanIteratorReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) GetPrivateDataRangeScanIteratorReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
 	fake.GetPrivateDataRangeScanIteratorStub = nil
 	if fake.getPrivateDataRangeScanIteratorReturnsOnCall == nil {
 		fake.getPrivateDataRangeScanIteratorReturnsOnCall = make(map[int]struct {
@@ -647,7 +785,7 @@ func (fake *QueryExcutor) GetPrivateDataRangeScanIteratorReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) ExecuteQueryOnPrivateData(namespace string, collection string, query string) (commonledger.ResultsIterator, error) {
+func (fake *QueryExecutor) ExecuteQueryOnPrivateData(namespace string, collection string, query string) (commonledger.ResultsIterator, error) {
 	fake.executeQueryOnPrivateDataMutex.Lock()
 	ret, specificReturn := fake.executeQueryOnPrivateDataReturnsOnCall[len(fake.executeQueryOnPrivateDataArgsForCall)]
 	fake.executeQueryOnPrivateDataArgsForCall = append(fake.executeQueryOnPrivateDataArgsForCall, struct {
@@ -666,19 +804,19 @@ func (fake *QueryExcutor) ExecuteQueryOnPrivateData(namespace string, collection
 	return fake.executeQueryOnPrivateDataReturns.result1, fake.executeQueryOnPrivateDataReturns.result2
 }
 
-func (fake *QueryExcutor) ExecuteQueryOnPrivateDataCallCount() int {
+func (fake *QueryExecutor) ExecuteQueryOnPrivateDataCallCount() int {
 	fake.executeQueryOnPrivateDataMutex.RLock()
 	defer fake.executeQueryOnPrivateDataMutex.RUnlock()
 	return len(fake.executeQueryOnPrivateDataArgsForCall)
 }
 
-func (fake *QueryExcutor) ExecuteQueryOnPrivateDataArgsForCall(i int) (string, string, string) {
+func (fake *QueryExecutor) ExecuteQueryOnPrivateDataArgsForCall(i int) (string, string, string) {
 	fake.executeQueryOnPrivateDataMutex.RLock()
 	defer fake.executeQueryOnPrivateDataMutex.RUnlock()
 	return fake.executeQueryOnPrivateDataArgsForCall[i].namespace, fake.executeQueryOnPrivateDataArgsForCall[i].collection, fake.executeQueryOnPrivateDataArgsForCall[i].query
 }
 
-func (fake *QueryExcutor) ExecuteQueryOnPrivateDataReturns(result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) ExecuteQueryOnPrivateDataReturns(result1 commonledger.ResultsIterator, result2 error) {
 	fake.ExecuteQueryOnPrivateDataStub = nil
 	fake.executeQueryOnPrivateDataReturns = struct {
 		result1 commonledger.ResultsIterator
@@ -686,7 +824,7 @@ func (fake *QueryExcutor) ExecuteQueryOnPrivateDataReturns(result1 commonledger.
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) ExecuteQueryOnPrivateDataReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
+func (fake *QueryExecutor) ExecuteQueryOnPrivateDataReturnsOnCall(i int, result1 commonledger.ResultsIterator, result2 error) {
 	fake.ExecuteQueryOnPrivateDataStub = nil
 	if fake.executeQueryOnPrivateDataReturnsOnCall == nil {
 		fake.executeQueryOnPrivateDataReturnsOnCall = make(map[int]struct {
@@ -700,7 +838,7 @@ func (fake *QueryExcutor) ExecuteQueryOnPrivateDataReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *QueryExcutor) Done() {
+func (fake *QueryExecutor) Done() {
 	fake.doneMutex.Lock()
 	fake.doneArgsForCall = append(fake.doneArgsForCall, struct{}{})
 	fake.recordInvocation("Done", []interface{}{})
@@ -710,13 +848,13 @@ func (fake *QueryExcutor) Done() {
 	}
 }
 
-func (fake *QueryExcutor) DoneCallCount() int {
+func (fake *QueryExecutor) DoneCallCount() int {
 	fake.doneMutex.RLock()
 	defer fake.doneMutex.RUnlock()
 	return len(fake.doneArgsForCall)
 }
 
-func (fake *QueryExcutor) Invocations() map[string][][]interface{} {
+func (fake *QueryExecutor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.getStateMutex.RLock()
@@ -727,8 +865,12 @@ func (fake *QueryExcutor) Invocations() map[string][][]interface{} {
 	defer fake.getStateMetadataMutex.RUnlock()
 	fake.getStateMultipleKeysMutex.RLock()
 	defer fake.getStateMultipleKeysMutex.RUnlock()
+	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
 	fake.executeQueryMutex.RLock()
 	defer fake.executeQueryMutex.RUnlock()
+	fake.executeQueryWithMetadataMutex.RLock()
+	defer fake.executeQueryWithMetadataMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
 	fake.getPrivateDataMetadataMutex.RLock()
@@ -748,7 +890,7 @@ func (fake *QueryExcutor) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *QueryExcutor) recordInvocation(key string, args []interface{}) {
+func (fake *QueryExecutor) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -760,4 +902,4 @@ func (fake *QueryExcutor) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ ledger.QueryExecutor = new(QueryExcutor)
+var _ ledger.QueryExecutor = new(QueryExecutor)

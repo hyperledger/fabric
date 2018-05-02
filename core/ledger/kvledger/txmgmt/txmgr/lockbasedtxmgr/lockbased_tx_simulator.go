@@ -22,13 +22,14 @@ type lockBasedTxSimulator struct {
 	writePerformed            bool
 	pvtdataQueriesPerformed   bool
 	simulationResultsComputed bool
+	paginatedQueriesPerformed bool
 }
 
 func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string) (*lockBasedTxSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	helper := newQueryHelper(txmgr, rwsetBuilder)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
-	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false, false}, nil
+	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false, false, false}, nil
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
@@ -127,6 +128,22 @@ func (s *lockBasedTxSimulator) ExecuteQueryOnPrivateData(namespace, collection, 
 	return s.lockBasedQueryExecutor.ExecuteQueryOnPrivateData(namespace, collection, query)
 }
 
+// GetStateRangeScanIteratorWithMetadata implements method in interface `ledger.QueryExecutor`
+func (s *lockBasedTxSimulator) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	if err := s.checkBeforePaginatedQueries(); err != nil {
+		return nil, err
+	}
+	return s.lockBasedQueryExecutor.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, metadata)
+}
+
+// ExecuteQueryWithMetadata implements method in interface `ledger.QueryExecutor`
+func (s *lockBasedTxSimulator) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	if err := s.checkBeforePaginatedQueries(); err != nil {
+		return nil, err
+	}
+	return s.lockBasedQueryExecutor.ExecuteQueryWithMetadata(namespace, query, metadata)
+}
+
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
 	if s.simulationResultsComputed {
@@ -153,6 +170,10 @@ func (s *lockBasedTxSimulator) checkWritePrecondition(key string, value []byte) 
 	if err := s.checkPvtdataQueryPerformed(); err != nil {
 		return err
 	}
+	if err := s.checkPaginatedQueryPerformed(); err != nil {
+		return err
+	}
+	s.writePerformed = true
 	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
 		return err
 	}
@@ -175,6 +196,24 @@ func (s *lockBasedTxSimulator) checkPvtdataQueryPerformed() error {
 			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
 		}
 	}
-	s.writePerformed = true
+	return nil
+}
+
+func (s *lockBasedTxSimulator) checkBeforePaginatedQueries() error {
+	if s.writePerformed {
+		return &txmgr.ErrUnsupportedTransaction{
+			Msg: fmt.Sprintf("txid [%s]: Paginated queries are supported only in a read-only transaction", s.txid),
+		}
+	}
+	s.paginatedQueriesPerformed = true
+	return nil
+}
+
+func (s *lockBasedTxSimulator) checkPaginatedQueryPerformed() error {
+	if s.paginatedQueriesPerformed {
+		return &txmgr.ErrUnsupportedTransaction{
+			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed a paginated query. Writes are not allowed", s.txid),
+		}
+	}
 	return nil
 }

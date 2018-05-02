@@ -428,6 +428,79 @@ func testIterator(t *testing.T, env testEnv, numKeys int, startKeyNum int, endKe
 	testutil.AssertEquals(t, count, expectedCount)
 }
 
+func TestIteratorPaging(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		t.Logf("Running test for TestEnv = %s", testEnv.getName())
+
+		// test explicit paging
+		testLedgerID := "testiterator.1"
+		testEnv.init(t, testLedgerID, nil)
+		testIteratorPagingInit(t, testEnv, 10)
+		returnKeys := []string{"key_002", "key_003"}
+		nextStartKey := testIteratorPaging(t, testEnv, 10, "key_002", "key_007", int32(2), returnKeys)
+		returnKeys = []string{"key_004", "key_005"}
+		nextStartKey = testIteratorPaging(t, testEnv, 10, nextStartKey, "key_007", int32(2), returnKeys)
+		returnKeys = []string{"key_006"}
+		testIteratorPaging(t, testEnv, 10, nextStartKey, "key_007", int32(2), returnKeys)
+		testEnv.cleanup()
+	}
+}
+
+func testIteratorPagingInit(t *testing.T, env testEnv, numKeys int) {
+	cID := "cid"
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+	s, _ := txMgr.NewTxSimulator("test_tx1")
+	for i := 1; i <= numKeys; i++ {
+		k := createTestKey(i)
+		v := createTestValue(i)
+		t.Logf("Adding k=[%s], v=[%s]", k, v)
+		s.SetState(cID, k, v)
+	}
+	s.Done()
+	// validate and commit RWset
+	txRWSet, _ := s.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet.PubSimulationResults)
+}
+
+func testIteratorPaging(t *testing.T, env testEnv, numKeys int, startKey, endKey string,
+	limit int32, expectedKeys []string) string {
+	cID := "cid"
+	txMgr := env.getTxMgr()
+
+	queryOptions := make(map[string]interface{})
+	if limit != 0 {
+		queryOptions["limit"] = limit
+	}
+
+	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
+	itr, _ := queryExecuter.GetStateRangeScanIteratorWithMetadata(cID, startKey, endKey, queryOptions)
+
+	// Verify the keys returned
+	testItrWithoutClose(t, itr, expectedKeys)
+
+	returnBookmark := ""
+	if limit > 0 {
+		returnBookmark = itr.GetBookmarkAndClose()
+	}
+
+	return returnBookmark
+}
+
+// testItrWithoutClose verifies an iterator contains expected keys
+func testItrWithoutClose(t *testing.T, itr ledger.QueryResultsIterator, expectedKeys []string) {
+	for _, expectedKey := range expectedKeys {
+		queryResult, err := itr.Next()
+		testutil.AssertNoError(t, err, "An unexpected error was thrown during iterator Next()")
+		vkv := queryResult.(*queryresult.KV)
+		key := vkv.Key
+		testutil.AssertEquals(t, key, expectedKey)
+	}
+	queryResult, err := itr.Next()
+	testutil.AssertNoError(t, err, "An unexpected error was thrown during iterator Next()")
+	testutil.AssertNil(t, queryResult)
+}
+
 func TestIteratorWithDeletes(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
@@ -669,6 +742,103 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 	testutil.AssertEquals(t, counter, 3)
 }
 
+// TestExecutePaginatedQuery is only tested on the CouchDB testEnv
+func TestExecutePaginatedQuery(t *testing.T) {
+
+	for _, testEnv := range testEnvs {
+		// Query is only supported and tested on the CouchDB testEnv
+		if testEnv.getName() == couchDBtestEnvName {
+			t.Logf("Running test for TestEnv = %s", testEnv.getName())
+			testLedgerID := "testexecutepaginatedquery"
+			testEnv.init(t, testLedgerID, nil)
+			testExecutePaginatedQuery(t, testEnv)
+			testEnv.cleanup()
+		}
+	}
+}
+
+func testExecutePaginatedQuery(t *testing.T, env testEnv) {
+
+	type Asset struct {
+		ID        string `json:"_id"`
+		Rev       string `json:"_rev"`
+		AssetName string `json:"asset_name"`
+		Color     string `json:"color"`
+		Size      string `json:"size"`
+		Owner     string `json:"owner"`
+	}
+
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+
+	s1, _ := txMgr.NewTxSimulator("test_tx1")
+
+	s1.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
+	s1.SetState("ns1", "key2", []byte(`{"asset_name":"marble2","color":"blue","size":"10","owner":"bob"}`))
+	s1.SetState("ns1", "key3", []byte(`{"asset_name":"marble3","color":"blue","size":"35","owner":"jerry"}`))
+	s1.SetState("ns1", "key4", []byte(`{"asset_name":"marble4","color":"green","size":"15","owner":"bob"}`))
+	s1.SetState("ns1", "key5", []byte(`{"asset_name":"marble5","color":"red","size":"35","owner":"jerry"}`))
+	s1.SetState("ns1", "key6", []byte(`{"asset_name":"marble6","color":"blue","size":"25","owner":"bob"}`))
+
+	s1.Done()
+
+	// validate and commit RWset
+	txRWSet, _ := s1.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet.PubSimulationResults)
+
+	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
+	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
+
+	queryOptions := map[string]interface{}{
+		"limit": int32(2),
+	}
+
+	itr, err := queryExecuter.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	testutil.AssertNoError(t, err, "Error upon ExecuteQueryWithMetadata()")
+	counter := 0
+	for {
+		queryRecord, _ := itr.Next()
+		if queryRecord == nil {
+			break
+		}
+		//Unmarshal the document to Asset structure
+		assetResp := &Asset{}
+		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
+		//Verify the owner retrieved matches
+		testutil.AssertEquals(t, assetResp.Owner, "bob")
+		counter++
+	}
+	//Ensure the query returns 2 documents
+	testutil.AssertEquals(t, counter, 2)
+
+	bookmark := itr.GetBookmarkAndClose()
+
+	queryOptions = map[string]interface{}{
+		"limit": int32(2),
+	}
+	if bookmark != "" {
+		queryOptions["bookmark"] = bookmark
+	}
+
+	itr, err = queryExecuter.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	testutil.AssertNoError(t, err, "Error upon ExecuteQuery()")
+	counter = 0
+	for {
+		queryRecord, _ := itr.Next()
+		if queryRecord == nil {
+			break
+		}
+		//Unmarshal the document to Asset structure
+		assetResp := &Asset{}
+		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
+		//Verify the owner retrieved matches
+		testutil.AssertEquals(t, assetResp.Owner, "bob")
+		counter++
+	}
+	//Ensure the query returns 1 documents
+	testutil.AssertEquals(t, counter, 1)
+}
+
 func TestValidateKey(t *testing.T) {
 	nonUTF8Key := string([]byte{0xff, 0xff})
 	dummyValue := []byte("dummyValue")
@@ -691,7 +861,7 @@ func TestValidateKey(t *testing.T) {
 // is perfromed - queries on private data are supported in a read-only tran
 func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	testEnv := testEnvs[0]
-	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
+	testEnv.init(t, "testtxsimulatorunsupportedtx", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
 	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
@@ -716,6 +886,76 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	testutil.AssertEquals(t, ok, true)
+
+	queryOptions := map[string]interface{}{
+		"limit": int32(2),
+	}
+
+	simulator, _ = txMgr.NewTxSimulator("txid3")
+	err = simulator.SetState("ns", "key", []byte("value"))
+	testutil.AssertNoError(t, err, "")
+	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
+	testutil.AssertEquals(t, ok, true)
+
+	simulator, _ = txMgr.NewTxSimulator("txid4")
+	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	testutil.AssertNoError(t, err, "")
+	err = simulator.SetState("ns", "key", []byte("value"))
+	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
+	testutil.AssertEquals(t, ok, true)
+
+}
+
+// TestTxSimulatorQueryUnsupportedTx is only tested on the CouchDB testEnv
+func TestTxSimulatorQueryUnsupportedTx(t *testing.T) {
+
+	for _, testEnv := range testEnvs {
+		// Query is only supported and tested on the CouchDB testEnv
+		if testEnv.getName() == couchDBtestEnvName {
+			t.Logf("Running test for TestEnv = %s", testEnv.getName())
+			testLedgerID := "testtxsimulatorunsupportedtxqueries"
+			testEnv.init(t, testLedgerID, nil)
+			testTxSimulatorQueryUnsupportedTx(t, testEnv)
+			testEnv.cleanup()
+		}
+	}
+}
+
+func testTxSimulatorQueryUnsupportedTx(t *testing.T, env testEnv) {
+
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+
+	s1, _ := txMgr.NewTxSimulator("test_tx1")
+
+	s1.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
+
+	s1.Done()
+
+	// validate and commit RWset
+	txRWSet, _ := s1.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet.PubSimulationResults)
+
+	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
+	queryOptions := map[string]interface{}{
+		"limit": int32(2),
+	}
+
+	simulator, _ := txMgr.NewTxSimulator("txid1")
+	err := simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
+	testutil.AssertNoError(t, err, "")
+	_, err = simulator.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	_, ok := err.(*txmgr.ErrUnsupportedTransaction)
+	testutil.AssertEquals(t, ok, true)
+
+	simulator, _ = txMgr.NewTxSimulator("txid2")
+	_, err = simulator.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	testutil.AssertNoError(t, err, "")
+	err = simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
+	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
+	testutil.AssertEquals(t, ok, true)
+
 }
 
 func TestTxSimulatorMissingPvtdata(t *testing.T) {

@@ -19,7 +19,8 @@ package ledger
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/ledger"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type MockQueryExecutor struct {
@@ -50,12 +51,19 @@ func (m *MockQueryExecutor) GetStateMultipleKeys(namespace string, keys []string
 	return [][]byte{res}, nil
 }
 
-func (m *MockQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
+func (m *MockQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	return nil, nil
-
 }
 
-func (m *MockQueryExecutor) ExecuteQuery(namespace, query string) (ledger.ResultsIterator, error) {
+func (m *MockQueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace string, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *MockQueryExecutor) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *MockQueryExecutor) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
 	return nil, nil
 }
 
@@ -67,11 +75,11 @@ func (m *MockQueryExecutor) GetPrivateDataMultipleKeys(namespace, collection str
 	return nil, nil
 }
 
-func (m *MockQueryExecutor) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (ledger.ResultsIterator, error) {
+func (m *MockQueryExecutor) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
 	return nil, nil
 }
 
-func (m *MockQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, query string) (ledger.ResultsIterator, error) {
+func (m *MockQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
 	return nil, nil
 }
 

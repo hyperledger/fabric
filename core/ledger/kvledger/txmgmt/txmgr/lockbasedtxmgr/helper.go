@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	ledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -71,11 +72,24 @@ func (h *queryHelper) getStateMultipleKeys(namespace string, keys []string) ([][
 	return values, nil
 }
 
-func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.QueryResultsIterator, error) {
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	itr, err := newResultsItr(namespace, startKey, endKey, h.txmgr.db, h.rwsetBuilder,
+	itr, err := newResultsItr(namespace, startKey, endKey, nil, h.txmgr.db, h.rwsetBuilder,
+		ledgerconfig.IsQueryReadsHashingEnabled(), ledgerconfig.GetMaxDegreeQueryReadsHashing())
+	if err != nil {
+		return nil, err
+	}
+	h.itrs = append(h.itrs, itr)
+	return itr, nil
+}
+
+func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	if err := h.checkDone(); err != nil {
+		return nil, err
+	}
+	itr, err := newResultsItr(namespace, startKey, endKey, metadata, h.txmgr.db, h.rwsetBuilder,
 		ledgerconfig.IsQueryReadsHashingEnabled(), ledgerconfig.GetMaxDegreeQueryReadsHashing())
 	if err != nil {
 		return nil, err
@@ -89,6 +103,17 @@ func (h *queryHelper) executeQuery(namespace, query string) (commonledger.Result
 		return nil, err
 	}
 	dbItr, err := h.txmgr.db.ExecuteQuery(namespace, query)
+	if err != nil {
+		return nil, err
+	}
+	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: h.rwsetBuilder}, nil
+}
+
+func (h *queryHelper) executeQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	if err := h.checkDone(); err != nil {
+		return nil, err
+	}
+	dbItr, err := h.txmgr.db.ExecuteQueryWithMetadata(namespace, query, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -253,9 +278,15 @@ type resultsItr struct {
 	rangeQueryResultsHelper *rwsetutil.RangeQueryResultsHelper
 }
 
-func newResultsItr(ns string, startKey string, endKey string,
+func newResultsItr(ns string, startKey string, endKey string, metadata map[string]interface{},
 	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32) (*resultsItr, error) {
-	dbItr, err := db.GetStateRangeScanIterator(ns, startKey, endKey)
+	var err error
+	var dbItr statedb.ResultsIterator
+	if metadata == nil {
+		dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey)
+	} else {
+		dbItr, err = db.GetStateRangeScanIteratorWithMetadata(ns, startKey, endKey, metadata)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -293,6 +324,15 @@ func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
 	}
 	versionedKV := queryResult.(*statedb.VersionedKV)
 	return &queryresult.KV{Namespace: versionedKV.Namespace, Key: versionedKV.Key, Value: versionedKV.Value}, nil
+}
+
+// GetBookmarkAndClose implements method in interface ledger.ResultsIterator
+func (itr *resultsItr) GetBookmarkAndClose() string {
+	returnBookmark := ""
+	if queryResultIterator, ok := itr.dbItr.(statedb.QueryResultsIterator); ok {
+		returnBookmark = queryResultIterator.GetBookmarkAndClose()
+	}
+	return returnBookmark
 }
 
 // updateRangeQueryInfo updates two attributes of the rangeQueryInfo
@@ -351,6 +391,14 @@ func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 // Close implements method in interface ledger.ResultsIterator
 func (itr *queryResultsItr) Close() {
 	itr.DBItr.Close()
+}
+
+func (itr *queryResultsItr) GetBookmarkAndClose() string {
+	returnBookmark := ""
+	if queryResultIterator, ok := itr.DBItr.(statedb.QueryResultsIterator); ok {
+		returnBookmark = queryResultIterator.GetBookmarkAndClose()
+	}
+	return returnBookmark
 }
 
 func decomposeVersionedValue(versionedValue *statedb.VersionedValue) ([]byte, []byte, *version.Height) {
