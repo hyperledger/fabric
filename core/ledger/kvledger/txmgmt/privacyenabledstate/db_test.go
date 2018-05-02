@@ -129,8 +129,6 @@ func testDB(t *testing.T, env TestEnv) {
 	assert.Nil(t, vv)
 }
 
-//TODO add tests for functions GetPrivateStateMultipleKeys and GetPrivateStateRangeScanIterator
-
 func TestGetStateMultipleKeys(t *testing.T) {
 	for _, env := range testEnvs {
 		t.Run(env.GetName(), func(t *testing.T) {
@@ -385,6 +383,26 @@ func testQueryItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []stri
 
 func testKey(i int) string {
 	return fmt.Sprintf("key%d", i)
+}
+
+func TestCompositeKeyMap(t *testing.T) {
+	b := NewPvtUpdateBatch()
+	b.Put("ns1", "coll1", "key1", []byte("testVal1"), nil)
+	b.Delete("ns1", "coll2", "key2", nil)
+	b.Put("ns2", "coll1", "key1", []byte("testVal3"), nil)
+	b.Put("ns2", "coll2", "key2", []byte("testVal4"), nil)
+	m := b.ToCompositeKeyMap()
+	testutil.AssertEquals(t, len(m), 4)
+	vv, ok := m[PvtdataCompositeKey{"ns1", "coll1", "key1"}]
+	testutil.AssertEquals(t, ok, true)
+	testutil.AssertEquals(t, vv.Value, []byte("testVal1"))
+	vv, ok = m[PvtdataCompositeKey{"ns1", "coll2", "key2"}]
+	testutil.AssertNil(t, vv.Value)
+	testutil.AssertEquals(t, ok, true)
+	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key1"}]
+	testutil.AssertEquals(t, ok, true)
+	_, ok = m[PvtdataCompositeKey{"ns2", "coll2", "key2"}]
+	testutil.AssertEquals(t, ok, true)
 }
 
 func putPvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
