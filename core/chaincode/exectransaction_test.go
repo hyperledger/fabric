@@ -400,15 +400,16 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, sprop, prop)
 
 	//write to lscc
-	if _, _, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
+	if _, _, err = chaincodeSupport.ExecuteSpec(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
 
-	if b, _, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, cccid, chaincodeDeploymentSpec); err != nil {
+	var resp *pb.Response
+	if resp, _, err = chaincodeSupport.ExecuteSpec(ctx, cccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
 
-	return b, nil
+	return resp.Payload, nil
 }
 
 // Invoke a chaincode.
@@ -445,12 +446,13 @@ func invokeWithVersion(ctx context.Context, chainID string, version string, spec
 	}
 	sprop, prop := putils.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
 	cccid := ccprovider.NewCCContext(chainID, cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name, version, uuid, false, sprop, prop)
-	retval, ccevt, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, cccid, cdInvocationSpec)
+	var resp *pb.Response
+	resp, ccevt, err = chaincodeSupport.ExecuteSpec(ctx, cccid, cdInvocationSpec)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s", err)
 	}
 
-	return ccevt, uuid, retval, err
+	return ccevt, uuid, resp.Payload, err
 }
 
 func closeListenerAndSleep(l net.Listener) {

@@ -150,12 +150,7 @@ func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interf
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
 func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec ccprovider.ChaincodeSpecGetter) (*peer.Response, *peer.ChaincodeEvent, error) {
-	return nil, nil, nil
-}
-
-// ExecuteWithErrorFilter executes the chaincode given context and spec and returns payload
-func (c *MockCcProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec ccprovider.ChaincodeSpecGetter) ([]byte, *peer.ChaincodeEvent, error) {
-	return nil, nil, nil
+	return &peer.Response{}, nil, nil
 }
 
 // Stop stops the chaincode given context and deployment spec

@@ -86,12 +86,13 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 	sprop, prop := putils.MockSignedEndorserProposal2OrPanic(cccid.ChainID, cis.ChaincodeSpec, signer)
 	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, sprop, prop)
 
-	var cdbytes []byte
 	//write to lscc
-	if cdbytes, _, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
+	var resp *pb.Response
+	if resp, _, err = chaincodeSupport.ExecuteSpec(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error executing LSCC for upgrade: %s", err)
 	}
 
+	cdbytes := resp.Payload
 	if cdbytes == nil {
 		return nil, fmt.Errorf("Expected ChaincodeData back from LSCC but got nil")
 	}
@@ -108,7 +109,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 
 	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil, nil)
 
-	if _, _, err = chaincodeSupport.ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
+	if _, _, err = chaincodeSupport.ExecuteSpec(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode for upgrade: %s", err)
 	}
 	return
