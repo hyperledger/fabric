@@ -34,6 +34,6 @@ type StateBasedValidator interface {
 
 	// PostValidate sets the internal data structures of the validator needed after the validation
 	// code was determined for a transaction on the specified channel at the specified height
-	PostValidate(ch, cc string, blockNum, txNum uint64, vc peer.TxValidationCode) error
+	PostValidate(ch, cc string, blockNum, txNum uint64, err error)
 	// TODO: remove the channel argument as part of FAB-9908
 }
