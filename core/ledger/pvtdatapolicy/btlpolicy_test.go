@@ -31,7 +31,7 @@ func TestBTLPolicy(t *testing.T) {
 
 	btl3, err := btlPolicy.GetBTL("ns1", "coll3")
 	assert.NoError(t, err)
-	assert.Equal(t, defaultBLT, btl3)
+	assert.Equal(t, defaultBTL, btl3)
 
 	_, err = btlPolicy.GetBTL("ns1", "coll4")
 	_, ok := err.(privdata.NoSuchCollectionError)

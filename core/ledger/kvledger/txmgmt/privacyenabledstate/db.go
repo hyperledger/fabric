@@ -186,6 +186,7 @@ func (p PvtUpdateBatch) ToCompositeKeyMap() map[PvtdataCompositeKey]*statedb.Ver
 	return m
 }
 
+// String returns a print friendly form of HashedCompositeKey
 func (hck *HashedCompositeKey) String() string {
 	return fmt.Sprintf("ns=%s, collection=%s, keyHash=%x", hck.Namespace, hck.CollectionName, hck.KeyHash)
 }
