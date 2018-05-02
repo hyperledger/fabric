@@ -125,7 +125,6 @@ func (s *lockBasedTxSimulator) ExecuteQueryOnPrivateData(namespace, collection, 
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
 	logger.Debugf("Simulation completed, getting simulation results")
-	s.Done()
 	if s.helper.err != nil {
 		return nil, s.helper.err
 	}
