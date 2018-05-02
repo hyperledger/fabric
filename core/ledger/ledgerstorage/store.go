@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -84,6 +86,11 @@ func (p *Provider) Open(ledgerid string) (*Store, error) {
 func (p *Provider) Close() {
 	p.blkStoreProvider.Close()
 	p.pvtdataStoreProvider.Close()
+}
+
+// Init initializes store with essential configurations
+func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
+	s.pvtdataStore.Init(btlPolicy)
 }
 
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation

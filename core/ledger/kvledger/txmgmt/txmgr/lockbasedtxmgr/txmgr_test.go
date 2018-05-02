@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+
 	"os"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -43,7 +46,7 @@ func TestTxSimulatorWithNoExistingData(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testtxsimulatorwithnoexistingdata"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testTxSimulatorWithNoExistingData(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -73,7 +76,7 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Run(testEnv.getName(), func(t *testing.T) {
 			testLedgerID := "testtxsimulatorwithexistingdata"
-			testEnv.init(t, testLedgerID)
+			testEnv.init(t, testLedgerID, nil)
 			testTxSimulatorWithExistingData(t, testEnv)
 			testEnv.cleanup()
 		})
@@ -126,7 +129,7 @@ func TestTxValidation(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testtxvalidation"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testTxValidation(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -213,7 +216,7 @@ func TestTxPhantomValidation(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testtxphantomvalidation"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testTxPhantomValidation(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -284,27 +287,27 @@ func TestIterator(t *testing.T) {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 
 		testLedgerID := "testiterator.1"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 2, 7)
 		testEnv.cleanup()
 
 		testLedgerID = "testiterator.2"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 1, 11)
 		testEnv.cleanup()
 
 		testLedgerID = "testiterator.3"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 0, 0)
 		testEnv.cleanup()
 
 		testLedgerID = "testiterator.4"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 5, 0)
 		testEnv.cleanup()
 
 		testLedgerID = "testiterator.5"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 0, 5)
 		testEnv.cleanup()
 	}
@@ -372,7 +375,7 @@ func TestIteratorWithDeletes(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testiteratorwithdeletes"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testIteratorWithDeletes(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -414,7 +417,7 @@ func TestTxValidationWithItr(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testtxvalidationwithitr"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testTxValidationWithItr(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -479,7 +482,7 @@ func TestGetSetMultipeKeys(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testgetsetmultipekeys"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		testGetSetMultipeKeys(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -542,7 +545,7 @@ func TestExecuteQuery(t *testing.T) {
 		if testEnv.getName() == couchDBtestEnvName {
 			t.Logf("Running test for TestEnv = %s", testEnv.getName())
 			testLedgerID := "testexecutequery"
-			testEnv.init(t, testLedgerID)
+			testEnv.init(t, testLedgerID, nil)
 			testExecuteQuery(t, testEnv)
 			testEnv.cleanup()
 		}
@@ -614,7 +617,7 @@ func TestValidateKey(t *testing.T) {
 	dummyValue := []byte("dummyValue")
 	for _, testEnv := range testEnvs {
 		testLedgerID := "test.validate.key"
-		testEnv.init(t, testLedgerID)
+		testEnv.init(t, testLedgerID, nil)
 		txSimulator, _ := testEnv.getTxMgr().NewTxSimulator("test_tx1")
 		err := txSimulator.SetState("ns1", nonUTF8Key, dummyValue)
 		if testEnv.getName() == levelDBtestEnvName {
@@ -631,7 +634,7 @@ func TestValidateKey(t *testing.T) {
 // is perfromed - queries on private data are supported in a read-only tran
 func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	testEnv := testEnvs[0]
-	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries")
+	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
 
@@ -652,7 +655,7 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 
 func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	testEnv := testEnvs[0]
-	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries")
+	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
 	defer testEnv.cleanup()
 
 	db := testEnv.getVDB()
@@ -695,7 +698,7 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 func TestDeleteOnCursor(t *testing.T) {
 	cID := "cid"
 	env := testEnvs[0]
-	env.init(t, "TestDeleteOnCursor")
+	env.init(t, "TestDeleteOnCursor", nil)
 	defer env.cleanup()
 
 	txMgr := env.getTxMgr()
@@ -743,7 +746,9 @@ func TestDeleteOnCursor(t *testing.T) {
 func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	ledgerid := "TestTxSimulatorMissingPvtdataExpiry"
 	testEnv := testEnvs[0]
-	testEnv.init(t, ledgerid)
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns", "coll", 1)
+	testEnv.init(t, ledgerid, pvtdatapolicy.ConstructBTLPolicy(cs))
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()

@@ -693,14 +693,14 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		var escc []byte
-		if len(args) > 4 && args[4] != nil {
+		if len(args) > 4 && len(args[4]) > 0 {
 			escc = args[4]
 		} else {
 			escc = []byte("escc")
 		}
 
 		var vscc []byte
-		if len(args) > 5 && args[5] != nil {
+		if len(args) > 5 && len(args[5]) > 0 {
 			vscc = args[5]
 		} else {
 			vscc = []byte("vscc")

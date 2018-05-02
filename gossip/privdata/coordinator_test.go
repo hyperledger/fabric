@@ -347,6 +347,10 @@ func (cs *collectionStore) RetrieveCollectionConfigPackage(cc common.CollectionC
 	}, nil
 }
 
+func (cs *collectionStore) RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+	panic("implement me")
+}
+
 type collectionAccessPolicy struct {
 	cs *collectionStore
 	n  uint64

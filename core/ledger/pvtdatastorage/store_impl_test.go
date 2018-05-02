@@ -13,10 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestEmptyStore(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestEmptyStore")
+	env := NewTestStoreEnv(t, "TestEmptyStore", nil)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -37,7 +40,13 @@ func TestEmptyStore(t *testing.T) {
 }
 
 func TestStoreBasicCommitAndRetrieval(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval")
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns-1", "coll-1", 0)
+	cs.SetBTL("ns-1", "coll-2", 0)
+	cs.SetBTL("ns-2", "coll-1", 0)
+	cs.SetBTL("ns-2", "coll-2", 0)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
+	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -89,10 +98,14 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 
 func TestExpiryDataNotIncluded(t *testing.T) {
 	ledgerid := "TestExpiryDataNotIncluded"
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-1.coll-1", ledgerid), 1)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-2.coll-2", ledgerid), 2)
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns-1", "coll-1", 1)
+	cs.SetBTL("ns-1", "coll-2", 0)
+	cs.SetBTL("ns-2", "coll-1", 0)
+	cs.SetBTL("ns-2", "coll-2", 2)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
 
-	env := NewTestStoreEnv(t, ledgerid)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -157,10 +170,14 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 func TestStorePurge(t *testing.T) {
 	ledgerid := "TestStorePurge"
 	viper.Set("ledger.pvtdataStore.purgeInterval", 2)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-1.coll-1", ledgerid), 1)
-	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns-2.coll-2", ledgerid), 4)
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns-1", "coll-1", 1)
+	cs.SetBTL("ns-1", "coll-2", 0)
+	cs.SetBTL("ns-2", "coll-1", 0)
+	cs.SetBTL("ns-2", "coll-2", 4)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
 
-	env := NewTestStoreEnv(t, "TestStorePurge")
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	s := env.TestStore
@@ -223,7 +240,12 @@ func TestStorePurge(t *testing.T) {
 }
 
 func TestStoreState(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreState")
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns-1", "coll-1", 0)
+	cs.SetBTL("ns-1", "coll-2", 0)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
+
+	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -242,7 +264,7 @@ func TestStoreState(t *testing.T) {
 }
 
 func TestInitLastCommittedBlock(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreState")
+	env := NewTestStoreEnv(t, "TestStoreState", nil)
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore

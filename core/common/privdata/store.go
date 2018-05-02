@@ -72,31 +72,38 @@ func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.Collec
 	return collections, nil
 }
 
-func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria) (*SimpleCollection, error) {
+func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCriteria) (*common.StaticCollectionConfig, error) {
 	collections, err := c.retrieveCollectionConfigPackage(cc)
 	if err != nil {
 		return nil, err
 	}
-
+	if collections == nil {
+		return nil, nil
+	}
 	for _, cconf := range collections.Config {
 		switch cconf := cconf.Payload.(type) {
 		case *common.CollectionConfig_StaticCollectionConfig:
 			if cconf.StaticCollectionConfig.Name == cc.Collection {
-				sc := &SimpleCollection{}
-
-				err = sc.Setup(cconf.StaticCollectionConfig, c.s.GetIdentityDeserializer(cc.Channel))
-				if err != nil {
-					return nil, errors.WithMessage(err, fmt.Sprintf("error setting up collection for collection criteria %#v", cc))
-				}
-
-				return sc, nil
+				return cconf.StaticCollectionConfig, nil
 			}
 		default:
 			return nil, errors.New("unexpected collection type")
 		}
 	}
-
 	return nil, NoSuchCollectionError(cc)
+}
+
+func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria) (*SimpleCollection, error) {
+	staticCollectionConfig, err := c.retrieveCollectionConfig(cc)
+	if err != nil {
+		return nil, err
+	}
+	sc := &SimpleCollection{}
+	err = sc.Setup(staticCollectionConfig, c.s.GetIdentityDeserializer(cc.Channel))
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("error setting up collection for collection criteria %#v", cc))
+	}
+	return sc, nil
 }
 
 func (c *simpleCollectionStore) RetrieveCollection(cc common.CollectionCriteria) (Collection, error) {
@@ -109,4 +116,13 @@ func (c *simpleCollectionStore) RetrieveCollectionAccessPolicy(cc common.Collect
 
 func (c *simpleCollectionStore) RetrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
 	return c.retrieveCollectionConfigPackage(cc)
+}
+
+// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
+func (c *simpleCollectionStore) RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (CollectionPersistenceConfigs, error) {
+	staticCollectionConfig, err := c.retrieveCollectionConfig(cc)
+	if err != nil {
+		return nil, err
+	}
+	return &SimpleCollectionPersistenceConfigs{staticCollectionConfig.BlockToLive}, nil
 }
