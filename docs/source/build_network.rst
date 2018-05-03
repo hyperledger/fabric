@@ -670,7 +670,7 @@ argument. This is our policy where we specify the required level of endorsement
 for a transaction against this chaincode to be validated.
 
 In the command below you’ll notice that we specify our policy as
-``-P "OR ('Org0MSP.peer','Org1MSP.peer')"``. This means that we need
+``-P "OR ('Org1MSP.peer','Org2MSP.peer')"``. This means that we need
 “endorsement” from a peer belonging to Org1 **OR** Org2 (i.e. only one endorsement).
 If we changed the syntax to ``AND`` then we would need two endorsements.
 
