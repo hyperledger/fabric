@@ -227,14 +227,12 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 }
 
 func constructTestPvtKVReadHash(t *testing.T, key string, version *version.Height) *kvrwset.KVReadHash {
-	kvReadHash, err := newPvtKVReadHash(key, version)
-	testutil.AssertNoError(t, err, "")
+	kvReadHash := newPvtKVReadHash(key, version)
 	return kvReadHash
 }
 
 func constructTestPvtKVWriteHash(t *testing.T, key string, value []byte) *kvrwset.KVWriteHash {
-	_, kvWriteHash, err := newPvtKVWriteAndHash(key, value)
-	testutil.AssertNoError(t, err, "")
+	_, kvWriteHash := newPvtKVWriteAndHash(key, value)
 	return kvWriteHash
 }
 

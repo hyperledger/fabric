@@ -88,7 +88,8 @@ func (s *lockBasedTxSimulator) SetPrivateData(ns, coll, key string, value []byte
 		return err
 	}
 	s.writePerformed = true
-	return s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
+	s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
+	return nil
 }
 
 // SetPrivateMetadata implements method in interface `ledger.TxSimulator`

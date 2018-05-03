@@ -303,16 +303,16 @@ func newKVWrite(key string, value []byte) *kvrwset.KVWrite {
 	return &kvrwset.KVWrite{Key: key, IsDelete: value == nil, Value: value}
 }
 
-func newPvtKVReadHash(key string, version *version.Height) (*kvrwset.KVReadHash, error) {
-	return &kvrwset.KVReadHash{KeyHash: util.ComputeStringHash(key), Version: newProtoVersion(version)}, nil
+func newPvtKVReadHash(key string, version *version.Height) *kvrwset.KVReadHash {
+	return &kvrwset.KVReadHash{KeyHash: util.ComputeStringHash(key), Version: newProtoVersion(version)}
 }
 
-func newPvtKVWriteAndHash(key string, value []byte) (*kvrwset.KVWrite, *kvrwset.KVWriteHash, error) {
+func newPvtKVWriteAndHash(key string, value []byte) (*kvrwset.KVWrite, *kvrwset.KVWriteHash) {
 	kvWrite := newKVWrite(key, value)
 	var keyHash, valueHash []byte
 	keyHash = util.ComputeStringHash(key)
 	if !kvWrite.IsDelete {
 		valueHash = util.ComputeHash(value)
 	}
-	return kvWrite, &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: kvWrite.IsDelete, ValueHash: valueHash}, nil
+	return kvWrite, &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: kvWrite.IsDelete, ValueHash: valueHash}
 }
