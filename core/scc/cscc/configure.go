@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/events/producer"
@@ -136,6 +137,15 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed authorization check "+
 				"for channel [%s]: [%s]", cid, err))
+		}
+
+		// Initialize txsFilter if it does not yet exist. We can do this safely since
+		// it's the genesis block anyway
+		txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+		if len(txsFilter) == 0 {
+			// add array of validation code hardcoded to valid
+			txsFilter = util.NewTxValidationFlagsSetValue(len(block.Data.Data), pb.TxValidationCode_VALID)
+			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
 		return joinChain(cid, block, e.sccp)

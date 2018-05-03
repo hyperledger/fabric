@@ -38,6 +38,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	cut "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
@@ -293,6 +294,9 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 			//create the block with 1 transaction
 			block := common.NewBlock(blockNumber, []byte{})
 			block.Data.Data = [][]byte{envBytes}
+			txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), pb.TxValidationCode_VALID)
+			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+
 			//commit the block
 
 			//see comment on _commitLock_

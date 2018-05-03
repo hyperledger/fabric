@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
+	cut "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
@@ -182,6 +183,8 @@ func TestNewLedgerCommitterReactive(t *testing.T) {
 
 	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
 	block := encoder.New(profile).GenesisBlockForChannel(chainID)
+	txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
 		Block: block,

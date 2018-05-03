@@ -92,11 +92,6 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block, doMVCCValidati
 	b := &valinternal.Block{Num: block.Header.Number}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	// Precaution in case committer validator has not added validation flags yet
-	if len(txsFilter) == 0 {
-		txsFilter = util.NewTxValidationFlags(len(block.Data.Data))
-		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
-	}
 	for txIndex, envBytes := range block.Data.Data {
 		var env *common.Envelope
 		var chdr *common.ChannelHeader

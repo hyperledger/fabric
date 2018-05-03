@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package txvalidator
@@ -87,24 +77,24 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 	txids := []string{"", "1", "2", "3", "", "2", ""}
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(txids))
 	markTXIdDuplicates(txids, txsfltr)
-	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(2, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(3, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(4, peer.TxValidationCode_VALID))
+	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(2, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(3, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(4, peer.TxValidationCode_NOT_VALIDATED))
 	assert.True(t, txsfltr.IsSetTo(5, peer.TxValidationCode_DUPLICATE_TXID))
-	assert.True(t, txsfltr.IsSetTo(6, peer.TxValidationCode_VALID))
+	assert.True(t, txsfltr.IsSetTo(6, peer.TxValidationCode_NOT_VALIDATED))
 
 	txids = []string{"", "1", "2", "3", "", "21", ""}
 	txsfltr = ledgerUtil.NewTxValidationFlags(len(txids))
 	markTXIdDuplicates(txids, txsfltr)
-	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(2, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(3, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(4, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(5, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(6, peer.TxValidationCode_VALID))
+	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(2, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(3, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(4, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(5, peer.TxValidationCode_NOT_VALIDATED))
+	assert.True(t, txsfltr.IsSetTo(6, peer.TxValidationCode_NOT_VALIDATED))
 }
 
 func TestBlockValidationDuplicateTXId(t *testing.T) {
@@ -267,6 +257,9 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 
 	// Initialize metadata
 	utils.InitBlockMetadata(block)
+	txsFilter := util.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+
 	// Commit block to the ledger
 	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{
 		Block: block,
