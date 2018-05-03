@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package lockbasedtxmgr
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -70,6 +72,63 @@ func testTxSimulatorWithNoExistingData(t *testing.T, env testEnv) {
 	simulationResults, err := s.GetTxSimulationResults()
 	assert.NoError(t, err)
 	assert.Nil(t, simulationResults.PvtSimulationResults)
+}
+
+func TestTxSimulatorGetResults(t *testing.T) {
+	testEnv := testEnvsMap[levelDBtestEnvName]
+	testEnv.init(t, "testLedger", nil)
+	defer testEnv.cleanup()
+	var err error
+
+	// Create a simulator and get/set keys in one namespace "ns1"
+	simulator, _ := testEnv.getTxMgr().NewTxSimulator("test_txid1")
+	simulator.GetState("ns1", "key1")
+	simulator.GetPrivateData("ns1", "coll1", "key1")
+	simulator.SetState("ns1", "key1", []byte("value1"))
+	// get simulation results and verify that this contains rwset only for one namespace
+	simulationResults1, err := simulator.GetTxSimulationResults()
+	assert.Equal(t, 1, len(simulationResults1.PubSimulationResults.NsRwset))
+	// clone freeze simulationResults1
+	buff1 := new(bytes.Buffer)
+	assert.NoError(t, gob.NewEncoder(buff1).Encode(simulationResults1))
+	frozenSimulationResults1 := &ledger.TxSimulationResults{}
+	assert.NoError(t, gob.NewDecoder(buff1).Decode(&frozenSimulationResults1))
+
+	// use the same simulator after obtaining the simulaiton results by get/set keys in one more namespace "ns2"
+	simulator.GetState("ns2", "key2")
+	simulator.GetPrivateData("ns2", "coll2", "key2")
+	simulator.SetState("ns2", "key2", []byte("value2"))
+	// get simulation results and verify that this contains rwset for both the namespaces "ns1" and "ns2"
+	simulationResults2, err := simulator.GetTxSimulationResults()
+	assert.Equal(t, 2, len(simulationResults2.PubSimulationResults.NsRwset))
+	// clone freeze simulationResults2
+	buff2 := new(bytes.Buffer)
+	assert.NoError(t, gob.NewEncoder(buff2).Encode(simulationResults2))
+	frozenSimulationResults2 := &ledger.TxSimulationResults{}
+	assert.NoError(t, gob.NewDecoder(buff2).Decode(&frozenSimulationResults2))
+
+	// use the same simulator further to operate on different keys in the namespcace "ns1"
+	simulator.GetState("ns1", "key3")
+	simulator.GetPrivateData("ns1", "coll3", "key3")
+	simulator.SetState("ns1", "key3", []byte("value3"))
+	// get simulation results and verify that this contains rwset for both the namespaces "ns1" and "ns2"
+	simulationResults3, err := simulator.GetTxSimulationResults()
+	assert.Equal(t, 2, len(simulationResults3.PubSimulationResults.NsRwset))
+
+	// Now, verify that the simulator operations did not have an effect on privously obtained results
+	assert.Equal(t, frozenSimulationResults1, simulationResults1)
+	assert.Equal(t, frozenSimulationResults2, simulationResults2)
+
+	// Call 'Done' and all the data get/set operations after calling 'Done' should fail.
+	simulator.Done()
+	_, err = simulator.GetState("ns3", "key3")
+	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	err = simulator.SetState("ns3", "key3", []byte("value3"))
+	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	_, err = simulator.GetPrivateData("ns3", "coll3", "key3")
+	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	err = simulator.SetPrivateData("ns3", "coll3", "key3", []byte("value3"))
+	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
 }
 
 func TestTxSimulatorWithExistingData(t *testing.T) {
