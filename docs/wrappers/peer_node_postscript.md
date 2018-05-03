@@ -5,7 +5,7 @@
 The following command:
 
 ```
-peer node start --peer-node-chaincodedev
+peer node start --peer-chaincodedev
 ```
 
 starts a peer node in chaincode development mode. Normally chaincode containers are started
