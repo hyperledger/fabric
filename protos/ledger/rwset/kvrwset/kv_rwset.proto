@@ -43,21 +43,21 @@ message KVRead {
 }
 
 // KVMetadataWrite captures changes to metadata of a KVS key.
-// If KeepExistingMetadata is true, it is implied that metadata of the
-// previous version of this KVS key should be used, otherwise
-// they should be updated to the value specified in Metadata.
+// If MetadataToAdd is an empty map, existing metadata for the KVS
+// key are not modified. Otherwise, all keys in the MetadataToAdd
+// map are inserted/updated to the metadata map that is stored on
+// the ledger for the KVS key.
 message KVMetadataWrite {
-    bytes metadata = 1;
-    bool keep_existing_metadata = 2;
+    map<string, bytes> metadata_to_add = 1;
 }
 
 // KVWrite captures a write (update/delete) operation performed during transaction simulation
 // Four operations are supported:
 // 1) value update: if KeepExistingValue is false, the value is updated to Value.
-// 2) metadata update: if Metadata.KeepExistingMetadata is false, the metadata
-//    is updated to Metadata.Metadata
-// 3) medatadata deletion: if Metadata is nil, metadata is deleted
-// 4) deletion: if IsDelete is set, this key is removed from the ledger
+// 2) metadata update: if Metadata.MetadataToAdd is not empty, all entries in
+//    Metadata.MetadataToAdd are applied.
+// 3) medatadata deletion: if Metadata is nil, all metadata is deleted.
+// 4) deletion: if IsDelete is set, this key is removed from the ledger.
 // Note that 1 and 2 may be combined.
 message KVWrite {
     string key = 1;
