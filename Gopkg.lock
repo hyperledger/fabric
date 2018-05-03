@@ -299,6 +299,7 @@
     ".",
     "format",
     "gbytes",
+    "gexec",
     "ghttp",
     "internal/assertion",
     "internal/asyncassertion",
@@ -483,8 +484,11 @@
 [[projects]]
   branch = "master"
   name = "github.com/tedsuo/ifrit"
-  packages = ["."]
-  revision = "d787ed1df88a79d9e9b1072738a40500b8ec22ee"
+  packages = [
+    ".",
+    "ginkgomon"
+  ]
+  revision = "e89a512c3162f0e5762a0948ace8509995e9820d"
 
 [[projects]]
   name = "github.com/uber-go/tally"
@@ -627,6 +631,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fe522eb452a0bf9ddbfd9cfebc2638cb9313d320f75aeda70a361d27408d0cf1"
+  inputs-digest = "3b1302dd408bc03cbf1d8ea75b1afbd16dd5fce9c0565caa636ce237789c5f95"
   solver-name = "gps-cdcl"
   solver-version = 1
