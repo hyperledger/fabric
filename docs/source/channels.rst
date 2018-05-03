@@ -11,7 +11,7 @@ Each peer that joins a channel, has its own identity given by a membership servi
 which authenticates each peer to its channel peers and services.
 
 To create a new channel, the client SDK calls configuration system chaincode
-and references properties such as **anchor peer**s, and members (organizations).
+and references properties such as **anchor peers**, and members (organizations).
 This request creates a **genesis block** for the channel ledger, which stores configuration
 information about the channel policies, members and anchor peers. When adding a
 new member to an existing channel, either this genesis block, or if applicable,
