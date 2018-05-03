@@ -40,6 +40,7 @@ type MockApplicationCapabilities struct {
 	ForbidDuplicateTXIdInBlockRv bool
 	ResourcesTreeRv              bool
 	PrivateChannelDataRv         bool
+	CollectionUpgradeRv          bool
 	V1_1ValidationRv             bool
 	V1_2ValidationRv             bool
 	MetadataLifecycleRv          bool
@@ -60,6 +61,10 @@ func (mac *MockApplicationCapabilities) ResourcesTree() bool {
 
 func (mac *MockApplicationCapabilities) PrivateChannelData() bool {
 	return mac.PrivateChannelDataRv
+}
+
+func (mac *MockApplicationCapabilities) CollectionUpgrade() bool {
+	return mac.CollectionUpgradeRv
 }
 
 func (mac *MockApplicationCapabilities) V1_1Validation() bool {

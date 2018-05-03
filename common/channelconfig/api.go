@@ -129,6 +129,10 @@ type ApplicationCapabilities interface {
 	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
 	PrivateChannelData() bool
 
+	// CollectionUpgrade returns true if this channel is configured to allow updates to
+	// existing collection or add new collections through chaincode upgrade (as introduced in v1.2)
+	CollectionUpgrade() bool
+
 	// V1_1Validation returns true is this channel is configured to perform stricter validation
 	// of transactions (as introduced in v1.1).
 	V1_1Validation() bool

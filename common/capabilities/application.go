@@ -75,6 +75,12 @@ func (ap *ApplicationProvider) PrivateChannelData() bool {
 	return ap.v11PvtDataExperimental
 }
 
+// CollectionUpgrade returns true if this channel is configured to allow updates to
+// existing collection or add new collections through chaincode upgrade (as introduced in v1.2)
+func (ap ApplicationProvider) CollectionUpgrade() bool {
+	return ap.v12
+}
+
 // V1_1Validation returns true is this channel is configured to perform stricter validation
 // of transactions (as introduced in v1.1).
 func (ap *ApplicationProvider) V1_1Validation() bool {
