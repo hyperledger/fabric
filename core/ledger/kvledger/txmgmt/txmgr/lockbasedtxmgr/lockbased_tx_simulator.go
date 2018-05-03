@@ -41,11 +41,6 @@ func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string) (*lockBasedTxSi
 	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false}, nil
 }
 
-// GetState implements method in interface `ledger.TxSimulator`
-func (s *lockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
-	return s.helper.getState(ns, key)
-}
-
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) error {
 	if err := s.helper.checkDone(); err != nil {
