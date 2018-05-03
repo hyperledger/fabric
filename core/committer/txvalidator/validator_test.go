@@ -665,6 +665,12 @@ func (m *mockLedger) Commit(block *common.Block) error {
 	return nil
 }
 
+// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
+func (m *mockLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
+	args := m.Called()
+	return args.Get(0).(ledger.ConfigHistoryRetriever), nil
+}
+
 // mockQueryExecutor mock of the query executor,
 // needed to simulate inability to access state db, e.g.
 // the case where due to db failure it's not possible to
