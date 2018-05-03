@@ -465,8 +465,19 @@ func CreateDeployProposalFromCDS(
 }
 
 // CreateUpgradeProposalFromCDS returns a upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
-func CreateUpgradeProposalFromCDS(chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte) (*peer.Proposal, string, error) {
-	return createProposalFromCDS(chainID, cds, creator, "upgrade", policy, escc, vscc)
+func CreateUpgradeProposalFromCDS(
+	chainID string,
+	cds *peer.ChaincodeDeploymentSpec,
+	creator []byte,
+	policy []byte,
+	escc []byte,
+	vscc []byte,
+	collectionConfig []byte) (*peer.Proposal, string, error) {
+	if collectionConfig == nil {
+		return createProposalFromCDS(chainID, cds, creator, "upgrade", policy, escc, vscc)
+	} else {
+		return createProposalFromCDS(chainID, cds, creator, "upgrade", policy, escc, vscc, collectionConfig)
+	}
 }
 
 // createProposalFromCDS returns a deploy or upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec

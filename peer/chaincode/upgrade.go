@@ -45,6 +45,7 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"collections-config",
 	}
 	attachFlags(chaincodeUpgradeCmd, flagList)
 
@@ -68,7 +69,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	prop, _, err := utils.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
+	prop, _, err := utils.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc), collectionConfigBytes)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
 	}
