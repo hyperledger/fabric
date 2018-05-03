@@ -18,21 +18,25 @@ type Components struct {
 	Paths map[string]string
 }
 
-func (c *Components) Build() {
+func (c *Components) Build(args ...string) {
 	if c.Paths == nil {
 		c.Paths = map[string]string{}
 	}
-	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/cryptogen")
+	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/cryptogen", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["cryptogen"] = cryptogen
 
-	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/configtxgen")
+	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/configtxgen", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["configtxgen"] = configtxgen
 
-	orderer, err := gexec.Build("github.com/hyperledger/fabric/orderer")
+	orderer, err := gexec.Build("github.com/hyperledger/fabric/orderer", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["orderer"] = orderer
+
+	peer, err := gexec.Build("github.com/hyperledger/fabric/peer", args...)
+	Expect(err).NotTo(HaveOccurred())
+	c.Paths["peer"] = peer
 }
 
 func (c *Components) Cleanup() {
@@ -57,5 +61,11 @@ func (c *Components) Configtxgen() *runner.Configtxgen {
 func (c *Components) Orderer() *runner.Orderer {
 	return &runner.Orderer{
 		Path: c.Paths["orderer"],
+	}
+}
+
+func (c *Components) Peer() *runner.Peer {
+	return &runner.Peer{
+		Path: c.Paths["peer"],
 	}
 }
