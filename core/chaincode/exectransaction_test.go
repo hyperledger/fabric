@@ -784,7 +784,7 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
 
 			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
-				t.Skip("No Java chaincode support yet on non-x86_64.")
+				t.Skip("No Java chaincode support yet on non-amd64.")
 			}
 
 			chainID := util.GetTestChainID()
@@ -914,7 +914,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
 
 			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
-				t.Skip("No Java chaincode support yet on non-x86_64.")
+				t.Skip("No Java chaincode support yet on non-amd64.")
 			}
 
 			expectedA = expectedA - 10
@@ -1398,7 +1398,7 @@ func TestGetEvent(t *testing.T) {
 		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
 
 			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
-				t.Skip("No Java chaincode support yet on non-x86_64.")
+				t.Skip("No Java chaincode support yet on non-amd64.")
 			}
 
 			var ctxt = context.Background()
@@ -1719,7 +1719,7 @@ func TestChaincodeInitializeInitError(t *testing.T) {
 		t.Run(tc.name+"_"+tc.chaincodeType.String(), func(t *testing.T) {
 
 			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
-				t.Skip("No Java chaincode support yet on non-x86_64.")
+				t.Skip("No Java chaincode support yet on non-amd64.")
 			}
 
 			// initialize peer

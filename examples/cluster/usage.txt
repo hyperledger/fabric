@@ -16,10 +16,13 @@ Supported Targets:
 - clean:                  cleans local artifacts
 - help:                   displays this help message
 
-Example:
+Examples:
 
-        make compose TLS=false RELEASE=x86_64-1.0.0
+        make compose TLS=false RELEASE=x86_64-1.1.0
 
+  or, once docker multi-arch support is released
+
+        make compose TLS=false RELEASE=amd64-1.2.0
 Notes:
 
 Default RELEASE=latest requires you to manually ensure that the :latest tagged images are local. A
