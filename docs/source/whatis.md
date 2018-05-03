@@ -1,25 +1,27 @@
 # Introduction
 
-In general terms, blockchain is an immutable transaction ledger, maintained
-within a distributed network of peer nodes. These nodes each maintain a copy of
-the ledger by applying transactions that have been validated by a consensus
-protocol, grouped into blocks that include a hash that bind the block to the
+In general terms, a blockchain is an immutable transaction ledger, maintained
+within a distributed network of _peer nodes_. These nodes each maintain a copy
+of the ledger by applying transactions that have been validated by a _consensus
+protocol_, grouped into blocks that include a hash that bind each block to the
 preceding block.
 
-The first and most widely recognized application of blockchain is [Bitcoin](https://en.wikipedia.org/wiki/Bitcoin), though others have followed in
-its footsteps. Ethereum took a different approach; integrating many of the same characteristics as Bitcoin but adding smart contracts to create a platform for
-distributed applications. Bitcoin and Ethereum fall into a class of blockchain
-that we would classify as _public permissionless_ blockchain technology.
-Basically, these are public networks, open to anyone, where participants
-interact anonymously.
+The first and most widely recognized application of blockchain is the
+[Bitcoin](https://en.wikipedia.org/wiki/Bitcoin) cryptocurrency, though others
+have followed in its footsteps. Ethereum, an alternative cryptocurrency, took a
+different approach, integrating many of the same characteristics as Bitcoin but
+adding _smart contracts_ to create a platform for distributed applications.
+Bitcoin and Ethereum fall into a class of blockchain that we would classify as
+_public permissionless_ blockchain technology.  Basically, these are public
+networks, open to anyone, where participants interact anonymously.
 
 As the popularity of Bitcoin, Ethereum and a few other derivative technologies
 grew, interest in applying the underlying technology of the blockchain,
 distributed ledger and distributed application platform to more innovative
 _enterprise_ use cases also grew. However, many enterprise use cases require
 performance characteristics that the permissionless blockchain technologies are
-unable (presently) to deliver, and in many use cases, the identity of the
-participants is a hard requirement, such as in the case of financial
+unable (presently) to deliver. In addition, in many use cases, the identity of
+the participants is a hard requirement, such as in the case of financial
 transactions where Know-Your-Customer (KYC) and Anti-Money Laundering (AML)
 regulations must be followed.
 
@@ -32,17 +34,17 @@ For enterprise use, we need to consider the following requirements:
 - Privacy and confidentiality of transactions and data pertaining to business
   transactions
 
-Many blockchain platforms are being _adapted_ to enterprise use. Hyperledger
-Fabric, on the other hand, has been _designed for_ enterprise use. The following
-sections describe how Hyperledger Fabric (Fabric) differentiates itself from
-other blockchain platforms and describes some of the motivation for its
-architectural decisions.
+While many early blockchain platforms are currently being _adapted_ for
+enterprise use, Hyperledger Fabric has been _designed_ for enterprise use from
+the outset. The following sections describe how Hyperledger Fabric (Fabric)
+differentiates itself from other blockchain platforms and describes some of the
+motivation for its architectural decisions.
 
 ## Hyperledger Fabric
 
-Hyperledger Fabric (Fabric) is an open source enterprise-grade permissioned
-distributed ledger technology (DLT) platform, designed for use in enterprise
-contexts, that delivers some key differentiating capabilities over other popular
+Hyperledger Fabric is an open source enterprise-grade permissioned distributed
+ledger technology (DLT) platform, designed for use in enterprise contexts,
+that delivers some key differentiating capabilities over other popular
 distributed ledger or blockchain platforms.
 
 One key point of differentiation is that Hyperledger was established under the
@@ -54,21 +56,22 @@ diverse set of maintainers from multiple organizations. It has a development
 community that has grown to over 35 organizations and nearly 200 developers
 since its earliest commits.
 
-Fabric has a highly **modular** and configurable architecture, enabling
+Fabric has a highly **modular** and **configurable** architecture, enabling
 innovation, versatility and optimization for a broad range of industry use cases
-including banking, finance, insurance, healthcare, industry and supply-chain.
+including banking, finance, insurance, healthcare, human resources, supply
+chain and even digital music delivery.
 
 Fabric is the first distributed ledger platform to support **smart contracts
 authored in general-purpose programming languages** such as Java, Go and
 Node.js, rather than constrained domain-specific languages (DSL). This means
-that most enterprises already have the skill-set needed to develop smart
-contracts. No additional training to learn a new language or DSL is needed.
+that most enterprises already have the skill set needed to develop smart
+contracts, and no additional training to learn a new language or DSL is needed.
 
-The platform is also **permissioned** , meaning that unlike a public
+The Fabric platform is also **permissioned**, meaning that, unlike with a public
 permissionless network, the participants are known to each other, rather than
 anonymous and therefore fully untrusted. This means that while the participants
-may not _fully_ trust one another (they may be competitors in the same
-industry), a network can be operated under a governance model that is built
+may not _fully_ trust one another (they may, for example, be competitors in the
+same industry), a network can be operated under a governance model that is built
 off of what trust _does_ exist between participants, such as a legal agreement
 or framework for handling disputes.
 
@@ -77,10 +80,13 @@ One of the most important of the platform's differentiators is its support for
 effectively customized to fit particular use cases and trust models. For
 instance, when deployed within a single enterprise, or operated by a trusted
 authority, fully byzantine fault tolerant consensus might be considered
-unnecessary and an excessive drag on performance and throughput. A crash [fault-tolerant](https://en.wikipedia.org/wiki/Fault_tolerance) (CFT) consensus
-protocol might be more than adequate. Whereas, in a multi-party, decentralized
-use case, a more traditional [byzantine fault tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance) (BFT)
-consensus protocol might be required.
+unnecessary and an excessive drag on performance and throughput. In situations
+such as that, a
+[crash fault-tolerant](https://en.wikipedia.org/wiki/Fault_tolerance) (CFT)
+consensus protocol might be more than adequate whereas, in a multi-party,
+decentralized use case, a more traditional
+[byzantine fault tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
+(BFT) consensus protocol might be required.
 
 Fabric can leverage consensus protocols that **do not require a native
 cryptocurrency** to incent costly mining or to fuel smart contract execution.
@@ -124,7 +130,7 @@ satisfy the diverse solution requirements for multiple industry use cases.
 
 ## Permissioned vs Permissionless Blockchains
 
-In a permissionless blockchain virtually anyone can participate, and every
+In a permissionless blockchain, virtually anyone can participate, and every
 participant is anonymous. In such a context, there can be no trust other than
 that the state of the blockchain, prior to a certain depth, is immutable. In
 order to mitigate this absence of trust, permissonless blockchains typically
@@ -147,7 +153,7 @@ First, the participants are known to one another and all actions, whether
 submitting application transactions, modifying the configuration of the network
 or deploying a smart contract are recorded on the blockchain following an
 endorsement policy that was established for the network and relevant transaction
-type. Rather than being completely anonymous the guilty party can be easily
+type. Rather than being completely anonymous, the guilty party can be easily
 identified and the incident handled in accordance with the terms of the
 governance model.
 
@@ -162,25 +168,27 @@ There are three key points that apply to smart contracts, especially when
 applied to a platform:
 
 - many smart contracts run concurrently in the network,
-- they may be deployed dynamically and (in many cases by anyone),
-- hence, the application code should be treated as untrusted, potentially even
+- they may be deployed dynamically (in many cases by anyone), and
+- application code should be treated as untrusted, potentially even
 malicious.
 
 Most existing smart-contract capable blockchain platforms follow an
-**order-execute**; architecture in which the consensus protocol:
+**order-execute** architecture in which the consensus protocol:
 
 - validates and orders transactions then propagates them to all peer nodes,
 - each peer then executes the transactions sequentially.
 
 The order-execute architecture can be found in virtually all existing blockchain
-systems, ranging from public/permissionless platforms such as [Ethereum](https://ethereum.org/) (with PoW-based consensus) to permissioned
+systems, ranging from public/permissionless platforms such as
+[Ethereum](https://ethereum.org/) (with PoW-based consensus) to permissioned
 platforms such as [Tendermint](http://tendermint.com/),
 [Chain](http://chain.com/), and [Quorum](http://www.jpmorgan.com/global/Quorum).
 
 Smart contracts executing in a blockchain that operates with the order-execute
-architecture must be deterministic, otherwise, consensus might never be reached.
+architecture must be deterministic; otherwise, consensus might never be reached.
 To address the non-determinism issue, many platforms require that the smart
-contracts be written in a non-standard, or domain-specific language so that non-deterministic operations can be eliminated. This hinders wide-spread
+contracts be written in a non-standard, or domain-specific language so that
+non-deterministic operations can be eliminated. This hinders wide-spread
 adoption because it requires developers writing smart contracts to learn a new
 language and may lead to programming errors.
 
@@ -192,14 +200,15 @@ resiliency of the overall system.
 
 ## A New Approach
 
-Fabric introduces a new architecture for transactions that we call **execute-order-validate**. It addresses the resiliency, flexibility,
+Fabric introduces a new architecture for transactions that we call
+**execute-order-validate**. It addresses the resiliency, flexibility,
 scalability, performance and confidentiality challenges faced by the
-order-execute model. It separates the transaction flow into three steps:
+order-execute model by separating the transaction flow into three steps:
 
-- executing a transaction and checking its correctness, thereby endorsing it;
-- rdering transactions through a consensus protocol; and
-- transactions validated against an application-specific endorsement policy and
-committed to the ledger
+- _execute_ a transaction and check its correctness, thereby endorsing it,
+- _order_ transactions via a (pluggable) consensus protocol, and
+- _validate_ transactions against an application-specific endorsement policy
+before committing them to the ledger
 
 This design departs radically from the order-execute paradigm in that Fabric
 executes transactions before reaching final agreement on their order.
@@ -209,13 +218,13 @@ nodes, or how many of them, need to vouch for the correct execution of a given
 smart contract. Thus, each transaction need only be executed (endorsed) by the
 subset of the peer nodes necessary to satisfy the transaction's endorsement
 policy. This allows for parallel execution increasing overall performance and
-scale of the system. This first phase also **eliminates any non-determinism**;
+scale of the system. This first phase also **eliminates any non-determinism**,
 as inconsistent results can be filtered out before ordering.
 
 Because we have eliminated non-determinism, Fabric is the first blockchain
 technology that **enables use of standard programming languages**. In the 1.1.0
-release, smart contracts in Go and Node.js can be used; and there are plans to
-support other popular languages including Java in subsequent releases.
+release, smart contracts can be written in either Go or Node.js, while there are
+plans to support other popular languages including Java in subsequent releases.
 
 ## Privacy and Confidentiality
 
@@ -228,32 +237,32 @@ this case, we have traded confidentiality of contract and data for byzantine
 fault tolerant consensus delivered by PoW.
 
 This lack of confidentiality can be problematic for many business/enterprise use
-cases. For example, in a network of supply-chain partners, often or consumers
-are given preferred rates as a means of either solidifying a relationship, or
+cases. For example, in a network of supply-chain partners, some consumers might
+be given preferred rates as a means of either solidifying a relationship, or
 promoting additional sales. If every participant can see every contract and
 transaction, it becomes impossible to maintain such business relationships in a
 completely transparent network -- everyone will want the preferred rates!
 
-Or, consider the securities industry, a trader building a position (or disposing
-  of one) would not want her competitors to know of this, or else they will seek
-  to get in on the game, weakening the trader's gambit.
+As a second example, consider the securities industry, where a trader building
+a position (or disposing of one) would not want her competitors to know of this,
+or else they will seek to get in on the game, weakening the trader's gambit.
 
 In order to address the lack of privacy and confidentiality for purposes of
 delivering on enterprise use case requirements, blockchain platforms have
 adopted a variety of approaches. All have their trade-offs.
 
-Encrypting data is one approach to providing confidentiality, however, in a
+Encrypting data is one approach to providing confidentiality; however, in a
 permissionless network leveraging PoW for its consensus, the encrypted data is
 sitting on every node. Given enough time and computational resource, the
 encryption could be broken. For many enterprise use cases, the risk that their
 information could become compromised is unacceptable.
 
 Zero knowledge proofs (ZKP) are another area of research being explored to
-address this problem. The trade-off here being that presently, computing a ZKP
+address this problem, the trade-off here being that, presently, computing a ZKP
 requires considerable time and computational resources. Hence, the trade-off in
 this case is performance for confidentiality.
 
-In a permissioned context, that can leverage alternate forms of consensus, one
+In a permissioned context that can leverage alternate forms of consensus, one
 might explore approaches that restrict the distribution of confidential
 information exclusively to authorized nodes.
 
