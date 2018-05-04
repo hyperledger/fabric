@@ -127,6 +127,8 @@ func TestInstall(t *testing.T) {
 	scc.support.(*lscc.MockSupport).PutChaincodeToLocalStorageErr = errors.New("barf")
 
 	testInstall(t, "example02", "0", path, false, "barf", "Alice", scc, stub)
+
+	testInstall(t, "lscc", "0", path, false, "cannot install: lscc is the name of a system chaincode", "Alice", scc, stub)
 }
 
 func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *lifeCycleSysCC, stub *shim.MockStub) {
