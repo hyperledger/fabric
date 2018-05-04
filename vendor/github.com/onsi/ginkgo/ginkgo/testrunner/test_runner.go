@@ -32,6 +32,8 @@ type TestRunner struct {
 	goOpts         map[string]interface{}
 	additionalArgs []string
 	stderr         *bytes.Buffer
+
+	CoverageFile string
 }
 
 func New(suite testsuite.TestSuite, numCPU int, parallelStream bool, timeout time.Duration, goOpts map[string]interface{}, additionalArgs []string) *TestRunner {
@@ -63,10 +65,10 @@ func (t *TestRunner) Compile() error {
 func (t *TestRunner) BuildArgs(path string) []string {
 	args := []string{"test", "-c", "-i", "-o", path, t.Suite.Path}
 
-	if *t.goOpts["covermode"].(*string) != "" {
-		args = append(args, "-cover", fmt.Sprintf("-covermode=%s", *t.goOpts["covermode"].(*string)))
+	if t.getCoverMode() != "" {
+		args = append(args, "-cover", fmt.Sprintf("-covermode=%s", t.getCoverMode()))
 	} else {
-		if *t.goOpts["cover"].(*bool) || *t.goOpts["coverpkg"].(*string) != "" {
+		if t.shouldCover() || t.getCoverPackage() != "" {
 			args = append(args, "-cover", "-covermode=atomic")
 		}
 	}
@@ -298,7 +300,7 @@ func (t *TestRunner) runAndStreamParallelGinkgoSuite() RunResult {
 
 	os.Stdout.Sync()
 
-	if *t.goOpts["cover"].(*bool) || *t.goOpts["coverpkg"].(*string) != "" || *t.goOpts["covermode"].(*string) != "" {
+	if t.shouldCombineCoverprofiles() {
 		t.combineCoverprofiles()
 	}
 
@@ -380,21 +382,40 @@ func (t *TestRunner) runParallelGinkgoSuite() RunResult {
 		os.Stdout.Sync()
 	}
 
-	if *t.goOpts["cover"].(*bool) || *t.goOpts["coverpkg"].(*string) != "" || *t.goOpts["covermode"].(*string) != "" {
+	if t.shouldCombineCoverprofiles() {
 		t.combineCoverprofiles()
 	}
 
 	return res
 }
 
+const CoverProfileSuffix = ".coverprofile"
+
 func (t *TestRunner) cmd(ginkgoArgs []string, stream io.Writer, node int) *exec.Cmd {
 	args := []string{"--test.timeout=" + t.timeout.String()}
-	if *t.goOpts["cover"].(*bool) || *t.goOpts["coverpkg"].(*string) != "" || *t.goOpts["covermode"].(*string) != "" {
-		coverprofile := "--test.coverprofile=" + t.Suite.PackageName + ".coverprofile"
-		if t.numCPU > 1 {
-			coverprofile = fmt.Sprintf("%s.%d", coverprofile, node)
+
+	coverProfile := t.getCoverProfile()
+
+	if t.shouldCombineCoverprofiles() {
+
+		testCoverProfile := "--test.coverprofile="
+
+		coverageFile := ""
+		// Set default name for coverage results
+		if coverProfile == "" {
+			coverageFile = t.Suite.PackageName + CoverProfileSuffix
+		} else {
+			coverageFile = coverProfile
 		}
-		args = append(args, coverprofile)
+
+		testCoverProfile += coverageFile
+
+		t.CoverageFile = filepath.Join(t.Suite.Path, coverageFile)
+
+		if t.numCPU > 1 {
+			testCoverProfile = fmt.Sprintf("%s.%d", testCoverProfile, node)
+		}
+		args = append(args, testCoverProfile)
 	}
 
 	args = append(args, ginkgoArgs...)
@@ -412,6 +433,30 @@ func (t *TestRunner) cmd(ginkgoArgs []string, stream io.Writer, node int) *exec.
 	cmd.Stdout = stream
 
 	return cmd
+}
+
+func (t *TestRunner) shouldCover() bool {
+	return *t.goOpts["cover"].(*bool)
+}
+
+func (t *TestRunner) shouldRequireSuite() bool {
+	return *t.goOpts["requireSuite"].(*bool)
+}
+
+func (t *TestRunner) getCoverProfile() string {
+	return *t.goOpts["coverprofile"].(*string)
+}
+
+func (t *TestRunner) getCoverPackage() string {
+	return *t.goOpts["coverpkg"].(*string)
+}
+
+func (t *TestRunner) getCoverMode() string {
+	return *t.goOpts["covermode"].(*string)
+}
+
+func (t *TestRunner) shouldCombineCoverprofiles() bool {
+	return t.shouldCover() || t.getCoverPackage() != "" || t.getCoverMode() != ""
 }
 
 func (t *TestRunner) run(cmd *exec.Cmd, completions chan RunResult) RunResult {
@@ -436,7 +481,7 @@ func (t *TestRunner) run(cmd *exec.Cmd, completions chan RunResult) RunResult {
 	res.HasProgrammaticFocus = (exitStatus == types.GINKGO_FOCUS_EXIT_CODE)
 
 	if strings.Contains(t.stderr.String(), "warning: no tests to run") {
-		if *t.goOpts["requireSuite"].(*bool) {
+		if t.shouldRequireSuite() {
 			res.Passed = false
 		}
 		fmt.Fprintf(os.Stderr, `Found no test suites, did you forget to run "ginkgo bootstrap"?`)
@@ -447,8 +492,17 @@ func (t *TestRunner) run(cmd *exec.Cmd, completions chan RunResult) RunResult {
 
 func (t *TestRunner) combineCoverprofiles() {
 	profiles := []string{}
+
+	coverProfile := t.getCoverProfile()
+
 	for cpu := 1; cpu <= t.numCPU; cpu++ {
-		coverFile := fmt.Sprintf("%s.coverprofile.%d", t.Suite.PackageName, cpu)
+		var coverFile string
+		if coverProfile == "" {
+			coverFile = fmt.Sprintf("%s%s.%d", t.Suite.PackageName, CoverProfileSuffix, cpu)
+		} else {
+			coverFile = fmt.Sprintf("%s.%d", coverProfile, cpu)
+		}
+
 		coverFile = filepath.Join(t.Suite.Path, coverFile)
 		coverProfile, err := ioutil.ReadFile(coverFile)
 		os.Remove(coverFile)
@@ -484,5 +538,17 @@ func (t *TestRunner) combineCoverprofiles() {
 		output = append(output, fmt.Sprintf("%s %d", line, lines[line]))
 	}
 	finalOutput := strings.Join(output, "\n")
-	ioutil.WriteFile(filepath.Join(t.Suite.Path, fmt.Sprintf("%s.coverprofile", t.Suite.PackageName)), []byte(finalOutput), 0666)
+
+	finalFilename := ""
+
+	if coverProfile != "" {
+		finalFilename = coverProfile
+	} else {
+		finalFilename = fmt.Sprintf("%s%s", t.Suite.PackageName, CoverProfileSuffix)
+	}
+
+	coverageFilepath := filepath.Join(t.Suite.Path, finalFilename)
+	ioutil.WriteFile(coverageFilepath, []byte(finalOutput), 0666)
+
+	t.CoverageFile = coverageFilepath
 }
