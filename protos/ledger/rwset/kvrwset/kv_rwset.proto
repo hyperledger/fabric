@@ -42,32 +42,21 @@ message KVRead {
     Version version = 2;
 }
 
-// KVMetadataWrite captures changes to metadata of a KVS key.
-// If MetadataToAdd is an empty map, existing metadata for the KVS
-// key are not modified. Otherwise, all keys in the MetadataToAdd
-// map are inserted/updated to the metadata map that is stored on
-// the ledger for the KVS key.
-message KVMetadataWrite {
-    map<string, bytes> metadata_to_add = 1;
-}
-
 // KVWrite captures a write (update/delete) operation performed during transaction simulation
 // Four operations are supported:
-// 1) value update: if KeepExistingValue is false, the value is updated to Value.
-// 2) metadata update: if Metadata.MetadataToAdd is not empty, all entries in
-//    Metadata.MetadataToAdd are applied.
-// 3) medatadata deletion: if Metadata is nil, all metadata is deleted.
+// 1) value update: if KeepExistingValue is false, the value is updated to Value
+// 2) metadata update: if Metadata is not nil, all entries in Metadata.Upserts are applied
+// 3) medatadata deletion: if Metadata is nil, all metadata is deleted
 // 4) deletion: if IsDelete is set, this key is removed from the ledger.
-// Note that 1 and 2 may be combined.
+// Note that 1 and 2 (or 3) may be combined.
 message KVWrite {
     string key = 1;
     bool is_delete = 2;
     bytes value = 3;
-	// The two values below have been added in v1.2. Note that their zero value
-	// describes a behaviour which is consistent with that of of pre-1.2 code:
-	// - if KeepExistingValue is false, the value is updated to Value (unless
-	//   IsDelete is true).
-	// - if Metadata is nil, metadata is deleted for this KVS key.
+	// The two values below have been added in v1.2. Note that their default values
+	// describe a behaviour which is consistent with that of of pre-1.2 code:
+	// - if KeepExistingValue is false, the value is updated to value (unless IsDelete is true).
+	// - if Metadata is nil, metadata is deleted for this key.
     bool keep_existing_value = 4;
     KVMetadataWrite metadata = 5;
 }
@@ -89,6 +78,18 @@ message KVWriteHash {
     bytes value_hash = 3;
     bool keep_existing_value = 4;
     KVMetadataWrite metadata = 5;
+}
+
+// KVMetadata captures all the upserts to the metadata associated with a key
+message KVMetadataWrite {
+    repeated KVMetadataEntry upserts = 1;
+    repeated string deletes = 2;
+}
+
+// KVMetadataEntry captures a 'name'ed entry in the metadata of a key.
+message KVMetadataEntry {
+    string name = 1;
+    bytes value = 2;
 }
 
 // Version encapsulates the version of a Key
