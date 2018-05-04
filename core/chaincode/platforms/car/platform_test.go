@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -33,7 +32,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCar_BuildImage(t *testing.T) {
-	vm, err := container.NewVM()
+	vm, err := NewVM()
 	if err != nil {
 		t.Errorf("Error getting VM: %s", err)
 		return

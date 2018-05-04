@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package container
@@ -23,13 +13,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
+	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -164,26 +157,13 @@ func createImage() {
 	}
 }
 
-//set to true by providing "-run-controller-tests" command line option... Tests will create a docker image called "simple"
-var runTests bool
-
-// tests will fail if we don't build an image to start and stop, so check to see if this has been done
-var imageCreated bool
-
-func testForSkip(t *testing.T) {
-	if !imageCreated {
-		createImage()
-	}
-
-	//run tests
-	if !runTests {
-		t.SkipNow()
-	}
+func TestMain(m *testing.M) {
+	testutil.SetupTestConfig()
+	createImage()
+	os.Exit(m.Run())
 }
 
 func TestVMCStartContainer(t *testing.T) {
-	testForSkip(t)
-
 	var ctxt = context.Background()
 
 	c := make(chan struct{})
@@ -208,8 +188,6 @@ func TestVMCStartContainer(t *testing.T) {
 }
 
 func TestVMCCreateAndStartContainer(t *testing.T) {
-	testForSkip(t)
-
 	var ctxt = context.Background()
 
 	c := make(chan struct{})
@@ -244,8 +222,6 @@ func TestVMCCreateAndStartContainer(t *testing.T) {
 }
 
 func TestVMCSyncStartContainer(t *testing.T) {
-	testForSkip(t)
-
 	var ctxt = context.Background()
 
 	//creat a StartImageReq obj and send it to VMCProcess
@@ -261,8 +237,6 @@ func TestVMCSyncStartContainer(t *testing.T) {
 }
 
 func TestVMCStopContainer(t *testing.T) {
-	testForSkip(t)
-
 	var ctxt = context.Background()
 
 	c := make(chan struct{})
@@ -294,4 +268,20 @@ func TestNewVM(t *testing.T) {
 	assert.NotNil(t, ivm, "Requested System VM but newVM did not return inproccontroller.InprocVM")
 
 	assert.Panics(t, func() { vmcontroller.newVM("") }, "Requested unknown VM but did not panic")
+}
+
+func TestVM_GetChaincodePackageBytes(t *testing.T) {
+	_, err := GetChaincodePackageBytes(nil)
+	assert.Error(t, err,
+		"GetChaincodePackageBytes did not return error when chaincode spec is nil")
+	spec := &pb.ChaincodeSpec{ChaincodeId: nil}
+	_, err = GetChaincodePackageBytes(spec)
+	assert.Error(t, err, "Error expected when GetChaincodePackageBytes is called with nil chaincode ID")
+	assert.Contains(t, err.Error(), "invalid chaincode spec")
+	spec = &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
+		ChaincodeId: nil,
+		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	_, err = GetChaincodePackageBytes(spec)
+	assert.Error(t, err,
+		"GetChaincodePackageBytes did not return error when chaincode ID is nil")
 }
