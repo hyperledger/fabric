@@ -56,11 +56,6 @@ func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) err
 	return nil
 }
 
-// SetStateMetadata implements method in interface `ledger.TxSimulator`
-func (s *lockBasedTxSimulator) SetStateMetadata(namespace, key, metakey string, metadata []byte) error {
-	return errors.New("not implemented")
-}
-
 // DeleteState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) DeleteState(ns string, key string) error {
 	return s.SetState(ns, key, nil)
@@ -74,6 +69,21 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 		}
 	}
 	return nil
+}
+
+// SetStateMetadataEntry implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) SetStateMetadataEntry(namespace, key, metakey string, metadata []byte) error {
+	return errors.New("not implemented")
+}
+
+// DeleteStateMetadataEntry implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) DeleteStateMetadataEntry(namespace, key, metakey string) error {
+	return errors.New("not implemented")
+}
+
+// DeleteStateMetadata implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) DeleteStateMetadata(namespace, key string) error {
+	return errors.New("not implemented")
 }
 
 // SetPrivateData implements method in interface `ledger.TxSimulator`
@@ -90,11 +100,6 @@ func (s *lockBasedTxSimulator) SetPrivateData(ns, coll, key string, value []byte
 	s.writePerformed = true
 	s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
 	return nil
-}
-
-// SetPrivateMetadata implements method in interface `ledger.TxSimulator`
-func (s *lockBasedTxSimulator) SetPrivateMetadata(namespace, collection, key, metakey string, metadata []byte) error {
-	return errors.New("not implemented")
 }
 
 // DeletePrivateData implements method in interface `ledger.TxSimulator`
@@ -118,6 +123,21 @@ func (s *lockBasedTxSimulator) GetPrivateDataRangeScanIterator(namespace, collec
 		return nil, err
 	}
 	return s.lockBasedQueryExecutor.GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey)
+}
+
+// SetPrivateMetadataEntry implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) SetPrivateMetadataEntry(namespace, collection, key, metakey string, metadata []byte) error {
+	return errors.New("not implemented")
+}
+
+// DeletePrivateMetadataEntry implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) DeletePrivateMetadataEntry(namespace, collection, key, metakey string) error {
+	return errors.New("not implemented")
+}
+
+// DeletePrivateMetadata implements method in interface `ledger.TxSimulator`
+func (s *lockBasedTxSimulator) DeletePrivateMetadata(namespace, collection, key string) error {
+	return errors.New("not implemented")
 }
 
 // ExecuteQueryOnPrivateData implements method in interface `ledger.TxSimulator`
