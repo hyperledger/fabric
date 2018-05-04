@@ -275,6 +275,48 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 	return nil
 }
 
+func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.CollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+) error {
+	// All old collections must exist in the new collection config package
+	if len(newCollectionConfigs) < len(oldCollectionConfigs) {
+		return fmt.Errorf("Some existing collection configurations are missing in the new collection configuration package")
+	}
+	newCollectionsMap := make(map[string]*common.StaticCollectionConfig, len(newCollectionConfigs))
+
+	for _, newCollectionConfig := range newCollectionConfigs {
+		newCollection := newCollectionConfig.GetStaticCollectionConfig()
+		// Collection object itself is stored as value so that we can
+		// check whether the block to live is changed -- FAB-7810
+		newCollectionsMap[newCollection.GetName()] = newCollection
+	}
+
+	// In the new collection config package, ensure that there is one entry per old collection. Any
+	// number of new collections are allowed.
+	for _, oldCollectionConfig := range oldCollectionConfigs {
+
+		oldCollection := oldCollectionConfig.GetStaticCollectionConfig()
+		// It cannot be nil
+		if oldCollection == nil {
+			return fmt.Errorf("unknown collection configuration type")
+		}
+
+		// All old collection must exist in the new collection config package
+		oldCollectionName := oldCollection.GetName()
+		newCollection, ok := newCollectionsMap[oldCollectionName]
+		if !ok {
+			return fmt.Errorf("existing collection named %s is missing in the new collection configuration package",
+				oldCollectionName)
+		}
+		// BlockToLive cannot be changed
+		if newCollection.GetBlockToLive() != oldCollection.GetBlockToLive() {
+			return fmt.Errorf("BlockToLive in the existing collection named %s cannot be changed",
+				oldCollectionName)
+		}
+	}
+
+	return nil
+}
+
 // validateRWSetAndCollection performs validation of the rwset
 // of an LSCC deploy operation and then it validates any collection
 // configuration
@@ -354,6 +396,31 @@ func (vscc *ValidatorOneValidSignature) validateRWSetAndCollection(
 		newCollectionConfigs := newCollectionConfigPackage.GetConfig()
 		if err := validateNewCollectionConfigs(newCollectionConfigs); err != nil {
 			return err
+		}
+
+		if lsccFunc == lscc.UPGRADE {
+
+			collectionCriteria := common.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
+			oldCollectionConfigPackage, err := vscc.collectionStore.RetrieveCollectionConfigPackage(collectionCriteria)
+			if err != nil {
+				// fail if we get any error other than NoSuchCollectionError
+				// because it means something went wrong while looking up the
+				// older collection
+				if _, ok := err.(privdata.NoSuchCollectionError); !ok {
+					return errors.WithMessage(err, fmt.Sprintf("unable to check whether collection existed earlier for chaincode %s:%s",
+						cdRWSet.Name, cdRWSet.Version))
+				}
+			}
+
+			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
+			if oldCollectionConfigPackage != nil {
+				oldCollectionConfigs := oldCollectionConfigPackage.GetConfig()
+				if err := validateNewCollectionConfigsAgainstOld(newCollectionConfigs, oldCollectionConfigs); err != nil {
+					return err
+				}
+
+			}
 		}
 	}
 
@@ -533,14 +600,6 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			}
 
 		case lscc.UPGRADE:
-			/********************************************/
-			/* security check 0.a - validation of rwset */
-			/********************************************/
-			// there can only be a single ledger write
-			if len(lsccrwset.Writes) != 1 {
-				return errors.New("LSCC can only issue one putState upon upgrade")
-			}
-
 			/**************************************************************/
 			/* security check 1 - cc in the LCCC table of instantiated cc */
 			/**************************************************************/
@@ -555,8 +614,25 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 				return fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.ChaincodeSpec.ChaincodeId.Version)
 			}
 
+			/****************************************************************************/
+			/* security check 3 validation of rwset (and of collections if enabled) */
+			/****************************************************************************/
+			// Only in v1.2, a collection can be updated during a chaincode upgrade
+			if ac.V1_2Validation() {
+				// do extra validation for collections
+				err = vscc.validateRWSetAndCollection(lsccrwset, cdRWSet, lsccArgs, lsccFunc, ac, chid)
+				if err != nil {
+					return err
+				}
+			} else {
+				// there can only be a single ledger write
+				if len(lsccrwset.Writes) != 1 {
+					return errors.New("LSCC can only issue a single putState upon deploy/upgrade")
+				}
+			}
+
 			/*****************************************************/
-			/* security check 3 - check the instantiation policy */
+			/* security check 4 - check the instantiation policy */
 			/*****************************************************/
 			pol := cdLedger.InstantiationPolicy
 			if pol == nil {
@@ -573,7 +649,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			}
 
 			/******************************************************************/
-			/* security check 4 - check the instantiation policy in the rwset */
+			/* security check 5 - check the instantiation policy in the rwset */
 			/******************************************************************/
 			if ac.V1_1Validation() {
 				polNew := cdRWSet.InstantiationPolicy
