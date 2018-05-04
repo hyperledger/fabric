@@ -574,7 +574,7 @@ we don't have to explicitly pass this argument:
 
         peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-.. note:: Notice the ``-- cafile`` that we pass as part of this command.  It is
+.. note:: Notice the ``--cafile`` that we pass as part of this command.  It is
           the local path to the orderer's root cert, allowing us to verify the
           TLS handshake.
 
