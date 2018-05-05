@@ -140,22 +140,30 @@ type TxSimulator interface {
 	QueryExecutor
 	// SetState sets the given value for the given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	SetState(namespace string, key string, value []byte) error
-	// SetStateMetadata sets the metadata for the given namespace and key.
-	SetStateMetadata(namespace, key, metakey string, metadata []byte) error
 	// DeleteState deletes the given namespace and key
 	DeleteState(namespace string, key string) error
 	// SetMultipleKeys sets the values for multiple keys in a single call
 	SetStateMultipleKeys(namespace string, kvs map[string][]byte) error
+	// SetStateMetadataEntry upserts an entry in the metadata for the given namespace and key
+	SetStateMetadataEntry(namespace, key, metakey string, metadata []byte) error
+	// DeleteStateMetadataEntry deletes the given entry from the metadata for the given namespace and key
+	DeleteStateMetadataEntry(namespace, key, metakey string) error
+	// DeleteStateMetadata deletes entire metadata for a given key
+	DeleteStateMetadata(namespace, key string) error
 	// ExecuteUpdate for supporting rich data model (see comments on QueryExecutor above)
 	ExecuteUpdate(query string) error
 	// SetPrivateData sets the given value to a key in the private data state represented by the tuple <namespace, collection, key>
 	SetPrivateData(namespace, collection, key string, value []byte) error
-	// SetPrivateMetadata sets the given metadata to a key in the private data state represented by the tuple <namespace, collection, key>
-	SetPrivateMetadata(namespace, collection, key, metakey string, metadata []byte) error
 	// SetPrivateDataMultipleKeys sets the values for multiple keys in the private data space in a single call
 	SetPrivateDataMultipleKeys(namespace, collection string, kvs map[string][]byte) error
 	// DeletePrivateData deletes the given tuple <namespace, collection, key> from private data
 	DeletePrivateData(namespace, collection, key string) error
+	// SetPrivateMetadataEntry upserts an entry in the metadata for a key in the private data state represented by the tuple <namespace, collection, key>
+	SetPrivateMetadataEntry(namespace, collection, key, metakey string, metadata []byte) error
+	// DeletePrivateMetadataEntry deletes the given entry from the metadata for a key in the private data state represented by the tuple <namespace, collection, key>
+	DeletePrivateMetadataEntry(namespace, collection, key, metakey string) error
+	// DeletePrivateMetadata deletes entire metadata for a given key in the private data state represented by the tuple <namespace, collection, key>
+	DeletePrivateMetadata(namespace, collection, key string) error
 	// GetTxSimulationResults encapsulates the results of the transaction simulation.
 	// This should contain enough detail for
 	// - The update in the state that would be caused if the transaction is to be committed
