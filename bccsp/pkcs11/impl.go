@@ -37,7 +37,7 @@ var (
 	sessionCacheSize = 10
 )
 
-// New returns a new instance of the software-based BCCSP
+// NewWithParams returns a new instance of the software-based BCCSP
 // set at the passed security level, hash family and KeyStore.
 func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	// Init config
@@ -47,7 +47,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 		return nil, errors.Wrapf(err, "Failed initializing configuration")
 	}
 
-	swCSP, err := sw.New(opts.SecLevel, opts.HashFamily, keyStore)
+	swCSP, err := sw.NewWithParams(opts.SecLevel, opts.HashFamily, keyStore)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed initializing fallback SW BCCSP")
 	}

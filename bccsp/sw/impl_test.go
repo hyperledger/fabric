@@ -36,8 +36,11 @@ import (
 	"testing"
 	"time"
 
+	"reflect"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp/sw/mocks"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
@@ -58,7 +61,7 @@ func (tc testConfig) Provider(t *testing.T) (bccsp.BCCSP, bccsp.KeyStore, func()
 	assert.NoError(t, err)
 	ks, err := NewFileBasedKeyStore(nil, td, false)
 	assert.NoError(t, err)
-	p, err := New(tc.securityLevel, tc.hashFamily, ks)
+	p, err := NewWithParams(tc.securityLevel, tc.hashFamily, ks)
 	assert.NoError(t, err)
 	return p, ks, func() { os.RemoveAll(td) }
 }
@@ -95,7 +98,7 @@ func TestInvalidNewParameter(t *testing.T) {
 	_, ks, cleanup := currentTestConfig.Provider(t)
 	defer cleanup()
 
-	r, err := New(0, "SHA2", ks)
+	r, err := NewWithParams(0, "SHA2", ks)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -103,7 +106,7 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	r, err = New(256, "SHA8", ks)
+	r, err = NewWithParams(256, "SHA8", ks)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -111,7 +114,7 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	r, err = New(256, "SHA2", nil)
+	r, err = NewWithParams(256, "SHA2", nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -119,7 +122,7 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	r, err = New(0, "SHA3", nil)
+	r, err = NewWithParams(0, "SHA3", nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -1919,6 +1922,38 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 	if !valid {
 		t.Fatal("Failed verifying RSA signature. Signature not valid.")
 	}
+}
+
+func TestAddWrapper(t *testing.T) {
+	t.Parallel()
+	p, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	sw, ok := p.(*CSP)
+	assert.True(t, ok)
+
+	tester := func(o interface{}, getter func(t reflect.Type) (interface{}, bool)) {
+		tt := reflect.TypeOf(o)
+		err := sw.AddWrapper(tt, o)
+		assert.NoError(t, err)
+		o2, ok := getter(tt)
+		assert.True(t, ok)
+		assert.Equal(t, o, o2)
+	}
+
+	tester(&mocks.KeyGenerator{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.keyGenerators[t]; return o, ok })
+	tester(&mocks.KeyDeriver{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.keyDerivers[t]; return o, ok })
+	tester(&mocks.KeyImporter{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.keyImporters[t]; return o, ok })
+	tester(&mocks.Encryptor{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.encryptors[t]; return o, ok })
+	tester(&mocks.Decryptor{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.decryptors[t]; return o, ok })
+	tester(&mocks.Signer{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.signers[t]; return o, ok })
+	tester(&mocks.Verifier{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.verifiers[t]; return o, ok })
+	tester(&mocks.Hasher{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.hashers[t]; return o, ok })
+
+	// Add invalid wrapper
+	err := sw.AddWrapper(reflect.TypeOf(cleanup), cleanup)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
 }
 
 func getCryptoHashIndex(t *testing.T) crypto.Hash {

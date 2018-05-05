@@ -40,7 +40,7 @@ func TestKeyGen(t *testing.T) {
 		Value:   expectetValue,
 		Err:     expectedErr,
 	}
-	csp := impl{keyGenerators: keyGenerators}
+	csp := CSP{keyGenerators: keyGenerators}
 	value, err := csp.KeyGen(expectedOpts)
 	assert.Nil(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())
@@ -51,7 +51,7 @@ func TestKeyGen(t *testing.T) {
 		Value:   expectetValue,
 		Err:     nil,
 	}
-	csp = impl{keyGenerators: keyGenerators}
+	csp = CSP{keyGenerators: keyGenerators}
 	value, err = csp.KeyGen(expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)

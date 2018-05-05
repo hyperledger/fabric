@@ -126,7 +126,7 @@ func (kd *ecdsaPrivateKeyKeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOp
 }
 
 type aesPrivateKeyKeyDeriver struct {
-	bccsp *impl
+	conf *config
 }
 
 func (kd *aesPrivateKeyKeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
@@ -141,14 +141,14 @@ func (kd *aesPrivateKeyKeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts
 	case *bccsp.HMACTruncated256AESDeriveKeyOpts:
 		hmacOpts := opts.(*bccsp.HMACTruncated256AESDeriveKeyOpts)
 
-		mac := hmac.New(kd.bccsp.conf.hashFunction, aesK.privKey)
+		mac := hmac.New(kd.conf.hashFunction, aesK.privKey)
 		mac.Write(hmacOpts.Argument())
-		return &aesPrivateKey{mac.Sum(nil)[:kd.bccsp.conf.aesBitLength], false}, nil
+		return &aesPrivateKey{mac.Sum(nil)[:kd.conf.aesBitLength], false}, nil
 
 	case *bccsp.HMACDeriveKeyOpts:
 		hmacOpts := opts.(*bccsp.HMACDeriveKeyOpts)
 
-		mac := hmac.New(kd.bccsp.conf.hashFunction, aesK.privKey)
+		mac := hmac.New(kd.conf.hashFunction, aesK.privKey)
 		mac.Write(hmacOpts.Argument())
 		return &aesPrivateKey{mac.Sum(nil), true}, nil
 	default:

@@ -45,7 +45,7 @@ func TestVerify(t *testing.T) {
 		Value:        expectetValue,
 		Err:          nil,
 	}
-	csp := impl{verifiers: verifiers}
+	csp := CSP{verifiers: verifiers}
 	value, err := csp.Verify(expectedKey, expectetSignature, expectetDigest, expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)
@@ -59,7 +59,7 @@ func TestVerify(t *testing.T) {
 		Value:        false,
 		Err:          expectedErr,
 	}
-	csp = impl{verifiers: verifiers}
+	csp = CSP{verifiers: verifiers}
 	value, err = csp.Verify(expectedKey, expectetSignature, expectetDigest, expectedOpts)
 	assert.False(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())
