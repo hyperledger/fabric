@@ -72,7 +72,7 @@ and remove any previously generated artifacts. Run the following command:
 
 .. code:: bash
 
-  ./byfn.sh -m down
+  ./byfn.sh down
 
 Generate the Crypto and Bring Up the Network
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,9 +85,9 @@ With a clean environment, launch our v1.0.6 BYFN network using these four comman
 
   git checkout v1.0.6
 
-  ./byfn.sh -m generate
+  ./byfn.sh generate
 
-  ./byfn.sh -m up -t 3000 -i 1.0.6
+  ./byfn.sh up -t 3000 -i 1.0.6
 
 .. note:: If you have locally built v1.0.6 images, then they will be used by the example.
           If you get errors, consider cleaning up v1.0.6 images and running the example
@@ -141,7 +141,7 @@ If the upgrade is successful, you should see the following:
 
   ===================== All GOOD, End-2-End UPGRADE Scenario execution completed =====================
 
-if you want to upgrade the network manually, simply run ``./byfn.sh -m down`` again
+if you want to upgrade the network manually, simply run ``./byfn.sh down`` again
 and perform the steps up to -- but not including -- ``./byfn.sh upgrade -i 1.1.x``.
 Then proceed to the next section.
 
