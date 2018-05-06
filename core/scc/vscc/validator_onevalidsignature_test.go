@@ -14,7 +14,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	lm "github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/common/mocks/scc"
@@ -115,6 +117,25 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 	return chaincodeDeploymentSpec, nil
 }
 
+func createCCDataRWsetWithCollection(nameK, nameV, version string, policy []byte, collectionConfigPackage []byte) ([]byte, error) {
+	cd := &ccprovider.ChaincodeData{
+		Name:                nameV,
+		Version:             version,
+		InstantiationPolicy: policy,
+	}
+
+	cdbytes := utils.MarshalOrPanic(cd)
+
+	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder.AddToWriteSet("lscc", nameK, cdbytes)
+	rwsetBuilder.AddToWriteSet("lscc", privdata.BuildCollectionKVSKey(nameK), collectionConfigPackage)
+	sr, err := rwsetBuilder.GetTxSimulationResults()
+	if err != nil {
+		return nil, err
+	}
+	return sr.GetPubSimulationBytes()
+}
+
 func createCCDataRWset(nameK, nameV, version string, policy []byte) ([]byte, error) {
 	cd := &ccprovider.ChaincodeData{
 		Name:                nameV,
@@ -133,8 +154,69 @@ func createCCDataRWset(nameK, nameV, version string, policy []byte) ([]byte, err
 	return sr.GetPubSimulationBytes()
 }
 
+func createLSCCTxWithCollection(ccname, ccver, f string, res []byte, policy []byte, ccpBytes []byte) (*common.Envelope, error) {
+	return createLSCCTxPutCdsWithCollection(ccname, ccver, f, res, nil, true, policy, ccpBytes)
+}
+
 func createLSCCTx(ccname, ccver, f string, res []byte) (*common.Envelope, error) {
 	return createLSCCTxPutCds(ccname, ccver, f, res, nil, true)
+}
+
+func createLSCCTxPutCdsWithCollection(ccname, ccver, f string, res, cdsbytes []byte, putcds bool, policy []byte, ccpBytes []byte) (*common.Envelope, error) {
+	cds := &peer.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			ChaincodeId: &peer.ChaincodeID{
+				Name:    ccname,
+				Version: ccver,
+			},
+			Type: peer.ChaincodeSpec_GOLANG,
+		},
+	}
+
+	cdsBytes, err := proto.Marshal(cds)
+	if err != nil {
+		return nil, err
+	}
+
+	var cis *peer.ChaincodeInvocationSpec
+	if putcds {
+		if cdsbytes != nil {
+			cdsBytes = cdsbytes
+		}
+		cis = &peer.ChaincodeInvocationSpec{
+			ChaincodeSpec: &peer.ChaincodeSpec{
+				ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+				Input: &peer.ChaincodeInput{
+					Args: [][]byte{[]byte(f), []byte("barf"), cdsBytes, []byte("escc"), []byte("vscc"), policy, ccpBytes},
+				},
+				Type: peer.ChaincodeSpec_GOLANG,
+			},
+		}
+	} else {
+		cis = &peer.ChaincodeInvocationSpec{
+			ChaincodeSpec: &peer.ChaincodeSpec{
+				ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+				Input: &peer.ChaincodeInput{
+					Args: [][]byte{[]byte(f), []byte("barf")},
+				},
+				Type: peer.ChaincodeSpec_GOLANG,
+			},
+		}
+	}
+
+	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	if err != nil {
+		return nil, err
+	}
+
+	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
+
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, nil, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.CreateSignedTx(prop, id, presp)
 }
 
 func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bool) (*common.Envelope, error) {
@@ -172,7 +254,7 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 			ChaincodeSpec: &peer.ChaincodeSpec{
 				ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
 				Input: &peer.ChaincodeInput{
-					Args: [][]byte{[]byte(f), []byte("barf")},
+					Args: [][]byte{[]byte(f), []byte(ccname)},
 				},
 				Type: peer.ChaincodeSpec_GOLANG,
 			},
@@ -969,10 +1051,148 @@ func TestValidateDeployOK(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	args := [][]byte{[]byte("dv"), envBytes, policy}
+	args := [][]byte{[]byte(ccname), envBytes, policy}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("vscc invoke returned err %s", res.Message)
 	}
+}
+
+func TestValidateDeployWithCollection(t *testing.T) {
+	State := make(map[string]map[string][]byte)
+	mp := (&scc.MocksccProviderFactory{
+		Qe: lm.NewMockQueryExecutor(State),
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{
+			PrivateChannelDataRv: true,
+		}},
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+
+	v := New(mp)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	lccc := lscc.New(mp)
+	stublccc := shim.NewMockStub("lscc", lccc)
+	State["lscc"] = stublccc.State
+	stub.MockPeerChaincode("lscc", stublccc)
+
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	r := stublccc.MockInit("1", [][]byte{})
+	if r.Status != shim.OK {
+		fmt.Println("Init failed", string(r.Message))
+		t.FailNow()
+	}
+
+	ccname := "mycc"
+	ccver := "1"
+
+	collName1 := "mycollection1"
+	collName2 := "mycollection2"
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	var requiredPeerCount, maximumPeerCount int32
+	var blockToLive uint64
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	blockToLive = 1000
+	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+
+	// Test 1: Deploy chaincode with a valid collection configs --> success
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+	res, err := createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
+	assert.NoError(t, err)
+
+	tx, err := createLSCCTxWithCollection(ccname, ccver, lscc.DEPLOY, res, defaultPolicy, ccpBytes)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args := [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.Fatalf("vscc invoke returned err %s", res.Message)
+	}
+
+	// Test 2: Deploy the chaincode with duplicate collection configs --> no error as the
+	// peer is not in V1_2Validation mode
+	ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2, coll1}}
+	ccpBytes, err = proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
+	assert.NoError(t, err)
+
+	tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.DEPLOY, res, defaultPolicy, ccpBytes)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err = utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+	resp := stub.MockInvoke("1", args)
+	assert.Equal(t, int32(resp.Status), int32(shim.OK))
+
+	// Test 3: Once the V1_2Validation is enabled, validation should fail due to duplicate collection configs
+	State = make(map[string]map[string][]byte)
+	mp = (&scc.MocksccProviderFactory{
+		Qe: lm.NewMockQueryExecutor(State),
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{
+			PrivateChannelDataRv: true,
+			V1_2ValidationRv:     true,
+		}},
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+
+	v = New(mp)
+	stub = shim.NewMockStub("validatoronevalidsignature", v)
+
+	lccc = lscc.New(mp)
+	stublccc = shim.NewMockStub("lscc", lccc)
+	State["lscc"] = stublccc.State
+	stub.MockPeerChaincode("lscc", stublccc)
+
+	r1 = stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	r = stublccc.MockInit("1", [][]byte{})
+	if r.Status != shim.OK {
+		fmt.Println("Init failed", string(r.Message))
+		t.FailNow()
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+	resp = stub.MockInvoke("1", args)
+	assert.NotEqual(t, resp.Status, shim.OK)
+	assert.Equal(t, string(resp.Message), "collection-name: mycollection1 -- found duplicate collection configuration")
 }
 
 func TestValidateDeployWithPolicies(t *testing.T) {
@@ -1279,6 +1499,212 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	}
 }
 
+func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
+	State := make(map[string]map[string][]byte)
+	mp := (&scc.MocksccProviderFactory{
+		Qe: lm.NewMockQueryExecutor(State),
+		ApplicationConfigBool: true,
+		ApplicationConfigRv: &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{
+			PrivateChannelDataRv: true,
+			V1_2ValidationRv:     V1_2Validation,
+		}},
+	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+
+	v := New(mp)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	lccc := lscc.New(mp)
+	stublccc := shim.NewMockStub("lscc", lccc)
+	State["lscc"] = stublccc.State
+	stub.MockPeerChaincode("lscc", stublccc)
+
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	r := stublccc.MockInit("1", [][]byte{})
+	if r.Status != shim.OK {
+		fmt.Println("Init failed", string(r.Message))
+		t.FailNow()
+	}
+
+	ccname := "mycc"
+	ccver := "1"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+
+	ppath := lccctestpath + "/" + ccname + "." + ccver
+
+	os.Remove(ppath)
+
+	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		t.FailNow()
+	}
+	defer os.Remove(ppath)
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.FailNow()
+	}
+
+	sProp2, _ := utils.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
+	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
+	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
+		fmt.Printf("%#v\n", res)
+		t.FailNow()
+	}
+
+	ccver = "2"
+
+	collName1 := "mycollection1"
+	collName2 := "mycollection2"
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	var requiredPeerCount, maximumPeerCount int32
+	var blockToLive uint64
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	blockToLive = 1000
+	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+
+	// Test 1: Valid Collection Config in the upgrade.
+	// V1_2Validation enabled: success
+	// V1_2Validation disable: fail (as no collection updates are allowed)
+	// Note: We might change V1_2Validation with CollectionUpdate capability
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+	res, err := createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
+	assert.NoError(t, err)
+
+	tx, err := createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+	resp := stub.MockInvoke("1", args)
+	if V1_2Validation {
+		assert.Equal(t, int32(resp.Status), int32(shim.OK))
+	} else {
+
+		assert.Equal(t, string(resp.Message), "LSCC can only issue a single putState upon deploy/upgrade")
+	}
+
+	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: "testchainid", Namespace: ccname})] = ccpBytes
+
+	if V1_2Validation {
+		ccver = "3"
+
+		collName3 := "mycollection3"
+		coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+
+		// Test 2: some existing collections are missing in the updated config and peer in
+		// V1_2Validation mode --> error
+		ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll3}}
+		ccpBytes, err = proto.Marshal(ccp)
+		assert.NoError(t, err)
+		assert.NotNil(t, ccpBytes)
+
+		res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
+		assert.NoError(t, err)
+
+		tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
+		if err != nil {
+			t.Fatalf("createTx returned err %s", err)
+		}
+
+		envBytes, err = utils.GetBytesEnvelope(tx)
+		if err != nil {
+			t.Fatalf("GetBytesEnvelope returned err %s", err)
+		}
+
+		args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+		resp = stub.MockInvoke("1", args)
+		assert.NotEqual(t, resp.Status, shim.OK)
+		assert.Equal(t, string(resp.Message), "Some existing collection configurations are missing in the new collection configuration package")
+
+		ccver = "3"
+
+		// Test 3: some existing collections are missing in the updated config and peer in
+		// V1_2Validation mode --> error
+		ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll3}}
+		ccpBytes, err = proto.Marshal(ccp)
+		assert.NoError(t, err)
+		assert.NotNil(t, ccpBytes)
+
+		res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
+		assert.NoError(t, err)
+
+		tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
+		if err != nil {
+			t.Fatalf("createTx returned err %s", err)
+		}
+
+		envBytes, err = utils.GetBytesEnvelope(tx)
+		if err != nil {
+			t.Fatalf("GetBytesEnvelope returned err %s", err)
+		}
+
+		args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+		resp = stub.MockInvoke("1", args)
+		assert.NotEqual(t, resp.Status, shim.OK)
+		assert.Equal(t, string(resp.Message), "existing collection named mycollection2 is missing in the new collection configuration package")
+
+		assert.NotEqual(t, resp.Status, shim.OK)
+
+		ccver = "3"
+
+		// Test 4: valid collection config config and peer in V1_2Validation mode --> success
+		ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2, coll3}}
+		ccpBytes, err = proto.Marshal(ccp)
+		assert.NoError(t, err)
+		assert.NotNil(t, ccpBytes)
+
+		res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
+		assert.NoError(t, err)
+
+		tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
+		if err != nil {
+			t.Fatalf("createTx returned err %s", err)
+		}
+
+		envBytes, err = utils.GetBytesEnvelope(tx)
+		if err != nil {
+			t.Fatalf("GetBytesEnvelope returned err %s", err)
+		}
+
+		args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
+		resp = stub.MockInvoke("1", args)
+		assert.Equal(t, int32(resp.Status), int32(shim.OK))
+	}
+}
+
+func TestValidateUpgradeWithCollection(t *testing.T) {
+	// with V1_2Validation enabled
+	validateUpgradeWithCollection(t, true)
+	// with V1_2Validation disabled
+	validateUpgradeWithCollection(t, false)
+}
+
 func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	State := make(map[string]map[string][]byte)
 	mp := (&scc.MocksccProviderFactory{
@@ -1583,11 +2009,50 @@ func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *
 	return nil
 }
 
-func TestValidateDeployRWSetAndCollection(t *testing.T) {
-	chid := "ch"
-	ccid := "cc"
+func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
+	requiredPeerCount int32, maximumPeerCount int32, blockToLive uint64,
+) *common.CollectionConfig {
+	signaturePolicy := &common.CollectionPolicyConfig_SignaturePolicy{
+		SignaturePolicy: signaturePolicyEnvelope,
+	}
+	accessPolicy := &common.CollectionPolicyConfig{
+		Payload: signaturePolicy,
+	}
 
-	cd := &ccprovider.ChaincodeData{Name: "mycc"}
+	return &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			&common.StaticCollectionConfig{
+				Name:              collectionName,
+				MemberOrgsPolicy:  accessPolicy,
+				RequiredPeerCount: requiredPeerCount,
+				MaximumPeerCount:  maximumPeerCount,
+				BlockToLive:       blockToLive,
+			},
+		},
+	}
+}
+
+func testValidateCollection(t *testing.T, v *ValidatorOneValidSignature, collectionConfigs []*common.CollectionConfig, cdRWSet *ccprovider.ChaincodeData,
+	lsccFunc string, ac channelconfig.ApplicationCapabilities, chid string,
+) error {
+	ccp := &common.CollectionConfigPackage{collectionConfigs}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	lsccargs := [][]byte{nil, nil, nil, nil, nil, ccpBytes}
+	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: cdRWSet.Name}, {Key: privdata.BuildCollectionKVSKey(cdRWSet.Name), Value: ccpBytes}}}
+
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
+	return err
+
+}
+
+func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
+	chid := "ch"
+	ccid := "mycc"
+	ccver := "1.0"
+	cdRWSet := &ccprovider.ChaincodeData{Name: ccid, Version: ccver}
 
 	State := make(map[string]map[string][]byte)
 	State["lscc"] = make(map[string][]byte)
@@ -1602,63 +2067,166 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 		t.FailNow()
 	}
 
-	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}, {Key: "c"}}}
+	ac := capabilities.NewApplicationProvider(map[string]*common.Capability{
+		capabilities.ApplicationV1_1: {},
+	})
 
-	err := v.validateDeployRWSetAndCollection(rwset, nil, nil, chid, ccid)
-	assert.Error(t, err)
+	lsccFunc := lscc.DEPLOY
+	// Test 1: More than two entries in the rwset -> error
+	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: "b"}, {Key: "c"}}}
+	err := v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "LSCC can only issue one or two putState upon deploy")
 
-	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}}}
+	// Test 2: Invalid key for the collection config package -> error
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: "b"}}}
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "invalid key for the collection of chaincode %s:%s; expected '%s', received '%s'",
+		cdRWSet.Name, cdRWSet.Version, privdata.BuildCollectionKVSKey(rwset.Writes[1].Key), rwset.Writes[1].Key)
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, nil, chid, ccid)
-	assert.Error(t, err)
-
-	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}}}
-
-	err = v.validateDeployRWSetAndCollection(rwset, cd, nil, chid, ccid)
+	// Test 3: No collection config package -> success
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}}}
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	lsccargs := [][]byte{nil, nil, nil, nil, nil, nil}
-
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
-	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc")}}}
-
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
+	// Test 4: Valid key for the collection config package -> success
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: privdata.BuildCollectionKVSKey(ccid)}}}
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
+	// Test 5: Invalid collection config package -> error
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "invalid collection configuration supplied for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	// Test 6: Invalid collection config package -> error
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
+	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "invalid collection configuration supplied for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
 
-	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
-	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
+	// Test 7: Valid collection config package -> success
+	collName1 := "mycollection1"
+	collName2 := "mycollection2"
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	var requiredPeerCount, maximumPeerCount int32
+	var blockToLive uint64
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	blockToLive = 10000
+	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
+	assert.NoError(t, err)
 
-	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
+	// Test 8: Duplicate collections in the collection config package -> success as the peer is in v1.1 validation mode
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
+	assert.NoError(t, err)
+
+	// Test 9: requiredPeerCount > maximumPeerCount -> success as the peer is in v1.1 validation mode
+	collName3 := "mycollection3"
+	requiredPeerCount = 2
+	maximumPeerCount = 1
+	blockToLive = 10000
+	coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.NoError(t, err)
+
+	// Enable v1.2 validation mode
+	ac = capabilities.NewApplicationProvider(map[string]*common.Capability{
+		capabilities.ApplicationV1_2: {},
+	})
+
+	// Test 10: Duplicate collections in the collection config package -> error
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "collection-name: %s -- found duplicate collection configuration", collName1)
+
+	// Test 11: requiredPeerCount > maximumPeerCount -> error
+	requiredPeerCount = 2
+	maximumPeerCount = 1
+	blockToLive = 10000
+	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+		collName3, maximumPeerCount, requiredPeerCount)
+}
+
+func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
+	chid := "ch"
+	ccid := "mycc"
+	ccver := "1.0"
+	cdRWSet := &ccprovider.ChaincodeData{Name: ccid, Version: ccver}
+
+	State := make(map[string]map[string][]byte)
+	State["lscc"] = make(map[string][]byte)
+	mp := (&scc.MocksccProviderFactory{Qe: lm.NewMockQueryExecutor(State)}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+
+	v := New(mp)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	ac := capabilities.NewApplicationProvider(map[string]*common.Capability{
+		capabilities.ApplicationV1_2: {},
+	})
+
+	lsccFunc := lscc.UPGRADE
+
+	collName1 := "mycollection1"
+	collName2 := "mycollection2"
+	collName3 := "mycollection3"
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	var requiredPeerCount, maximumPeerCount int32
+	var blockToLive uint64
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	blockToLive = 3
+	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
 
-	lsccargs = [][]byte{nil, nil, nil, nil, nil, ccpBytes}
-	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: ccpBytes}}}
-
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
+	// Test 1: no existing collection config package -> success
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
-
-	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = []byte("barf")
-
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
 
 	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = ccpBytes
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	// Test 2: exactly same as the existing collection config package -> success
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
+	assert.NoError(t, err)
+
+	// Test 3: missing one existing collection (check based on the length) -> error
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "Some existing collection configurations are missing in the new collection configuration package")
+
+	// Test 4: missing one existing collection (check based on the collection names) -> error
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "existing collection named %s is missing in the new collection configuration package",
+		collName2)
+
+	// Test 5: adding a new collection along with the existing collections -> success
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.NoError(t, err)
+
+	newBlockToLive := blockToLive + 1
+	coll2 = createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, newBlockToLive)
+
+	// Test 6: modify the BlockToLive in an existing collection -> error
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.Errorf(t, err, "BlockToLive in the existing collection named %s cannot be changed", collName2)
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"
