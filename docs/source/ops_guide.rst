@@ -9,6 +9,7 @@ Operations Guides
    msp
    configtx
    endorsement-policies
+   pluggable_endorsement_and_validation
    error-handling
    logging-control
    enable_tls
