@@ -285,6 +285,11 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg proto.ReceivedMessage) 
 	gossipMsg := msg.GetGossipMessage()
 	pvtDataMsg := gossipMsg.GetPrivateData()
 
+	if pvtDataMsg.Payload == nil {
+		logger.Warning("Malformed private data message, no payload provided")
+		return
+	}
+
 	collectionName := pvtDataMsg.Payload.CollectionName
 	txID := pvtDataMsg.Payload.TxId
 	pvtRwSet := pvtDataMsg.Payload.PrivateRwset
