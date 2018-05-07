@@ -254,9 +254,9 @@ func shorttxid(txid string) string {
 	return txid[0:8]
 }
 
-// The chincodeID should be of the form "chaincode-name:version/channel-name"
-// with optional elements.
-func getChaincodeInstance(ccName string) *sysccprovider.ChaincodeInstance {
+// ParseName parses a chaincode name into a ChaincodeInstance. The name should
+// be of the form "chaincode-name:version/channel-name" with optional elements.
+func ParseName(ccName string) *sysccprovider.ChaincodeInstance {
 	ci := &sysccprovider.ChaincodeInstance{}
 
 	z := strings.SplitN(ccName, "/", 2)
@@ -462,7 +462,7 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 
 	// get the component parts so we can use the root chaincode
 	// name in keys
-	h.ccInstance = getChaincodeInstance(h.chaincodeID.Name)
+	h.ccInstance = ParseName(h.chaincodeID.Name)
 
 	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, chaincodeID, pb.ChaincodeMessage_REGISTERED)
 	if err := h.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
@@ -726,7 +726,7 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 	// Get the chaincodeID to invoke. The chaincodeID to be called may
 	// contain composite info like "chaincode-name:version/channel-name"
 	// We are not using version now but default to the latest
-	targetInstance := getChaincodeInstance(chaincodeSpec.ChaincodeId.Name)
+	targetInstance := ParseName(chaincodeSpec.ChaincodeId.Name)
 
 	// If targetInstance is not an SCC, isValidTxSim should be called which will return an err.
 	// We do not want to propagate calls to user CCs when the original call was to a SCC
@@ -800,7 +800,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	// Get the chaincodeID to invoke. The chaincodeID to be called may
 	// contain composite info like "chaincode-name:version/channel-name".
 	// We are not using version now but default to the latest.
-	targetInstance := getChaincodeInstance(chaincodeSpec.ChaincodeId.Name)
+	targetInstance := ParseName(chaincodeSpec.ChaincodeId.Name)
 	chaincodeSpec.ChaincodeId.Name = targetInstance.ChaincodeName
 	if targetInstance.ChainID == "" {
 		// use caller's channel as the called chaincode is in the same channel
