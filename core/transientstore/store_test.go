@@ -544,10 +544,22 @@ func samplePvtData(t *testing.T) *rwset.TxPvtReadWriteSet {
 
 func samplePvtDataWithConfigInfo(t *testing.T) *transientstore.TxPvtReadWriteSetWithConfigInfo {
 	pvtWriteSet := samplePvtData(t)
-	collecionConfigs := sampleCollectionConfigPackage(t)
 	pvtRWSetWithConfigInfo := &transientstore.TxPvtReadWriteSetWithConfigInfo{
-		PvtRwset:          pvtWriteSet,
-		CollectionConfigs: collecionConfigs,
+		PvtRwset: pvtWriteSet,
+		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+			"ns-1": {
+				[]*common.CollectionConfig{
+					sampleCollectionConfigPackage("coll-1"),
+					sampleCollectionConfigPackage("coll-2"),
+				},
+			},
+			"ns-2": {
+				[]*common.CollectionConfig{
+					sampleCollectionConfigPackage("coll-1"),
+					sampleCollectionConfigPackage("coll-2"),
+				},
+			},
+		},
 	}
 	return pvtRWSetWithConfigInfo
 }
@@ -564,7 +576,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 
 	return &common.CollectionConfig{
 		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			&common.StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  accessPolicy,
 				RequiredPeerCount: requiredPeerCount,
@@ -574,10 +586,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 	}
 }
 
-func sampleCollectionConfigPackage(t *testing.T) *common.CollectionConfigPackage {
-	collName1 := "mycollection1"
-	collName2 := "mycollection2"
-
+func sampleCollectionConfigPackage(colName string) *common.CollectionConfig {
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
 
@@ -585,10 +594,5 @@ func sampleCollectionConfigPackage(t *testing.T) *common.CollectionConfigPackage
 	requiredPeerCount = 1
 	maximumPeerCount = 2
 
-	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
-	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount)
-
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
-
-	return ccp
+	return createCollectionConfig(colName, policyEnvelope, requiredPeerCount, maximumPeerCount)
 }
