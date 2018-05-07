@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/msp"
+	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -83,6 +84,20 @@ func (store *mockTransientStore) Persist(txid string, blockHeight uint64, res *r
 	}
 	delete(store.persists, key)
 	store.Called(txid, blockHeight, res)
+	return nil
+}
+
+func (store *mockTransientStore) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
+	res := privateSimulationResultsWithConfig.PvtRwset
+	key := rwsTriplet{
+		namespace:  res.NsPvtRwset[0].Namespace,
+		collection: res.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName,
+		rwset:      hex.EncodeToString(res.NsPvtRwset[0].CollectionPvtRwset[0].Rwset)}
+	if _, exists := store.persists[key]; !exists {
+		store.t.Fatal("Shouldn't have persisted", res)
+	}
+	delete(store.persists, key)
+	store.Called(txid, blockHeight, privateSimulationResultsWithConfig)
 	return nil
 }
 
@@ -1223,9 +1238,8 @@ func TestPurgeByHeight(t *testing.T) {
 func TestCoordinatorStorePvtData(t *testing.T) {
 	cs := createcollectionStore(common.SignedData{}).thatAcceptsAll()
 	committer := &committerMock{}
-	committer.On("LedgerHeight").Return(uint64(5), nil).Once()
 	store := &mockTransientStore{t: t}
-	store.On("Persist", mock.Anything, uint64(5), mock.Anything).
+	store.On("PersistWithConfig", mock.Anything, uint64(5), mock.Anything).
 		expectRWSet("ns1", "c1", []byte("rws-pre-image")).Return(nil)
 	fetcher := &fetcherMock{t: t}
 	coordinator := NewCoordinator(Support{
@@ -1237,14 +1251,11 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	}, common.SignedData{})
 	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
 	// Green path: ledger height can be retrieved from ledger/committer
-	err := coordinator.StorePvtData("tx1", pvtData[0].WriteSet)
+	err := coordinator.StorePvtData("tx1", &transientstore2.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset:          pvtData[0].WriteSet,
+		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+	}, uint64(5))
 	assert.NoError(t, err)
-
-	// Bad path: ledger height cannot be retrieved from ledger/committer
-	committer.On("LedgerHeight").Return(uint64(0), errors.New("I/O error: file system full"))
-	err = coordinator.StorePvtData("tx1", pvtData[0].WriteSet)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "I/O error: file system full")
 }
 
 func TestContainsWrites(t *testing.T) {

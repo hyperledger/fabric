@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/localmsp"
@@ -51,6 +52,10 @@ func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
 }
 
 func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
+	panic("implement me")
+}
+
+func (*mockTransientStore) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
 	panic("implement me")
 }
 

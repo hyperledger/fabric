@@ -38,6 +38,7 @@ import (
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -176,6 +177,10 @@ func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
 }
 
 func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
+	panic("implement me")
+}
+
+func (*mockTransientStore) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
 	panic("implement me")
 }
 
@@ -1225,7 +1230,7 @@ func (mock *coordinatorMock) Close() {
 }
 
 // StorePvtData used to persist private date into transient store
-func (mock *coordinatorMock) StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error {
+func (mock *coordinatorMock) StorePvtData(txid string, privData *transientstore2.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
 	return mock.Called().Error(0)
 }
 

@@ -24,8 +24,9 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	gossip2 "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	msp "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
+	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -46,6 +47,10 @@ func init() {
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {
+	// PersistWithConfig stores the private write set of a transaction along with the collection config
+	// in the transient store based on txid and the block height the private data was received at
+	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error
+
 	// Persist stores the private write set of a transaction in the transient store
 	Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
@@ -74,7 +79,7 @@ type Coordinator interface {
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
 
 	// StorePvtData used to persist private data into transient store
-	StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error
+	StorePvtData(txid string, privData *transientstore2.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
 
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
 	// the order of private data in slice of PvtDataCollections doesn't implies the order of
@@ -132,12 +137,8 @@ func NewCoordinator(support Support, selfSignedData common.SignedData) Coordinat
 }
 
 // StorePvtData used to persist private date into transient store
-func (c *coordinator) StorePvtData(txID string, privData *rwset.TxPvtReadWriteSet) error {
-	height, err := c.Support.LedgerHeight()
-	if err != nil {
-		return errors.Wrap(err, "failed obtaining ledger height, thus cannot persist private data")
-	}
-	return c.TransientStore.Persist(txID, height, privData)
+func (c *coordinator) StorePvtData(txID string, privData *transientstore2.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
+	return c.TransientStore.PersistWithConfig(txID, blkHeight, privData)
 }
 
 // StoreBlock stores block with private data into the ledger
