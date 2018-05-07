@@ -30,5 +30,5 @@ import "common/collection.proto";
 // the latest collection config when the transaction is simulated
 message TxPvtReadWriteSetWithConfigInfo {
     rwset.TxPvtReadWriteSet pvt_rwset = 1;
-    common.CollectionConfigPackage collection_configs = 2;
+    map<string, common.CollectionConfigPackage> collection_configs = 2;
 }
