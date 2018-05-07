@@ -596,10 +596,7 @@ func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 		logger.Panicf("programming error, non-existent appplication config for channel '%s'", chainName)
 	}
 
-	// TODO: Instead of V1_2Validation(), we should be using something like CollectionUpdate().
-	// For time being, V1_2Validation() is used. Need to submit a separate CR to introduce a
-	// new capability named CollectionUpdate.
-	if ac.Capabilities().V1_2Validation() {
+	if ac.Capabilities().CollectionUpgrade() {
 		err = lscc.putChaincodeCollectionData(stub, cdfs, collectionConfigBytes)
 		if err != nil {
 			return nil, err
