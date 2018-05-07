@@ -71,8 +71,10 @@ func (ap *ApplicationProvider) ForbidDuplicateTXIdInBlock() bool {
 }
 
 // PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
+// In v1.1, the private channel data is experimental and has to be enabled explicitly.
+// In v1.2, the private channel data is enabled by default.
 func (ap *ApplicationProvider) PrivateChannelData() bool {
-	return ap.v11PvtDataExperimental
+	return ap.v11PvtDataExperimental || ap.v12
 }
 
 // CollectionUpgrade returns true if this channel is configured to allow updates to

@@ -44,6 +44,12 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 		ApplicationPvtDataExperimental: {},
 	})
 	assert.True(t, op.PrivateChannelData())
+
+	op = NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationV1_2: {},
+	})
+	assert.True(t, op.PrivateChannelData())
+
 }
 
 func TestApplicationCollectionUpgrade(t *testing.T) {

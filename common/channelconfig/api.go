@@ -127,6 +127,8 @@ type ApplicationCapabilities interface {
 	ResourcesTree() bool
 
 	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
+	// In v1.1, the private channel data is experimental and has to be enabled explicitly.
+	// In v1.2, the private channel data is enabled by default.
 	PrivateChannelData() bool
 
 	// CollectionUpgrade returns true if this channel is configured to allow updates to
