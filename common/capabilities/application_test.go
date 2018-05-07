@@ -46,6 +46,13 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 	assert.True(t, op.PrivateChannelData())
 }
 
+func TestApplicationCollectionUpgrade(t *testing.T) {
+	op := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationV1_2: {},
+	})
+	assert.True(t, op.CollectionUpgrade())
+}
+
 func TestChaincodeLifecycleExperimental(t *testing.T) {
 	op := NewApplicationProvider(map[string]*cb.Capability{
 		ApplicationChaincodeLifecycleExperimental: {},
