@@ -36,6 +36,8 @@ message ChaincodeMessage {
         QUERY_STATE_CLOSE = 17;
         KEEPALIVE = 18;
         GET_HISTORY_FOR_KEY = 19;
+        GET_STATE_METADATA = 20;
+        PUT_STATE_METADATA = 21;
     }
 
     Type type = 1;
@@ -62,10 +64,21 @@ message GetState {
     string collection = 2;
 }
 
+message GetStateMetadata {
+    string key = 1;
+    string collection = 2;
+}
+
 message PutState {
     string key = 1;
     bytes value = 2;
     string collection = 3;
+}
+
+message PutStateMetadata {
+    string key = 1;
+    string collection = 3;
+    StateMetadata metadata = 4;
 }
 
 message DelState {
@@ -104,6 +117,15 @@ message QueryResponse {
     repeated QueryResultBytes results = 1;
     bool has_more = 2;
     string id = 3;
+}
+
+message StateMetadata {
+    string metakey = 1;
+    bytes value = 2;
+}
+
+message StateMetadataResult {
+    repeated StateMetadata entries = 1;
 }
 
 // Interface that provides support to chaincode execution. ChaincodeContext

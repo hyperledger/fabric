@@ -33,7 +33,7 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_74850caeadf46209, []int{0}
+	return fileDescriptor_test_cce5a74a641072e6, []int{0}
 }
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Empty.Unmarshal(m, b)
@@ -64,7 +64,7 @@ func (m *Echo) Reset()         { *m = Echo{} }
 func (m *Echo) String() string { return proto.CompactTextString(m) }
 func (*Echo) ProtoMessage()    {}
 func (*Echo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_74850caeadf46209, []int{1}
+	return fileDescriptor_test_cce5a74a641072e6, []int{1}
 }
 func (m *Echo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Echo.Unmarshal(m, b)
@@ -104,9 +104,8 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// TestServiceClient is the client API for TestService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+// Client API for TestService service
+
 type TestServiceClient interface {
 	EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
@@ -121,14 +120,15 @@ func NewTestServiceClient(cc *grpc.ClientConn) TestServiceClient {
 
 func (c *testServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/TestService/EmptyCall", in, out, opts...)
+	err := grpc.Invoke(ctx, "/TestService/EmptyCall", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// TestServiceServer is the server API for TestService service.
+// Server API for TestService service
+
 type TestServiceServer interface {
 	EmptyCall(context.Context, *Empty) (*Empty, error)
 }
@@ -168,9 +168,8 @@ var _TestService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "test.proto",
 }
 
-// EmptyServiceClient is the client API for EmptyService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+// Client API for EmptyService service
+
 type EmptyServiceClient interface {
 	EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	EmptyStream(ctx context.Context, opts ...grpc.CallOption) (EmptyService_EmptyStreamClient, error)
@@ -186,7 +185,7 @@ func NewEmptyServiceClient(cc *grpc.ClientConn) EmptyServiceClient {
 
 func (c *emptyServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/EmptyService/EmptyCall", in, out, opts...)
+	err := grpc.Invoke(ctx, "/EmptyService/EmptyCall", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +193,7 @@ func (c *emptyServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...g
 }
 
 func (c *emptyServiceClient) EmptyStream(ctx context.Context, opts ...grpc.CallOption) (EmptyService_EmptyStreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_EmptyService_serviceDesc.Streams[0], "/EmptyService/EmptyStream", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_EmptyService_serviceDesc.Streams[0], c.cc, "/EmptyService/EmptyStream", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +223,8 @@ func (x *emptyServiceEmptyStreamClient) Recv() (*Empty, error) {
 	return m, nil
 }
 
-// EmptyServiceServer is the server API for EmptyService service.
+// Server API for EmptyService service
+
 type EmptyServiceServer interface {
 	EmptyCall(context.Context, *Empty) (*Empty, error)
 	EmptyStream(EmptyService_EmptyStreamServer) error
@@ -298,9 +298,8 @@ var _EmptyService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "test.proto",
 }
 
-// EchoServiceClient is the client API for EchoService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+// Client API for EchoService service
+
 type EchoServiceClient interface {
 	EchoCall(ctx context.Context, in *Echo, opts ...grpc.CallOption) (*Echo, error)
 }
@@ -315,14 +314,15 @@ func NewEchoServiceClient(cc *grpc.ClientConn) EchoServiceClient {
 
 func (c *echoServiceClient) EchoCall(ctx context.Context, in *Echo, opts ...grpc.CallOption) (*Echo, error) {
 	out := new(Echo)
-	err := c.cc.Invoke(ctx, "/EchoService/EchoCall", in, out, opts...)
+	err := grpc.Invoke(ctx, "/EchoService/EchoCall", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// EchoServiceServer is the server API for EchoService service.
+// Server API for EchoService service
+
 type EchoServiceServer interface {
 	EchoCall(context.Context, *Echo) (*Echo, error)
 }
@@ -362,9 +362,9 @@ var _EchoService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "test.proto",
 }
 
-func init() { proto.RegisterFile("test.proto", fileDescriptor_test_74850caeadf46209) }
+func init() { proto.RegisterFile("test.proto", fileDescriptor_test_cce5a74a641072e6) }
 
-var fileDescriptor_test_74850caeadf46209 = []byte{
+var fileDescriptor_test_cce5a74a641072e6 = []byte{
 	// 211 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x90, 0x31, 0x4f, 0xc3, 0x30,
 	0x10, 0x85, 0x65, 0x89, 0xb6, 0x70, 0xe9, 0xe4, 0x29, 0x2a, 0x4b, 0xe9, 0x42, 0xc4, 0x60, 0xa3,
