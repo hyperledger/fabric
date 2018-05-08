@@ -1609,7 +1609,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 		assert.Equal(t, string(resp.Message), "LSCC can only issue a single putState upon deploy/upgrade")
 	}
 
-	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: "testchainid", Namespace: ccname})] = ccpBytes
+	State["lscc"][privdata.BuildCollectionKVSKey(ccname)] = ccpBytes
 
 	if V1_2Validation {
 		ccver = "3"
@@ -2202,7 +2202,7 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
-	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = ccpBytes
+	State["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
 
 	// Test 2: exactly same as the existing collection config package -> success
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)

@@ -70,10 +70,6 @@ type collectionStoreSupport struct {
 	sysccprovider.SystemChaincodeProvider
 }
 
-func (c *collectionStoreSupport) GetCollectionKVSKey(cc common.CollectionCriteria) string {
-	return privdata.BuildCollectionKVSKey(cc.Namespace)
-}
-
 func (c *collectionStoreSupport) GetIdentityDeserializer(chainID string) m.IdentityDeserializer {
 	return mspmgmt.GetIdentityDeserializer(chainID)
 }

@@ -28,10 +28,6 @@ func (c *mockStoreSupport) GetQueryExecutorForLedger(cid string) (ledger.QueryEx
 	return c.Qe, c.QErr
 }
 
-func (c *mockStoreSupport) GetCollectionKVSKey(cc common.CollectionCriteria) string {
-	return cc.Channel + cc.Namespace
-}
-
 func (c *mockStoreSupport) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 	return &mockDeserializer{}
 }
@@ -54,7 +50,7 @@ func TestCollectionStore(t *testing.T) {
 
 	ccr := common.CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "mycollection"}
 
-	wState["lscc"][support.GetCollectionKVSKey(ccr)] = []byte("barf")
+	wState["lscc"][BuildCollectionKVSKey(ccr.Namespace)] = []byte("barf")
 
 	_, err = cs.RetrieveCollection(ccr)
 	assert.Error(t, err)
@@ -65,7 +61,7 @@ func TestCollectionStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
 
-	wState["lscc"][support.GetCollectionKVSKey(ccr)] = ccpBytes
+	wState["lscc"][BuildCollectionKVSKey(ccr.Namespace)] = ccpBytes
 
 	_, err = cs.RetrieveCollection(ccr)
 	assert.Error(t, err)
@@ -80,7 +76,7 @@ func TestCollectionStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
 
-	wState["lscc"][support.GetCollectionKVSKey(ccr)] = ccpBytes
+	wState["lscc"][BuildCollectionKVSKey(ccr.Namespace)] = ccpBytes
 
 	c, err := cs.RetrieveCollection(ccr)
 	assert.NoError(t, err)
