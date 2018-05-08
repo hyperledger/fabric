@@ -672,10 +672,6 @@ func (cs *collectionSupport) GetQueryExecutorForLedger(cid string) (ledger.Query
 	return cs.NewQueryExecutor()
 }
 
-func (*collectionSupport) GetCollectionKVSKey(cc common.CollectionCriteria) string {
-	return privdata.BuildCollectionKVSKey(cc.Namespace)
-}
-
 func (*collectionSupport) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 	return mspmgmt.GetManagerForChain(chainID)
 }
