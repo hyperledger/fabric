@@ -46,34 +46,45 @@ func init() {
 }
 
 const (
-	// TestChainID is the channel name used for testing purposes when one is not given
+	// TestChainID is the channel name used for testing purposes when one is
+	// not given
 	TestChainID = "testchainid"
 
-	// SampleInsecureSoloProfile references the sample profile which does not include any MSPs and uses solo for ordering.
+	// SampleInsecureSoloProfile references the sample profile which does not
+	// include any MSPs and uses solo for ordering.
 	SampleInsecureSoloProfile = "SampleInsecureSolo"
-	// SampleDevModeSoloProfile references the sample profile which requires only basic membership for admin privileges and uses solo for ordering.
+	// SampleDevModeSoloProfile references the sample profile which requires
+	// only basic membership for admin privileges and uses solo for ordering.
 	SampleDevModeSoloProfile = "SampleDevModeSolo"
-	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
+	// SampleSingleMSPSoloProfile references the sample profile which includes
+	// only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
 
-	// SampleInsecureKafkaProfile references the sample profile which does not include any MSPs and uses Kafka for ordering.
+	// SampleInsecureKafkaProfile references the sample profile which does not
+	// include any MSPs and uses Kafka for ordering.
 	SampleInsecureKafkaProfile = "SampleInsecureKafka"
-	// SampleDevModeKafkaProfile references the sample profile which requires only basic membership for admin privileges and uses Kafka for ordering.
+	// SampleDevModeKafkaProfile references the sample profile which requires only
+	// basic membership for admin privileges and uses Kafka for ordering.
 	SampleDevModeKafkaProfile = "SampleDevModeKafka"
-	// SampleSingleMSPKafkaProfile references the sample profile which includes only the sample MSP and uses Kafka for ordering.
+	// SampleSingleMSPKafkaProfile references the sample profile which includes
+	// only the sample MSP and uses Kafka for ordering.
 	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
 
-	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
+	// SampleSingleMSPChannelProfile references the sample profile which
+	// includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
 
-	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
+	// SampleConsortiumName is the sample consortium from the
+	// sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"
 	// SampleOrgName is the name of the sample org in the sample profiles
 	SampleOrgName = "SampleOrg"
 
-	// AdminRoleAdminPrincipal is set as AdminRole to cause the MSP role of type Admin to be used as the admin principal default
+	// AdminRoleAdminPrincipal is set as AdminRole to cause the MSP role of
+	// type Admin to be used as the admin principal default
 	AdminRoleAdminPrincipal = "Role.ADMIN"
-	// MemberRoleAdminPrincipal is set as AdminRole to cause the MSP role of type Member to be used as the admin principal default
+	// MemberRoleAdminPrincipal is set as AdminRole to cause the MSP role of
+	// type Member to be used as the admin principal default
 	MemberRoleAdminPrincipal = "Role.MEMBER"
 )
 
@@ -88,7 +99,8 @@ type TopLevel struct {
 	Resources     *Resources                 `yaml:"Resources"`
 }
 
-// Profile encodes orderer/application configuration combinations for the configtxgen tool.
+// Profile encodes orderer/application configuration combinations for the
+// configtxgen tool.
 type Profile struct {
 	Consortium   string                 `yaml:"Consortium"`
 	Application  *Application           `yaml:"Application"`
@@ -104,12 +116,14 @@ type Policy struct {
 	Rule string `yaml:"Rule"`
 }
 
-// Consortium represents a group of organizations which may create channels with eachother
+// Consortium represents a group of organizations which may create channels
+// with each other
 type Consortium struct {
 	Organizations []*Organization `yaml:"Organizations"`
 }
 
-// Application encodes the application-level configuration needed in config transactions.
+// Application encodes the application-level configuration needed in config
+// transactions.
 type Application struct {
 	Organizations []*Organization    `yaml:"Organizations"`
 	Capabilities  map[string]bool    `yaml:"Capabilities"`
@@ -118,12 +132,14 @@ type Application struct {
 	ACLs          map[string]string  `yaml:"ACLs"`
 }
 
-// Resouces encodes the application-level resources configuration needed to seed the resource tree
+// Resources encodes the application-level resources configuration needed to
+// seed the resource tree
 type Resources struct {
 	DefaultModPolicy string
 }
 
-// Organization encodes the organization-level configuration needed in config transactions.
+// Organization encodes the organization-level configuration needed in
+// config transactions.
 type Organization struct {
 	Name     string             `yaml:"Name"`
 	ID       string             `yaml:"ID"`
@@ -191,16 +207,20 @@ var genesisDefaults = TopLevel{
 }
 
 // LoadTopLevel simply loads the configtx.yaml file into the structs above and
-// completes their initialization. Additional config search paths may optional
-// be provided.
+// completes their initialization. Config paths may optionally be provided and
+// will be used in place of the FABRIC_CFG_PATH env variable.
 //
 // Note, for environment overrides to work properly within a profile, Load
 // should be used instead.
-func LoadTopLevel(extraSearchPaths ...string) *TopLevel {
+func LoadTopLevel(configPaths ...string) *TopLevel {
 	config := viper.New()
-	cf.InitViper(config, configName)
-	for _, p := range extraSearchPaths {
-		cf.AddConfigPath(config, p)
+	if len(configPaths) > 0 {
+		for _, p := range configPaths {
+			config.AddConfigPath(p)
+		}
+		config.SetConfigName(configName)
+	} else {
+		cf.InitViper(config, configName)
 	}
 
 	// For environment variables
@@ -230,19 +250,25 @@ func LoadTopLevel(extraSearchPaths ...string) *TopLevel {
 }
 
 // Load returns the orderer/application config combination that corresponds to
-// a given profile. Additional config search paths may optionally be provided.
-func Load(profile string, extraSearchPaths ...string) *Profile {
+// a given profile. Config paths may optionally be provided and will be used
+// in place of the FABRIC_CFG_PATH env variable.
+func Load(profile string, configPaths ...string) *Profile {
 	config := viper.New()
-	cf.InitViper(config, configName)
-	for _, p := range extraSearchPaths {
-		cf.AddConfigPath(config, p)
+	if len(configPaths) > 0 {
+		for _, p := range configPaths {
+			config.AddConfigPath(p)
+		}
+		config.SetConfigName(configName)
+	} else {
+		cf.InitViper(config, configName)
 	}
 
 	// For environment variables
 	config.SetEnvPrefix(Prefix)
 	config.AutomaticEnv()
 
-	// This replacer allows substitution within the particular profile without having to fully qualify the name
+	// This replacer allows substitution within the particular profile without
+	// having to fully qualify the name
 	replacer := strings.NewReplacer(strings.ToUpper(fmt.Sprintf("profiles.%s.", profile)), "", ".", "_")
 	config.SetEnvKeyReplacer(replacer)
 

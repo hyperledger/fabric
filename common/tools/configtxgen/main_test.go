@@ -140,20 +140,25 @@ func TestConfigTxFlags(t *testing.T) {
 		os.Args = oldArgs
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	}()
+
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+	devConfigDir, err := configtest.GetDevConfigDir()
+	assert.NoError(t, err, "failed to get dev config dir")
+
 	os.Args = []string{
 		"cmd",
 		"-outputCreateChannelTx=" + configTxDest,
 		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
+		"-configPath=" + devConfigDir,
 		"-inspectChannelCreateTx=" + configTxDest,
 		"-outputAnchorPeersUpdate=" + configTxDestAnchorPeers,
 		"-asOrg=" + genesisconfig.SampleOrgName,
 	}
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
 
 	main()
 
-	_, err := os.Stat(configTxDest)
+	_, err = os.Stat(configTxDest)
 	assert.NoError(t, err, "Configtx file is written successfully")
 	_, err = os.Stat(configTxDestAnchorPeers)
 	assert.NoError(t, err, "Configtx anchor peers file is written successfully")
