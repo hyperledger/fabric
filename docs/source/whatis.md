@@ -187,7 +187,8 @@ platforms such as [Tendermint](http://tendermint.com/),
 Smart contracts executing in a blockchain that operates with the order-execute
 architecture must be deterministic; otherwise, consensus might never be reached.
 To address the non-determinism issue, many platforms require that the smart
-contracts be written in a non-standard, or domain-specific language so that
+contracts be written in a non-standard, or domain-specific language
+(such as [Solidity](https://solidity.readthedocs.io/en/v0.4.23/)) so that
 non-deterministic operations can be eliminated. This hinders wide-spread
 adoption because it requires developers writing smart contracts to learn a new
 language and may lead to programming errors.
