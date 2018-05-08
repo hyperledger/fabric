@@ -506,7 +506,7 @@ func TestUpgrade(t *testing.T) {
 		ApplicationConfigRv: &config.MockApplication{
 			CapabilitiesRv: &config.MockApplicationCapabilities{
 				PrivateChannelDataRv: true,
-				V1_2ValidationRv:     true,
+				CollectionUpgradeRv:  true,
 			},
 		},
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
