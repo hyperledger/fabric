@@ -131,7 +131,7 @@ func (syscc *SystemChaincode) deploySysCC(chainID string) error {
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
+	cccid := ccprovider.NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
 
 	resp, _, err := ccprov.Execute(ctxt, cccid, chaincodeDeploymentSpec)
 	if err == nil && resp.Status != shim.OK {
@@ -157,7 +157,7 @@ func (syscc *SystemChaincode) deDeploySysCC(chainID string) error {
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil, nil)
+	cccid := ccprovider.NewCCContext(chainID, syscc.Name, version, "", true, nil, nil)
 
 	err := ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
 
