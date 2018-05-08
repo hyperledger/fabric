@@ -133,7 +133,7 @@ satisfy the diverse solution requirements for multiple industry use cases.
 In a permissionless blockchain, virtually anyone can participate, and every
 participant is anonymous. In such a context, there can be no trust other than
 that the state of the blockchain, prior to a certain depth, is immutable. In
-order to mitigate this absence of trust, permissonless blockchains typically
+order to mitigate this absence of trust, permissionless blockchains typically
 employ a "mined" native cryptocurrency or transaction fees to provide economic
 incentive to offset the extraordinary costs of participating in a form of
 byzantine fault tolerant consensus based on "proof of work" (PoW).
@@ -290,9 +290,10 @@ to rely on well-established toolkits for CFT (crash fault-tolerant) or BFT
 (byzantine fault-tolerant) ordering.
 
 In the currently available releases, Fabric offers a CFT ordering service
-implemented with Kafka and Zookeeper. In subsequent releases, Fabric will
-deliver a RAFT consensus ordering service implemented with etcd-RAFT and a
-fully decentralized BFT ordering service.
+implemented with [Kafka](https://kafka.apache.org/) and
+[Zookeeper](https://zookeeper.apache.org/). In subsequent releases, Fabric will
+deliver a [Raft consensus ordering service](https://raft.github.io/) implemented
+with etcd/Raft and a fully decentralized BFT ordering service.
 
 Note also that these are not mutually exclusive. A Fabric network can have
 multiple ordering services supporting different applications or application
