@@ -9,12 +9,10 @@ package chaincode
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -46,14 +44,6 @@ type ContainerRuntime struct {
 	PeerAddress   string
 }
 
-type platformBuilder struct {
-	cds *pb.ChaincodeDeploymentSpec
-}
-
-func (b *platformBuilder) Build() (io.Reader, error) {
-	return platforms.GenerateDockerBuild(b.cds)
-}
-
 // Start launches chaincode in a runtime environment.
 func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
@@ -67,9 +57,10 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
-	builder := &platformBuilder{cds: cds}
 	scr := container.StartContainerReq{
-		Builder:       builder,
+		Builder: &container.PlatformBuilder{
+			DeploymentSpec: cds,
+		},
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,

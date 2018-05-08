@@ -7,11 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package container_test
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/mock"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
 	. "github.com/onsi/ginkgo"
@@ -19,98 +18,106 @@ import (
 )
 
 var _ = Describe("Container", func() {
-	Describe("StartContainerReq", func() {
+	Describe("VMCReqs", func() {
 		var (
-			ctxt     = context.Background()
-			startReq *container.StartContainerReq
-			fakeVM   *mock.VM
+			fakeVM *mock.VM
+			ctxt   context.Context
 		)
 
 		BeforeEach(func() {
-			startReq = &container.StartContainerReq{
-				CCID: ccintf.CCID{Name: "start-name"},
-				Args: []string{"foo", "bar"},
-				Env:  []string{"Bar", "Foo"},
-				FilesToUpload: map[string][]byte{
-					"Foo": []byte("bar"),
-				},
-				Builder: &mock.Builder{},
-			}
+			ctxt = context.Background()
 			fakeVM = &mock.VM{}
 		})
 
-		Describe("Do", func() {
-			It("Returns a response with no error when things go fine", func() {
-				fakeVM.StartReturns(nil)
-				err := startReq.Do(ctxt, fakeVM)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeVM.StartCallCount()).To(Equal(1))
-				rctxt, ccid, args, env, filesToUpload, builder := fakeVM.StartArgsForCall(0)
-				Expect(rctxt).To(Equal(ctxt))
-				Expect(ccid).To(Equal(startReq.CCID))
-				Expect(args).To(Equal(startReq.Args))
-				Expect(env).To(Equal(startReq.Env))
-				Expect(filesToUpload).To(Equal(startReq.FilesToUpload))
-				Expect(builder).To(Equal(startReq.Builder))
+		Describe("StartContainerReq", func() {
+			var (
+				startReq *container.StartContainerReq
+			)
+
+			BeforeEach(func() {
+				startReq = &container.StartContainerReq{
+					CCID: ccintf.CCID{Name: "start-name"},
+					Args: []string{"foo", "bar"},
+					Env:  []string{"Bar", "Foo"},
+					FilesToUpload: map[string][]byte{
+						"Foo": []byte("bar"),
+					},
+					Builder: &mock.Builder{},
+				}
 			})
 
-			It("Returns an error when the vm does", func() {
-				err := fmt.Errorf("Boo")
-				fakeVM.StartReturns(err)
-				rerr := startReq.Do(ctxt, fakeVM)
-				Expect(rerr).To(Equal(err))
-			})
-		})
+			Describe("Do", func() {
+				It("starts a vm", func() {
+					err := startReq.Do(ctxt, fakeVM)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeVM.StartCallCount()).To(Equal(1))
+					rctxt, ccid, args, env, filesToUpload, builder := fakeVM.StartArgsForCall(0)
+					Expect(rctxt).To(Equal(ctxt))
+					Expect(ccid).To(Equal(ccintf.CCID{Name: "start-name"}))
+					Expect(args).To(Equal([]string{"foo", "bar"}))
+					Expect(env).To(Equal([]string{"Bar", "Foo"}))
+					Expect(filesToUpload).To(Equal(map[string][]byte{
+						"Foo": []byte("bar"),
+					}))
+					Expect(builder).To(Equal(&mock.Builder{}))
+				})
 
-		Describe("GetCCID", func() {
-			It("Returns the CCID embedded in the structure", func() {
-				Expect(startReq.GetCCID()).To(Equal(startReq.CCID))
-			})
-		})
-	})
-
-	Describe("StopContainerReq", func() {
-		var (
-			ctxt    = context.Background()
-			stopReq *container.StopContainerReq
-			fakeVM  *mock.VM
-		)
-
-		BeforeEach(func() {
-			stopReq = &container.StopContainerReq{
-				CCID:       ccintf.CCID{Name: "stop-name"},
-				Timeout:    283,
-				Dontkill:   true,
-				Dontremove: false,
-			}
-			fakeVM = &mock.VM{}
-		})
-
-		Describe("Do", func() {
-			It("Returns a response with no error when things go fine", func() {
-				fakeVM.StartReturns(nil)
-				resp := stopReq.Do(ctxt, fakeVM)
-				Expect(resp).To(BeNil())
-				Expect(fakeVM.StopCallCount()).To(Equal(1))
-				rctxt, ccid, timeout, dontKill, dontRemove := fakeVM.StopArgsForCall(0)
-				Expect(rctxt).To(Equal(ctxt))
-				Expect(ccid).To(Equal(stopReq.CCID))
-				Expect(timeout).To(Equal(stopReq.Timeout))
-				Expect(dontKill).To(Equal(stopReq.Dontkill))
-				Expect(dontRemove).To(Equal(stopReq.Dontremove))
+				Context("when the vm provider fails", func() {
+					It("returns the error", func() {
+						fakeVM.StartReturns(errors.New("Boo"))
+						err := startReq.Do(ctxt, fakeVM)
+						Expect(err).To(MatchError("Boo"))
+					})
+				})
 			})
 
-			It("Returns an error when the vm does", func() {
-				err := fmt.Errorf("Boo")
-				fakeVM.StopReturns(err)
-				rerr := stopReq.Do(ctxt, fakeVM)
-				Expect(rerr).To(Equal(err))
+			Describe("GetCCID", func() {
+				It("Returns the CCID embedded in the structure", func() {
+					Expect(startReq.GetCCID()).To(Equal(ccintf.CCID{Name: "start-name"}))
+				})
 			})
 		})
 
-		Describe("GetCCID", func() {
-			It("Returns the CCID embedded in the structure", func() {
-				Expect(stopReq.GetCCID()).To(Equal(stopReq.CCID))
+		Describe("StopContainerReq", func() {
+			var (
+				stopReq *container.StopContainerReq
+			)
+
+			BeforeEach(func() {
+				stopReq = &container.StopContainerReq{
+					CCID:       ccintf.CCID{Name: "stop-name"},
+					Timeout:    283,
+					Dontkill:   true,
+					Dontremove: false,
+				}
+			})
+
+			Describe("Do", func() {
+				It("stops the vm", func() {
+					resp := stopReq.Do(ctxt, fakeVM)
+					Expect(resp).To(BeNil())
+					Expect(fakeVM.StopCallCount()).To(Equal(1))
+					rctxt, ccid, timeout, dontKill, dontRemove := fakeVM.StopArgsForCall(0)
+					Expect(rctxt).To(Equal(ctxt))
+					Expect(ccid).To(Equal(ccintf.CCID{Name: "stop-name"}))
+					Expect(timeout).To(Equal(uint(283)))
+					Expect(dontKill).To(Equal(true))
+					Expect(dontRemove).To(Equal(false))
+				})
+
+				Context("when the vm provider fails", func() {
+					It("returns the error", func() {
+						fakeVM.StopReturns(errors.New("Boo"))
+						err := stopReq.Do(ctxt, fakeVM)
+						Expect(err).To(MatchError("Boo"))
+					})
+				})
+			})
+
+			Describe("GetCCID", func() {
+				It("Returns the CCID embedded in the structure", func() {
+					Expect(stopReq.GetCCID()).To(Equal(ccintf.CCID{Name: "stop-name"}))
+				})
 			})
 		})
 	})
@@ -133,14 +140,17 @@ var _ = Describe("Container", func() {
 		})
 
 		Describe("Process", func() {
-			It("Panics if there is no underlying VM provider", func() {
-				Expect(func() { vmController.Process(ctxt, "Unknown-Type", nil) }).To(Panic())
-				Expect(vmProvider.NewVMCallCount()).To(Equal(0))
-			})
-			It("Returns no error if the underlying VM provider is successful", func() {
+			It("completes the request using the correct vm provider", func() {
 				err := vmController.Process(ctxt, "FakeProvider", vmcReq)
 				Expect(vmProvider.NewVMCallCount()).To(Equal(1))
 				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("the request is for an unknown VM provider type", func() {
+				It("causes the system to halt as this is a serious bug", func() {
+					Expect(func() { vmController.Process(ctxt, "Unknown-Type", nil) }).To(Panic())
+					Expect(vmProvider.NewVMCallCount()).To(Equal(0))
+				})
 			})
 		})
 	})

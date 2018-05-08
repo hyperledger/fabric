@@ -47,7 +47,6 @@ type getClient func() (dockerClient, error)
 
 //DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
-	id           string
 	getClientFnc getClient
 	PeerID       string
 	NetworkID    string

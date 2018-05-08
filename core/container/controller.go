@@ -44,7 +44,6 @@ type refCountedLock struct {
 //     eventually probably need fine grained management)
 type VMController struct {
 	sync.RWMutex
-	// Handlers for each chaincode
 	containerLocks map[string]*refCountedLock
 	vmProviders    map[string]VMProvider
 }
@@ -120,6 +119,22 @@ type StartContainerReq struct {
 	FilesToUpload map[string][]byte
 }
 
+// PlatformBuilder implements the Build interface using
+// the platforms package GenerateDockerBuild function.
+// XXX This is a pretty awkward spot for the builder, it should
+// really probably be pushed into the dockercontroller, as it only
+// builds docker images, but, doing so would require contaminating
+// the dockercontroller package with the CDS, which is also
+// undesirable.
+type PlatformBuilder struct {
+	DeploymentSpec *pb.ChaincodeDeploymentSpec
+}
+
+// Build a tar stream based on the CDS
+func (b *PlatformBuilder) Build() (io.Reader, error) {
+	return platforms.GenerateDockerBuild(b.DeploymentSpec)
+}
+
 func (si StartContainerReq) Do(ctxt context.Context, v VM) error {
 	return v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
 }
@@ -156,9 +171,6 @@ func (si StopContainerReq) GetCCID() ccintf.CCID {
 //In all cases VMCProcess will wait for the called go routine to return
 func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq) error {
 	v := vmc.newVM(vmtype)
-	if v == nil {
-		return fmt.Errorf("Unknown VM type %s", vmtype)
-	}
 
 	c := make(chan error)
 	go func() {

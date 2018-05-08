@@ -201,7 +201,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 		assert.Equal(t, startReq.Env, []string{"CORE_CHAINCODE_ID_NAME=context-name:context-version", "CORE_PEER_TLS_ENABLED=false"})
 		assert.Nil(t, startReq.FilesToUpload)
 		assert.Equal(t, startReq.CCID, ccintf.CCID{
-			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
+			Name:    "chaincode-id-name",
 			Version: "context-version",
 		})
 	}
@@ -215,7 +215,6 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 	}{
 		{pb.ChaincodeSpec_Type(999), nil, "unknown chaincodeType: 999"},
 		{pb.ChaincodeSpec_GOLANG, errors.New("process-failed"), "error starting container: process-failed"},
-		{pb.ChaincodeSpec_GOLANG, errors.New("error-in-response"), "error starting container: error-in-response"},
 	}
 
 	for _, tc := range tests {
@@ -281,7 +280,7 @@ func TestContainerRuntimeStop(t *testing.T) {
 		assert.Equal(t, stopReq.Timeout, uint(0))
 		assert.Equal(t, stopReq.Dontremove, false)
 		assert.Equal(t, stopReq.CCID, ccintf.CCID{
-			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
+			Name:    "chaincode-id-name",
 			Version: "context-version",
 		})
 	}
@@ -293,7 +292,6 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		errValue   string
 	}{
 		{errors.New("process-failed"), "error stopping container: process-failed"},
-		{errors.New("error-in-response-is-ignored"), "error stopping container: error-in-response-is-ignored"},
 	}
 
 	for _, tc := range tests {
