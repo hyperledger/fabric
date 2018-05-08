@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package world
 
 import (
+	"fmt"
 	"os"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -67,5 +69,14 @@ func (c *Components) Orderer() *runner.Orderer {
 func (c *Components) Peer() *runner.Peer {
 	return &runner.Peer{
 		Path: c.Paths["peer"],
+	}
+}
+
+func (c *Components) Zookeeper(id int, network *docker.Network) *runner.Zookeeper {
+	return &runner.Zookeeper{
+		ZooMyID:     id,
+		Name:        fmt.Sprintf("zookeeper%d", id),
+		NetworkID:   network.ID,
+		NetworkName: network.Name,
 	}
 }
