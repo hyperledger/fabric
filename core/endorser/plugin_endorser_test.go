@@ -9,6 +9,7 @@ package endorser_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/mocks"
 	"github.com/hyperledger/fabric/protos/common"
@@ -19,20 +20,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestIsEndorsedWithPlugin(t *testing.T) {
-	pluginMapper := &mocks.PluginMapper{}
-	pluginMapper.On("PluginFactoryByName", endorser.PluginName("existingPluginFactory")).Return(&mocks.PluginFactory{})
-	pluginMapper.On("PluginFactoryByName", endorser.PluginName("nonExistingPluginFactory")).Return(nil)
-	pluginEndorser := endorser.NewPluginEndorser(nil, nil, pluginMapper)
-	assert.False(t, pluginEndorser.IsEndorsedWithPlugin("nonExistingPluginFactory"))
-	assert.True(t, pluginEndorser.IsEndorsedWithPlugin("existingPluginFactory"))
-}
-
 func TestPluginEndorserNotFound(t *testing.T) {
 	pluginMapper := &mocks.PluginMapper{}
 	pluginMapper.On("PluginFactoryByName", endorser.PluginName("notfound")).Return(nil)
 	pluginEndorser := endorser.NewPluginEndorser(nil, nil, pluginMapper)
 	resp, err := pluginEndorser.EndorseWithPlugin(endorser.Context{
+		Response:   &peer.Response{},
 		PluginName: "notfound",
 	})
 	assert.Nil(t, resp)
@@ -62,6 +55,7 @@ func TestPluginEndorserGreenPath(t *testing.T) {
 	cs.On("NewQueryCreator", "mychannel").Return(queryCreator, nil)
 	pluginEndorser := endorser.NewPluginEndorser(cs, sif, pluginMapper)
 	ctx := endorser.Context{
+		Response:   &peer.Response{},
 		PluginName: "plugin",
 		Proposal:   proposal,
 		ChaincodeID: &peer.ChaincodeID{
@@ -119,32 +113,71 @@ func TestPluginEndorserErrors(t *testing.T) {
 	pluginEndorser := endorser.NewPluginEndorser(cs, sif, pluginMapper)
 
 	// Scenario I: Failed initializing plugin
-	plugin.On("Init", mock.Anything, mock.Anything).Return(errors.New("plugin initialization failed")).Once()
-	resp, err := pluginEndorser.EndorseWithPlugin(endorser.Context{
-		PluginName: "plugin",
-		Channel:    "mychannel",
+	t.Run("PluginInitializationFailure", func(t *testing.T) {
+		plugin.On("Init", mock.Anything, mock.Anything).Return(errors.New("plugin initialization failed")).Once()
+		resp, err := pluginEndorser.EndorseWithPlugin(endorser.Context{
+			PluginName: "plugin",
+			Channel:    "mychannel",
+			Response:   &peer.Response{},
+		})
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "plugin initialization failed")
 	})
 
-	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "plugin initialization failed")
-
 	// Scenario II: an empty proposal is passed in the context, and parsing fails
-	plugin.On("Init", mock.Anything, mock.Anything).Return(nil).Once()
-	ctx := endorser.Context{
-		PluginName: "plugin",
-		ChaincodeID: &peer.ChaincodeID{
-			Name: "mycc",
-		},
-		Proposal: &peer.Proposal{},
-		Channel:  "mychannel",
-	}
-	resp, err = pluginEndorser.EndorseWithPlugin(ctx)
-	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "could not compute proposal hash")
+	t.Run("EmptyProposal", func(t *testing.T) {
+		plugin.On("Init", mock.Anything, mock.Anything).Return(nil).Once()
+		ctx := endorser.Context{
+			Response:   &peer.Response{},
+			PluginName: "plugin",
+			ChaincodeID: &peer.ChaincodeID{
+				Name: "mycc",
+			},
+			Proposal: &peer.Proposal{},
+			Channel:  "mychannel",
+		}
+		resp, err := pluginEndorser.EndorseWithPlugin(ctx)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "could not compute proposal hash")
+	})
 
 	// Scenario III: The proposal's header is invalid
-	ctx.Proposal.Header = []byte{1, 2, 3}
-	resp, err = pluginEndorser.EndorseWithPlugin(ctx)
-	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "failed parsing header")
+	t.Run("InvalidHeader in the proposal", func(t *testing.T) {
+		ctx := endorser.Context{
+			Response:   &peer.Response{},
+			PluginName: "plugin",
+			ChaincodeID: &peer.ChaincodeID{
+				Name: "mycc",
+			},
+			Proposal: &peer.Proposal{
+				Header: []byte{1, 2, 3},
+			},
+			Channel: "mychannel",
+		}
+		resp, err := pluginEndorser.EndorseWithPlugin(ctx)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "failed parsing header")
+	})
+
+	// Scenario IV: The proposal's response status code indicates an error
+	t.Run("ResponseStatusContainsError", func(t *testing.T) {
+		r := &peer.Response{
+			Status:  shim.ERRORTHRESHOLD,
+			Payload: []byte{1, 2, 3},
+			Message: "bla bla",
+		}
+		resp, err := pluginEndorser.EndorseWithPlugin(endorser.Context{
+			Response: r,
+		})
+		assert.Equal(t, &peer.ProposalResponse{Response: r}, resp)
+		assert.NoError(t, err)
+	})
+
+	// Scenario V: The proposal's response is nil
+	t.Run("ResponseIsNil", func(t *testing.T) {
+		resp, err := pluginEndorser.EndorseWithPlugin(endorser.Context{})
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "Response is nil")
+
+	})
 }

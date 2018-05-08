@@ -8,6 +8,6 @@ SPDX-License-Identifier: Apache-2.0
 
 package endorser
 
-func javaEnabled() bool {
+func JavaEnabled() bool {
 	return false
 }

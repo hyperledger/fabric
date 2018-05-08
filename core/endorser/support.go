@@ -8,11 +8,13 @@ package endorser
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
+	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
@@ -26,9 +28,23 @@ import (
 // SupportImpl provides an implementation of the endorser.Support interface
 // issuing calls to various static methods of the peer
 type SupportImpl struct {
+	*PluginEndorser
+	crypto.SignerSupport
 	Peer             peer.Operations
 	PeerSupport      peer.Support
 	ChaincodeSupport *chaincode.ChaincodeSupport
+}
+
+func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
+	lgr := s.Peer.GetLedger(channel)
+	if lgr == nil {
+		return nil, errors.Errorf("channel %s doesn't exist", channel)
+	}
+	return lgr, nil
+}
+
+func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (SigningIdentity, error) {
+	return s.SignerSupport, nil
 }
 
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
@@ -43,7 +59,7 @@ func (s *SupportImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 func (s *SupportImpl) GetTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
 	lgr := s.Peer.GetLedger(ledgername)
 	if lgr == nil {
-		return nil, errors.Errorf("channel does not exist: %s", ledgername)
+		return nil, errors.Errorf("Channel does not exist: %s", ledgername)
 	}
 	return lgr.NewTxSimulator(txid)
 }
@@ -53,7 +69,7 @@ func (s *SupportImpl) GetTxSimulator(ledgername string, txid string) (ledger.TxS
 func (s *SupportImpl) GetHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {
 	lgr := s.Peer.GetLedger(ledgername)
 	if lgr == nil {
-		return nil, errors.Errorf("channel does not exist: %s", ledgername)
+		return nil, errors.Errorf("Channel does not exist: %s", ledgername)
 	}
 	return lgr.NewHistoryQueryExecutor()
 }
@@ -62,7 +78,7 @@ func (s *SupportImpl) GetHistoryQueryExecutor(ledgername string) (ledger.History
 func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransaction, error) {
 	lgr := s.Peer.GetLedger(chid)
 	if lgr == nil {
-		return nil, errors.Errorf("failed to look up the ledger for channel %s", chid)
+		return nil, errors.Errorf("failed to look up the ledger for Channel %s", chid)
 	}
 	tx, err := lgr.GetTransactionByID(txID)
 	if err != nil {
@@ -111,7 +127,7 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 	return lifecycle.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 }
 
-// CheckACL checks the ACL for the resource for the channel using the
+// CheckACL checks the ACL for the resource for the Channel using the
 // SignedProposal from which an id can be extracted for testing against a policy
 func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
 	return aclmgmt.GetACLProvider().CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
@@ -135,7 +151,7 @@ func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd ccprovid
 	return ccprovider.CheckInstantiationPolicy(name, version, cd.(*ccprovider.ChaincodeData))
 }
 
-// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel
 // and whether the Application config exists
 func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	return s.PeerSupport.GetApplicationConfig(cid)

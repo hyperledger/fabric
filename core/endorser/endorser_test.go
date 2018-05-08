@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package endorser
+package endorser_test
 
 import (
 	"context"
@@ -13,8 +13,12 @@ import (
 	"testing"
 
 	mc "github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/common/mocks/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/endorser"
+	"github.com/hyperledger/fabric/core/endorser/mocks"
+	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
 	"github.com/hyperledger/fabric/core/ledger"
 	mockccprovider "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	em "github.com/hyperledger/fabric/core/mocks/endorser"
@@ -27,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func getSignedPropWithCHID(ccid, ccver, chid string, t *testing.T) *pb.SignedProposal {
@@ -56,7 +61,7 @@ func getSignedPropWithCHIdAndArgs(chid, ccid, ccver string, ccargs [][]byte, t *
 }
 
 func TestEndorserNilProp(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -74,7 +79,7 @@ func TestEndorserNilProp(t *testing.T) {
 }
 
 func TestEndorserUninvokableSysCC(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv:       true,
@@ -92,7 +97,7 @@ func TestEndorserUninvokableSysCC(t *testing.T) {
 }
 
 func TestEndorserCCInvocationFailed(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -112,7 +117,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 }
 
 func TestEndorserNoCCDef(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -132,7 +137,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 }
 
 func TestEndorserBadInstPolicy(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv:    true,
@@ -152,9 +157,11 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 }
 
 func TestEndorserSysCC(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
-		return nil
-	}, &em.MockSupport{
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	support := &em.MockSupport{
+		Mock: m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -162,7 +169,11 @@ func TestEndorserSysCC(t *testing.T) {
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-	})
+	}
+	attachPluginEndorser(support)
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+		return nil
+	}, support)
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -172,7 +183,7 @@ func TestEndorserSysCC(t *testing.T) {
 }
 
 func TestEndorserCCInvocationError(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -191,7 +202,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 }
 
 func TestEndorserLSCCBadType(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -219,7 +230,7 @@ func TestEndorserLSCCBadType(t *testing.T) {
 }
 
 func TestEndorserDupTXId(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -238,7 +249,7 @@ func TestEndorserDupTXId(t *testing.T) {
 }
 
 func TestEndorserBadACL(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -258,7 +269,7 @@ func TestEndorserBadACL(t *testing.T) {
 }
 
 func TestEndorserGoodPathEmptyChannel(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -277,7 +288,7 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 }
 
 func TestEndorserLSCCInitFails(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -308,7 +319,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 	SysCCMap := make(map[string]struct{})
 	deployedCCName := "barf"
 	SysCCMap[deployedCCName] = struct{}{}
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -337,11 +348,11 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 }
 
 func TestEndorserLSCCJava1(t *testing.T) {
-	if javaEnabled() {
+	if endorser.JavaEnabled() {
 		t.Skip("Java chaincode is supported")
 	}
 
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -370,11 +381,11 @@ func TestEndorserLSCCJava1(t *testing.T) {
 }
 
 func TestEndorserLSCCJava2(t *testing.T) {
-	if javaEnabled() {
+	if endorser.JavaEnabled() {
 		t.Skip("Java chaincode is supported")
 	}
 
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -402,9 +413,11 @@ func TestEndorserLSCCJava2(t *testing.T) {
 }
 
 func TestEndorserGoodPathWEvents(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
-		return nil
-	}, &em.MockSupport{
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	support := &em.MockSupport{
+		Mock: m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -412,7 +425,11 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		ExecuteEvent:               &pb.ChaincodeEvent{},
 		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-	})
+	}
+	attachPluginEndorser(support)
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+		return nil
+	}, support)
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -422,7 +439,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 }
 
 func TestEndorserBadChannel(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -442,16 +459,22 @@ func TestEndorserBadChannel(t *testing.T) {
 }
 
 func TestEndorserGoodPath(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
-		return nil
-	}, &em.MockSupport{
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	support := &em.MockSupport{
+		Mock: m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-	})
+	}
+	attachPluginEndorser(support)
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+		return nil
+	}, support)
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -461,16 +484,22 @@ func TestEndorserGoodPath(t *testing.T) {
 }
 
 func TestEndorserLSCC(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
-		return nil
-	}, &em.MockSupport{
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	support := &em.MockSupport{
+		Mock: m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-	})
+	}
+	attachPluginEndorser(support)
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+		return nil
+	}, support)
 
 	cds := utils.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -487,8 +516,47 @@ func TestEndorserLSCC(t *testing.T) {
 	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
+func attachPluginEndorser(support *em.MockSupport) {
+	csr := &mocks.ChannelStateRetriever{}
+	queryCreator := &mocks.QueryCreator{}
+	csr.On("NewQueryCreator", mock.Anything).Return(queryCreator, nil)
+	sif := &mocks.SigningIdentityFetcher{}
+	sif.On("SigningIdentityForRequest", mock.Anything).Return(support, nil)
+	pm := &mocks.PluginMapper{}
+	pm.On("PluginFactoryByName", mock.Anything).Return(&builtin.DefaultEndorsementFactory{})
+	support.PluginEndorser = endorser.NewPluginEndorser(csr, sif, pm)
+}
+
+func TestEndorseWithPlugin(t *testing.T) {
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	support := &em.MockSupport{
+		Mock: m,
+		GetApplicationConfigBoolRv: true,
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+		GetTransactionByIDErr:      errors.New("can't find this transaction in the index"),
+		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
+		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+	}
+	attachPluginEndorser(support)
+
+	es := endorser.NewEndorserServer(func(_ string, _ string, _ *rwset.TxPvtReadWriteSet, _ uint64) error {
+		return nil
+	}, support)
+
+	signedProp := getSignedProp("ccid", "0", t)
+
+	resp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{1, 2, 3, 4, 5}, resp.Endorsement.Signature)
+	assert.Equal(t, []byte{1, 1, 1}, resp.Endorsement.Endorser)
+	assert.Equal(t, 200, int(resp.Response.Status))
+}
+
 func TestSimulateProposal(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -499,16 +567,16 @@ func TestSimulateProposal(t *testing.T) {
 		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
 	})
 
-	_, _, _, _, err := es.(*Endorser).simulateProposal(nil, "", "", nil, nil, nil, nil)
+	_, _, _, _, err := es.SimulateProposal(nil, "", "", nil, nil, nil, nil)
 	assert.Error(t, err)
 }
 
 func TestEndorserJavaChecks(t *testing.T) {
-	if javaEnabled() {
+	if endorser.JavaEnabled() {
 		t.Skip("Java chaincode is supported")
 	}
 
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	es := endorser.NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
 		return nil
 	}, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -519,13 +587,13 @@ func TestEndorserJavaChecks(t *testing.T) {
 		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
 	})
 
-	err := es.(*Endorser).disableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{})
+	err := es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{})
 	assert.NoError(t, err)
-	err = es.(*Endorser).disableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{}}})
+	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{}}})
 	assert.NoError(t, err)
-	err = es.(*Endorser).disableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("foo")}}}})
+	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("foo")}}}})
 	assert.NoError(t, err)
-	err = es.(*Endorser).disableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install")}}}})
+	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install")}}}})
 	assert.Error(t, err)
 }
 

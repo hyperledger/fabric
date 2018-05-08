@@ -216,15 +216,6 @@ func TestDeploy(t *testing.T) {
 	stub = shim.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
-	scc.sccprovider.(*mscc.MocksccProviderImpl).SysCCMap = map[string]bool{"escc": false}
-
-	testDeploy(t, "example02", "1.0", path, false, false, true, "escc is not a valid endorsement system chaincode", scc, stub, nil)
-
-	scc = New(NewMockProvider())
-	scc.support = &lscc.MockSupport{}
-	stub = shim.NewMockStub("lscc", scc)
-	res = stub.MockInit("1", nil)
-	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 	scc.sccprovider.(*mscc.MocksccProviderImpl).SysCCMap = map[string]bool{"vscc": false, "escc": true}
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "vscc is not a valid validation system chaincode", scc, stub, nil)

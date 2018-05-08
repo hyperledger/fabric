@@ -133,10 +133,6 @@ func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 
 //create the chaincode on the given chain
 func (lscc *lifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData) error {
-	// check that escc and vscc are real system chaincodes
-	if !lscc.sccprovider.IsSysCC(string(cd.Escc)) {
-		return fmt.Errorf("%s is not a valid endorsement system chaincode", string(cd.Escc))
-	}
 	if !lscc.sccprovider.IsSysCC(string(cd.Vscc)) {
 		return fmt.Errorf("%s is not a valid validation system chaincode", string(cd.Vscc))
 	}

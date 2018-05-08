@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2018 All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -130,14 +131,17 @@ type PluginEndorser struct {
 	endorsement3.SigningIdentityFetcher
 }
 
-// IsEndorsedWithPlugin returns whether there is an endorsement plugin that matches the given name
-func (pe *PluginEndorser) IsEndorsedWithPlugin(name string) bool {
-	return pe.PluginFactoryByName(PluginName(name)) != nil
-}
-
 // EndorseWithPlugin endorses the response with a plugin
 func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error) {
 	endorserLogger.Info("Entering endorsement for", ctx)
+
+	if ctx.Response == nil {
+		return nil, errors.New("Response is nil")
+	}
+
+	if ctx.Response.Status >= shim.ERRORTHRESHOLD {
+		return &pb.ProposalResponse{Response: ctx.Response}, nil
+	}
 
 	plugin, err := pe.getOrCreatePlugin(PluginName(ctx.PluginName), ctx.Channel)
 	if err != nil {
@@ -161,7 +165,7 @@ func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, 
 		Version:     1,
 		Endorsement: endorsement,
 		Payload:     prpBytes,
-		Response:    &pb.Response{Status: 200, Message: "OK"},
+		Response:    ctx.Response,
 	}
 	endorserLogger.Info("Exiting", ctx)
 	return resp, nil
