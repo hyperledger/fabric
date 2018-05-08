@@ -125,6 +125,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
 		aclmgmt.GetACLProvider(),
+		container.NewVMController(),
 	)
 	chaincodeSupport.SetSysCCProvider(sccp)
 	SideEffectInitialize(chaincodeSupport)

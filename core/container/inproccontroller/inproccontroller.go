@@ -19,6 +19,19 @@ import (
 	"golang.org/x/net/context"
 )
 
+// Provider implements container.VMProvider
+type Provider struct{}
+
+// NewProvider creates a new instances of Provider
+func NewProvider() *Provider {
+	return &Provider{}
+}
+
+// NewVM creates an inproc VM instance
+func (c *Provider) NewVM() container.VM {
+	return &InprocVM{}
+}
+
 type inprocContainer struct {
 	chaincode shim.Chaincode
 	running   bool

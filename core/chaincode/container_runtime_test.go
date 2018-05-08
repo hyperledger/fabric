@@ -322,23 +322,3 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
-
-func TestProcessFunc(t *testing.T) {
-	var c context.Context
-	var v string
-	var r container.VMCReqIntf
-
-	processFunc := func(ctxt context.Context, vmtype string, req container.VMCReqIntf) (container.VMCResp, error) {
-		c = ctxt
-		v = vmtype
-		r = req
-		return container.VMCResp{Err: errors.New("response-error")}, errors.New("func-error")
-	}
-
-	resp, err := chaincode.ProcessFunc(processFunc).Process(context.Background(), "vm-type", container.StartContainerReq{})
-	assert.EqualError(t, resp.Err, "response-error")
-	assert.EqualError(t, err, "func-error")
-	assert.Equal(t, c, context.Background())
-	assert.Equal(t, v, "vm-type")
-	assert.Equal(t, r, container.StartContainerReq{})
-}

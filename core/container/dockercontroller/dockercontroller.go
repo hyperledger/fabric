@@ -85,6 +85,19 @@ type dockerClient interface {
 	RemoveContainer(opts docker.RemoveContainerOptions) error
 }
 
+// Controller implements container.VMProvider
+type Provider struct{}
+
+// NewProvider creates a new instance of Provider
+func NewProvider() *Provider {
+	return &Provider{}
+}
+
+// NewVM creates a new DockerVM instance
+func (p *Provider) NewVM() container.VM {
+	return NewDockerVM()
+}
+
 // NewDockerVM returns a new DockerVM instance
 func NewDockerVM() *DockerVM {
 	vm := DockerVM{}
