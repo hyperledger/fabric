@@ -165,8 +165,8 @@ func IsEnabledForLogLevel(logLevel string) bool {
 }
 
 // SetupChaincodeLogging sets the chaincode logging format and the level
-// to the values of CORE_CHAINCODE_LOGFORMAT and CORE_CHAINCODE_LOGLEVEL set
-// from core.yaml by chaincode_support.go
+// to the values of CORE_CHAINCODE_LOGGING_FORMAT, CORE_CHAINCODE_LOGGING_LEVEL
+// and CORE_CHAINCODE_LOGGING_SHIM set from core.yaml by chaincode_support.go
 func SetupChaincodeLogging() {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
