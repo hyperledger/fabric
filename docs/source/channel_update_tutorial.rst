@@ -44,19 +44,19 @@ previous environments:
 
 .. code:: bash
 
-  ./byfn.sh -m down
+  ./byfn.sh down
 
 Now generate the default BYFN artifacts:
 
 .. code:: bash
 
-  ./byfn.sh -m generate
+  ./byfn.sh generate
 
 And launch the network making use of the scripted execution within the CLI container:
 
 .. code:: bash
 
-  ./byfn.sh -m up
+  ./byfn.sh up
 
 Now that you have a clean version of BYFN running on your machine, you have two
 different paths you can pursue. First, we offer a fully commented script that will
@@ -87,7 +87,7 @@ If everything goes well, you'll get this message:
   ========= All GOOD, EYFN test execution completed ===========
 
 ``eyfn.sh`` can be used with the same Node.js chaincode and database options
-as ``byfn.sh`` by issuing the following (instead of ``./byfn.sh -m -up``):
+as ``byfn.sh`` by issuing the following (instead of ``./byfn.sh up``):
 
 .. code:: bash
 
@@ -156,13 +156,13 @@ When the network is down, bring it back up again.
 
 .. code:: bash
 
-  ./byfn.sh -m generate
+  ./byfn.sh generate
 
 Then:
 
 .. code:: bash
 
-  ./byfn.sh -m up
+  ./byfn.sh up
 
 This will bring your network back to the same state it was in before you executed
 the ``eyfn.sh`` script.

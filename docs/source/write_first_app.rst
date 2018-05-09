@@ -43,7 +43,7 @@ down any existing networks you have, which you can do by issuing the following:
 
 .. code:: bash
 
-  ./byfn.sh -m down
+  ./byfn.sh down
 
 If you don't have a development environment and the accompanying artifacts for
 the network and applications, visit the :doc:`prereqs` page and ensure you have
