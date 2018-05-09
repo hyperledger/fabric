@@ -176,6 +176,9 @@ $(BUILD_DIR)/image/testenv/$(DUMMY): $(BUILD_DIR)/image/buildenv/$(DUMMY)
 testenv: $(BUILD_DIR)/image/testenv/$(DUMMY)
 ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
 
+integration-test: docker-clean docker testenv ccenv
+	cd integration && go test ./...
+
 unit-test: unit-test-clean peer-docker testenv ccenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
