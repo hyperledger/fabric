@@ -148,7 +148,7 @@ difficulties with operations involving the ``make`` and ``docker``
 commands.
 
 On Windows 10 you should use the native Docker distribution and you
-may use the Windows PowerShell. However, for the :ref:`binaries`
+may use the Windows PowerShell. However, for the ``binaries``
 command to succeed you will still need to have the ``uname`` command
 available. You can get it as part of Git but beware that only the
 64bit version is supported.
