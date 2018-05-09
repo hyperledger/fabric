@@ -95,18 +95,18 @@ type TxSimulator struct {
 		result1 []byte
 		result2 error
 	}
-	GetPrivateMetadataStub        func(namespace, collection, key string) (map[string][]byte, error)
-	getPrivateMetadataMutex       sync.RWMutex
-	getPrivateMetadataArgsForCall []struct {
+	GetPrivateDataMetadataStub        func(namespace, collection, key string) (map[string][]byte, error)
+	getPrivateDataMetadataMutex       sync.RWMutex
+	getPrivateDataMetadataArgsForCall []struct {
 		namespace  string
 		collection string
 		key        string
 	}
-	getPrivateMetadataReturns struct {
+	getPrivateDataMetadataReturns struct {
 		result1 map[string][]byte
 		result2 error
 	}
-	getPrivateMetadataReturnsOnCall map[int]struct {
+	getPrivateDataMetadataReturnsOnCall map[int]struct {
 		result1 map[string][]byte
 		result2 error
 	}
@@ -196,31 +196,17 @@ type TxSimulator struct {
 	setStateMultipleKeysReturnsOnCall map[int]struct {
 		result1 error
 	}
-	SetStateMetadataEntryStub        func(namespace, key, metakey string, metadata []byte) error
-	setStateMetadataEntryMutex       sync.RWMutex
-	setStateMetadataEntryArgsForCall []struct {
-		namespace string
-		key       string
-		metakey   string
-		metadata  []byte
+	SetStateMetadataStub        func(namespace, key, metadata map[string][]byte) error
+	setStateMetadataMutex       sync.RWMutex
+	setStateMetadataArgsForCall []struct {
+		namespace map[string][]byte
+		key       map[string][]byte
+		metadata  map[string][]byte
 	}
-	setStateMetadataEntryReturns struct {
+	setStateMetadataReturns struct {
 		result1 error
 	}
-	setStateMetadataEntryReturnsOnCall map[int]struct {
-		result1 error
-	}
-	DeleteStateMetadataEntryStub        func(namespace, key, metakey string) error
-	deleteStateMetadataEntryMutex       sync.RWMutex
-	deleteStateMetadataEntryArgsForCall []struct {
-		namespace string
-		key       string
-		metakey   string
-	}
-	deleteStateMetadataEntryReturns struct {
-		result1 error
-	}
-	deleteStateMetadataEntryReturnsOnCall map[int]struct {
+	setStateMetadataReturnsOnCall map[int]struct {
 		result1 error
 	}
 	DeleteStateMetadataStub        func(namespace, key string) error
@@ -286,46 +272,31 @@ type TxSimulator struct {
 	deletePrivateDataReturnsOnCall map[int]struct {
 		result1 error
 	}
-	SetPrivateMetadataEntryStub        func(namespace, collection, key, metakey string, metadata []byte) error
-	setPrivateMetadataEntryMutex       sync.RWMutex
-	setPrivateMetadataEntryArgsForCall []struct {
-		namespace  string
-		collection string
-		key        string
-		metakey    string
-		metadata   []byte
+	SetPrivateDataMetadataStub        func(namespace, collection, key, metadata map[string][]byte) error
+	setPrivateDataMetadataMutex       sync.RWMutex
+	setPrivateDataMetadataArgsForCall []struct {
+		namespace  map[string][]byte
+		collection map[string][]byte
+		key        map[string][]byte
+		metadata   map[string][]byte
 	}
-	setPrivateMetadataEntryReturns struct {
+	setPrivateDataMetadataReturns struct {
 		result1 error
 	}
-	setPrivateMetadataEntryReturnsOnCall map[int]struct {
+	setPrivateDataMetadataReturnsOnCall map[int]struct {
 		result1 error
 	}
-	DeletePrivateMetadataEntryStub        func(namespace, collection, key, metakey string) error
-	deletePrivateMetadataEntryMutex       sync.RWMutex
-	deletePrivateMetadataEntryArgsForCall []struct {
-		namespace  string
-		collection string
-		key        string
-		metakey    string
-	}
-	deletePrivateMetadataEntryReturns struct {
-		result1 error
-	}
-	deletePrivateMetadataEntryReturnsOnCall map[int]struct {
-		result1 error
-	}
-	DeletePrivateMetadataStub        func(namespace, collection, key string) error
-	deletePrivateMetadataMutex       sync.RWMutex
-	deletePrivateMetadataArgsForCall []struct {
+	DeletePrivateDataMetadataStub        func(namespace, collection, key string) error
+	deletePrivateDataMetadataMutex       sync.RWMutex
+	deletePrivateDataMetadataArgsForCall []struct {
 		namespace  string
 		collection string
 		key        string
 	}
-	deletePrivateMetadataReturns struct {
+	deletePrivateDataMetadataReturns struct {
 		result1 error
 	}
-	deletePrivateMetadataReturnsOnCall map[int]struct {
+	deletePrivateDataMetadataReturnsOnCall map[int]struct {
 		result1 error
 	}
 	GetTxSimulationResultsStub        func() (*ledger.TxSimulationResults, error)
@@ -662,54 +633,54 @@ func (fake *TxSimulator) GetPrivateDataReturnsOnCall(i int, result1 []byte, resu
 	}{result1, result2}
 }
 
-func (fake *TxSimulator) GetPrivateMetadata(namespace string, collection string, key string) (map[string][]byte, error) {
-	fake.getPrivateMetadataMutex.Lock()
-	ret, specificReturn := fake.getPrivateMetadataReturnsOnCall[len(fake.getPrivateMetadataArgsForCall)]
-	fake.getPrivateMetadataArgsForCall = append(fake.getPrivateMetadataArgsForCall, struct {
+func (fake *TxSimulator) GetPrivateDataMetadata(namespace string, collection string, key string) (map[string][]byte, error) {
+	fake.getPrivateDataMetadataMutex.Lock()
+	ret, specificReturn := fake.getPrivateDataMetadataReturnsOnCall[len(fake.getPrivateDataMetadataArgsForCall)]
+	fake.getPrivateDataMetadataArgsForCall = append(fake.getPrivateDataMetadataArgsForCall, struct {
 		namespace  string
 		collection string
 		key        string
 	}{namespace, collection, key})
-	fake.recordInvocation("GetPrivateMetadata", []interface{}{namespace, collection, key})
-	fake.getPrivateMetadataMutex.Unlock()
-	if fake.GetPrivateMetadataStub != nil {
-		return fake.GetPrivateMetadataStub(namespace, collection, key)
+	fake.recordInvocation("GetPrivateDataMetadata", []interface{}{namespace, collection, key})
+	fake.getPrivateDataMetadataMutex.Unlock()
+	if fake.GetPrivateDataMetadataStub != nil {
+		return fake.GetPrivateDataMetadataStub(namespace, collection, key)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getPrivateMetadataReturns.result1, fake.getPrivateMetadataReturns.result2
+	return fake.getPrivateDataMetadataReturns.result1, fake.getPrivateDataMetadataReturns.result2
 }
 
-func (fake *TxSimulator) GetPrivateMetadataCallCount() int {
-	fake.getPrivateMetadataMutex.RLock()
-	defer fake.getPrivateMetadataMutex.RUnlock()
-	return len(fake.getPrivateMetadataArgsForCall)
+func (fake *TxSimulator) GetPrivateDataMetadataCallCount() int {
+	fake.getPrivateDataMetadataMutex.RLock()
+	defer fake.getPrivateDataMetadataMutex.RUnlock()
+	return len(fake.getPrivateDataMetadataArgsForCall)
 }
 
-func (fake *TxSimulator) GetPrivateMetadataArgsForCall(i int) (string, string, string) {
-	fake.getPrivateMetadataMutex.RLock()
-	defer fake.getPrivateMetadataMutex.RUnlock()
-	return fake.getPrivateMetadataArgsForCall[i].namespace, fake.getPrivateMetadataArgsForCall[i].collection, fake.getPrivateMetadataArgsForCall[i].key
+func (fake *TxSimulator) GetPrivateDataMetadataArgsForCall(i int) (string, string, string) {
+	fake.getPrivateDataMetadataMutex.RLock()
+	defer fake.getPrivateDataMetadataMutex.RUnlock()
+	return fake.getPrivateDataMetadataArgsForCall[i].namespace, fake.getPrivateDataMetadataArgsForCall[i].collection, fake.getPrivateDataMetadataArgsForCall[i].key
 }
 
-func (fake *TxSimulator) GetPrivateMetadataReturns(result1 map[string][]byte, result2 error) {
-	fake.GetPrivateMetadataStub = nil
-	fake.getPrivateMetadataReturns = struct {
+func (fake *TxSimulator) GetPrivateDataMetadataReturns(result1 map[string][]byte, result2 error) {
+	fake.GetPrivateDataMetadataStub = nil
+	fake.getPrivateDataMetadataReturns = struct {
 		result1 map[string][]byte
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *TxSimulator) GetPrivateMetadataReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
-	fake.GetPrivateMetadataStub = nil
-	if fake.getPrivateMetadataReturnsOnCall == nil {
-		fake.getPrivateMetadataReturnsOnCall = make(map[int]struct {
+func (fake *TxSimulator) GetPrivateDataMetadataReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
+	fake.GetPrivateDataMetadataStub = nil
+	if fake.getPrivateDataMetadataReturnsOnCall == nil {
+		fake.getPrivateDataMetadataReturnsOnCall = make(map[int]struct {
 			result1 map[string][]byte
 			result2 error
 		})
 	}
-	fake.getPrivateMetadataReturnsOnCall[i] = struct {
+	fake.getPrivateDataMetadataReturnsOnCall[i] = struct {
 		result1 map[string][]byte
 		result2 error
 	}{result1, result2}
@@ -1049,108 +1020,52 @@ func (fake *TxSimulator) SetStateMultipleKeysReturnsOnCall(i int, result1 error)
 	}{result1}
 }
 
-func (fake *TxSimulator) SetStateMetadataEntry(namespace string, key string, metakey string, metadata []byte) error {
-	var metadataCopy []byte
-	if metadata != nil {
-		metadataCopy = make([]byte, len(metadata))
-		copy(metadataCopy, metadata)
-	}
-	fake.setStateMetadataEntryMutex.Lock()
-	ret, specificReturn := fake.setStateMetadataEntryReturnsOnCall[len(fake.setStateMetadataEntryArgsForCall)]
-	fake.setStateMetadataEntryArgsForCall = append(fake.setStateMetadataEntryArgsForCall, struct {
-		namespace string
-		key       string
-		metakey   string
-		metadata  []byte
-	}{namespace, key, metakey, metadataCopy})
-	fake.recordInvocation("SetStateMetadataEntry", []interface{}{namespace, key, metakey, metadataCopy})
-	fake.setStateMetadataEntryMutex.Unlock()
-	if fake.SetStateMetadataEntryStub != nil {
-		return fake.SetStateMetadataEntryStub(namespace, key, metakey, metadata)
+func (fake *TxSimulator) SetStateMetadata(namespace map[string][]byte, key map[string][]byte, metadata map[string][]byte) error {
+	fake.setStateMetadataMutex.Lock()
+	ret, specificReturn := fake.setStateMetadataReturnsOnCall[len(fake.setStateMetadataArgsForCall)]
+	fake.setStateMetadataArgsForCall = append(fake.setStateMetadataArgsForCall, struct {
+		namespace map[string][]byte
+		key       map[string][]byte
+		metadata  map[string][]byte
+	}{namespace, key, metadata})
+	fake.recordInvocation("SetStateMetadata", []interface{}{namespace, key, metadata})
+	fake.setStateMetadataMutex.Unlock()
+	if fake.SetStateMetadataStub != nil {
+		return fake.SetStateMetadataStub(namespace, key, metadata)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.setStateMetadataEntryReturns.result1
+	return fake.setStateMetadataReturns.result1
 }
 
-func (fake *TxSimulator) SetStateMetadataEntryCallCount() int {
-	fake.setStateMetadataEntryMutex.RLock()
-	defer fake.setStateMetadataEntryMutex.RUnlock()
-	return len(fake.setStateMetadataEntryArgsForCall)
+func (fake *TxSimulator) SetStateMetadataCallCount() int {
+	fake.setStateMetadataMutex.RLock()
+	defer fake.setStateMetadataMutex.RUnlock()
+	return len(fake.setStateMetadataArgsForCall)
 }
 
-func (fake *TxSimulator) SetStateMetadataEntryArgsForCall(i int) (string, string, string, []byte) {
-	fake.setStateMetadataEntryMutex.RLock()
-	defer fake.setStateMetadataEntryMutex.RUnlock()
-	return fake.setStateMetadataEntryArgsForCall[i].namespace, fake.setStateMetadataEntryArgsForCall[i].key, fake.setStateMetadataEntryArgsForCall[i].metakey, fake.setStateMetadataEntryArgsForCall[i].metadata
+func (fake *TxSimulator) SetStateMetadataArgsForCall(i int) (map[string][]byte, map[string][]byte, map[string][]byte) {
+	fake.setStateMetadataMutex.RLock()
+	defer fake.setStateMetadataMutex.RUnlock()
+	return fake.setStateMetadataArgsForCall[i].namespace, fake.setStateMetadataArgsForCall[i].key, fake.setStateMetadataArgsForCall[i].metadata
 }
 
-func (fake *TxSimulator) SetStateMetadataEntryReturns(result1 error) {
-	fake.SetStateMetadataEntryStub = nil
-	fake.setStateMetadataEntryReturns = struct {
+func (fake *TxSimulator) SetStateMetadataReturns(result1 error) {
+	fake.SetStateMetadataStub = nil
+	fake.setStateMetadataReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *TxSimulator) SetStateMetadataEntryReturnsOnCall(i int, result1 error) {
-	fake.SetStateMetadataEntryStub = nil
-	if fake.setStateMetadataEntryReturnsOnCall == nil {
-		fake.setStateMetadataEntryReturnsOnCall = make(map[int]struct {
+func (fake *TxSimulator) SetStateMetadataReturnsOnCall(i int, result1 error) {
+	fake.SetStateMetadataStub = nil
+	if fake.setStateMetadataReturnsOnCall == nil {
+		fake.setStateMetadataReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.setStateMetadataEntryReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *TxSimulator) DeleteStateMetadataEntry(namespace string, key string, metakey string) error {
-	fake.deleteStateMetadataEntryMutex.Lock()
-	ret, specificReturn := fake.deleteStateMetadataEntryReturnsOnCall[len(fake.deleteStateMetadataEntryArgsForCall)]
-	fake.deleteStateMetadataEntryArgsForCall = append(fake.deleteStateMetadataEntryArgsForCall, struct {
-		namespace string
-		key       string
-		metakey   string
-	}{namespace, key, metakey})
-	fake.recordInvocation("DeleteStateMetadataEntry", []interface{}{namespace, key, metakey})
-	fake.deleteStateMetadataEntryMutex.Unlock()
-	if fake.DeleteStateMetadataEntryStub != nil {
-		return fake.DeleteStateMetadataEntryStub(namespace, key, metakey)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.deleteStateMetadataEntryReturns.result1
-}
-
-func (fake *TxSimulator) DeleteStateMetadataEntryCallCount() int {
-	fake.deleteStateMetadataEntryMutex.RLock()
-	defer fake.deleteStateMetadataEntryMutex.RUnlock()
-	return len(fake.deleteStateMetadataEntryArgsForCall)
-}
-
-func (fake *TxSimulator) DeleteStateMetadataEntryArgsForCall(i int) (string, string, string) {
-	fake.deleteStateMetadataEntryMutex.RLock()
-	defer fake.deleteStateMetadataEntryMutex.RUnlock()
-	return fake.deleteStateMetadataEntryArgsForCall[i].namespace, fake.deleteStateMetadataEntryArgsForCall[i].key, fake.deleteStateMetadataEntryArgsForCall[i].metakey
-}
-
-func (fake *TxSimulator) DeleteStateMetadataEntryReturns(result1 error) {
-	fake.DeleteStateMetadataEntryStub = nil
-	fake.deleteStateMetadataEntryReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *TxSimulator) DeleteStateMetadataEntryReturnsOnCall(i int, result1 error) {
-	fake.DeleteStateMetadataEntryStub = nil
-	if fake.deleteStateMetadataEntryReturnsOnCall == nil {
-		fake.deleteStateMetadataEntryReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.deleteStateMetadataEntryReturnsOnCall[i] = struct {
+	fake.setStateMetadataReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -1408,160 +1323,103 @@ func (fake *TxSimulator) DeletePrivateDataReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *TxSimulator) SetPrivateMetadataEntry(namespace string, collection string, key string, metakey string, metadata []byte) error {
-	var metadataCopy []byte
-	if metadata != nil {
-		metadataCopy = make([]byte, len(metadata))
-		copy(metadataCopy, metadata)
-	}
-	fake.setPrivateMetadataEntryMutex.Lock()
-	ret, specificReturn := fake.setPrivateMetadataEntryReturnsOnCall[len(fake.setPrivateMetadataEntryArgsForCall)]
-	fake.setPrivateMetadataEntryArgsForCall = append(fake.setPrivateMetadataEntryArgsForCall, struct {
-		namespace  string
-		collection string
-		key        string
-		metakey    string
-		metadata   []byte
-	}{namespace, collection, key, metakey, metadataCopy})
-	fake.recordInvocation("SetPrivateMetadataEntry", []interface{}{namespace, collection, key, metakey, metadataCopy})
-	fake.setPrivateMetadataEntryMutex.Unlock()
-	if fake.SetPrivateMetadataEntryStub != nil {
-		return fake.SetPrivateMetadataEntryStub(namespace, collection, key, metakey, metadata)
+func (fake *TxSimulator) SetPrivateDataMetadata(namespace map[string][]byte, collection map[string][]byte, key map[string][]byte, metadata map[string][]byte) error {
+	fake.setPrivateDataMetadataMutex.Lock()
+	ret, specificReturn := fake.setPrivateDataMetadataReturnsOnCall[len(fake.setPrivateDataMetadataArgsForCall)]
+	fake.setPrivateDataMetadataArgsForCall = append(fake.setPrivateDataMetadataArgsForCall, struct {
+		namespace  map[string][]byte
+		collection map[string][]byte
+		key        map[string][]byte
+		metadata   map[string][]byte
+	}{namespace, collection, key, metadata})
+	fake.recordInvocation("SetPrivateDataMetadata", []interface{}{namespace, collection, key, metadata})
+	fake.setPrivateDataMetadataMutex.Unlock()
+	if fake.SetPrivateDataMetadataStub != nil {
+		return fake.SetPrivateDataMetadataStub(namespace, collection, key, metadata)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.setPrivateMetadataEntryReturns.result1
+	return fake.setPrivateDataMetadataReturns.result1
 }
 
-func (fake *TxSimulator) SetPrivateMetadataEntryCallCount() int {
-	fake.setPrivateMetadataEntryMutex.RLock()
-	defer fake.setPrivateMetadataEntryMutex.RUnlock()
-	return len(fake.setPrivateMetadataEntryArgsForCall)
+func (fake *TxSimulator) SetPrivateDataMetadataCallCount() int {
+	fake.setPrivateDataMetadataMutex.RLock()
+	defer fake.setPrivateDataMetadataMutex.RUnlock()
+	return len(fake.setPrivateDataMetadataArgsForCall)
 }
 
-func (fake *TxSimulator) SetPrivateMetadataEntryArgsForCall(i int) (string, string, string, string, []byte) {
-	fake.setPrivateMetadataEntryMutex.RLock()
-	defer fake.setPrivateMetadataEntryMutex.RUnlock()
-	return fake.setPrivateMetadataEntryArgsForCall[i].namespace, fake.setPrivateMetadataEntryArgsForCall[i].collection, fake.setPrivateMetadataEntryArgsForCall[i].key, fake.setPrivateMetadataEntryArgsForCall[i].metakey, fake.setPrivateMetadataEntryArgsForCall[i].metadata
+func (fake *TxSimulator) SetPrivateDataMetadataArgsForCall(i int) (map[string][]byte, map[string][]byte, map[string][]byte, map[string][]byte) {
+	fake.setPrivateDataMetadataMutex.RLock()
+	defer fake.setPrivateDataMetadataMutex.RUnlock()
+	return fake.setPrivateDataMetadataArgsForCall[i].namespace, fake.setPrivateDataMetadataArgsForCall[i].collection, fake.setPrivateDataMetadataArgsForCall[i].key, fake.setPrivateDataMetadataArgsForCall[i].metadata
 }
 
-func (fake *TxSimulator) SetPrivateMetadataEntryReturns(result1 error) {
-	fake.SetPrivateMetadataEntryStub = nil
-	fake.setPrivateMetadataEntryReturns = struct {
+func (fake *TxSimulator) SetPrivateDataMetadataReturns(result1 error) {
+	fake.SetPrivateDataMetadataStub = nil
+	fake.setPrivateDataMetadataReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *TxSimulator) SetPrivateMetadataEntryReturnsOnCall(i int, result1 error) {
-	fake.SetPrivateMetadataEntryStub = nil
-	if fake.setPrivateMetadataEntryReturnsOnCall == nil {
-		fake.setPrivateMetadataEntryReturnsOnCall = make(map[int]struct {
+func (fake *TxSimulator) SetPrivateDataMetadataReturnsOnCall(i int, result1 error) {
+	fake.SetPrivateDataMetadataStub = nil
+	if fake.setPrivateDataMetadataReturnsOnCall == nil {
+		fake.setPrivateDataMetadataReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.setPrivateMetadataEntryReturnsOnCall[i] = struct {
+	fake.setPrivateDataMetadataReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *TxSimulator) DeletePrivateMetadataEntry(namespace string, collection string, key string, metakey string) error {
-	fake.deletePrivateMetadataEntryMutex.Lock()
-	ret, specificReturn := fake.deletePrivateMetadataEntryReturnsOnCall[len(fake.deletePrivateMetadataEntryArgsForCall)]
-	fake.deletePrivateMetadataEntryArgsForCall = append(fake.deletePrivateMetadataEntryArgsForCall, struct {
-		namespace  string
-		collection string
-		key        string
-		metakey    string
-	}{namespace, collection, key, metakey})
-	fake.recordInvocation("DeletePrivateMetadataEntry", []interface{}{namespace, collection, key, metakey})
-	fake.deletePrivateMetadataEntryMutex.Unlock()
-	if fake.DeletePrivateMetadataEntryStub != nil {
-		return fake.DeletePrivateMetadataEntryStub(namespace, collection, key, metakey)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.deletePrivateMetadataEntryReturns.result1
-}
-
-func (fake *TxSimulator) DeletePrivateMetadataEntryCallCount() int {
-	fake.deletePrivateMetadataEntryMutex.RLock()
-	defer fake.deletePrivateMetadataEntryMutex.RUnlock()
-	return len(fake.deletePrivateMetadataEntryArgsForCall)
-}
-
-func (fake *TxSimulator) DeletePrivateMetadataEntryArgsForCall(i int) (string, string, string, string) {
-	fake.deletePrivateMetadataEntryMutex.RLock()
-	defer fake.deletePrivateMetadataEntryMutex.RUnlock()
-	return fake.deletePrivateMetadataEntryArgsForCall[i].namespace, fake.deletePrivateMetadataEntryArgsForCall[i].collection, fake.deletePrivateMetadataEntryArgsForCall[i].key, fake.deletePrivateMetadataEntryArgsForCall[i].metakey
-}
-
-func (fake *TxSimulator) DeletePrivateMetadataEntryReturns(result1 error) {
-	fake.DeletePrivateMetadataEntryStub = nil
-	fake.deletePrivateMetadataEntryReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *TxSimulator) DeletePrivateMetadataEntryReturnsOnCall(i int, result1 error) {
-	fake.DeletePrivateMetadataEntryStub = nil
-	if fake.deletePrivateMetadataEntryReturnsOnCall == nil {
-		fake.deletePrivateMetadataEntryReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.deletePrivateMetadataEntryReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *TxSimulator) DeletePrivateMetadata(namespace string, collection string, key string) error {
-	fake.deletePrivateMetadataMutex.Lock()
-	ret, specificReturn := fake.deletePrivateMetadataReturnsOnCall[len(fake.deletePrivateMetadataArgsForCall)]
-	fake.deletePrivateMetadataArgsForCall = append(fake.deletePrivateMetadataArgsForCall, struct {
+func (fake *TxSimulator) DeletePrivateDataMetadata(namespace string, collection string, key string) error {
+	fake.deletePrivateDataMetadataMutex.Lock()
+	ret, specificReturn := fake.deletePrivateDataMetadataReturnsOnCall[len(fake.deletePrivateDataMetadataArgsForCall)]
+	fake.deletePrivateDataMetadataArgsForCall = append(fake.deletePrivateDataMetadataArgsForCall, struct {
 		namespace  string
 		collection string
 		key        string
 	}{namespace, collection, key})
-	fake.recordInvocation("DeletePrivateMetadata", []interface{}{namespace, collection, key})
-	fake.deletePrivateMetadataMutex.Unlock()
-	if fake.DeletePrivateMetadataStub != nil {
-		return fake.DeletePrivateMetadataStub(namespace, collection, key)
+	fake.recordInvocation("DeletePrivateDataMetadata", []interface{}{namespace, collection, key})
+	fake.deletePrivateDataMetadataMutex.Unlock()
+	if fake.DeletePrivateDataMetadataStub != nil {
+		return fake.DeletePrivateDataMetadataStub(namespace, collection, key)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.deletePrivateMetadataReturns.result1
+	return fake.deletePrivateDataMetadataReturns.result1
 }
 
-func (fake *TxSimulator) DeletePrivateMetadataCallCount() int {
-	fake.deletePrivateMetadataMutex.RLock()
-	defer fake.deletePrivateMetadataMutex.RUnlock()
-	return len(fake.deletePrivateMetadataArgsForCall)
+func (fake *TxSimulator) DeletePrivateDataMetadataCallCount() int {
+	fake.deletePrivateDataMetadataMutex.RLock()
+	defer fake.deletePrivateDataMetadataMutex.RUnlock()
+	return len(fake.deletePrivateDataMetadataArgsForCall)
 }
 
-func (fake *TxSimulator) DeletePrivateMetadataArgsForCall(i int) (string, string, string) {
-	fake.deletePrivateMetadataMutex.RLock()
-	defer fake.deletePrivateMetadataMutex.RUnlock()
-	return fake.deletePrivateMetadataArgsForCall[i].namespace, fake.deletePrivateMetadataArgsForCall[i].collection, fake.deletePrivateMetadataArgsForCall[i].key
+func (fake *TxSimulator) DeletePrivateDataMetadataArgsForCall(i int) (string, string, string) {
+	fake.deletePrivateDataMetadataMutex.RLock()
+	defer fake.deletePrivateDataMetadataMutex.RUnlock()
+	return fake.deletePrivateDataMetadataArgsForCall[i].namespace, fake.deletePrivateDataMetadataArgsForCall[i].collection, fake.deletePrivateDataMetadataArgsForCall[i].key
 }
 
-func (fake *TxSimulator) DeletePrivateMetadataReturns(result1 error) {
-	fake.DeletePrivateMetadataStub = nil
-	fake.deletePrivateMetadataReturns = struct {
+func (fake *TxSimulator) DeletePrivateDataMetadataReturns(result1 error) {
+	fake.DeletePrivateDataMetadataStub = nil
+	fake.deletePrivateDataMetadataReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *TxSimulator) DeletePrivateMetadataReturnsOnCall(i int, result1 error) {
-	fake.DeletePrivateMetadataStub = nil
-	if fake.deletePrivateMetadataReturnsOnCall == nil {
-		fake.deletePrivateMetadataReturnsOnCall = make(map[int]struct {
+func (fake *TxSimulator) DeletePrivateDataMetadataReturnsOnCall(i int, result1 error) {
+	fake.DeletePrivateDataMetadataStub = nil
+	if fake.deletePrivateDataMetadataReturnsOnCall == nil {
+		fake.deletePrivateDataMetadataReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.deletePrivateMetadataReturnsOnCall[i] = struct {
+	fake.deletePrivateDataMetadataReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -1624,8 +1482,8 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.executeQueryMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
-	fake.getPrivateMetadataMutex.RLock()
-	defer fake.getPrivateMetadataMutex.RUnlock()
+	fake.getPrivateDataMetadataMutex.RLock()
+	defer fake.getPrivateDataMetadataMutex.RUnlock()
 	fake.getPrivateDataMultipleKeysMutex.RLock()
 	defer fake.getPrivateDataMultipleKeysMutex.RUnlock()
 	fake.getPrivateDataRangeScanIteratorMutex.RLock()
@@ -1640,10 +1498,8 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.deleteStateMutex.RUnlock()
 	fake.setStateMultipleKeysMutex.RLock()
 	defer fake.setStateMultipleKeysMutex.RUnlock()
-	fake.setStateMetadataEntryMutex.RLock()
-	defer fake.setStateMetadataEntryMutex.RUnlock()
-	fake.deleteStateMetadataEntryMutex.RLock()
-	defer fake.deleteStateMetadataEntryMutex.RUnlock()
+	fake.setStateMetadataMutex.RLock()
+	defer fake.setStateMetadataMutex.RUnlock()
 	fake.deleteStateMetadataMutex.RLock()
 	defer fake.deleteStateMetadataMutex.RUnlock()
 	fake.executeUpdateMutex.RLock()
@@ -1654,12 +1510,10 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.setPrivateDataMultipleKeysMutex.RUnlock()
 	fake.deletePrivateDataMutex.RLock()
 	defer fake.deletePrivateDataMutex.RUnlock()
-	fake.setPrivateMetadataEntryMutex.RLock()
-	defer fake.setPrivateMetadataEntryMutex.RUnlock()
-	fake.deletePrivateMetadataEntryMutex.RLock()
-	defer fake.deletePrivateMetadataEntryMutex.RUnlock()
-	fake.deletePrivateMetadataMutex.RLock()
-	defer fake.deletePrivateMetadataMutex.RUnlock()
+	fake.setPrivateDataMetadataMutex.RLock()
+	defer fake.setPrivateDataMetadataMutex.RUnlock()
+	fake.deletePrivateDataMetadataMutex.RLock()
+	defer fake.deletePrivateDataMetadataMutex.RUnlock()
 	fake.getTxSimulationResultsMutex.RLock()
 	defer fake.getTxSimulationResultsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

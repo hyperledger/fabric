@@ -729,7 +729,7 @@ func (exec *mockQueryExecutor) GetStateMetadata(namespace, key string) (map[stri
 	return nil, nil
 }
 
-func (exec *mockQueryExecutor) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+func (exec *mockQueryExecutor) GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error) {
 	return nil, nil
 }
 

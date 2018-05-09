@@ -67,8 +67,8 @@ func (q *lockBasedQueryExecutor) GetPrivateData(namespace, collection, key strin
 	return q.helper.getPrivateData(namespace, collection, key)
 }
 
-// GetPrivateMetadata implements method in interface `ledger.QueryExecutor`
-func (q *lockBasedQueryExecutor) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+// GetPrivateDataMetadata implements method in interface `ledger.QueryExecutor`
+func (q *lockBasedQueryExecutor) GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error) {
 	return nil, errors.New("not implemented")
 }
 

@@ -79,6 +79,6 @@ func (m *MockQueryExecutor) GetStateMetadata(namespace, key string) (map[string]
 	return nil, nil
 }
 
-func (m *MockQueryExecutor) GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error) {
+func (m *MockQueryExecutor) GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error) {
 	return nil, nil
 }

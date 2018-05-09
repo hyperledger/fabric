@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-         http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 syntax = "proto3";
@@ -27,12 +17,14 @@ message KVRWSet {
     repeated KVRead reads = 1;
     repeated RangeQueryInfo range_queries_info = 2;
     repeated KVWrite writes = 3;
+    repeated KVMetadataWrite metadata_writes = 4;
 }
 
 // HashedRWSet encapsulates hashed representation of a private read-write set for KV or Document data model
 message HashedRWSet {
     repeated KVReadHash hashed_reads = 1;
     repeated KVWriteHash hashed_writes = 2;
+    repeated KVMetadataWriteHash metadata_writes = 3;
 }
 
 // KVRead captures a read operation performed during transaction simulation
@@ -43,22 +35,16 @@ message KVRead {
 }
 
 // KVWrite captures a write (update/delete) operation performed during transaction simulation
-// Four operations are supported:
-// 1) value update: if KeepExistingValue is false, the value is updated to Value
-// 2) metadata update: if Metadata is not nil, all entries in Metadata.Upserts are applied
-// 3) medatadata deletion: if Metadata is nil, all metadata is deleted
-// 4) deletion: if IsDelete is set, this key is removed from the ledger.
-// Note that 1 and 2 (or 3) may be combined.
 message KVWrite {
     string key = 1;
     bool is_delete = 2;
     bytes value = 3;
-	// The two values below have been added in v1.2. Note that their default values
-	// describe a behaviour which is consistent with that of of pre-1.2 code:
-	// - if KeepExistingValue is false, the value is updated to value (unless IsDelete is true).
-	// - if Metadata is nil, metadata is deleted for this key.
-    bool keep_existing_value = 4;
-    KVMetadataWrite metadata = 5;
+}
+
+// KVMetadataWrite captures all the entries in the metadata associated with a key
+message KVMetadataWrite {
+    string key = 1;
+    repeated KVMetadataEntry entries = 2;
 }
 
 // KVReadHash is similar to the KVRead in spirit. However, it captures the hash of the key instead of the key itself
@@ -70,23 +56,19 @@ message KVReadHash {
 }
 
 // KVWriteHash is similar to the KVWrite. It captures a write (update/delete) operation performed during transaction simulation
-// for a hashed key and to a hashed value. Note that metadata are stored in cleartext (no hash).
-// Similar considerations to KVWrite apply here.
 message KVWriteHash {
     bytes key_hash = 1;
     bool is_delete = 2;
     bytes value_hash = 3;
-    bool keep_existing_value = 4;
-    KVMetadataWrite metadata = 5;
 }
 
-// KVMetadata captures all the upserts to the metadata associated with a key
-message KVMetadataWrite {
-    repeated KVMetadataEntry upserts = 1;
-    repeated string deletes = 2;
+// KVMetadataWriteHash captures all the upserts to the metadata associated with a key hash
+message KVMetadataWriteHash {
+    bytes key_hash = 1;
+    repeated KVMetadataEntry entries = 2;
 }
 
-// KVMetadataEntry captures a 'name'ed entry in the metadata of a key.
+// KVMetadataEntry captures a 'name'ed entry in the metadata of a key/key-hash.
 message KVMetadataEntry {
     string name = 1;
     bytes value = 2;

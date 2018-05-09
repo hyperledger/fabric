@@ -108,8 +108,8 @@ type QueryExecutor interface {
 	ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error)
 	// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
-	// GetPrivateMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
-	GetPrivateMetadata(namespace, collection, key string) (map[string][]byte, error)
+	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
+	GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error)
 	// GetPrivateDataMultipleKeys gets the values for the multiple private data items in a single call
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error)
 	// GetPrivateDataRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
@@ -144,11 +144,9 @@ type TxSimulator interface {
 	DeleteState(namespace string, key string) error
 	// SetMultipleKeys sets the values for multiple keys in a single call
 	SetStateMultipleKeys(namespace string, kvs map[string][]byte) error
-	// SetStateMetadataEntry upserts an entry in the metadata for the given namespace and key
-	SetStateMetadataEntry(namespace, key, metakey string, metadata []byte) error
-	// DeleteStateMetadataEntry deletes the given entry from the metadata for the given namespace and key
-	DeleteStateMetadataEntry(namespace, key, metakey string) error
-	// DeleteStateMetadata deletes entire metadata for a given key
+	// SetStateMetadata sets the metadata associated with an existing key-tuple <namespace, key>
+	SetStateMetadata(namespace, key, metadata map[string][]byte) error
+	// DeleteStateMetadata deletes the metadata (if any) associated with an existing key-tuple <namespace, key>
 	DeleteStateMetadata(namespace, key string) error
 	// ExecuteUpdate for supporting rich data model (see comments on QueryExecutor above)
 	ExecuteUpdate(query string) error
@@ -158,12 +156,10 @@ type TxSimulator interface {
 	SetPrivateDataMultipleKeys(namespace, collection string, kvs map[string][]byte) error
 	// DeletePrivateData deletes the given tuple <namespace, collection, key> from private data
 	DeletePrivateData(namespace, collection, key string) error
-	// SetPrivateMetadataEntry upserts an entry in the metadata for a key in the private data state represented by the tuple <namespace, collection, key>
-	SetPrivateMetadataEntry(namespace, collection, key, metakey string, metadata []byte) error
-	// DeletePrivateMetadataEntry deletes the given entry from the metadata for a key in the private data state represented by the tuple <namespace, collection, key>
-	DeletePrivateMetadataEntry(namespace, collection, key, metakey string) error
-	// DeletePrivateMetadata deletes entire metadata for a given key in the private data state represented by the tuple <namespace, collection, key>
-	DeletePrivateMetadata(namespace, collection, key string) error
+	// SetPrivateDataMetadata sets the metadata associated with an existing key-tuple <namespace, collection, key>
+	SetPrivateDataMetadata(namespace, collection, key, metadata map[string][]byte) error
+	// DeletePrivateDataMetadata deletes the metadata associated with an existing key-tuple <namespace, collection, key>
+	DeletePrivateDataMetadata(namespace, collection, key string) error
 	// GetTxSimulationResults encapsulates the results of the transaction simulation.
 	// This should contain enough detail for
 	// - The update in the state that would be caused if the transaction is to be committed
