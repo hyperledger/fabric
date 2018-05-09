@@ -41,7 +41,7 @@ func newPrivKey() (*ecdsa.PrivateKey, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	privBytes, err := x509.MarshalECPrivateKey(privateKey)
+	privBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
 		return nil, nil, err
 	}
