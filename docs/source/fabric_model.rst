@@ -4,22 +4,22 @@ Hyperledger Fabric Model
 This section outlines the key design features woven into Hyperledger Fabric that
 fulfill its promise of a comprehensive, yet customizable, enterprise blockchain solution:
 
-* :ref:`Assets` - Asset definitions enable the exchange of almost anything with
+* :ref:`Assets` --- Asset definitions enable the exchange of almost anything with
   monetary value over the network, from whole foods to antique cars to currency
   futures.
-* :ref:`Chaincode` - Chaincode execution is partitioned from transaction ordering,
+* :ref:`Chaincode` --- Chaincode execution is partitioned from transaction ordering,
   limiting the required levels of trust and verification across node types, and
   optimizing network scalability and performance.
-* :ref:`Ledger-Features` - The immutable, shared ledger encodes the entire
+* :ref:`Ledger-Features` --- The immutable, shared ledger encodes the entire
   transaction history for each channel, and includes SQL-like query capability
   for efficient auditing and dispute resolution.
-* :ref:`Privacy-through-Channels` - Channels enable multi-lateral transactions
+* :ref:`Privacy-through-Channels` --- Channels enable multi-lateral transactions
   with the high degrees of privacy and confidentiality required by competing
   businesses and regulated industries that exchange assets on a common network.
-* :ref:`Security-Membership-Services` - Permissioned membership provides a
+* :ref:`Security-Membership-Services` --- Permissioned membership provides a
   trusted blockchain network, where participants know that all transactions can
   be detected and traced by authorized regulators and auditors.
-* :ref:`Consensus` - a unique approach to consensus enables the
+* :ref:`Consensus` --- A unique approach to consensus enables the
   flexibility and scalability needed for the enterprise.
 
 .. _Assets:
@@ -64,9 +64,11 @@ The ledger is comprised of a blockchain ('chain') to store the immutable, sequen
 blocks, as well as a state database to maintain current fabric state.  There is one ledger per
 channel. Each peer maintains a copy of the ledger for each channel of which they are a member.
 
+Some features of a Fabric ledger:
+
 - Query and update ledger using key-based lookups, range queries, and composite key queries
 - Read-only queries using a rich query language (if using CouchDB as state database)
-- Read-only history queries - Query ledger history for a key, enabling data provenance scenarios
+- Read-only history queries --- Query ledger history for a key, enabling data provenance scenarios
 - Transactions consist of the versions of keys/values that were read in chaincode (read set) and keys/values that were written in chaincode (write set)
 - Transactions contain signatures of every endorsing peer and are submitted to ordering service
 - Transactions are ordered into blocks and are "delivered" from an ordering service to peers on a channel
@@ -85,9 +87,9 @@ Privacy through Channels
 
 Hyperledger Fabric employs an immutable ledger on a per-channel basis, as well as
 chaincodes that can manipulate and modify the current state of assets (i.e. update
-key-value pairs).  A ledger exists in the scope of a channel - it can be shared
+key-value pairs).  A ledger exists in the scope of a channel --- it can be shared
 across the entire network (assuming every participant is operating on one common
-channel) - or it can be privatized to include only a specific set of participants.
+channel) --- or it can be privatized to include only a specific set of participants.
 
 In the latter scenario, these participants would create a separate channel and
 thereby isolate/segregate their transactions and ledger.  In order to solve
