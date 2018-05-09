@@ -179,7 +179,7 @@ func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, p
 		return errors.Errorf("No private data handler for %s", chainID)
 	}
 
-	if err := handler.distributor.Distribute(txID, privData.PvtRwset, handler.support.Cs, blkHt); err != nil {
+	if err := handler.distributor.Distribute(txID, privData, blkHt); err != nil {
 		logger.Error("Failed to distributed private collection, txID", txID, "channel", chainID, "due to", err)
 		return err
 	}
@@ -200,10 +200,11 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 // Support aggregates functionality of several
 // interfaces required by gossip service
 type Support struct {
-	Validator txvalidator.Validator
-	Committer committer.Committer
-	Store     privdata2.TransientStore
-	Cs        privdata.CollectionStore
+	Validator            txvalidator.Validator
+	Committer            committer.Committer
+	Store                privdata2.TransientStore
+	Cs                   privdata.CollectionStore
+	IdDeserializeFactory privdata2.IdentityDeserializerFactory
 }
 
 // DataStoreSupport aggregates interfaces capable
@@ -243,7 +244,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
-		distributor: privdata2.NewDistributor(chainID, g),
+		distributor: privdata2.NewDistributor(chainID, g, privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)),
 	}
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator)
 	if g.deliveryService[chainID] == nil {

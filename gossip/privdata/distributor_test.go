@@ -10,6 +10,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
 	gcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
@@ -17,9 +18,41 @@ import (
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+type collectionAccessFactoryMock struct {
+	mock.Mock
+}
+
+func (mock *collectionAccessFactoryMock) AccessPolicy(config *common.CollectionConfig, chainID string) (privdata.CollectionAccessPolicy, error) {
+	res := mock.Called(config, chainID)
+	return res.Get(0).(privdata.CollectionAccessPolicy), res.Error(1)
+}
+
+type collectionAccessPolicyMock struct {
+	mock.Mock
+}
+
+func (mock *collectionAccessPolicyMock) AccessFilter() privdata.Filter {
+	return func(_ common.SignedData) bool {
+		return true
+	}
+}
+
+func (mock *collectionAccessPolicyMock) RequiredPeerCount() int {
+	return 1
+}
+
+func (mock *collectionAccessPolicyMock) MaximumPeerCount() int {
+	return 2
+}
+
+func (mock *collectionAccessPolicyMock) MemberOrgs() []string {
+	return []string{"org1", "org2"}
+}
 
 type gossipMock struct {
 	err error
@@ -68,28 +101,50 @@ func TestDistributor(t *testing.T) {
 			SendCriteria:   sendCriteria,
 		}
 	}).Return(nil)
-	d := NewDistributor("test", g)
-	pdFactory := &pvtDataFactory{}
-	peerSelfSignedData := common.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+	accessFactoryMock := &collectionAccessFactoryMock{}
+	c1ColConfig := &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:              "c1",
+				RequiredPeerCount: 1,
+				MaximumPeerCount:  1,
+			},
+		},
 	}
-	cs := createcollectionStore(peerSelfSignedData).thatAccepts(common.CollectionCriteria{
-		TxId:       "tx1",
-		Namespace:  "ns1",
-		Channel:    "test",
-		Collection: "c1",
-	}).thatAccepts(common.CollectionCriteria{
-		TxId:       "tx2",
-		Namespace:  "ns2",
-		Channel:    "test",
-		Collection: "c2",
-	}).andIsLenient()
+
+	c2ColConfig := &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:              "c2",
+				RequiredPeerCount: 1,
+				MaximumPeerCount:  1,
+			},
+		},
+	}
+
+	accessFactoryMock.On("AccessPolicy", c1ColConfig, "test").Return(&collectionAccessPolicyMock{}, nil)
+	accessFactoryMock.On("AccessPolicy", c2ColConfig, "test").Return(&collectionAccessPolicyMock{}, nil)
+
+	d := NewDistributor("test", g, accessFactoryMock)
+	pdFactory := &pvtDataFactory{}
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1", "c2").create()
-	err := d.Distribute("tx1", pvtData[0].WriteSet, cs, 0)
+	err := d.Distribute("tx1", &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: pvtData[0].WriteSet,
+		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+			"ns1": {
+				Config: []*common.CollectionConfig{c1ColConfig, c2ColConfig},
+			},
+		},
+	}, 0)
 	assert.NoError(t, err)
-	err = d.Distribute("tx2", pvtData[1].WriteSet, cs, 0)
+	err = d.Distribute("tx2", &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: pvtData[1].WriteSet,
+		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+			"ns2": {
+				Config: []*common.CollectionConfig{c1ColConfig, c2ColConfig},
+			},
+		},
+	}, 0)
 	assert.NoError(t, err)
 
 	assertACL := func(pp *proto.PrivatePayload, sc gossip2.SendCriteria) {
@@ -116,14 +171,28 @@ func TestDistributor(t *testing.T) {
 
 	// Bad path: dependencies (gossip and others) don't work properly
 	g.err = errors.New("failed obtaining filter")
-	err = d.Distribute("tx1", pvtData[0].WriteSet, cs, 0)
+	err = d.Distribute("tx1", &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: pvtData[0].WriteSet,
+		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+			"ns1": {
+				Config: []*common.CollectionConfig{c1ColConfig, c2ColConfig},
+			},
+		},
+	}, 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed obtaining filter")
 
 	g.Mock = mock.Mock{}
 	g.On("SendByCriteria", mock.Anything, mock.Anything).Return(errors.New("failed sending"))
 	g.err = nil
-	err = d.Distribute("tx1", pvtData[0].WriteSet, cs, 0)
+	err = d.Distribute("tx1", &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: pvtData[0].WriteSet,
+		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+			"ns1": {
+				Config: []*common.CollectionConfig{c1ColConfig, c2ColConfig},
+			},
+		},
+	}, 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed disseminating 2 out of 2 private RWSets")
 }
