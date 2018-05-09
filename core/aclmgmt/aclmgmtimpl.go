@@ -8,6 +8,7 @@ package aclmgmt
 
 import (
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/peer"
 )
 
 var aclMgmtLogger = flogging.MustGetLogger("aclmgmt")
@@ -39,8 +40,14 @@ func (am *aclMgmtImpl) CheckACL(resName string, channelID string, idinfo interfa
 func newACLMgmt(prov ACLProvider) ACLProvider {
 	rp := prov
 	if rp == nil {
-		rp = newResourceProvider(nil, newDefaultACLProvider())
+		rp = newResourceProvider(peer.GetStableChannelConfig, newDefaultACLProvider())
 	}
 
 	return &aclMgmtImpl{rescfgProvider: rp}
+}
+
+func NewACLProvider() ACLProvider {
+	return &aclMgmtImpl{
+		rescfgProvider: newResourceProvider(peer.GetStableChannelConfig, newDefaultACLProvider()),
+	}
 }

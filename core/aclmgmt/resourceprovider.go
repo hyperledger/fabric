@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -154,10 +153,6 @@ type resourceProvider struct {
 
 //create a new resourceProvider
 func newResourceProvider(rg resourceGetter, defprov ACLProvider) *resourceProvider {
-	if rg == nil {
-		rg = peer.GetStableChannelConfig
-	}
-
 	return &resourceProvider{rg, defprov}
 }
 

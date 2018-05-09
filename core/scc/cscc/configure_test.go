@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/core/aclmgmt"
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -90,13 +89,11 @@ func TestMain(m *testing.M) {
 	mockAclProvider = &aclmocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	aclmgmt.RegisterACLProvider(mockAclProvider)
-
 	os.Exit(m.Run())
 }
 
 func TestConfigerInit(t *testing.T) {
-	e := New(nil, nil)
+	e := New(nil, nil, mockAclProvider)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -106,7 +103,7 @@ func TestConfigerInit(t *testing.T) {
 }
 
 func TestConfigerInvokeInvalidParameters(t *testing.T) {
-	e := New(nil, nil)
+	e := New(nil, nil, mockAclProvider)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	res := stub.MockInit("1", nil)
@@ -140,7 +137,7 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 	os.Mkdir("/tmp/hyperledgertest", 0755)
 	defer os.RemoveAll("/tmp/hyperledgertest/")
 
-	e := New(nil, nil)
+	e := New(nil, nil, mockAclProvider)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -161,7 +158,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 	os.Mkdir("/tmp/hyperledgertest", 0755)
 	defer os.RemoveAll("/tmp/hyperledgertest/")
 
-	e := New(nil, nil)
+	e := New(nil, nil, mockAclProvider)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -189,7 +186,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 	defer os.RemoveAll("/tmp/hyperledgertest/")
 
-	e := New(ccp, mp)
+	e := New(ccp, mp, mockAclProvider)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	peerEndpoint := "localhost:13611"
@@ -205,7 +202,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
-		aclmgmt.GetACLProvider(),
+		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
 				inproccontroller.ContainerType: inproccontroller.NewRegistry(),
@@ -336,7 +333,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	os.Mkdir("/tmp/hyperledgertest", 0755)
 	defer os.RemoveAll("/tmp/hyperledgertest/")
 
-	e := New(nil, nil)
+	e := New(nil, nil, nil)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {

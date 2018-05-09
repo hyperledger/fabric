@@ -21,6 +21,7 @@ import (
 	lm "github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
+	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -424,8 +425,9 @@ func TestRWSetTooBig(t *testing.T) {
 
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
+	mockAclProvider := &aclmocks.MockACLProvider{}
 
-	lccc := lscc.New(mp)
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -493,8 +495,9 @@ func TestValidateDeployFail(t *testing.T) {
 
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
+	mockAclProvider := &aclmocks.MockACLProvider{}
 
-	lccc := lscc.New(mp)
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -782,8 +785,9 @@ func TestAlreadyDeployed(t *testing.T) {
 
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
+	mockAclProvider := &aclmocks.MockACLProvider{}
 
-	lccc := lscc.New(mp)
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -861,8 +865,9 @@ func TestValidateDeployNoLedger(t *testing.T) {
 
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
+	mockAclProvider := &aclmocks.MockACLProvider{}
 
-	lccc := lscc.New(mp)
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -920,7 +925,8 @@ func TestValidateDeployOK(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -980,7 +986,8 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1082,7 +1089,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	v = New(mp)
 	stub = shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc = lscc.New(mp)
+	lccc = lscc.New(mp, mockAclProvider)
 	stublccc = shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1116,7 +1123,8 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1204,7 +1212,8 @@ func TestInvalidUpgrade(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1260,7 +1269,8 @@ func TestValidateUpgradeOK(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1341,7 +1351,8 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1423,7 +1434,8 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1626,7 +1638,8 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1723,7 +1736,8 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)
@@ -1820,7 +1834,8 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	v := New(mp)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := lscc.New(mp)
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	lccc := lscc.New(mp, mockAclProvider)
 	stublccc := shim.NewMockStub("lscc", lccc)
 	State["lscc"] = stublccc.State
 	stub.MockPeerChaincode("lscc", stublccc)

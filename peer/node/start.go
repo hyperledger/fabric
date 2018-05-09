@@ -138,7 +138,7 @@ func serve(args []string) error {
 
 	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
 	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
-	aclmgmt.RegisterACLProvider(nil)
+	aclProvider := aclmgmt.NewACLProvider() // TODO: provide resource getter / peer.GetStableChannelConfig
 
 	//initialize resource management exit
 	ledgermgmt.Initialize(peer.ConfigTxProcessors)
@@ -202,7 +202,7 @@ func serve(args []string) error {
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	policyCheckerProvider := func(resourceName string) deliver.PolicyCheckerFunc {
 		return func(env *cb.Envelope, channelID string) error {
-			return aclmgmt.GetACLProvider().CheckACL(resourceName, channelID, env)
+			return aclProvider.CheckACL(resourceName, channelID, env)
 		}
 	}
 
@@ -224,7 +224,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
-	chaincodeSupport, ccp, sccp := registerChaincodeSupport(ccSrv, ccEndpoint, ca)
+	chaincodeSupport, ccp, sccp := registerChaincodeSupport(ccSrv, ccEndpoint, ca, aclProvider)
 	go ccSrv.Start()
 
 	logger.Debugf("Running peer")
@@ -255,6 +255,7 @@ func serve(args []string) error {
 		PeerSupport:      peer.DefaultSupport,
 		ChaincodeSupport: chaincodeSupport,
 		SysCCProvider:    sccp,
+		ACLProvider:      aclProvider,
 	}
 	pluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
 	signingIdentityFetcher := (endorsement3.SigningIdentityFetcher)(endorserSupport)
@@ -583,7 +584,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA, aclProvider aclmgmt.ACLProvider) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -598,7 +599,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		ca.CertBytes(),
 		authenticator,
 		&ccprovider.CCInfoFSImpl{},
-		aclmgmt.GetACLProvider(),
+		aclProvider,
 		container.NewVMController(map[string]container.VMProvider{
 			dockercontroller.ContainerType: dockercontroller.NewProvider(
 				viper.GetString("peer.id"),
@@ -616,7 +617,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	sccs := scc.CreateSysCCs(ccp, sccp)
+	sccs := scc.CreateSysCCs(ccp, sccp, aclProvider)
 	for _, cc := range sccs {
 		sccp.RegisterSysCC(cc)
 	}

@@ -45,11 +45,6 @@ func New(sccp sysccprovider.SystemChaincodeProvider) *ValidatorOneValidSignature
 	}
 }
 
-// NewAsChaincode wraps New() to return a shim.Chaincode
-func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
-	return New(sccp)
-}
-
 // ValidatorOneValidSignature implements the default transaction validation policy,
 // which is to check the correctness of the read-write set and the endorsement
 // signatures against an endorsement policy that is supplied as argument to
