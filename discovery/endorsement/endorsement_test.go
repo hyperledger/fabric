@@ -87,7 +87,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	// Scenario I: Policy isn't found
 	pf.On("PolicyByChaincode", ccWithMissingPolicy).Return(nil).Once()
 	analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-	desc, err := analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{ccWithMissingPolicy}})
+	desc, err := analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: ccWithMissingPolicy}}})
 	assert.Nil(t, desc)
 	assert.Equal(t, "policy not found", err.Error())
 
@@ -106,7 +106,7 @@ func TestPeersForEndorsement(t *testing.T) {
 
 	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(pkiID2MSPID), mf)
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: cc}}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "cannot satisfy any principal combination")
 
@@ -126,7 +126,7 @@ func TestPeersForEndorsement(t *testing.T) {
 
 	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(pkiID2MSPID), mf)
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: cc}}})
 	assert.NoError(t, err)
 	assert.NotNil(t, desc)
 	assert.Len(t, desc.Layouts, 1)
@@ -150,7 +150,7 @@ func TestPeersForEndorsement(t *testing.T) {
 
 	analyzer = NewEndorsementAnalyzer(g, pf, policy.ToPrincipalEvaluator(pkiID2MSPID), mf)
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: cc}}})
 	assert.NoError(t, err)
 	assert.NotNil(t, desc)
 	assert.Len(t, desc.Layouts, 2)
@@ -169,7 +169,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	}).Once()
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
-	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: cc}}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "cannot satisfy any principal combination")
 
@@ -182,7 +182,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	mf.On("Metadata").Return(&chaincode.Metadata{
 		Name: cc, Version: "1.0",
 	}).Once()
-	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: cc}}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "cannot satisfy any principal combination")
 
@@ -191,7 +191,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 	pf.On("PolicyByChaincode", cc).Return(policy).Once()
 	mf.On("Metadata").Return(nil).Once()
-	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{ChaincodeNames: []string{cc}})
+	desc, err = analyzer.PeersForEndorsement(channel, &discovery2.ChaincodeInterest{Chaincodes: []*discovery2.ChaincodeCall{{Name: cc}}})
 	assert.Nil(t, desc)
 	assert.Equal(t, err.Error(), "No metadata was found for chaincode chaincode in channel test")
 }

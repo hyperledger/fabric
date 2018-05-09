@@ -108,10 +108,10 @@ func TestService(t *testing.T) {
 		CcQuery: &discovery.ChaincodeQuery{
 			Interests: []*discovery.ChaincodeInterest{
 				{
-					ChaincodeNames: []string{"unknownCC"},
+					Chaincodes: []*discovery.ChaincodeCall{{Name: "unknownCC"}},
 				},
 				{
-					ChaincodeNames: []string{"cc1"},
+					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc1"}},
 				},
 			},
 		},
@@ -127,13 +127,13 @@ func TestService(t *testing.T) {
 		CcQuery: &discovery.ChaincodeQuery{
 			Interests: []*discovery.ChaincodeInterest{
 				{
-					ChaincodeNames: []string{"cc1"},
+					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc1"}},
 				},
 				{
-					ChaincodeNames: []string{"cc2"},
+					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc2"}},
 				},
 				{
-					ChaincodeNames: []string{"cc3"},
+					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc3"}},
 				},
 			},
 		},
@@ -446,7 +446,7 @@ func (ms *mockSupport) Peers() discovery2.Members {
 }
 
 func (ms *mockSupport) PeersForEndorsement(channel common2.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	cc := interest.ChaincodeNames[0]
+	cc := interest.Chaincodes[0].Name
 	args := ms.Called(cc)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

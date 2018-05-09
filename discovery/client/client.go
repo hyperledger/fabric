@@ -75,7 +75,7 @@ func (req *Request) AddEndorsersQuery(chaincodes ...string) *Request {
 	}
 	for _, cc := range chaincodes {
 		q.CcQuery.Interests = append(q.CcQuery.Interests, &discovery.ChaincodeInterest{
-			ChaincodeNames: []string{cc},
+			Chaincodes: []*discovery.ChaincodeCall{{Name: cc}},
 		})
 	}
 	req.Queries = append(req.Queries, &discovery.Query{

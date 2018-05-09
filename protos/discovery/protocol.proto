@@ -142,10 +142,15 @@ message ChaincodeQuery {
 
 // ChaincodeInterest defines an interest about an endorsement
 // for a specific single chaincode invocation.
-// Multiple chaincode names indicate chaincode to chaincode invocations.
-// Collections indicate the chaincode invocation includes collections.
+// Multiple chaincodes indicate chaincode to chaincode invocations.
 message ChaincodeInterest {
-    repeated string chaincode_names  = 1;
+    repeated ChaincodeCall chaincodes = 1;
+}
+
+// ChaincodeCall defines a call to a chaincode.
+// It may have collections that are related to the chaincode
+message ChaincodeCall {
+    string name = 1;
     repeated string collection_names = 2;
 }
 
