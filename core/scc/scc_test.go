@@ -11,7 +11,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -23,12 +22,12 @@ import (
 func init() {
 	viper.Set("chaincode.system", map[string]string{"lscc": "enable", "a": "enable"})
 	viper.Set("peer.fileSystemPath", os.TempDir())
-	ccprovider.RegisterChaincodeProviderFactory(&ccprovider2.MockCcProviderFactory{})
 }
 
 func newTestProvider() *Provider {
+	ccp := &ccprovider2.MockCcProviderImpl{}
 	p := NewProvider(peer.Default, peer.DefaultSupport, inproccontroller.NewRegistry())
-	for _, cc := range CreateSysCCs(p) {
+	for _, cc := range CreateSysCCs(ccp, p) {
 		p.RegisterSysCC(cc)
 	}
 	return p
@@ -36,9 +35,10 @@ func newTestProvider() *Provider {
 
 func TestDeploy(t *testing.T) {
 	p := newTestProvider()
-	p.DeploySysCCs("")
+	ccp := &ccprovider2.MockCcProviderImpl{}
+	p.DeploySysCCs("", ccp)
 	f := func() {
-		p.DeploySysCCs("a")
+		p.DeploySysCCs("a", ccp)
 	}
 	assert.Panics(t, f)
 	ledgermgmt.InitializeTestEnv()
@@ -48,14 +48,15 @@ func TestDeploy(t *testing.T) {
 	(&SystemChaincode{
 		Enabled: true,
 		Name:    "lscc",
-	}).deploySysCC("a")
+	}).deploySysCC("a", ccp)
 }
 
 func TestDeDeploySysCC(t *testing.T) {
 	p := newTestProvider()
-	p.DeDeploySysCCs("")
+	ccp := &ccprovider2.MockCcProviderImpl{}
+	p.DeDeploySysCCs("", ccp)
 	f := func() {
-		p.DeDeploySysCCs("a")
+		p.DeDeploySysCCs("a", ccp)
 	}
 	assert.NotPanics(t, f)
 }
@@ -84,7 +85,8 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 }
 
 func TestRegisterSysCC(t *testing.T) {
-	assert.NotPanics(t, func() { CreateSysCCs(newTestProvider()) }, "expected successful init")
+	ccp := &ccprovider2.MockCcProviderImpl{}
+	assert.NotPanics(t, func() { CreateSysCCs(ccp, newTestProvider()) }, "expected successful init")
 
 	p := &Provider{
 		Registrar: inproccontroller.NewRegistry(),

@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/core/comm"
-	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -82,10 +81,7 @@ func TestInitialize(t *testing.T) {
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 
-	// we mock this because we can't import the chaincode package lest we create an import cycle
-	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
-
-	Initialize(nil, (&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider())
+	Initialize(nil, &ccprovider.MockCcProviderImpl{}, (&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider())
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
@@ -124,7 +120,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	err = CreateChainFromBlock(block, nil)
+	err = CreateChainFromBlock(block, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
