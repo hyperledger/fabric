@@ -114,6 +114,19 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 		return mspID != "" && exists
 	})
 
+	if loadCollections {
+		filterByCollections, err := newCollectionFilter(ccMD.CollectionsConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed creating collection filter")
+		}
+		for _, col := range chaincode.CollectionNames {
+			principalsSets, err = filterByCollections(col, principalsSets)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed filtering collection %s for chaincode %s", col, chaincode.Name)
+			}
+		}
+	}
+
 	// mapPrincipalsToGroups returns a mapping from principals to their corresponding groups.
 	// groups are just human readable representations that mask the principals behind them
 	principalGroups := mapPrincipalsToGroups(principalsSets)
