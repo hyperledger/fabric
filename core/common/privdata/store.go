@@ -68,11 +68,19 @@ func RetrieveCollectionConfigPackageFromState(cc common.CollectionCriteria, stat
 	if cb == nil {
 		return nil, NoSuchCollectionError(cc)
 	}
-
-	collections := &common.CollectionConfigPackage{}
-	err = proto.Unmarshal(cb, collections)
+	conf, err := ParseCollectionConfig(cb)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid configuration for collection criteria %#v", cc)
+	}
+	return conf, nil
+}
+
+// ParseCollectionConfig parses the collection configuration from the given serialized representation
+func ParseCollectionConfig(colBytes []byte) (*common.CollectionConfigPackage, error) {
+	collections := &common.CollectionConfigPackage{}
+	err := proto.Unmarshal(colBytes, collections)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	return collections, nil

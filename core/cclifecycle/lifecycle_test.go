@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/cclifecycle/mocks"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -304,7 +305,7 @@ func TestMetadata(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Scenario I: No subscription was invoked on the lifecycle
-	md := lc.Metadata("mychannel", "cc1")
+	md := lc.Metadata("mychannel", "cc1", false)
 	assert.Nil(t, md)
 	logger.AssertLogged("Requested Metadata for non-existent channel mychannel")
 
@@ -316,7 +317,7 @@ func TestMetadata(t *testing.T) {
 	defer sub.ChaincodeDeployDone(true)
 	assert.NoError(t, err)
 	assert.NotNil(t, sub)
-	md = lc.Metadata("mychannel", "cc1")
+	md = lc.Metadata("mychannel", "cc1", false)
 	assert.Equal(t, &chaincode.Metadata{
 		Name:    "cc1",
 		Version: "1.0",
@@ -328,7 +329,7 @@ func TestMetadata(t *testing.T) {
 	// Scenario III: A metadata retrieval is made and the chaincode is not in memory yet,
 	// and when the query is attempted to be made - it fails.
 	queryCreator.On("NewQuery").Return(nil, errors.New("failed obtaining query executor")).Once()
-	md = lc.Metadata("mychannel", "cc2")
+	md = lc.Metadata("mychannel", "cc2", false)
 	assert.Nil(t, md)
 	logger.AssertLogged("Failed obtaining new query for channel mychannel : failed obtaining query executor")
 
@@ -336,7 +337,7 @@ func TestMetadata(t *testing.T) {
 	// and when the query is attempted to be made - it succeeds, but GetState fails.
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc2").Return(nil, errors.New("GetState failed")).Once()
-	md = lc.Metadata("mychannel", "cc2")
+	md = lc.Metadata("mychannel", "cc2", false)
 	assert.Nil(t, md)
 	logger.AssertLogged("Failed querying LSCC for channel mychannel : GetState failed")
 
@@ -344,7 +345,7 @@ func TestMetadata(t *testing.T) {
 	// and both the query and the GetState succeed, however - GetState returns nil
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc2").Return(nil, nil).Once()
-	md = lc.Metadata("mychannel", "cc2")
+	md = lc.Metadata("mychannel", "cc2", false)
 	assert.Nil(t, md)
 	logger.AssertLogged("Chaincode cc2 isn't defined in channel mychannel")
 
@@ -352,12 +353,38 @@ func TestMetadata(t *testing.T) {
 	// and both the query and the GetState succeed, however - GetState returns a valid metadata
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil).Once()
-	md = lc.Metadata("mychannel", "cc2")
+	md = lc.Metadata("mychannel", "cc2", false)
 	assert.Equal(t, &chaincode.Metadata{
 		Name:    "cc2",
 		Version: "1.0",
 		Id:      []byte{42},
 	}, md)
+
+	// Scenario VII: A metadata retrieval is made and the chaincode is in the memory,
+	// but a collection is also specified, thus - the retrieval should bypass the memory cache
+	// and go straight into the stateDB.
+	queryCreator.On("NewQuery").Return(query, nil).Once()
+	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
+	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return([]byte{10, 10, 10}, nil).Once()
+	md = lc.Metadata("mychannel", "cc1", true)
+	assert.Equal(t, &chaincode.Metadata{
+		Name:              "cc1",
+		Version:           "1.0",
+		Id:                []byte{42},
+		Policy:            []byte{1, 2, 3, 4, 5},
+		CollectionsConfig: []byte{10, 10, 10},
+	}, md)
+	logger.AssertLogged("Retrieved collection config for cc1 from cc1~collection")
+
+	// Scenario VIII: A metadata retrieval is made and the chaincode is in the memory,
+	// but a collection is also specified, thus - the retrieval should bypass the memory cache
+	// and go straight into the stateDB. However - the retrieval fails
+	queryCreator.On("NewQuery").Return(query, nil).Once()
+	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
+	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(nil, errors.New("foo")).Once()
+	md = lc.Metadata("mychannel", "cc1", true)
+	assert.Nil(t, md)
+	logger.AssertLogged("Failed querying lscc namespace for cc1~collection: foo")
 }
 
 type logAsserter struct {

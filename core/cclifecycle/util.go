@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/pkg/errors"
 )
 
@@ -76,7 +77,7 @@ func InstalledCCs(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) (
 type ChaincodePredicate func(cc chaincode.Metadata) bool
 
 // DeployedChaincodes retrieves the metadata of the given deployed chaincodes
-func DeployedChaincodes(q Query, filter ChaincodePredicate, chaincodes ...string) (chaincode.MetadataSet, error) {
+func DeployedChaincodes(q Query, filter ChaincodePredicate, loadCollections bool, chaincodes ...string) (chaincode.MetadataSet, error) {
 	defer q.Done()
 
 	var res chaincode.MetadataSet
@@ -111,6 +112,18 @@ func DeployedChaincodes(q Query, filter ChaincodePredicate, chaincodes ...string
 			Logger.Debug("Filtered out", instCC)
 			continue
 		}
+
+		if loadCollections {
+			key := privdata.BuildCollectionKVSKey(cc)
+			collectionData, err := q.GetState("lscc", key)
+			if err != nil {
+				Logger.Errorf("Failed querying lscc namespace for %s: %v", key, err)
+				return nil, errors.WithStack(err)
+			}
+			instCC.CollectionsConfig = collectionData
+			Logger.Debug("Retrieved collection config for", cc, "from", key)
+		}
+
 		res = append(res, instCC)
 	}
 	Logger.Debug("Returning", res)

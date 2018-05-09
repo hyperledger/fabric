@@ -20,7 +20,7 @@ type mockMetadataRetriever struct {
 	res *chaincode.Metadata
 }
 
-func (r *mockMetadataRetriever) Metadata(channel string, cc string) *chaincode.Metadata {
+func (r *mockMetadataRetriever) Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata {
 	return r.res
 }
 

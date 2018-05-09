@@ -108,13 +108,15 @@ func NewLifeCycle(installedChaincodes Enumerator) (*Lifecycle, error) {
 
 // Metadata returns the metadata of the chaincode on the given channel,
 // or nil if not found or an error occurred at retrieving it
-func (lc *Lifecycle) Metadata(channel string, cc string) *chaincode.Metadata {
+func (lc *Lifecycle) Metadata(channel string, cc string, collections bool) *chaincode.Metadata {
 	queryCreator := lc.queryCreatorsByChannel[channel]
 	if queryCreator == nil {
 		Logger.Warning("Requested Metadata for non-existent channel", channel)
 		return nil
 	}
-	if md, found := lc.deployedCCsByChannel[channel].Lookup(cc); found {
+	// Search the metadata in our local cache, and if it exists - return it, but only if
+	// no collections were specified in the invocation.
+	if md, found := lc.deployedCCsByChannel[channel].Lookup(cc); found && !collections {
 		Logger.Debug("Returning metadata for channel", channel, ", chaincode", cc, ":", md)
 		return &md
 	}
@@ -123,7 +125,7 @@ func (lc *Lifecycle) Metadata(channel string, cc string) *chaincode.Metadata {
 		Logger.Error("Failed obtaining new query for channel", channel, ":", err)
 		return nil
 	}
-	md, err := DeployedChaincodes(query, AcceptAll, cc)
+	md, err := DeployedChaincodes(query, AcceptAll, collections, cc)
 	if err != nil {
 		Logger.Error("Failed querying LSCC for channel", channel, ":", err)
 		return nil

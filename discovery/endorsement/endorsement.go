@@ -37,7 +37,7 @@ type principalEvaluator interface {
 type chaincodeMetadataFetcher interface {
 	// ChaincodeMetadata returns the metadata of the chaincode as appears in the ledger,
 	// or nil if the channel doesn't exist, or the chaincode isn't found in the ledger
-	Metadata(channel string, cc string) *chaincode.Metadata
+	Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata
 }
 
 type policyFetcher interface {
@@ -80,7 +80,8 @@ type peerPrincipalEvaluator func(member discovery2.NetworkMember, principal *msp
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
 func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	chaincode := interest.Chaincodes[0]
-	ccMD := ea.Metadata(string(chainID), chaincode.Name)
+	loadCollections := len(chaincode.CollectionNames) > 0
+	ccMD := ea.Metadata(string(chainID), chaincode.Name, loadCollections)
 	if ccMD == nil {
 		return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(chainID))
 	}
