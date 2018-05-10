@@ -46,6 +46,14 @@ type ContainerRuntime struct {
 	PeerNetworkID string
 }
 
+type platformBuilder struct {
+	cds *pb.ChaincodeDeploymentSpec
+}
+
+func (b *platformBuilder) Build() (io.Reader, error) {
+	return platforms.GenerateDockerBuild(b.cds)
+}
+
 // Start launches chaincode in a runtime environment.
 func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
@@ -59,7 +67,7 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 	chaincodeLogger.Debugf("start container with args: %s", strings.Join(lc.Args, " "))
 	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(lc.Envs, "\n\t"))
 
-	builder := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
+	builder := &platformBuilder{cds: cds}
 	scr := container.StartContainerReq{
 		Builder:       builder,
 		Args:          lc.Args,

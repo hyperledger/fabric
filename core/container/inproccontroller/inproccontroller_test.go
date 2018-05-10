@@ -13,8 +13,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"io"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -425,12 +423,6 @@ func TestLaunchprocCCSupportHandleChaincodeStreamError(t *testing.T) {
 	assert.Nil(t, err, "err should be nil")
 }
 
-type MockIOReader struct{}
-
-func (io MockIOReader) Read(p []byte) (int, error) {
-	return 0, nil
-}
-
 func TestStart(t *testing.T) {
 	defer func() {
 		typeRegistry = make(map[string]*inprocContainer)
@@ -455,15 +447,11 @@ func TestStart(t *testing.T) {
 		"hello": []byte("world"),
 	}
 
-	mockBuilder := func() (io.Reader, error) {
-		return MockIOReader{}, nil
-	}
-
 	ipc := &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
 
 	typeRegistry["path"] = ipc
 
-	err := vm.Start(mockContext, ccid, args, env, files, mockBuilder, nil)
+	err := vm.Start(mockContext, ccid, args, env, files, nil)
 	assert.Nil(t, err, "err should be nil")
 }
 

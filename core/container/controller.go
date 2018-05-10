@@ -122,17 +122,16 @@ type VMCResp struct {
 //StartContainerReq - properties for starting a container.
 type StartContainerReq struct {
 	ccintf.CCID
-	Builder       api.BuildSpecFactory
+	Builder       api.Builder
 	Args          []string
 	Env           []string
 	FilesToUpload map[string][]byte
-	PrelaunchFunc api.PrelaunchFunc
 }
 
 func (si StartContainerReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
-	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder, si.PrelaunchFunc); err != nil {
+	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder); err != nil {
 		resp = VMCResp{Err: err}
 	} else {
 		resp = VMCResp{}
