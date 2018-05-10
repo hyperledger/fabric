@@ -121,7 +121,7 @@ func (s *service) dispatch(q *discovery.Query) *discovery.QueryResult {
 func (s *service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 	var descriptors []*discovery.EndorsementDescriptor
 	for _, interest := range q.GetCcQuery().Interests {
-		if len(interest.ChaincodeNames) == 0 {
+		if len(interest.Chaincodes) == 0 || interest.Chaincodes[0] == nil {
 			return wrapError(errors.Errorf("must include at least one chaincode"))
 		}
 		desc, err := s.PeersForEndorsement(common2.ChainID(q.Channel), interest)

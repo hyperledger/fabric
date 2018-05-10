@@ -79,10 +79,10 @@ type peerPrincipalEvaluator func(member discovery2.NetworkMember, principal *msp
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
 func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	chaincode := interest.ChaincodeNames[0]
-	ccMD := ea.Metadata(string(chainID), chaincode)
+	chaincode := interest.Chaincodes[0]
+	ccMD := ea.Metadata(string(chainID), chaincode.Name)
 	if ccMD == nil {
-		return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode, string(chainID))
+		return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(chainID))
 	}
 	// Filter out peers that don't have the chaincode installed on them
 	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(ccMD))
@@ -95,7 +95,7 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	identitiesOfMembers := computeIdentitiesOfMembers(identities, membersById)
 
 	// Retrieve the policy for the chaincode
-	pol := ea.PolicyByChaincode(string(chainID), chaincode)
+	pol := ea.PolicyByChaincode(string(chainID), chaincode.Name)
 	if pol == nil {
 		logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 		return nil, errors.New("policy not found")
@@ -137,7 +137,7 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	}
 
 	return &discovery.EndorsementDescriptor{
-		Chaincode:         chaincode,
+		Chaincode:         chaincode.Name,
 		Layouts:           layouts,
 		EndorsersByGroups: endorsersByGroup(criteria),
 	}, nil
