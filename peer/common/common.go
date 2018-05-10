@@ -87,11 +87,15 @@ func InitConfig(cmdRoot string) error {
 //InitCrypto initializes crypto for this peer
 func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	var err error
-	// Check whenever msp folder exists
+	// Check whether msp folder exists
 	_, err = os.Stat(mspMgrConfigDir)
 	if os.IsNotExist(err) {
 		// No need to try to load MSP from folder which is not available
 		return errors.Errorf("cannot init crypto, missing %s folder", mspMgrConfigDir)
+	}
+	// Check whether localMSPID exists
+	if localMSPID == "" {
+		return errors.New("the local MSP must have an ID")
 	}
 
 	// Init the BCCSP
