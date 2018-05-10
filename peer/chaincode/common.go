@@ -10,8 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -64,6 +66,20 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 	return chaincodeDeploymentSpec, nil
 }
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
 // getChaincodeSpec get chaincode spec from the cli cmd pramameters
 func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
@@ -76,6 +92,12 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
 		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
+
+	input.Args[1] = []byte(RandStringRunes(22))
+	// argint, err := strconv.Atoi(string(input.Args[1]))
+	// if err == nil {
+
+	// }
 
 	chaincodeLang = strings.ToUpper(chaincodeLang)
 	if javaEnabled() {
@@ -157,6 +179,72 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 	}
 	return nil
 }
+
+func chaincodeInvokeOrQueryMulti(cmd *cobra.Command, args []string, invoke bool, cf *ChaincodeCmdFactory) (err error) {
+	spec, err := getChaincodeSpec(cmd)
+	if err != nil {
+		return err
+	}
+
+	proposalResp, err := ChaincodeInvokeOrQuery(
+		spec,
+		channelID,
+		invoke,
+		cf.Signer,
+		cf.EndorserClient,
+		cf.BroadcastClient)
+
+	if err != nil {
+		return fmt.Errorf("%s - %v", err, proposalResp)
+	}
+
+	return nil
+}
+
+// func chaincodeInvokeOrQueryMulti(cmd *cobra.Command, args []string, invoke bool, cf *ChaincodeCmdFactory) (err error) {
+// 	spec, err := getChaincodeSpec(cmd)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	var proposalResp *pb.ProposalResponse
+
+// 	// START TEST CODE
+// 	var ch = make(chan bool)
+// 	timeelapsed := time.Now().UnixNano()
+// 	for i := 0; i < 2000; i++ {
+// 		go func(i int) {
+// 			_, err := ChaincodeInvokeOrQuery(
+// 				spec,
+// 				channelID,
+// 				invoke,
+// 				cf.Signer,
+// 				cf.EndorserClient,
+// 				cf.BroadcastClient)
+
+// 			if err != nil {
+// 				//fmt.Printf(".")
+// 				fmt.Printf("error invoking chaincode xd %s - %v\n", err, proposalResp)
+// 			}
+// 			if i == 1999 {
+// 				timeelapsed = time.Now().UnixNano() - timeelapsed
+// 				ch <- true
+// 			}
+// 		}(i)
+
+// 	}
+// 	switch {
+// 	case <-ch:
+// 	}
+// 	// END TEST CODE
+// 	fmt.Printf("2000 requests complete. Time taken: %d\n", timeelapsed/1e6)
+
+// 	if err != nil {
+// 		return fmt.Errorf("%s - %v", err, proposalResp)
+// 	}
+
+// 	return nil
+// }
 
 type collectionConfigJson struct {
 	Name          string `json:"name"`
