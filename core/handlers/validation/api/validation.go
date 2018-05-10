@@ -37,15 +37,15 @@ type PluginFactory interface {
 	New() Plugin
 }
 
-// VSCCExecutionFailureError indicates that the validation
+// ExecutionFailureError indicates that the validation
 // failed because of an execution problem, and thus
 // the transaction validation status could not be computed
-type VSCCExecutionFailureError struct {
+type ExecutionFailureError struct {
 	Reason string
 }
 
 // Error conveys this is an error, and also contains
 // the reason for the error
-func (e VSCCExecutionFailureError) Error() string {
+func (e ExecutionFailureError) Error() string {
 	return e.Reason
 }
