@@ -173,8 +173,8 @@ certificate (ECert) to each authorized user.
 Genesis Block
 -------------
 
-The configuration block that initializes a blockchain network or channel, and
-also serves as the first block on a chain.
+The configuration block that initializes the ordering service, or serves as the
+first block on a chain.
 
 .. _Gossip-Protocol:
 
