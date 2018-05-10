@@ -34,9 +34,9 @@ import (
 */
 
 const (
-	defDigestWaitTime   = time.Duration(1) * time.Second
-	defRequestWaitTime  = time.Duration(1) * time.Second
-	defResponseWaitTime = time.Duration(2) * time.Second
+	defDigestWaitTime   = time.Duration(1000) * time.Millisecond
+	defRequestWaitTime  = time.Duration(1500) * time.Millisecond
+	defResponseWaitTime = time.Duration(2000) * time.Millisecond
 )
 
 // SetDigestWaitTime sets the digest wait time

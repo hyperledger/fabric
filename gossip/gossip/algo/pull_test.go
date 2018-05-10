@@ -553,9 +553,9 @@ func TestDefaultConfig(t *testing.T) {
 	// Check if we can read default duration when no properties are
 	// defined in config file.
 	viper.Reset()
-	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
-	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
-	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
+	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
+	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
 
 	// Check if the properties in the config file (core.yaml)
 	// are set to the desired duration.
@@ -567,9 +567,9 @@ func TestDefaultConfig(t *testing.T) {
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 	assert.NoError(t, err)
-	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
-	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
-	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
+	assert.Equal(t, time.Duration(1500)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
+	assert.Equal(t, time.Duration(2000)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
 }
 
 func Strcmp(a interface{}, b interface{}) bool {

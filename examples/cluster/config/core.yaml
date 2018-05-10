@@ -119,6 +119,7 @@ peer:
         # Number of peers selected to push messages to
         propagatePeerNum: 3
         # Determines frequency of pull phases(unit: second)
+        # Must be greater than digestWaitTime + responseWaitTime
         pullInterval: 4s
         # Number of peers to pull from
         pullPeerNum: 3
@@ -141,9 +142,11 @@ peer:
         # Buffer size of sending messages
         sendBuffSize: 20
         # Time to wait before pull engine processes incoming digests (unit: second)
+        # Should be slightly smaller than requestWaitTime
         digestWaitTime: 1s
-        # Time to wait before pull engine removes incoming nonce (unit: second)
-        requestWaitTime: 1s
+        # Time to wait before pull engine removes incoming nonce (unit: milliseconds)
+        # Should be slightly bigger than digestWaitTime
+        requestWaitTime: 1500ms
         # Time to wait before pull engine ends pull (unit: second)
         responseWaitTime: 2s
         # Alive check interval(unit: second)
