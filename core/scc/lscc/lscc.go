@@ -400,6 +400,10 @@ func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		return err
 	}
 
+	if lscc.sccprovider.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.ChaincodeSpec.ChaincodeId.Name)
+	}
+
 	// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
 	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
 	if err != nil {
