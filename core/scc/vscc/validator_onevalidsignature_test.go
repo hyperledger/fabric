@@ -276,15 +276,6 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 	return utils.CreateSignedTx(prop, id, presp)
 }
 
-func TestInit(t *testing.T) {
-	v := New(NewMockProvider())
-	stub := shim.NewMockStub("validatoronevalidsignature", v)
-
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		t.Fatalf("vscc init failed with %s", res.Message)
-	}
-}
-
 func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
 	p := cauthdsl.SignedByMspMember(mspID)
 
@@ -332,33 +323,8 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("vscc init failed with %s", res.Message)
 	}
 
-	// Failed path: Invalid arguments
-	args := [][]byte{[]byte("dv")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
-	// not enough args
-	args = [][]byte{[]byte("dv"), []byte("tx")}
-	args[1] = nil
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
-	// nil args
-	args = [][]byte{nil, nil, nil}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
-	// nil args
-	args = [][]byte{[]byte("a"), []byte("a"), nil}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
 	// broken Envelope
-	args = [][]byte{[]byte("a"), []byte("a"), []byte("a")}
+	args := [][]byte{[]byte("a"), []byte("a"), []byte("a")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invoke should have failed")
 	}
@@ -445,62 +411,6 @@ func TestInvoke(t *testing.T) {
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK || res.Message != DUPLICATED_IDENTITY_ERROR {
 		t.Fatalf("vscc invoke should have failed due to policy evaluation failure caused by duplicated identity")
-	}
-}
-
-func TestInvalidFunction(t *testing.T) {
-	State := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe: lm.NewMockQueryExecutor(State),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
-
-	v := New(mp)
-	stub := shim.NewMockStub("validatoronevalidsignature", v)
-
-	lccc := lscc.New(mp)
-	stublccc := shim.NewMockStub("lscc", lccc)
-	State["lscc"] = stublccc.State
-	stub.MockPeerChaincode("lscc", stublccc)
-
-	r1 := stub.MockInit("1", [][]byte{})
-	if r1.Status != shim.OK {
-		fmt.Println("Init failed", string(r1.Message))
-		t.FailNow()
-	}
-
-	r := stublccc.MockInit("1", [][]byte{})
-	if r.Status != shim.OK {
-		fmt.Println("Init failed", string(r.Message))
-		t.FailNow()
-	}
-
-	ccname := "mycc"
-	ccver := "1"
-
-	res, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
-
-	tx, err := createLSCCTx(ccname, ccver, lscc.GETCCDATA, res)
-	if err != nil {
-		t.Fatalf("createTx returned err %s", err)
-	}
-
-	envBytes, err := utils.GetBytesEnvelope(tx)
-	if err != nil {
-		t.Fatalf("GetBytesEnvelope returned err %s", err)
-	}
-
-	// good path: signed by the right MSP
-	policy, err := getSignedByMSPMemberPolicy(mspid)
-	if err != nil {
-		t.Fatalf("failed getting policy, err %s", err)
-	}
-
-	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
 	}
 }
 
