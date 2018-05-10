@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package world
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -77,7 +76,14 @@ func (c *Components) Peer() *runner.Peer {
 func (c *Components) Zookeeper(id int, network *docker.Network) *runner.Zookeeper {
 	return &runner.Zookeeper{
 		ZooMyID:     id,
-		Name:        fmt.Sprintf("zookeeper%d", id),
+		NetworkID:   network.ID,
+		NetworkName: network.Name,
+	}
+}
+
+func (c *Components) Kafka(id int, network *docker.Network) *runner.Kafka {
+	return &runner.Kafka{
+		BrokerID:    id,
 		NetworkID:   network.ID,
 		NetworkName: network.Name,
 	}
