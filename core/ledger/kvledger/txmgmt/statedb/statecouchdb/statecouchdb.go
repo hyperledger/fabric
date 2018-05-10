@@ -90,7 +90,8 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, dbName string) (*Versi
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
 	chainName := dbName
 	dbName = couchdb.ConstructMetadataDBName(dbName)
-	metadataDB, err := couchdb.CreateCouchDatabase(*couchInstance, dbName)
+
+	metadataDB, err := couchdb.CreateCouchDatabase(couchInstance, dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchdb.CouchDa
 	db = vdb.namespaceDBs[namespace]
 	if db == nil {
 		var err error
-		db, err = couchdb.CreateCouchDatabase(*vdb.couchInstance, namespaceDBName)
+		db, err = couchdb.CreateCouchDatabase(vdb.couchInstance, namespaceDBName)
 		if err != nil {
 			return nil, err
 		}

@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package couchdb
@@ -23,66 +12,60 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 )
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
-	if ledgerconfig.IsCouchDBEnabled() {
 
-		database := "testcreatecouchdbconnectionanddb"
-		cleanup(database)
-		defer cleanup(database)
-		//create a new connection
-		couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-			couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
+	database := "testcreatecouchdbconnectionanddb"
+	cleanup(database)
+	defer cleanup(database)
+	//create a new connection
+	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
 
-		_, err = CreateCouchDatabase(*couchInstance, database)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchDatabase"))
-	}
+	_, err = CreateCouchDatabase(couchInstance, database)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchDatabase"))
 
 }
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBSystemDBs(t *testing.T) {
-	if ledgerconfig.IsCouchDBEnabled() {
 
-		database := "testcreatecouchdbsystemdb"
-		cleanup(database)
-		defer cleanup(database)
+	database := "testcreatecouchdbsystemdb"
+	cleanup(database)
+	defer cleanup(database)
 
-		//create a new connection
-		couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-			couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+	//create a new connection
+	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
 
-		err = CreateSystemDatabasesIfNotExist(*couchInstance)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create system databases"))
+	err = CreateSystemDatabasesIfNotExist(couchInstance)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create system databases"))
 
-		db := CouchDatabase{CouchInstance: *couchInstance, DBName: "_users"}
+	db := CouchDatabase{CouchInstance: couchInstance, DBName: "_users"}
 
-		//Retrieve the info for the new database and make sure the name matches
-		dbResp, _, errdb := db.GetDatabaseInfo()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _users database information"))
-		testutil.AssertEquals(t, dbResp.DbName, "_users")
+	//Retrieve the info for the new database and make sure the name matches
+	dbResp, _, errdb := db.GetDatabaseInfo()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _users database information"))
+	testutil.AssertEquals(t, dbResp.DbName, "_users")
 
-		db = CouchDatabase{CouchInstance: *couchInstance, DBName: "_replicator"}
+	db = CouchDatabase{CouchInstance: couchInstance, DBName: "_replicator"}
 
-		//Retrieve the info for the new database and make sure the name matches
-		dbResp, _, errdb = db.GetDatabaseInfo()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _replicator database information"))
-		testutil.AssertEquals(t, dbResp.DbName, "_replicator")
+	//Retrieve the info for the new database and make sure the name matches
+	dbResp, _, errdb = db.GetDatabaseInfo()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _replicator database information"))
+	testutil.AssertEquals(t, dbResp.DbName, "_replicator")
 
-		db = CouchDatabase{CouchInstance: *couchInstance, DBName: "_global_changes"}
+	db = CouchDatabase{CouchInstance: couchInstance, DBName: "_global_changes"}
 
-		//Retrieve the info for the new database and make sure the name matches
-		dbResp, _, errdb = db.GetDatabaseInfo()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _global_changes database information"))
-		testutil.AssertEquals(t, dbResp.DbName, "_global_changes")
-
-	}
+	//Retrieve the info for the new database and make sure the name matches
+	dbResp, _, errdb = db.GetDatabaseInfo()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _global_changes database information"))
+	testutil.AssertEquals(t, dbResp.DbName, "_global_changes")
 
 }
 func TestDatabaseMapping(t *testing.T) {
