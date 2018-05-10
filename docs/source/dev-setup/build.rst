@@ -49,31 +49,6 @@ client SDK is not broken by your changes. To run the Node.js unit tests,
 follow the instructions
 `here <https://github.com/hyperledger/fabric-sdk-node/blob/master/README.md>`__.
 
-Running Behave BDD Tests
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Note:** currently, the behave tests must be run from within in the
-Vagrant environment. See the :doc:`development environment <devenv>` setup instructions
-if you have not already set up your Vagrant environment.
-
-`Behave <https://pypi.python.org/pypi/behave>`__ tests will setup networks
-of peers with different security and consensus configurations and verify
-that transactions run properly. To run these tests
-
-::
-
-    cd $GOPATH/src/github.com/hyperledger/fabric
-    make behave
-
-Some of the Behave tests run inside Docker containers. If a test fails
-and you want to have the logs from the Docker containers, run the tests
-with this option:
-
-::
-
-    cd $GOPATH/src/github.com/hyperledger/fabric/bddtests
-    behave -D logs=Y
-
 Building outside of Vagrant
 ---------------------------
 
@@ -111,7 +86,7 @@ development environment.
 ::
 
     cd $GOPATH/src/github.com/hyperledger/fabric
-    make peer unit-test behave
+    make peer unit-test
 
 Building on Power Platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

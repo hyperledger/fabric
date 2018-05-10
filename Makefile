@@ -100,7 +100,6 @@ JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
-	grep -v ^bddtests | grep -v ^docs | grep -v _test.go$ | grep -v .md$ | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
 	grep -v ^LICENSE | grep -v ^vendor )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")

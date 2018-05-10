@@ -55,15 +55,12 @@ Prerequisites
 -  Note: The BIOS Enabled Virtualization may be within the CPU or
    Security settings of the BIOS
 
-``pip`` and ``behave``
-~~~~~~~~~~~~~~~~~~~~~~
+``pip``
+~~~~~~
 
 ::
 
     pip install --upgrade pip
-
-    #PIP packages required for some behave tests
-    pip install -r devenv/bddtests-requirements.txt
 
 
 Steps
