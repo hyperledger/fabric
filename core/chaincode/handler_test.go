@@ -2054,7 +2054,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				err := handler.ProcessStream(fakeChatStream)
-				Expect(err).To(MatchError("error handling message, ending stream: [tx-id]Fabric side handler cannot handle message (9999) while in created state"))
+				Expect(err).To(MatchError("error handling message, ending stream: [tx-id] Fabric side handler cannot handle message (9999) while in created state"))
 			})
 		})
 
@@ -2103,7 +2103,7 @@ var _ = Describe("Handler", func() {
 				Eventually(fakeChatStream.RecvCallCount).ShouldNot(Equal(0))                    // wait for loop to start
 				handler.Execute(context.Background(), cccid, incomingMessage, time.Millisecond) // force async error
 
-				Eventually(errChan).Should(Receive(MatchError("received error while sending message, ending chaincode support stream: [tx-id]Error sending TRANSACTION: candy")))
+				Eventually(errChan).Should(Receive(MatchError("received error while sending message, ending chaincode support stream: [tx-id] Error sending TRANSACTION: candy")))
 			})
 
 			It("stops receiving messages", func() {

@@ -148,7 +148,7 @@ type Handler struct {
 
 // handleMessage is called by ProcessStream to dispatch messages.
 func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debugf("[%s]Fabric side Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, h.state)
+	chaincodeLogger.Debugf("[%s] Fabric side Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, h.state)
 
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
 		chaincodeLogger.Debug("Received KEEPALIVE Response")
@@ -170,7 +170,7 @@ func (h *Handler) handleMessageCreatedState(msg *pb.ChaincodeMessage) error {
 	case pb.ChaincodeMessage_REGISTER:
 		h.HandleRegister(msg)
 	default:
-		return fmt.Errorf("[%s]Fabric side handler cannot handle message (%s) while in created state", msg.Txid, msg.Type)
+		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in created state", msg.Txid, msg.Type)
 	}
 	return nil
 }
@@ -201,7 +201,7 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandleQueryStateClose)
 
 	default:
-		return fmt.Errorf("[%s]Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
+		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
 	}
 
 	return nil
@@ -218,7 +218,7 @@ type handleFunc func(*pb.ChaincodeMessage, *TransactionContext) (*pb.ChaincodeMe
 // returened by the delegate are sent to the chat stream. Any errors returned by the
 // delegate are packaged as chaincode error messages.
 func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFunc) {
-	chaincodeLogger.Debugf("[%s]handling %s from chaincode", shorttxid(msg.Txid), msg.Type.String())
+	chaincodeLogger.Debugf("[%s] handling %s from chaincode", shorttxid(msg.Txid), msg.Type.String())
 	if !h.registerTxid(msg) {
 		return
 	}
@@ -238,11 +238,11 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 
 	if err != nil {
 		err = errors.Wrapf(err, "%s failed: transaction ID: %s", msg.Type, msg.Txid)
-		chaincodeLogger.Errorf("[%s]Failed to handle %s. error: %+v", shorttxid(msg.Txid), msg.Type, err)
+		chaincodeLogger.Errorf("[%s] Failed to handle %s. error: %+v", shorttxid(msg.Txid), msg.Type, err)
 		resp = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId}
 	}
 
-	chaincodeLogger.Debugf("[%s]Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
+	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
 	h.serialSendAsync(resp, false)
 	h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
 }
@@ -286,7 +286,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 
 	var err error
 	if err = h.chatStream.Send(msg); err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("[%s]Error sending %s", shorttxid(msg.Txid), msg.Type))
+		err = errors.WithMessage(err, fmt.Sprintf("[%s] Error sending %s", shorttxid(msg.Txid), msg.Type))
 		chaincodeLogger.Errorf("%+v", err)
 	}
 	return err
@@ -385,7 +385,7 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 			}
 
 			in := rMsg.msg
-			chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type)
+			chaincodeLogger.Debugf("[%s] Received message %s from shim", shorttxid(in.Txid), in.Type)
 
 			err := h.handleMessage(in)
 			if err != nil {
@@ -486,7 +486,7 @@ func (h *Handler) Notify(msg *pb.ChaincodeMessage) {
 		return
 	}
 
-	chaincodeLogger.Debugf("[%s]notifying Txid:%s, channelID:%s", shorttxid(msg.Txid), msg.Txid, msg.ChannelId)
+	chaincodeLogger.Debugf("[%s] notifying Txid:%s, channelID:%s", shorttxid(msg.Txid), msg.Txid, msg.ChannelId)
 	tctx.ResponseNotifier <- msg
 	tctx.CloseQueryIterators()
 }
@@ -514,7 +514,7 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	if h.chaincodeID != nil {
 		chaincodeName = h.chaincodeID.Name
 	}
-	chaincodeLogger.Errorf("[%s]Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), chaincodeName, msg.Txid, msg.ChannelId)
+	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), chaincodeName, msg.Txid, msg.ChannelId)
 	return false
 }
 
@@ -540,7 +540,7 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 		return nil, errors.WithStack(err)
 	}
 	if res == nil {
-		chaincodeLogger.Debugf("[%s]No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.Txid), key, pb.ChaincodeMessage_RESPONSE)
+		chaincodeLogger.Debugf("[%s] No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.Txid), key, pb.ChaincodeMessage_RESPONSE)
 	}
 
 	// Send response msg back to chaincode. GetState will not trigger event
