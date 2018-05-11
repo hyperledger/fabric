@@ -83,7 +83,7 @@ func getGopath() (string, error) {
 	// Only take the first element of GOPATH
 	splitGoPath := filepath.SplitList(env["GOPATH"])
 	if len(splitGoPath) == 0 {
-		return "", fmt.Errorf("invalid GOPATH environment variable value:[%s]", env["GOPATH"])
+		return "", fmt.Errorf("invalid GOPATH environment variable value: %s", env["GOPATH"])
 	}
 	return splitGoPath[0], nil
 }
