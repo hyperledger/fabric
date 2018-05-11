@@ -263,7 +263,7 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 
 	// get context to invoke VSCC
 	vscctxid := coreUtil.GenerateUUID()
-	cccid := v.ccprovider.GetCCContext(chid, vsccName, vsccVer, vscctxid, true, nil, nil)
+	cccid := ccprovider.NewCCContext(chid, vsccName, vsccVer, vscctxid, true, nil, nil)
 
 	// invoke VSCC
 	logger.Debug("Invoking VSCC txid", txid, "chaindID", chid)

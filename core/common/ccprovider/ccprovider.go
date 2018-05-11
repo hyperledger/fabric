@@ -495,14 +495,12 @@ type ChaincodeProvider interface {
 	// caller's responsability to release the simulator by calling its
 	// done method once it is no longer useful
 	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error)
-	// GetCCContext returns an opaque chaincode context
-	GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{}
 	// ExecuteChaincode executes the chaincode given context and args
-	ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)
-	Execute(ctxt context.Context, cccid interface{}, spec ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(ctxt context.Context, cccid *CCContext, spec ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Stop stops the chaincode given context and deployment spec
-	Stop(ctxt context.Context, cccid interface{}, spec *pb.ChaincodeDeploymentSpec) error
+	Stop(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }
 
 var ccFactory ChaincodeProviderFactory

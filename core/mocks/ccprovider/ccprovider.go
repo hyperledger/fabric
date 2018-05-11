@@ -37,9 +37,6 @@ type MockCcProviderImpl struct {
 	ExecuteChaincodeResponse *peer.Response
 }
 
-type mockCcProviderContextImpl struct {
-}
-
 type MockTxSim struct {
 	GetTxSimulationResultsRv *ledger.TxSimulationResults
 }
@@ -140,18 +137,13 @@ func (c *MockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (
 	return nil, &MockTxSim{}, nil
 }
 
-// GetCCContext does nothing
-func (c *MockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *peer.SignedProposal, prop *peer.Proposal) interface{} {
-	return &mockCcProviderContextImpl{}
-}
-
 // GetCCValidationInfoFromLSCC does nothing
 func (c *MockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
 	return "vscc", nil, nil
 }
 
 // ExecuteChaincode does nothing
-func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
 	if c.ExecuteResultProvider != nil {
 		return c.ExecuteResultProvider.ExecuteChaincodeResult()
 	}
@@ -163,12 +155,12 @@ func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interf
 }
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
-func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec ccprovider.ChaincodeSpecGetter) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return &peer.Response{}, nil, nil
 }
 
 // Stop stops the chaincode given context and deployment spec
-func (c *MockCcProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *peer.ChaincodeDeploymentSpec) error {
+func (c *MockCcProviderImpl) Stop(ctxt context.Context, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) error {
 	return nil
 }
 
