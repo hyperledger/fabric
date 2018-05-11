@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -197,40 +197,20 @@ func shorttxid(txid string) string {
 	return txid[0:8]
 }
 
-// gets chaincode instance from the canonical name of the chaincode.
-// Called exactly once per chaincode when registering chaincode.
-// This is needed for the "one-instance-per-chain" model when
-// starting up the chaincode for each chain. It will still
-// work for the "one-instance-for-all-chains" as the version
-// and suffix will just be absent (also note that LSCC reserves
-// "/:[]${}" as special chars mainly for such namespace uses)
-func (h *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
-	h.ccInstance = getChaincodeInstance(cid.Name)
-}
-
+// The chincodeID should be of the form "chaincode-name:version/channel-name"
+// with optional elements.
 func getChaincodeInstance(ccName string) *sysccprovider.ChaincodeInstance {
-	b := []byte(ccName)
 	ci := &sysccprovider.ChaincodeInstance{}
 
-	// compute suffix (ie, chain name)
-	i := bytes.IndexByte(b, '/')
-	if i >= 0 {
-		if i < len(b)-1 {
-			ci.ChainID = string(b[i+1:])
-		}
-		b = b[:i]
+	z := strings.SplitN(ccName, "/", 2)
+	if len(z) == 2 {
+		ci.ChainID = z[1]
 	}
-
-	// compute version
-	i = bytes.IndexByte(b, ':')
-	if i >= 0 {
-		if i < len(b)-1 {
-			ci.ChaincodeVersion = string(b[i+1:])
-		}
-		b = b[:i]
+	z = strings.SplitN(z[0], ":", 2)
+	if len(z) == 2 {
+		ci.ChaincodeVersion = z[1]
 	}
-	// remaining is the chaincode name
-	ci.ChaincodeName = string(b)
+	ci.ChaincodeName = z[0]
 
 	return ci
 }
@@ -459,7 +439,7 @@ func (h *Handler) handleRegister(msg *pb.ChaincodeMessage) {
 
 	// get the component parts so we can use the root chaincode
 	// name in keys
-	h.decomposeRegisteredName(h.ChaincodeID)
+	h.ccInstance = getChaincodeInstance(h.ChaincodeID.Name)
 
 	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, chaincodeID, pb.ChaincodeMessage_REGISTERED)
 	if err := h.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
