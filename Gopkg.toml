@@ -131,6 +131,10 @@ ignored = [
   branch = "master"
   name = "github.com/tedsuo/ifrit"
 
+[[constraint]]
+  name = "github.com/onsi/ginkgo"
+  revision = "a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee"
+
 [prune]
   go-tests = true
   unused-packages = true

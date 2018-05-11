@@ -291,8 +291,7 @@
     "reporters/stenographer/support/go-isatty",
     "types"
   ]
-  revision = "9eda700730cba42af70d53180f9dcce9266bc2bc"
-  version = "v1.4.0"
+  revision = "a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee"
 
 [[projects]]
   name = "github.com/onsi/gomega"
@@ -632,6 +631,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "713f00ff95e040c73a8ed708be4866d0a678fd567850450685c045d3f6b7b60a"
+  inputs-digest = "0a113a40d28bd28487b8587203bef037db89445dc11b571c17e98b994fe2083b"
   solver-name = "gps-cdcl"
   solver-version = 1

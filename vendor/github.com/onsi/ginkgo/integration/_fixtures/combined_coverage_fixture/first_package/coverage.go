@@ -1,8 +1,4 @@
-package coverage_fixture
-
-import (
-	_ "github.com/onsi/ginkgo/integration/_fixtures/coverage_fixture/external_coverage_fixture"
-)
+package first_package
 
 func A() string {
 	return "A"
