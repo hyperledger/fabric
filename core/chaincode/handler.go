@@ -27,27 +27,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type state int
-
-const (
-	created state = iota
-	established
-	ready
-)
-
-func (s state) String() string {
-	switch s {
-	case created:
-		return "created"
-	case established:
-		return "established"
-	case ready:
-		return "ready"
-	default:
-		return "UNKNOWN"
-	}
-}
-
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
 
 // ACLProvider is responsible for performing access control checks when invoking
@@ -56,20 +35,41 @@ type ACLProvider interface {
 	CheckACL(resName string, channelID string, idinfo interface{}) error
 }
 
+// Registry is responsible for tracking handlers.
 type Registry interface {
 	Register(*Handler) error
 	Ready(cname string)
 	Deregister(cname string) error
 }
 
+// SystemCCProvider provides system chaincode metadata.
+type SystemCCProvider interface {
+	IsSysCC(name string) bool
+	IsSysCCAndNotInvokableCC2CC(name string) bool
+}
+
+// PolicyChecker is used to evaluate instantiation policies.
+type PolicyChecker interface {
+	CheckInstantiationPolicy(name, version string, cd *ccprovider.ChaincodeData) error
+}
+
+// Adapter from function to PolicyChecker interface.
+type CheckInstantiationPolicyFunc func(name, version string, cd *ccprovider.ChaincodeData) error
+
+func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(name, version string, cd *ccprovider.ChaincodeData) error {
+	return c(name, version, cd)
+}
+
 // Handler implements the peer side of the chaincode stream.
 type Handler struct {
+	// Keepalive specifies the interval at which keep-alive messages are sent.
+	Keepalive time.Duration
+	// SystemCCVersion specifies the current system chaincode version
+	SystemCCVersion string
 	// Lifecycle is used to access the Lifecycle System Chaincode.
 	Lifecycle *Lifecycle
 	// Executor is used to invoke chaincode.
 	Executor Executor
-	// Keepalive specifies the interval at which keep-alive messages are sent.
-	Keepalive time.Duration
 	// Registry is used to track active handlers.
 	Registry Registry
 	// ACLProvider is used to check if a chaincode invocation should be allowed.
@@ -79,15 +79,27 @@ type Handler struct {
 	TXContexts *TransactionContexts
 	// activeTransactions holds active transaction identifiers.
 	ActiveTransactions *ActiveTransactions
+	// SystemCCProvider provides access to system chaincode metadata
+	SystemCCProvider SystemCCProvider
+	// PolicyChecker is used to evaluate the chaincode instantiation policies.
+	PolicyChecker PolicyChecker
 
-	sccp sysccprovider.SystemChaincodeProvider
-
-	state       state
+	// state holds the current handler state. It will be created, established, or
+	// ready.
+	state state
+	// chaincodeID holds the ID of the chaincode that registered with the peer.
 	chaincodeID *pb.ChaincodeID
-	ccInstance  *sysccprovider.ChaincodeInstance
-	serialLock  sync.Mutex // serialLock is used to serialize sends across the grpc chat stream.
-	chatStream  ccintf.ChaincodeStream
-	errChan     chan error // chan to pass error in sync and nonsync mode
+	// ccInstances holds information about the chaincode instance associated with
+	// the peer.
+	ccInstance *sysccprovider.ChaincodeInstance
+
+	// serialLock is used to serialize sends across the grpc chat stream.
+	serialLock sync.Mutex
+	// chatStream is the bidirectional grpc stream used to communicate with the
+	// chaincode instance.
+	chatStream ccintf.ChaincodeStream
+	// errChan is used to communicate errors from the async send to the receive loop
+	errChan chan error
 }
 
 // HandleMessage is the entry point Chaincode messages.
@@ -239,7 +251,7 @@ func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, sendErr bool) {
 func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, ccIns *sysccprovider.ChaincodeInstance) error {
 	// ensure that we don't invoke a system chaincode
 	// that is not invokable through a cc2cc invocation
-	if h.sccp.IsSysCCAndNotInvokableCC2CC(ccIns.ChaincodeName) {
+	if h.SystemCCProvider.IsSysCCAndNotInvokableCC2CC(ccIns.ChaincodeName) {
 		return errors.Errorf("system chaincode %s cannot be invoked with a cc2cc invocation", ccIns.ChaincodeName)
 	}
 
@@ -250,7 +262,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 	// - an application chaincode (and we still need to determine
 	//   whether the invoker can invoke it)
 
-	if h.sccp.IsSysCC(ccIns.ChaincodeName) {
+	if h.SystemCCProvider.IsSysCC(ccIns.ChaincodeName) {
 		// Allow this call
 		return nil
 	}
@@ -717,7 +729,7 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 	// If targetInstance is not an SCC, isValidTxSim should be called which will return an err.
 	// We do not want to propagate calls to user CCs when the original call was to a SCC
 	// without a channel context (ie, no ledger context).
-	if isscc := h.sccp.IsSysCC(targetInstance.ChaincodeName); !isscc {
+	if isscc := h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName); !isscc {
 		// normal path - UCC invocation with an empty ("") channel: isValidTxSim will return an error
 		return h.isValidTxSim("", txid, "could not get valid transaction")
 	}
@@ -831,11 +843,8 @@ func (h *Handler) handleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
 
-	// is the chaincode a system chaincode ?
-	isscc := h.sccp.IsSysCC(targetInstance.ChaincodeName)
-
-	var version string
-	if !isscc {
+	version := h.SystemCCVersion
+	if !h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName) {
 		// if its a user chaincode, get the details
 		cd, err := h.Lifecycle.GetChaincodeDefinition(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, targetInstance.ChainID, targetInstance.ChaincodeName)
 		if err != nil {
@@ -844,13 +853,10 @@ func (h *Handler) handleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 		version = cd.CCVersion()
 
-		err = ccprovider.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
+		err = h.PolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-	} else {
-		// this is a system cc, just call it directly
-		version = util.GetSysCCVersion()
 	}
 
 	// Launch the new chaincode if not already running
@@ -934,4 +940,25 @@ func (h *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *
 
 func (h *Handler) Close() {
 	h.TXContexts.Close()
+}
+
+type state int
+
+const (
+	created state = iota
+	established
+	ready
+)
+
+func (s state) String() string {
+	switch s {
+	case created:
+		return "created"
+	case established:
+		return "established"
+	case ready:
+		return "ready"
+	default:
+		return "UNKNOWN"
+	}
 }

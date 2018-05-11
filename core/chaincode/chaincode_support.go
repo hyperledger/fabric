@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -139,8 +140,9 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream c
 		ACLProvider:        cs.ACLProvider,
 		TXContexts:         NewTransactionContexts(),
 		ActiveTransactions: NewActiveTransactions(),
-
-		sccp: cs.sccp,
+		SystemCCProvider:   cs.sccp,
+		SystemCCVersion:    util.GetSysCCVersion(),
+		PolicyChecker:      CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 	}
 
 	return handler.ProcessStream(stream)
