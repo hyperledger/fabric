@@ -22,9 +22,8 @@ var _ = Describe("HandlerRegistry", func() {
 
 	BeforeEach(func() {
 		hr = chaincode.NewHandlerRegistry(true)
-		handler = &chaincode.Handler{
-			ChaincodeID: &pb.ChaincodeID{Name: "chaincode-name"},
-		}
+		handler = &chaincode.Handler{}
+		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "chaincode-name"})
 	})
 
 	Describe("HasLaunched", func() {
@@ -188,7 +187,7 @@ var _ = Describe("HandlerRegistry", func() {
 			txContext, err := transactionContexts.Create(context.Background(), "chain-id", "transaction-id", nil, nil)
 			Expect(err).NotTo(HaveOccurred())
 
-			chaincode.SetHandlerTxContexts(handler, transactionContexts)
+			handler.TXContexts = transactionContexts
 			txContext.InitializeQueryContext("query-id", fakeResultsIterator)
 
 			_, err = hr.Launching("chaincode-name")
