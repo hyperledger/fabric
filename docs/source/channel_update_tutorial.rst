@@ -240,13 +240,6 @@ Org2 will require the export of MSP-specific environment variables.
 
   docker exec -it cli bash
 
-Now install the ``jq`` tool into the container. This tool allows script interactions
-with JSON files returned by the ``configtxlator`` tool:
-
-.. code:: bash
-
-  apt update && apt install -y jq
-
 Export the ``ORDERER_CA`` and ``CHANNEL_NAME`` variables:
 
 .. code:: bash
@@ -261,7 +254,6 @@ Check to make sure the variables have been properly set:
 
 .. note:: If for any reason you need to restart the CLI container, you will also need to
           re-export the two environment variables -- ``ORDERER_CA`` and ``CHANNEL_NAME``.
-          The jq installation will persist. You need not install it a second time.
 
 Fetch the Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~

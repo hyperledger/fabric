@@ -415,14 +415,6 @@ Now let’s check the set environment variables with:
 
   env|grep PEER
 
-You'll also need to install ``jq``:
-
-.. code:: bash
-
-  apt-get update
-
-  apt-get install -y jq
-
 Orderer System Channel Capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
