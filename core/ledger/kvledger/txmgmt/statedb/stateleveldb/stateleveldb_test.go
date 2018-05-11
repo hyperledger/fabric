@@ -56,18 +56,6 @@ func TestIterator(t *testing.T) {
 	commontests.TestIterator(t, env.DBProvider)
 }
 
-func TestEncodeDecodeValueAndVersion(t *testing.T) {
-	testValueAndVersionEncoding(t, []byte("value1"), version.NewHeight(1, 2))
-	testValueAndVersionEncoding(t, []byte{}, version.NewHeight(50, 50))
-}
-
-func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := EncodeValue(value, version)
-	val, ver := DecodeValue(encodedValue)
-	testutil.AssertEquals(t, val, value)
-	testutil.AssertEquals(t, ver, version)
-}
-
 func TestCompositeKey(t *testing.T) {
 	testCompositeKey(t, "ledger1", "ns", "key")
 	testCompositeKey(t, "ledger2", "ns", "")
