@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
@@ -35,7 +36,7 @@ import (
 
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
-func New(sccp sysccprovider.SystemChaincodeProvider) *PeerConfiger {
+func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
@@ -43,13 +44,9 @@ func New(sccp sysccprovider.SystemChaincodeProvider) *PeerConfiger {
 			mgmt.NewLocalMSPPrincipalGetter(),
 		),
 		configMgr: peer.NewConfigSupport(),
+		ccp:       ccp,
 		sccp:      sccp,
 	}
-}
-
-// NewAsChaincode returns a new PeerConfiger as a shim.Chaincode
-func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
-	return New(sccp)
 }
 
 // PeerConfiger implements the configuration handler for the peer. For every
@@ -58,6 +55,7 @@ func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 type PeerConfiger struct {
 	policyChecker policy.PolicyChecker
 	configMgr     config.Manager
+	ccp           ccprovider.ChaincodeProvider
 	sccp          sysccprovider.SystemChaincodeProvider
 }
 
@@ -148,7 +146,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
-		return joinChain(cid, block, e.sccp)
+		return joinChain(cid, block, e.ccp, e.sccp)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -219,8 +217,8 @@ func validateConfigBlock(block *common.Block) error {
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(chainID string, block *common.Block, sccp sysccprovider.SystemChaincodeProvider) pb.Response {
-	if err := peer.CreateChainFromBlock(block, sccp); err != nil {
+func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) pb.Response {
+	if err := peer.CreateChainFromBlock(block, ccp, sccp); err != nil {
 		return shim.Error(err.Error())
 	}
 

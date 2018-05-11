@@ -94,13 +94,11 @@ func (p *Provider) registerSysCC(syscc *SystemChaincode) (bool, error) {
 }
 
 // deploySysCC deploys the given system chaincode on a chain
-func (syscc *SystemChaincode) deploySysCC(chainID string) error {
+func (syscc *SystemChaincode) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider) error {
 	if !syscc.Enabled || !syscc.isWhitelisted() {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
 		return nil
 	}
-
-	ccprov := ccprovider.GetChaincodeProvider()
 
 	txid := util.GenerateUUID()
 
@@ -144,15 +142,13 @@ func (syscc *SystemChaincode) deploySysCC(chainID string) error {
 }
 
 // deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
-func (syscc *SystemChaincode) deDeploySysCC(chainID string) error {
+func (syscc *SystemChaincode) deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	ctx := context.Background()
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
-
-	ccprov := ccprovider.GetChaincodeProvider()
 
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()

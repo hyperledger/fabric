@@ -176,7 +176,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			"Org1-cert.pem"))
 		viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 		defer os.RemoveAll("/var/hyperledger/test/")
-		err := peer.Default.CreateChainFromBlock(block, nil)
+		err := peer.Default.CreateChainFromBlock(block, nil, nil)
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}

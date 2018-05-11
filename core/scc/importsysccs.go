@@ -8,20 +8,21 @@ package scc
 
 import (
 	//import system chaincodes here
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
 	"github.com/hyperledger/fabric/core/scc/vscc"
 )
 
-func builtInSystemChaincodes(p *Provider) []*SystemChaincode {
+func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider) []*SystemChaincode {
 	return []*SystemChaincode{
 		{
 			Enabled:           true,
 			Name:              "cscc",
 			Path:              "github.com/hyperledger/fabric/core/scc/cscc",
 			InitArgs:          nil,
-			Chaincode:         cscc.New(p),
+			Chaincode:         cscc.New(ccp, p),
 			InvokableExternal: true, // cscc is invoked to join a channel
 		},
 		{
@@ -54,17 +55,17 @@ func builtInSystemChaincodes(p *Provider) []*SystemChaincode {
 
 //DeploySysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
 //note the chaincode must still be deployed and launched like a user chaincode will be
-func (p *Provider) DeploySysCCs(chainID string) {
+func (p *Provider) DeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
 	for _, sysCC := range p.SysCCs {
-		sysCC.deploySysCC(chainID)
+		sysCC.deploySysCC(chainID, ccp)
 	}
 }
 
 //DeDeploySysCCs is used in unit tests to stop and remove the system chaincodes before
 //restarting them in the same process. This allows clean start of the system
 //in the same process
-func (p *Provider) DeDeploySysCCs(chainID string) {
+func (p *Provider) DeDeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
 	for _, sysCC := range p.SysCCs {
-		sysCC.deDeploySysCC(chainID)
+		sysCC.deDeploySysCC(chainID, ccp)
 	}
 }

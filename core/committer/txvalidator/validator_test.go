@@ -61,7 +61,8 @@ func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicati
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	theValidator := NewTxValidator(vcs, mp)
+	ccprov := &ccprovider.MockCcProviderImpl{ExecuteResultProvider: executeChaincodeProvider}
+	theValidator := NewTxValidator(vcs, ccprov, mp)
 
 	return theLedger, theValidator
 }
@@ -747,7 +748,8 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	validator := NewTxValidator(vcs, mp)
+	ccprov := &ccprovider.MockCcProviderImpl{ExecuteResultProvider: executeChaincodeProvider}
+	validator := NewTxValidator(vcs, ccprov, mp)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -776,7 +778,8 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	validator := NewTxValidator(vcs, mp)
+	ccprov := &ccprovider.MockCcProviderImpl{ExecuteResultProvider: executeChaincodeProvider}
+	validator := NewTxValidator(vcs, ccprov, mp)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -839,8 +842,6 @@ var executeChaincodeProvider = &ccExecuteChaincode{
 }
 
 func TestMain(m *testing.M) {
-	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{executeChaincodeProvider})
-
 	msptesttools.LoadMSPSetupForTesting()
 
 	var err error

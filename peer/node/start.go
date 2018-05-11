@@ -224,7 +224,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
-	chaincodeSupport, sccp := registerChaincodeSupport(ccSrv, ccEndpoint, ca)
+	chaincodeSupport, ccp, sccp := registerChaincodeSupport(ccSrv, ccEndpoint, ca)
 	go ccSrv.Start()
 
 	logger.Debugf("Running peer")
@@ -325,7 +325,7 @@ func serve(args []string) error {
 	//initialize system chaincodes
 
 	//deploy system chaincodes
-	sccp.DeploySysCCs("")
+	sccp.DeploySysCCs("", ccp)
 	logger.Infof("Deployed system chaincodes")
 
 	installedCCs := func() ([]ccdef.InstalledChaincode, error) {
@@ -343,7 +343,7 @@ func serve(args []string) error {
 	//this brings up all the chains
 	peer.Initialize(func(cid string) {
 		logger.Debugf("Deploying system CC, for chain <%s>", cid)
-		sccp.DeploySysCCs(cid)
+		sccp.DeploySysCCs(cid, ccp)
 		sub, err := lifecycle.NewChannelSubscription(cid, cc.QueryCreatorFunc(func() (cc.Query, error) {
 			return peer.GetLedger(cid).NewQueryExecutor()
 		}))
@@ -351,7 +351,7 @@ func serve(args []string) error {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
-	}, sccp)
+	}, ccp, sccp)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, messageCryptoService, lifecycle)
@@ -583,7 +583,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) (*chaincode.ChaincodeSupport, *scc.Provider) {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -608,7 +608,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		}),
 		sccp,
 	)
-	chaincode.SideEffectInitialize(chaincodeSupport)
+	ccp := chaincode.NewProvider(chaincodeSupport)
 
 	ccSrv := pb.ChaincodeSupportServer(chaincodeSupport)
 	if tlsEnabled {
@@ -616,13 +616,13 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	}
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	sccs := scc.CreateSysCCs(sccp)
+	sccs := scc.CreateSysCCs(ccp, sccp)
 	for _, cc := range sccs {
 		sccp.RegisterSysCC(cc)
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 
-	return chaincodeSupport, sccp
+	return chaincodeSupport, ccp, sccp
 }
 
 func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {

@@ -137,23 +137,23 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		),
 		sccp,
 	)
-	SideEffectInitialize(chaincodeSupport)
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
-	for _, cc := range scc.CreateSysCCs(sccp) {
+	ccp := &CCProviderImpl{cs: chaincodeSupport}
+	for _, cc := range scc.CreateSysCCs(ccp, sccp) {
 		sccp.RegisterSysCC(cc)
 	}
 
 	for _, id := range chainIDs {
-		sccp.DeDeploySysCCs(id)
+		sccp.DeDeploySysCCs(id, ccp)
 		if err = peer.MockCreateChain(id); err != nil {
 			closeListenerAndSleep(lis)
 			return nil, nil, nil, err
 		}
-		sccp.DeploySysCCs(id)
+		sccp.DeploySysCCs(id, ccp)
 		// any chain other than the default testchainid does not have a MSP set up -> create one
 		if id != util.GetTestChainID() {
 			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))

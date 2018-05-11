@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -90,11 +91,16 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(support Support, sccp sysccprovider.SystemChaincodeProvider) Validator {
+func NewTxValidator(support Support, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) Validator {
 	// Encapsulates interface implementation
 	return &txValidator{
 		support: support,
-		vscc:    newVSCCValidator(support, sccp)}
+		vscc: &vsccValidatorImpl{
+			support:     support,
+			ccprovider:  ccp,
+			sccprovider: sccp,
+		},
+	}
 }
 
 func (v *txValidator) chainExists(chain string) bool {

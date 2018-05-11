@@ -41,15 +41,6 @@ type vsccValidatorImpl struct {
 	sccprovider sysccprovider.SystemChaincodeProvider
 }
 
-// newVSCCValidator creates new vscc validator
-func newVSCCValidator(support Support, sccp sysccprovider.SystemChaincodeProvider) *vsccValidatorImpl {
-	return &vsccValidatorImpl{
-		support:     support,
-		ccprovider:  ccprovider.GetChaincodeProvider(),
-		sccprovider: sccp,
-	}
-}
-
 // VSCCValidateTx executes vscc validation for transaction
 func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) (error, peer.TxValidationCode) {
 	logger.Debugf("VSCCValidateTx starts for bytes %p", envBytes)

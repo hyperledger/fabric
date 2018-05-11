@@ -502,27 +502,3 @@ type ChaincodeProvider interface {
 	// Stop stops the chaincode given context and deployment spec
 	Stop(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }
-
-var ccFactory ChaincodeProviderFactory
-
-// ChaincodeProviderFactory defines a factory interface so
-// that the actual implementation can be injected
-type ChaincodeProviderFactory interface {
-	NewChaincodeProvider() ChaincodeProvider
-}
-
-// RegisterChaincodeProviderFactory is to be called once to set
-// the factory that will be used to obtain instances of ChaincodeProvider
-func RegisterChaincodeProviderFactory(ccfact ChaincodeProviderFactory) {
-	ccFactory = ccfact
-}
-
-// GetChaincodeProvider returns instances of ChaincodeProvider;
-// the actual implementation is controlled by the factory that
-// is registered via RegisterChaincodeProviderFactory
-func GetChaincodeProvider() ChaincodeProvider {
-	if ccFactory == nil {
-		panic("The factory must be set first via RegisterChaincodeProviderFactory")
-	}
-	return ccFactory.NewChaincodeProvider()
-}

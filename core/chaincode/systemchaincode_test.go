@@ -167,9 +167,10 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 }
 
 func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string, chaincodeSupport *ChaincodeSupport) error {
-	chaincodeSupport.sccp.(*scc.Provider).DeploySysCCs(chainID)
+	ccp := &CCProviderImpl{cs: chaincodeSupport}
+	chaincodeSupport.sccp.(*scc.Provider).DeploySysCCs(chainID, ccp)
 
-	defer chaincodeSupport.sccp.(*scc.Provider).DeDeploySysCCs(chainID)
+	defer chaincodeSupport.sccp.(*scc.Provider).DeDeploySysCCs(chainID, ccp)
 
 	url := "github.com/hyperledger/fabric/core/scc/sample_syscc"
 
