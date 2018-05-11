@@ -14,7 +14,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -23,13 +22,10 @@ import (
 
 // New returns an instance of QSCC.
 // Typically this is called once per peer.
-func New() *LedgerQuerier {
-	return &LedgerQuerier{}
-}
-
-// NewAsChaincode wraps New() to return a shim.Chaincode.
-func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
-	return New()
+func New(aclProvider aclmgmt.ACLProvider) *LedgerQuerier {
+	return &LedgerQuerier{
+		aclProvider: aclProvider,
+	}
 }
 
 // LedgerQuerier implements the ledger query functions, including:
@@ -38,6 +34,7 @@ func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
 // - GetBlockByHash returns a block
 // - GetTransactionByID returns a transaction
 type LedgerQuerier struct {
+	aclProvider aclmgmt.ACLProvider
 }
 
 var qscclogger = flogging.MustGetLogger("qscc")
@@ -96,7 +93,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	// 2. check the channel reader policy
 	res := getACLResource(fname)
-	if err = aclmgmt.GetACLProvider().CheckACL(res, cid, sp); err != nil {
+	if err = e.aclProvider.CheckACL(res, cid, sp); err != nil {
 		return shim.Error(fmt.Sprintf("Authorization request for [%s][%s] failed: [%s]", fname, cid, err))
 	}
 

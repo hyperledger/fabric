@@ -26,7 +26,6 @@ import (
 	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
@@ -156,8 +155,6 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	aclmgmt.RegisterACLProvider(mockAclProvider)
-
 	peer.MockInitialize()
 
 	mspGetter := func(cid string) []string {
@@ -179,7 +176,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
-		aclmgmt.GetACLProvider(),
+		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: dockercontroller.NewProvider("", ""),
@@ -193,7 +190,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
-	for _, cc := range scc.CreateSysCCs(ccp, sccp) {
+	for _, cc := range scc.CreateSysCCs(ccp, sccp, mockAclProvider) {
 		sccp.RegisterSysCC(cc)
 	}
 

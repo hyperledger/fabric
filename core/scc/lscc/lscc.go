@@ -100,6 +100,9 @@ type FilesystemSupport interface {
 
 // LifeCycleSysCC implements chaincode lifecycle and policies around it
 type lifeCycleSysCC struct {
+	// aclProvider is responsible for access control evaluation
+	aclProvider aclmgmt.ACLProvider
+
 	// sccprovider is the interface which is passed into system chaincodes
 	// to access other parts of the system
 	sccprovider sysccprovider.SystemChaincodeProvider
@@ -115,17 +118,13 @@ type lifeCycleSysCC struct {
 
 // New creates a new instance of the LSCC
 // Typically there is only one of these per peer
-func New(sccp sysccprovider.SystemChaincodeProvider) *lifeCycleSysCC {
+func New(sccp sysccprovider.SystemChaincodeProvider, aclProvider aclmgmt.ACLProvider) *lifeCycleSysCC {
 	return &lifeCycleSysCC{
 		support:       &supportImpl{},
 		policyChecker: policyprovider.GetPolicyChecker(),
 		sccprovider:   sccp,
+		aclProvider:   aclProvider,
 	}
-}
-
-// NewAsChaincode returns New as a shim.Chaincode
-func NewAsChaincode(sccp sysccprovider.SystemChaincodeProvider) shim.Chaincode {
-	return New(sccp)
 }
 
 //-------------- helper functions ------------------
@@ -750,7 +749,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		case GETCCDATA:
 			resource = resources.Lscc_GetChaincodeData
 		}
-		if err = aclmgmt.GetACLProvider().CheckACL(resource, chain, sp); err != nil {
+		if err = lscc.aclProvider.CheckACL(resource, chain, sp); err != nil {
 			return shim.Error(fmt.Sprintf("Authorization request failed %s: %s", chain, err))
 		}
 

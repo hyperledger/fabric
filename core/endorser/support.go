@@ -34,6 +34,7 @@ type SupportImpl struct {
 	PeerSupport      peer.Support
 	ChaincodeSupport *chaincode.ChaincodeSupport
 	SysCCProvider    *scc.Provider
+	ACLProvider      aclmgmt.ACLProvider
 }
 
 func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
@@ -131,7 +132,7 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 // CheckACL checks the ACL for the resource for the Channel using the
 // SignedProposal from which an id can be extracted for testing against a policy
 func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	return aclmgmt.GetACLProvider().CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
+	return s.ACLProvider.CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
 }
 
 // IsJavaCC returns true if the CDS package bytes describe a chaincode

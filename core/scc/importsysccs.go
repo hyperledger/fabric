@@ -8,6 +8,7 @@ package scc
 
 import (
 	//import system chaincodes here
+	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -15,14 +16,14 @@ import (
 	"github.com/hyperledger/fabric/core/scc/vscc"
 )
 
-func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider) []*SystemChaincode {
+func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider) []*SystemChaincode {
 	return []*SystemChaincode{
 		{
 			Enabled:           true,
 			Name:              "cscc",
 			Path:              "github.com/hyperledger/fabric/core/scc/cscc",
 			InitArgs:          nil,
-			Chaincode:         cscc.New(ccp, p),
+			Chaincode:         cscc.New(ccp, p, aclProvider),
 			InvokableExternal: true, // cscc is invoked to join a channel
 		},
 		{
@@ -30,7 +31,7 @@ func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider) []*S
 			Name:              "lscc",
 			Path:              "github.com/hyperledger/fabric/core/scc/lscc",
 			InitArgs:          nil,
-			Chaincode:         lscc.New(p),
+			Chaincode:         lscc.New(p, aclProvider),
 			InvokableExternal: true, // lscc is invoked to deploy new chaincodes
 			InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
 		},
@@ -46,7 +47,7 @@ func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider) []*S
 			Name:              "qscc",
 			Path:              "github.com/hyperledger/fabric/core/chaincode/qscc",
 			InitArgs:          nil,
-			Chaincode:         qscc.New(),
+			Chaincode:         qscc.New(aclProvider),
 			InvokableExternal: true, // qscc can be invoked to retrieve blocks
 			InvokableCC2CC:    true, // qscc can be invoked to retrieve blocks also by a cc
 		},

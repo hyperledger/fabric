@@ -23,7 +23,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -45,7 +44,9 @@ func setupTestLedger(chainid string, path string) (*shim.MockStub, error) {
 	peer.MockInitialize()
 	peer.MockCreateChain(chainid)
 
-	lq := new(LedgerQuerier)
+	lq := &LedgerQuerier{
+		aclProvider: mockAclProvider,
+	}
 	stub := shim.NewMockStub("LedgerQuerier", lq)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		return nil, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, string(res.Message))
@@ -187,7 +188,9 @@ func TestFailingAccessControl(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	e := new(LedgerQuerier)
+	e := &LedgerQuerier{
+		aclProvider: mockAclProvider,
+	}
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
 	// GetChainInfo
@@ -360,6 +363,5 @@ func TestMain(m *testing.M) {
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	aclmgmt.RegisterACLProvider(mockAclProvider)
 	os.Exit(m.Run())
 }

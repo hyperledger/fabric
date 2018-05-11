@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -26,8 +27,9 @@ func init() {
 
 func newTestProvider() *Provider {
 	ccp := &ccprovider2.MockCcProviderImpl{}
+	mockAclProvider := &aclmocks.MockACLProvider{}
 	p := NewProvider(peer.Default, peer.DefaultSupport, inproccontroller.NewRegistry())
-	for _, cc := range CreateSysCCs(ccp, p) {
+	for _, cc := range CreateSysCCs(ccp, p, mockAclProvider) {
 		p.RegisterSysCC(cc)
 	}
 	return p
@@ -86,7 +88,8 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 
 func TestRegisterSysCC(t *testing.T) {
 	ccp := &ccprovider2.MockCcProviderImpl{}
-	assert.NotPanics(t, func() { CreateSysCCs(ccp, newTestProvider()) }, "expected successful init")
+	mockAclProvider := &aclmocks.MockACLProvider{}
+	assert.NotPanics(t, func() { CreateSysCCs(ccp, newTestProvider(), mockAclProvider) }, "expected successful init")
 
 	p := &Provider{
 		Registrar: inproccontroller.NewRegistry(),

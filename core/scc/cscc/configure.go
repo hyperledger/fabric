@@ -36,16 +36,17 @@ import (
 
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
-func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) *PeerConfiger {
+func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, aclProvider aclmgmt.ACLProvider) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
 			mgmt.GetLocalMSP(),
 			mgmt.NewLocalMSPPrincipalGetter(),
 		),
-		configMgr: peer.NewConfigSupport(),
-		ccp:       ccp,
-		sccp:      sccp,
+		configMgr:   peer.NewConfigSupport(),
+		ccp:         ccp,
+		sccp:        sccp,
+		aclProvider: aclProvider,
 	}
 }
 
@@ -57,6 +58,7 @@ type PeerConfiger struct {
 	configMgr     config.Manager
 	ccp           ccprovider.ChaincodeProvider
 	sccp          sysccprovider.SystemChaincodeProvider
+	aclProvider   aclmgmt.ACLProvider
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -149,21 +151,21 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return joinChain(cid, block, e.ccp, e.sccp)
 	case GetConfigBlock:
 		// 2. check policy
-		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
+		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"GetConfigBlock\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 
 		return getConfigBlock(args[1])
 	case GetConfigTree:
 		// 2. check policy
-		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_GetConfigTree, string(args[1]), sp); err != nil {
+		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigTree, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"GetConfigTree\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 
 		return e.getConfigTree(args[1])
 	case SimulateConfigTreeUpdate:
 		// Check policy
-		if err = aclmgmt.GetACLProvider().CheckACL(resources.Cscc_SimulateConfigTreeUpdate, string(args[1]), sp); err != nil {
+		if err = e.aclProvider.CheckACL(resources.Cscc_SimulateConfigTreeUpdate, string(args[1]), sp); err != nil {
 			return shim.Error(fmt.Sprintf("\"SimulateConfigTreeUpdate\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 		return e.simulateConfigTreeUpdate(args[1], args[2])
