@@ -7,100 +7,112 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
-	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/spf13/viper"
 )
 
-func TestGlobalConfig(t *testing.T) {
-	cleanup := capture()
-	defer cleanup()
+var _ = Describe("Config", func() {
+	var restore func()
 
-	viper.Set("peer.networkId", "test-peer-network-id")
-	viper.Set("peer.id", "test-peer-id")
-	viper.Set("peer.tls.enabled", "true")
-	viper.Set("chaincode.keepalive", "50")
-	viper.Set("chaincode.executetimeout", "20h")
-	viper.Set("chaincode.startuptimeout", "30h")
-	viper.Set("chaincode.logging.format", "test-chaincode-logging-format")
-	viper.Set("chaincode.logging.level", "WARNING")
-	viper.Set("chaincode.logging.shim", "WARNING")
+	BeforeEach(func() {
+		restore = capture()
+	})
 
-	config := chaincode.GlobalConfig()
-	assert.Equal(t, true, config.TLSEnabled)
-	assert.Equal(t, 50*time.Second, config.Keepalive)
-	assert.Equal(t, 20*time.Hour, config.ExecuteTimeout)
-	assert.Equal(t, 30*time.Hour, config.StartupTimeout)
-	assert.Equal(t, "test-chaincode-logging-format", config.LogFormat)
-	assert.Equal(t, "WARNING", config.LogLevel)
-	assert.Equal(t, "WARNING", config.ShimLogLevel)
-}
+	AfterEach(func() {
+		restore()
+	})
 
-func TestGlobalConfigInvalidKeepalive(t *testing.T) {
-	cleanup := capture()
-	defer cleanup()
+	Describe("GlobalConfig", func() {
+		It("captures the configuration from viper", func() {
+			viper.Set("peer.tls.enabled", "true")
+			viper.Set("chaincode.keepalive", "50")
+			viper.Set("chaincode.executetimeout", "20h")
+			viper.Set("chaincode.startuptimeout", "30h")
+			viper.Set("chaincode.logging.format", "test-chaincode-logging-format")
+			viper.Set("chaincode.logging.level", "WARNING")
+			viper.Set("chaincode.logging.shim", "WARNING")
 
-	viper.Set("chaincode.keepalive", "abc")
+			config := chaincode.GlobalConfig()
+			Expect(config.TLSEnabled).To(BeTrue())
+			Expect(config.Keepalive).To(Equal(50 * time.Second))
+			Expect(config.ExecuteTimeout).To(Equal(20 * time.Hour))
+			Expect(config.StartupTimeout).To(Equal(30 * time.Hour))
+			Expect(config.LogFormat).To(Equal("test-chaincode-logging-format"))
+			Expect(config.LogLevel).To(Equal("WARNING"))
+			Expect(config.ShimLogLevel).To(Equal("WARNING"))
+		})
 
-	config := chaincode.GlobalConfig()
-	assert.Equal(t, time.Duration(0), config.Keepalive)
-}
+		Context("when an invalid keepalive is configured", func() {
+			BeforeEach(func() {
+				viper.Set("chaincode.keepalive", "abc")
+			})
 
-func TestGlobalConfigExecuteTimeoutTooLow(t *testing.T) {
-	cleanup := capture()
-	defer cleanup()
+			It("falls back to no keepalive", func() {
+				config := chaincode.GlobalConfig()
+				Expect(config.Keepalive).To(Equal(time.Duration(0)))
+			})
+		})
 
-	viper.Set("chaincode.executetimeout", "15")
+		Context("when the execute timeout is less than the minimum", func() {
+			BeforeEach(func() {
+				viper.Set("chaincode.executetimeout", "15")
+			})
 
-	config := chaincode.GlobalConfig()
-	assert.Equal(t, 30*time.Second, config.ExecuteTimeout)
-}
+			It("falls back to the minimum start timeout", func() {
+				config := chaincode.GlobalConfig()
+				Expect(config.ExecuteTimeout).To(Equal(30 * time.Second))
+			})
+		})
 
-func TestGlobalConfigStartupTimeoutTooLow(t *testing.T) {
-	cleanup := capture()
-	defer cleanup()
+		Context("when the startup timeout is less than the minimum", func() {
+			BeforeEach(func() {
+				viper.Set("chaincode.startuptimeout", "15")
+			})
 
-	viper.Set("chaincode.startuptimeout", "15")
+			It("falls back to the minimum start timeout", func() {
+				config := chaincode.GlobalConfig()
+				Expect(config.StartupTimeout).To(Equal(5 * time.Second))
+			})
+		})
 
-	config := chaincode.GlobalConfig()
-	assert.Equal(t, 5*time.Second, config.StartupTimeout)
-}
+		Context("when an invalid log level is configured", func() {
+			BeforeEach(func() {
+				viper.Set("chaincode.logging.level", "foo")
+				viper.Set("chaincode.logging.shim", "bar")
+			})
 
-func TestGlobalConfigInvalidLogLevel(t *testing.T) {
-	cleanup := capture()
-	defer cleanup()
+			It("falls back to INFO", func() {
+				config := chaincode.GlobalConfig()
+				Expect(config.LogLevel).To(Equal("INFO"))
+				Expect(config.ShimLogLevel).To(Equal("INFO"))
+			})
+		})
+	})
 
-	viper.Set("chaincode.logging.level", "foo")
-	viper.Set("chaincode.logging.shim", "bar")
+	Describe("IsDevMode", func() {
+		It("returns true when iff the mode equals 'dev'", func() {
+			viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
+			Expect(chaincode.IsDevMode()).To(BeTrue())
+			viper.Set("chaincode.mode", "dev")
+			Expect(chaincode.IsDevMode()).To(BeTrue())
 
-	config := chaincode.GlobalConfig()
-	assert.Equal(t, "INFO", config.LogLevel)
-	assert.Equal(t, "INFO", config.ShimLogLevel)
-}
-
-func TestIsDevMode(t *testing.T) {
-	cleanup := capture()
-	defer cleanup()
-
-	viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
-	assert.True(t, chaincode.IsDevMode())
-
-	viper.Set("chaincode.mode", "empty")
-	assert.False(t, chaincode.IsDevMode())
-	viper.Set("chaincode.mode", "nonsense")
-	assert.False(t, chaincode.IsDevMode())
-}
+			viper.Set("chaincode.mode", "empty")
+			Expect(chaincode.IsDevMode()).To(BeFalse())
+			viper.Set("chaincode.mode", "nonsense")
+			Expect(chaincode.IsDevMode()).To(BeFalse())
+		})
+	})
+})
 
 func capture() (restore func()) {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
 	config := map[string]string{
-		"peer.networkId":           viper.GetString("peer.networkId"),
-		"peer.id":                  viper.GetString("peer.id"),
 		"peer.tls.enabled":         viper.GetString("peer.tls.enabled"),
 		"chaincode.keepalive":      viper.GetString("chaincode.keepalive"),
 		"chaincode.executetimeout": viper.GetString("chaincode.executetimeout"),

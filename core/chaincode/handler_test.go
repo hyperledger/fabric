@@ -1811,7 +1811,7 @@ var _ = Describe("Handler", func() {
 			})
 
 			It("deletes the transaction context", func() {
-				handler.Execute(context.Background(), cccid, incomingMessage, time.Second)
+				handler.Execute(context.Background(), cccid, incomingMessage, time.Millisecond)
 
 				Expect(fakeContextRegistry.DeleteCallCount()).Should(Equal(1))
 				channelID, txid := fakeContextRegistry.DeleteArgsForCall(0)
@@ -2162,6 +2162,19 @@ var _ = Describe("Handler", func() {
 				handler.Notify(incomingMessage)
 				Expect(fakeContextRegistry.GetCallCount()).To(Equal(1))
 			})
+		})
+	})
+
+	Describe("ParseName", func() {
+		It("parses the chaincode name", func() {
+			ci := chaincode.ParseName("name")
+			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name"}))
+			ci = chaincode.ParseName("name:version")
+			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChaincodeVersion: "version"}))
+			ci = chaincode.ParseName("name/chain-id")
+			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChainID: "chain-id"}))
+			ci = chaincode.ParseName("name:version/chain-id")
+			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChaincodeVersion: "version", ChainID: "chain-id"}))
 		})
 	})
 
