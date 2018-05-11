@@ -1093,7 +1093,7 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	chnl := "test"
 	txid := "1"
 	// test getTxContext for TEST channel, tx=1, msgType=IVNOKE_CHAINCODE and empty payload - empty payload => expect to return empty txContext
-	txContext, _ := h.getTxContextForMessage(chnl, "1", pb.ChaincodeMessage_INVOKE_CHAINCODE, []byte(""), "[%s]No ledger context for %s. Sending %s", 12345, "TestCC", pb.ChaincodeMessage_ERROR)
+	txContext, _ := h.getTxContextForInvoke(chnl, "1", []byte(""), "[%s]No ledger context for %s. Sending %s", 12345, "TestCC", pb.ChaincodeMessage_ERROR)
 	if txContext != nil {
 		t.Fatalf("expected empty txContext for empty payload")
 	}
@@ -1112,15 +1112,14 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	txCtxGenerated, payload := genNewPldAndCtxFromLdgr(t, "shimTestCC", chnl, txid, pldgr, &h)
 
 	// test getTxContext for TEST channel, tx=1, msgType=IVNOKE_CHAINCODE and non empty payload => must return a non empty txContext
-	txContext, ccMsg := h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg := h.getTxContextForInvoke(chnl, txid, payload, "[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
 	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
 		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
 	}
 
 	// test for another msgType (PUT_STATE) with the same payload ==> must return a non empty txContext
-	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_PUT_STATE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_PUT_STATE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg = h.isValidTxSim(chnl, txid,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_PUT_STATE, pb.ChaincodeMessage_ERROR)
 	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
 		t.Fatalf("expected successful txContext for non empty payload and PUT_STATE msgType. triggerNextStateMsg: %s.", ccMsg)
 	}
@@ -1132,8 +1131,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	txCtxGenerated, payload = genNewPldAndCtxFromLdgr(t, "lscc", chnl, txid, pldgr, &h)
 
 	// test getting a TxContext with an SCC without a channel => expect to return a non empty txContext
-	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg = h.getTxContextForInvoke(chnl, txid, payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE, pb.ChaincodeMessage_ERROR)
 	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
 		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
 	}
@@ -1144,8 +1143,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	txCtxGenerated, payload = genNewPldAndCtxFromLdgr(t, "lscc", chnl, txid, pldgr, &h)
 
 	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
-	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg = h.getTxContextForInvoke(chnl, txid, payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE, pb.ChaincodeMessage_ERROR)
 	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
 		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
 	}
@@ -1155,8 +1154,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	chnl = ""
 	txCtxGenerated, payload = genNewPldAndCtxFromLdgr(t, "shimTestCC", chnl, txid, pldgr, &h)
 	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
-	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg = h.getTxContextForInvoke(chnl, txid, payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE, pb.ChaincodeMessage_ERROR)
 	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
 		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
 	}
@@ -1165,8 +1164,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	txid = "5"
 	payload = genNewPld(t, "shimTestCC")
 	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
-	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg = h.getTxContextForInvoke(chnl, txid, payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE, pb.ChaincodeMessage_ERROR)
 	if txContext != nil || ccMsg == nil {
 		t.Fatal("expected nil txContext for non empty payload and INVOKE_CHAINCODE msgType without the ledger generating a TxContext . unexpected non nil tcContext")
 	}
@@ -1175,8 +1174,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	txid = "6"
 	payload = genNewPld(t, "lscc")
 	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
-	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE, payload,
-		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	txContext, ccMsg = h.getTxContextForInvoke(chnl, txid, payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE, pb.ChaincodeMessage_ERROR)
 	if txContext != nil || ccMsg == nil {
 		t.Fatal("expected nil txContext for non empty payload and INVOKE_CHAINCODE msgType without the ledger generating a TxContext . unexpected non nil tcContext")
 	}
@@ -1190,7 +1189,7 @@ func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid stri
 	}
 	// get a context for this txsim
 	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
-	// create a new txContext in the handler to be retrieved by the tested function (ie: getTxContextForMessage)
+	// create a new txContext in the handler to be retrieved by the tested function (ie: getTxContextForInvoke)
 	newTxCtxt, err := h.txContexts.Create(ctxt, chnl, txid, nil, nil)
 	if err != nil {
 		t.Fatalf("Error creating TxContext by the handler for cc %s and channel '%s': %s", ccName, chnl, err)
