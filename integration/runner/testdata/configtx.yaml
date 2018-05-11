@@ -49,7 +49,7 @@ Organizations:
 Orderer: &OrdererDefaults
   OrdererType: solo
   Addresses:
-    - orderer.example.com:7050
+    - orderer.example.com:8050
   BatchTimeout: 2s
   BatchSize:
     MaxMessageCount: 10
