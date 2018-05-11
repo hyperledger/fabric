@@ -9,11 +9,13 @@ package world
 import (
 	"fmt"
 	"os"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/tedsuo/ifrit"
 )
 
 type Components struct {
@@ -79,4 +81,10 @@ func (c *Components) Zookeeper(id int, network *docker.Network) *runner.Zookeepe
 		NetworkID:   network.ID,
 		NetworkName: network.Name,
 	}
+}
+
+func execute(r ifrit.Runner) {
+	p := ifrit.Invoke(r)
+	Eventually(p.Ready(), 2*time.Second).Should(BeClosed())
+	Eventually(p.Wait(), 45*time.Second).Should(Receive(BeNil()))
 }
