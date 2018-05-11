@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var _ = Describe("Launcher", func() {
+var _ = Describe("RuntimeLauncher", func() {
 	var (
 		fakeRuntime         *mock.Runtime
 		fakeRegistry        *mock.LaunchRegistry
@@ -37,7 +37,7 @@ var _ = Describe("Launcher", func() {
 		chaincodeID    *pb.ChaincodeID
 		deploymentSpec *pb.ChaincodeDeploymentSpec
 
-		launcher *chaincode.Launcher
+		runtimeLauncher *chaincode.RuntimeLauncher
 	)
 
 	BeforeEach(func() {
@@ -77,7 +77,7 @@ var _ = Describe("Launcher", func() {
 			Executor: fakeExecutor,
 		}
 
-		launcher = &chaincode.Launcher{
+		runtimeLauncher = &chaincode.RuntimeLauncher{
 			Runtime:         fakeRuntime,
 			PackageProvider: fakePackageProvider,
 			Registry:        fakeRegistry,
@@ -96,7 +96,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("gets the deployment spec", func() {
-			err := launcher.Launch(context.Background(), cccid, invocationSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeExecutor.ExecuteChaincodeCallCount()).To(Equal(1))
@@ -107,7 +107,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("uses the deployment spec when starting the runtime", func() {
-			err := launcher.Launch(context.Background(), cccid, invocationSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeRuntime.StartCallCount()).To(Equal(1))
@@ -123,7 +123,7 @@ var _ = Describe("Launcher", func() {
 			})
 
 			It("returns a wrapped error", func() {
-				err := launcher.Launch(context.Background(), cccid, invocationSpec)
+				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 				Expect(err).To(MatchError(MatchRegexp("failed to get deployment spec for context-name:context-version:.*king-kong")))
 			})
 		})
@@ -142,7 +142,7 @@ var _ = Describe("Launcher", func() {
 			})
 
 			It("gets the package from the package provider", func() {
-				err := launcher.Launch(context.Background(), cccid, invocationSpec)
+				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakePackageProvider.GetChaincodeCallCount()).To(Equal(1))
@@ -157,7 +157,7 @@ var _ = Describe("Launcher", func() {
 				})
 
 				It("returns a wrapped error", func() {
-					err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+					err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 					Expect(err).To(MatchError("failed to get chaincode package: tangerine"))
 				})
 			})
@@ -169,7 +169,7 @@ var _ = Describe("Launcher", func() {
 			})
 
 			It("returns an error", func() {
-				err := launcher.Launch(context.Background(), cccid, invocationSpec)
+				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 				Expect(err).To(MatchError("a syscc should be running (it cannot be launched) lscc:latest"))
 			})
 		})
@@ -182,7 +182,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("does not get the deployment spec from lifecycle", func() {
-			err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeExecutor.ExecuteChaincodeCallCount()).To(Equal(0))
 		})
@@ -201,7 +201,7 @@ var _ = Describe("Launcher", func() {
 			})
 
 			It("gets the package from the package provider", func() {
-				err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+				err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakePackageProvider.GetChaincodeCallCount()).To(Equal(1))
@@ -216,7 +216,7 @@ var _ = Describe("Launcher", func() {
 				})
 
 				It("returns a wrapped error", func() {
-					err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+					err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 					Expect(err).To(MatchError("failed to get chaincode package: tangerine"))
 				})
 			})
@@ -224,7 +224,7 @@ var _ = Describe("Launcher", func() {
 	})
 
 	It("registers the chaincode as launching", func() {
-		err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+		err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRegistry.LaunchingCallCount()).To(Equal(1))
@@ -233,7 +233,7 @@ var _ = Describe("Launcher", func() {
 	})
 
 	It("starts the runtime for the chaincode", func() {
-		err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+		err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRuntime.StartCallCount()).To(Equal(1))
@@ -247,7 +247,7 @@ var _ = Describe("Launcher", func() {
 		fakeRuntime.StartReturns(nil)
 
 		errCh := make(chan error, 1)
-		go func() { errCh <- launcher.Launch(context.Background(), cccid, deploymentSpec) }()
+		go func() { errCh <- runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec) }()
 
 		Consistently(errCh).ShouldNot(Receive())
 		close(ready)
@@ -255,7 +255,7 @@ var _ = Describe("Launcher", func() {
 	})
 
 	It("does not deregister the chaincode", func() {
-		err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+		err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRegistry.DeregisterCallCount()).To(Equal(0))
@@ -267,7 +267,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("returns an error", func() {
-			err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 			Expect(err).To(MatchError("failed to register context-name:context-version as launching: gargoyle"))
 		})
 	})
@@ -278,12 +278,12 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("returns a wrapped error", func() {
-			err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 			Expect(err).To(MatchError("error starting container: banana"))
 		})
 
 		It("stops the runtime", func() {
-			launcher.Launch(context.Background(), cccid, deploymentSpec)
+			runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
 			ctx, ccContext, cds := fakeRuntime.StopArgsForCall(0)
@@ -293,7 +293,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("deregisters the chaincode", func() {
-			launcher.Launch(context.Background(), cccid, deploymentSpec)
+			runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
@@ -304,16 +304,16 @@ var _ = Describe("Launcher", func() {
 	Context("when the runtime startup times out", func() {
 		BeforeEach(func() {
 			fakeRuntime.StartReturns(nil)
-			launcher.StartupTimeout = 250 * time.Millisecond
+			runtimeLauncher.StartupTimeout = 250 * time.Millisecond
 		})
 
 		It("returns a meaningful error", func() {
-			err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 			Expect(err).To(MatchError("timeout expired while starting chaincode context-name:context-version for transaction tx-id"))
 		})
 
 		It("stops the runtime", func() {
-			launcher.Launch(context.Background(), cccid, deploymentSpec)
+			runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
 			ctx, ccContext, cds := fakeRuntime.StopArgsForCall(0)
@@ -323,7 +323,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("deregisters the chaincode", func() {
-			launcher.Launch(context.Background(), cccid, deploymentSpec)
+			runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
@@ -338,7 +338,7 @@ var _ = Describe("Launcher", func() {
 		})
 
 		It("preserves the initial error", func() {
-			err := launcher.Launch(context.Background(), cccid, deploymentSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 			Expect(err).To(MatchError("error starting container: whirled-peas"))
 			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
 		})

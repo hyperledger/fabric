@@ -1020,7 +1020,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		return nil
 	}
 
-	launcher := &Launcher{
+	launcher := &RuntimeLauncher{
 		Runtime:        fakeRuntime,
 		Registry:       handlerRegistry,
 		StartupTimeout: 10 * time.Second,
@@ -1045,7 +1045,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 		return nil
 	}
 
-	launcher := &Launcher{
+	launcher := &RuntimeLauncher{
 		Runtime:        fakeRuntime,
 		Registry:       NewHandlerRegistry(false),
 		StartupTimeout: 500 * time.Millisecond,
@@ -1069,7 +1069,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
-	launcher := &Launcher{
+	launcher := &RuntimeLauncher{
 		Runtime:        fakeRuntime,
 		Registry:       NewHandlerRegistry(false),
 		StartupTimeout: 10 * time.Second,
