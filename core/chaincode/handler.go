@@ -50,12 +50,6 @@ type Registry interface {
 	Deregister(cname string) error
 }
 
-// internal interface to scope dependencies on ChaincodeSupport
-type handlerSupport interface {
-	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error
-	execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error)
-}
-
 // Handler responsible for management of Peer's side of chaincode stream
 type Handler struct {
 	// peer to shim grpc serializer. User only in serialSend
@@ -65,8 +59,8 @@ type Handler struct {
 	ChaincodeID *pb.ChaincodeID
 	ccInstance  *sysccprovider.ChaincodeInstance
 
-	handlerSupport handlerSupport
-	lifecycle      *Lifecycle
+	lifecycle *Lifecycle
+	Executor  Executor
 
 	sccp sysccprovider.SystemChaincodeProvider
 
@@ -89,7 +83,7 @@ type Handler struct {
 func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStream ccintf.ChaincodeStream, sccp sysccprovider.SystemChaincodeProvider) *Handler {
 	return &Handler{
 		ChatStream:         peerChatStream,
-		handlerSupport:     chaincodeSupport,
+		Executor:           chaincodeSupport,
 		state:              created,
 		errChan:            make(chan error, 1),
 		txContexts:         NewTransactionContexts(),
@@ -888,26 +882,14 @@ func (h *Handler) handleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		version = util.GetSysCCVersion()
 	}
 
-	cccid := ccprovider.NewCCContext(calledCcIns.ChainID, calledCcIns.ChaincodeName, version, msg.Txid, false, txContext.signedProp, txContext.proposal)
-
 	// Launch the new chaincode if not already running
 	chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s", shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 
+	cccid := ccprovider.NewCCContext(calledCcIns.ChainID, calledCcIns.ChaincodeName, version, msg.Txid, false, txContext.signedProp, txContext.proposal)
 	cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
-	chaincodeInput := cciSpec.GetChaincodeSpec().Input
-
-	err = h.handlerSupport.Launch(ctxt, cccid, cciSpec)
-	if err != nil {
-		return nil, errors.Wrap(err, "launch failed")
-	}
-
-	ccMsg, err := createCCMessage(pb.ChaincodeMessage_TRANSACTION, calledCcIns.ChainID, msg.Txid, chaincodeInput)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create transaction message")
-	}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
-	response, err := h.handlerSupport.execute(ctxt, cccid, ccMsg)
+	response, _, err := h.Executor.Execute(ctxt, cccid, cciSpec)
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
 	}
