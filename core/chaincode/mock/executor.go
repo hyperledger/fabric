@@ -10,19 +10,19 @@ import (
 )
 
 type Executor struct {
-	ExecuteChaincodeStub        func(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
-	executeChaincodeMutex       sync.RWMutex
-	executeChaincodeArgsForCall []struct {
+	ExecuteStub        func(ctxt context.Context, cccid *ccprovider.CCContext, cis ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error)
+	executeMutex       sync.RWMutex
+	executeArgsForCall []struct {
 		ctxt  context.Context
 		cccid *ccprovider.CCContext
-		args  [][]byte
+		cis   ccprovider.ChaincodeSpecGetter
 	}
-	executeChaincodeReturns struct {
+	executeReturns struct {
 		result1 *pb.Response
 		result2 *pb.ChaincodeEvent
 		result3 error
 	}
-	executeChaincodeReturnsOnCall map[int]struct {
+	executeReturnsOnCall map[int]struct {
 		result1 *pb.Response
 		result2 *pb.ChaincodeEvent
 		result3 error
@@ -31,61 +31,56 @@ type Executor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Executor) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
-	var argsCopy [][]byte
-	if args != nil {
-		argsCopy = make([][]byte, len(args))
-		copy(argsCopy, args)
-	}
-	fake.executeChaincodeMutex.Lock()
-	ret, specificReturn := fake.executeChaincodeReturnsOnCall[len(fake.executeChaincodeArgsForCall)]
-	fake.executeChaincodeArgsForCall = append(fake.executeChaincodeArgsForCall, struct {
+func (fake *Executor) Execute(ctxt context.Context, cccid *ccprovider.CCContext, cis ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+	fake.executeMutex.Lock()
+	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
+	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
 		ctxt  context.Context
 		cccid *ccprovider.CCContext
-		args  [][]byte
-	}{ctxt, cccid, argsCopy})
-	fake.recordInvocation("ExecuteChaincode", []interface{}{ctxt, cccid, argsCopy})
-	fake.executeChaincodeMutex.Unlock()
-	if fake.ExecuteChaincodeStub != nil {
-		return fake.ExecuteChaincodeStub(ctxt, cccid, args)
+		cis   ccprovider.ChaincodeSpecGetter
+	}{ctxt, cccid, cis})
+	fake.recordInvocation("Execute", []interface{}{ctxt, cccid, cis})
+	fake.executeMutex.Unlock()
+	if fake.ExecuteStub != nil {
+		return fake.ExecuteStub(ctxt, cccid, cis)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	return fake.executeChaincodeReturns.result1, fake.executeChaincodeReturns.result2, fake.executeChaincodeReturns.result3
+	return fake.executeReturns.result1, fake.executeReturns.result2, fake.executeReturns.result3
 }
 
-func (fake *Executor) ExecuteChaincodeCallCount() int {
-	fake.executeChaincodeMutex.RLock()
-	defer fake.executeChaincodeMutex.RUnlock()
-	return len(fake.executeChaincodeArgsForCall)
+func (fake *Executor) ExecuteCallCount() int {
+	fake.executeMutex.RLock()
+	defer fake.executeMutex.RUnlock()
+	return len(fake.executeArgsForCall)
 }
 
-func (fake *Executor) ExecuteChaincodeArgsForCall(i int) (context.Context, *ccprovider.CCContext, [][]byte) {
-	fake.executeChaincodeMutex.RLock()
-	defer fake.executeChaincodeMutex.RUnlock()
-	return fake.executeChaincodeArgsForCall[i].ctxt, fake.executeChaincodeArgsForCall[i].cccid, fake.executeChaincodeArgsForCall[i].args
+func (fake *Executor) ExecuteArgsForCall(i int) (context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) {
+	fake.executeMutex.RLock()
+	defer fake.executeMutex.RUnlock()
+	return fake.executeArgsForCall[i].ctxt, fake.executeArgsForCall[i].cccid, fake.executeArgsForCall[i].cis
 }
 
-func (fake *Executor) ExecuteChaincodeReturns(result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {
-	fake.ExecuteChaincodeStub = nil
-	fake.executeChaincodeReturns = struct {
+func (fake *Executor) ExecuteReturns(result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {
+	fake.ExecuteStub = nil
+	fake.executeReturns = struct {
 		result1 *pb.Response
 		result2 *pb.ChaincodeEvent
 		result3 error
 	}{result1, result2, result3}
 }
 
-func (fake *Executor) ExecuteChaincodeReturnsOnCall(i int, result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {
-	fake.ExecuteChaincodeStub = nil
-	if fake.executeChaincodeReturnsOnCall == nil {
-		fake.executeChaincodeReturnsOnCall = make(map[int]struct {
+func (fake *Executor) ExecuteReturnsOnCall(i int, result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {
+	fake.ExecuteStub = nil
+	if fake.executeReturnsOnCall == nil {
+		fake.executeReturnsOnCall = make(map[int]struct {
 			result1 *pb.Response
 			result2 *pb.ChaincodeEvent
 			result3 error
 		})
 	}
-	fake.executeChaincodeReturnsOnCall[i] = struct {
+	fake.executeReturnsOnCall[i] = struct {
 		result1 *pb.Response
 		result2 *pb.ChaincodeEvent
 		result3 error
@@ -95,8 +90,8 @@ func (fake *Executor) ExecuteChaincodeReturnsOnCall(i int, result1 *pb.Response,
 func (fake *Executor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.executeChaincodeMutex.RLock()
-	defer fake.executeChaincodeMutex.RUnlock()
+	fake.executeMutex.RLock()
+	defer fake.executeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
