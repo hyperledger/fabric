@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -94,7 +95,7 @@ type ledgerResources interface {
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
 
 	// StorePvtData used to persist private date into transient store
-	StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error
+	StorePvtData(txid string, privData *transientstore.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
 
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
 	// the order of private data in slice of PvtDataCollections doesn't imply the order of
@@ -310,7 +311,14 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg proto.ReceivedMessage) 
 		},
 	}
 
-	if err := s.ledger.StorePvtData(txID, txPvtRwSet); err != nil {
+	txPvtRwSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: txPvtRwSet,
+		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+			pvtDataMsg.Payload.Namespace: pvtDataMsg.Payload.CollectionConfigs,
+		},
+	}
+
+	if err := s.ledger.StorePvtData(txID, txPvtRwSetWithConfig, pvtDataMsg.Payload.PrivateSimHeight); err != nil {
 		logger.Errorf("Wasn't able to persist private data for collection %s, due to %s", collectionName, err)
 		msg.Ack(err) // Sending NACK to indicate failure of storing collection
 	}

@@ -19,8 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/transientstore"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -31,7 +31,7 @@ var endorserLogger = flogging.MustGetLogger("endorser")
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
 
-type privateDataDistributor func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error
+type privateDataDistributor func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
 
 // Support contains functions that the endorser requires to execute its tasks
 type Support interface {
@@ -89,6 +89,7 @@ type Support interface {
 type Endorser struct {
 	distributePrivateData privateDataDistributor
 	s                     Support
+	PvtRWSetAssembler
 }
 
 // validateResult provides the result of endorseProposal verification
@@ -104,7 +105,8 @@ type validateResult struct {
 func NewEndorserServer(privDist privateDataDistributor, s Support) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
-		s: s,
+		s:                 s,
+		PvtRWSetAssembler: &rwSetAssembler{},
 	}
 	return e
 }
@@ -265,22 +267,30 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 
 	if txsim != nil {
 		if simResult, err = txsim.GetTxSimulationResults(); err != nil {
+			txsim.Done()
 			return nil, nil, nil, nil, err
 		}
-		// As soon the simulation result is collected, we should close txsim
-		// so that the acquired shared lock on the database can be released.
-		// NOTE: this txsim object was created in ProcessProposal()
-		txsim.Done()
 
 		if simResult.PvtSimulationResults != nil {
 			if cid.Name == "lscc" {
 				// TODO: remove once we can store collection configuration outside of LSCC
+				txsim.Done()
 				return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
 			}
-			if err := e.distributePrivateData(chainID, txid, simResult.PvtSimulationResults, simResult.SimulationBlkHt); err != nil {
+			pvtDataWithConfig, err := e.AssemblePvtRWSet(simResult.PvtSimulationResults, txsim)
+			// To read collection config need to read collection updates before
+			// releasing the lock, hence txsim.Done()  moved down here
+			txsim.Done()
+
+			if err != nil {
+				return nil, nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
+			}
+			if err := e.distributePrivateData(chainID, txid, pvtDataWithConfig, simResult.SimulationBlkHt); err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}
+
+		txsim.Done()
 		if pubSimResBytes, err = simResult.GetPubSimulationBytes(); err != nil {
 			return nil, nil, nil, nil, err
 		}

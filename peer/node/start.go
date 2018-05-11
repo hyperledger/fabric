@@ -61,8 +61,8 @@ import (
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -232,7 +232,7 @@ func serve(args []string) error {
 	// Start the Admin server
 	startAdminServer(listenAddr, peerServer.Server())
 
-	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+	privDataDist := func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
 	}
 

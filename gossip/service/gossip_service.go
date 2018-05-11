@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	gproto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -43,7 +43,7 @@ type GossipService interface {
 
 	// DistributePrivateData distributes private data to the peers in the collections
 	// according to policies induced by the PolicyStore and PolicyParser
-	DistributePrivateData(chainID string, txID string, privateData *rwset.TxPvtReadWriteSet, blkHt uint64) error
+	DistributePrivateData(chainID string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
 	// NewConfigEventer creates a ConfigProcessor which the channelconfig.BundleSource can ultimately route config updates to
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
@@ -171,7 +171,7 @@ func GetGossipService() GossipService {
 }
 
 // DistributePrivateData distribute private read write set inside the channel based on the collections policies
-func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData *rwset.TxPvtReadWriteSet, blkHt uint64) error {
+func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 	g.lock.RLock()
 	handler, exists := g.privateHandlers[chainID]
 	g.lock.RUnlock()
@@ -179,12 +179,12 @@ func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, p
 		return errors.Errorf("No private data handler for %s", chainID)
 	}
 
-	if err := handler.distributor.Distribute(txID, privData, handler.support.Cs, blkHt); err != nil {
+	if err := handler.distributor.Distribute(txID, privData.PvtRwset, handler.support.Cs, blkHt); err != nil {
 		logger.Error("Failed to distributed private collection, txID", txID, "channel", chainID, "due to", err)
 		return err
 	}
 
-	if err := handler.coordinator.StorePvtData(txID, privData); err != nil {
+	if err := handler.coordinator.StorePvtData(txID, privData, blkHt); err != nil {
 		logger.Error("Failed to store private data into transient store, txID",
 			txID, "channel", chainID, "due to", err)
 		return err
