@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package valinternal
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/peer"
 )
+
+var logger = flogging.MustGetLogger("valinternal")
 
 // InternalValidator is supposed to validate the transactions based on public data and hashes present in a block
 // and returns a batch that should be used to update the state
@@ -83,26 +86,28 @@ func (t *Transaction) RetrieveHash(ns string, coll string) []byte {
 }
 
 // ApplyWriteSet adds (or deletes) the key/values present in the write set to the PubAndHashUpdates
-func (u *PubAndHashUpdates) ApplyWriteSet(txRWSet *rwsetutil.TxRwSet, txHeight *version.Height) {
-	for _, nsRWSet := range txRWSet.NsRwSets {
-		ns := nsRWSet.NameSpace
-		for _, kvWrite := range nsRWSet.KvRwSet.Writes {
-			if kvWrite.IsDelete {
-				u.PubUpdates.Delete(ns, kvWrite.Key, txHeight)
+func (u *PubAndHashUpdates) ApplyWriteSet(txRWSet *rwsetutil.TxRwSet, txHeight *version.Height, db privacyenabledstate.DB) error {
+	txops, err := prepareTxOps(txRWSet, txHeight, u, db)
+	logger.Debugf("txops=%#v", txops)
+	if err != nil {
+		return err
+	}
+	for compositeKey, keyops := range txops {
+		if compositeKey.coll == "" {
+			ns, key := compositeKey.ns, compositeKey.key
+			if keyops.isDelete() {
+				u.PubUpdates.Delete(ns, key, txHeight)
 			} else {
-				u.PubUpdates.Put(ns, kvWrite.Key, kvWrite.Value, txHeight)
+				u.PubUpdates.PutValAndMetadata(ns, key, keyops.value, keyops.metadata, txHeight)
 			}
-		}
-
-		for _, collHashRWset := range nsRWSet.CollHashedRwSets {
-			coll := collHashRWset.CollectionName
-			for _, hashedWrite := range collHashRWset.HashedRwSet.HashedWrites {
-				if hashedWrite.IsDelete {
-					u.HashUpdates.Delete(ns, coll, hashedWrite.KeyHash, txHeight)
-				} else {
-					u.HashUpdates.Put(ns, coll, hashedWrite.KeyHash, hashedWrite.ValueHash, txHeight)
-				}
+		} else {
+			ns, coll, keyHash := compositeKey.ns, compositeKey.coll, []byte(compositeKey.key)
+			if keyops.isDelete() {
+				u.HashUpdates.Delete(ns, coll, keyHash, txHeight)
+			} else {
+				u.HashUpdates.PutValHashAndMetadata(ns, coll, keyHash, keyops.value, keyops.metadata, txHeight)
 			}
 		}
 	}
+	return nil
 }

@@ -38,6 +38,7 @@ func TestMain(m *testing.M) {
 	flogging.SetModuleLevel("statecouchdb", "debug")
 	flogging.SetModuleLevel("valimpl", "debug")
 	flogging.SetModuleLevel("pvtstatepurgemgmt", "debug")
+	flogging.SetModuleLevel("valinternal", "debug")
 
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/lockbasedtxmgr")
 	os.Exit(m.Run())

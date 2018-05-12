@@ -142,10 +142,16 @@ func (batch *UpdateBatch) Get(ns string, key string) *VersionedValue {
 
 // Put adds a key with value only. The metadata is assumed to be nil
 func (batch *UpdateBatch) Put(ns string, key string, value []byte, version *version.Height) {
+	batch.PutValAndMetadata(ns, key, value, nil, version)
+}
+
+// PutValAndMetadata adds a key with value and metadata
+// TODO introducing a new function to limit the refactoring. Later in a separate CR, the 'Put' function above should be removed
+func (batch *UpdateBatch) PutValAndMetadata(ns string, key string, value []byte, metadata []byte, version *version.Height) {
 	if value == nil {
 		panic("Nil value not allowed. Instead call 'Delete' function")
 	}
-	batch.Update(ns, key, &VersionedValue{value, nil, version})
+	batch.Update(ns, key, &VersionedValue{value, metadata, version})
 }
 
 // Delete deletes a Key and associated value
