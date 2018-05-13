@@ -103,7 +103,7 @@ func genChaincodeDeploymentSpec(cmd *cobra.Command, chaincodeName, chaincodeVers
 
 	cds, err := getChaincodeDeploymentSpec(spec, true)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error getting chaincode code %s: %s", chaincodeName, err)
 	}
 
 	return cds, nil

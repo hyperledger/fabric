@@ -60,30 +60,30 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 
 	cds, err := getChaincodeDeploymentSpec(spec, false)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error getting chaincode code %s: %s", chaincodeName, err)
 	}
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
+		return nil, fmt.Errorf("error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
 	prop, _, err := utils.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
 	if err != nil {
-		return nil, fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error creating proposal %s: %s", chainFuncName, err)
 	}
 	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeId)
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
 	// upgrade is currently only supported for one peer
 	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error endorsing %s: %s", chainFuncName, err)
 	}
 	logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
 
@@ -91,7 +91,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		// assemble a signed transaction (it's an Envelope message)
 		env, err := utils.CreateSignedTx(prop, cf.Signer, proposalResponse)
 		if err != nil {
-			return nil, fmt.Errorf("Could not assemble transaction, err %s", err)
+			return nil, fmt.Errorf("could not assemble transaction, err %s", err)
 		}
 		logger.Debug("Get Signed envelope")
 		return env, nil

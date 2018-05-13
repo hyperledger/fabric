@@ -170,7 +170,7 @@ func chaincodePackage(cmd *cobra.Command, args []string, cdsFact ccDepSpecFactor
 
 	cds, err := cdsFact(spec)
 	if err != nil {
-		return fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
+		return fmt.Errorf("error getting chaincode code %s: %s", chaincodeName, err)
 	}
 
 	var bytesToWrite []byte
@@ -187,7 +187,7 @@ func chaincodePackage(cmd *cobra.Command, args []string, cdsFact ccDepSpecFactor
 	fileToWrite := args[0]
 	err = ioutil.WriteFile(fileToWrite, bytesToWrite, 0700)
 	if err != nil {
-		logger.Errorf("Failed writing deployment spec to file [%s]: [%s]", fileToWrite, err)
+		logger.Errorf("failed writing deployment spec to file [%s]: [%s]", fileToWrite, err)
 		return err
 	}
 
