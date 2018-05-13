@@ -12,7 +12,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -479,6 +478,16 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	expectedSimulationRes := samplePvtSimResWithConfig
 	expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset[0:1]
 	expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset[1:]
+	expectedSimulationRes.CollectionConfigs, err = trimPvtCollectionConfigs(expectedSimulationRes.CollectionConfigs, filter)
+	assert.NoError(t, err)
+	for ns, colName := range map[string]string{"ns-1": "coll-1", "ns-2": "coll-2"} {
+		config := expectedSimulationRes.CollectionConfigs[ns]
+		assert.NotNil(t, config)
+		ns1Config := config.Config
+		assert.Equal(t, len(ns1Config), 1)
+		ns1ColConfig := ns1Config[0].GetStaticCollectionConfig()
+		assert.NotNil(t, ns1ColConfig.Name, colName)
+	}
 
 	var expectedRes []*EndorserPvtSimulationResultsWithConfig
 	for i := 0; i < numEntries; i++ {
@@ -490,7 +499,6 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	sortResults(expectedRes)
 	sortResults(actualRes)
 	assert.Equal(t, expectedRes, actualRes)
-	t.Logf("Actual Res = %s", spew.Sdump(actualRes))
 }
 
 func sortResults(res []*EndorserPvtSimulationResultsWithConfig) {

@@ -403,7 +403,13 @@ func (scanner *RwsetScanner) NextWithConfig() (*EndorserPvtSimulationResultsWith
 		if err := proto.Unmarshal(dbVal[1:], txPvtRWSetWithConfig); err != nil {
 			return nil, err
 		}
+
 		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
+		configs, err := trimPvtCollectionConfigs(txPvtRWSetWithConfig.CollectionConfigs, scanner.filter)
+		if err != nil {
+			return nil, err
+		}
+		txPvtRWSetWithConfig.CollectionConfigs = configs
 	} else {
 		// old proto, i.e., TxPvtReadWriteSet
 		if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
