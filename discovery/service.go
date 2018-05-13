@@ -9,6 +9,7 @@ package discovery
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
@@ -45,8 +46,17 @@ type service struct {
 // Config defines the configuration of the discovery service
 type Config struct {
 	TLS                          bool
+	AuthCacheEnabled             bool
 	AuthCacheMaxSize             int
 	AuthCachePurgeRetentionRatio float64
+}
+
+// String returns a string representation of this Config
+func (c Config) String() string {
+	if c.AuthCacheEnabled {
+		return fmt.Sprintf("TLS: %t, authCacheMaxSize: %d, authCachePurgeRatio: %f", c.TLS, c.AuthCacheMaxSize, c.AuthCachePurgeRetentionRatio)
+	}
+	return fmt.Sprintf("TLS: %t, auth cache disabled", c.TLS)
 }
 
 // peerMapping maps PKI-IDs to Peers
@@ -56,6 +66,7 @@ type peerMapping map[string]*discovery.Peer
 func NewService(config Config, sup Support) *service {
 	s := &service{
 		auth: newAuthCache(sup, authCacheConfig{
+			enabled:             config.AuthCacheEnabled,
 			maxCacheSize:        config.AuthCacheMaxSize,
 			purgeRetentionRatio: config.AuthCachePurgeRetentionRatio,
 		}),
@@ -69,6 +80,7 @@ func NewService(config Config, sup Support) *service {
 	s.localDispatchers = map[discovery.QueryType]dispatcher{
 		discovery.LocalMembershipQueryType: s.localMembershipResponse,
 	}
+	logger.Info("Created with config", config)
 	return s
 }
 

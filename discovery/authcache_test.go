@@ -45,6 +45,24 @@ func (as *mockAcSupport) ConfigSequence(channel string) uint64 {
 	return as.Called(channel).Get(0).(uint64)
 }
 
+func TestCacheDisabled(t *testing.T) {
+	sd := common.SignedData{
+		Data:      []byte{1, 2, 3},
+		Identity:  []byte("authorizedIdentity"),
+		Signature: []byte{1, 2, 3},
+	}
+
+	as := &mockAcSupport{}
+	as.On("ConfigSequence", "foo").Return(uint64(0))
+	as.On("EligibleForService", "foo", sd).Return(nil)
+	cache := newAuthCache(as, authCacheConfig{maxCacheSize: 100, purgeRetentionRatio: 0.5})
+
+	// Call the cache twice with the same argument and ensure the call isn't cached
+	cache.EligibleForService("foo", sd)
+	cache.EligibleForService("foo", sd)
+	as.AssertNumberOfCalls(t, "EligibleForService", 2)
+}
+
 func TestCacheUsage(t *testing.T) {
 	as := &mockAcSupport{}
 	as.On("ConfigSequence", "foo").Return(uint64(0))
@@ -166,7 +184,7 @@ func TestCacheConfigChange(t *testing.T) {
 
 func TestCachePurgeCache(t *testing.T) {
 	as := &mockAcSupport{}
-	cache := newAuthCache(as, authCacheConfig{maxCacheSize: 4, purgeRetentionRatio: 0.75})
+	cache := newAuthCache(as, authCacheConfig{maxCacheSize: 4, purgeRetentionRatio: 0.75, enabled: true})
 	as.On("ConfigSequence", "mychannel").Return(uint64(0))
 
 	// Warm up the cache - attempt to place 4 identities to fill it up
@@ -258,5 +276,5 @@ func TestCacheConcurrentConfigUpdate(t *testing.T) {
 }
 
 func defaultConfig() authCacheConfig {
-	return authCacheConfig{maxCacheSize: defaultMaxCacheSize, purgeRetentionRatio: defaultRetentionRatio}
+	return authCacheConfig{maxCacheSize: defaultMaxCacheSize, purgeRetentionRatio: defaultRetentionRatio, enabled: true}
 }

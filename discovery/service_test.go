@@ -24,8 +24,24 @@ import (
 	"golang.org/x/net/context"
 )
 
+func TestConfig(t *testing.T) {
+	for _, trueOfFalse := range []bool{true, false} {
+		conf := Config{
+			AuthCacheEnabled:             trueOfFalse,
+			AuthCachePurgeRetentionRatio: 0.5,
+			AuthCacheMaxSize:             42,
+		}
+		service := NewService(conf, &mockSupport{})
+		assert.Equal(t, trueOfFalse, service.auth.conf.enabled)
+		assert.Equal(t, 42, service.auth.conf.maxCacheSize)
+		assert.Equal(t, 0.5, service.auth.conf.purgeRetentionRatio)
+	}
+}
+
 func TestService(t *testing.T) {
-	conf := Config{}
+	conf := Config{
+		AuthCacheEnabled: true,
+	}
 	ctx := context.Background()
 	req := &discovery.Request{
 		Authentication: &discovery.AuthInfo{

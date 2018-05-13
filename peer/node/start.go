@@ -433,6 +433,7 @@ func registerDiscoveryService(peerServer *comm.GRPCServer, mcs api.MessageCrypto
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),
+		AuthCacheEnabled:             viper.GetBool("peer.discovery.authCacheEnabled"),
 		AuthCacheMaxSize:             viper.GetInt("peer.discovery.authCacheMaxSize"),
 		AuthCachePurgeRetentionRatio: viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio"),
 	}, support)
