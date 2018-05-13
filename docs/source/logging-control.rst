@@ -177,18 +177,35 @@ control is currently based on the *name* provided when the
 logger *name* will appear in all log messages created by the logger. The
 ``shim`` logs as "shim".
 
+The default logging level for loggers within the Chaincode container can
+be set in the
+`core.yaml <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`__
+file. The key ``chaincode.logging.level`` sets the default level for all
+loggers within the Chaincode container. The key ``chaincode.logging.shim``
+overrides the default level for the ``shim`` module.
+
+::
+
+    # Logging section for the chaincode container
+    logging:
+      # Default level for all loggers within the chaincode container
+      level:  info
+      # Override default level for the 'shim' module
+      shim:   warning
+
+The default logging level can be overridden by using environment
+variables. ``CORE_CHAINCODE_LOGGING_LEVEL`` sets the default logging
+level for all modules. ``CORE_CHAINCODE_LOGGING_SHIM`` overrides the
+level for the ``shim`` module.
+
 Go language chaincodes can also control the logging level of the
 chaincode ``shim`` interface through the ``SetLoggingLevel`` API.
 
 ``SetLoggingLevel(LoggingLevel level)`` - Control the logging level of
 the shim
 
-The default logging level for the shim is ``LogDebug``.
-
 Below is a simple example of how a chaincode might create a private
-logging object logging at the ``LogInfo`` level, and also control the
-amount of logging provided by the ``shim`` based on an environment
-variable.
+logging object logging at the ``LogInfo`` level.
 
 ::
 
@@ -197,9 +214,6 @@ variable.
     func main() {
 
         logger.SetLevel(shim.LogInfo)
-
-        logLevel, _ := shim.LogLevel(os.Getenv("SHIM_LOGGING_LEVEL"))
-        shim.SetLoggingLevel(logLevel)
         ...
     }
 
