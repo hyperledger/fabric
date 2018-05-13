@@ -165,7 +165,11 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 		for _, keyMetadata := range nsMetadata {
 			// TODO - why would version be ever zero if loaded from db?
 			if len(keyMetadata.Version) != 0 {
-				committedDataCache.setVerAndRev(ns, keyMetadata.ID, createVersionHeightFromVersionString(keyMetadata.Version), keyMetadata.Rev)
+				version, _, err := decodeVersionAndMetadata(keyMetadata.Version)
+				if err != nil {
+					return err
+				}
+				committedDataCache.setVerAndRev(ns, keyMetadata.ID, version, keyMetadata.Rev)
 			}
 		}
 	}

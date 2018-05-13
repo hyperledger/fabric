@@ -178,6 +178,17 @@ func TestBatchRetry(t *testing.T) {
 	commontests.TestBatchWithIndividualRetry(t, env.DBProvider)
 }
 
+func TestValueAndMetadataWrites(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	env.Cleanup("testvalueandmetadata_")
+	env.Cleanup("testvalueandmetadata_ns1")
+	env.Cleanup("testvalueandmetadata_ns2")
+	defer env.Cleanup("testvalueandmetadata_")
+	defer env.Cleanup("testvalueandmetadata_ns1")
+	defer env.Cleanup("testvalueandmetadata_ns2")
+	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
+}
+
 // TestUtilityFunctions tests utility functions
 func TestUtilityFunctions(t *testing.T) {
 

@@ -730,3 +730,33 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 	testutil.AssertNoError(t, err, "")
 
 }
+
+// TestValueAndMetadataWrites tests statedb for value and metadata read-writes
+func TestValueAndMetadataWrites(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("testvalueandmetadata")
+	testutil.AssertNoError(t, err, "")
+	batch := statedb.NewUpdateBatch()
+
+	vv1 := statedb.VersionedValue{Value: []byte("value1"), Metadata: []byte("metadata1"), Version: version.NewHeight(1, 1)}
+	vv2 := statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("metadata2"), Version: version.NewHeight(1, 2)}
+	vv3 := statedb.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)}
+	vv4 := statedb.VersionedValue{Value: []byte{}, Metadata: []byte("metadata4"), Version: version.NewHeight(1, 4)}
+
+	batch.PutValAndMetadata("ns1", "key1", vv1.Value, vv1.Metadata, vv1.Version)
+	batch.PutValAndMetadata("ns1", "key2", vv2.Value, vv2.Metadata, vv2.Version)
+	batch.PutValAndMetadata("ns2", "key3", vv3.Value, vv3.Metadata, vv3.Version)
+	batch.PutValAndMetadata("ns2", "key4", vv4.Value, vv4.Metadata, vv4.Version)
+	db.ApplyUpdates(batch, version.NewHeight(2, 5))
+
+	vv, _ := db.GetState("ns1", "key1")
+	testutil.AssertEquals(t, vv, &vv1)
+
+	vv, _ = db.GetState("ns1", "key2")
+	testutil.AssertEquals(t, vv, &vv2)
+
+	vv, _ = db.GetState("ns2", "key3")
+	testutil.AssertEquals(t, vv, &vv3)
+
+	vv, _ = db.GetState("ns2", "key4")
+	testutil.AssertEquals(t, vv, &vv4)
+}

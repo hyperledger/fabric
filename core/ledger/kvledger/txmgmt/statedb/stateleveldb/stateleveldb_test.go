@@ -118,3 +118,9 @@ func TestUtilityFunctions(t *testing.T) {
 	// ValidateKeyValue should return nil for a valid key and value
 	testutil.AssertNoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")
 }
+
+func TestValueAndMetadataWrites(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
+}
