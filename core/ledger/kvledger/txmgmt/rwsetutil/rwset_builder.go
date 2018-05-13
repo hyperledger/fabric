@@ -57,8 +57,9 @@ type nsPvtRwBuilder struct {
 }
 
 type collPvtRwBuilder struct {
-	collectionName string
-	writeMap       map[string]*kvrwset.KVWrite
+	collectionName   string
+	writeMap         map[string]*kvrwset.KVWrite
+	metadataWriteMap map[string]*kvrwset.KVMetadataWrite
 }
 
 type rangeQueryKey struct {
@@ -117,6 +118,11 @@ func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key str
 
 // AddToHashedMetadataWriteSet adds a metadata to a key in the hashed write-set
 func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) {
+	// pvt write set just need the key; not the entire metadata. The metadata is stored only
+	// by the hashed key. Pvt write-set need to know the key for handling a special case where only
+	// metadata is updated so, the version of the key present in the pvt data should be incremented
+	b.getOrCreateCollPvtRwBuilder(ns, coll).
+		metadataWriteMap[key] = &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
 	b.getOrCreateCollHashedRwBuilder(ns, coll).
 		metadataWriteMap[key] = mapToMetadataWriteHash(key, metadata)
 }
@@ -252,11 +258,14 @@ func (b *collHashRwBuilder) build() *CollHashedRwSet {
 
 func (b *collPvtRwBuilder) build() *CollPvtRwSet {
 	var writeSet []*kvrwset.KVWrite
+	var metadataWriteSet []*kvrwset.KVMetadataWrite
 	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
+	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
 	return &CollPvtRwSet{
 		CollectionName: b.collectionName,
 		KvRwSet: &kvrwset.KVRWSet{
-			Writes: writeSet,
+			Writes:         writeSet,
+			MetadataWrites: metadataWriteSet,
 		},
 	}
 }
@@ -326,7 +335,11 @@ func newCollHashRwBuilder(collName string) *collHashRwBuilder {
 }
 
 func newCollPvtRwBuilder(collName string) *collPvtRwBuilder {
-	return &collPvtRwBuilder{collName, make(map[string]*kvrwset.KVWrite)}
+	return &collPvtRwBuilder{
+		collName,
+		make(map[string]*kvrwset.KVWrite),
+		make(map[string]*kvrwset.KVMetadataWrite),
+	}
 }
 
 func mapToMetadataWrite(key string, m map[string][]byte) *kvrwset.KVMetadataWrite {

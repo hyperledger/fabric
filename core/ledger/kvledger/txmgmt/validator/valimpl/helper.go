@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
@@ -28,8 +29,10 @@ import (
 // validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid
 // by the internal public data validator. Finally, it validates (if not already self-endorsed) the pvt rwset against the
 // corresponding hash present in the public rwset
-func validateAndPreparePvtBatch(block *valinternal.Block, pvtdata map[uint64]*ledger.TxPvtData) (*privacyenabledstate.PvtUpdateBatch, error) {
+func validateAndPreparePvtBatch(block *valinternal.Block, db privacyenabledstate.DB,
+	pubAndHashUpdates *valinternal.PubAndHashUpdates, pvtdata map[uint64]*ledger.TxPvtData) (*privacyenabledstate.PvtUpdateBatch, error) {
 	pvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
+	metadataUpdates := metadataUpdates{}
 	for _, tx := range block.Txs {
 		if tx.ValidationCode != peer.TxValidationCode_VALID {
 			continue
@@ -52,6 +55,10 @@ func validateAndPreparePvtBatch(block *valinternal.Block, pvtdata map[uint64]*le
 			return nil, err
 		}
 		addPvtRWSetToPvtUpdateBatch(pvtRWSet, pvtUpdates, version.NewHeight(block.Num, uint64(tx.IndexInBlock)))
+		addEntriesToMetadataUpdates(metadataUpdates, pvtRWSet)
+	}
+	if err := incrementPvtdataVersionIfNeeded(metadataUpdates, pvtUpdates, pubAndHashUpdates, db); err != nil {
+		return nil, err
 	}
 	return pvtUpdates, nil
 }
@@ -219,4 +226,70 @@ func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch 
 			}
 		}
 	}
+}
+
+// incrementPvtdataVersionIfNeeded changes the versions of the private data keys if the version of the corresponding hashed key has
+// been upgrded. A metadata-update-only type of transaction may have caused the version change of the existing value in the hashed space.
+// Iterate through all the metadata writes and try to get these keys and increment the version in the private writes to be the same as of the hashed key version - if the latest
+// value of the key is available. Otherwise, in this scenario, we end up having the latest value in the private state but the version
+// gets left as stale and will cause simulation failure because of wrongly assuming that we have stale value
+func incrementPvtdataVersionIfNeeded(
+	metadataUpdates metadataUpdates,
+	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
+	pubAndHashUpdates *valinternal.PubAndHashUpdates,
+	db privacyenabledstate.DB) error {
+
+	for collKey := range metadataUpdates {
+		ns, coll, key := collKey.ns, collKey.coll, collKey.key
+		keyHash := util.ComputeStringHash(key)
+		hashedVal := pubAndHashUpdates.HashUpdates.Get(ns, coll, string(keyHash))
+		if hashedVal == nil {
+			// This key is finally not getting updated in the hashed space by this block -
+			// either the metadata update was on a non-existing key or the key gets deleted by a latter transaction in the block
+			// ignore the metadata update for this key
+			continue
+		}
+		latestVal, err := retrieveLatestVal(ns, coll, key, pvtUpdateBatch, db)
+		if err != nil {
+			return err
+		}
+		if latestVal == nil || // latest value not found either in db or in the pvt updates (caused by commit with missing data)
+			version.AreSame(latestVal.Version, hashedVal.Version) { // version is already same as in hashed space - No version increment because of metadata-only transaction took place
+			continue
+		}
+		// TODO - computing hash could be avoided. In the hashed updates, we can augment additional info that
+		// which original version has been renewed
+		latestValHash := util.ComputeHash(latestVal.Value)
+		if bytes.Equal(latestValHash, hashedVal.Value) { // since we allow block commits with missing pvt data, the private value available may be stale.
+			// upgrade the version only if the pvt value matches with corresponding hash in the hashed space
+			pvtUpdateBatch.Put(ns, coll, key, latestVal.Value, hashedVal.Version)
+		}
+	}
+	return nil
+}
+
+type collKey struct {
+	ns, coll, key string
+}
+
+type metadataUpdates map[collKey]bool
+
+func addEntriesToMetadataUpdates(metadataUpdates metadataUpdates, pvtRWSet *rwsetutil.TxPvtRwSet) {
+	for _, ns := range pvtRWSet.NsPvtRwSet {
+		for _, coll := range ns.CollPvtRwSets {
+			for _, metadataWrite := range coll.KvRwSet.MetadataWrites {
+				ns, coll, key := ns.NameSpace, coll.CollectionName, metadataWrite.Key
+				metadataUpdates[collKey{ns, coll, key}] = true
+			}
+		}
+	}
+}
+
+func retrieveLatestVal(ns, coll, key string, pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
+	db privacyenabledstate.DB) (val *statedb.VersionedValue, err error) {
+	val = pvtUpdateBatch.Get(ns, coll, key)
+	if val == nil {
+		val, err = db.GetPrivateData(ns, coll, key)
+	}
+	return
 }

@@ -53,7 +53,7 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 		return nil, err
 	}
 	logger.Debug("validating rwset...")
-	if pvtUpdates, err = validateAndPreparePvtBatch(internalBlock, blockAndPvtdata.BlockPvtData); err != nil {
+	if pvtUpdates, err = validateAndPreparePvtBatch(internalBlock, impl.db, pubAndHashUpdates, blockAndPvtdata.BlockPvtData); err != nil {
 		return nil, err
 	}
 	logger.Debug("postprocessing ProtoBlock...")
