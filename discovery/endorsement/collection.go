@@ -15,6 +15,20 @@ import (
 
 type filterPrincipalSets func(collectionName string, principalSets policies.PrincipalSets) (policies.PrincipalSets, error)
 
+func (f filterPrincipalSets) forCollections(ccName string, collections ...string) filterFunc {
+	return func(principalSets policies.PrincipalSets) (policies.PrincipalSets, error) {
+		var err error
+		for _, col := range collections {
+			principalSets, err = f(col, principalSets)
+			if err != nil {
+				logger.Warningf("Failed filtering collection for chaincode %s, collection %s: %v", ccName, col, err)
+				return nil, err
+			}
+		}
+		return principalSets, nil
+	}
+}
+
 func newCollectionFilter(configBytes []byte) (filterPrincipalSets, error) {
 	mapFilter := make(principalSetsByCollectionName)
 	if len(configBytes) == 0 {

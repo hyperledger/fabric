@@ -13,8 +13,35 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestForCollections(t *testing.T) {
+	foos := policies.PrincipalSets{{orgPrincipal("foo")}}
+	bars := policies.PrincipalSets{{orgPrincipal("bar")}}
+	f := filterPrincipalSets(func(collectionName string, principalSets policies.PrincipalSets) (policies.PrincipalSets, error) {
+		switch collectionName {
+		case "foo":
+			return foos, nil
+		case "bar":
+			return bars, nil
+		default:
+			return nil, errors.Errorf("collection %s doesn't exist", collectionName)
+		}
+	})
+
+	res, err := f.forCollections("mycc", "foo")(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, foos, res)
+
+	res, err = f.forCollections("mycc", "bar")(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, bars, res)
+
+	res, err = f.forCollections("mycc", "baz")(nil)
+	assert.Equal(t, "collection baz doesn't exist", err.Error())
+}
 
 func TestCollectionFilter(t *testing.T) {
 	org1AndOrg2 := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}

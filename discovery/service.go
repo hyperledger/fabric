@@ -119,11 +119,11 @@ func (s *service) dispatch(q *discovery.Query) *discovery.QueryResult {
 }
 
 func (s *service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
+	if err := validateCCQuery(q.GetCcQuery()); err != nil {
+		return wrapError(err)
+	}
 	var descriptors []*discovery.EndorsementDescriptor
 	for _, interest := range q.GetCcQuery().Interests {
-		if len(interest.Chaincodes) == 0 || interest.Chaincodes[0] == nil {
-			return wrapError(errors.Errorf("must include at least one chaincode"))
-		}
 		desc, err := s.PeersForEndorsement(common2.ChainID(q.Channel), interest)
 		if err != nil {
 			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", interest, err)
@@ -245,6 +245,26 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, ad
 		return nil, errors.New("client claimed TLS hash doesn't match computed TLS hash from gRPC stream")
 	}
 	return req, nil
+}
+
+func validateCCQuery(ccQuery *discovery.ChaincodeQuery) error {
+	if len(ccQuery.Interests) == 0 {
+		return errors.New("chaincode query must have at least one chaincode interest")
+	}
+	for _, interest := range ccQuery.Interests {
+		if interest == nil {
+			return errors.New("chaincode interest is nil")
+		}
+		if len(interest.Chaincodes) == 0 {
+			return errors.New("chaincode interest must contain at least one chaincode")
+		}
+		for _, cc := range interest.Chaincodes {
+			if cc.Name == "" {
+				return errors.New("chaincode name in interest cannot be empty")
+			}
+		}
+	}
+	return nil
 }
 
 func wrapError(err error) *discovery.QueryResult {

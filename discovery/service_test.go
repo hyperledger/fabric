@@ -101,9 +101,31 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "must include at least one chaincode")
+	assert.Contains(t, resp.Results[0].GetError().Content, "chaincode interest must contain at least one chaincode")
 
-	// Scenario VI: Request with a CC query where one chaincode is unavailable
+	// Scenario VI: Request a CC query with no interests at all
+	req.Queries[0].Query = &discovery.Query_CcQuery{
+		CcQuery: &discovery.ChaincodeQuery{
+			Interests: []*discovery.ChaincodeInterest{}},
+	}
+	resp, err = service.Discover(ctx, toSignedRequest(req))
+	assert.NoError(t, err)
+	assert.Contains(t, resp.Results[0].GetError().Content, "chaincode query must have at least one chaincode interest")
+
+	// Scenario VII: Request a CC query with a chaincode name that is empty
+	req.Queries[0].Query = &discovery.Query_CcQuery{
+		CcQuery: &discovery.ChaincodeQuery{
+			Interests: []*discovery.ChaincodeInterest{{
+				Chaincodes: []*discovery.ChaincodeCall{{
+					Name: "",
+				}},
+			}}},
+	}
+	resp, err = service.Discover(ctx, toSignedRequest(req))
+	assert.NoError(t, err)
+	assert.Contains(t, resp.Results[0].GetError().Content, "chaincode name in interest cannot be empty")
+
+	// Scenario VIII: Request with a CC query where one chaincode is unavailable
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
 			Interests: []*discovery.ChaincodeInterest{
@@ -122,7 +144,7 @@ func TestService(t *testing.T) {
 	assert.Contains(t, resp.Results[0].GetError().Content, "failed constructing descriptor")
 	assert.Contains(t, resp.Results[0].GetError().Content, "unknownCC")
 
-	// Scenario VII: Request with a CC query where all are available
+	// Scenario IX: Request with a CC query where all are available
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
 			Interests: []*discovery.ChaincodeInterest{
@@ -145,7 +167,7 @@ func TestService(t *testing.T) {
 	})
 	assert.Equal(t, expected, resp)
 
-	// Scenario VIII: Request with a config query
+	// Scenario X: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(nil, errors.New("failed fetching config")).Once()
 	req.Queries[0].Query = &discovery.Query_ConfigQuery{
 		ConfigQuery: &discovery.ConfigQuery{},
@@ -154,7 +176,7 @@ func TestService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, resp.Results[0].GetError().Content, "failed fetching config for channel channelWithAccessGranted")
 
-	// Scenario IX: Request with a config query
+	// Scenario XI: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(&discovery.ConfigResult{}, nil).Once()
 	req.Queries[0].Query = &discovery.Query_ConfigQuery{
 		ConfigQuery: &discovery.ConfigQuery{},
@@ -163,7 +185,7 @@ func TestService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp.Results[0].GetConfigResult())
 
-	// Scenario X: Request with a membership query
+	// Scenario XII: Request with a membership query
 	// Peers in membership view: { p0, p1, p2, p3}
 	// Peers in channel view: {p1, p2, p4}
 	// So that means that the returned peers for the channel should be the intersection
@@ -262,7 +284,7 @@ func TestService(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// Scenario XI: The client is eligible for channel queries but not for channel-less
+	// Scenario XIII: The client is eligible for channel queries but not for channel-less
 	// since it's not an admin. It sends a query for a channel-less query but puts a channel in the query.
 	// It should fail because channel-less query types cannot have a channel configured in them.
 	req.Queries = []*discovery.Query{
@@ -372,6 +394,15 @@ func TestValidateStructure(t *testing.T) {
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
 	}, "", true, extractHash)
+}
+
+func TestValidateCCQuery(t *testing.T) {
+	err := validateCCQuery(&discovery.ChaincodeQuery{
+		Interests: []*discovery.ChaincodeInterest{
+			nil,
+		},
+	})
+	assert.Equal(t, "chaincode interest is nil", err.Error())
 }
 
 func wrapResult(responses ...interface{}) *discovery.Response {

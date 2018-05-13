@@ -79,14 +79,18 @@ type peerPrincipalEvaluator func(member discovery2.NetworkMember, principal *msp
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
 func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	chaincode := interest.Chaincodes[0]
-	loadCollections := len(chaincode.CollectionNames) > 0
-	ccMD := ea.Metadata(string(chainID), chaincode.Name, loadCollections)
-	if ccMD == nil {
-		return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(chainID))
+	// For now we only support a single chaincode
+	if len(interest.Chaincodes) != 1 {
+		return nil, errors.New("only a single chaincode is supported")
+	}
+	interest.Chaincodes = []*discovery.ChaincodeCall{interest.Chaincodes[0]}
+
+	metadataAndCollectionFilters, err := loadMetadataAndFilters(chainID, interest, ea)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	// Filter out peers that don't have the chaincode installed on them
-	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(ccMD))
+	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(metadataAndCollectionFilters.md...))
 	channelMembersById := chanMembership.ByID()
 	// Choose only the alive messages of those that have joined the channel
 	aliveMembership := ea.Peers().Intersect(chanMembership)
@@ -95,50 +99,58 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	identities := ea.IdentityInfo()
 	identitiesOfMembers := computeIdentitiesOfMembers(identities, membersById)
 
-	// Retrieve the policy for the chaincode
-	pol := ea.PolicyByChaincode(string(chainID), chaincode.Name)
-	if pol == nil {
-		logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
-		return nil, errors.New("policy not found")
+	// Retrieve the policies for the chaincodes
+	pols, err := ea.loadPolicies(chainID, interest)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
+	// For now we take the first policy and ignore the rest
+	pol := pols[0]
 
 	// Compute the combinations of principals (principal sets) that satisfy the endorsement policy
 	principalsSets := policies.PrincipalSets(pol.SatisfiedBy())
 
-	// Obtain the MSP IDs of the members of the channel that are alive
-	mspIDsOfChannelPeers := mspIDsOfMembers(membersById, identities.ByID())
 	// Filter out principal sets that contain MSP IDs for peers that don't have the chaincode(s) installed
-	principalsSets = principalsSets.ContainingOnly(func(principal *msp.MSPPrincipal) bool {
-		mspID := ea.MSPOfPrincipal(principal)
-		_, exists := mspIDsOfChannelPeers[mspID]
-		return mspID != "" && exists
-	})
+	principalsSets = ea.excludeIfCCNotInstalled(principalsSets, membersById, identities.ByID())
 
-	if loadCollections {
-		filterByCollections, err := newCollectionFilter(ccMD.CollectionsConfig)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed creating collection filter")
-		}
-		for _, col := range chaincode.CollectionNames {
-			principalsSets, err = filterByCollections(col, principalsSets)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed filtering collection %s for chaincode %s", col, chaincode.Name)
-			}
-		}
+	// Filter the principal sets by the collections (if applicable)
+	principalsSets, err = metadataAndCollectionFilters.filter(principalsSets)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
+	return ea.computeEndorsementResponse(&context{
+		chaincode:           interest.Chaincodes[0].Name,
+		channel:             string(chainID),
+		principalsSets:      principalsSets,
+		channelMembersById:  channelMembersById,
+		aliveMembership:     aliveMembership,
+		identitiesOfMembers: identitiesOfMembers,
+	})
+}
+
+type context struct {
+	chaincode           string
+	channel             string
+	aliveMembership     discovery2.Members
+	principalsSets      []policies.PrincipalSet
+	channelMembersById  map[string]discovery2.NetworkMember
+	identitiesOfMembers memberIdentities
+}
+
+func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discovery.EndorsementDescriptor, error) {
 	// mapPrincipalsToGroups returns a mapping from principals to their corresponding groups.
 	// groups are just human readable representations that mask the principals behind them
-	principalGroups := mapPrincipalsToGroups(principalsSets)
+	principalGroups := mapPrincipalsToGroups(ctx.principalsSets)
 	// principalsToPeersGraph computes a bipartite graph (V1 U V2 , E)
 	// such that V1 is the peers, V2 are the principals,
 	// and each e=(peer,principal) is in E if the peer satisfies the principal
 	satGraph := principalsToPeersGraph(principalAndPeerData{
-		members: aliveMembership,
+		members: ctx.aliveMembership,
 		pGrps:   principalGroups,
-	}, ea.satisfiesPrincipal(string(chainID), identitiesOfMembers))
+	}, ea.satisfiesPrincipal(ctx.channel, ctx.identitiesOfMembers))
 
-	layouts := computeLayouts(principalsSets, principalGroups, satGraph)
+	layouts := computeLayouts(ctx.principalsSets, principalGroups, satGraph)
 	if len(layouts) == 0 {
 		return nil, errors.New("cannot satisfy any principal combination")
 	}
@@ -146,15 +158,118 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	criteria := &peerMembershipCriteria{
 		possibleLayouts: layouts,
 		satGraph:        satGraph,
-		chanMemberById:  channelMembersById,
-		idOfMembers:     identitiesOfMembers,
+		chanMemberById:  ctx.channelMembersById,
+		idOfMembers:     ctx.identitiesOfMembers,
 	}
 
 	return &discovery.EndorsementDescriptor{
-		Chaincode:         chaincode.Name,
+		Chaincode:         ctx.chaincode,
 		Layouts:           layouts,
 		EndorsersByGroups: endorsersByGroup(criteria),
 	}, nil
+}
+
+func (ea *endorsementAnalyzer) excludeIfCCNotInstalled(principalsSets policies.PrincipalSets, membersById map[string]discovery2.NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) policies.PrincipalSets {
+	// Obtain the MSP IDs of the members of the channel that are alive
+	mspIDsOfChannelPeers := mspIDsOfMembers(membersById, identitiesByID)
+	principalsSets = ea.excludePrincipals(func(principal *msp.MSPPrincipal) bool {
+		mspID := ea.MSPOfPrincipal(principal)
+		_, exists := mspIDsOfChannelPeers[mspID]
+		return mspID != "" && exists
+	}, principalsSets)
+	return principalsSets
+}
+
+func (ea *endorsementAnalyzer) excludePrincipals(filter func(principal *msp.MSPPrincipal) bool, sets ...policies.PrincipalSets) policies.PrincipalSets {
+	var res []policies.PrincipalSets
+	for _, principalSets := range sets {
+		principalSets = principalSets.ContainingOnly(filter)
+		if len(principalSets) == 0 {
+			continue
+		}
+		res = append(res, principalSets)
+	}
+	if len(res) == 0 {
+		return nil
+	}
+	return res[0]
+}
+
+func (ea *endorsementAnalyzer) loadPolicies(chainID common.ChainID, interest *discovery.ChaincodeInterest) ([]policies.InquireablePolicy, error) {
+	var res []policies.InquireablePolicy
+	for _, chaincode := range interest.Chaincodes {
+		pol := ea.PolicyByChaincode(string(chainID), chaincode.Name)
+		if pol == nil {
+			logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
+			return nil, errors.New("policy not found")
+		}
+		res = append(res, pol)
+	}
+	return res, nil
+}
+
+type filterFunc func(policies.PrincipalSets) (policies.PrincipalSets, error)
+
+type filterFunctions []filterFunc
+
+type metadataAndColFilter struct {
+	md     []*chaincode.Metadata
+	filter filterFunc
+}
+
+func loadMetadataAndFilters(chainID common.ChainID, interest *discovery.ChaincodeInterest, fetch chaincodeMetadataFetcher) (*metadataAndColFilter, error) {
+	var metadata []*chaincode.Metadata
+	var filters filterFunctions
+
+	for _, chaincode := range interest.Chaincodes {
+		ccMD := fetch.Metadata(string(chainID), chaincode.Name, len(chaincode.CollectionNames) > 0)
+		if ccMD == nil {
+			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(chainID))
+		}
+		metadata = append(metadata, ccMD)
+		if len(chaincode.CollectionNames) == 0 {
+			continue
+		}
+		f, err := newCollectionFilter(ccMD.CollectionsConfig)
+		if err != nil {
+			logger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
+			return nil, errors.WithStack(err)
+		}
+		filters = append(filters, f.forCollections(chaincode.Name, chaincode.CollectionNames...))
+	}
+
+	return computeFiltersWithMetadata(filters, metadata), nil
+}
+
+func computeFiltersWithMetadata(filters filterFunctions, metadata []*chaincode.Metadata) *metadataAndColFilter {
+	if len(filters) == 0 {
+		return &metadataAndColFilter{
+			md:     metadata,
+			filter: noopFilter,
+		}
+	}
+
+	return &metadataAndColFilter{
+		md:     metadata,
+		filter: filters.combine(),
+	}
+}
+
+func noopFilter(policies policies.PrincipalSets) (policies.PrincipalSets, error) {
+	return policies, nil
+}
+
+func (filters filterFunctions) combine() filterFunc {
+	return func(principals policies.PrincipalSets) (policies.PrincipalSets, error) {
+		var err error
+		for _, filter := range filters {
+			principals, err = filter(principals)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return principals, nil
+	}
 }
 
 func (ea *endorsementAnalyzer) satisfiesPrincipal(channel string, identitiesOfMembers memberIdentities) peerPrincipalEvaluator {
@@ -373,17 +488,23 @@ func (l layouts) groupsSet() map[string]struct{} {
 	return m
 }
 
-func peersWithChaincode(ccMD *chaincode.Metadata) func(member discovery2.NetworkMember) bool {
+func peersWithChaincode(metadata ...*chaincode.Metadata) func(member discovery2.NetworkMember) bool {
 	return func(member discovery2.NetworkMember) bool {
 		if member.Properties == nil {
 			return false
 		}
-		for _, cc := range member.Properties.Chaincodes {
-			if cc.Name == ccMD.Name && cc.Version == ccMD.Version {
-				return true
+		for _, ccMD := range metadata {
+			var found bool
+			for _, cc := range member.Properties.Chaincodes {
+				if cc.Name == ccMD.Name && cc.Version == ccMD.Version {
+					found = true
+				}
+			}
+			if !found {
+				return false
 			}
 		}
-		return false
+		return true
 	}
 }
 
