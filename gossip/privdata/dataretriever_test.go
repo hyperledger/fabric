@@ -22,6 +22,11 @@ type mockedDataStore struct {
 	mock.Mock
 }
 
+func (ds *mockedDataStore) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
+	args := ds.Called()
+	return args.Get(0).(ledger.ConfigHistoryRetriever), args.Error(1)
+}
+
 func (ds *mockedDataStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
 	args := ds.Called(txid, filter)
 	return args.Get(0).(transientstore.RWSetScanner), args.Error(1)

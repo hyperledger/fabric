@@ -32,6 +32,11 @@ type mockLedger struct {
 	mock.Mock
 }
 
+func (m *mockLedger) GetConfigHistoryRetriever() (ledger2.ConfigHistoryRetriever, error) {
+	args := m.Called()
+	return args.Get(0).(ledger2.ConfigHistoryRetriever), args.Error(1)
+}
+
 func (m *mockLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	info := &common.BlockchainInfo{
 		Height:            m.height,

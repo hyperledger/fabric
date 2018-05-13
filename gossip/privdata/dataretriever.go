@@ -33,6 +33,9 @@ type DataStore interface {
 	// collections and namespaces of private data to retrieve
 	GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
 
+	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
+	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
+
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
 }

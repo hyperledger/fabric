@@ -163,6 +163,11 @@ type committerMock struct {
 	mock.Mock
 }
 
+func (mock *committerMock) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
+	args := mock.Called()
+	return args.Get(0).(ledger.ConfigHistoryRetriever), args.Error(1)
+}
+
 func (mock *committerMock) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	args := mock.Called(blockNum, filter)
 	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)

@@ -48,6 +48,9 @@ type Committer interface {
 	// Gets blocks with sequence numbers provided in the slice
 	GetBlocks(blockSeqs []uint64) []*common.Block
 
+	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
+	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
+
 	// Closes committing service
 	Close()
 }

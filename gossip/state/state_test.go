@@ -197,6 +197,11 @@ type mockCommitter struct {
 	sync.Mutex
 }
 
+func (mc *mockCommitter) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
+	args := mc.Called()
+	return args.Get(0).(ledger.ConfigHistoryRetriever), args.Error(1)
+}
+
 func (mc *mockCommitter) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	args := mc.Called(blockNum, filter)
 	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)
@@ -239,6 +244,10 @@ func (*mockCommitter) Close() {
 type ramLedger struct {
 	ledger map[uint64]*ledger.BlockAndPvtData
 	sync.RWMutex
+}
+
+func (mock *ramLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
+	panic("implement me")
 }
 
 func (mock *ramLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {

@@ -50,6 +50,8 @@ type PeerLedgerSupport interface {
 
 	GetBlockByNumber(blockNumber uint64) (*common.Block, error)
 
+	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
+
 	Close()
 }
 
