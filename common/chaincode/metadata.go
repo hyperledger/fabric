@@ -21,10 +21,11 @@ type InstalledChaincode struct {
 
 // Metadata defines channel-scoped metadata of a chaincode
 type Metadata struct {
-	Name    string
-	Version string
-	Policy  []byte
-	Id      []byte
+	Name              string
+	Version           string
+	Policy            []byte
+	Id                []byte
+	CollectionsConfig []byte
 }
 
 // MetadataSet defines an aggregation of Metadata

@@ -24,7 +24,7 @@ type Subscription struct {
 	pendingUpdates chan *cceventmgmt.ChaincodeDefinition
 }
 
-type depCCsRetriever func(Query, ChaincodePredicate, ...string) (chaincode.MetadataSet, error)
+type depCCsRetriever func(Query, ChaincodePredicate, bool, ...string) (chaincode.MetadataSet, error)
 
 // HandleChaincodeDeploy is expected to be invoked when a chaincode is deployed via a deploy transaction and the chaicndoe was already
 // installed on the peer. This also gets invoked when an already deployed chaincode is installed on the peer
@@ -97,5 +97,5 @@ func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, 
 		return true
 	}
 
-	return deployedCCs(query, filter, names(ccs)...)
+	return deployedCCs(query, filter, false, names(ccs)...)
 }

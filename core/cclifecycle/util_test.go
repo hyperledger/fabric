@@ -253,7 +253,7 @@ func TestChaincodeInspection(t *testing.T) {
 			query.On("Done")
 			query.On("GetState", mock.Anything, mock.Anything).Return(test.returnedCCBytes, test.queryErr).Once()
 			query.On("GetState", mock.Anything, mock.Anything).Return(cc2Bytes, nil).Once()
-			ccInfo, err := cc.DeployedChaincodes(query, test.filter, test.queriedChaincodes...)
+			ccInfo, err := cc.DeployedChaincodes(query, test.filter, false, test.queriedChaincodes...)
 			if test.queryErr != nil {
 				assert.Error(t, err)
 			} else {
