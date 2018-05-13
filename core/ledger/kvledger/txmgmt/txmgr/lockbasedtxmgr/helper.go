@@ -37,19 +37,19 @@ func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder)
 	return helper
 }
 
-func (h *queryHelper) getState(ns string, key string) ([]byte, error) {
+func (h *queryHelper) getState(ns string, key string) ([]byte, []byte, error) {
 	if err := h.checkDone(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	versionedValue, err := h.txmgr.db.GetState(ns, key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	val, ver := decomposeVersionedValue(versionedValue)
+	val, metadata, ver := decomposeVersionedValue(versionedValue)
 	if h.rwsetBuilder != nil {
 		h.rwsetBuilder.AddToReadSet(ns, key, ver)
 	}
-	return val, nil
+	return val, metadata, nil
 }
 
 func (h *queryHelper) getStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
@@ -62,7 +62,7 @@ func (h *queryHelper) getStateMultipleKeys(namespace string, keys []string) ([][
 	}
 	values := make([][]byte, len(versionedValues))
 	for i, versionedValue := range versionedValues {
-		val, ver := decomposeVersionedValue(versionedValue)
+		val, _, ver := decomposeVersionedValue(versionedValue)
 		if h.rwsetBuilder != nil {
 			h.rwsetBuilder.AddToReadSet(namespace, keys[i], ver)
 		}
@@ -111,7 +111,8 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 		return nil, err
 	}
 
-	val, ver := decomposeVersionedValue(versionedValue)
+	// metadata is always nil for private data - because, the metadata is part of the hashed key (instead of raw key)
+	val, _, ver := decomposeVersionedValue(versionedValue)
 
 	keyHash := util.ComputeStringHash(key)
 	if hashVersion, err = h.txmgr.db.GetKeyHashVersion(ns, coll, keyHash); err != nil {
@@ -128,6 +129,23 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	return val, nil
 }
 
+func (h *queryHelper) getPrivateDataValueHash(ns, coll, key string) (valueHash, metadataBytes []byte, err error) {
+	if err := h.checkDone(); err != nil {
+		return nil, nil, err
+	}
+	var versionedValue *statedb.VersionedValue
+
+	keyHash := util.ComputeStringHash(key)
+	if versionedValue, err = h.txmgr.db.GetValueHash(ns, coll, keyHash); err != nil {
+		return nil, nil, err
+	}
+	valHash, metadata, ver := decomposeVersionedValue(versionedValue)
+	if h.rwsetBuilder != nil {
+		h.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+	}
+	return valHash, metadata, nil
+}
+
 func (h *queryHelper) getPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
 	if err := h.validateCollName(ns, coll); err != nil {
 		return nil, err
@@ -141,7 +159,7 @@ func (h *queryHelper) getPrivateDataMultipleKeys(ns, coll string, keys []string)
 	}
 	values := make([][]byte, len(versionedValues))
 	for i, versionedValue := range versionedValues {
-		val, ver := decomposeVersionedValue(versionedValue)
+		val, _, ver := decomposeVersionedValue(versionedValue)
 		if h.rwsetBuilder != nil {
 			h.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver)
 		}
@@ -335,14 +353,16 @@ func (itr *queryResultsItr) Close() {
 	itr.DBItr.Close()
 }
 
-func decomposeVersionedValue(versionedValue *statedb.VersionedValue) ([]byte, *version.Height) {
+func decomposeVersionedValue(versionedValue *statedb.VersionedValue) ([]byte, []byte, *version.Height) {
 	var value []byte
+	var metadata []byte
 	var ver *version.Height
 	if versionedValue != nil {
 		value = versionedValue.Value
 		ver = versionedValue.Version
+		metadata = versionedValue.Metadata
 	}
-	return value, ver
+	return value, metadata, ver
 }
 
 // pvtdataResultsItr iterates over results of a query on pvt data

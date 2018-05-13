@@ -33,13 +33,7 @@ func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string) (*lockBasedTxSi
 
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) error {
-	if err := s.helper.checkDone(); err != nil {
-		return err
-	}
-	if err := s.checkBeforeWrite(); err != nil {
-		return err
-	}
-	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
+	if err := s.checkWritePrecondition(key, value); err != nil {
 		return err
 	}
 	s.rwsetBuilder.AddToWriteSet(ns, key, value)
@@ -63,12 +57,16 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 
 // SetStateMetadata implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetStateMetadata(namespace, key string, metadata map[string][]byte) error {
-	return errors.New("not implemented")
+	if err := s.checkWritePrecondition(key, nil); err != nil {
+		return err
+	}
+	s.rwsetBuilder.AddToMetadataWriteSet(namespace, key, metadata)
+	return nil
 }
 
 // DeleteStateMetadata implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) DeleteStateMetadata(namespace, key string) error {
-	return errors.New("not implemented")
+	return s.SetStateMetadata(namespace, key, nil)
 }
 
 // SetPrivateData implements method in interface `ledger.TxSimulator`
@@ -76,13 +74,7 @@ func (s *lockBasedTxSimulator) SetPrivateData(ns, coll, key string, value []byte
 	if err := s.helper.validateCollName(ns, coll); err != nil {
 		return err
 	}
-	if err := s.helper.checkDone(); err != nil {
-		return err
-	}
-	if err := s.checkBeforeWrite(); err != nil {
-		return err
-	}
-	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
+	if err := s.checkWritePrecondition(key, value); err != nil {
 		return err
 	}
 	s.writePerformed = true
@@ -115,12 +107,16 @@ func (s *lockBasedTxSimulator) GetPrivateDataRangeScanIterator(namespace, collec
 
 // SetPrivateDataMetadata implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error {
-	return errors.New("not implemented")
+	if err := s.checkWritePrecondition(key, nil); err != nil {
+		return err
+	}
+	s.rwsetBuilder.AddToHashedMetadataWriteSet(namespace, collection, key, metadata)
+	return nil
 }
 
 // DeletePrivateMetadata implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) DeletePrivateDataMetadata(namespace, collection, key string) error {
-	return errors.New("not implemented")
+	return s.SetPrivateDataMetadata(namespace, collection, key, nil)
 }
 
 // ExecuteQueryOnPrivateData implements method in interface `ledger.TxSimulator`
@@ -150,13 +146,16 @@ func (s *lockBasedTxSimulator) ExecuteUpdate(query string) error {
 	return errors.New("not supported")
 }
 
-func (s *lockBasedTxSimulator) checkBeforeWrite() error {
-	if s.pvtdataQueriesPerformed {
-		return &txmgr.ErrUnsupportedTransaction{
-			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
-		}
+func (s *lockBasedTxSimulator) checkWritePrecondition(key string, value []byte) error {
+	if err := s.helper.checkDone(); err != nil {
+		return err
 	}
-	s.writePerformed = true
+	if err := s.checkPvtdataQueryPerformed(); err != nil {
+		return err
+	}
+	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -167,5 +166,15 @@ func (s *lockBasedTxSimulator) checkBeforePvtdataQueries() error {
 		}
 	}
 	s.pvtdataQueriesPerformed = true
+	return nil
+}
+
+func (s *lockBasedTxSimulator) checkPvtdataQueryPerformed() error {
+	if s.pvtdataQueriesPerformed {
+		return &txmgr.ErrUnsupportedTransaction{
+			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
+		}
+	}
+	s.writePerformed = true
 	return nil
 }

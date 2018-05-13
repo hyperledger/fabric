@@ -864,6 +864,120 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	simulator.Done()
 }
 
+func TestTxWithPubMetadata(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		t.Logf("Running test for TestEnv = %s", testEnv.getName())
+		testLedgerID := "testtxwithpubmetadata"
+		testEnv.init(t, testLedgerID, nil)
+		testTxWithPubMetadata(t, testEnv)
+		testEnv.cleanup()
+	}
+}
+
+func testTxWithPubMetadata(t *testing.T, env testEnv) {
+	namespace := "testns"
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+
+	// Simulate and commit tx1 - set val and metadata for key1 and key2. Set only metadata for key3
+	s1, _ := txMgr.NewTxSimulator("test_tx1")
+	key1, value1, metadata1 := "key1", []byte("value1"), map[string][]byte{"entry1": []byte("meatadata1-entry1")}
+	key2, value2, metadata2 := "key2", []byte("value2"), map[string][]byte{"entry1": []byte("meatadata2-entry1")}
+	key3, metadata3 := "key3", map[string][]byte{"entry1": []byte("meatadata3-entry")}
+
+	s1.SetState(namespace, key1, value1)
+	s1.SetStateMetadata(namespace, key1, metadata1)
+	s1.SetState(namespace, key2, value2)
+	s1.SetStateMetadata(namespace, key2, metadata2)
+	s1.SetStateMetadata(namespace, key3, metadata3)
+	s1.Done()
+	txRWSet1, _ := s1.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet1.PubSimulationResults)
+
+	// Run query - key1 and key2 should return both value and metadata. Key3 should still be non-exsting in db
+	qe, _ := txMgr.NewQueryExecutor("test_tx2")
+	checkTestQueryResults(t, qe, namespace, key1, value1, metadata1)
+	checkTestQueryResults(t, qe, namespace, key2, value2, metadata2)
+	checkTestQueryResults(t, qe, namespace, key3, nil, nil)
+	qe.Done()
+
+	// Simulate and commit tx3 - update metadata for key1 and delete metadata for key2
+	updatedMetadata1 := map[string][]byte{"entry1": []byte("meatadata1-entry1"), "entry2": []byte("meatadata1-entry2")}
+	s2, _ := txMgr.NewTxSimulator("test_tx3")
+	s2.SetStateMetadata(namespace, key1, updatedMetadata1)
+	s2.DeleteStateMetadata(namespace, key2)
+	s2.Done()
+	txRWSet2, _ := s2.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet2.PubSimulationResults)
+
+	// Run query - key1 should return updated metadata. Key2 should return 'nil' metadata
+	qe, _ = txMgr.NewQueryExecutor("test_tx4")
+	checkTestQueryResults(t, qe, namespace, key1, value1, updatedMetadata1)
+	checkTestQueryResults(t, qe, namespace, key2, value2, nil)
+	qe.Done()
+}
+
+func TestTxWithPvtdataMetadata(t *testing.T) {
+	ledgerid, ns, coll := "testtxwithpvtdatametadata", "ns", "coll"
+	cs := btltestutil.NewMockCollectionStore()
+	cs.SetBTL("ns", "coll", 1000)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
+	for _, testEnv := range testEnvs {
+		t.Logf("Running test for TestEnv = %s", testEnv.getName())
+		testEnv.init(t, ledgerid, btlPolicy)
+		testTxWithPvtdataMetadata(t, testEnv, ns, coll)
+		testEnv.cleanup()
+	}
+}
+
+func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
+	ledgerid := "testtxwithpvtdatametadata"
+	txMgr := env.getTxMgr()
+	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
+
+	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr), []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+
+	// Simulate and commit tx1 - set val and metadata for key1 and key2. Set only metadata for key3
+	s1, _ := txMgr.NewTxSimulator("test_tx1")
+	key1, value1, metadata1 := "key1", []byte("value1"), map[string][]byte{"entry1": []byte("meatadata1-entry1")}
+	key2, value2, metadata2 := "key2", []byte("value2"), map[string][]byte{"entry1": []byte("meatadata2-entry1")}
+	key3, metadata3 := "key3", map[string][]byte{"entry1": []byte("meatadata3-entry")}
+	s1.SetPrivateData(ns, coll, key1, value1)
+	s1.SetPrivateDataMetadata(ns, coll, key1, metadata1)
+	s1.SetPrivateData(ns, coll, key2, value2)
+	s1.SetPrivateDataMetadata(ns, coll, key2, metadata2)
+	s1.SetPrivateDataMetadata(ns, coll, key3, metadata3)
+	s1.Done()
+
+	blkAndPvtdata1 := prepareNextBlockForTestFromSimulator(t, bg, s1)
+	assert.NoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata1, true))
+	assert.NoError(t, txMgr.Commit())
+
+	// Run query - key1 and key2 should return both value and metadata. Key3 should still be non-exsting in db
+	qe, _ := txMgr.NewQueryExecutor("test_tx2")
+	checkPvtdataTestQueryResults(t, qe, ns, coll, key1, value1, metadata1)
+	checkPvtdataTestQueryResults(t, qe, ns, coll, key2, value2, metadata2)
+	checkPvtdataTestQueryResults(t, qe, ns, coll, key3, nil, nil)
+	qe.Done()
+
+	// Simulate and commit tx3 - update metadata for key1 and delete metadata for key2
+	updatedMetadata1 := map[string][]byte{"entry1": []byte("meatadata1-entry1"), "entry2": []byte("meatadata1-entry2")}
+	s2, _ := txMgr.NewTxSimulator("test_tx3")
+	s2.SetPrivateDataMetadata(ns, coll, key1, updatedMetadata1)
+	s2.DeletePrivateDataMetadata(ns, coll, key2)
+	s2.Done()
+
+	blkAndPvtdata2 := prepareNextBlockForTestFromSimulator(t, bg, s2)
+	assert.NoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata2, true))
+	assert.NoError(t, txMgr.Commit())
+
+	// Run query - key1 should return updated metadata. Key2 should return 'nil' metadata
+	qe, _ = txMgr.NewQueryExecutor("test_tx4")
+	checkPvtdataTestQueryResults(t, qe, ns, coll, key1, value1, updatedMetadata1)
+	checkPvtdataTestQueryResults(t, qe, ns, coll, key2, value2, nil)
+	qe.Done()
+}
+
 func prepareNextBlockForTest(t *testing.T, txMgr txmgr.TxMgr, bg *testutil.BlockGenerator,
 	txid string, pubKVs map[string]string, pvtKVs map[string]string) *ledger.BlockAndPvtData {
 	simulator, _ := txMgr.NewTxSimulator(txid)
@@ -875,10 +989,38 @@ func prepareNextBlockForTest(t *testing.T, txMgr txmgr.TxMgr, bg *testutil.Block
 		simulator.SetPrivateData("ns", "coll", k, []byte(v))
 	}
 	simulator.Done()
+	return prepareNextBlockForTestFromSimulator(t, bg, simulator)
+}
+
+func prepareNextBlockForTestFromSimulator(t *testing.T, bg *testutil.BlockGenerator, simulator ledger.TxSimulator) *ledger.BlockAndPvtData {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
 	return &ledger.BlockAndPvtData{Block: block,
 		BlockPvtData: map[uint64]*ledger.TxPvtData{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}
+}
+
+func checkTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, key string,
+	expectedVal []byte, expectedMetadata map[string][]byte) {
+	committedVal, err := qe.GetState(ns, key)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedVal, committedVal)
+
+	committedMetadata, err := qe.GetStateMetadata(ns, key)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedMetadata, committedMetadata)
+	t.Logf("key=%s, value=%s, metadata=%s", key, committedVal, committedMetadata)
+}
+
+func checkPvtdataTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, coll, key string,
+	expectedVal []byte, expectedMetadata map[string][]byte) {
+	committedVal, err := qe.GetPrivateData(ns, coll, key)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedVal, committedVal)
+
+	committedMetadata, err := qe.GetPrivateDataMetadata(ns, coll, key)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedMetadata, committedMetadata)
+	t.Logf("key=%s, value=%s, metadata=%s", key, committedVal, committedMetadata)
 }

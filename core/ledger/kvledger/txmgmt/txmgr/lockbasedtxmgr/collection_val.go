@@ -46,7 +46,7 @@ func (v *collNameValidator) validateCollName(ns, coll string) error {
 
 func (v *collNameValidator) retrieveCollConfigFromStateDB(ns string) (*common.CollectionConfigPackage, error) {
 	logger.Debugf("retrieveCollConfigFromStateDB() begin - ns=[%s]", ns)
-	configPkgBytes, err := v.queryHelper.getState(lsccNamespace, constructCollectionConfigKey(ns))
+	configPkgBytes, _, err := v.queryHelper.getState(lsccNamespace, constructCollectionConfigKey(ns))
 	if err != nil {
 		return nil, err
 	}
