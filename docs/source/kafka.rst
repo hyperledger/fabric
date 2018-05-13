@@ -83,10 +83,5 @@ Debugging
 
 Set ``General.LogLevel`` to ``DEBUG`` and ``Kafka.Verbose`` in ``orderer.yaml`` to ``true``.
 
-Example
--------
-
-Sample Docker Compose configuration files inline with the recommended settings above can be found under the ``fabric/bddtests`` directory. Look for ``dc-orderer-kafka-base.yml`` and ``dc-orderer-kafka.yml``.
-
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

@@ -44,7 +44,7 @@ apt-get -y install software-properties-common curl git sudo wget "build-essentia
 #####################################
 # Install and setup Docker services #
 #####################################
-# Along with docker.io, aufs-tools also needs to be installed as 'auplink' which is part of aufs-tools package gets invoked during behave tests.
+# Along with docker.io, aufs-tools also needs to be installed as 'auplink' which is part of aufs-tools package
 apt-get -y install docker.io aufs-tools
 
 # Set DOCKER_OPTS and restart Docker daemon.
@@ -69,14 +69,14 @@ export GOROOT="/opt/go"
 ln -s /usr/local/go $GOROOT
 
 ################################################
-# Install PIP tools, behave and docker-compose #
+# Install PIP tools and docker-compose         #
 ################################################
 
 apt-get -y install python-pip libssl-dev libffi-dev libltdl-dev
 pip install --upgrade pip
-pip install behave nose docker-compose
+pip install nose docker-compose
 
 pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3 grpcio==1.0.4 pyOpenSSL==16.2.0 pysha3==1.0b1
 
-#PIP packages required for some behave tests
+#PIP packages required for some tests
 pip install urllib3 ndg-httpsclient pyasn1 ecdsa python-slugify grpcio-tools jinja2 b3j0f.aop six

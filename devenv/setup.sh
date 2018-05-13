@@ -84,11 +84,6 @@ curl -sL $GO_URL | (cd $GOROOT && tar --strip-components 1 -xz)
 runuser -l ubuntu -c '/hyperledger/fabric/devenv/install_nvm.sh'
 
 # ----------------------------------------------------------------
-# Install Behave
-# ----------------------------------------------------------------
-/hyperledger/fabric/scripts/install_behave.sh
-
-# ----------------------------------------------------------------
 # Install Java
 # ----------------------------------------------------------------
 apt-get install -y openjdk-8-jdk maven

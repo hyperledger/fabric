@@ -18,7 +18,7 @@
 #       cd $HOME/git/src/github.com/hyperledger
 #       git clone http://gerrit.hyperledger.org/r/fabric
 #       source fabric/devenv/setupRHELonZ.sh
-#       make peer unit-test behave
+#       make peer unit-test
 
 if [ xroot != x$(whoami) ]
 then
@@ -80,7 +80,7 @@ yum install python-setuptools
 curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
 python get-pip.py
 pip install --upgrade pip
-pip install behave nose docker-compose
+pip install nose docker-compose
 
 ################
 #grpcio package
@@ -100,7 +100,7 @@ GRPC_PYTHON_BUILD_WITH_CYTHON=1 pip install .
 # updater-server, update-engine, and update-service-common dependencies (for running locally)
 pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3 pyOpenSSL==16.2.0 pysha3==1.0b1
 
-#PIP packages required for some behave tests
+#PIP packages required for some tests
 pip install urllib3 ndg-httpsclient pyasn1 ecdsa python-slugify grpcio-tools jinja2 b3j0f.aop
 
 cat >> ~/.bashrc <<HEREDOC
