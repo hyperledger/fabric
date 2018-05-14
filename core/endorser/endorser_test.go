@@ -72,7 +72,11 @@ func TestEndorserNilProp(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	pResp, err := es.ProcessProposal(context.Background(), nil)
@@ -104,7 +108,11 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 1000, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "Chaincode Error"},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -122,7 +130,11 @@ func TestEndorserNoCCDef(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionError:   errors.New(""),
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -141,7 +153,11 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 		CheckInstantiationPolicyError: errors.New(""),
 		ChaincodeDefinitionRv:         &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                   &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:              &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -163,7 +179,11 @@ func TestEndorserSysCC(t *testing.T) {
 		IsSysCCRv:                  true,
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -182,7 +202,11 @@ func TestEndorserCCInvocationError(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ExecuteError:               errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -199,7 +223,11 @@ func TestEndorserLSCCBadType(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	cds := utils.MarshalOrPanic(
@@ -224,7 +252,11 @@ func TestEndorserDupTXId(t *testing.T) {
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -243,7 +275,11 @@ func TestEndorserBadACL(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -260,7 +296,11 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedPropWithCHIdAndArgs("", "ccid", "0", [][]byte{[]byte("args")}, t)
@@ -277,8 +317,12 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-		ExecuteCDSError:            errors.New(""),
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
+		ExecuteCDSError: errors.New(""),
 	})
 
 	cds := utils.MarshalOrPanic(
@@ -306,8 +350,12 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-		SysCCMap:                   SysCCMap,
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
+		SysCCMap: SysCCMap,
 	})
 
 	cds := utils.MarshalOrPanic(
@@ -338,7 +386,11 @@ func TestEndorserLSCCJava1(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	cds := utils.MarshalOrPanic(
@@ -369,7 +421,11 @@ func TestEndorserLSCCJava2(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	cds := utils.MarshalOrPanic(
@@ -399,7 +455,11 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		ExecuteEvent:               &pb.ChaincodeEvent{},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -418,7 +478,11 @@ func TestEndorserBadChannel(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	signedProp := getSignedPropWithCHID("ccid", "0", "barfchain", t)
@@ -440,7 +504,11 @@ func TestEndorserGoodPath(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -463,7 +531,11 @@ func TestEndorserLSCC(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -505,7 +577,11 @@ func TestEndorseWithPlugin(t *testing.T) {
 		GetTransactionByIDErr:      errors.New("can't find this transaction in the index"),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	}
 	attachPluginEndorser(support)
 
@@ -527,7 +603,11 @@ func TestSimulateProposal(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	_, _, _, _, err := es.SimulateProposal(nil, "", "", nil, nil, nil, nil)
@@ -545,7 +625,11 @@ func TestEndorserJavaChecks(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &mockccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
+		GetTxSimulatorRv: &mockccprovider.MockTxSim{
+			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+			},
+		},
 	})
 
 	err := es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{})
