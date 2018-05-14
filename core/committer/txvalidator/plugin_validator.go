@@ -89,7 +89,7 @@ func NewPluginValidator(pm PluginMapper, qec QueryExecutorCreator, deserializer 
 	}
 }
 
-func (pv *PluginValidator) ValidateWithPlugin(ctx Context) error {
+func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 	plugin, err := pv.getOrCreatePlugin(ctx)
 	if err != nil {
 		return &validation.ExecutionFailureError{
@@ -105,7 +105,7 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx Context) error {
 	return err
 }
 
-func (pv *PluginValidator) getOrCreatePlugin(ctx Context) (validation.Plugin, error) {
+func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, error) {
 	pluginFactory := pv.PluginFactoryByName(PluginName(ctx.VSCCName))
 	if pluginFactory == nil {
 		return nil, errors.Errorf("plugin with name %s wasn't found", ctx.VSCCName)

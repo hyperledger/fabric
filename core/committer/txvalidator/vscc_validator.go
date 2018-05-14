@@ -193,7 +193,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 			}
 
 			// do VSCC validation
-			ctx := Context{
+			ctx := &Context{
 				Seq:       seq,
 				Envelope:  envBytes,
 				Block:     block,
@@ -234,7 +234,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 		// currently, VSCC does custom validation for LSCC only; if an hlf
 		// user creates a new system chaincode which is invokable from the outside
 		// they have to modify VSCC to provide appropriate validation
-		ctx := Context{
+		ctx := &Context{
 			Seq:       seq,
 			Envelope:  envBytes,
 			Block:     block,
@@ -257,7 +257,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 	return nil, peer.TxValidationCode_VALID
 }
 
-func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx Context) error {
+func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 	logger.Info("Validating", ctx, "with plugin")
 	err := v.pluginValidator.ValidateWithPlugin(ctx)
 	if err == nil {

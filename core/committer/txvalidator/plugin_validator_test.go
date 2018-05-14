@@ -30,7 +30,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	deserializer := &mocks.IdentityDeserializer{}
 	capabilites := &mocks.Capabilities{}
 	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
-	ctx := txvalidator.Context{
+	ctx := &txvalidator.Context{
 		Namespace: "mycc",
 		VSCCName:  "vscc",
 	}
@@ -99,7 +99,7 @@ func TestSamplePlugin(t *testing.T) {
 
 	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
 	acceptAllPolicyBytes, _ := proto.Marshal(cauthdsl.AcceptAllPolicy)
-	ctx := txvalidator.Context{
+	ctx := &txvalidator.Context{
 		Namespace: "mycc",
 		VSCCName:  "vscc",
 		Policy:    acceptAllPolicyBytes,
