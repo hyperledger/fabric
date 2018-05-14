@@ -404,6 +404,10 @@ peer:
         endorsers:
           escc:
             name: DefaultEndorsement
+        validators:
+          vscc:
+            name: DefaultValidation
+
     #    library: /etc/hyperledger/fabric/plugin/escc.so
     # Number of goroutines that will execute transaction validation in parallel.
     # By default, the peer chooses the number of CPUs on the machine. Set this

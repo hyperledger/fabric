@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
@@ -39,6 +40,7 @@ import (
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
+	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -257,10 +259,11 @@ func serve(args []string) error {
 		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,
 	}
-	pluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
+	endorsementPluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
+	validationPluginsByName := reg.Lookup(library.Validation).(map[string]validation.PluginFactory)
 	signingIdentityFetcher := (endorsement3.SigningIdentityFetcher)(endorserSupport)
 	channelStateRetriever := endorser.ChannelStateRetriever(endorserSupport)
-	pluginMapper := endorser.MapBasedPluginMapper(pluginsByName)
+	pluginMapper := endorser.MapBasedPluginMapper(endorsementPluginsByName)
 	pluginEndorser := endorser.NewPluginEndorser(channelStateRetriever, signingIdentityFetcher, pluginMapper)
 	endorserSupport.PluginEndorser = pluginEndorser
 	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport)
@@ -352,7 +355,7 @@ func serve(args []string) error {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
-	}, ccp, sccp)
+	}, ccp, sccp, txvalidator.MapBasedPluginMapper(validationPluginsByName))
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, messageCryptoService, lifecycle)

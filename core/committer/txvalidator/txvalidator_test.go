@@ -52,7 +52,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	tValidator := &txValidator{vcs, mockVsccValidator}
+	tValidator := &TxValidator{vcs, mockVsccValidator}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
@@ -127,7 +127,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv}, semaphore.NewWeighted(10)}
-	tValidator := &txValidator{vcs, mockVsccValidator}
+	tValidator := &TxValidator{vcs, mockVsccValidator}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
@@ -214,7 +214,7 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	tValidator := &txValidator{vcs, &validator.MockVsccValidator{}}
+	tValidator := &TxValidator{vcs, &validator.MockVsccValidator{}}
 
 	// Create simple endorsement transaction
 	payload := &common.Payload{
@@ -337,7 +337,7 @@ func TestGetTxCCInstance(t *testing.T) {
 		ChaincodeVersion: upgradeCCVersion,
 	}
 
-	tValidator := &txValidator{}
+	tValidator := &TxValidator{}
 	invokeCCIns, upgradeCCIns, err := tValidator.getTxCCInstance(payload)
 	if err != nil {
 		t.Fatalf("Get chaincode from tx error: %s", err)
@@ -383,7 +383,7 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	expectTxsFltr.SetFlag(6, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 	expectTxsFltr.SetFlag(7, peer.TxValidationCode_VALID)
 
-	tValidator := &txValidator{}
+	tValidator := &TxValidator{}
 	tValidator.invalidTXsForUpgradeCC(txsChaincodeNames, upgradedChaincodes, txsfltr)
 
 	assert.EqualValues(t, expectTxsFltr, txsfltr)

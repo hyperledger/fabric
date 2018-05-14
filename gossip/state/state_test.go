@@ -701,7 +701,7 @@ func TestHaltChainProcessing(t *testing.T) {
 
 	v := &validator.MockValidator{}
 	v.On("Validate").Return(&errors2.VSCCExecutionFailureError{
-		Reason: "foobar",
+		Err: errors.New("foobar"),
 	}).Once()
 	portPrefix := portStartRange + 350
 	newPeerNodeWithGossipWithValidator(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g, v)

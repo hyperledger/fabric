@@ -162,6 +162,8 @@ var chains = struct {
 
 var chainInitializer func(string)
 
+var pluginMapper txvalidator.PluginMapper
+
 var mockMSPIDGetter func(string) []string
 
 func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
@@ -175,13 +177,14 @@ var validationWorkersSemaphore *semaphore.Weighted
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) {
+func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
 	}
 	validationWorkersSemaphore = semaphore.NewWeighted(int64(nWorkers))
 
+	pluginMapper = pm
 	chainInitializer = init
 
 	var cb *common.Block
@@ -204,7 +207,7 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 			continue
 		}
 		// Create a chain if we get a valid ledger with config block
-		if err = createChain(cid, ledger, cb, ccp, sccp); err != nil {
+		if err = createChain(cid, ledger, cb, ccp, sccp, pm); err != nil {
 			peerLogger.Warningf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 			continue
@@ -253,7 +256,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 }
 
 // createChain creates a new chain object and insert it into the chains
-func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) error {
+func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper) error {
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return err
@@ -347,7 +350,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		*chainSupport
 		*semaphore.Weighted
 	}{cs, validationWorkersSemaphore}
-	validator := txvalidator.NewTxValidator(vcs, ccp, sccp)
+	validator := txvalidator.NewTxValidator(vcs, sccp, pm)
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {
@@ -399,7 +402,7 @@ func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sc
 		return fmt.Errorf("Cannot create ledger from genesis block, due to %s", err)
 	}
 
-	return createChain(cid, l, cb, ccp, sccp)
+	return createChain(cid, l, cb, ccp, sccp, pluginMapper)
 }
 
 // GetLedger returns the ledger of the chain with chain ID. Note that this
