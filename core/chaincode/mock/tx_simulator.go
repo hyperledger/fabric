@@ -196,11 +196,11 @@ type TxSimulator struct {
 	setStateMultipleKeysReturnsOnCall map[int]struct {
 		result1 error
 	}
-	SetStateMetadataStub        func(namespace, key, metadata map[string][]byte) error
+	SetStateMetadataStub        func(namespace, key string, metadata map[string][]byte) error
 	setStateMetadataMutex       sync.RWMutex
 	setStateMetadataArgsForCall []struct {
-		namespace map[string][]byte
-		key       map[string][]byte
+		namespace string
+		key       string
 		metadata  map[string][]byte
 	}
 	setStateMetadataReturns struct {
@@ -272,12 +272,12 @@ type TxSimulator struct {
 	deletePrivateDataReturnsOnCall map[int]struct {
 		result1 error
 	}
-	SetPrivateDataMetadataStub        func(namespace, collection, key, metadata map[string][]byte) error
+	SetPrivateDataMetadataStub        func(namespace, collection, key string, metadata map[string][]byte) error
 	setPrivateDataMetadataMutex       sync.RWMutex
 	setPrivateDataMetadataArgsForCall []struct {
-		namespace  map[string][]byte
-		collection map[string][]byte
-		key        map[string][]byte
+		namespace  string
+		collection string
+		key        string
 		metadata   map[string][]byte
 	}
 	setPrivateDataMetadataReturns struct {
@@ -1020,12 +1020,12 @@ func (fake *TxSimulator) SetStateMultipleKeysReturnsOnCall(i int, result1 error)
 	}{result1}
 }
 
-func (fake *TxSimulator) SetStateMetadata(namespace map[string][]byte, key map[string][]byte, metadata map[string][]byte) error {
+func (fake *TxSimulator) SetStateMetadata(namespace string, key string, metadata map[string][]byte) error {
 	fake.setStateMetadataMutex.Lock()
 	ret, specificReturn := fake.setStateMetadataReturnsOnCall[len(fake.setStateMetadataArgsForCall)]
 	fake.setStateMetadataArgsForCall = append(fake.setStateMetadataArgsForCall, struct {
-		namespace map[string][]byte
-		key       map[string][]byte
+		namespace string
+		key       string
 		metadata  map[string][]byte
 	}{namespace, key, metadata})
 	fake.recordInvocation("SetStateMetadata", []interface{}{namespace, key, metadata})
@@ -1045,7 +1045,7 @@ func (fake *TxSimulator) SetStateMetadataCallCount() int {
 	return len(fake.setStateMetadataArgsForCall)
 }
 
-func (fake *TxSimulator) SetStateMetadataArgsForCall(i int) (map[string][]byte, map[string][]byte, map[string][]byte) {
+func (fake *TxSimulator) SetStateMetadataArgsForCall(i int) (string, string, map[string][]byte) {
 	fake.setStateMetadataMutex.RLock()
 	defer fake.setStateMetadataMutex.RUnlock()
 	return fake.setStateMetadataArgsForCall[i].namespace, fake.setStateMetadataArgsForCall[i].key, fake.setStateMetadataArgsForCall[i].metadata
@@ -1323,13 +1323,13 @@ func (fake *TxSimulator) DeletePrivateDataReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *TxSimulator) SetPrivateDataMetadata(namespace map[string][]byte, collection map[string][]byte, key map[string][]byte, metadata map[string][]byte) error {
+func (fake *TxSimulator) SetPrivateDataMetadata(namespace string, collection string, key string, metadata map[string][]byte) error {
 	fake.setPrivateDataMetadataMutex.Lock()
 	ret, specificReturn := fake.setPrivateDataMetadataReturnsOnCall[len(fake.setPrivateDataMetadataArgsForCall)]
 	fake.setPrivateDataMetadataArgsForCall = append(fake.setPrivateDataMetadataArgsForCall, struct {
-		namespace  map[string][]byte
-		collection map[string][]byte
-		key        map[string][]byte
+		namespace  string
+		collection string
+		key        string
 		metadata   map[string][]byte
 	}{namespace, collection, key, metadata})
 	fake.recordInvocation("SetPrivateDataMetadata", []interface{}{namespace, collection, key, metadata})
@@ -1349,7 +1349,7 @@ func (fake *TxSimulator) SetPrivateDataMetadataCallCount() int {
 	return len(fake.setPrivateDataMetadataArgsForCall)
 }
 
-func (fake *TxSimulator) SetPrivateDataMetadataArgsForCall(i int) (map[string][]byte, map[string][]byte, map[string][]byte, map[string][]byte) {
+func (fake *TxSimulator) SetPrivateDataMetadataArgsForCall(i int) (string, string, string, map[string][]byte) {
 	fake.setPrivateDataMetadataMutex.RLock()
 	defer fake.setPrivateDataMetadataMutex.RUnlock()
 	return fake.setPrivateDataMetadataArgsForCall[i].namespace, fake.setPrivateDataMetadataArgsForCall[i].collection, fake.setPrivateDataMetadataArgsForCall[i].key, fake.setPrivateDataMetadataArgsForCall[i].metadata
