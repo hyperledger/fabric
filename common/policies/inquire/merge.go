@@ -8,10 +8,21 @@ package inquire
 
 import (
 	"reflect"
+
+	"github.com/hyperledger/fabric/common/policies"
 )
 
 // ComparablePrincipalSets aggregate ComparablePrincipalSets
 type ComparablePrincipalSets []ComparablePrincipalSet
+
+// ToPrincipalSets converts this ComparablePrincipalSets to a PrincipalSets
+func (cps ComparablePrincipalSets) ToPrincipalSets() policies.PrincipalSets {
+	var res policies.PrincipalSets
+	for _, cp := range cps {
+		res = append(res, cp.ToPrincipalSet())
+	}
+	return res
+}
 
 // Merge returns ComparablePrincipalSets that the underlying PrincipalSets consist of
 // PrincipalSets that satisfy the endorsement policies that both ComparablePrincipalSets were derived of.

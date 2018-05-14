@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/graph"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policies/inquire"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
@@ -79,12 +80,6 @@ type peerPrincipalEvaluator func(member discovery2.NetworkMember, principal *msp
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
 func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	// For now we only support a single chaincode
-	if len(interest.Chaincodes) != 1 {
-		return nil, errors.New("only a single chaincode is supported")
-	}
-	interest.Chaincodes = []*discovery.ChaincodeCall{interest.Chaincodes[0]}
-
 	metadataAndCollectionFilters, err := loadMetadataAndFilters(chainID, interest, ea)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -98,20 +93,12 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	// Compute a mapping between the PKI-IDs of members to their identities
 	identities := ea.IdentityInfo()
 	identitiesOfMembers := computeIdentitiesOfMembers(identities, membersById)
-
-	// Retrieve the policies for the chaincodes
-	pols, err := ea.loadPolicies(chainID, interest)
+	filter := ea.excludeIfCCNotInstalled(membersById, identities.ByID())
+	principalsSets, err := ea.computePrincipalSets(chainID, interest, filter)
 	if err != nil {
+		logger.Warningf("Principal set computation failed: %v", err)
 		return nil, errors.WithStack(err)
 	}
-	// For now we take the first policy and ignore the rest
-	pol := pols[0]
-
-	// Compute the combinations of principals (principal sets) that satisfy the endorsement policy
-	principalsSets := policies.PrincipalSets(pol.SatisfiedBy())
-
-	// Filter out principal sets that contain MSP IDs for peers that don't have the chaincode(s) installed
-	principalsSets = ea.excludeIfCCNotInstalled(principalsSets, membersById, identities.ByID())
 
 	// Filter the principal sets by the collections (if applicable)
 	principalsSets, err = metadataAndCollectionFilters.filter(principalsSets)
@@ -169,43 +156,60 @@ func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discov
 	}, nil
 }
 
-func (ea *endorsementAnalyzer) excludeIfCCNotInstalled(principalsSets policies.PrincipalSets, membersById map[string]discovery2.NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) policies.PrincipalSets {
+type principalFilter func(policies.PrincipalSet) bool
+
+func (ea *endorsementAnalyzer) excludeIfCCNotInstalled(membersById map[string]discovery2.NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) principalFilter {
 	// Obtain the MSP IDs of the members of the channel that are alive
 	mspIDsOfChannelPeers := mspIDsOfMembers(membersById, identitiesByID)
-	principalsSets = ea.excludePrincipals(func(principal *msp.MSPPrincipal) bool {
+	// Create an exclusion filter for MSP Principals which their peers don't have the chaincode installed
+	excludeMSPsWithoutChaincodeInstalled := func(principal *msp.MSPPrincipal) bool {
 		mspID := ea.MSPOfPrincipal(principal)
 		_, exists := mspIDsOfChannelPeers[mspID]
 		return mspID != "" && exists
-	}, principalsSets)
-	return principalsSets
+	}
+	return func(principalsSet policies.PrincipalSet) bool {
+		return principalsSet.ContainingOnly(excludeMSPsWithoutChaincodeInstalled)
+	}
 }
 
-func (ea *endorsementAnalyzer) excludePrincipals(filter func(principal *msp.MSPPrincipal) bool, sets ...policies.PrincipalSets) policies.PrincipalSets {
-	var res []policies.PrincipalSets
-	for _, principalSets := range sets {
-		principalSets = principalSets.ContainingOnly(filter)
-		if len(principalSets) == 0 {
-			continue
-		}
-		res = append(res, principalSets)
-	}
-	if len(res) == 0 {
-		return nil
-	}
-	return res[0]
-}
-
-func (ea *endorsementAnalyzer) loadPolicies(chainID common.ChainID, interest *discovery.ChaincodeInterest) ([]policies.InquireablePolicy, error) {
-	var res []policies.InquireablePolicy
+func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, interest *discovery.ChaincodeInterest, filter principalFilter) (policies.PrincipalSets, error) {
+	var inquireablePolicies []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
 		pol := ea.PolicyByChaincode(string(chainID), chaincode.Name)
 		if pol == nil {
 			logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-		res = append(res, pol)
+		inquireablePolicies = append(inquireablePolicies, pol)
 	}
-	return res, nil
+
+	var cpss []inquire.ComparablePrincipalSets
+
+	for _, policy := range inquireablePolicies {
+		var cmpsets inquire.ComparablePrincipalSets
+		for _, ps := range policy.SatisfiedBy() {
+			if !filter(ps) {
+				logger.Debug(ps, "filtered out due to chaincodes not being installed on the corresponding organizations")
+				continue
+			}
+			cps := inquire.NewComparablePrincipalSet(ps)
+			if cps == nil {
+				return nil, errors.New("failed creating a comparable principal set")
+			}
+			cmpsets = append(cmpsets, cps)
+		}
+		if len(cmpsets) == 0 {
+			return nil, errors.New("chaincode isn't installed on sufficient organizations required by the endorsement policy")
+		}
+		cpss = append(cpss, cmpsets)
+	}
+
+	cps, err := mergePrincipalSets(cpss)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return cps.ToPrincipalSets(), nil
 }
 
 type filterFunc func(policies.PrincipalSets) (policies.PrincipalSets, error)
@@ -516,4 +520,26 @@ func mspIDsOfMembers(membersById map[string]discovery2.NetworkMember, identities
 		}
 	}
 	return res
+}
+
+func mergePrincipalSets(cpss []inquire.ComparablePrincipalSets) (inquire.ComparablePrincipalSets, error) {
+	// Obtain the first ComparablePrincipalSet first
+	var cps inquire.ComparablePrincipalSets
+	cps, cpss, err := popComparablePrincipalSets(cpss)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	for _, cps2 := range cpss {
+		cps = inquire.Merge(cps, cps2)
+	}
+	return cps, nil
+}
+
+func popComparablePrincipalSets(sets []inquire.ComparablePrincipalSets) (inquire.ComparablePrincipalSets, []inquire.ComparablePrincipalSets, error) {
+	if len(sets) == 0 {
+		return nil, nil, errors.New("no principal sets remained after filtering")
+	}
+	cps, cpss := sets[0], sets[1:]
+	return cps, cpss, nil
 }
