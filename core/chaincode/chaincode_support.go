@@ -93,7 +93,9 @@ func NewChaincodeSupport(
 	return cs
 }
 
-// Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into ready state.
+// Launch starts executing chaincode if it is not already running. This method
+// blocks until the peer side handler gets into ready state or encounters a fatal
+// error. If the chaincode is already running, it simply returns.
 func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error {
 	cname := cccid.GetCanonicalName()
 	if cs.HandlerRegistry.Handler(cname) != nil {

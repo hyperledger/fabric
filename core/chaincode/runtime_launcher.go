@@ -17,7 +17,7 @@ import (
 
 // LaunchRegistry tracks launching chaincode instances.
 type LaunchRegistry interface {
-	Launching(cname string) (<-chan struct{}, error)
+	Launching(cname string) (*LaunchState, error)
 	Deregister(cname string) error
 }
 
@@ -55,9 +55,9 @@ func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContex
 		cds = ccpack.GetDepSpec()
 	}
 
-	err := r.startAndWaitForReady(ctx, cccid, cds)
+	err := r.start(ctx, cccid, cds)
 	if err != nil {
-		chaincodeLogger.Errorf("startAndWiatForReady failed: %+v", err)
+		chaincodeLogger.Errorf("start failed: %+v", err)
 		return err
 	}
 
@@ -80,25 +80,28 @@ func (r *RuntimeLauncher) getDeploymentSpec(ctx context.Context, cccid *ccprovid
 	return cds, nil
 }
 
-func (r *RuntimeLauncher) startAndWaitForReady(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
-	ready, err := r.Registry.Launching(cname)
+	launchState, err := r.Registry.Launching(cname)
 	if err != nil {
 		return errors.Wrapf(err, "failed to register %s as launching", cname)
 	}
 
-	launchFail := make(chan error, 1)
+	startFail := make(chan error, 1)
 	go func() {
 		chaincodeLogger.Debugf("chaincode %s is being launched", cname)
 		err := r.Runtime.Start(ctx, cccid, cds)
 		if err != nil {
-			launchFail <- errors.WithMessage(err, "error starting container")
+			startFail <- errors.WithMessage(err, "error starting container")
 		}
 	}()
 
 	select {
-	case <-ready:
-	case err = <-launchFail:
+	case <-launchState.Done():
+		if launchState.Err() != nil {
+			err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
+		}
+	case err = <-startFail:
 	case <-time.After(r.StartupTimeout):
 		err = errors.Errorf("timeout expired while starting chaincode %s for transaction %s", cname, cccid.TxID)
 	}

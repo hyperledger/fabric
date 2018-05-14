@@ -1895,6 +1895,7 @@ var _ = Describe("Handler", func() {
 
 		It("notifies the registry that the handler is ready", func() {
 			handler.HandleRegister(incomingMessage)
+			Expect(fakeHandlerRegistry.FailedCallCount()).To(Equal(0))
 			Expect(fakeHandlerRegistry.ReadyCallCount()).To(Equal(1))
 			name := fakeHandlerRegistry.ReadyArgsForCall(0)
 			Expect(name).To(Equal("chaincode-id-name"))
@@ -1926,6 +1927,15 @@ var _ = Describe("Handler", func() {
 				Expect(handler.State()).To(Equal(chaincode.Created))
 				handler.HandleRegister(incomingMessage)
 				Expect(handler.State()).To(Equal(chaincode.Established))
+			})
+
+			It("notifies the registry of the failure", func() {
+				handler.HandleRegister(incomingMessage)
+				Expect(fakeHandlerRegistry.ReadyCallCount()).To(Equal(0))
+				Expect(fakeHandlerRegistry.FailedCallCount()).To(Equal(1))
+				name, err := fakeHandlerRegistry.FailedArgsForCall(0)
+				Expect(name).To(Equal("chaincode-id-name"))
+				Expect(err).To(MatchError("[] error sending READY: carrot"))
 			})
 		})
 
@@ -2134,7 +2144,7 @@ var _ = Describe("Handler", func() {
 				Eventually(fakeChatStream.RecvCallCount).ShouldNot(Equal(0))                    // wait for loop to start
 				handler.Execute(context.Background(), cccid, incomingMessage, time.Millisecond) // force async error
 
-				Eventually(errChan).Should(Receive(MatchError("received error while sending message, ending chaincode support stream: [tx-id] Error sending TRANSACTION: candy")))
+				Eventually(errChan).Should(Receive(MatchError("received error while sending message, ending chaincode support stream: [tx-id] error sending TRANSACTION: candy")))
 			})
 
 			It("stops receiving messages", func() {

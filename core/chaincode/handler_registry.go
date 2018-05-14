@@ -16,16 +16,34 @@ import (
 type HandlerRegistry struct {
 	allowUnsolicitedRegistration bool // from cs.userRunsCC
 
-	mutex     sync.Mutex               // lock covering handlers and launching
-	handlers  map[string]*Handler      // chaincode cname to associated handler
-	launching map[string]chan struct{} // launching chaincodes to ready chan
+	mutex     sync.Mutex              // lock covering handlers and launching
+	handlers  map[string]*Handler     // chaincode cname to associated handler
+	launching map[string]*LaunchState // launching chaincodes to LaunchState
+}
+
+type LaunchState struct {
+	done chan struct{}
+	err  error
+}
+
+func NewLaunchState() *LaunchState {
+	return &LaunchState{
+		done: make(chan struct{}),
+	}
+}
+
+func (l *LaunchState) Done() <-chan struct{} { return l.done }
+func (l *LaunchState) Err() error            { return l.err }
+func (l *LaunchState) Notify(err error) {
+	l.err = err
+	close(l.done)
 }
 
 // NewHandlerRegistry constructs a HandlerRegistry.
 func NewHandlerRegistry(allowUnsolicitedRegistration bool) *HandlerRegistry {
 	return &HandlerRegistry{
 		handlers:                     map[string]*Handler{},
-		launching:                    map[string]chan struct{}{},
+		launching:                    map[string]*LaunchState{},
 		allowUnsolicitedRegistration: allowUnsolicitedRegistration,
 	}
 }
@@ -48,19 +66,20 @@ func (r *HandlerRegistry) hasLaunched(chaincode string) bool {
 	return false
 }
 
-// Launching indicates that chaincode is being launched. The channel that
-// is returned will be closed when registration completes. An error will be
-// returned if chaincode launch processing has already been initated.
-func (r *HandlerRegistry) Launching(cname string) (<-chan struct{}, error) {
+// Launching indicates that chaincode is being launched. The LaunchState that
+// is returned provides mechanisms to determine when the operation has completed
+// and whether or not it failed. An error will be returned if chaincode launch
+// processing has already been initated.
+func (r *HandlerRegistry) Launching(cname string) (*LaunchState, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.hasLaunched(cname) {
 		return nil, errors.Errorf("chaincode %s has already been launched", cname)
 	}
 
-	registerCompleteCh := make(chan struct{})
-	r.launching[cname] = registerCompleteCh
-	return registerCompleteCh, nil
+	launchState := NewLaunchState()
+	r.launching[cname] = launchState
+	return launchState, nil
 }
 
 // Ready indicates that the chaincode registration has completed and the
@@ -69,10 +88,21 @@ func (r *HandlerRegistry) Ready(cname string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	registerCompleteCh := r.launching[cname]
-	if registerCompleteCh != nil {
+	launchStatus := r.launching[cname]
+	if launchStatus != nil {
 		delete(r.launching, cname)
-		close(registerCompleteCh)
+		launchStatus.Notify(nil)
+	}
+}
+
+// Failed indicates that registration of a launched chaincode has failed.
+func (r *HandlerRegistry) Failed(cname string, err error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	launchStatus := r.launching[cname]
+	if launchStatus != nil {
+		launchStatus.Notify(err)
 	}
 }
 
