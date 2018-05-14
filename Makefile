@@ -150,10 +150,6 @@ include gotools.mk
 .PHONY: gotools
 gotools: gotools-install
 
-# This is a legacy target left to satisfy existing CI scripts
-membersrvc-image:
-	@echo "membersrvc has been removed from this build"
-
 .PHONY: peer
 peer: $(BUILD_DIR)/bin/peer
 peer-docker: $(BUILD_DIR)/image/peer/$(DUMMY)
