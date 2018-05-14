@@ -145,7 +145,7 @@ type TxSimulator interface {
 	// SetMultipleKeys sets the values for multiple keys in a single call
 	SetStateMultipleKeys(namespace string, kvs map[string][]byte) error
 	// SetStateMetadata sets the metadata associated with an existing key-tuple <namespace, key>
-	SetStateMetadata(namespace, key, metadata map[string][]byte) error
+	SetStateMetadata(namespace, key string, metadata map[string][]byte) error
 	// DeleteStateMetadata deletes the metadata (if any) associated with an existing key-tuple <namespace, key>
 	DeleteStateMetadata(namespace, key string) error
 	// ExecuteUpdate for supporting rich data model (see comments on QueryExecutor above)
@@ -157,7 +157,7 @@ type TxSimulator interface {
 	// DeletePrivateData deletes the given tuple <namespace, collection, key> from private data
 	DeletePrivateData(namespace, collection, key string) error
 	// SetPrivateDataMetadata sets the metadata associated with an existing key-tuple <namespace, collection, key>
-	SetPrivateDataMetadata(namespace, collection, key, metadata map[string][]byte) error
+	SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error
 	// DeletePrivateDataMetadata deletes the metadata associated with an existing key-tuple <namespace, collection, key>
 	DeletePrivateDataMetadata(namespace, collection, key string) error
 	// GetTxSimulationResults encapsulates the results of the transaction simulation.

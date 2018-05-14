@@ -116,7 +116,7 @@ func (m *MockTxSim) GetPrivateDataMetadata(namespace, collection, key string) (m
 	return nil, nil
 }
 
-func (m *MockTxSim) SetStateMetadata(namespace, key, metadata map[string][]byte) error {
+func (m *MockTxSim) SetStateMetadata(namespace, key string, metadata map[string][]byte) error {
 	return nil
 }
 
@@ -124,7 +124,7 @@ func (m *MockTxSim) DeleteStateMetadata(namespace, key string) error {
 	return nil
 }
 
-func (m *MockTxSim) SetPrivateDataMetadata(namespace, collection, key, metadata map[string][]byte) error {
+func (m *MockTxSim) SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error {
 	return nil
 }
 

@@ -72,7 +72,7 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 }
 
 // SetStateMetadata implements method in interface `ledger.TxSimulator`
-func (s *lockBasedTxSimulator) SetStateMetadata(namespace, key, metadata map[string][]byte) error {
+func (s *lockBasedTxSimulator) SetStateMetadata(namespace, key string, metadata map[string][]byte) error {
 	return errors.New("not implemented")
 }
 
@@ -121,12 +121,7 @@ func (s *lockBasedTxSimulator) GetPrivateDataRangeScanIterator(namespace, collec
 }
 
 // SetPrivateDataMetadata implements method in interface `ledger.TxSimulator`
-func (s *lockBasedTxSimulator) SetPrivateDataMetadata(namespace, collection, key, metadata map[string][]byte) error {
-	return errors.New("not implemented")
-}
-
-// DeletePrivateMetadataEntry implements method in interface `ledger.TxSimulator`
-func (s *lockBasedTxSimulator) DeletePrivateMetadataEntry(namespace, collection, key, metakey string) error {
+func (s *lockBasedTxSimulator) SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error {
 	return errors.New("not implemented")
 }
 
