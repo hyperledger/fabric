@@ -9,13 +9,14 @@ package chaincode
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -92,7 +93,15 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	// list is currently only supported for one peer
 	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
+		return errors.Errorf("Error endorsing %s: %s", chainFuncName, err)
+	}
+
+	if proposalResponse.Response == nil {
+		return errors.Errorf("Proposal response had nil 'response'")
+	}
+
+	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("Bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
 	cqr := &pb.ChaincodeQueryResponse{}

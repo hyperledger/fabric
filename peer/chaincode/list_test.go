@@ -106,6 +106,40 @@ func TestChaincodeListCmd(t *testing.T) {
 	}
 }
 
+func TestChaincodeListFailure(t *testing.T) {
+	InitMSP()
+
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %s", err)
+	}
+
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 500, Message: "error message"},
+		Endorsement: &pb.Endorsement{},
+	}
+	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil)}
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+	mockCF := &ChaincodeCmdFactory{
+		EndorserClients: mockEndorserClients,
+		Signer:          signer,
+		BroadcastClient: mockBroadcastClient,
+	}
+
+	// reset channelID, it might have been set by previous test
+	channelID = ""
+
+	resetFlags()
+
+	// Get instantiated chaincodes
+	instantiatedChaincodesCmd := listCmd(mockCF)
+	args := []string{"--instantiated", "-C", "mychannel"}
+	instantiatedChaincodesCmd.SetArgs(args)
+	err = instantiatedChaincodesCmd.Execute()
+	assert.Error(t, err)
+	assert.Regexp(t, "Bad response: 500 - error message", err.Error())
+}
+
 func TestString(t *testing.T) {
 	id := []byte{1, 2, 3, 4, 5}
 	idBytes := hex.EncodeToString(id)
