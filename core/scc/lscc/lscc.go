@@ -8,7 +8,6 @@ package lscc
 
 import (
 	"fmt"
-	"path/filepath"
 	"regexp"
 
 	"github.com/golang/protobuf/proto"
@@ -347,24 +346,22 @@ func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
 
 func isValidStatedbArtifactsTar(statedbArtifactsTar []byte) error {
 
-	var dbArtifactsDirFilter = map[string]bool{"META-INF/statedb/couchdb/indexes": true}
-
 	// Extract the metadata files from the archive
-	fileEntries, err := ccprovider.ExtractFileEntries(statedbArtifactsTar, dbArtifactsDirFilter)
+	// Passing an empty string for the databaseType will validate all artifacts in
+	// the archive
+	archiveFiles, err := ccprovider.ExtractFileEntries(statedbArtifactsTar, "")
 	if err != nil {
 		return err
 	}
-
 	// iterate through the files and validate
-	for _, fileEntry := range fileEntries {
-		indexData := fileEntry.FileContent
-		tarDir, filename := filepath.Split(fileEntry.FileHeader.Name)
-
-		// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
-		// Clean metadata directory to remove trailing slash
-		err = ccmetadata.ValidateMetadataFile(filename, indexData, filepath.Clean(tarDir))
-		if err != nil {
-			return err
+	for _, archiveDirectoryFiles := range archiveFiles {
+		for _, fileEntry := range archiveDirectoryFiles {
+			indexData := fileEntry.FileContent
+			// Validation is based on the passed file name, e.g. META-INF/statedb/couchdb/indexes/indexname.json
+			err = ccmetadata.ValidateMetadataFile(fileEntry.FileHeader.Name, indexData)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

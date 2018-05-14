@@ -17,6 +17,8 @@ limitations under the License.
 package testutil
 
 import (
+	"archive/tar"
+	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -168,4 +170,35 @@ func getCallerInfo() string {
 		return "Could not retrieve caller's info"
 	}
 	return fmt.Sprintf("CallerInfo = [%s:%d]", file, line)
+}
+
+// TarFileEntry is a structure for adding test index files to an tar
+type TarFileEntry struct {
+	Name, Body string
+}
+
+// CreateTarBytesForTest creates a tar byte array for unit testing
+func CreateTarBytesForTest(testFiles []*TarFileEntry) []byte {
+	//Create a buffer for the tar file
+	buffer := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buffer)
+
+	for _, file := range testFiles {
+		tarHeader := &tar.Header{
+			Name: file.Name,
+			Mode: 0600,
+			Size: int64(len(file.Body)),
+		}
+		err := tarWriter.WriteHeader(tarHeader)
+		if err != nil {
+			return nil
+		}
+		_, err = tarWriter.Write([]byte(file.Body))
+		if err != nil {
+			return nil
+		}
+	}
+	// Make sure to check the error on Close.
+	tarWriter.Close()
+	return buffer.Bytes()
 }

@@ -11,16 +11,26 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
 // fileValidators are used as handlers to validate specific metadata directories
 type fileValidator func(fileName string, fileBytes []byte) error
 
+const allowedCharsCollectionName = "[A-Za-z0-9_-]+"
+
 // Currently, the only metadata expected and allowed is for META-INF/statedb/couchdb/indexes.
-var fileValidators = map[string]fileValidator{
-	"META-INF/statedb/couchdb/indexes": couchdbIndexFileValidator,
+var fileValidators = map[*regexp.Regexp]fileValidator{
+	regexp.MustCompile("^META-INF/statedb/couchdb/indexes/.*[.]json"):                                                couchdbIndexFileValidator,
+	regexp.MustCompile("^META-INF/statedb/couchdb/collections/" + allowedCharsCollectionName + "/indexes/.*[.]json"): couchdbIndexFileValidator,
 }
+
+var collectionNameValid = regexp.MustCompile("^" + allowedCharsCollectionName)
+
+var fileNameValid = regexp.MustCompile("^.*[.]json")
+
+var validDatabases = []string{"couchdb"}
 
 // UnhandledDirectoryError is returned for metadata files in unhandled directories
 type UnhandledDirectoryError struct {
@@ -28,15 +38,6 @@ type UnhandledDirectoryError struct {
 }
 
 func (e *UnhandledDirectoryError) Error() string {
-	return e.err
-}
-
-// BadExtensionError is returned for metadata files with extension other than .json
-type BadExtensionError struct {
-	err string
-}
-
-func (e *BadExtensionError) Error() string {
 	return e.err
 }
 
@@ -50,18 +51,18 @@ func (e *InvalidIndexContentError) Error() string {
 }
 
 // ValidateMetadataFile checks that metadata files are valid
-// according to the validation rules of the metadata directory (metadataType)
-func ValidateMetadataFile(fileName string, fileBytes []byte, metadataType string) error {
+// according to the validation rules of the file's directory
+func ValidateMetadataFile(filePathName string, fileBytes []byte) error {
 	// Get the validator handler for the metadata directory
-	fileValidator, ok := fileValidators[metadataType]
+	fileValidator := selectFileValidator(filePathName)
 
 	// If there is no validator handler for metadata directory, return UnhandledDirectoryError
-	if !ok {
-		return &UnhandledDirectoryError{fmt.Sprintf("Metadata not supported in directory: %s", metadataType)}
+	if fileValidator == nil {
+		return &UnhandledDirectoryError{buildMetadataFileErrorMessage(filePathName)}
 	}
 
-	// If the file is not valid for the given metadata directory, return the corresponding error
-	err := fileValidator(fileName, fileBytes)
+	// If the file is not valid for the given directory-based validator, return the corresponding error
+	err := fileValidator(filePathName, fileBytes)
 	if err != nil {
 		return err
 	}
@@ -70,15 +71,69 @@ func ValidateMetadataFile(fileName string, fileBytes []byte, metadataType string
 	return nil
 }
 
+func buildMetadataFileErrorMessage(filePathName string) string {
+
+	dir, filename := filepath.Split(filePathName)
+
+	if !strings.HasPrefix(filePathName, "META-INF/statedb") {
+		return fmt.Sprintf("metadata file path must begin with META-INF/statedb, found: %s", dir)
+	}
+	directoryArray := strings.Split(filepath.Clean(dir), "/")
+	// verify the minimum directory depth
+	if len(directoryArray) < 4 {
+		return fmt.Sprintf("metadata file path must include a database and index directory: %s", dir)
+	}
+	// validate the database type
+	if !contains(validDatabases, directoryArray[2]) {
+		return fmt.Sprintf("database name [%s] is not supported, valid options: %s", directoryArray[2], validDatabases)
+	}
+	// verify "indexes" is under the database name
+	if len(directoryArray) == 4 && directoryArray[3] != "indexes" {
+		return fmt.Sprintf("metadata file path does not have an indexes directory: %s", dir)
+	}
+	// if this is for collections, check the path length
+	if len(directoryArray) != 6 {
+		return fmt.Sprintf("metadata file path for collections must include a collections and index directory: %s", dir)
+	}
+	// verify "indexes" is under the collections and collection directories
+	if directoryArray[3] != "collections" || directoryArray[5] != "indexes" {
+		return fmt.Sprintf("metadata file path for collections must have a collections and indexes directory: %s", dir)
+	}
+	// validate the collection name
+	if !collectionNameValid.MatchString(directoryArray[4]) {
+		return fmt.Sprintf("collection name is not valid: %s", directoryArray[4])
+	}
+
+	// validate the file name
+	if !fileNameValid.MatchString(filename) {
+		return fmt.Sprintf("artifact file name is not valid: %s", filename)
+	}
+
+	return fmt.Sprintf("metadata file path or name is not supported: %s", dir)
+
+}
+
+func contains(validStrings []string, target string) bool {
+	for _, str := range validStrings {
+		if str == target {
+			return true
+		}
+	}
+	return false
+}
+
+func selectFileValidator(filePathName string) fileValidator {
+	for validateExp, fileValidator := range fileValidators {
+		isValid := validateExp.MatchString(filePathName)
+		if isValid {
+			return fileValidator
+		}
+	}
+	return nil
+}
+
 // couchdbIndexFileValidator implements fileValidator
 func couchdbIndexFileValidator(fileName string, fileBytes []byte) error {
-
-	ext := filepath.Ext(fileName)
-
-	// if the file does not have a .json extension, then return as error
-	if ext != ".json" {
-		return &BadExtensionError{fmt.Sprintf("Index metadata file [%s] does not have a .json extension", fileName)}
-	}
 
 	// if the content does not validate as JSON, return err to invalidate the file
 	boolIsJSON, indexDefinition := isJSON(fileBytes)
