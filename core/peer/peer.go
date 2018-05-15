@@ -369,14 +369,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	if err != nil {
 		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxValidator().ChainID())
 	}
-	simpleCollectionStore := privdata.NewSimpleCollectionStore(&collectionSupport{
+	csStoreSupport := &collectionSupport{
 		PeerLedger: ledger,
-	})
+	}
+	simpleCollectionStore := privdata.NewSimpleCollectionStore(csStoreSupport)
+
 	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
-		Validator: validator,
-		Committer: c,
-		Store:     store,
-		Cs:        simpleCollectionStore,
+		Validator:            validator,
+		Committer:            c,
+		Store:                store,
+		Cs:                   simpleCollectionStore,
+		IdDeserializeFactory: csStoreSupport,
 	})
 
 	chains.Lock()
