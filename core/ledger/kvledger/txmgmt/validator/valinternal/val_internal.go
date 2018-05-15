@@ -69,6 +69,10 @@ func (t *Transaction) RetrieveHash(ns string, coll string) []byte {
 		return nil
 	}
 	for _, nsData := range t.RWSet.NsRwSets {
+		if nsData.NameSpace != ns {
+			continue
+		}
+
 		for _, collData := range nsData.CollHashedRwSets {
 			if collData.CollectionName == coll {
 				return collData.PvtRwSetHash
