@@ -55,7 +55,6 @@ func (d *defaultACLProvider) initialize() {
 	//-------------- LSCC --------------
 	//p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Lscc_Install] = ""
-	d.pResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = ""
 	d.pResourcePolicyMap[resources.Lscc_GetInstalledChaincodes] = ""
 
 	//c resources
@@ -64,6 +63,7 @@ func (d *defaultACLProvider) initialize() {
 	d.cResourcePolicyMap[resources.Lscc_ChaincodeExists] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Lscc_GetDeploymentSpec] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Lscc_GetChaincodeData] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = CHANNELREADERS
 
 	//-------------- QSCC --------------
 	//p resources (none)
