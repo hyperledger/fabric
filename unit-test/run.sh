@@ -7,6 +7,7 @@
 
 # regexes for packages to exclude from unit test
 excluded_packages=(
+    "github.com/hyperledger/fabric/integration"
 )
 
 # regexes for packages that must be run serially
