@@ -36,7 +36,7 @@ const (
 // of retrieving required private data
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
-	CollectionRWSet(dig *proto.PvtDataDigest) []util.PrivateRWSet
+	CollectionRWSet(dig *proto.PvtDataDigest) *util.PrivateRWSetWithConfig
 }
 
 // gossip defines capabilities that the gossip module gives the Coordinator
@@ -67,17 +67,19 @@ type puller struct {
 	cs       privdata.CollectionStore
 	gossip
 	PrivateDataRetriever
+	CollectionAccessFactory
 }
 
 // NewPuller creates new private data puller
-func NewPuller(cs privdata.CollectionStore, g gossip, dataRetriever PrivateDataRetriever, channel string) *puller {
+func NewPuller(cs privdata.CollectionStore, g gossip, dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string) *puller {
 	p := &puller{
-		pubSub:               util.NewPubSub(),
-		stopChan:             make(chan struct{}),
-		channel:              channel,
-		cs:                   cs,
-		gossip:               g,
-		PrivateDataRetriever: dataRetriever,
+		pubSub:                  util.NewPubSub(),
+		stopChan:                make(chan struct{}),
+		channel:                 channel,
+		cs:                      cs,
+		gossip:                  g,
+		PrivateDataRetriever:    dataRetriever,
+		CollectionAccessFactory: factory,
 	}
 	_, p.msgChan = p.Accept(func(o interface{}) bool {
 		msg := o.(proto.ReceivedMessage).GetGossipMessage()
@@ -133,12 +135,13 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	}()
 	msg := message.GetGossipMessage()
 	for _, dig := range msg.GetPrivateReq().Digests {
-		colAP, err := p.cs.RetrieveCollectionAccessPolicy(fcommon.CollectionCriteria{
-			Channel:    p.channel,
-			Collection: dig.Collection,
-			TxId:       dig.TxId,
-			Namespace:  dig.Namespace,
-		})
+		rwSets := p.CollectionRWSet(dig)
+		logger.Debug("Found", len(rwSets.RWSet), "for TxID", dig.TxId, ", collection", dig.Collection, "for", message.GetConnectionInfo().Endpoint)
+		if len(rwSets.RWSet) == 0 {
+			continue
+		}
+
+		colAP, err := p.AccessPolicy(rwSets.CollectionConfig, p.channel)
 		if err != nil {
 			logger.Debug("No policy found for channel", p.channel, ", collection", dig.Collection, "txID", dig.TxId, ":", err, "skipping...")
 			continue
@@ -159,14 +162,9 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 			continue
 		}
 
-		rwSets := p.CollectionRWSet(dig)
-		logger.Debug("Found", len(rwSets), "for TxID", dig.TxId, ", collection", dig.Collection, "for", message.GetConnectionInfo().Endpoint)
-		if len(rwSets) == 0 {
-			continue
-		}
 		returned = append(returned, &proto.PvtDataElement{
 			Digest:  dig,
-			Payload: util.PrivateRWSets(rwSets...),
+			Payload: util.PrivateRWSets(rwSets.RWSet...),
 		})
 	}
 	return returned

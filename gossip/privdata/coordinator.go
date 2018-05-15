@@ -304,20 +304,25 @@ func (c *coordinator) fetchFromTransientStore(txAndSeq txAndSeqInBlock, filter l
 	}
 	defer iterator.Close()
 	for {
-		res, err := iterator.Next()
+		res, err := iterator.NextWithConfig()
 		if err != nil {
-			logger.Warning("Failed iterating:", err)
+			logger.Error("Failed iterating:", err)
 			break
 		}
 		if res == nil {
 			// End of iteration
 			break
 		}
-		if res.PvtSimulationResults == nil {
-			logger.Warning("Resultset's PvtSimulationResults for", txAndSeq.txID, "is nil, skipping")
+		if res.PvtSimulationResultsWithConfig == nil {
+			logger.Warning("Resultset's PvtSimulationResultsWithConfig for", txAndSeq.txID, "is nil, skipping")
 			continue
 		}
-		for _, ns := range res.PvtSimulationResults.NsPvtRwset {
+		simRes := res.PvtSimulationResultsWithConfig
+		if simRes.PvtRwset == nil {
+			logger.Warning("The PvtRwset of PvtSimulationResultsWithConfig for", txAndSeq.txID, "is nil, skipping")
+			continue
+		}
+		for _, ns := range simRes.PvtRwset.NsPvtRwset {
 			for _, col := range ns.CollectionPvtRwset {
 				key := rwSetKey{
 					txID:       txAndSeq.txID,

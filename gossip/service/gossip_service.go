@@ -231,7 +231,8 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}
 	// Initialize private data fetcher
 	dataRetriever := privdata2.NewDataRetriever(storeSupport)
-	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, dataRetriever, chainID)
+	collectionAccessFactory := privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)
+	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, dataRetriever, collectionAccessFactory, chainID)
 
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		CollectionStore: support.Cs,
@@ -244,7 +245,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
-		distributor: privdata2.NewDistributor(chainID, g, privdata2.NewCollectionAccessFactory(support.IdDeserializeFactory)),
+		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory),
 	}
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator)
 	if g.deliveryService[chainID] == nil {

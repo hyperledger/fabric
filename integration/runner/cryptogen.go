@@ -25,7 +25,7 @@ type Cryptogen struct {
 // Generate uses cryptogen to generate cryptographic material for fabric.
 func (c *Cryptogen) Generate(extraArgs ...string) *ginkgomon.Runner {
 	return ginkgomon.New(ginkgomon.Config{
-		Name: "cryptogen generate",
+		Name:          "cryptogen generate",
 		AnsiColorCode: "31m",
 		Command: exec.Command(
 			c.Path,

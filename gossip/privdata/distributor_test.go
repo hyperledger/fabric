@@ -37,21 +37,31 @@ type collectionAccessPolicyMock struct {
 }
 
 func (mock *collectionAccessPolicyMock) AccessFilter() privdata.Filter {
-	return func(_ common.SignedData) bool {
-		return true
-	}
+	args := mock.Called()
+	return args.Get(0).(privdata.Filter)
 }
 
 func (mock *collectionAccessPolicyMock) RequiredPeerCount() int {
-	return 1
+	args := mock.Called()
+	return args.Int(0)
 }
 
 func (mock *collectionAccessPolicyMock) MaximumPeerCount() int {
-	return 2
+	args := mock.Called()
+	return args.Int(0)
 }
 
 func (mock *collectionAccessPolicyMock) MemberOrgs() []string {
-	return []string{"org1", "org2"}
+	args := mock.Called()
+	return args.Get(0).([]string)
+}
+
+func (mock *collectionAccessPolicyMock) Setup(requiredPeerCount int, maxPeerCount int,
+	accessFilter privdata.Filter, orgs []string) {
+	mock.On("AccessFilter").Return(accessFilter)
+	mock.On("RequiredPeerCount").Return(requiredPeerCount)
+	mock.On("MaximumPeerCount").Return(maxPeerCount)
+	mock.On("MemberOrgs").Return(orgs)
 }
 
 type gossipMock struct {
@@ -122,8 +132,12 @@ func TestDistributor(t *testing.T) {
 		},
 	}
 
-	accessFactoryMock.On("AccessPolicy", c1ColConfig, "test").Return(&collectionAccessPolicyMock{}, nil)
-	accessFactoryMock.On("AccessPolicy", c2ColConfig, "test").Return(&collectionAccessPolicyMock{}, nil)
+	policyMock := &collectionAccessPolicyMock{}
+	policyMock.Setup(1, 2, func(_ common.SignedData) bool {
+		return true
+	}, []string{"org1", "org2"})
+	accessFactoryMock.On("AccessPolicy", c1ColConfig, "test").Return(policyMock, nil)
+	accessFactoryMock.On("AccessPolicy", c2ColConfig, "test").Return(policyMock, nil)
 
 	d := NewDistributor("test", g, accessFactoryMock)
 	pdFactory := &pvtDataFactory{}
