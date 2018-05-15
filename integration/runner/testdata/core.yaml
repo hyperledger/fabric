@@ -121,6 +121,9 @@ peer:
         endorsers:
           escc:
             name: DefaultEndorsement
+        validators:
+          vscc:
+            name: DefaultValidation
     validatorPoolSize:
 
 vm:
