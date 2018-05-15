@@ -322,6 +322,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		res := stub.MockInit("1", nil)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 	}
+	stub.ChannelID = chainid
 
 	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
@@ -334,7 +335,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		identityDeserializer,
 		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
-	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ := utils.MockSignedEndorserProposalOrPanic(chainid, &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 
@@ -365,6 +366,8 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	if expectedErrorMsg == "" {
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
+		mockAclProvider.Reset()
+		mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, chainid, sProp).Return(nil)
 		args = [][]byte{[]byte(GETCHAINCODES)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -640,29 +643,25 @@ func TestGETCHAINCODES(t *testing.T) {
 	scc := New(NewMockProvider(), mockAclProvider)
 	scc.support = &lscc.MockSupport{}
 	stub := shim.NewMockStub("lscc", scc)
+	stub.ChannelID = "test"
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCHAINCODES), []byte("barf")}, nil)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
-	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
-	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
-		Managers: map[string]policies.Manager{
-			"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
-		},
-	}
-	scc.policyChecker = policy.NewPolicyChecker(
-		policyManagerGetter,
-		identityDeserializer,
-		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-	)
-	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
+	sProp, _ := utils.MockSignedEndorserProposalOrPanic("test", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
 	sProp.Signature = sProp.ProposalBytes
 
-	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCHAINCODES)}, nil)
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(errors.New("ACL Error"))
+	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCHAINCODES)}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
+
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(nil)
+	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCHAINCODES)}, sProp)
+	assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 }
 
 func TestGETINSTALLEDCHAINCODES(t *testing.T) {
