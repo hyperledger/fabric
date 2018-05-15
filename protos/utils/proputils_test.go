@@ -216,7 +216,7 @@ func TestCDSProposals(t *testing.T) {
 	assert.NotEqual(t, "", txid, "txid should not be empty")
 
 	// upgrade
-	prop, txid, err = utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policy, escc, vscc)
+	prop, txid, err = utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policy, escc, vscc, nil)
 	assert.NotNil(t, prop, "Upgrade proposal should not be nil")
 	assert.NoError(t, err, "Unexpected error creating upgrade proposal")
 	assert.NotEqual(t, "", txid, "txid should not be empty")

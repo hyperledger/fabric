@@ -289,7 +289,7 @@ func createCCUpgradeEnvelope(chainID, chaincodeName, chaincodeVersion string, si
 	}
 
 	cds := &peer.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: []byte{}}
-	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, []byte{}, []byte{}, []byte{})
+	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, []byte{}, []byte{}, []byte{}, nil)
 	if err != nil {
 		return nil, err
 	}
