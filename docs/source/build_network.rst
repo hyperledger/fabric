@@ -208,7 +208,7 @@ completion, it should report the following in your terminal window:
 
     Query Result: 90
     2017-05-16 17:08:15.158 UTC [main] main -> INFO 008 Exiting.....
-    ===================== Query on peer1.org2 on channel 'mychannel' is successful =====================
+    ===================== Query successful on peer1.org2 on channel 'mychannel' ===================== 
 
     ===================== All GOOD, BYFN execution completed =====================
 
@@ -680,9 +680,9 @@ argument. This is our policy where we specify the required level of endorsement
 for a transaction against this chaincode to be validated.
 
 In the command below you’ll notice that we specify our policy as
-``-P "OR ('Org1MSP.peer','Org2MSP.peer')"``. This means that we need
-“endorsement” from a peer belonging to Org1 **OR** Org2 (i.e. only one endorsement).
-If we changed the syntax to ``AND`` then we would need two endorsements.
+``-P "AND ('Org1MSP.peer','Org2MSP.peer')"``. This means that we need
+“endorsement” from a peer belonging to Org1 **AND** Org2 (i.e. two endorsement).
+If we changed the syntax to ``OR`` then we would need only one endorsement.
 
 **Golang**
 
@@ -691,7 +691,7 @@ If we changed the syntax to ``AND`` then we would need two endorsements.
     # be sure to replace the $CHANNEL_NAME environment variable if you have not exported it
     # if you did not install your chaincode with a name of mycc, then modify that argument as well
 
-    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
 
 **Node.js**
 
@@ -705,7 +705,7 @@ If we changed the syntax to ``AND`` then we would need two endorsements.
     # if you did not install your chaincode with a name of mycc, then modify that argument as well
     # notice that we must pass the -l flag after the chaincode name to identify the language
 
-    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -l node -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -l node -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
 
 See the `endorsement
 policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies.html>`__
@@ -743,7 +743,7 @@ update the state DB. The syntax for invoke is as follows:
 
     # be sure to set the -C and -n flags appropriately
 
-    peer chaincode invoke -o orderer.example.com:7050  --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem  -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["invoke","a","b","10"]}'
 
 Query
 ^^^^^
@@ -816,8 +816,8 @@ What's happening behind the scenes?
 
 -  The instantiation also passes in an argument for the endorsement
    policy. The policy is defined as
-   ``-P "OR    ('Org1MSP.peer','Org2MSP.peer')"``, meaning that any
-   transaction must be endorsed by a peer tied to Org1 or Org2.
+   ``-P "AND ('Org1MSP.peer','Org2MSP.peer')"``, meaning that any
+   transaction must be endorsed by a peer tied to Org1 and Org2.
 
 -  A query against the value of "a" is issued to ``peer0.org1.example.com``. The
    chaincode was previously installed on ``peer0.org1.example.com``, so this will start
@@ -869,7 +869,7 @@ You should see the following output:
       2017-05-16 17:08:01.367 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: E61DB37F4E8B0D32C9FE10E3936BA9B8CD278FAA1F3320B08712164248285C54
       Query Result: 90
       2017-05-16 17:08:15.158 UTC [main] main -> INFO 008 Exiting.....
-      ===================== Query on peer1.org2 on channel 'mychannel' is successful =====================
+      ===================== Query successful on peer1.org2 on channel 'mychannel' ===================== 
 
       ===================== All GOOD, BYFN execution completed =====================
 

@@ -79,6 +79,7 @@ Usage:
   peer chaincode install [flags]
 
 Flags:
+      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -h, --help                           help for install
   -l, --lang string                    Language the chaincode is written in (default "golang")
@@ -111,6 +112,7 @@ Usage:
 Flags:
   -C, --channelID string               The channel on which this command should be executed
       --collections-config string      The file containing the configuration for the chaincode's collection
+      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
   -h, --help                           help for instantiate
@@ -144,6 +146,7 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
+      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -h, --help                           help for invoke
   -n, --name string                    Name of the chaincode
@@ -172,6 +175,7 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
+      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -h, --help                           help for list
       --installed                      Get the installed chaincodes on a peer
       --instantiated                   Get the instantiated chaincodes on a channel
@@ -231,13 +235,13 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
+      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -h, --help                           help for query
   -x, --hex                            If true, output the query value byte array in hexadecimal. Incompatible with --raw
   -n, --name string                    Name of the chaincode
       --peerAddresses stringArray      The addresses of the peers to connect to
   -r, --raw                            If true, output the query value as raw bytes, otherwise format as a printable string
-  -t, --tid string                     Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
 Global Flags:
@@ -285,6 +289,7 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
+      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
   -h, --help                           help for upgrade
@@ -322,7 +327,7 @@ instantiates the chaincode named `mycc` at version `1.0` on channel
 
     ```
     export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
 
     2018-02-22 16:33:53.324 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
     2018-02-22 16:33:53.324 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
@@ -334,7 +339,7 @@ instantiates the chaincode named `mycc` at version `1.0` on channel
     network with TLS disabled:
 
     ```
-    peer chaincode instantiate -o orderer.example.com:7050 -C mychannel -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode instantiate -o orderer.example.com:7050 -C mychannel -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
 
 
     2018-02-22 16:34:09.324 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
@@ -346,11 +351,13 @@ instantiates the chaincode named `mycc` at version `1.0` on channel
 
 Here is an example of the `peer chaincode invoke` command:
 
-  * Invoke the chaincode named `mycc` at version `1.0` on channel
-    `mychannel`, requesting to move 10 units from variable `a` to variable `b`
+  * Invoke the chaincode named `mycc` at version `1.0` on channel `mychannel`
+    on `peer0.org1.example.com:7051` and `peer0.org2.example.com:7051` (the
+    peers defined by `--peerAddresses`), requesting to move 10 units from
+    variable `a` to variable `b`:
 
     ```
-    peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc --peerAddresses peer0.org1.example.com:7051 --peerAddresses peer0.org2.example.com:7051 -c '{"Args":["invoke","a","b","10"]}'
 
     2018-02-22 16:34:27.069 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
     2018-02-22 16:34:27.069 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
@@ -470,7 +477,7 @@ upgrades the chaincode named `mycc` at version `1.0` on channel
 
     ```
     export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer chaincode upgrade -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200","c","300"]}' -P "OR	('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode upgrade -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200","c","300"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
     .
     .
     .
@@ -494,7 +501,7 @@ upgrades the chaincode named `mycc` at version `1.0` on channel
     network with TLS disabled:
 
     ```
-    peer chaincode upgrade -o orderer.example.com:7050 -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200","c","300"]}' -P "OR	('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode upgrade -o orderer.example.com:7050 -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200","c","300"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
     .
     .
     .

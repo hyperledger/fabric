@@ -229,11 +229,11 @@ the state with ``john`` and ``0``, the command would look like the following:
 
 .. code:: bash
 
-    peer chaincode instantiate -n sacc -v 1.0 -c '{"Args":["john","0"]}' -P "OR ('Org1.member','Org2.member')"
+    peer chaincode instantiate -n sacc -v 1.0 -c '{"Args":["john","0"]}' -P "AND ('Org1.member','Org2.member')"
 
 .. note:: Note the endorsement policy (CLI uses polish notation), which requires an
-          endorsement from either member of Org1 or Org2 for all transactions to
-          **sacc**. That is, either Org1 or Org2 must sign the
+          endorsement from both a member of Org1 and Org2 for all transactions to
+          **sacc**. That is, both Org1 and Org2 must sign the
           result of executing the `Invoke` on **sacc** for the transactions to
           be valid.
 
