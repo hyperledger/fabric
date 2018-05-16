@@ -178,6 +178,51 @@ func TestCreateChain(t *testing.T) {
 		t.Fail()
 		t.Errorf("expected create command to succeed")
 	}
+
+	filename := mockchain + ".block"
+	if _, err := os.Stat(filename); err != nil {
+		t.Fail()
+		t.Errorf("expected %s to exist", filename)
+	}
+}
+
+func TestCreateChainWithOutputBlock(t *testing.T) {
+	InitMSP()
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	mockchain := "mockchain"
+
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
+	}
+
+	mockCF := &ChannelCmdFactory{
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
+	}
+
+	cmd := createCmd(mockCF)
+	AddFlags(cmd)
+
+	tempDir, err := ioutil.TempDir("", "create-output")
+	if err != nil {
+		t.Fatalf("failed to create temporary directory")
+	}
+	defer os.RemoveAll(tempDir)
+
+	outputBlockPath := filepath.Join(tempDir, "output.block")
+	args := []string{"-c", mockchain, "-o", "localhost:7050", "--outputBlock", outputBlockPath}
+	cmd.SetArgs(args)
+	defer func() { outputBlock = "" }()
+
+	err = cmd.Execute()
+	assert.NoError(t, err, "execute should succeed")
+
+	_, err = os.Stat(outputBlockPath)
+	assert.NoErrorf(t, err, "expected %s to exist", outputBlockPath)
 }
 
 func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
@@ -398,7 +443,7 @@ func TestCreateChainFromTx(t *testing.T) {
 	defer cleanup()
 
 	mockchannel := "mockchannel"
-	dir, err := ioutil.TempDir("/tmp", "createtestfromtx-")
+	dir, err := ioutil.TempDir("", "createtestfromtx-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}
@@ -459,7 +504,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	mockchannel := "mockchannel"
 
-	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
+	dir, err := ioutil.TempDir("", "createinvaltest-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}
@@ -531,7 +576,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	defer cleanup()
 
 	mockchannel := "mockchannel"
-	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
+	dir, err := ioutil.TempDir("", "createinvaltest-")
 	assert.NoError(t, err, "Couldn't create temp dir")
 	defer os.RemoveAll(dir) // clean up
 

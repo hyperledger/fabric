@@ -37,8 +37,6 @@ import (
 //ConfigTxFileNotFound channel create configuration tx file not found
 type ConfigTxFileNotFound string
 
-const createCmdDescription = "Create a channel"
-
 func (e ConfigTxFileNotFound) Error() string {
 	return fmt.Sprintf("channel create configuration tx file not found %s", string(e))
 }
@@ -53,8 +51,8 @@ func (e InvalidCreateTx) Error() string {
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create",
-		Short: createCmdDescription,
-		Long:  createCmdDescription,
+		Short: "Create a channel",
+		Long:  "Create a channel and write the genesis block to a file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return create(cmd, args, cf)
 		},
@@ -62,6 +60,7 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	flagList := []string{
 		"channelID",
 		"file",
+		"outputBlock",
 		"timeout",
 	}
 	attachFlags(createCmd, flagList)
@@ -173,14 +172,13 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 }
 
 func executeCreate(cf *ChannelCmdFactory) error {
-	var err error
-
-	if err = sendCreateChainTransaction(cf); err != nil {
+	err := sendCreateChainTransaction(cf)
+	if err != nil {
 		return err
 	}
 
-	var block *cb.Block
-	if block, err = getGenesisBlock(cf); err != nil {
+	block, err := getGenesisBlock(cf)
+	if err != nil {
 		return err
 	}
 
@@ -190,7 +188,11 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	}
 
 	file := channelID + ".block"
-	if err = ioutil.WriteFile(file, b, 0644); err != nil {
+	if outputBlock != common.UndefinedParamValue {
+		file = outputBlock
+	}
+	err = ioutil.WriteFile(file, b, 0644)
+	if err != nil {
 		return err
 	}
 
@@ -202,6 +204,7 @@ func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	if channelID == common.UndefinedParamValue {
 		return errors.New("Must supply channel ID")
 	}
+
 	// Parsing of the command line is done so silence cmd usage
 	cmd.SilenceUsage = true
 
