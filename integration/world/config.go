@@ -30,7 +30,6 @@ type Profile struct {
 
 type OrdererConfig struct {
 	OrganizationName              string
-	ProfileName                   string
 	Domain                        string
 	OrdererNames                  []string
 	BrokerCount                   int // 0 is solo
@@ -41,7 +40,6 @@ type OrdererConfig struct {
 
 type PeerOrgConfig struct {
 	OrganizationName string
-	ProfileName      string
 	Domain           string
 	EnableNodeOUs    bool
 	UserCount        int

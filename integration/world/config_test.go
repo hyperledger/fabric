@@ -119,7 +119,6 @@ var _ = Describe("Config", func() {
 		ordererOrgs := []OrdererConfig{{
 			OrganizationName:              "OrdererOrg0",
 			Domain:                        "OrdererMSP",
-			ProfileName:                   "TwoOrgsOrdererGenesis",
 			OrdererNames:                  []string{"orderer0"},
 			BrokerCount:                   0,
 			ZookeeperCount:                1,
@@ -128,7 +127,6 @@ var _ = Describe("Config", func() {
 		}, {
 			OrganizationName:              "OrdererOrg1",
 			Domain:                        "OrdererMSP",
-			ProfileName:                   "Different",
 			OrdererNames:                  []string{"orderer1"},
 			BrokerCount:                   0,
 			ZookeeperCount:                2,
@@ -137,7 +135,6 @@ var _ = Describe("Config", func() {
 		}}
 
 		peerOrgs := []PeerOrgConfig{{
-			ProfileName:      "TwoOrgsChannel",
 			OrganizationName: pOrg[0].Name,
 			Domain:           pOrg[0].ID,
 			EnableNodeOUs:    true,
@@ -223,8 +220,8 @@ var _ = Describe("Config", func() {
 		}
 
 		profiles := map[string]localconfig.Profile{
-			peerOrgs[0].ProfileName:    peerProfile,
-			ordererOrgs[0].ProfileName: ordererProfile,
+			"TwoOrgsChannel":        peerProfile,
+			"TwoOrgsOrdererGenesis": ordererProfile,
 		}
 
 		w = World{
@@ -235,8 +232,8 @@ var _ = Describe("Config", func() {
 			Deployment:         deployment,
 			OrdererOrgs:        ordererOrgs,
 			PeerOrgs:           peerOrgs,
-			OrdererProfileName: ordererOrgs[0].ProfileName,
-			ChannelProfileName: peerOrgs[0].ProfileName,
+			OrdererProfileName: "TwoOrgsOrdererGenesis",
+			ChannelProfileName: "TwoOrgsChannel",
 			Profiles:           profiles,
 		}
 
@@ -283,7 +280,6 @@ var _ = Describe("Config", func() {
 			ordererOrgs := OrdererConfig{
 				OrganizationName:              "ExampleCom",
 				Domain:                        "example.com",
-				ProfileName:                   "TwoOrgsOrdererGenesis",
 				OrdererNames:                  []string{"orderer0"},
 				BrokerCount:                   0,
 				ZookeeperCount:                1,
@@ -292,14 +288,12 @@ var _ = Describe("Config", func() {
 			}
 
 			peerOrgs := []PeerOrgConfig{{
-				ProfileName:      "TwoOrgsChannel",
 				OrganizationName: pOrg[0].Name,
 				Domain:           "org1.example.com",
 				EnableNodeOUs:    true,
 				UserCount:        2,
 				PeerCount:        2,
 			}, {
-				ProfileName:      "TwoOrgsChannel",
 				OrganizationName: pOrg[1].Name,
 				Domain:           "org2.example.com",
 				EnableNodeOUs:    true,
@@ -377,8 +371,8 @@ var _ = Describe("Config", func() {
 			}
 
 			profiles := map[string]localconfig.Profile{
-				peerOrgs[0].ProfileName: peerProfile,
-				ordererOrgs.ProfileName: ordererProfile,
+				"TwoOrgsChannel":        peerProfile,
+				"TwoOrgsOrdererGenesis": ordererProfile,
 			}
 
 			crypto := runner.Cryptogen{
@@ -402,8 +396,8 @@ var _ = Describe("Config", func() {
 				Deployment:         deployment,
 				OrdererOrgs:        []OrdererConfig{ordererOrgs},
 				PeerOrgs:           peerOrgs,
-				OrdererProfileName: ordererOrgs.ProfileName,
-				ChannelProfileName: peerOrgs[0].ProfileName,
+				OrdererProfileName: "TwoOrgsOrdererGenesis",
+				ChannelProfileName: "TwoOrgsChannel",
 				Profiles:           profiles,
 			}
 		})

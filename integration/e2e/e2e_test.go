@@ -63,21 +63,18 @@ var _ = Describe("EndToEnd", func() {
 		ordererOrgs := world.OrdererConfig{
 			OrganizationName: "OrdererOrg",
 			Domain:           "example.com",
-			ProfileName:      "TwoOrgsOrdererGenesis",
 			OrdererNames:     []string{"orderer"},
 			BrokerCount:      0,
 		}
 
 		peerOrgs := []world.PeerOrgConfig{{
 			OrganizationName: pOrg[0].Name,
-			ProfileName:      "TwoOrgsChannel",
 			Domain:           "org1.example.com",
 			EnableNodeOUs:    false,
 			UserCount:        1,
 			PeerCount:        1,
 		}, {
 			OrganizationName: pOrg[1].Name,
-			ProfileName:      "TwoOrgsChannel",
 			Domain:           "org2.example.com",
 			EnableNodeOUs:    false,
 			UserCount:        1,
@@ -154,8 +151,8 @@ var _ = Describe("EndToEnd", func() {
 		}
 
 		profiles := map[string]localconfig.Profile{
-			peerOrgs[0].ProfileName: peerProfile,
-			ordererOrgs.ProfileName: ordererProfile,
+			"TwoOrgsOrdererGenesis": ordererProfile,
+			"TwoOrgsChannel":        peerProfile,
 		}
 
 		crypto := runner.Cryptogen{
@@ -170,8 +167,8 @@ var _ = Describe("EndToEnd", func() {
 			Deployment:         deployment,
 			OrdererOrgs:        []world.OrdererConfig{ordererOrgs},
 			PeerOrgs:           peerOrgs,
-			OrdererProfileName: ordererOrgs.ProfileName,
-			ChannelProfileName: peerOrgs[0].ProfileName,
+			OrdererProfileName: "TwoOrgsOrdererGenesis",
+			ChannelProfileName: "TwoOrgsChannel",
 			Profiles:           profiles,
 		}
 	})
