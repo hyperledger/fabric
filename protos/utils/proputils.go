@@ -259,6 +259,26 @@ func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string,
 	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, chainID, cis, nonce, creator, transientMap)
 }
 
+// CreateChaincodeProposalWithTxIDAndTransient creates a proposal from given input
+// It returns the proposal and the transaction id associated to the proposal
+func CreateChaincodeProposalWithTxIDAndTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, txid string, transientMap map[string][]byte) (*peer.Proposal, string, error) {
+	// generate a random nonce
+	nonce, err := crypto.GetRandomNonce()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// compute txid unless provided by tests
+	if txid == "" {
+		txid, err = ComputeProposalTxID(nonce, creator)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, chainID, cis, nonce, creator, transientMap)
+}
+
 // CreateChaincodeProposalWithTxIDNonceAndTransient creates a proposal from given input
 func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, nonce, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.ChaincodeSpec.ChaincodeId}

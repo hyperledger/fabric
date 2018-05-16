@@ -8,6 +8,7 @@ package chaincode
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/peer/common"
@@ -65,6 +66,8 @@ var (
 	peerAddresses         []string
 	tlsRootCertFiles      []string
 	connectionProfile     string
+	waitForEvent          bool
+	waitForEventTimeout   time.Duration
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -116,6 +119,10 @@ func resetFlags() {
 		fmt.Sprint("If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag"))
 	flags.StringVarP(&connectionProfile, "connectionProfile", "", common.UndefinedParamValue,
 		fmt.Sprint("Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information"))
+	flags.BoolVar(&waitForEvent, "waitForEvent", false,
+		fmt.Sprint("Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
+	flags.DurationVar(&waitForEventTimeout, "waitForEventTimeout", 30*time.Second,
+		fmt.Sprint("Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {
@@ -124,7 +131,7 @@ func attachFlags(cmd *cobra.Command, names []string) {
 		if flag := flags.Lookup(name); flag != nil {
 			cmdFlags.AddFlag(flag)
 		} else {
-			logger.Fatalf("Could not find flag '%s' to attach to commond '%s'", name, cmd.Name())
+			logger.Fatalf("Could not find flag '%s' to attach to command '%s'", name, cmd.Name())
 		}
 	}
 }

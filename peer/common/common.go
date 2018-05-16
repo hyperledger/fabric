@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/peer/chaincode/api"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -40,7 +42,12 @@ var (
 	// GetEndorserClientFnc is a function that returns a new endorser client connection
 	// to the provided peer address using the TLS root cert file,
 	// by default it is set to GetEndorserClient function
-	GetEndorserClientFnc func(address string, tlsRootCertFile string) (pb.EndorserClient, error)
+	GetEndorserClientFnc func(address, tlsRootCertFile string) (pb.EndorserClient, error)
+
+	// GetDeliverClientFnc is a function that returns a new deliver client connection
+	// to the provided peer address using the TLS root cert file,
+	// by default it is set to GetDeliverClient function
+	GetDeliverClientFnc func(address, tlsRootCertFile string) (api.DeliverClient, error)
 
 	// GetDefaultSignerFnc is a function that returns a default Signer(Default/PERR)
 	// by default it is set to GetDefaultSigner function
@@ -54,6 +61,9 @@ var (
 	// by default it is set to GetOrdererEndpointOfChain function
 	GetOrdererEndpointOfChainFnc func(chainID string, signer msp.SigningIdentity,
 		endorserClient pb.EndorserClient) ([]string, error)
+
+	// GetCertificateFnc is a function that returns the client TLS certificate
+	GetCertificateFnc func() (tls.Certificate, error)
 )
 
 type commonClient struct {
@@ -67,9 +77,11 @@ func init() {
 	GetDefaultSignerFnc = GetDefaultSigner
 	GetBroadcastClientFnc = GetBroadcastClient
 	GetOrdererEndpointOfChainFnc = GetOrdererEndpointOfChain
+	GetDeliverClientFnc = GetDeliverClient
+	GetCertificateFnc = GetCertificate
 }
 
-//InitConfig initializes viper config
+// InitConfig initializes viper config
 func InitConfig(cmdRoot string) error {
 	err := config.InitViper(nil, cmdRoot)
 	if err != nil {
@@ -84,7 +96,7 @@ func InitConfig(cmdRoot string) error {
 	return nil
 }
 
-//InitCrypto initializes crypto for this peer
+// InitCrypto initializes crypto for this peer
 func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	var err error
 	// Check whether msp folder exists
@@ -133,7 +145,6 @@ func GetDefaultSigner() (msp.SigningIdentity, error) {
 
 // GetOrdererEndpointOfChain returns orderer endpoints of given chain
 func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
-
 	// query cscc for chain config block
 	invocation := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{

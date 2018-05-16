@@ -8,9 +8,12 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -19,14 +22,18 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/peer/chaincode/api"
+	"github.com/hyperledger/fabric/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/peer/common"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
@@ -335,5 +342,285 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	assert.Nil(cf)
 
 	// cleanup
+	resetFlags()
+}
+
+func TestDeliverGroupConnect(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	// success
+	mockDeliverClients := []*deliverClient{
+		{
+			Client:  getMockDeliverClientResponseWithTxID("txid0"),
+			Address: "peer0",
+		},
+		{
+			Client:  getMockDeliverClientResponseWithTxID("txid0"),
+			Address: "peer1",
+		},
+	}
+	dg := deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err := dg.Connect(context.Background())
+	g.Expect(err).To(BeNil())
+
+	// failure - DeliverFiltered returns error
+	mockDC := &mock.DeliverClient{}
+	mockDC.DeliverFilteredReturns(nil, errors.New("icecream"))
+	mockDeliverClients = []*deliverClient{
+		{
+			Client:  mockDC,
+			Address: "peer0",
+		},
+	}
+	dg = deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err = dg.Connect(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("icecream"))
+
+	// failure - Send returns error
+	mockDC.DeliverFilteredReturns(nil, errors.New("blah"))
+	mockDeliverClients = []*deliverClient{
+		{
+			Client:  mockDC,
+			Address: "peer0",
+		},
+	}
+	dg = deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err = dg.Connect(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("blah"))
+
+	// failure - deliver registration timeout
+	delayChan := make(chan struct{})
+	mockDCDelay := getMockDeliverClientRegisterAfterDelay(delayChan)
+	mockDeliverClients = []*deliverClient{
+		{
+			Client:  mockDCDelay,
+			Address: "peer0",
+		},
+	}
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancelFunc()
+	dg = deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err = dg.Connect(ctx)
+	g.Expect(err.Error()).To(ContainSubstring("timed out waiting for connection to deliver on all peers"))
+	close(delayChan)
+
+	// clean-up
+	resetFlags()
+}
+
+func TestDeliverGroupWait(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	// success
+	mockConn := getMockDeliverConnectionResponseWithTxID("txid0")
+	mockDeliverClients := []*deliverClient{
+		{
+			Connection: mockConn,
+			Address:    "peer0",
+		},
+	}
+	dg := deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err := dg.Wait(context.Background())
+	g.Expect(err).To(BeNil())
+
+	// failure - Recv returns error
+	mockConn = &mock.Deliver{}
+	mockConn.RecvReturns(nil, errors.New("avocado"))
+	mockDeliverClients = []*deliverClient{
+		{
+			Connection: mockConn,
+			Address:    "peer0",
+		},
+	}
+	dg = deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err = dg.Wait(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("avocado"))
+
+	// failure - Recv returns unexpected type
+	mockConn = &mock.Deliver{}
+	resp := &pb.DeliverResponse{
+		Type: &pb.DeliverResponse_Block{},
+	}
+	mockConn.RecvReturns(resp, nil)
+	mockDeliverClients = []*deliverClient{
+		{
+			Connection: mockConn,
+			Address:    "peer0",
+		},
+	}
+	dg = deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err = dg.Wait(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("unexpected response type"))
+
+	// failure - both connections return error
+	mockConn = &mock.Deliver{}
+	mockConn.RecvReturns(nil, errors.New("barbeque"))
+	mockConn2 := &mock.Deliver{}
+	mockConn2.RecvReturns(nil, errors.New("tofu"))
+	mockDeliverClients = []*deliverClient{
+		{
+			Connection: mockConn,
+			Address:    "peerBBQ",
+		},
+		{
+			Connection: mockConn2,
+			Address:    "peerTOFU",
+		},
+	}
+	dg = deliverGroup{
+		Clients:   mockDeliverClients,
+		ChannelID: "testchannel",
+		Certificate: tls.Certificate{
+			Certificate: [][]byte{[]byte("test")},
+		},
+		TxID: "txid0",
+	}
+	err = dg.Wait(context.Background())
+	g.Expect(err.Error()).To(SatisfyAny(
+		ContainSubstring("barbeque"),
+		ContainSubstring("tofu")))
+
+	// clean-up
+	resetFlags()
+}
+
+func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
+	// success - deliver client returns event with expected txid
+	InitMSP()
+	waitForEvent = true
+	mockCF, err := getMockChaincodeCmdFactory()
+	assert.NoError(t, err)
+	peerAddresses = []string{"peer0", "peer1"}
+	channelID := "testchannel"
+	txID := "txid0"
+
+	_, err = ChaincodeInvokeOrQuery(
+		&pb.ChaincodeSpec{},
+		channelID,
+		txID,
+		true,
+		mockCF.Signer,
+		mockCF.Certificate,
+		mockCF.EndorserClients,
+		mockCF.DeliverClients,
+		mockCF.BroadcastClient,
+	)
+	assert.NoError(t, err)
+
+	// success - one deliver client first receives block without txid and
+	// then one with txid
+	filteredBlocks := []*pb.FilteredBlock{
+		createFilteredBlock("theseare", "notthetxidsyouarelookingfor"),
+		createFilteredBlock("txid0"),
+	}
+	mockDCTwoBlocks := getMockDeliverClientRespondsWithFilteredBlocks(filteredBlocks)
+	mockDC := getMockDeliverClientResponseWithTxID("txid0")
+	mockDeliverClients := []api.DeliverClient{mockDCTwoBlocks, mockDC}
+
+	_, err = ChaincodeInvokeOrQuery(
+		&pb.ChaincodeSpec{},
+		channelID,
+		txID,
+		true,
+		mockCF.Signer,
+		mockCF.Certificate,
+		mockCF.EndorserClients,
+		mockDeliverClients,
+		mockCF.BroadcastClient,
+	)
+	assert.NoError(t, err)
+
+	// failure - one of the deliver clients returns error
+	mockDCErr := getMockDeliverClientWithErr("moist")
+	mockDC = getMockDeliverClient()
+	mockDeliverClients = []api.DeliverClient{mockDCErr, mockDC}
+
+	_, err = ChaincodeInvokeOrQuery(
+		&pb.ChaincodeSpec{},
+		channelID,
+		txID,
+		true,
+		mockCF.Signer,
+		mockCF.Certificate,
+		mockCF.EndorserClients,
+		mockDeliverClients,
+		mockCF.BroadcastClient,
+	)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "moist")
+
+	// failure - timeout occurs - both deliver clients don't return an event
+	// with the expected txid
+	mockDC = getMockDeliverClientResponseWithTxID("garbage")
+	delayChan := make(chan struct{})
+	mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan)
+	mockDeliverClients = []api.DeliverClient{mockDC, mockDCDelay}
+	waitForEventTimeout = 10 * time.Millisecond
+
+	_, err = ChaincodeInvokeOrQuery(
+		&pb.ChaincodeSpec{},
+		channelID,
+		txID,
+		true,
+		mockCF.Signer,
+		mockCF.Certificate,
+		mockCF.EndorserClients,
+		mockDeliverClients,
+		mockCF.BroadcastClient,
+	)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timed out")
+	close(delayChan)
+
+	// clean-up
 	resetFlags()
 }

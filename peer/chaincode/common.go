@@ -7,20 +7,27 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"strings"
+	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/peer/chaincode/api"
 	"github.com/hyperledger/fabric/peer/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -101,12 +108,19 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		return err
 	}
 
+	// call with empty txid to ensure production code generates a txid.
+	// otherwise, tests can explicitly set their own txid
+	txID := ""
+
 	proposalResp, err := ChaincodeInvokeOrQuery(
 		spec,
 		channelID,
+		txID,
 		invoke,
 		cf.Signer,
+		cf.Certificate,
 		cf.EndorserClients,
+		cf.DeliverClients,
 		cf.BroadcastClient)
 
 	if err != nil {
@@ -340,6 +354,8 @@ func validatePeerConnectionParameters(cmdName string) error {
 // ChaincodeCmdFactory holds the clients used by ChaincodeCmd
 type ChaincodeCmdFactory struct {
 	EndorserClients []pb.EndorserClient
+	DeliverClients  []api.DeliverClient
+	Certificate     tls.Certificate
 	Signer          msp.SigningIdentity
 	BroadcastClient common.BroadcastClient
 }
@@ -348,6 +364,7 @@ type ChaincodeCmdFactory struct {
 func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
 	var err error
 	var endorserClients []pb.EndorserClient
+	var deliverClients []api.DeliverClient
 	if isEndorserRequired {
 		if err = validatePeerConnectionParameters(cmdName); err != nil {
 			return nil, errors.WithMessage(err, "error validating peer connection parameters")
@@ -362,10 +379,19 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 				return nil, errors.WithMessage(err, fmt.Sprintf("error getting endorser client for %s", cmdName))
 			}
 			endorserClients = append(endorserClients, endorserClient)
+			deliverClient, err := common.GetDeliverClientFnc(address, tlsRootCertFile)
+			if err != nil {
+				return nil, errors.WithMessage(err, fmt.Sprintf("error getting deliver client for %s", cmdName))
+			}
+			deliverClients = append(deliverClients, deliverClient)
 		}
 		if len(endorserClients) == 0 {
 			return nil, errors.New("no endorser clients retrieved - this might indicate a bug")
 		}
+	}
+	certificate, err := common.GetCertificateFnc()
+	if err != nil {
+		return nil, errors.WithMessage(err, "error getting client cerificate")
 	}
 
 	signer, err := common.GetDefaultSignerFnc()
@@ -401,8 +427,10 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 	}
 	return &ChaincodeCmdFactory{
 		EndorserClients: endorserClients,
+		DeliverClients:  deliverClients,
 		Signer:          signer,
 		BroadcastClient: broadcastClient,
+		Certificate:     certificate,
 	}, nil
 }
 
@@ -418,9 +446,12 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 func ChaincodeInvokeOrQuery(
 	spec *pb.ChaincodeSpec,
 	cID string,
+	txID string,
 	invoke bool,
 	signer msp.SigningIdentity,
+	certificate tls.Certificate,
 	endorserClients []pb.EndorserClient,
+	deliverClients []api.DeliverClient,
 	bc common.BroadcastClient,
 ) (*pb.ProposalResponse, error) {
 	// Build the ChaincodeInvocationSpec message
@@ -444,14 +475,12 @@ func ChaincodeInvokeOrQuery(
 		}
 	}
 
-	var prop *pb.Proposal
-	prop, _, err = putils.CreateChaincodeProposalWithTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, tMap)
+	prop, txid, err := putils.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, txID, tMap)
 	if err != nil {
 		return nil, fmt.Errorf("error creating proposal  %s: %s", funcName, err)
 	}
 
-	var signedProp *pb.SignedProposal
-	signedProp, err = putils.GetSignedProposal(prop, signer)
+	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, fmt.Errorf("error creating signed proposal  %s: %s", funcName, err)
 	}
@@ -482,13 +511,238 @@ func ChaincodeInvokeOrQuery(
 			if err != nil {
 				return proposalResp, fmt.Errorf("could not assemble transaction, err %s", err)
 			}
+			var dg *deliverGroup
+			var ctx context.Context
+			if waitForEvent {
+				var cancelFunc context.CancelFunc
+				ctx, cancelFunc = context.WithTimeout(context.Background(), waitForEventTimeout)
+				defer cancelFunc()
+
+				dg = newDeliverGroup(deliverClients, peerAddresses, certificate, channelID, txid)
+				// connect to deliver service on all peers
+				err := dg.Connect(ctx)
+				if err != nil {
+					return nil, err
+				}
+			}
 
 			// send the envelope for ordering
 			if err = bc.Send(env); err != nil {
 				return proposalResp, fmt.Errorf("error sending transaction %s: %s", funcName, err)
 			}
+
+			if dg != nil && ctx != nil {
+				// wait for event that contains the txid from all peers
+				err = dg.Wait(ctx)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 
 	return proposalResp, nil
+}
+
+// deliverGroup holds all of the information needed to connect
+// to a set of peers to wait for the interested txid to be
+// committed to the ledgers of all peers. This functionality
+// is currently implemented via the peer's DeliverFiltered service.
+// An error from any of the peers/deliver clients will result in
+// the invoke command returning an error. Only the first error that
+// occurs will be set
+type deliverGroup struct {
+	Clients     []*deliverClient
+	Certificate tls.Certificate
+	ChannelID   string
+	TxID        string
+	mutex       sync.Mutex
+	Error       error
+	wg          sync.WaitGroup
+}
+
+// deliverClient holds the client/connection related to a specific
+// peer. The address is included for logging purposes
+type deliverClient struct {
+	Client     api.DeliverClient
+	Connection api.Deliver
+	Address    string
+}
+
+func newDeliverGroup(deliverClients []api.DeliverClient, peerAddresses []string, certificate tls.Certificate, channelID string, txid string) *deliverGroup {
+	clients := make([]*deliverClient, len(deliverClients))
+	for i, client := range deliverClients {
+		dc := &deliverClient{
+			Client:  client,
+			Address: peerAddresses[i],
+		}
+		clients[i] = dc
+	}
+
+	dg := &deliverGroup{
+		Clients:     clients,
+		Certificate: certificate,
+		ChannelID:   channelID,
+		TxID:        txid,
+	}
+
+	return dg
+}
+
+// Connect waits for all deliver clients in the group to connect to
+// the peer's deliver service, receive an error, or for the context
+// to timeout. An error will be returned whenever even a single
+// deliver client fails to connect to its peer
+func (dg *deliverGroup) Connect(ctx context.Context) error {
+	dg.wg.Add(len(dg.Clients))
+	for _, client := range dg.Clients {
+		go dg.ClientConnect(ctx, client)
+	}
+	readyCh := make(chan struct{})
+	go dg.WaitForWG(readyCh)
+
+	select {
+	case <-readyCh:
+		if dg.Error != nil {
+			err := errors.WithMessage(dg.Error, "failed to connect to deliver on all peers")
+			return err
+		}
+	case <-ctx.Done():
+		err := errors.New("timed out waiting for connection to deliver on all peers")
+		return err
+	}
+
+	return nil
+}
+
+// ClientConnect sends a deliver seek info envelope using the
+// provided deliver client, setting the deliverGroup's Error
+// field upon any error
+func (dg *deliverGroup) ClientConnect(ctx context.Context, dc *deliverClient) {
+	defer dg.wg.Done()
+	df, err := dc.Client.DeliverFiltered(ctx)
+	if err != nil {
+		err = errors.WithMessage(err, fmt.Sprintf("error connecting to deliver filtered at %s", dc.Address))
+		dg.setError(err)
+		return
+	}
+	defer df.CloseSend()
+	dc.Connection = df
+
+	envelope := createDeliverEnvelope(dg.ChannelID, dg.Certificate)
+	err = df.Send(envelope)
+	if err != nil {
+		err = errors.WithMessage(err, fmt.Sprintf("error sending deliver seek info envelope to %s", dc.Address))
+		dg.setError(err)
+		return
+	}
+}
+
+// Wait waits for all deliver client connections in the group to
+// either receive a block with the txid, an error, or for the
+// context to timeout
+func (dg *deliverGroup) Wait(ctx context.Context) error {
+	if len(dg.Clients) == 0 {
+		return nil
+	}
+
+	dg.wg.Add(len(dg.Clients))
+	for _, client := range dg.Clients {
+		go dg.ClientWait(client)
+	}
+	readyCh := make(chan struct{})
+	go dg.WaitForWG(readyCh)
+
+	select {
+	case <-readyCh:
+		if dg.Error != nil {
+			err := errors.WithMessage(dg.Error, "failed to receive txid on all peers")
+			return err
+		}
+	case <-ctx.Done():
+		err := errors.New("timed out waiting for txid on all peers")
+		return err
+	}
+
+	return nil
+}
+
+// ClientWait waits for the specified deliver client to receive
+// a block event with the requested txid
+func (dg *deliverGroup) ClientWait(dc *deliverClient) {
+	defer dg.wg.Done()
+	for {
+		resp, err := dc.Connection.Recv()
+		if err != nil {
+			err = errors.WithMessage(err, fmt.Sprintf("error receiving from deliver filtered at %s", dc.Address))
+			dg.setError(err)
+			return
+		}
+		switch r := resp.Type.(type) {
+		case *pb.DeliverResponse_FilteredBlock:
+			filteredTransactions := r.FilteredBlock.FilteredTransactions
+			for _, tx := range filteredTransactions {
+				if tx.Txid == dg.TxID {
+					logger.Infof("txid [%s] committed with status (%s) at %s", dg.TxID, tx.TxValidationCode, dc.Address)
+					return
+				}
+			}
+		default:
+			err = errors.Errorf("received unexpected response type (%T) from %s", r, dc.Address)
+			dg.setError(err)
+			return
+		}
+	}
+}
+
+// WaitForWG waits for the deliverGroup's wait group and closes
+// the channel when ready
+func (dg *deliverGroup) WaitForWG(readyCh chan struct{}) {
+	dg.wg.Wait()
+	close(readyCh)
+}
+
+// setError serializes an error for the deliverGroup
+func (dg *deliverGroup) setError(err error) {
+	dg.mutex.Lock()
+	dg.Error = err
+	dg.mutex.Unlock()
+}
+
+func createDeliverEnvelope(channelID string, certificate tls.Certificate) *pcommon.Envelope {
+	var tlsCertHash []byte
+	// check for client certificate and create hash if present
+	if len(certificate.Certificate) > 0 {
+		tlsCertHash = util.ComputeSHA256(certificate.Certificate[0])
+	}
+
+	start := &ab.SeekPosition{
+		Type: &ab.SeekPosition_Newest{
+			Newest: &ab.SeekNewest{},
+		},
+	}
+
+	stop := &ab.SeekPosition{
+		Type: &ab.SeekPosition_Specified{
+			Specified: &ab.SeekSpecified{
+				Number: math.MaxUint64,
+			},
+		},
+	}
+
+	seekInfo := &ab.SeekInfo{
+		Start:    start,
+		Stop:     stop,
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	}
+
+	env, err := putils.CreateSignedEnvelopeWithTLSBinding(
+		pcommon.HeaderType_DELIVER_SEEK_INFO, channelID, localmsp.NewSigner(),
+		seekInfo, int32(0), uint64(0), tlsCertHash)
+	if err != nil {
+		logger.Errorf("Error signing envelope:  %s", err)
+		return nil
+	}
+
+	return env
 }
