@@ -183,7 +183,9 @@ func (m *Query) String() string            { return proto.CompactTextString(m) }
 func (*Query) ProtoMessage()               {}
 func (*Query) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
-type isQuery_Query interface{ isQuery_Query() }
+type isQuery_Query interface {
+	isQuery_Query()
+}
 
 type Query_ConfigQuery struct {
 	ConfigQuery *ConfigQuery `protobuf:"bytes,2,opt,name=config_query,json=configQuery,oneof"`
@@ -375,7 +377,9 @@ func (m *QueryResult) String() string            { return proto.CompactTextStrin
 func (*QueryResult) ProtoMessage()               {}
 func (*QueryResult) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
-type isQueryResult_Result interface{ isQueryResult_Result() }
+type isQueryResult_Result interface {
+	isQueryResult_Result()
+}
 
 type QueryResult_Error struct {
 	Error *Error `protobuf:"bytes,1,opt,name=error,oneof"`

@@ -61,6 +61,15 @@ type Signer struct {
 	getOrganizationalUnitsReturnsOnCall map[int]struct {
 		result1 []*msp.OUIdentifier
 	}
+	AnonymousStub        func() bool
+	anonymousMutex       sync.RWMutex
+	anonymousArgsForCall []struct{}
+	anonymousReturns     struct {
+		result1 bool
+	}
+	anonymousReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	VerifyStub        func(msg []byte, sig []byte) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
@@ -318,6 +327,46 @@ func (fake *Signer) GetOrganizationalUnitsReturnsOnCall(i int, result1 []*msp.OU
 	}
 	fake.getOrganizationalUnitsReturnsOnCall[i] = struct {
 		result1 []*msp.OUIdentifier
+	}{result1}
+}
+
+func (fake *Signer) Anonymous() bool {
+	fake.anonymousMutex.Lock()
+	ret, specificReturn := fake.anonymousReturnsOnCall[len(fake.anonymousArgsForCall)]
+	fake.anonymousArgsForCall = append(fake.anonymousArgsForCall, struct{}{})
+	fake.recordInvocation("Anonymous", []interface{}{})
+	fake.anonymousMutex.Unlock()
+	if fake.AnonymousStub != nil {
+		return fake.AnonymousStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.anonymousReturns.result1
+}
+
+func (fake *Signer) AnonymousCallCount() int {
+	fake.anonymousMutex.RLock()
+	defer fake.anonymousMutex.RUnlock()
+	return len(fake.anonymousArgsForCall)
+}
+
+func (fake *Signer) AnonymousReturns(result1 bool) {
+	fake.AnonymousStub = nil
+	fake.anonymousReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *Signer) AnonymousReturnsOnCall(i int, result1 bool) {
+	fake.AnonymousStub = nil
+	if fake.anonymousReturnsOnCall == nil {
+		fake.anonymousReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.anonymousReturnsOnCall[i] = struct {
+		result1 bool
 	}{result1}
 }
 
@@ -580,6 +629,8 @@ func (fake *Signer) Invocations() map[string][][]interface{} {
 	defer fake.validateMutex.RUnlock()
 	fake.getOrganizationalUnitsMutex.RLock()
 	defer fake.getOrganizationalUnitsMutex.RUnlock()
+	fake.anonymousMutex.RLock()
+	defer fake.anonymousMutex.RUnlock()
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	fake.serializeMutex.RLock()
