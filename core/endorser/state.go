@@ -51,6 +51,7 @@ func (sc *StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWrite
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	defer scanner.Close()
 	var data []*rwset.TxPvtReadWriteSet
 	for {
 		res, err := scanner.NextWithConfig()
