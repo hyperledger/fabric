@@ -9,6 +9,7 @@ package chaincode_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -50,11 +51,11 @@ var _ = Describe("HandlerRegistry", func() {
 	})
 
 	Describe("Launching", func() {
-		It("returns a channel to wait on for registration", func() {
-			registered, err := hr.Launching("chaincode-name")
+		It("returns a LaunchState to wait on for registration", func() {
+			launchState, err := hr.Launching("chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
-			Consistently(registered).ShouldNot(Receive())
-			Consistently(registered).ShouldNot(BeClosed())
+			Consistently(launchState.Done()).ShouldNot(Receive())
+			Consistently(launchState.Done()).ShouldNot(BeClosed())
 		})
 
 		Context("when a chaincode instance is already launching", func() {
@@ -83,24 +84,57 @@ var _ = Describe("HandlerRegistry", func() {
 	})
 
 	Describe("Ready", func() {
-		var readyCh <-chan struct{}
+		var launchState *chaincode.LaunchState
 
 		BeforeEach(func() {
 			var err error
-			readyCh, err = hr.Launching("chaincode-name")
+			launchState, err = hr.Launching("chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(readyCh).NotTo(BeClosed())
+			Expect(launchState.Done()).NotTo(BeClosed())
 		})
 
-		It("closes the ready channel associated with the chaincode name", func() {
+		It("closes the done channel associated with the chaincode name", func() {
 			hr.Ready("chaincode-name")
-			Expect(readyCh).To(BeClosed())
+			Expect(launchState.Done()).To(BeClosed())
+		})
+
+		It("does not set an error on launch state", func() {
+			hr.Ready("chaincode-name")
+			Expect(launchState.Err()).To(BeNil())
 		})
 
 		It("cleans up the launching state", func() {
 			hr.Ready("chaincode-name")
 			launching := hr.HasLaunched("chaincode-name")
 			Expect(launching).To(BeFalse())
+		})
+	})
+
+	Describe("Failed", func() {
+		var launchState *chaincode.LaunchState
+
+		BeforeEach(func() {
+			var err error
+			launchState, err = hr.Launching("chaincode-name")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(launchState.Done()).NotTo(BeClosed())
+		})
+
+		It("closes the done channel associated with the chaincode name", func() {
+			hr.Failed("chaincode-name", errors.New("coconut"))
+			Expect(launchState.Done()).To(BeClosed())
+		})
+
+		It("sets a persistent error on launch state", func() {
+			hr.Failed("chaincode-name", errors.New("star-fruit"))
+			Expect(launchState.Err()).To(MatchError("star-fruit"))
+			Expect(launchState.Err()).To(MatchError("star-fruit"))
+		})
+
+		It("leaves the launching state in the registry for explicit cleanup", func() {
+			hr.Failed("chaincode-name", errors.New("mango"))
+			launching := hr.HasLaunched("chaincode-name")
+			Expect(launching).To(BeTrue())
 		})
 	})
 

@@ -38,6 +38,7 @@ type ACLProvider interface {
 type Registry interface {
 	Register(*Handler) error
 	Ready(cname string)
+	Failed(cname string, err error)
 	Deregister(cname string) error
 }
 
@@ -286,7 +287,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 
 	var err error
 	if err = h.chatStream.Send(msg); err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("[%s] Error sending %s", shorttxid(msg.Txid), msg.Type))
+		err = errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(msg.Txid), msg.Type))
 		chaincodeLogger.Errorf("%+v", err)
 	}
 	return err
@@ -421,25 +422,26 @@ func (h *Handler) sendReady() error {
 	}
 
 	h.state = Ready
-	h.Registry.Ready(h.chaincodeID.Name)
 
 	chaincodeLogger.Debugf("Changed to state ready for chaincode %+v", h.chaincodeID)
 
 	return nil
 }
 
-// notifyDuringStartup will send ready on registration
-func (h *Handler) notifyDuringStartup(val bool) {
-	// TODO: FAB-9683
-	if !val {
+// notifyRegistry will send ready on registration success and
+// update the launch state of the chaincode in the handler registry.
+func (h *Handler) notifyRegistry(err error) {
+	if err == nil {
+		err = h.sendReady()
+	}
+
+	if err != nil {
+		h.Registry.Failed(h.chaincodeID.Name, err)
 		chaincodeLogger.Errorf("failed to start %s", h.chaincodeID)
 		return
 	}
 
-	err := h.sendReady()
-	if err != nil {
-		chaincodeLogger.Debugf("sendReady failed: %s", err)
-	}
+	h.Registry.Ready(h.chaincodeID.Name)
 }
 
 // handleRegister is invoked when chaincode tries to register.
@@ -456,7 +458,7 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	h.chaincodeID = chaincodeID
 	err = h.Registry.Register(h)
 	if err != nil {
-		h.notifyDuringStartup(false)
+		h.notifyRegistry(err)
 		return
 	}
 
@@ -466,8 +468,8 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 
 	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, chaincodeID, pb.ChaincodeMessage_REGISTERED)
 	if err := h.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
-		chaincodeLogger.Errorf("Error sending %s: %s", pb.ChaincodeMessage_REGISTERED, err)
-		h.notifyDuringStartup(false)
+		chaincodeLogger.Errorf("error sending %s: %s", pb.ChaincodeMessage_REGISTERED, err)
+		h.notifyRegistry(err)
 		return
 	}
 
@@ -476,7 +478,7 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	chaincodeLogger.Debugf("Changed state to established for %+v", h.chaincodeID)
 
 	// for dev mode this will also move to ready automatically
-	h.notifyDuringStartup(true)
+	h.notifyRegistry(nil)
 }
 
 func (h *Handler) Notify(msg *pb.ChaincodeMessage) {

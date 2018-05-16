@@ -24,6 +24,12 @@ type Registry struct {
 	readyArgsForCall []struct {
 		cname string
 	}
+	FailedStub        func(cname string, err error)
+	failedMutex       sync.RWMutex
+	failedArgsForCall []struct {
+		cname string
+		err   error
+	}
 	DeregisterStub        func(cname string) error
 	deregisterMutex       sync.RWMutex
 	deregisterArgsForCall []struct {
@@ -111,6 +117,31 @@ func (fake *Registry) ReadyArgsForCall(i int) string {
 	return fake.readyArgsForCall[i].cname
 }
 
+func (fake *Registry) Failed(cname string, err error) {
+	fake.failedMutex.Lock()
+	fake.failedArgsForCall = append(fake.failedArgsForCall, struct {
+		cname string
+		err   error
+	}{cname, err})
+	fake.recordInvocation("Failed", []interface{}{cname, err})
+	fake.failedMutex.Unlock()
+	if fake.FailedStub != nil {
+		fake.FailedStub(cname, err)
+	}
+}
+
+func (fake *Registry) FailedCallCount() int {
+	fake.failedMutex.RLock()
+	defer fake.failedMutex.RUnlock()
+	return len(fake.failedArgsForCall)
+}
+
+func (fake *Registry) FailedArgsForCall(i int) (string, error) {
+	fake.failedMutex.RLock()
+	defer fake.failedMutex.RUnlock()
+	return fake.failedArgsForCall[i].cname, fake.failedArgsForCall[i].err
+}
+
 func (fake *Registry) Deregister(cname string) error {
 	fake.deregisterMutex.Lock()
 	ret, specificReturn := fake.deregisterReturnsOnCall[len(fake.deregisterArgsForCall)]
@@ -166,6 +197,8 @@ func (fake *Registry) Invocations() map[string][][]interface{} {
 	defer fake.registerMutex.RUnlock()
 	fake.readyMutex.RLock()
 	defer fake.readyMutex.RUnlock()
+	fake.failedMutex.RLock()
+	defer fake.failedMutex.RUnlock()
 	fake.deregisterMutex.RLock()
 	defer fake.deregisterMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/fake"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -25,11 +26,11 @@ import (
 var _ = Describe("RuntimeLauncher", func() {
 	var (
 		fakeRuntime         *mock.Runtime
-		fakeRegistry        *mock.LaunchRegistry
+		fakeRegistry        *fake.LaunchRegistry
 		fakeExecutor        *mock.Executor
 		fakePackageProvider *mock.PackageProvider
 		fakePackage         *mock.CCPackage
-		ready               chan (struct{})
+		launchState         *chaincode.LaunchState
 
 		cccid          *ccprovider.CCContext
 		signedProp     *pb.SignedProposal
@@ -52,13 +53,13 @@ var _ = Describe("RuntimeLauncher", func() {
 		deploymentSpecPayload, err := proto.Marshal(deploymentSpec)
 		Expect(err).NotTo(HaveOccurred())
 
-		ready = make(chan struct{})
-		fakeRegistry = &mock.LaunchRegistry{}
-		fakeRegistry.LaunchingReturns(ready, nil)
+		launchState = chaincode.NewLaunchState()
+		fakeRegistry = &fake.LaunchRegistry{}
+		fakeRegistry.LaunchingReturns(launchState, nil)
 
 		fakeRuntime = &mock.Runtime{}
 		fakeRuntime.StartStub = func(context.Context, *ccprovider.CCContext, *pb.ChaincodeDeploymentSpec) error {
-			close(ready)
+			launchState.Notify(nil)
 			return nil
 		}
 
@@ -251,14 +252,14 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(cds).To(Equal(deploymentSpec))
 	})
 
-	It("waits for ready to close", func() {
+	It("waits for the launch to complete", func() {
 		fakeRuntime.StartReturns(nil)
 
 		errCh := make(chan error, 1)
 		go func() { errCh <- runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec) }()
 
 		Consistently(errCh).ShouldNot(Receive())
-		close(ready)
+		launchState.Notify(nil)
 		Eventually(errCh).Should(Receive(BeNil()))
 	})
 
@@ -288,6 +289,38 @@ var _ = Describe("RuntimeLauncher", func() {
 		It("returns a wrapped error", func() {
 			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
 			Expect(err).To(MatchError("error starting container: banana"))
+		})
+
+		It("stops the runtime", func() {
+			runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
+
+			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
+			ctx, ccContext, cds := fakeRuntime.StopArgsForCall(0)
+			Expect(ctx).To(Equal(context.Background()))
+			Expect(ccContext).To(Equal(cccid))
+			Expect(cds).To(Equal(deploymentSpec))
+		})
+
+		It("deregisters the chaincode", func() {
+			runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
+
+			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
+			cname := fakeRegistry.DeregisterArgsForCall(0)
+			Expect(cname).To(Equal("context-name:context-version"))
+		})
+	})
+
+	Context("when handler registration fails", func() {
+		BeforeEach(func() {
+			fakeRuntime.StartStub = func(context.Context, *ccprovider.CCContext, *pb.ChaincodeDeploymentSpec) error {
+				launchState.Notify(errors.New("papaya"))
+				return nil
+			}
+		})
+
+		It("returns an error", func() {
+			err := runtimeLauncher.Launch(context.Background(), cccid, deploymentSpec)
+			Expect(err).To(MatchError("chaincode registration failed: papaya"))
 		})
 
 		It("stops the runtime", func() {

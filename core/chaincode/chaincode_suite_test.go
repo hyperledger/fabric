@@ -68,11 +68,6 @@ type ccpackage interface {
 	ccprovider.CCPackage
 }
 
-//go:generate counterfeiter -o mock/launch_registry.go --fake-name LaunchRegistry . launchRegistry
-type launchRegistry interface {
-	chaincode.LaunchRegistry
-}
-
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
 type chaincodeStream interface {
 	ccintf.ChaincodeStream
@@ -114,6 +109,11 @@ type peerLedger interface {
 }
 
 // NOTE: These are getting generated into the "fake" package to avoid import cycles. We need to revisit this.
+
+//go:generate counterfeiter -o fake/launch_registry.go --fake-name LaunchRegistry . launchRegistry
+type launchRegistry interface {
+	chaincode.LaunchRegistry
+}
 
 //go:generate counterfeiter -o fake/message_handler.go --fake-name MessageHandler . messageHandler
 type messageHandler interface {
