@@ -63,6 +63,13 @@ func TestLedgerConfigPathDefault(t *testing.T) {
 	testutil.AssertEquals(t,
 		GetBlockStorePath(),
 		"/var/hyperledger/production/ledgersData/chains")
+	testutil.AssertEquals(t,
+		GetPvtdataStorePath(),
+		"/var/hyperledger/production/ledgersData/pvtdataStore")
+	testutil.AssertEquals(t,
+		GetInternalBookkeeperPath(),
+		"/var/hyperledger/production/ledgersData/bookkeeper")
+
 }
 
 func TestLedgerConfigPath(t *testing.T) {
@@ -84,6 +91,12 @@ func TestLedgerConfigPath(t *testing.T) {
 	testutil.AssertEquals(t,
 		GetBlockStorePath(),
 		"/tmp/hyperledger/production/ledgersData/chains")
+	testutil.AssertEquals(t,
+		GetPvtdataStorePath(),
+		"/tmp/hyperledger/production/ledgersData/pvtdataStore")
+	testutil.AssertEquals(t,
+		GetInternalBookkeeperPath(),
+		"/tmp/hyperledger/production/ledgersData/bookkeeper")
 }
 
 func TestGetQueryLimitDefault(t *testing.T) {
@@ -104,6 +117,54 @@ func TestGetQueryLimit(t *testing.T) {
 	viper.Set("ledger.state.couchDBConfig.queryLimit", 5000)
 	updatedValue := GetQueryLimit()
 	testutil.AssertEquals(t, updatedValue, 5000) //test config returns 5000
+}
+
+func TestMaxBatchUpdateSizeDefault(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defaultValue := GetMaxBatchUpdateSize()
+	testutil.AssertEquals(t, defaultValue, 1000) //test default config is 1000
+}
+
+func TestMaxBatchUpdateSizeUnset(t *testing.T) {
+	viper.Reset()
+	defaultValue := GetMaxBatchUpdateSize()
+	testutil.AssertEquals(t, defaultValue, 500) // 500 if maxBatchUpdateSize is not set
+}
+
+func TestMaxBatchUpdateSize(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defer ledgertestutil.ResetConfigToDefaultValues()
+	viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 2000)
+	updatedValue := GetMaxBatchUpdateSize()
+	testutil.AssertEquals(t, updatedValue, 2000) //test config returns 2000
+}
+
+func TestPvtdataStorePurgeIntervalDefault(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defaultValue := GetPvtdataStorePurgeInterval()
+	testutil.AssertEquals(t, defaultValue, uint64(100)) //test default config is 100
+}
+
+func TestPvtdataStorePurgeIntervalUnset(t *testing.T) {
+	viper.Reset()
+	defaultValue := GetPvtdataStorePurgeInterval()
+	testutil.AssertEquals(t, defaultValue, uint64(100)) // 100 if purgeInterval is not set
+}
+
+func TestIsQueryReadHasingEnabled(t *testing.T) {
+	testutil.AssertEquals(t, IsQueryReadsHashingEnabled(), true)
+}
+
+func TestGetMaxDegreeQueryReadsHashing(t *testing.T) {
+	testutil.AssertEquals(t, GetMaxDegreeQueryReadsHashing(), uint32(50))
+}
+
+func TestPvtdataStorePurgeInterval(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defer ledgertestutil.ResetConfigToDefaultValues()
+	viper.Set("ledger.pvtdataStore.purgeInterval", 1000)
+	updatedValue := GetPvtdataStorePurgeInterval()
+	testutil.AssertEquals(t, updatedValue, uint64(1000)) //test config returns 1000
 }
 
 func TestIsHistoryDBEnabledDefault(t *testing.T) {
@@ -134,6 +195,12 @@ func TestIsAutoWarmIndexesEnabledDefault(t *testing.T) {
 	testutil.AssertEquals(t, defaultValue, true) //test default config is true
 }
 
+func TestIsAutoWarmIndexesEnabledUnset(t *testing.T) {
+	viper.Reset()
+	defaultValue := IsAutoWarmIndexesEnabled()
+	testutil.AssertEquals(t, defaultValue, true) //test default config is true
+}
+
 func TestIsAutoWarmIndexesEnabledTrue(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer ledgertestutil.ResetConfigToDefaultValues()
@@ -156,12 +223,22 @@ func TestGetWarmIndexesAfterNBlocksDefault(t *testing.T) {
 	testutil.AssertEquals(t, defaultValue, 1) //test default config is true
 }
 
+func TestGetWarmIndexesAfterNBlocksUnset(t *testing.T) {
+	viper.Reset()
+	defaultValue := GetWarmIndexesAfterNBlocks()
+	testutil.AssertEquals(t, defaultValue, 1) //test default config is true
+}
+
 func TestGetWarmIndexesAfterNBlocks(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer ledgertestutil.ResetConfigToDefaultValues()
 	viper.Set("ledger.state.couchDBConfig.warmIndexesAfterNBlocks", 10)
 	updatedValue := GetWarmIndexesAfterNBlocks()
 	testutil.AssertEquals(t, updatedValue, 10)
+}
+
+func TestGetMaxBlockfileSize(t *testing.T) {
+	testutil.AssertEquals(t, GetMaxBlockfileSize(), 67108864)
 }
 
 func setUpCoreYAMLConfig() {
