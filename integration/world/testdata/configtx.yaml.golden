@@ -1,0 +1,118 @@
+Profiles:
+  TwoOrgsChannel:
+    Consortium: MyConsortium
+    Application:
+      Organizations:
+      - Name: Org1
+        ID: Org1MSP
+        MSPDir: some dir
+        MSPType: ""
+        Policies: {}
+        AnchorPeers:
+        - Host: some host
+          Port: 1111
+        - Host: some host
+          Port: 2222
+        AdminPrincipal: ""
+      - Name: Org2
+        ID: Org2MSP
+        MSPDir: some other dir
+        MSPType: ""
+        Policies: {}
+        AnchorPeers:
+        - Host: my host
+          Port: 3333
+        - Host: some host
+          Port: 4444
+        AdminPrincipal: ""
+      Capabilities:
+        V1_2: true
+      Resources: null
+      Policies: {}
+      ACLs: {}
+    Orderer: null
+    Consortiums: {}
+    Capabilities:
+      V1_1: true
+    Policies: {}
+  TwoOrgsOrdererGenesis:
+    Consortium: ""
+    Application:
+      Organizations:
+      - Name: OrdererOrg0
+        ID: OrdererMSP
+        MSPDir: orderer dir
+        MSPType: ""
+        Policies: {}
+        AnchorPeers: []
+        AdminPrincipal: ""
+      - Name: OrdererOrg1
+        ID: OrdererMSP
+        MSPDir: orderer2 dir
+        MSPType: ""
+        Policies: {}
+        AnchorPeers: []
+        AdminPrincipal: ""
+      Capabilities:
+        V1_2: true
+      Resources: null
+      Policies: {}
+      ACLs: {}
+    Orderer:
+      OrdererType: solo
+      Addresses:
+      - 0.0.0.0:9050
+      BatchTimeout: 1s
+      BatchSize:
+        MaxMessageCount: 1
+        AbsoluteMaxBytes: 102760448
+        PreferredMaxBytes: 524288
+      Kafka:
+        Brokers: []
+      Organizations:
+      - Name: OrdererOrg0
+        ID: OrdererMSP
+        MSPDir: orderer dir
+        MSPType: ""
+        Policies: {}
+        AnchorPeers: []
+        AdminPrincipal: ""
+      - Name: OrdererOrg1
+        ID: OrdererMSP
+        MSPDir: orderer2 dir
+        MSPType: ""
+        Policies: {}
+        AnchorPeers: []
+        AdminPrincipal: ""
+      MaxChannels: 0
+      Capabilities:
+        V1_1: true
+      Policies: {}
+    Consortiums:
+      MyConsortium:
+        Organizations:
+        - Name: Org1
+          ID: Org1MSP
+          MSPDir: some dir
+          MSPType: ""
+          Policies: {}
+          AnchorPeers:
+          - Host: some host
+            Port: 1111
+          - Host: some host
+            Port: 2222
+          AdminPrincipal: ""
+        - Name: Org2
+          ID: Org2MSP
+          MSPDir: some other dir
+          MSPType: ""
+          Policies: {}
+          AnchorPeers:
+          - Host: my host
+            Port: 3333
+          - Host: some host
+            Port: 4444
+          AdminPrincipal: ""
+    Capabilities:
+      V1_1: true
+    Policies: {}

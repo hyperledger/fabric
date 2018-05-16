@@ -16,11 +16,12 @@ logging:
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 
 peer:
-    id: jdoe
-    networkId: dev
-    listenAddress: 0.0.0.0:12051
-    chaincodeListenAddress: 0.0.0.0:12052
-    address: 0.0.0.0:12051
+    id: peer0.org2.example.com
+    networkId: mytestnet
+    listenAddress: 0.0.0.0:8051
+    chaincodeListenAddress: 0.0.0.0:8052
+    # chaincodeAddress: 0.0.0.0:7052
+    address: 0.0.0.0:8051
     addressAutoDetect: false
     gomaxprocs: -1
     keepalive:
@@ -32,7 +33,7 @@ peer:
             interval: 60s
             timeout: 20s
     gossip:
-        bootstrap: 127.0.0.1:12051
+        bootstrap: 127.0.0.1:8051
         useLeaderElection: true
         orgLeader: false
         endpoint:
@@ -58,7 +59,7 @@ peer:
         aliveTimeInterval: 5s
         aliveExpirationTimeout: 25s
         reconnectInterval: 25s
-        externalEndpoint:
+        externalEndpoint: 0.0.0.0:11051
         election:
             startupGracePeriod: 15s
             membershipSampleInterval: 1s
@@ -69,7 +70,7 @@ peer:
             transientstoreMaxBlockRetention: 1000
             pushAckTimeout: 3s
     events:
-        address: 0.0.0.0:12053
+        address: 0.0.0.0:8053
         buffersize: 100
         timeout: 10ms
         timewindow: 15m
@@ -101,8 +102,9 @@ peer:
             Security: 256
             FileKeyStore:
                 KeyStore:
-    mspConfigPath: msp
-    localMspId: Org1MSP
+    mspConfigPath: ../crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+    #mspConfigPath: ../crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp
+    localMspId: Org2ExampleCom
     deliveryclient:
         reconnectTotalTimeThreshold: 3600s
     localMspType: bccsp
@@ -110,15 +112,25 @@ peer:
         enabled:     false
         listenAddress: 0.0.0.0:6060
     adminService:
+        #listenAddress: 0.0.0.0:7055
+    # authFilters:
+    #   -
+    #     name: FilterOne
+    #     library: /opt/lib/filter.so
+    #   -
+    #     name: FilterTwo
+    # decorators:
+    #   -
+    #     name: DecoratorOne
+    #   -
+    #     name: DecoratorTwo
+    #     library: /opt/lib/decorator.so
     handlers:
         authFilters:
-          -
-            name: DefaultAuth
-          -
-            name: ExpirationCheck    # This filter checks identity x509 certificate expiration
+          - name: DefaultAuth
+          - name: ExpirationCheck    # This filter checks identity x509 certificate expiration
         decorators:
-          -
-            name: DefaultDecorator
+          - name: DefaultDecorator
         endorsers:
           escc:
             name: DefaultEndorsement
@@ -142,6 +154,7 @@ vm:
         hostConfig:
             NetworkMode: host
             Dns:
+               # - 192.168.0.1
             LogConfig:
                 Type: json-file
                 Config:
@@ -208,3 +221,4 @@ metrics:
               flushBytes: 1432
         promReporter:
               listenAddress: 0.0.0.0:8080
+

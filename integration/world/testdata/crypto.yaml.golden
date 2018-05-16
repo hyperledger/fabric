@@ -1,0 +1,44 @@
+
+OrdererOrgs:
+  - Name: OrdererOrg0
+    Domain: OrdererMSP
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
+    Specs:
+      - Hostname: orderer0
+
+  - Name: OrdererOrg1
+    Domain: OrdererMSP
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
+    Specs:
+      - Hostname: orderer1
+
+PeerOrgs:
+  - Name: Org1
+    Domain: Org1MSP
+    EnableNodeOUs: true
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
+    Template:
+      Count: 2
+    Users:
+      Count: 2
+
+  - Name: Org2
+    Domain: Org2MSP
+    EnableNodeOUs: true
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
+    Template:
+      Count: 2
+    Users:
+      Count: 2
