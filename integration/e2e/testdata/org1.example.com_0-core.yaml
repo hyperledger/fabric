@@ -18,10 +18,10 @@ logging:
 peer:
     id: peer0.org1.example.com
     networkId: mytestnet
-    listenAddress: 0.0.0.0:11051
-    chaincodeListenAddress: 0.0.0.0:11052
+    listenAddress: 0.0.0.0:7051
+    # chaincodeListenAddress: 0.0.0.0:7052
     # chaincodeAddress: 0.0.0.0:7052
-    address: 0.0.0.0:11051
+    address: 0.0.0.0:7051
     addressAutoDetect: false
     gomaxprocs: -1
     keepalive:
@@ -33,7 +33,7 @@ peer:
             interval: 60s
             timeout: 20s
     gossip:
-        bootstrap: 127.0.0.1:11051
+        bootstrap: 127.0.0.1:7051
         useLeaderElection: true
         orgLeader: false
         endpoint:
@@ -70,7 +70,7 @@ peer:
             transientstoreMaxBlockRetention: 1000
             pushAckTimeout: 3s
     events:
-        address: 0.0.0.0:11053
+        address: 0.0.0.0:7053
         buffersize: 100
         timeout: 10ms
         timewindow: 15m
@@ -104,7 +104,7 @@ peer:
                 KeyStore:
     #mspConfigPath: ../crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp
     mspConfigPath: ../crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    localMspId: Org1ExampleCom
+    localMspId: Org1MSP
     deliveryclient:
         reconnectTotalTimeThreshold: 3600s
     localMspType: bccsp
