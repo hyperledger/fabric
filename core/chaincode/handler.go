@@ -832,14 +832,19 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 			return nil, errors.Errorf("failed to find ledger for channel: %s", targetInstance.ChainID)
 		}
 
-		txsim2, err := lgr.NewTxSimulator(msg.Txid)
+		sim, err := lgr.NewTxSimulator(msg.Txid)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		defer txsim2.Done()
+		defer sim.Done()
 
-		// TODO: Is the history query executor supposed to be updated here too?
-		txsim = txsim2
+		hqe, err := lgr.NewHistoryQueryExecutor()
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		txsim = sim
+		historyQueryExecutor = hqe
 	}
 	ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
 	ctxt = context.WithValue(ctxt, HistoryQueryExecutorKey, historyQueryExecutor)

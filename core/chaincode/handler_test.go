@@ -1349,14 +1349,15 @@ var _ = Describe("Handler", func() {
 
 	Describe("HandleInvokeChaincode", func() {
 		var (
-			expectedSignedProp *pb.SignedProposal
-			expectedProposal   *pb.Proposal
-			targetDefinition   *ccprovider.ChaincodeData
-			fakePeerLedger     *mock.PeerLedger
-			newTxSimulator     *mock.TxSimulator
-			request            *pb.ChaincodeSpec
-			incomingMessage    *pb.ChaincodeMessage
-			response           *pb.Response
+			expectedSignedProp      *pb.SignedProposal
+			expectedProposal        *pb.Proposal
+			targetDefinition        *ccprovider.ChaincodeData
+			fakePeerLedger          *mock.PeerLedger
+			newTxSimulator          *mock.TxSimulator
+			newHistoryQueryExecutor *mock.HistoryQueryExecutor
+			request                 *pb.ChaincodeSpec
+			incomingMessage         *pb.ChaincodeMessage
+			response                *pb.Response
 		)
 
 		BeforeEach(func() {
@@ -1372,9 +1373,11 @@ var _ = Describe("Handler", func() {
 			txContext.SignedProp = expectedSignedProp
 
 			newTxSimulator = &mock.TxSimulator{}
+			newHistoryQueryExecutor = &mock.HistoryQueryExecutor{}
 			fakePeerLedger = &mock.PeerLedger{}
 			fakePeerLedger.NewTxSimulatorReturns(newTxSimulator, nil)
 			fakeLedgerGetter.GetLedgerReturns(fakePeerLedger)
+			fakePeerLedger.NewHistoryQueryExecutorReturns(newHistoryQueryExecutor, nil)
 
 			targetDefinition = &ccprovider.ChaincodeData{
 				Name:    "target-chaincode-data-name",
@@ -1481,6 +1484,23 @@ var _ = Describe("Handler", func() {
 				Expect(sim).To(BeIdenticalTo(newTxSimulator)) // same instance, not just equal
 			})
 
+			It("creates a new history query executor for target execution", func() {
+				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakePeerLedger.NewHistoryQueryExecutorCallCount()).To(Equal(1))
+			})
+
+			It("provides the new history query executor in the context used for execution", func() {
+				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
+				ctx, _, _ := fakeExecutor.ExecuteArgsForCall(0)
+				hqe := ctx.Value(chaincode.HistoryQueryExecutorKey)
+				Expect(hqe).To(BeIdenticalTo(newHistoryQueryExecutor)) // same instance, not just equal
+			})
+
 			It("marks the new transaction simulator as done after execute", func() {
 				fakeExecutor.ExecuteStub = func(context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
 					Expect(newTxSimulator.DoneCallCount()).To(Equal(0))
@@ -1512,6 +1532,17 @@ var _ = Describe("Handler", func() {
 				It("returns an error", func() {
 					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 					Expect(err).To(MatchError("bonkers"))
+				})
+			})
+
+			Context("when creating the new history query executor fails", func() {
+				BeforeEach(func() {
+					fakePeerLedger.NewHistoryQueryExecutorReturns(nil, errors.New("razzies"))
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
+					Expect(err).To(MatchError("razzies"))
 				})
 			})
 		})
