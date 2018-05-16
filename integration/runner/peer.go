@@ -78,7 +78,13 @@ func (p *Peer) ChaincodeListInstantiated(channel string) *ginkgomon.Runner {
 }
 
 func (p *Peer) CreateChannel(channel string, filename string, orderer string) *ginkgomon.Runner {
-	cmd := exec.Command(p.Path, "channel", "create", "-c", channel, "-o", orderer, "-f", filename)
+	cmd := exec.Command(
+		p.Path, "channel", "create",
+		"-c", channel,
+		"-o", orderer,
+		"-f", filename,
+		"--outputBlock", "/dev/null",
+	)
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
