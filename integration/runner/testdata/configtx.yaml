@@ -2,6 +2,54 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ---
+Capabilities:
+  Global: &ChannelCapabilities
+    V1_1: true
+  Orderer: &OrdererCapabilities
+    V1_1: true
+  Application: &ApplicationCapabilities
+    V1_2: true
+
+Orderer: &OrdererDefaults
+  OrdererType: solo
+  Addresses:
+    - 127.0.0.1:8050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 98 MB
+    PreferredMaxBytes: 512 KB
+  Kafka:
+    Brokers:
+      - kafka0:9092
+      - kafka1:9092
+      - kafka2:9092
+      - kafka3:9092
+  Organizations:
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp
+  - &Org1
+    Name: Org1
+    ID: Org1MSP
+    MSPDir: crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    AnchorPeers:
+      - Host: 127.0.0.1
+        Port: 11051
+  - &Org2
+    Name: Org2
+    ID: Org2MSP
+    MSPDir: crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+    AnchorPeers:
+      - Host: 127.0.0.1
+        Port: 8051
+
+Application: &ApplicationDefaults
+  Organizations:
+
 Profiles:
   TwoOrgsOrdererGenesis:
     Capabilities:
@@ -26,49 +74,3 @@ Profiles:
         - *Org2
       Capabilities:
         <<: *ApplicationCapabilities
-
-Organizations:
-  - &OrdererOrg
-    Name: OrdererOrg
-    ID: OrdererMSP
-    MSPDir: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp
-  - &Org1
-    Name: Org1
-    ID: Org1MSP
-    MSPDir: crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    AnchorPeers:
-      - Host: 127.0.0.1
-        Port: 11051
-  - &Org2
-    Name: Org2
-    ID: Org2MSP
-    MSPDir: crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
-    AnchorPeers:
-      - Host: 127.0.0.1
-        Port: 8051
-Orderer: &OrdererDefaults
-  OrdererType: solo
-  Addresses:
-    - 127.0.0.1:8050
-  BatchTimeout: 2s
-  BatchSize:
-    MaxMessageCount: 10
-    AbsoluteMaxBytes: 98 MB
-    PreferredMaxBytes: 512 KB
-  Kafka:
-    Brokers:
-      - kafka0:9092
-      - kafka1:9092
-      - kafka2:9092
-      - kafka3:9092
-  Organizations:
-
-Application: &ApplicationDefaults
-  Organizations:
-Capabilities:
-  Global: &ChannelCapabilities
-    V1_1: true
-  Orderer: &OrdererCapabilities
-    V1_1: true
-  Application: &ApplicationCapabilities
-    V1_2: true

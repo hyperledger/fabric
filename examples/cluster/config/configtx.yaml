@@ -6,77 +6,6 @@
 ---
 ################################################################################
 #
-#   Profile
-#
-#   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool
-#
-################################################################################
-Profiles:
-
-    SampleOrg:
-      Orderer:
-        <<: *OrdererDefaults
-        Organizations:
-          - *OrdererOrg
-      Consortiums:
-        SampleConsortium:
-          Organizations:
-            - *OrdererOrg
-            - *Org1
-
-    SampleChannel:
-      Consortium: SampleConsortium
-      Application:
-        Organizations:
-          - *Org1
-
-################################################################################
-#
-#   Section: Organizations
-#
-#   - This section defines the different organizational identities which will
-#   be referenced later in the configuration.
-#
-################################################################################
-Organizations:
-
-    # SampleOrg defines an MSP using the sampleconfig.  It should never be used
-    # in production but may be used as a template for other definitions
-    - &OrdererOrg
-        # DefaultOrg defines the organization which is used in the sampleconfig
-        # of the fabric.git development environment
-        Name: OrdererOrg
-
-        # ID to load the MSP definition as
-        ID: OrdererMSP
-
-        # MSPDir is the filesystem path which contains the MSP configuration
-        MSPDir: cryptogen/ordererOrganizations/orderer.net/msp
-
-        AdminPrincipal: Role.ADMIN
-
-    - &Org1
-        # DefaultOrg defines the organization which is used in the sampleconfig
-        # of the fabric.git development environment
-        Name: Org1MSP
-
-        # ID to load the MSP definition as
-        ID: Org1MSP
-
-        MSPDir: cryptogen/peerOrganizations/org1.net/msp
-
-        AdminPrincipal: Role.ADMIN
-
-        AnchorPeers:
-            # AnchorPeers defines the location of peers which can be used
-            # for cross org gossip communication.  Note, this value is only
-            # encoded in the genesis block in the Application section context
-            - Host: peer1
-              Port: 7051
-
-################################################################################
-#
 #   SECTION: Orderer
 #
 #   - This section defines the values to encode into a config transaction or
@@ -125,6 +54,50 @@ Orderer: &OrdererDefaults
 
 ################################################################################
 #
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+
+    # SampleOrg defines an MSP using the sampleconfig.  It should never be used
+    # in production but may be used as a template for other definitions
+    - &OrdererOrg
+        # DefaultOrg defines the organization which is used in the sampleconfig
+        # of the fabric.git development environment
+        Name: OrdererOrg
+
+        # ID to load the MSP definition as
+        ID: OrdererMSP
+
+        # MSPDir is the filesystem path which contains the MSP configuration
+        MSPDir: cryptogen/ordererOrganizations/orderer.net/msp
+
+        AdminPrincipal: Role.ADMIN
+
+    - &Org1
+        # DefaultOrg defines the organization which is used in the sampleconfig
+        # of the fabric.git development environment
+        Name: Org1MSP
+
+        # ID to load the MSP definition as
+        ID: Org1MSP
+
+        MSPDir: cryptogen/peerOrganizations/org1.net/msp
+
+        AdminPrincipal: Role.ADMIN
+
+        AnchorPeers:
+            # AnchorPeers defines the location of peers which can be used
+            # for cross org gossip communication.  Note, this value is only
+            # encoded in the genesis block in the Application section context
+            - Host: peer1
+              Port: 7051
+
+################################################################################
+#
 #   SECTION: Application
 #
 #   - This section defines the values to encode into a config transaction or
@@ -136,3 +109,30 @@ Application: &ApplicationDefaults
     # Organizations is the list of orgs which are defined as participants on
     # the application side of the network
     Organizations:
+
+################################################################################
+#
+#   Profile
+#
+#   - Different configuration profiles may be encoded here to be specified
+#   as parameters to the configtxgen tool
+#
+################################################################################
+Profiles:
+
+    SampleOrg:
+      Orderer:
+        <<: *OrdererDefaults
+        Organizations:
+          - *OrdererOrg
+      Consortiums:
+        SampleConsortium:
+          Organizations:
+            - *OrdererOrg
+            - *Org1
+
+    SampleChannel:
+      Consortium: SampleConsortium
+      Application:
+        Organizations:
+          - *Org1
