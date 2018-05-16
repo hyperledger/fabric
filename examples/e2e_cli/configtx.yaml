@@ -25,6 +25,7 @@ Profiles:
                 Organizations:
                     - *Org1
                     - *Org2
+                    - *Org3
     TwoOrgsChannel:
         Consortium: SampleConsortium
         Application:
@@ -32,6 +33,7 @@ Profiles:
             Organizations:
                 - *Org1
                 - *Org2
+                - *Org3
 
 ################################################################################
 #
@@ -130,6 +132,25 @@ Organizations:
             # for cross org gossip communication.  Note, this value is only
             # encoded in the genesis block in the Application section context
             - Host: peer0.org2.example.com
+              Port: 7051
+
+    - &Org3
+        # Name of the organization
+        Name: Org3MSP
+
+        # ID to load the MSP definition as
+        ID: Org3MSP
+
+        # Type of MSP - this org uses idemix for its MSP implementation
+        MSPType: idemix
+
+        MSPDir: crypto-config/idemix
+
+        AnchorPeers:
+            # AnchorPeers defines the location of peers which can be used
+            # for cross org gossip communication.  Note, this value is only
+            # encoded in the genesis block in the Application section context
+            - Host: peer0.org3.example.com
               Port: 7051
 
 ################################################################################

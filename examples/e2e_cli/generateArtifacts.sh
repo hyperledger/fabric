@@ -127,5 +127,6 @@ function generateChannelArtifacts() {
 }
 
 generateCerts
+generateIdemixMaterial
 replacePrivateKey
 generateChannelArtifacts
