@@ -12,6 +12,7 @@
 #   - configtxgen - builds a native configtxgen binary
 #   - configtxlator - builds a native configtxlator binary
 #   - cryptogen  -  builds a native cryptogen binary
+#   - idemixgen  -  builds a native idemixgen binary
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
 #   - release - builds release packages for the host platform
@@ -105,9 +106,10 @@ PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
 IMAGES = peer orderer ccenv buildenv testenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
-RELEASE_PKGS = configtxgen cryptogen configtxlator peer orderer
+RELEASE_PKGS = configtxgen cryptogen idemixgen configtxlator peer orderer
 
 pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
+pkgmap.idemixgen      := $(PKGNAME)/common/tools/idemixgen
 pkgmap.configtxgen    := $(PKGNAME)/common/tools/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/common/tools/configtxlator
 pkgmap.peer           := $(PKGNAME)/peer
@@ -168,6 +170,9 @@ configtxlator: $(BUILD_DIR)/bin/configtxlator
 cryptogen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 cryptogen: $(BUILD_DIR)/bin/cryptogen
 
+idemixgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+idemixgen: $(BUILD_DIR)/bin/idemixgen
+
 tools-docker: $(BUILD_DIR)/image/tools/$(DUMMY)
 
 buildenv: $(BUILD_DIR)/image/buildenv/$(DUMMY)
@@ -199,7 +204,7 @@ test-cmd:
 
 docker: $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
 
-native: peer orderer configtxgen cryptogen configtxlator
+native: peer orderer configtxgen cryptogen idemixgen configtxlator
 
 linter: check-deps buildenv
 	@echo "LINT: Running code checks.."
@@ -354,6 +359,11 @@ release/%/bin/configtxgen: $(PROJECT_FILES)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 
 release/%/bin/cryptogen: $(PROJECT_FILES)
+	@echo "Building $@ for $(GOOS)-$(GOARCH)"
+	mkdir -p $(@D)
+	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
+
+release/%/bin/idemixgen: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
