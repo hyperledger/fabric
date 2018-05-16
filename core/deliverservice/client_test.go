@@ -516,7 +516,7 @@ func TestCloseWhileRecv(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&flag), "Recv returned before bc.Close() was called")
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Contains(t, "Client is closing", err.Error())
+	assert.Contains(t, "client is closing", err.Error())
 }
 
 func TestCloseWhileSleep(t *testing.T) {

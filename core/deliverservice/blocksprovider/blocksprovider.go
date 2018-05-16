@@ -191,7 +191,9 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 
 			// Gossip messages with other nodes
 			logger.Debugf("[%s] Gossiping block [%d], peers number [%d]", b.chainID, seqNum, numberOfPeers)
-			b.gossip.Gossip(gossipMsg)
+			if !b.isDone() {
+				b.gossip.Gossip(gossipMsg)
+			}
 		default:
 			logger.Warningf("[%s] Received unknown: ", b.chainID, t)
 			return
