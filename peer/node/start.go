@@ -264,7 +264,12 @@ func serve(args []string) error {
 	signingIdentityFetcher := (endorsement3.SigningIdentityFetcher)(endorserSupport)
 	channelStateRetriever := endorser.ChannelStateRetriever(endorserSupport)
 	pluginMapper := endorser.MapBasedPluginMapper(endorsementPluginsByName)
-	pluginEndorser := endorser.NewPluginEndorser(channelStateRetriever, signingIdentityFetcher, pluginMapper)
+	pluginEndorser := endorser.NewPluginEndorser(&endorser.PluginSupport{
+		ChannelStateRetriever:   channelStateRetriever,
+		TransientStoreRetriever: peer.TransientStoreFactory,
+		PluginMapper:            pluginMapper,
+		SigningIdentityFetcher:  signingIdentityFetcher,
+	})
 	endorserSupport.PluginEndorser = pluginEndorser
 	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport)
 	auth := authHandler.ChainFilters(serverEndorser, authFilters...)

@@ -69,11 +69,18 @@ type chainSupport struct {
 	fileLedger *fileledger.FileLedger
 }
 
-var transientStoreFactory = &storeProvider{}
+var TransientStoreFactory = &storeProvider{stores: make(map[string]transientstore.Store)}
 
 type storeProvider struct {
+	stores map[string]transientstore.Store
 	transientstore.StoreProvider
-	sync.Mutex
+	sync.RWMutex
+}
+
+func (sp *storeProvider) StoreForChannel(channel string) transientstore.Store {
+	sp.RLock()
+	defer sp.RUnlock()
+	return sp.stores[channel]
 }
 
 func (sp *storeProvider) OpenStore(ledgerID string) (transientstore.Store, error) {
@@ -82,7 +89,11 @@ func (sp *storeProvider) OpenStore(ledgerID string) (transientstore.Store, error
 	if sp.StoreProvider == nil {
 		sp.StoreProvider = transientstore.NewStoreProvider()
 	}
-	return sp.StoreProvider.OpenStore(ledgerID)
+	store, err := sp.StoreProvider.OpenStore(ledgerID)
+	if err == nil {
+		sp.stores[ledgerID] = store
+	}
+	return store, err
 }
 
 func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
@@ -365,7 +376,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	}
 
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := transientStoreFactory.OpenStore(bundle.ConfigtxValidator().ChainID())
+	store, err := TransientStoreFactory.OpenStore(bundle.ConfigtxValidator().ChainID())
 	if err != nil {
 		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxValidator().ChainID())
 	}
