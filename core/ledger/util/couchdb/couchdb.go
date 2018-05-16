@@ -207,6 +207,18 @@ type IndexResult struct {
 	Definition     string `json:"definition"`
 }
 
+//DatabaseSecurity contains the definition for CouchDB database security
+type DatabaseSecurity struct {
+	Admins struct {
+		Names []string `json:"names"`
+		Roles []string `json:"roles"`
+	} `json:"admins"`
+	Members struct {
+		Names []string `json:"names"`
+		Roles []string `json:"roles"`
+	} `json:"members"`
+}
+
 // closeResponseBody discards the body and then closes it to enable returning it to
 // connection pool
 func closeResponseBody(resp *http.Response) {
@@ -258,6 +270,12 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 	//If the dbInfo returns populated and status code is 200, then the database exists
 	if dbInfo != nil && couchDBReturn.StatusCode == 200 {
 
+		//Apply database security if needed
+		errSecurity := dbclient.applyDatabasePermissions()
+		if errSecurity != nil {
+			return errSecurity
+		}
+
 		logger.Debugf("Database %s already exists", dbclient.DBName)
 
 		logger.Debugf("Exiting CreateDatabaseIfNotExist()")
@@ -290,14 +308,26 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 		dbInfo, couchDBReturn, errDbInfo := dbclient.GetDatabaseInfo()
 		//If there is no error, then the database exists,  return without an error
 		if errDbInfo == nil && dbInfo != nil && couchDBReturn.StatusCode == 200 {
+
+			errSecurity := dbclient.applyDatabasePermissions()
+			if errSecurity != nil {
+				return errSecurity
+			}
+
 			logger.Infof("Created state database %s", dbclient.DBName)
 			logger.Debugf("Exiting CreateDatabaseIfNotExist()")
 			return nil
 		}
 
 		return err
+
 	}
 	defer closeResponseBody(resp)
+
+	errSecurity := dbclient.applyDatabasePermissions()
+	if errSecurity != nil {
+		return errSecurity
+	}
 
 	logger.Infof("Created state database %s", dbclient.DBName)
 
@@ -305,6 +335,27 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 
 	return nil
 
+}
+
+//applyDatabaseSecurity
+func (dbclient *CouchDatabase) applyDatabasePermissions() error {
+
+	//If the username and password are not set, then skip applying permissions
+	if dbclient.CouchInstance.conf.Username == "" && dbclient.CouchInstance.conf.Password == "" {
+		return nil
+	}
+
+	securityPermissions := &DatabaseSecurity{}
+
+	securityPermissions.Admins.Names = append(securityPermissions.Admins.Names, dbclient.CouchInstance.conf.Username)
+	securityPermissions.Members.Names = append(securityPermissions.Members.Names, dbclient.CouchInstance.conf.Username)
+
+	err := dbclient.ApplyDatabaseSecurity(securityPermissions)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //GetDatabaseInfo method provides function to retrieve database information
@@ -1285,6 +1336,99 @@ func (dbclient *CouchDatabase) WarmIndexAllIndexes() error {
 
 }
 
+//GetDatabaseSecurity method provides function to retrieve the security config for a database
+func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) {
+
+	logger.Debugf("Entering GetDatabaseSecurity()")
+
+	securityURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return nil, err
+	}
+
+	securityURL.Path = dbclient.DBName + "/_security"
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, securityURL.String(),
+		nil, "", "", maxRetries, true)
+
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponseBody(resp)
+
+	//handle as JSON document
+	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResponse = &DatabaseSecurity{}
+
+	err2 := json.Unmarshal(jsonResponseRaw, jsonResponse)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	logger.Debugf("Exiting GetDatabaseSecurity()")
+
+	return jsonResponse, nil
+
+}
+
+//ApplyDatabaseSecurity method provides function to update the security config for a database
+func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseSecurity) error {
+
+	logger.Debugf("Entering ApplyDatabaseSecurity()")
+
+	securityURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return err
+	}
+
+	securityURL.Path = dbclient.DBName + "/_security"
+
+	//Ensure all of the arrays are initialized to empty arrays instead of nil
+	if databaseSecurity.Admins.Names == nil {
+		databaseSecurity.Admins.Names = make([]string, 0)
+	}
+	if databaseSecurity.Admins.Roles == nil {
+		databaseSecurity.Admins.Roles = make([]string, 0)
+	}
+	if databaseSecurity.Members.Names == nil {
+		databaseSecurity.Members.Names = make([]string, 0)
+	}
+	if databaseSecurity.Members.Roles == nil {
+		databaseSecurity.Members.Roles = make([]string, 0)
+	}
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	databaseSecurityJSON, err := json.Marshal(databaseSecurity)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf("Applying security to database [%s]: %s", dbclient.DBName, string(databaseSecurityJSON))
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, securityURL.String(), databaseSecurityJSON, "", "", maxRetries, true)
+
+	if err != nil {
+		return err
+	}
+	defer closeResponseBody(resp)
+
+	logger.Debugf("Exiting ApplyDatabaseSecurity()")
+
+	return nil
+
+}
+
 //BatchRetrieveDocumentMetadata - batch method to retrieve document metadata for  a set of keys,
 // including ID, couchdb revision number, and ledger version
 func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*DocMetadata, error) {
@@ -1574,6 +1718,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 
 		//If username and password are set the use basic auth
 		if couchInstance.conf.Username != "" && couchInstance.conf.Password != "" {
+			//req.Header.Set("Authorization", "Basic YWRtaW46YWRtaW5w")
 			req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
 		}
 

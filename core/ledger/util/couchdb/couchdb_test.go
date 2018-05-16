@@ -1537,3 +1537,58 @@ func addRevisionAndDeleteStatus(revision string, value []byte, deleted bool) []b
 	return returnJSON
 
 }
+
+func TestDatabaseSecuritySettings(t *testing.T) {
+
+	database := "testdbsecuritysettings"
+	err := cleanup(database)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
+	defer cleanup(database)
+
+	//create a new instance and database object   --------------------------------------------------------
+	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
+
+	//create a new database
+	errdb := db.CreateDatabaseIfNotExist()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+	//Create a database security object
+	securityPermissions := &DatabaseSecurity{}
+	securityPermissions.Admins.Names = append(securityPermissions.Admins.Names, "admin")
+	securityPermissions.Members.Names = append(securityPermissions.Members.Names, "admin")
+
+	//Apply security
+	err = db.ApplyDatabaseSecurity(securityPermissions)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to apply database security"))
+
+	//Retrieve database security
+	databaseSecurity, err := db.GetDatabaseSecurity()
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when retrieving database security"))
+
+	//Verify retrieval of admins
+	testutil.AssertEquals(t, databaseSecurity.Admins.Names[0], "admin")
+
+	//Verify retrieval of members
+	testutil.AssertEquals(t, databaseSecurity.Members.Names[0], "admin")
+
+	//Create an empty database security object
+	securityPermissions = &DatabaseSecurity{}
+
+	//Apply the security
+	err = db.ApplyDatabaseSecurity(securityPermissions)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to apply database security"))
+
+	//Retrieve database security
+	databaseSecurity, err = db.GetDatabaseSecurity()
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when retrieving database security"))
+
+	//Verify retrieval of admins, should be an empty array
+	testutil.AssertEquals(t, len(databaseSecurity.Admins.Names), 0)
+
+	//Verify retrieval of members, should be an empty array
+	testutil.AssertEquals(t, len(databaseSecurity.Members.Names), 0)
+
+}
