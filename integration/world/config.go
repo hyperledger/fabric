@@ -205,7 +205,7 @@ func (w *World) peerNetwork() {
 		for peer := 0; peer < peerOrg.PeerCount; peer++ {
 			p = w.Components.Peer()
 			p.ConfigDir = filepath.Join(w.Rootpath, fmt.Sprintf("%s_%d", peerOrg.Domain, peer))
-			peerProcess := ifrit.Invoke(p.NodeStart())
+			peerProcess := ifrit.Invoke(p.NodeStart(peer))
 			Eventually(peerProcess.Ready()).Should(BeClosed())
 			Consistently(peerProcess.Wait()).ShouldNot(Receive())
 			w.LocalProcess = append(w.LocalProcess, peerProcess)

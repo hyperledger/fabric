@@ -41,7 +41,8 @@ func (o *Orderer) New() *ginkgomon.Runner {
 	o.setupEnvironment(cmd)
 
 	return ginkgomon.New(ginkgomon.Config{
-		Name:    "orderer",
-		Command: cmd,
+		Name:          "orderer",
+		AnsiColorCode: "35m",
+		Command:       cmd,
 	})
 }

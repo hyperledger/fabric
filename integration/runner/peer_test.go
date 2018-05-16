@@ -136,7 +136,7 @@ var _ = Describe("Peer", func() {
 
 	It("starts a peer", func() {
 		peer.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "peers", "peer0.org1.example.com", "msp")
-		peerRunner := peer.NodeStart()
+		peerRunner := peer.NodeStart(0)
 		peerProcess = ifrit.Invoke(peerRunner)
 		Eventually(peerProcess.Ready()).Should(BeClosed())
 		Consistently(peerProcess.Wait()).ShouldNot(Receive())

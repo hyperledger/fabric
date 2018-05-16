@@ -54,7 +54,9 @@ func (c *Configtxgen) OutputBlock(extraArgs ...string) *ginkgomon.Runner {
 	)
 	c.setupCommandEnv(cmd)
 	return ginkgomon.New(ginkgomon.Config{
-		Command: cmd,
+		Name:          "config output block",
+		AnsiColorCode: "32m",
+		Command:       cmd,
 	})
 }
 
@@ -71,7 +73,9 @@ func (c *Configtxgen) OutputCreateChannelTx(extraArgs ...string) *ginkgomon.Runn
 	c.setupCommandEnv(cmd)
 
 	return ginkgomon.New(ginkgomon.Config{
-		Command: cmd,
+		Name:          "config create channel",
+		AnsiColorCode: "33m",
+		Command:       cmd,
 	})
 }
 
@@ -89,6 +93,8 @@ func (c *Configtxgen) OutputAnchorPeersUpdate(extraArgs ...string) *ginkgomon.Ru
 	c.setupCommandEnv(cmd)
 
 	return ginkgomon.New(ginkgomon.Config{
-		Command: cmd,
+		Name:          "config update peer",
+		AnsiColorCode: "34m",
+		Command:       cmd,
 	})
 }

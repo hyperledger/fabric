@@ -40,13 +40,13 @@ func (p *Peer) setupEnvironment(cmd *exec.Cmd) {
 	}
 }
 
-func (p *Peer) NodeStart() *ginkgomon.Runner {
+func (p *Peer) NodeStart(index int) *ginkgomon.Runner {
 	cmd := exec.Command(p.Path, "node", "start")
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
-		Name:          "peer",
+		Name:          fmt.Sprintf("peer-%d", index),
+		AnsiColorCode: fmt.Sprintf("%dm", 92+index%6),
 		Command:       cmd,
 	})
 
@@ -58,7 +58,8 @@ func (p *Peer) ChaincodeListInstalled() *ginkgomon.Runner {
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "list installed",
+		AnsiColorCode: "4;33m",
 		Command:       cmd,
 	})
 
@@ -70,7 +71,8 @@ func (p *Peer) ChaincodeListInstantiated(channel string) *ginkgomon.Runner {
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "list instantiated",
+		AnsiColorCode: "4;34m",
 		Command:       cmd,
 	})
 
@@ -88,7 +90,8 @@ func (p *Peer) CreateChannel(channel string, filename string, orderer string) *g
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "channel create",
+		AnsiColorCode: "4;35m",
 		Command:       cmd,
 	})
 
@@ -100,7 +103,8 @@ func (p *Peer) FetchChannel(channel string, filename string, block string, order
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "channel fetch",
+		AnsiColorCode: "4;36m",
 		Command:       cmd,
 	})
 
@@ -112,7 +116,8 @@ func (p *Peer) JoinChannel(transactionFile string) *ginkgomon.Runner {
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "channel join",
+		AnsiColorCode: "4;37m",
 		Command:       cmd,
 	})
 
@@ -124,7 +129,8 @@ func (p *Peer) UpdateChannel(transactionFile string, channel string, orderer str
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "channel update",
+		AnsiColorCode: "4;33m",
 		Command:       cmd,
 	})
 
@@ -136,7 +142,8 @@ func (p *Peer) InstallChaincode(name string, version string, path string) *ginkg
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "install",
+		AnsiColorCode: "4;34m",
 		Command:       cmd,
 	})
 
@@ -148,7 +155,8 @@ func (p *Peer) InstantiateChaincode(name string, version string, orderer string,
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "instantiate",
+		AnsiColorCode: "4;35m",
 		Command:       cmd,
 	})
 
@@ -160,7 +168,8 @@ func (p *Peer) QueryChaincode(name string, channel string, args string) *ginkgom
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "query",
+		AnsiColorCode: "4;36m",
 		Command:       cmd,
 	})
 
@@ -172,7 +181,8 @@ func (p *Peer) InvokeChaincode(name string, channel string, args string, orderer
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode: "92m",
+		Name:          "invoke",
+		AnsiColorCode: "4;37m",
 		Command:       cmd,
 	})
 
