@@ -61,6 +61,7 @@ message MSPPrincipal {
         // identity
         ANONYMITY = 3; // Denotes a principal that can be used to enforce
         // an identity to be anonymous or nominal.
+        COMBINED = 4; // Denotes a combined principal
     }
 
     // Classification describes the way that one should process
@@ -133,6 +134,14 @@ message MSPIdentityAnonymity {
 
 }
 
+// CombinedPrincipal governs the organization of the Principal
+// field of a policy principal when principal_classification has
+// indicated that a combined form of principals is required
+message CombinedPrincipal {
+
+    // Principals refer to combined principals
+    repeated MSPPrincipal principals = 1;
+}
 
 // TODO: Bring msp.SerializedIdentity from fabric/msp/identities.proto here. Reason below.
 // SerializedIdentity represents an serialized version of an identity;
