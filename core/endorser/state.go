@@ -61,7 +61,7 @@ func (sc *StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWrite
 			break
 		}
 		if res.PvtSimulationResultsWithConfig == nil {
-			return nil, errors.New("received nil private simulation results")
+			continue
 		}
 		data = append(data, res.PvtSimulationResultsWithConfig.PvtRwset)
 	}
