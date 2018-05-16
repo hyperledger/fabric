@@ -142,7 +142,7 @@ func (c *ContainerRuntime) LaunchConfig(cname string, ccType pb.ChaincodeSpec_Ty
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
 		lc.Args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", c.PeerAddress)}
 	case pb.ChaincodeSpec_JAVA:
-		lc.Args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", c.PeerAddress}
+		lc.Args = []string{"/root/chaincode-java/start", "--peerAddress", c.PeerAddress}
 	case pb.ChaincodeSpec_NODE:
 		lc.Args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", c.PeerAddress)}
 	default:
