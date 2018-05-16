@@ -9,6 +9,8 @@ package inquire
 import (
 	"bytes"
 
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/protos/msp"
@@ -128,6 +130,27 @@ func (cp *ComparablePrincipal) ToRole() *ComparablePrincipal {
 // ComparablePrincipalSet aggregates ComparablePrincipals
 type ComparablePrincipalSet []*ComparablePrincipal
 
+// String returns a string representation of this ComparablePrincipalSet
+func (cps ComparablePrincipalSet) String() string {
+	buff := bytes.Buffer{}
+	buff.WriteString("[")
+	for i, cp := range cps {
+		buff.WriteString(cp.mspID)
+		buff.WriteString(".")
+		if cp.role != nil {
+			buff.WriteString(fmt.Sprintf("%v", cp.role.Role))
+		}
+		if cp.ou != nil {
+			buff.WriteString(fmt.Sprintf("%v", cp.ou.OrganizationalUnitIdentifier))
+		}
+		if i < len(cps)-1 {
+			buff.WriteString(", ")
+		}
+	}
+	buff.WriteString("]")
+	return buff.String()
+}
+
 // NewComparablePrincipalSet constructs a ComparablePrincipalSet out of the given PrincipalSet
 func NewComparablePrincipalSet(set policies.PrincipalSet) ComparablePrincipalSet {
 	var res ComparablePrincipalSet
@@ -137,6 +160,15 @@ func NewComparablePrincipalSet(set policies.PrincipalSet) ComparablePrincipalSet
 			return nil
 		}
 		res = append(res, cp)
+	}
+	return res
+}
+
+// Clone returns a copy of this ComparablePrincipalSet
+func (cps ComparablePrincipalSet) Clone() ComparablePrincipalSet {
+	res := make(ComparablePrincipalSet, len(cps))
+	for i, cp := range cps {
+		res[i] = cp
 	}
 	return res
 }
