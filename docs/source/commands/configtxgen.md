@@ -16,6 +16,8 @@ Usage of configtxgen:
     	Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set
   -channelID string
     	The channel ID to use in the configtx
+  -configPath string
+    	The path containing the configuration to use (if set)
   -inspectBlock string
     	Prints the configuration contained in the block at the specified path
   -inspectChannelCreateTx string
