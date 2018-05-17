@@ -141,9 +141,7 @@ func (m *SignaturePolicy) String() string            { return proto.CompactTextS
 func (*SignaturePolicy) ProtoMessage()               {}
 func (*SignaturePolicy) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
 
-type isSignaturePolicy_Type interface {
-	isSignaturePolicy_Type()
-}
+type isSignaturePolicy_Type interface{ isSignaturePolicy_Type() }
 
 type SignaturePolicy_SignedBy struct {
 	SignedBy int32 `protobuf:"varint,1,opt,name=signed_by,json=signedBy,oneof"`

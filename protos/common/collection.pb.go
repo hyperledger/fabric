@@ -103,9 +103,7 @@ func (m *CollectionConfig) String() string            { return proto.CompactText
 func (*CollectionConfig) ProtoMessage()               {}
 func (*CollectionConfig) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-type isCollectionConfig_Payload interface {
-	isCollectionConfig_Payload()
-}
+type isCollectionConfig_Payload interface{ isCollectionConfig_Payload() }
 
 type CollectionConfig_StaticCollectionConfig struct {
 	StaticCollectionConfig *StaticCollectionConfig `protobuf:"bytes,1,opt,name=static_collection_config,json=staticCollectionConfig,oneof"`
@@ -260,9 +258,7 @@ func (m *CollectionPolicyConfig) String() string            { return proto.Compa
 func (*CollectionPolicyConfig) ProtoMessage()               {}
 func (*CollectionPolicyConfig) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-type isCollectionPolicyConfig_Payload interface {
-	isCollectionPolicyConfig_Payload()
-}
+type isCollectionPolicyConfig_Payload interface{ isCollectionPolicyConfig_Payload() }
 
 type CollectionPolicyConfig_SignaturePolicy struct {
 	SignaturePolicy *SignaturePolicyEnvelope `protobuf:"bytes,1,opt,name=signature_policy,json=signaturePolicy,oneof"`

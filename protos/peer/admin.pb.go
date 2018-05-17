@@ -6,8 +6,8 @@ Package peer is a generated protocol buffer package.
 
 It is generated from these files:
 	peer/admin.proto
-	peer/chaincode_event.proto
 	peer/chaincode.proto
+	peer/chaincode_event.proto
 	peer/chaincode_shim.proto
 	peer/configuration.proto
 	peer/events.proto
@@ -24,13 +24,13 @@ It has these top-level messages:
 	LogLevelRequest
 	LogLevelResponse
 	AdminOperation
-	ChaincodeEvent
 	ChaincodeID
 	ChaincodeInput
 	ChaincodeSpec
 	ChaincodeDeploymentSpec
 	ChaincodeInvocationSpec
 	LifecycleEvent
+	ChaincodeEvent
 	ChaincodeMessage
 	GetState
 	PutState
@@ -218,9 +218,7 @@ func (m *AdminOperation) String() string            { return proto.CompactTextSt
 func (*AdminOperation) ProtoMessage()               {}
 func (*AdminOperation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-type isAdminOperation_Content interface {
-	isAdminOperation_Content()
-}
+type isAdminOperation_Content interface{ isAdminOperation_Content() }
 
 type AdminOperation_LogReq struct {
 	LogReq *LogLevelRequest `protobuf:"bytes,1,opt,name=logReq,oneof"`
