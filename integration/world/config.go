@@ -216,7 +216,6 @@ func (w *World) SetupChannel() error {
 
 	p = w.Components.Peer()
 	p.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
-	p.LogLevel = "debug"
 	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	adminRunner := p.CreateChannel(w.Deployment.Channel, filepath.Join(w.Rootpath, fmt.Sprintf("%s_tx.pb", w.Deployment.Channel)), w.Deployment.Orderer)
 	execute(adminRunner)
@@ -225,7 +224,6 @@ func (w *World) SetupChannel() error {
 		for peer := 0; peer < peerOrg.PeerCount; peer++ {
 			p = w.Components.Peer()
 			peerDir := fmt.Sprintf("%s_%d", peerOrg.Domain, peer)
-			p.LogLevel = "debug"
 			p.ConfigDir = filepath.Join(w.Rootpath, peerDir)
 			p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg.Domain, "users", fmt.Sprintf("Admin@%s", peerOrg.Domain), "msp")
 			adminRunner = p.FetchChannel(w.Deployment.Channel, filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", w.Deployment.Channel)), "0", w.Deployment.Orderer)

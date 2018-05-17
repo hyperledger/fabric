@@ -162,7 +162,6 @@ var _ = Describe("Peer", func() {
 		By("fetch channel block file")
 		fetchRun := components.Peer()
 		fetchRun.ConfigDir = tempDir
-		fetchRun.LogLevel = "debug"
 		fetchRun.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		fRunner := fetchRun.FetchChannel("mychan", filepath.Join(tempDir, "mychan.block"), "0", "127.0.0.1:8050")
 		execute(fRunner)

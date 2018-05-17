@@ -84,7 +84,7 @@ func install(msg proto.Message, cf *ChaincodeCmdFactory) error {
 	}
 
 	if proposalResponse != nil {
-		logger.Debugf("Installed remotely %v", proposalResponse)
+		logger.Infof("Installed remotely %v", proposalResponse)
 	}
 
 	return nil
