@@ -1,0 +1,30 @@
+UNRELEASED DRAFT (1.2)
+----------------------
+
+Release Notes
+-------------
+
+Known Vulnerabilities
+---------------------
+none
+
+Resolved Vulnerabilities
+------------------------
+none
+
+Known Issues & Workarounds
+--------------------------
+Previous releases included example input files for configtxgen (configtx.yaml)
+that contained invalid YAML. This was discovered as we were moving to a newer
+YAML parser.
+
+While we have corrected the examples, users are advised to evaluate their
+configtxgen input documents for places were YAML anchors are referenced before
+they are defined. Nodes should be reordered to ensure anchors are defined
+before referenced.
+
+Please refer to https://jira.hyperledger.org/browse/FAB-10151 for more
+details.
+
+Change Log
+----------
