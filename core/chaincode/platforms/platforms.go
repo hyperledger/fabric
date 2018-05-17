@@ -36,74 +36,74 @@ type Platform interface {
 	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider
 }
 
+type PackageWriter interface {
+	Write(name string, payload []byte, tw *tar.Writer) error
+}
+
+type PackageWriterWrapper func(name string, payload []byte, tw *tar.Writer) error
+
+func (pw PackageWriterWrapper) Write(name string, payload []byte, tw *tar.Writer) error {
+	return pw(name, payload, tw)
+}
+
+type Registry struct {
+	Platforms     map[string]Platform
+	PackageWriter PackageWriter
+}
+
 var logger = flogging.MustGetLogger("chaincode-platform")
-
-// XXX Temporary singleton hack to allow tests to continue to work
-var r = NewRegistry()
-
-// Added for unit testing purposes
-var _Find = find
-var _CUtilWriteBytesToPackage = cutil.WriteBytesToPackage
-var _generateDockerfile = r.generateDockerfile
-var _generateDockerBuild = r.generateDockerBuild
-
-type Registry struct{}
 
 // TODO, ultimately this should take the platforms as parameters
 func NewRegistry() *Registry {
-	return &Registry{}
+	return &Registry{
+		Platforms: map[string]Platform{
+			pb.ChaincodeSpec_GOLANG.String(): &golang.Platform{},
+			pb.ChaincodeSpec_CAR.String():    &car.Platform{},
+			pb.ChaincodeSpec_JAVA.String():   &java.Platform{},
+			pb.ChaincodeSpec_NODE.String():   &node.Platform{},
+		},
+		PackageWriter: PackageWriterWrapper(cutil.WriteBytesToPackage),
+	}
 }
 
 func (r *Registry) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	p, err := _Find(spec.Type)
-	if err != nil {
-		return err
+	platform, ok := r.Platforms[spec.Type.String()]
+	if !ok {
+		return fmt.Errorf("Unknown chaincodeType: %s", spec.Type)
 	}
-	return p.ValidateSpec(spec)
+	return platform.ValidateSpec(spec)
 }
 
 func (r *Registry) ValidateDeploymentSpec(spec *pb.ChaincodeDeploymentSpec) error {
-	p, err := _Find(spec.ChaincodeSpec.Type)
-	if err != nil {
-		return err
+	platform, ok := r.Platforms[spec.ChaincodeSpec.Type.String()]
+	if !ok {
+		return fmt.Errorf("Unknown chaincodeType: %s", spec.ChaincodeSpec.Type)
 	}
-	return p.ValidateDeploymentSpec(spec)
+	return platform.ValidateDeploymentSpec(spec)
 }
 
 func (r *Registry) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) (ccmetadata.MetadataProvider, error) {
-	p, err := _Find(spec.ChaincodeSpec.Type)
-	if err != nil {
-		return nil, err
+	platform, ok := r.Platforms[spec.ChaincodeSpec.Type.String()]
+	if !ok {
+		return nil, fmt.Errorf("Unknown chaincodeType: %s", spec.ChaincodeSpec.Type)
 	}
-	return p.GetMetadataProvider(spec), nil
-}
-
-// find returns the platform interface for the given platform type
-func find(chaincodeType pb.ChaincodeSpec_Type) (Platform, error) {
-	switch chaincodeType {
-	case pb.ChaincodeSpec_GOLANG:
-		return &golang.Platform{}, nil
-	case pb.ChaincodeSpec_CAR:
-		return &car.Platform{}, nil
-	case pb.ChaincodeSpec_JAVA:
-		return &java.Platform{}, nil
-	case pb.ChaincodeSpec_NODE:
-		return &node.Platform{}, nil
-	default:
-		return nil, fmt.Errorf("Unknown chaincodeType: %s", chaincodeType)
-	}
+	return platform.GetMetadataProvider(spec), nil
 }
 
 func (r *Registry) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
-	platform, err := _Find(spec.Type)
-	if err != nil {
-		return nil, err
+	platform, ok := r.Platforms[spec.Type.String()]
+	if !ok {
+		return nil, fmt.Errorf("Unknown chaincodeType: %s", spec.Type)
 	}
 
 	return platform.GetDeploymentPayload(spec)
 }
 
-func (r *Registry) generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec) ([]byte, error) {
+func (r *Registry) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
+	platform, ok := r.Platforms[cds.ChaincodeSpec.Type.String()]
+	if !ok {
+		return "", fmt.Errorf("Unknown chaincodeType: %s", cds.ChaincodeSpec.Type)
+	}
 
 	var buf []string
 
@@ -112,7 +112,7 @@ func (r *Registry) generateDockerfile(platform Platform, cds *pb.ChaincodeDeploy
 	// ----------------------------------------------------------------------------------------------------
 	base, err := platform.GenerateDockerfile(cds)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to generate platform-specific Dockerfile: %s", err)
+		return "", fmt.Errorf("Failed to generate platform-specific Dockerfile: %s", err)
 	}
 	buf = append(buf, base)
 
@@ -136,20 +136,25 @@ func (r *Registry) generateDockerfile(platform Platform, cds *pb.ChaincodeDeploy
 	contents := strings.Join(buf, "\n")
 	logger.Debugf("\n%s", contents)
 
-	return []byte(contents), nil
+	return contents, nil
 }
 
-type InputFiles map[string][]byte
-
-func (r *Registry) generateDockerBuild(platform Platform, cds *pb.ChaincodeDeploymentSpec, inputFiles InputFiles, tw *tar.Writer) error {
-
+func (r *Registry) StreamDockerBuild(cds *pb.ChaincodeDeploymentSpec, inputFiles map[string][]byte, tw *tar.Writer) error {
 	var err error
+
+	// ----------------------------------------------------------------------------------------------------
+	// Determine our platform driver from the spec
+	// ----------------------------------------------------------------------------------------------------
+	platform, ok := r.Platforms[cds.ChaincodeSpec.Type.String()]
+	if !ok {
+		return fmt.Errorf("could not find platform of type: %s", cds.ChaincodeSpec.Type.String())
+	}
 
 	// ----------------------------------------------------------------------------------------------------
 	// First stream out our static inputFiles
 	// ----------------------------------------------------------------------------------------------------
 	for name, data := range inputFiles {
-		err = _CUtilWriteBytesToPackage(name, data, tw)
+		err = r.PackageWriter.Write(name, data, tw)
 		if err != nil {
 			return fmt.Errorf("Failed to inject \"%s\": %s", name, err)
 		}
@@ -168,36 +173,27 @@ func (r *Registry) generateDockerBuild(platform Platform, cds *pb.ChaincodeDeplo
 
 func (r *Registry) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec) (io.Reader, error) {
 
-	inputFiles := make(InputFiles)
-
-	// ----------------------------------------------------------------------------------------------------
-	// Determine our platform driver from the spec
-	// ----------------------------------------------------------------------------------------------------
-	platform, err := _Find(cds.ChaincodeSpec.Type)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to determine platform type: %s", err)
-	}
+	inputFiles := make(map[string][]byte)
 
 	// ----------------------------------------------------------------------------------------------------
 	// Generate the Dockerfile specific to our context
 	// ----------------------------------------------------------------------------------------------------
-	dockerFile, err := _generateDockerfile(platform, cds)
+	dockerFile, err := r.GenerateDockerfile(cds)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to generate a Dockerfile: %s", err)
 	}
 
-	inputFiles["Dockerfile"] = dockerFile
+	inputFiles["Dockerfile"] = []byte(dockerFile)
 
 	// ----------------------------------------------------------------------------------------------------
 	// Finally, launch an asynchronous process to stream all of the above into a docker build context
 	// ----------------------------------------------------------------------------------------------------
 	input, output := io.Pipe()
 
-	generateDockerBuild := _generateDockerBuild
 	go func() {
 		gw := gzip.NewWriter(output)
 		tw := tar.NewWriter(gw)
-		err := generateDockerBuild(platform, cds, inputFiles, tw)
+		err := r.StreamDockerBuild(cds, inputFiles, tw)
 		if err != nil {
 			logger.Error(err)
 		}
