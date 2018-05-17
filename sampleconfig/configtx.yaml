@@ -6,6 +6,58 @@
 ---
 ################################################################################
 #
+#   ORGANIZATIONS
+#
+#   This section defines the organizational identities that can be referenced
+#   in the configuration profiles.
+#
+################################################################################
+Organizations:
+
+    # SampleOrg defines an MSP using the sampleconfig. It should never be used
+    # in production but may be used as a template for other definitions.
+    - &SampleOrg
+        # Name is the key by which this org will be referenced in channel
+        # configuration transactions.
+        # Name can include alphanumeric characters as well as dots and dashes.
+        Name: SampleOrg
+
+        # ID is the key by which this org's MSP definition will be referenced.
+        # ID can include alphanumeric characters as well as dots and dashes.
+        ID: SampleOrg
+
+        # MSPDir is the filesystem path which contains the MSP configuration.
+        MSPDir: msp
+
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies: &SampleOrgPolicies
+            Readers:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
+                # If your MSP is configured with the new NodeOUs, you might
+                # want to use a more specific rule like the following:
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.peer')"
+            Writers:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
+                # If your MSP is configured with the new NodeOUs, you might
+                # want to use a more specific rule like the following:
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.client'')"
+            Admins:
+                Type: Signature
+                Rule: "OR('SampleOrg.admin')"
+
+        # AnchorPeers defines the location of peers which can be used for
+        # cross-org gossip communication. Note, this value is only encoded in
+        # the genesis block in the Application section context.
+        AnchorPeers:
+            - Host: 127.0.0.1
+              Port: 7051
+
+################################################################################
+#
 #   CAPABILITIES
 #
 #   This section defines the capabilities of fabric network. This is a new
@@ -77,176 +129,6 @@ Capabilities:
         # This is an in development feature and is useful only for developer
         # testing at this time.
         V1_2_CHAINCODE_LIFECYCLE_EXPERIMENTAL: false
-
-################################################################################
-#
-#   CHANNEL
-#
-#   This section defines the values to encode into a config transaction or
-#   genesis block for channel related parameters.
-#
-################################################################################
-Channel: &ChannelDefaults
-    # Policies defines the set of policies at this level of the config tree
-    # For Channel policies, their canonical path is
-    #   /Channel/<PolicyName>
-    Policies:
-        # Who may invoke the 'Deliver' API
-        Readers:
-            Type: ImplicitMeta
-            Rule: "ANY Readers"
-        # Who may invoke the 'Broadcast' API
-        Writers:
-            Type: ImplicitMeta
-            Rule: "ANY Writers"
-        # By default, who may modify elements at this config level
-        Admins:
-            Type: ImplicitMeta
-            Rule: "MAJORITY Admins"
-
-
-    # Capabilities describes the channel level capabilities, see the
-    # dedicated Capabilities section elsewhere in this file for a full
-    # description
-    Capabilities:
-        <<: *ChannelCapabilities
-
-################################################################################
-#
-#   ORDERER
-#
-#   This section defines the values to encode into a config transaction or
-#   genesis block for orderer related parameters.
-#
-################################################################################
-Orderer: &OrdererDefaults
-
-    # Orderer Type: The orderer implementation to start.
-    # Available types are "solo" and "kafka".
-    OrdererType: solo
-
-    # Addresses here is a nonexhaustive list of orderers the peers and clients can
-    # connect to. Adding/removing nodes from this list has no impact on their
-    # participation in ordering.
-    # NOTE: In the solo case, this should be a one-item list.
-    Addresses:
-        - 127.0.0.1:7050
-
-    # Batch Timeout: The amount of time to wait before creating a batch.
-    BatchTimeout: 2s
-
-    # Batch Size: Controls the number of messages batched into a block.
-    BatchSize:
-
-        # Max Message Count: The maximum number of messages to permit in a
-        # batch.
-        MaxMessageCount: 10
-
-        # Absolute Max Bytes: The absolute maximum number of bytes allowed for
-        # the serialized messages in a batch. If the "kafka" OrdererType is
-        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on
-        # the Kafka brokers to a value that is larger than this one.
-        AbsoluteMaxBytes: 10 MB
-
-        # Preferred Max Bytes: The preferred maximum number of bytes allowed
-        # for the serialized messages in a batch. A message larger than the
-        # preferred max bytes will result in a batch larger than preferred max
-        # bytes.
-        PreferredMaxBytes: 512 KB
-
-    # Max Channels is the maximum number of channels to allow on the ordering
-    # network. When set to 0, this implies no maximum number of channels.
-    MaxChannels: 0
-
-    Kafka:
-        # Brokers: A list of Kafka brokers to which the orderer connects. Edit
-        # this list to identify the brokers of the ordering service.
-        # NOTE: Use IP:port notation.
-        Brokers:
-            - kafka0:9092
-            - kafka1:9092
-            - kafka2:9092
-
-    # Organizations lists the orgs participating on the orderer side of the
-    # network.
-    Organizations:
-
-    # Policies defines the set of policies at this level of the config tree
-    # For Orderer policies, their canonical path is
-    #   /Channel/Orderer/<PolicyName>
-    Policies:
-        Readers:
-            Type: ImplicitMeta
-            Rule: "ANY Readers"
-        Writers:
-            Type: ImplicitMeta
-            Rule: "ANY Writers"
-        Admins:
-            Type: ImplicitMeta
-            Rule: "MAJORITY Admins"
-        # BlockValidation specifies what signatures must be included in the block
-        # from the orderer for the peer to validate it.
-        BlockValidation:
-            Type: ImplicitMeta
-            Rule: "ANY Writers"
-
-    # Capabilities describes the orderer level capabilities, see the
-    # dedicated Capabilities section elsewhere in this file for a full
-    # description
-    Capabilities:
-        <<: *OrdererCapabilities
-
-################################################################################
-#
-#   ORGANIZATIONS
-#
-#   This section defines the organizational identities that can be referenced
-#   in the configuration profiles.
-#
-################################################################################
-Organizations:
-
-    # SampleOrg defines an MSP using the sampleconfig. It should never be used
-    # in production but may be used as a template for other definitions.
-    - &SampleOrg
-        # Name is the key by which this org will be referenced in channel
-        # configuration transactions.
-        # Name can include alphanumeric characters as well as dots and dashes.
-        Name: SampleOrg
-
-        # ID is the key by which this org's MSP definition will be referenced.
-        # ID can include alphanumeric characters as well as dots and dashes.
-        ID: SampleOrg
-
-        # MSPDir is the filesystem path which contains the MSP configuration.
-        MSPDir: msp
-
-        # Policies defines the set of policies at this level of the config tree
-        # For organization policies, their canonical path is usually
-        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
-        Policies: &SampleOrgPolicies
-            Readers:
-                Type: Signature
-                Rule: "OR('SampleOrg.member')"
-                # If your MSP is configured with the new NodeOUs, you might
-                # want to use a more specific rule like the following:
-                # Rule: "OR('SampleOrg.admin', 'SampleOrg.peer')"
-            Writers:
-                Type: Signature
-                Rule: "OR('SampleOrg.member')"
-                # If your MSP is configured with the new NodeOUs, you might
-                # want to use a more specific rule like the following:
-                # Rule: "OR('SampleOrg.admin', 'SampleOrg.client'')"
-            Admins:
-                Type: Signature
-                Rule: "OR('SampleOrg.admin')"
-
-        # AnchorPeers defines the location of peers which can be used for
-        # cross-org gossip communication. Note, this value is only encoded in
-        # the genesis block in the Application section context.
-        AnchorPeers:
-            - Host: 127.0.0.1
-              Port: 7051
 
 ################################################################################
 #
@@ -348,6 +230,124 @@ Application: &ApplicationDefaults
     # description
     Capabilities:
         <<: *ApplicationCapabilities
+
+################################################################################
+#
+#   ORDERER
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for orderer related parameters.
+#
+################################################################################
+Orderer: &OrdererDefaults
+
+    # Orderer Type: The orderer implementation to start.
+    # Available types are "solo" and "kafka".
+    OrdererType: solo
+
+    # Addresses here is a nonexhaustive list of orderers the peers and clients can
+    # connect to. Adding/removing nodes from this list has no impact on their
+    # participation in ordering.
+    # NOTE: In the solo case, this should be a one-item list.
+    Addresses:
+        - 127.0.0.1:7050
+
+    # Batch Timeout: The amount of time to wait before creating a batch.
+    BatchTimeout: 2s
+
+    # Batch Size: Controls the number of messages batched into a block.
+    BatchSize:
+
+        # Max Message Count: The maximum number of messages to permit in a
+        # batch.
+        MaxMessageCount: 10
+
+        # Absolute Max Bytes: The absolute maximum number of bytes allowed for
+        # the serialized messages in a batch. If the "kafka" OrdererType is
+        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on
+        # the Kafka brokers to a value that is larger than this one.
+        AbsoluteMaxBytes: 10 MB
+
+        # Preferred Max Bytes: The preferred maximum number of bytes allowed
+        # for the serialized messages in a batch. A message larger than the
+        # preferred max bytes will result in a batch larger than preferred max
+        # bytes.
+        PreferredMaxBytes: 512 KB
+
+    # Max Channels is the maximum number of channels to allow on the ordering
+    # network. When set to 0, this implies no maximum number of channels.
+    MaxChannels: 0
+
+    Kafka:
+        # Brokers: A list of Kafka brokers to which the orderer connects. Edit
+        # this list to identify the brokers of the ordering service.
+        # NOTE: Use IP:port notation.
+        Brokers:
+            - kafka0:9092
+            - kafka1:9092
+            - kafka2:9092
+
+    # Organizations lists the orgs participating on the orderer side of the
+    # network.
+    Organizations:
+
+    # Policies defines the set of policies at this level of the config tree
+    # For Orderer policies, their canonical path is
+    #   /Channel/Orderer/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        # BlockValidation specifies what signatures must be included in the block
+        # from the orderer for the peer to validate it.
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+    # Capabilities describes the orderer level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *OrdererCapabilities
+
+################################################################################
+#
+#   CHANNEL
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for channel related parameters.
+#
+################################################################################
+Channel: &ChannelDefaults
+    # Policies defines the set of policies at this level of the config tree
+    # For Channel policies, their canonical path is
+    #   /Channel/<PolicyName>
+    Policies:
+        # Who may invoke the 'Deliver' API
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        # Who may invoke the 'Broadcast' API
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        # By default, who may modify elements at this config level
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+
+    # Capabilities describes the channel level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *ChannelCapabilities
 
 ################################################################################
 #
