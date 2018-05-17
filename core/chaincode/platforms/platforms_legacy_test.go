@@ -24,7 +24,7 @@ import (
 
 // START Find tests
 func TestFind(t *testing.T) {
-	response, err := Find(pb.ChaincodeSpec_GOLANG)
+	response, err := find(pb.ChaincodeSpec_GOLANG)
 	_, ok := response.(Platform)
 	if !ok {
 		t.Error("Assertion error")
@@ -32,7 +32,7 @@ func TestFind(t *testing.T) {
 	assert.NotNil(t, response, "Response should have been set")
 	assert.Nil(t, err, "Error should have been nil")
 
-	response, err = Find(pb.ChaincodeSpec_CAR)
+	response, err = find(pb.ChaincodeSpec_CAR)
 	_, ok = response.(Platform)
 	if !ok {
 		t.Error("Assertion error")
@@ -40,7 +40,7 @@ func TestFind(t *testing.T) {
 	assert.NotNil(t, response, "Response should have been set")
 	assert.Nil(t, err, "Error should have been nil")
 
-	response, err = Find(pb.ChaincodeSpec_JAVA)
+	response, err = find(pb.ChaincodeSpec_JAVA)
 	_, ok = response.(Platform)
 	if !ok {
 		t.Error("Assertion error")
@@ -48,7 +48,7 @@ func TestFind(t *testing.T) {
 	assert.NotNil(t, response, "Response should have been set")
 	assert.Nil(t, err, "Error should have been nil")
 
-	response, err = Find(pb.ChaincodeSpec_UNDEFINED)
+	response, err = find(pb.ChaincodeSpec_UNDEFINED)
 	_, ok = response.(Platform)
 	assert.Nil(t, response, "Response should have been nil")
 	assert.NotNil(t, err, "Error should have been set")
@@ -84,7 +84,7 @@ func TestGetDeplotmentPayload(t *testing.T) {
 	fake := pb.ChaincodeSpec{
 		Type: pb.ChaincodeSpec_GOLANG,
 	}
-	response, err := GetDeploymentPayload(&fake)
+	response, err := r.GetDeploymentPayload(&fake)
 
 	fmt.Println(err)
 
@@ -93,7 +93,7 @@ func TestGetDeplotmentPayload(t *testing.T) {
 
 	_Find = FakeFindErr
 
-	response, err = GetDeploymentPayload(&fake)
+	response, err = r.GetDeploymentPayload(&fake)
 
 	fmt.Println(err)
 
@@ -159,12 +159,12 @@ func TestGenerateDockerfile(t *testing.T) {
 			},
 		},
 	}
-	response, err := generateDockerfile(mockPlatform, fakeChaincodeSpec)
+	response, err := r.generateDockerfile(mockPlatform, fakeChaincodeSpec)
 	assert.NotNil(t, err, "Error should have been set")
 	assert.Nil(t, response, "Response should not have been set")
 
 	mockPlatformOk := &FakePlatformOk{}
-	response, err = generateDockerfile(mockPlatformOk, fakeChaincodeSpec)
+	response, err = r.generateDockerfile(mockPlatformOk, fakeChaincodeSpec)
 	assert.Nil(t, err, "Error should not have been set")
 	assert.NotNil(t, response, "Response should not have been set")
 
@@ -185,7 +185,7 @@ func TestGenerateDockerfile(t *testing.T) {
 		"Should return the correct values when TLS is not enabled",
 	)
 
-	response, err = generateDockerfile(mockPlatformOk, fakeChaincodeSpec)
+	response, err = r.generateDockerfile(mockPlatformOk, fakeChaincodeSpec)
 	contents = strings.Join(buf, "\n")
 	assert.Equal(
 		t,
@@ -241,16 +241,16 @@ func TestGenerateDockerBuild1(t *testing.T) {
 
 	// No errors
 	_CUtilWriteBytesToPackage = CUtilWriteBytesToPackageOk
-	err := generateDockerBuild(mockPlatformOk, fakeChaincodeSpec, inputFiles, mockTw)
+	err := r.generateDockerBuild(mockPlatformOk, fakeChaincodeSpec, inputFiles, mockTw)
 	assert.Nil(t, err, "err should not have been set")
 	// Error from cutil.WriteBytesToPackage
 	_CUtilWriteBytesToPackage = CUtilWriteBytesToPackageErr
-	err = generateDockerBuild(mockPlatformOk, fakeChaincodeSpec, inputFiles, mockTw)
+	err = r.generateDockerBuild(mockPlatformOk, fakeChaincodeSpec, inputFiles, mockTw)
 	assert.NotNil(t, err, "err should have been set")
 
 	// Error from platform.GenerateDockerBuild
 	_CUtilWriteBytesToPackage = CUtilWriteBytesToPackageOk
-	err = generateDockerBuild(mockPlatformErr, fakeChaincodeSpec, inputFiles, mockTw)
+	err = r.generateDockerBuild(mockPlatformErr, fakeChaincodeSpec, inputFiles, mockTw)
 	assert.NotNil(t, err, "err should have been set")
 
 }
@@ -302,20 +302,20 @@ func TestGenerateDockerBuild2(t *testing.T) {
 	}
 
 	// No error
-	io, err := GenerateDockerBuild(fakeChaincodeSpec)
+	io, err := r.GenerateDockerBuild(fakeChaincodeSpec)
 	assert.NotNil(t, io, "io should not be nil")
 	assert.Nil(t, err, "error should be nil")
 
 	// Error from Find
 	_Find = FindErr
-	io, err = GenerateDockerBuild(fakeChaincodeSpec)
+	io, err = r.GenerateDockerBuild(fakeChaincodeSpec)
 	assert.Nil(t, io, "io should be nil")
 	assert.NotNil(t, err, "error should not be nil")
 
 	// Error from generateDockerfile
 	_Find = oldFind
 	_generateDockerfile = generateDockerfileErr
-	io, err = GenerateDockerBuild(fakeChaincodeSpec)
+	io, err = r.GenerateDockerBuild(fakeChaincodeSpec)
 	assert.Nil(t, io, "io should be nil")
 	assert.NotNil(t, err, "error should not be nil")
 
@@ -323,7 +323,7 @@ func TestGenerateDockerBuild2(t *testing.T) {
 	_Find = oldFind
 	_generateDockerfile = oldGenerateDockerfile
 	_generateDockerBuild = generateDockerBuildErr
-	io, err = GenerateDockerBuild(fakeChaincodeSpec)
+	io, err = r.GenerateDockerBuild(fakeChaincodeSpec)
 	assert.NotNil(t, io, "io should not be nil")
 	assert.Nil(t, err, "error should be nil")
 }

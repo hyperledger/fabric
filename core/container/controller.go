@@ -132,7 +132,7 @@ type PlatformBuilder struct {
 
 // Build a tar stream based on the CDS
 func (b *PlatformBuilder) Build() (io.Reader, error) {
-	return platforms.GenerateDockerBuild(b.DeploymentSpec)
+	return platforms.NewRegistry().GenerateDockerBuild(b.DeploymentSpec)
 }
 
 func (si StartContainerReq) Do(ctxt context.Context, v VM) error {
@@ -200,5 +200,5 @@ func GetChaincodePackageBytes(spec *pb.ChaincodeSpec) ([]byte, error) {
 		return nil, fmt.Errorf("invalid chaincode spec")
 	}
 
-	return platforms.GetDeploymentPayload(spec)
+	return platforms.NewRegistry().GetDeploymentPayload(spec)
 }

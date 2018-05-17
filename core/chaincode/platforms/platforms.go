@@ -11,11 +11,8 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"os"
 
 	"strings"
-
-	"io/ioutil"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
@@ -24,10 +21,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
-	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/viper"
 )
 
 // Interface for validating the specification and and writing the package for
@@ -43,19 +38,48 @@ type Platform interface {
 
 var logger = flogging.MustGetLogger("chaincode-platform")
 
+// XXX Temporary singleton hack to allow tests to continue to work
+var r = NewRegistry()
+
 // Added for unit testing purposes
-var _Find = Find
-var _GetPath = config.GetPath
-var _VGetBool = viper.GetBool
-var _OSStat = os.Stat
-var _IOUtilReadFile = ioutil.ReadFile
+var _Find = find
 var _CUtilWriteBytesToPackage = cutil.WriteBytesToPackage
-var _generateDockerfile = generateDockerfile
-var _generateDockerBuild = generateDockerBuild
+var _generateDockerfile = r.generateDockerfile
+var _generateDockerBuild = r.generateDockerBuild
 
-// Find returns the platform interface for the given platform type
-func Find(chaincodeType pb.ChaincodeSpec_Type) (Platform, error) {
+type Registry struct{}
 
+// TODO, ultimately this should take the platforms as parameters
+func NewRegistry() *Registry {
+	return &Registry{}
+}
+
+func (r *Registry) ValidateSpec(spec *pb.ChaincodeSpec) error {
+	p, err := _Find(spec.Type)
+	if err != nil {
+		return err
+	}
+	return p.ValidateSpec(spec)
+}
+
+func (r *Registry) ValidateDeploymentSpec(spec *pb.ChaincodeDeploymentSpec) error {
+	p, err := _Find(spec.ChaincodeSpec.Type)
+	if err != nil {
+		return err
+	}
+	return p.ValidateDeploymentSpec(spec)
+}
+
+func (r *Registry) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) (ccmetadata.MetadataProvider, error) {
+	p, err := _Find(spec.ChaincodeSpec.Type)
+	if err != nil {
+		return nil, err
+	}
+	return p.GetMetadataProvider(spec), nil
+}
+
+// find returns the platform interface for the given platform type
+func find(chaincodeType pb.ChaincodeSpec_Type) (Platform, error) {
 	switch chaincodeType {
 	case pb.ChaincodeSpec_GOLANG:
 		return &golang.Platform{}, nil
@@ -68,10 +92,9 @@ func Find(chaincodeType pb.ChaincodeSpec_Type) (Platform, error) {
 	default:
 		return nil, fmt.Errorf("Unknown chaincodeType: %s", chaincodeType)
 	}
-
 }
 
-func GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (r *Registry) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 	platform, err := _Find(spec.Type)
 	if err != nil {
 		return nil, err
@@ -80,7 +103,7 @@ func GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 	return platform.GetDeploymentPayload(spec)
 }
 
-func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec) ([]byte, error) {
+func (r *Registry) generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec) ([]byte, error) {
 
 	var buf []string
 
@@ -118,7 +141,7 @@ func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec) ([]b
 
 type InputFiles map[string][]byte
 
-func generateDockerBuild(platform Platform, cds *pb.ChaincodeDeploymentSpec, inputFiles InputFiles, tw *tar.Writer) error {
+func (r *Registry) generateDockerBuild(platform Platform, cds *pb.ChaincodeDeploymentSpec, inputFiles InputFiles, tw *tar.Writer) error {
 
 	var err error
 
@@ -143,7 +166,7 @@ func generateDockerBuild(platform Platform, cds *pb.ChaincodeDeploymentSpec, inp
 	return nil
 }
 
-func GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec) (io.Reader, error) {
+func (r *Registry) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec) (io.Reader, error) {
 
 	inputFiles := make(InputFiles)
 
