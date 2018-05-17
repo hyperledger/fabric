@@ -59,6 +59,7 @@ func (p *SampleValidationPlugin) Validate(block *common.Block, namespace string,
 	if err != nil {
 		return err
 	}
+	defer state.Done()
 
 	results, err := state.GetStateMultipleKeys("lscc", []string{namespace})
 	if err != nil {
