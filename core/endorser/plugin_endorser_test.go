@@ -234,6 +234,7 @@ func (fep *fakeEndorsementPlugin) Init(dependencies ...endorsement.Dependency) e
 }
 
 type rwsetScanner struct {
+	mock.Mock
 	data []*rwset.TxPvtReadWriteSet
 }
 
@@ -254,8 +255,8 @@ func (rws *rwsetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulation
 	}, nil
 }
 
-func (*rwsetScanner) Close() {
-	panic("implement me")
+func (rws *rwsetScanner) Close() {
+	rws.Called()
 }
 
 func TestTransientStore(t *testing.T) {
@@ -312,6 +313,7 @@ func TestTransientStore(t *testing.T) {
 	scanner := &rwsetScanner{
 		data: []*rwset.TxPvtReadWriteSet{rws},
 	}
+	scanner.On("Close")
 
 	transientStore.On("GetTxPvtRWSetByTxid", mock.Anything, mock.Anything).Return(scanner, nil)
 
@@ -322,4 +324,5 @@ func TestTransientStore(t *testing.T) {
 	err = proto.Unmarshal(resp.Payload, txrws)
 	assert.NoError(t, err)
 	assert.Equal(t, rws, txrws)
+	scanner.AssertCalled(t, "Close")
 }
