@@ -289,6 +289,17 @@ func (id *idemixidentity) verifyProof() error {
 }
 
 func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
+	err := msp.Validate(id)
+	if err != nil {
+		return errors.Wrap(err, "identity is not valid with respect to this MSP")
+	}
+
+	return msp.satisfiesPrincipalValidated(id, principal)
+}
+
+// satisfiesPrincipalValidated performs all the tasks of satisfiesPrincipal except the identity validation,
+// such that combined principals will not cause multiple expensive identity validations.
+func (msp *idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPPrincipal) error {
 	switch principal.PrincipalClassification {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
@@ -306,11 +317,6 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
 		}
 
-		// check whether this identity is valid
-		err = msp.Validate(id)
-		if err != nil {
-			return errors.Wrap(err, "identity is not valid with respect to this MSP")
-		}
 		// now we validate the different msp roles
 		switch mspRole.Role {
 		case m.MSPRole_MEMBER:
@@ -357,18 +363,46 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", ou.MspIdentifier, id.GetMSPIdentifier())
 		}
 
-		// we then check if the identity is valid with this MSP
-		// and fail if it is not
-		err = msp.Validate(id)
-		if err != nil {
-			return err
-		}
-
 		if ou.OrganizationalUnitIdentifier != id.(*idemixidentity).OU.OrganizationalUnitIdentifier {
 			return errors.Errorf("user is not part of the desired organizational unit")
 		}
 
 		return nil
+	case m.MSPPrincipal_COMBINED:
+		// Principal is a combination of multiple principals.
+		principals := &m.CombinedPrincipal{}
+		err := proto.Unmarshal(principal.Principal, principals)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal CombinedPrincipal from principal")
+		}
+		// Return an error if there are no principals in the combined principal.
+		if len(principals.Principals) == 0 {
+			return errors.New("no principals in CombinedPrincipal")
+		}
+		// Recursively call msp.SatisfiesPrincipal for all combined principals.
+		// There is no limit for the levels of nesting for the combined principals.
+		for _, cp := range principals.Principals {
+			err = msp.satisfiesPrincipalValidated(id, cp)
+			if err != nil {
+				return err
+			}
+		}
+		// The identity satisfies all the principals
+		return nil
+	case m.MSPPrincipal_ANONYMITY:
+		anon := &m.MSPIdentityAnonymity{}
+		err := proto.Unmarshal(principal.Principal, anon)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal MSPIdentityAnonymity from principal")
+		}
+		switch anon.AnonymityType {
+		case m.MSPIdentityAnonymity_ANONYMOUS:
+			return nil
+		case m.MSPIdentityAnonymity_NOMINAL:
+			return errors.New("principal is nominal, but idemix MSP is anonymous")
+		default:
+			return errors.Errorf("unknown principal anonymity type: %d", anon.AnonymityType)
+		}
 	default:
 		return errors.Errorf("invalid principal type %d", int32(principal.PrincipalClassification))
 	}
@@ -409,7 +443,7 @@ type idemixidentity struct {
 }
 
 func (id *idemixidentity) Anonymous() bool {
-	return false
+	return true
 }
 
 func newIdemixIdentity(msp *idemixmsp, nym *FP256BN.ECP, role *m.MSPRole, ou *m.OrganizationUnit, proof *idemix.Signature) *idemixidentity {

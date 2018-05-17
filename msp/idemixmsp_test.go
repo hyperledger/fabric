@@ -63,6 +63,7 @@ func TestSetup(t *testing.T) {
 func TestSetupBad(t *testing.T) {
 	_, err := setup("testdata/idemix/badpath", "MSPID")
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Getting MSP config failed")
 
 	msp1, err := newIdemixMsp()
 	assert.NoError(t, err)
@@ -70,16 +71,19 @@ func TestSetupBad(t *testing.T) {
 	// Setup with nil config
 	err = msp1.Setup(nil)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "setup error: nil conf reference")
 
 	// Setup with incorrect MSP type
 	conf := &msp.MSPConfig{Type: 1234, Config: nil}
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "setup error: config is not of type IDEMIX")
 
 	// Setup with bad idemix config bytes
 	conf = &msp.MSPConfig{Type: int32(IDEMIX), Config: []byte("barf")}
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed unmarshalling idemix msp config")
 
 	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1", "IdemixMSP1")
 	idemixconfig := &msp.IdemixMSPConfig{}
@@ -101,6 +105,7 @@ func TestSetupBad(t *testing.T) {
 
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "issuer public key must have have attributes OU, Role, EnrollmentId, and RevocationHandle")
 
 	// Create MSP config with bad IPK bytes
 	ipkBytes = []byte("barf")
@@ -112,6 +117,7 @@ func TestSetupBad(t *testing.T) {
 
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to unmarshal ipk from idemix msp config")
 }
 
 func TestSigning(t *testing.T) {
@@ -130,6 +136,7 @@ func TestSigning(t *testing.T) {
 
 	err = id.Verify([]byte("OtherMessage"), sig)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pseudonym signature invalid: zero-knowledge proof is invalid")
 
 	verMsp, err := setup("testdata/idemix/MSP1Verifier", "MSP1")
 	assert.NoError(t, err)
@@ -137,6 +144,7 @@ func TestSigning(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = verMsp.GetDefaultSigningIdentity()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no default signer setup")
 }
 
 func TestSigningBad(t *testing.T) {
@@ -151,6 +159,7 @@ func TestSigningBad(t *testing.T) {
 
 	err = id.Verify(msg, sig)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error unmarshalling signature")
 }
 
 func TestIdentitySerialization(t *testing.T) {
@@ -179,6 +188,7 @@ func TestIdentitySerializationBad(t *testing.T) {
 
 	_, err = msp.DeserializeIdentity([]byte("barf"))
 	assert.Error(t, err, "DeserializeIdentity should have failed for bad input")
+	assert.Contains(t, err.Error(), "could not deserialize a SerializedIdentity")
 }
 
 func TestIdentitySerializationWrongMSP(t *testing.T) {
@@ -194,6 +204,7 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 
 	_, err = msp1.DeserializeIdentity(idBytes)
 	assert.Error(t, err, "DeserializeIdentity should have failed for ID of other MSP")
+	assert.Contains(t, err.Error(), "expected MSP ID MSP1OU1, received MSP2OU1")
 }
 
 func TestPrincipalIdentity(t *testing.T) {
@@ -236,6 +247,8 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 
 	err = id2.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Identity MSP principal for different user should fail")
+	assert.Contains(t, err.Error(), "the identities do not match")
+
 }
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
@@ -253,6 +266,44 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Identity MSP principal for a bad principal should fail")
+	assert.Contains(t, err.Error(), "the identities do not match")
+}
+
+func TestAnonymityPrincipal(t *testing.T) {
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_ANONYMOUS})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestAnonymityPrincipalBad(t *testing.T) {
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_NOMINAL})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	assert.Error(t, err, "Idemix identity is anonymous and should not pass NOMINAL anonymity principal")
+	assert.Contains(t, err.Error(), "principal is nominal, but idemix MSP is anonymous")
 }
 
 func TestIdemixIsWellFormed(t *testing.T) {
@@ -319,6 +370,8 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "OU MSP principal should have failed for user of different OU")
+	assert.Contains(t, err.Error(), "user is not part of the desired organizational unit")
+
 }
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
@@ -342,6 +395,8 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "OU MSP principal should have failed for user of different MSP")
+	assert.Contains(t, err.Error(), "the identity is a member of a different MSP")
+
 }
 
 func TestPrincipalOUBad(t *testing.T) {
@@ -360,6 +415,7 @@ func TestPrincipalOUBad(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "OU MSP principal should have failed for a bad OU principal")
+	assert.Contains(t, err.Error(), "could not unmarshal OU from principal")
 }
 
 func TestPrincipalRoleMember(t *testing.T) {
@@ -425,6 +481,7 @@ func TestPrincipalRoleNotAdmin(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Member should not satisfy Admin principal")
+	assert.Contains(t, err.Error(), "user is not an admin")
 }
 
 func TestPrincipalRoleWrongMSP(t *testing.T) {
@@ -443,6 +500,7 @@ func TestPrincipalRoleWrongMSP(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Role MSP principal should have failed for user of different MSP")
+	assert.Contains(t, err.Error(), "the identity is a member of a different MSP")
 }
 
 func TestPrincipalRoleBadRole(t *testing.T) {
@@ -462,6 +520,7 @@ func TestPrincipalRoleBadRole(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Role MSP principal should have failed for a bad Role")
+	assert.Contains(t, err.Error(), "invalid MSP role type")
 }
 
 func TestPrincipalBad(t *testing.T) {
@@ -477,4 +536,85 @@ func TestPrincipalBad(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Principal with bad Classification should fail")
+	assert.Contains(t, err.Error(), "invalid principal type")
+}
+
+func TestPrincipalCombined(t *testing.T) {
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+		MspIdentifier:                id1.GetMSPIdentifier(),
+		CertifiersIdentifier:         nil,
+	}
+	principalBytes, err := proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principalOU := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               principalBytes}
+
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+
+	principalRole := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+
+	assert.NoError(t, err)
+
+	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+
+	err = id1.SatisfiesPrincipal(principalsCombined)
+	assert.NoError(t, err)
+}
+
+func TestPrincipalCombinedBad(t *testing.T) {
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	// create combined principal requiring membership of OU1 in MSP1 and requiring admin role
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+		MspIdentifier:                id1.GetMSPIdentifier(),
+		CertifiersIdentifier:         nil,
+	}
+	principalBytes, err := proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principalOU := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               principalBytes}
+
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+
+	principalRole := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+
+	assert.NoError(t, err)
+
+	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+
+	err = id1.SatisfiesPrincipal(principalsCombined)
+	assert.Error(t, err, "non-admin member of OU1 in MSP1 should not satisfy principal admin and OU1 in MSP1")
+	assert.Contains(t, err.Error(), "user is not an admin")
 }
