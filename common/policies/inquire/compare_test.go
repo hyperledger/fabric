@@ -15,6 +15,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestToPrincipalSet(t *testing.T) {
+	var cps ComparablePrincipalSet
+	cps = append(cps, NewComparablePrincipal(member("Org1MSP")))
+	cps = append(cps, NewComparablePrincipal(member("Org2MSP")))
+	expected := policies.PrincipalSet{member("Org1MSP"), member("Org2MSP")}
+	assert.Equal(t, expected, cps.ToPrincipalSet())
+}
+
+func TestToPrincipalSets(t *testing.T) {
+	var cps, cps2 ComparablePrincipalSet
+
+	cps = append(cps, NewComparablePrincipal(member("Org1MSP")))
+	cps = append(cps, NewComparablePrincipal(member("Org2MSP")))
+
+	cps2 = append(cps2, NewComparablePrincipal(member("Org3MSP")))
+	cps2 = append(cps2, NewComparablePrincipal(member("Org4MSP")))
+
+	expected := policies.PrincipalSets{
+		{member("Org1MSP"), member("Org2MSP")},
+		{member("Org3MSP"), member("Org4MSP")},
+	}
+
+	assert.Equal(t, expected, ComparablePrincipalSets{cps, cps2}.ToPrincipalSets())
+}
+
 func TestNewComparablePrincipal(t *testing.T) {
 	mspID := "Org1MSP"
 

@@ -130,6 +130,15 @@ func (cp *ComparablePrincipal) ToRole() *ComparablePrincipal {
 // ComparablePrincipalSet aggregates ComparablePrincipals
 type ComparablePrincipalSet []*ComparablePrincipal
 
+// ToPrincipalSet converts this ComparablePrincipalSet to a PrincipalSet
+func (cps ComparablePrincipalSet) ToPrincipalSet() policies.PrincipalSet {
+	var res policies.PrincipalSet
+	for _, cp := range cps {
+		res = append(res, cp.principal)
+	}
+	return res
+}
+
 // String returns a string representation of this ComparablePrincipalSet
 func (cps ComparablePrincipalSet) String() string {
 	buff := bytes.Buffer{}
