@@ -2,31 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ---
-Capabilities:
-  Global: &ChannelCapabilities
-    V1_1: true
-  Orderer: &OrdererCapabilities
-    V1_1: true
-  Application: &ApplicationCapabilities
-    V1_2: true
-
-Orderer: &OrdererDefaults
-  OrdererType: solo
-  Addresses:
-    - 127.0.0.1:8050
-  BatchTimeout: 2s
-  BatchSize:
-    MaxMessageCount: 10
-    AbsoluteMaxBytes: 98 MB
-    PreferredMaxBytes: 512 KB
-  Kafka:
-    Brokers:
-      - kafka0:9092
-      - kafka1:9092
-      - kafka2:9092
-      - kafka3:9092
-  Organizations:
-
 Organizations:
   - &OrdererOrg
     Name: OrdererOrg
@@ -47,7 +22,32 @@ Organizations:
       - Host: 127.0.0.1
         Port: 8051
 
+Capabilities:
+  Global: &ChannelCapabilities
+    V1_1: true
+  Orderer: &OrdererCapabilities
+    V1_1: true
+  Application: &ApplicationCapabilities
+    V1_2: true
+
 Application: &ApplicationDefaults
+  Organizations:
+
+Orderer: &OrdererDefaults
+  OrdererType: solo
+  Addresses:
+    - 127.0.0.1:8050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 98 MB
+    PreferredMaxBytes: 512 KB
+  Kafka:
+    Brokers:
+      - kafka0:9092
+      - kafka1:9092
+      - kafka2:9092
+      - kafka3:9092
   Organizations:
 
 Profiles:
