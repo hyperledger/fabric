@@ -36,10 +36,9 @@ func TestInvokeCmd(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
+	resetFlags()
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
-	// reset channelID, it might have been set by previous test
-	channelID = ""
 
 	// Error case 0: no channelID specified
 	cmd := invokeCmd(mockCF)
@@ -159,7 +158,44 @@ func TestInvokeCmd(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
+	defer resetFlags()
+	mockCF, err := getMockChaincodeCmdFactory()
+	assert.NoError(t, err, "Error getting mock chaincode command factory")
+
+	// success case - simulate an ESCC plugin that endorses a chaincode response
+	// with status greater than shim.ERRORTHRESHOLD or even shim.ERROR
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 504},
+		Endorsement: &pb.Endorsement{},
+	}
+	mockCF.EndorserClients[0] = common.GetMockEndorserClient(mockResponse, nil)
+
+	// set logger to logger with a backend that writes to a byte buffer
+	var buffer bytes.Buffer
+	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
+	// reset the logger after test
+	defer func() {
+		flogging.Reset()
+	}()
+	// make sure buffer is "clean" before running the invoke
+	buffer.Reset()
+
+	cmd := invokeCmd(mockCF)
+	addFlags(cmd)
+	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
+	cmd.SetArgs(args)
+
+	err = cmd.Execute()
+	assert.NoError(t, err, "Run chaincode invoke cmd error")
+	err = cmd.Execute()
+	assert.Nil(t, err)
+	assert.Regexp(t, "Chaincode invoke successful", buffer.String())
+	assert.Regexp(t, fmt.Sprintf("result: <nil>"), buffer.String())
+}
+
 func TestInvokeCmdEndorsementError(t *testing.T) {
+	defer resetFlags()
 	InitMSP()
 	mockCF, err := getMockChaincodeCmdFactoryWithErr()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
@@ -173,6 +209,7 @@ func TestInvokeCmdEndorsementError(t *testing.T) {
 }
 
 func TestInvokeCmdEndorsementFailure(t *testing.T) {
+	defer resetFlags()
 	InitMSP()
 	ccRespStatus := [2]int32{502, 400}
 	ccRespPayload := [][]byte{[]byte("Invalid function name"), []byte("Incorrect parameters")}
@@ -186,20 +223,10 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		args := []string{"-C", "mychannel", "-n", "example02", "-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
 		cmd.SetArgs(args)
 
-		// set logger to logger with a backend that writes to a byte buffer
-		var buffer bytes.Buffer
-		logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
-		// reset the logger after test
-		defer func() {
-			flogging.Reset()
-		}()
-		// make sure buffer is "clean" before running the invoke
-		buffer.Reset()
-
 		err = cmd.Execute()
-		assert.Nil(t, err)
-		assert.Regexp(t, "Endorsement failure during invoke", buffer.String())
-		assert.Regexp(t, fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), buffer.String())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "endorsement failure during invoke")
+		assert.Contains(t, err.Error(), fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
 	}
 }
 

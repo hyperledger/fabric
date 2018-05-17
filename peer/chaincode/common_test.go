@@ -224,8 +224,9 @@ func TestCollectionParsing(t *testing.T) {
 }
 
 func TestValidatePeerConnectionParams(t *testing.T) {
+	defer resetFlags()
+	defer viper.Reset()
 	assert := assert.New(t)
-	viper.Reset()
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
@@ -307,13 +308,10 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	connectionProfile = "../common/testdata/connectionprofile.yaml"
 	err = validatePeerConnectionParameters("invoke")
 	assert.NoError(err)
-
-	// cleanup pflags and viper
-	resetFlags()
-	viper.Reset()
 }
 
 func TestInitCmdFactoryFailures(t *testing.T) {
+	defer resetFlags()
 	assert := assert.New(t)
 
 	// failure validating peer connection parameters
@@ -341,12 +339,10 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "no ordering endpoint or endorser client supplied")
 	assert.Nil(cf)
-
-	// cleanup
-	resetFlags()
 }
 
 func TestDeliverGroupConnect(t *testing.T) {
+	defer resetFlags()
 	g := NewGomegaWithT(t)
 
 	// success
@@ -436,12 +432,10 @@ func TestDeliverGroupConnect(t *testing.T) {
 	err = dg.Connect(ctx)
 	g.Expect(err.Error()).To(ContainSubstring("timed out waiting for connection to deliver on all peers"))
 	close(delayChan)
-
-	// clean-up
-	resetFlags()
 }
 
 func TestDeliverGroupWait(t *testing.T) {
+	defer resetFlags()
 	g := NewGomegaWithT(t)
 
 	// success
@@ -534,12 +528,11 @@ func TestDeliverGroupWait(t *testing.T) {
 	g.Expect(err.Error()).To(SatisfyAny(
 		ContainSubstring("barbeque"),
 		ContainSubstring("tofu")))
-
-	// clean-up
-	resetFlags()
 }
 
 func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
+	defer resetFlags()
+
 	// success - deliver client returns event with expected txid
 	InitMSP()
 	waitForEvent = true
@@ -626,7 +619,4 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "timed out")
 	close(delayChan)
-
-	// clean-up
-	resetFlags()
 }

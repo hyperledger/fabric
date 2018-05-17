@@ -46,7 +46,7 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 
 	platform, err := platforms.Find(spec.Type)
 	if err != nil {
-		return fmt.Errorf("failed to determine platform type: %s", err)
+		return errors.WithMessage(err, "failed to determine platform type")
 	}
 
 	return platform.ValidateSpec(spec)
@@ -63,7 +63,7 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 
 		codePackageBytes, err = container.GetChaincodePackageBytes(spec)
 		if err != nil {
-			err = fmt.Errorf("error getting chaincode package bytes: %s", err)
+			err = errors.WithMessage(err, "error getting chaincode package bytes")
 			return nil, err
 		}
 	}
@@ -83,7 +83,7 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	// Build the spec
 	input := &pb.ChaincodeInput{}
 	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
-		return spec, fmt.Errorf("chaincode argument error: %s", err)
+		return spec, errors.Wrap(err, "chaincode argument error")
 	}
 
 	chaincodeLang = strings.ToUpper(chaincodeLang)
@@ -92,7 +92,7 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	} else {
 		logger.Debug("java chaincode disabled")
 		if pb.ChaincodeSpec_Type_value[chaincodeLang] == int32(pb.ChaincodeSpec_JAVA) {
-			return nil, fmt.Errorf("java chaincode is work-in-progress and disabled")
+			return nil, errors.New("java chaincode is work-in-progress and disabled")
 		}
 	}
 	spec = &pb.ChaincodeSpec{
@@ -125,38 +125,29 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		cf.BroadcastClient)
 
 	if err != nil {
-		return fmt.Errorf("%s - %v", err, proposalResp)
+		return errors.Errorf("%s - proposal response: %v", err, proposalResp)
 	}
 
 	if invoke {
-		if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
-			logger.Debugf("ESCC invoke result: %v", proposalResp)
-			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
-			if err != nil {
-				return fmt.Errorf("error while unmarshaling proposal response payload: %s", err)
-			}
-			ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
-			if err != nil {
-				return fmt.Errorf("error while unmarshaling chaincode action: %s", err)
-			}
-			logger.Warningf("Endorsement failure during invoke. chaincode result: %v", ca.Response)
-		} else {
-			logger.Debugf("ESCC invoke result: %v", proposalResp)
-			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
-			if err != nil {
-				return fmt.Errorf("error while unmarshaling proposal response payload: %s", err)
-			}
-			ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
-			if err != nil {
-				return fmt.Errorf("error while unmarshaling chaincode action: %s", err)
-			}
-			logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
+		logger.Debugf("ESCC invoke result: %v", proposalResp)
+		pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
+		if err != nil {
+			return errors.WithMessage(err, "error while unmarshaling proposal response payload")
 		}
+		ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
+		if err != nil {
+			return errors.WithMessage(err, "error while unmarshaling chaincode action")
+		}
+		if proposalResp.Endorsement == nil {
+			return errors.Errorf("endorsement failure during invoke. chaincode result: %v", ca.Response)
+		}
+		logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
 	} else {
 		if proposalResp == nil {
-			return fmt.Errorf("error query %s by endorsing: %s", chainFuncName, err)
-		} else if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
-			return fmt.Errorf("error query %s by endorsing: %s", chainFuncName, proposalResp.Response)
+			return errors.New("error during query: received nil proposal response")
+		}
+		if proposalResp.Endorsement == nil {
+			return errors.Errorf("endorsement failure during query. response: %v", proposalResp.Response)
 		}
 
 		if chaincodeQueryRaw && chaincodeQueryHex {
@@ -240,13 +231,13 @@ func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	// we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
-		return fmt.Errorf("must supply value for %s name parameter", chainFuncName)
+		return errors.Errorf("must supply value for %s name parameter", chainFuncName)
 	}
 
 	if cmd.Name() == instantiateCmdName || cmd.Name() == installCmdName ||
 		cmd.Name() == upgradeCmdName || cmd.Name() == packageCmdName {
 		if chaincodeVersion == common.UndefinedParamValue {
-			return fmt.Errorf("chaincode version is not provided for %s", cmd.Name())
+			return errors.Errorf("chaincode version is not provided for %s", cmd.Name())
 		}
 
 		if escc != common.UndefinedParamValue {
@@ -266,7 +257,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		if policy != common.UndefinedParamValue {
 			p, err := cauthdsl.FromString(policy)
 			if err != nil {
-				return fmt.Errorf("invalid policy %s", policy)
+				return errors.Errorf("invalid policy %s", policy)
 			}
 			policyMarshalled = putils.MarshalOrPanic(p)
 		}
@@ -289,7 +280,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		var f interface{}
 		err := json.Unmarshal([]byte(chaincodeCtorJSON), &f)
 		if err != nil {
-			return fmt.Errorf("chaincode argument error: %s", err)
+			return errors.Wrap(err, "chaincode argument error")
 		}
 		m := f.(map[string]interface{})
 		sm := make(map[string]interface{})
@@ -299,11 +290,11 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		_, argsPresent := sm["args"]
 		_, funcPresent := sm["function"]
 		if !argsPresent || (len(m) == 2 && !funcPresent) || len(m) > 2 {
-			return errors.New("Non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
+			return errors.New("non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	} else {
 		if cmd == nil || (cmd != chaincodeInstallCmd && cmd != chaincodePackageCmd) {
-			return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
+			return errors.New("empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	}
 
@@ -460,7 +451,7 @@ func ChaincodeInvokeOrQuery(
 
 	creator, err := signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("error serializing identity for %s: %s", signer.GetIdentifier(), err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("error serializing identity for %s", signer.GetIdentifier()))
 	}
 
 	funcName := "invoke"
@@ -472,24 +463,24 @@ func ChaincodeInvokeOrQuery(
 	var tMap map[string][]byte
 	if transient != "" {
 		if err := json.Unmarshal([]byte(transient), &tMap); err != nil {
-			return nil, fmt.Errorf("error parsing transient string: %s", err)
+			return nil, errors.Wrap(err, "error parsing transient string")
 		}
 	}
 
 	prop, txid, err := putils.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, txID, tMap)
 	if err != nil {
-		return nil, fmt.Errorf("error creating proposal  %s: %s", funcName, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
 	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
-		return nil, fmt.Errorf("error creating signed proposal  %s: %s", funcName, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
 	}
 	var responses []*pb.ProposalResponse
 	for _, endorser := range endorserClients {
 		proposalResp, err := endorser.ProcessProposal(context.Background(), signedProp)
 		if err != nil {
-			return nil, fmt.Errorf("error endorsing %s: %s", funcName, err)
+			return nil, errors.WithMessage(err, fmt.Sprintf("error endorsing %s", funcName))
 		}
 		responses = append(responses, proposalResp)
 	}
@@ -510,7 +501,7 @@ func ChaincodeInvokeOrQuery(
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, responses...)
 			if err != nil {
-				return proposalResp, fmt.Errorf("could not assemble transaction, err %s", err)
+				return proposalResp, errors.WithMessage(err, "could not assemble transaction")
 			}
 			var dg *deliverGroup
 			var ctx context.Context
@@ -529,7 +520,7 @@ func ChaincodeInvokeOrQuery(
 
 			// send the envelope for ordering
 			if err = bc.Send(env); err != nil {
-				return proposalResp, fmt.Errorf("error sending transaction %s: %s", funcName, err)
+				return proposalResp, errors.WithMessage(err, fmt.Sprintf("error sending transaction for %s", funcName))
 			}
 
 			if dg != nil && ctx != nil {
@@ -745,7 +736,7 @@ func createDeliverEnvelope(channelID string, certificate tls.Certificate) *pcomm
 		pcommon.HeaderType_DELIVER_SEEK_INFO, channelID, localmsp.NewSigner(),
 		seekInfo, int32(0), uint64(0), tlsCertHash)
 	if err != nil {
-		logger.Errorf("Error signing envelope:  %s", err)
+		logger.Errorf("Error signing envelope: %s", err)
 		return nil
 	}
 
