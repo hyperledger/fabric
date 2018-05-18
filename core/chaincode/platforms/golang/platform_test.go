@@ -236,24 +236,24 @@ func Test_decodeUrl(t *testing.T) {
 	}
 }
 
-func TestValidateSpec(t *testing.T) {
+func TestValidatePath(t *testing.T) {
 	platform := &Platform{}
 
 	var tests = []struct {
-		spec *pb.ChaincodeSpec
+		path string
 		succ bool
 	}{
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "http://github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "https://github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/bad/chaincode/go/map"}}, succ: false},
-		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: ":github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: false},
+		{path: "http://github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
+		{path: "https://github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
+		{path: "github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
+		{path: "github.com/hyperledger/fabric/bad/chaincode/go/map", succ: false},
+		{path: ":github.com/hyperledger/fabric/examples/chaincode/go/map", succ: false},
 	}
 
 	for _, tst := range tests {
-		err := platform.ValidateSpec(tst.spec)
+		err := platform.ValidatePath(tst.path)
 		if err = testerr(err, tst.succ); err != nil {
-			t.Errorf("Error validating chaincode spec: %s, %s", tst.spec.ChaincodeId.Path, err)
+			t.Errorf("Error validating chaincode spec: %s, %s", tst.path, err)
 		}
 	}
 }

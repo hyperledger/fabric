@@ -19,15 +19,15 @@ type Platform struct {
 	nameReturnsOnCall map[int]struct {
 		result1 string
 	}
-	ValidateSpecStub        func(spec *pb.ChaincodeSpec) error
-	validateSpecMutex       sync.RWMutex
-	validateSpecArgsForCall []struct {
-		spec *pb.ChaincodeSpec
+	ValidatePathStub        func(path string) error
+	validatePathMutex       sync.RWMutex
+	validatePathArgsForCall []struct {
+		path string
 	}
-	validateSpecReturns struct {
+	validatePathReturns struct {
 		result1 error
 	}
-	validateSpecReturnsOnCall map[int]struct {
+	validatePathReturnsOnCall map[int]struct {
 		result1 error
 	}
 	ValidateDeploymentSpecStub        func(spec *pb.ChaincodeDeploymentSpec) error
@@ -134,50 +134,50 @@ func (fake *Platform) NameReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
-func (fake *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	fake.validateSpecMutex.Lock()
-	ret, specificReturn := fake.validateSpecReturnsOnCall[len(fake.validateSpecArgsForCall)]
-	fake.validateSpecArgsForCall = append(fake.validateSpecArgsForCall, struct {
-		spec *pb.ChaincodeSpec
-	}{spec})
-	fake.recordInvocation("ValidateSpec", []interface{}{spec})
-	fake.validateSpecMutex.Unlock()
-	if fake.ValidateSpecStub != nil {
-		return fake.ValidateSpecStub(spec)
+func (fake *Platform) ValidatePath(path string) error {
+	fake.validatePathMutex.Lock()
+	ret, specificReturn := fake.validatePathReturnsOnCall[len(fake.validatePathArgsForCall)]
+	fake.validatePathArgsForCall = append(fake.validatePathArgsForCall, struct {
+		path string
+	}{path})
+	fake.recordInvocation("ValidatePath", []interface{}{path})
+	fake.validatePathMutex.Unlock()
+	if fake.ValidatePathStub != nil {
+		return fake.ValidatePathStub(path)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.validateSpecReturns.result1
+	return fake.validatePathReturns.result1
 }
 
-func (fake *Platform) ValidateSpecCallCount() int {
-	fake.validateSpecMutex.RLock()
-	defer fake.validateSpecMutex.RUnlock()
-	return len(fake.validateSpecArgsForCall)
+func (fake *Platform) ValidatePathCallCount() int {
+	fake.validatePathMutex.RLock()
+	defer fake.validatePathMutex.RUnlock()
+	return len(fake.validatePathArgsForCall)
 }
 
-func (fake *Platform) ValidateSpecArgsForCall(i int) *pb.ChaincodeSpec {
-	fake.validateSpecMutex.RLock()
-	defer fake.validateSpecMutex.RUnlock()
-	return fake.validateSpecArgsForCall[i].spec
+func (fake *Platform) ValidatePathArgsForCall(i int) string {
+	fake.validatePathMutex.RLock()
+	defer fake.validatePathMutex.RUnlock()
+	return fake.validatePathArgsForCall[i].path
 }
 
-func (fake *Platform) ValidateSpecReturns(result1 error) {
-	fake.ValidateSpecStub = nil
-	fake.validateSpecReturns = struct {
+func (fake *Platform) ValidatePathReturns(result1 error) {
+	fake.ValidatePathStub = nil
+	fake.validatePathReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *Platform) ValidateSpecReturnsOnCall(i int, result1 error) {
-	fake.ValidateSpecStub = nil
-	if fake.validateSpecReturnsOnCall == nil {
-		fake.validateSpecReturnsOnCall = make(map[int]struct {
+func (fake *Platform) ValidatePathReturnsOnCall(i int, result1 error) {
+	fake.ValidatePathStub = nil
+	if fake.validatePathReturnsOnCall == nil {
+		fake.validatePathReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.validateSpecReturnsOnCall[i] = struct {
+	fake.validatePathReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -434,8 +434,8 @@ func (fake *Platform) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.nameMutex.RLock()
 	defer fake.nameMutex.RUnlock()
-	fake.validateSpecMutex.RLock()
-	defer fake.validateSpecMutex.RUnlock()
+	fake.validatePathMutex.RLock()
+	defer fake.validatePathMutex.RUnlock()
 	fake.validateDeploymentSpecMutex.RLock()
 	defer fake.validateDeploymentSpecMutex.RUnlock()
 	fake.getDeploymentPayloadMutex.RLock()

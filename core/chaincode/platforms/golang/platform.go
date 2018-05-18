@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package golang
@@ -104,8 +94,8 @@ func (goPlatform *Platform) Name() string {
 }
 
 // ValidateSpec validates Go chaincodes
-func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
+func (goPlatform *Platform) ValidatePath(rawPath string) error {
+	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
@@ -118,7 +108,7 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 		if err != nil {
 			return err
 		}
-		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeId.Path)
+		pathToCheck := filepath.Join(gopath, "src", rawPath)
 		exists, err := pathExists(pathToCheck)
 		if err != nil {
 			return fmt.Errorf("error validating chaincode path: %s", err)

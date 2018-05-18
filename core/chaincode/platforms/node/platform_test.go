@@ -26,21 +26,15 @@ import (
 
 var platform = &Platform{}
 
-func TestValidateSpec(t *testing.T) {
-	ccSpec := &peer.ChaincodeSpec{
-		Type:        peer.ChaincodeSpec_NODE,
-		ChaincodeId: &peer.ChaincodeID{Path: "there/is/no/way/this/path/exists"},
-		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("invoke")}}}
-
-	err := platform.ValidateSpec(ccSpec)
+func TestValidatePath(t *testing.T) {
+	err := platform.ValidatePath("there/is/no/way/this/path/exists")
 	if err == nil {
 		t.Fatalf("should have returned an error on non-existent chaincode path")
 	} else if !strings.HasPrefix(err.Error(), "path to chaincode does not exist") {
 		t.Fatalf("should have returned an error about chaincode path not existent, but got '%v'", err)
 	}
 
-	ccSpec.ChaincodeId.Path = "http://something bad/because/it/has/the/space"
-	err = platform.ValidateSpec(ccSpec)
+	err = platform.ValidatePath("http://something bad/because/it/has/the/space")
 	if err == nil {
 		t.Fatalf("should have returned an error on an empty chaincode path")
 	} else if !strings.HasPrefix(err.Error(), "invalid path") {

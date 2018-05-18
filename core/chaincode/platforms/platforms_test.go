@@ -41,12 +41,12 @@ var _ = Describe("Platforms", func() {
 	Describe("pass through functions", func() {
 		Describe("ValidateSpec", func() {
 			It("returns the result of the underlying platform", func() {
-				fakePlatform.ValidateSpecReturns(errors.New("fake-error"))
+				fakePlatform.ValidatePathReturns(errors.New("fake-error"))
 				spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG}
 				err := registry.ValidateSpec(spec)
 				Expect(err).To(MatchError(errors.New("fake-error")))
-				Expect(fakePlatform.ValidateSpecCallCount()).To(Equal(1))
-				Expect(fakePlatform.ValidateSpecArgsForCall(0)).To(Equal(spec))
+				Expect(fakePlatform.ValidatePathCallCount()).To(Equal(1))
+				Expect(fakePlatform.ValidatePathArgsForCall(0)).To(Equal(spec.Path()))
 			})
 
 			Context("when the platform is unknown", func() {

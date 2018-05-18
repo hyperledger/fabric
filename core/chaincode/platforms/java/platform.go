@@ -28,9 +28,9 @@ func (javaPlatform *Platform) Name() string {
 	return pb.ChaincodeSpec_JAVA.String()
 }
 
-//ValidateSpec validates the java chaincode specs
-func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
+//ValidatePath validates the java chaincode paths
+func (javaPlatform *Platform) ValidatePath(rawPath string) error {
+	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}

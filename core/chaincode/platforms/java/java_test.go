@@ -36,16 +36,10 @@ var spec = &pb.ChaincodeSpec{
 	Input: &pb.ChaincodeInput{
 		Args: [][]byte{[]byte("f")}}}
 
-func TestValidateSpec(t *testing.T) {
+func TestValidatePath(t *testing.T) {
 	platform := java.Platform{}
 
-	err := platform.ValidateSpec(spec)
-	assert.NoError(t, err)
-}
-
-func TestValidateDeploymentSpec(t *testing.T) {
-	platform := java.Platform{}
-	err := platform.ValidateSpec(spec)
+	err := platform.ValidatePath(spec.ChaincodeId.Path)
 	assert.NoError(t, err)
 }
 

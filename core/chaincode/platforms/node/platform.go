@@ -49,15 +49,15 @@ func (nodePlatform *Platform) Name() string {
 }
 
 // ValidateSpec validates Go chaincodes
-func (nodePlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
+func (nodePlatform *Platform) ValidatePath(rawPath string) error {
+	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
 
 	//Treat empty scheme as a local filesystem path
 	if path.Scheme == "" {
-		pathToCheck, err := filepath.Abs(spec.ChaincodeId.Path)
+		pathToCheck, err := filepath.Abs(rawPath)
 		if err != nil {
 			return fmt.Errorf("error obtaining absolute path of the chaincode: %s", err)
 		}
@@ -67,7 +67,7 @@ func (nodePlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 			return fmt.Errorf("error validating chaincode path: %s", err)
 		}
 		if !exists {
-			return fmt.Errorf("path to chaincode does not exist: %s", spec.ChaincodeId.Path)
+			return fmt.Errorf("path to chaincode does not exist: %s", rawPath)
 		}
 	}
 	return nil
