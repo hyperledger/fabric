@@ -120,13 +120,21 @@ func Test_Start(t *testing.T) {
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")},
 	}
-	codePackage, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec)
+	codePackage, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec.CCType(), spec.Path())
 	if err != nil {
 		t.Fatal()
 	}
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
 	bldr := &mockBuilder{
-		buildFunc: func() (io.Reader, error) { return platforms.NewRegistry(&golang.Platform{}).GenerateDockerBuild(cds) },
+		buildFunc: func() (io.Reader, error) {
+			return platforms.NewRegistry(&golang.Platform{}).GenerateDockerBuild(
+				cds.CCType(),
+				cds.Path(),
+				cds.Name(),
+				cds.Version(),
+				cds.Bytes(),
+			)
+		},
 	}
 
 	// case 4: start called with builder and dockerClient.CreateContainer returns
