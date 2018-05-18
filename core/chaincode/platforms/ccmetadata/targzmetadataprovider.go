@@ -22,26 +22,18 @@ const (
 	ccPackageStatedbDir = "META-INF/statedb/"
 )
 
-type CodePackage interface {
-	Bytes() []byte
-}
-
 //TargzMetadataProvider provides Metadata from chaincode packaged in Targz format
 //(go, java and node platforms)
 type TargzMetadataProvider struct {
-	DepSpec CodePackage
+	Code []byte
 }
 
 func (tgzProv *TargzMetadataProvider) getCode() ([]byte, error) {
-	if tgzProv.DepSpec == nil {
-		return nil, errors.New("nil chaincode deployment spec")
-	}
-
-	if tgzProv.DepSpec.Bytes() == nil {
+	if tgzProv.Code == nil {
 		return nil, errors.New("nil code package")
 	}
 
-	return tgzProv.DepSpec.Bytes(), nil
+	return tgzProv.Code, nil
 }
 
 // GetMetadataAsTarEntries extracts metata data from ChaincodeDeploymentSpec

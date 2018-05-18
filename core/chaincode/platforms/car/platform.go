@@ -87,6 +87,6 @@ func (carPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *t
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
-func (carPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) platforms.MetadataProvider {
+func (carPlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
 	return &MetadataProvider{}
 }

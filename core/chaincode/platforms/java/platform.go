@@ -83,6 +83,6 @@ func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
-func (javaPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) platforms.MetadataProvider {
-	return &ccmetadata.TargzMetadataProvider{cds}
+func (javaPlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
+	return &ccmetadata.TargzMetadataProvider{Code: code}
 }

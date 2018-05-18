@@ -530,6 +530,6 @@ func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *ta
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
-func (goPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) platforms.MetadataProvider {
-	return &ccmetadata.TargzMetadataProvider{cds}
+func (goPlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
+	return &ccmetadata.TargzMetadataProvider{Code: code}
 }
