@@ -44,14 +44,14 @@ func pathExists(path string) (bool, error) {
 	return true, err
 }
 
-func decodeUrl(spec *pb.ChaincodeSpec) (string, error) {
+func decodeUrl(path string) (string, error) {
 	var urlLocation string
-	if strings.HasPrefix(spec.ChaincodeId.Path, "http://") {
-		urlLocation = spec.ChaincodeId.Path[7:]
-	} else if strings.HasPrefix(spec.ChaincodeId.Path, "https://") {
-		urlLocation = spec.ChaincodeId.Path[8:]
+	if strings.HasPrefix(path, "http://") {
+		urlLocation = path[7:]
+	} else if strings.HasPrefix(path, "https://") {
+		urlLocation = path[8:]
 	} else {
-		urlLocation = spec.ChaincodeId.Path
+		urlLocation = path
 	}
 
 	if len(urlLocation) < 2 {
@@ -498,10 +498,8 @@ func getLDFlagsOpts() string {
 	return staticLDFlagsOpts
 }
 
-func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
-	spec := cds.ChaincodeSpec
-
-	pkgname, err := decodeUrl(spec)
+func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+	pkgname, err := decodeUrl(path)
 	if err != nil {
 		return fmt.Errorf("could not decode url: %s", err)
 	}
@@ -516,7 +514,7 @@ func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec,
 	}
 	logger.Infof("building chaincode with tags: %s", gotags)
 
-	codepackage := bytes.NewReader(cds.CodePackage)
+	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
 	err = util.DockerBuild(util.DockerBuildOptions{
 		Cmd:          fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build -tags \"%s\" %s -o /chaincode/output/chaincode %s", gotags, ldflagsOpt, pkgname),

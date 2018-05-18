@@ -65,10 +65,11 @@ type Platform struct {
 		result1 string
 		result2 error
 	}
-	GenerateDockerBuildStub        func(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error
+	GenerateDockerBuildStub        func(path string, code []byte, tw *tar.Writer) error
 	generateDockerBuildMutex       sync.RWMutex
 	generateDockerBuildArgsForCall []struct {
-		spec *pb.ChaincodeDeploymentSpec
+		path string
+		code []byte
 		tw   *tar.Writer
 	}
 	generateDockerBuildReturns struct {
@@ -327,17 +328,23 @@ func (fake *Platform) GenerateDockerfileReturnsOnCall(i int, result1 string, res
 	}{result1, result2}
 }
 
-func (fake *Platform) GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
+func (fake *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+	var codeCopy []byte
+	if code != nil {
+		codeCopy = make([]byte, len(code))
+		copy(codeCopy, code)
+	}
 	fake.generateDockerBuildMutex.Lock()
 	ret, specificReturn := fake.generateDockerBuildReturnsOnCall[len(fake.generateDockerBuildArgsForCall)]
 	fake.generateDockerBuildArgsForCall = append(fake.generateDockerBuildArgsForCall, struct {
-		spec *pb.ChaincodeDeploymentSpec
+		path string
+		code []byte
 		tw   *tar.Writer
-	}{spec, tw})
-	fake.recordInvocation("GenerateDockerBuild", []interface{}{spec, tw})
+	}{path, codeCopy, tw})
+	fake.recordInvocation("GenerateDockerBuild", []interface{}{path, codeCopy, tw})
 	fake.generateDockerBuildMutex.Unlock()
 	if fake.GenerateDockerBuildStub != nil {
-		return fake.GenerateDockerBuildStub(spec, tw)
+		return fake.GenerateDockerBuildStub(path, code, tw)
 	}
 	if specificReturn {
 		return ret.result1
@@ -351,10 +358,10 @@ func (fake *Platform) GenerateDockerBuildCallCount() int {
 	return len(fake.generateDockerBuildArgsForCall)
 }
 
-func (fake *Platform) GenerateDockerBuildArgsForCall(i int) (*pb.ChaincodeDeploymentSpec, *tar.Writer) {
+func (fake *Platform) GenerateDockerBuildArgsForCall(i int) (string, []byte, *tar.Writer) {
 	fake.generateDockerBuildMutex.RLock()
 	defer fake.generateDockerBuildMutex.RUnlock()
-	return fake.generateDockerBuildArgsForCall[i].spec, fake.generateDockerBuildArgsForCall[i].tw
+	return fake.generateDockerBuildArgsForCall[i].path, fake.generateDockerBuildArgsForCall[i].code, fake.generateDockerBuildArgsForCall[i].tw
 }
 
 func (fake *Platform) GenerateDockerBuildReturns(result1 error) {

@@ -195,37 +195,26 @@ func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
 }
 
 func Test_decodeUrl(t *testing.T) {
-	cs := &pb.ChaincodeSpec{
-		ChaincodeId: &pb.ChaincodeID{
-			Name: "Test Chaincode",
-			Path: "http://github.com/hyperledger/fabric/examples/chaincode/go/map",
-		},
+	path := "http://github.com/hyperledger/fabric/examples/chaincode/go/map"
+	if _, err := decodeUrl(path); err != nil {
+		t.Fail()
+		t.Logf("Error to decodeUrl unsuccessfully with valid path: %s, %s", path, err)
 	}
 
-	if _, err := decodeUrl(cs); err != nil {
+	path = ""
+	if _, err := decodeUrl(path); err == nil {
 		t.Fail()
-		t.Logf("Error to decodeUrl unsuccessfully with valid path: %s, %s", cs.ChaincodeId.Path, err)
+		t.Logf("Error to decodeUrl successfully with invalid path: %s", path)
 	}
 
-	cs.ChaincodeId.Path = ""
-
-	if _, err := decodeUrl(cs); err == nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl successfully with invalid path: %s", cs.ChaincodeId.Path)
+	path = "/"
+	if _, err := decodeUrl(path); err == nil {
+		t.Fatalf("Error to decodeUrl successfully with invalid path: %s", path)
 	}
 
-	cs.ChaincodeId.Path = "/"
-
-	if _, err := decodeUrl(cs); err == nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl successfully with invalid path: %s", cs.ChaincodeId.Path)
-	}
-
-	cs.ChaincodeId.Path = "http:///"
-
-	if _, err := decodeUrl(cs); err == nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl successfully with invalid path: %s", cs.ChaincodeId.Path)
+	path = "http:///"
+	if _, err := decodeUrl(path); err == nil {
+		t.Fatalf("Error to decodeUrl successfully with invalid path: %s", path)
 	}
 }
 
@@ -361,7 +350,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 		if _, err = platform.GenerateDockerfile(); err != nil {
 			t.Errorf("could not generate docker file for a valid spec: %s, %s", cds.ChaincodeSpec.ChaincodeId.Path, err)
 		}
-		err = platform.GenerateDockerBuild(cds, tw)
+		err = platform.GenerateDockerBuild(cds.Path(), cds.Bytes(), tw)
 		if err = testerr(err, tst.SuccessExpected); err != nil {
 			t.Errorf("Error validating chaincode spec: %s, %s", cds.ChaincodeSpec.ChaincodeId.Path, err)
 		}

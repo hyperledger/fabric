@@ -185,9 +185,9 @@ func (nodePlatform *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (nodePlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
+func (nodePlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
 
-	codepackage := bytes.NewReader(cds.CodePackage)
+	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
 	err := util.DockerBuild(util.DockerBuildOptions{
 		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
