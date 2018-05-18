@@ -33,11 +33,19 @@ import (
 )
 
 type queryHelper struct {
-	txmgr        *LockBasedTxMgr
-	rwsetBuilder *rwsetutil.RWSetBuilder
-	itrs         []*resultsItr
-	err          error
-	doneInvoked  bool
+	txmgr             *LockBasedTxMgr
+	collNameValidator *collNameValidator
+	rwsetBuilder      *rwsetutil.RWSetBuilder
+	itrs              []*resultsItr
+	err               error
+	doneInvoked       bool
+}
+
+func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder) *queryHelper {
+	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
+	validator := newCollNameValidator(helper)
+	helper.collNameValidator = validator
+	return helper
 }
 
 func (h *queryHelper) getState(ns string, key string) ([]byte, error) {
@@ -99,6 +107,9 @@ func (h *queryHelper) executeQuery(namespace, query string) (commonledger.Result
 }
 
 func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
+	if err := h.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
@@ -129,6 +140,9 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 }
 
 func (h *queryHelper) getPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
+	if err := h.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
@@ -148,6 +162,9 @@ func (h *queryHelper) getPrivateDataMultipleKeys(ns, coll string, keys []string)
 }
 
 func (h *queryHelper) getPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
+	if err := h.validateCollName(namespace, collection); err != nil {
+		return nil, err
+	}
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
@@ -159,6 +176,9 @@ func (h *queryHelper) getPrivateDataRangeScanIterator(namespace, collection, sta
 }
 
 func (h *queryHelper) executeQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
+	if err := h.validateCollName(namespace, collection); err != nil {
+		return nil, err
+	}
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
@@ -205,6 +225,10 @@ func (h *queryHelper) checkDone() error {
 		return errors.New("This instance should not be used after calling Done()")
 	}
 	return nil
+}
+
+func (h *queryHelper) validateCollName(ns, coll string) error {
+	return h.collNameValidator.validateCollName(ns, coll)
 }
 
 // resultsItr implements interface ledger.ResultsIterator

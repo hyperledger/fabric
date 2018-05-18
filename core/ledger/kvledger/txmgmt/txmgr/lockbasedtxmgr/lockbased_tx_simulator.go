@@ -36,7 +36,7 @@ type lockBasedTxSimulator struct {
 
 func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string) (*lockBasedTxSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
-	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
+	helper := newQueryHelper(txmgr, rwsetBuilder)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
 	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false}, nil
 }
@@ -83,6 +83,9 @@ func (s *lockBasedTxSimulator) DeleteStateMetadata(namespace, key string) error 
 
 // SetPrivateData implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
+	if err := s.helper.validateCollName(ns, coll); err != nil {
+		return err
+	}
 	if err := s.helper.checkDone(); err != nil {
 		return err
 	}

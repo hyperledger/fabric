@@ -40,6 +40,10 @@ func TestPvtdataResultsItr(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	populateCollConfigForTest(t, txMgr, []collConfigkey{
+		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"}},
+		version.NewHeight(1, 0),
+	)
 
 	updates := privacyenabledstate.NewUpdateBatch()
 	putPvtUpdates(t, updates, "ns1", "coll1", "key1", []byte("pvt_value1"), version.NewHeight(1, 1))
@@ -50,7 +54,7 @@ func TestPvtdataResultsItr(t *testing.T) {
 	putPvtUpdates(t, updates, "ns2", "coll1", "key6", []byte("pvt_value6"), version.NewHeight(1, 6))
 	putPvtUpdates(t, updates, "ns3", "coll1", "key7", []byte("pvt_value7"), version.NewHeight(1, 7))
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
-	queryHelper := &queryHelper{txmgr: txMgr}
+	queryHelper := newQueryHelper(txMgr, nil)
 
 	resItr, err := queryHelper.getPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
 	testutil.AssertNoError(t, err, "")

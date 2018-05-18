@@ -78,16 +78,29 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr()
+	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+		[]collConfigkey{
+			{"ns1", "coll1"},
+			{"ns1", "coll3"},
+			{"ns2", "coll2"},
+			{"ns3", "coll3"},
+		},
+		version.NewHeight(1, 1),
+	)
+
 	var err error
 
 	// Create a simulator and get/set keys in one namespace "ns1"
 	simulator, _ := testEnv.getTxMgr().NewTxSimulator("test_txid1")
 	simulator.GetState("ns1", "key1")
-	simulator.GetPrivateData("ns1", "coll1", "key1")
+	_, err = simulator.GetPrivateData("ns1", "coll1", "key1")
+	assert.NoError(t, err)
 	simulator.SetState("ns1", "key1", []byte("value1"))
 	// get simulation results and verify that this contains rwset only for one namespace
 	simulationResults1, err := simulator.GetTxSimulationResults()
-	assert.Equal(t, 1, len(simulationResults1.PubSimulationResults.NsRwset))
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(simulationResults1.PubSimulationResults.NsRwset))
 	// clone freeze simulationResults1
 	buff1 := new(bytes.Buffer)
 	assert.NoError(t, gob.NewEncoder(buff1).Encode(simulationResults1))
@@ -100,7 +113,7 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	simulator.SetState("ns2", "key2", []byte("value2"))
 	// get simulation results and verify that this contains rwset for both the namespaces "ns1" and "ns2"
 	simulationResults2, err := simulator.GetTxSimulationResults()
-	assert.Equal(t, 2, len(simulationResults2.PubSimulationResults.NsRwset))
+	assert.Equal(t, 3, len(simulationResults2.PubSimulationResults.NsRwset))
 	// clone freeze simulationResults2
 	buff2 := new(bytes.Buffer)
 	assert.NoError(t, gob.NewEncoder(buff2).Encode(simulationResults2))
@@ -113,7 +126,7 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value3"))
 	// get simulation results and verify that this contains rwset for both the namespaces "ns1" and "ns2"
 	simulationResults3, err := simulator.GetTxSimulationResults()
-	assert.Equal(t, 2, len(simulationResults3.PubSimulationResults.NsRwset))
+	assert.Equal(t, 3, len(simulationResults3.PubSimulationResults.NsRwset))
 
 	// Now, verify that the simulator operations did not have an effect on privously obtained results
 	assert.Equal(t, frozenSimulationResults1, simulationResults1)
@@ -696,6 +709,14 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
+	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+		[]collConfigkey{
+			{"ns1", "coll1"},
+			{"ns1", "coll2"},
+			{"ns1", "coll3"},
+			{"ns1", "coll4"},
+		},
+		version.NewHeight(1, 1))
 
 	simulator, _ := txMgr.NewTxSimulator("txid1")
 	err := simulator.SetState("ns", "key", []byte("value"))
@@ -717,13 +738,23 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
 	defer testEnv.cleanup()
 
+	txMgr := testEnv.getTxMgr()
+	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+		[]collConfigkey{
+			{"ns1", "coll1"},
+			{"ns1", "coll2"},
+			{"ns1", "coll3"},
+			{"ns1", "coll4"},
+		},
+		version.NewHeight(1, 1),
+	)
+
 	db := testEnv.getVDB()
 	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.HashUpdates.Put("ns1", "coll1", util.ComputeStringHash("key1"), util.ComputeStringHash("value1"), version.NewHeight(1, 1))
 	updateBatch.PvtUpdates.Put("ns1", "coll1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1))
 
-	txMgr := testEnv.getTxMgr()
 	simulator, _ := txMgr.NewTxSimulator("testTxid1")
 	val, _ := simulator.GetPrivateData("ns1", "coll1", "key1")
 	testutil.AssertEquals(t, val, []byte("value1"))
@@ -811,6 +842,7 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
+	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr), []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns.coll", ledgerid), 1)
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
@@ -821,7 +853,8 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	testutil.AssertNoError(t, txMgr.Commit(), "")
 
 	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
-	pvtval, _ := simulator.GetPrivateData("ns", "coll", "pvtkey1")
+	pvtval, err := simulator.GetPrivateData("ns", "coll", "pvtkey1")
+	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, pvtval, []byte("pvt-value1"))
 	simulator.Done()
 
