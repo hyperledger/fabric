@@ -16,10 +16,18 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+//MetadataProvider is implemented by each platform in a platform specific manner.
+//It can process metadata stored in ChaincodeDeploymentSpec in different formats.
+//The common format is targz. Currently users expect the metadata to be presented
+//as tar file entries (directly extracted from chaincode stored in targz format).
+//In future, we would like provide better abstraction by extending the interface
+type MetadataProvider interface {
+	GetMetadataAsTarEntries() ([]byte, error)
+}
 
 // Interface for validating the specification and and writing the package for
 // the given platform
@@ -30,7 +38,7 @@ type Platform interface {
 	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile() (string, error)
 	GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error
-	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider
+	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) MetadataProvider
 }
 
 type PackageWriter interface {
@@ -80,7 +88,7 @@ func (r *Registry) ValidateDeploymentSpec(spec *pb.ChaincodeDeploymentSpec) erro
 	return platform.ValidateCodePackage(spec.Bytes())
 }
 
-func (r *Registry) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) (ccmetadata.MetadataProvider, error) {
+func (r *Registry) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) (MetadataProvider, error) {
 	platform, ok := r.Platforms[spec.ChaincodeSpec.Type.String()]
 	if !ok {
 		return nil, fmt.Errorf("Unknown chaincodeType: %s", spec.ChaincodeSpec.Type)

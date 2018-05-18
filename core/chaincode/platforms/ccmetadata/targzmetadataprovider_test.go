@@ -10,7 +10,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -88,17 +87,7 @@ func TestBadDepSpec(t *testing.T) {
 	tp.DepSpec = &pb.ChaincodeDeploymentSpec{}
 	_, err = tp.GetMetadataAsTarEntries()
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "invalid chaincode deployment spec")
-
-	tp.DepSpec.ChaincodeSpec = &pb.ChaincodeSpec{}
-	_, err = tp.GetMetadataAsTarEntries()
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "invalid chaincode deployment spec")
-
-	tp.DepSpec.ChaincodeSpec.ChaincodeId = &pb.ChaincodeID{Path: "p", Name: "cc", Version: "v"}
-	_, err = tp.GetMetadataAsTarEntries()
-	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), fmt.Sprintf("nil code package for %v", tp.DepSpec.ChaincodeSpec.ChaincodeId))
+	assert.Equal(t, err.Error(), "nil code package")
 }
 
 func TestNoMetadata(t *testing.T) {

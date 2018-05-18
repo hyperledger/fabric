@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -82,6 +83,6 @@ func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
-func (javaPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider {
+func (javaPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) platforms.MetadataProvider {
 	return &ccmetadata.TargzMetadataProvider{cds}
 }
