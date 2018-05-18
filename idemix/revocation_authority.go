@@ -39,6 +39,8 @@ func GenerateLongTermRevocationKey() (*ecdsa.PrivateKey, error) {
 
 // CreateCRI creates the Credential Revocation Information for a certain time period (epoch).
 // Users can use the CRI to prove that they are not revoked.
+// Note that when not using revocation (i.e., alg = ALG_NO_REVOCATION), the entered unrevokedHandles are not used,
+// and the resulting CRI can be used by any signer.
 func CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int, alg RevocationAlgorithm, rng *amcl.RAND) (*CredentialRevocationInformation, error) {
 	if key == nil || rng == nil {
 		return nil, errors.Errorf("CreateCRI received nil input")

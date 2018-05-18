@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemixca
 
 import (
+	"crypto/ecdsa"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/idemix"
@@ -37,15 +39,10 @@ func GenerateIssuerKey() ([]byte, []byte, error) {
 	return key.ISk, ipkSerialized, err
 }
 
-// GenerateMSPConfig creates a new MSP config.
-// If the new MSP config contains a signer then
-// it generates a fresh user secret and issues a credential
-// with four attributes (described above)
-// using the CA's key pair from the file.
-// If the new MSP config does not contain a signer
-// (meaning it is used only for verification)
-// then only a public key of the CA (issuer) is added to the MSP config (besides the name).
-func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, revocationHandle int, key *idemix.IssuerKey) ([]byte, error) {
+// GenerateSignerConfig creates a new signer config.
+// It generates a fresh user secret and issues a credential
+// with four attributes (described above) using the CA's key pair.
+func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, revocationHandle int, key *idemix.IssuerKey, revKey *ecdsa.PrivateKey) ([]byte, error) {
 	attrs := make([]*FP256BN.BIG, 4)
 
 	if ouString == "" {
@@ -84,12 +81,24 @@ func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, re
 		return nil, errors.WithMessage(err, "failed to marshal credential")
 	}
 
+	// NOTE currently, idemixca creates CRI's with "ALG_NO_REVOCATION"
+	cri, err := idemix.CreateCRI(revKey, []*FP256BN.BIG{FP256BN.NewBIGint(revocationHandle)}, 0, idemix.ALG_NO_REVOCATION, rng)
+	if err != nil {
+		return nil, err
+	}
+	criBytes, err := proto.Marshal(cri)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to marshal CRI")
+	}
+
 	signer := &m.IdemixMSPSignerConfig{
 		credBytes,
 		idemix.BigToBytes(sk),
 		ouString,
 		isAdmin,
 		enrollmentId,
+		criBytes,
 	}
+
 	return proto.Marshal(signer)
 }

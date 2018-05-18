@@ -134,6 +134,9 @@ message IdemixMSPSignerConfig {
 
     // enrollment_id contains the enrollment id of this signer
     string enrollment_id = 5;
+
+    // credential_revocation_information contains a serialized CredentialRevocationInformation
+    bytes credential_revocation_information = 6;
 }
 
 // SigningIdentityInfo represents the configuration information
