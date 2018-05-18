@@ -8,15 +8,11 @@ package e2e
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"syscall"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/hyperledger/fabric/integration/world"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,9 +23,8 @@ import (
 
 var _ = Describe("EndToEnd", func() {
 	var (
-		client  *docker.Client
-		network *docker.Network
-		w       world.World
+		client *docker.Client
+		w      world.World
 	)
 
 	BeforeEach(func() {
@@ -37,151 +32,6 @@ var _ = Describe("EndToEnd", func() {
 
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
-
-		pOrg := []*localconfig.Organization{{
-			Name:   "Org1",
-			ID:     "Org1MSP",
-			MSPDir: "crypto/peerOrganizations/org1.example.com/msp",
-			AnchorPeers: []*localconfig.AnchorPeer{{
-				Host: "0.0.0.0",
-				Port: 7051,
-			}},
-		}, {
-			Name:   "Org2",
-			ID:     "Org2MSP",
-			MSPDir: "crypto/peerOrganizations/org2.example.com/msp",
-			AnchorPeers: []*localconfig.AnchorPeer{{
-				Host: "0.0.0.0",
-				Port: 14051,
-			}},
-		}}
-
-		ordererOrgs := world.OrdererConfig{
-			OrganizationName: "OrdererOrg",
-			Domain:           "example.com",
-			OrdererNames:     []string{"orderer"},
-			BrokerCount:      2,
-			ZookeeperCount:   1,
-		}
-
-		peerOrgs := []world.PeerOrgConfig{{
-			OrganizationName: pOrg[0].Name,
-			Domain:           "org1.example.com",
-			EnableNodeOUs:    false,
-			UserCount:        1,
-			PeerCount:        1,
-		}, {
-			OrganizationName: pOrg[1].Name,
-			Domain:           "org2.example.com",
-			EnableNodeOUs:    false,
-			UserCount:        1,
-			PeerCount:        1,
-		}}
-
-		oOrg := []*localconfig.Organization{{
-			Name:   ordererOrgs.OrganizationName,
-			ID:     "OrdererMSP",
-			MSPDir: filepath.Join("crypto", "ordererOrganizations", "example.com", "orderers", "orderer.example.com", "msp"),
-		}}
-
-		deployment := world.Deployment{
-			SystemChannel: "systestchannel",
-			Channel:       "testchannel",
-			Chaincode: world.Chaincode{
-				Name:     "mycc",
-				Version:  "1.0",
-				Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				ExecPath: os.Getenv("PATH"),
-			},
-			InitArgs: `{"Args":["init","a","100","b","200"]}`,
-			Peers:    []string{"peer0.org1.example.com", "peer0.org2.example.com"},
-			Policy:   `OR ('Org1MSP.member','Org2MSP.member')`,
-			Orderer:  "127.0.0.1:7050",
-		}
-
-		peerProfile := localconfig.Profile{
-			Consortium: "SampleConsortium",
-			Application: &localconfig.Application{
-				Organizations: pOrg,
-				Capabilities: map[string]bool{
-					"V1_2": true,
-				},
-			},
-			Capabilities: map[string]bool{
-				"V1_1": true,
-			},
-		}
-
-		orderer := &localconfig.Orderer{
-			BatchTimeout: 1 * time.Second,
-			BatchSize: localconfig.BatchSize{
-				MaxMessageCount:   1,
-				AbsoluteMaxBytes:  (uint32)(98 * 1024 * 1024),
-				PreferredMaxBytes: (uint32)(512 * 1024),
-			},
-			Kafka: localconfig.Kafka{
-				Brokers: []string{
-					"127.0.0.1:9092",
-					"127.0.0.1:8092",
-				},
-			},
-			Organizations: oOrg,
-			OrdererType:   "kafka",
-			Addresses:     []string{"0.0.0.0:7050"},
-			Capabilities: map[string]bool{
-				"V1_1": true,
-			},
-		}
-
-		ordererProfile := localconfig.Profile{
-			Application: &localconfig.Application{
-				Organizations: oOrg,
-				Capabilities: map[string]bool{
-					"V1_2": true,
-				},
-			},
-			Orderer: orderer,
-			Consortiums: map[string]*localconfig.Consortium{
-				"SampleConsortium": &localconfig.Consortium{
-					Organizations: append(oOrg, pOrg...),
-				},
-			},
-			Capabilities: map[string]bool{
-				"V1_1": true,
-			},
-		}
-
-		profiles := map[string]localconfig.Profile{
-			"TwoOrgsOrdererGenesis": ordererProfile,
-			"TwoOrgsChannel":        peerProfile,
-		}
-
-		// Create a network
-		network, err = client.CreateNetwork(
-			docker.CreateNetworkOptions{
-				Name:   runner.UniqueName(),
-				Driver: "bridge",
-			},
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		crypto := runner.Cryptogen{
-			Config: filepath.Join(testDir, "crypto.yaml"),
-			Output: filepath.Join(testDir, "crypto"),
-		}
-
-		w = world.World{
-			Rootpath:           testDir,
-			Components:         components,
-			Cryptogen:          crypto,
-			Network:            network,
-			Deployment:         deployment,
-			OrdererOrgs:        []world.OrdererConfig{ordererOrgs},
-			PeerOrgs:           peerOrgs,
-			OrdererProfileName: "TwoOrgsOrdererGenesis",
-			ChannelProfileName: "TwoOrgsChannel",
-			Profiles:           profiles,
-		}
 	})
 
 	AfterEach(func() {
@@ -220,15 +70,20 @@ var _ = Describe("EndToEnd", func() {
 		// Stop the orderers and peers
 		for _, localProc := range w.LocalProcess {
 			localProc.Signal(syscall.SIGTERM)
+			Eventually(localProc.Wait(), 5*time.Second).Should(Receive())
+			localProc.Signal(syscall.SIGKILL)
+			Eventually(localProc.Wait(), 5*time.Second).Should(Receive())
 		}
 
 		// Remove any started networks
-		if network != nil {
-			client.RemoveNetwork(network.Name)
+		if w.Network != nil {
+			client.RemoveNetwork(w.Network.Name)
 		}
 	})
 
-	It("executes a basic kafka network with 2 orgs", func() {
+	It("executes a basic solo network with 2 orgs", func() {
+		w = world.GenerateBasicConfig("solo", 1, 2, testDir, components)
+
 		By("generating files to bootstrap the network")
 		w.BootstrapNetwork()
 		Expect(filepath.Join(testDir, "configtx.yaml")).To(BeARegularFile())
@@ -278,47 +133,27 @@ var _ = Describe("EndToEnd", func() {
 		execute(adminRunner)
 		Eventually(adminRunner.Err()).Should(gbytes.Say("Successfully submitted channel update"))
 	})
+
+	It("executes a basic kafka network with 2 orgs", func() {
+		By("generating files to bootstrap the network")
+		w = world.GenerateBasicConfig("kafka", 2, 2, testDir, components)
+		setupWorld(&w)
+
+		By("querying the chaincode")
+		adminPeer := components.Peer()
+		adminPeer.LogLevel = "debug"
+		adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
+		adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+		adminRunner := adminPeer.QueryChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["query","a"]}`)
+		execute(adminRunner)
+		Eventually(adminRunner.Buffer()).Should(gbytes.Say("100"))
+
+	})
 })
-
-func copyFile(src, dest string) {
-	data, err := ioutil.ReadFile(src)
-	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(dest, data, 0775)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func copyDir(src, dest string) {
-	os.MkdirAll(dest, 0755)
-	objects, err := ioutil.ReadDir(src)
-	for _, obj := range objects {
-		srcfileptr := src + "/" + obj.Name()
-		destfileptr := dest + "/" + obj.Name()
-		if obj.IsDir() {
-			copyDir(srcfileptr, destfileptr)
-		} else {
-			copyFile(srcfileptr, destfileptr)
-		}
-	}
-	Expect(err).NotTo(HaveOccurred())
-}
 
 func execute(r ifrit.Runner) (err error) {
 	p := ifrit.Invoke(r)
 	Eventually(p.Ready()).Should(BeClosed())
 	Eventually(p.Wait(), 30*time.Second).Should(Receive(&err))
 	return err
-}
-
-func copyPeerConfigs(peerOrgs []world.PeerOrgConfig, rootPath string) {
-	for _, peerOrg := range peerOrgs {
-		for peer := 0; peer < peerOrg.PeerCount; peer++ {
-			peerDir := fmt.Sprintf("%s_%d", peerOrg.Domain, peer)
-			if _, err := os.Stat(filepath.Join(rootPath, peerDir)); os.IsNotExist(err) {
-				err := os.Mkdir(filepath.Join(rootPath, peerDir), 0755)
-				Expect(err).NotTo(HaveOccurred())
-			}
-			copyFile(filepath.Join("testdata", fmt.Sprintf("%s-core.yaml", peerDir)),
-				filepath.Join(rootPath, peerDir, "core.yaml"))
-		}
-	}
 }

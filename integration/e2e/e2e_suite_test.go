@@ -39,13 +39,19 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(payload []byte) {
 	err := json.Unmarshal(payload, &components)
 	Expect(err).NotTo(HaveOccurred())
+})
 
+var _ = BeforeEach(func() {
+	var err error
 	testDir, err = ioutil.TempDir("", "e2e-suite")
 	Expect(err).NotTo(HaveOccurred())
 })
 
-var _ = SynchronizedAfterSuite(func() {
+var _ = AfterEach(func() {
 	os.RemoveAll(testDir)
+})
+
+var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	components.Cleanup()
 })
