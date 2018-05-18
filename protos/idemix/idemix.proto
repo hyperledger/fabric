@@ -118,3 +118,20 @@ message NymSignature {
     // Nonce is a fresh nonce used for the signature
     bytes Nonce = 4;
 }
+
+message CredentialRevocationInformation {
+	// Epoch contains the epoch (time window) in which this CRI is valid
+	int64 Epoch = 1;
+
+	// EpochPK is the public key that is used by the revocation authority in this epoch
+	ECP2 EpochPK = 2;
+
+	// EpochPKSig is a signature on the EpochPK valid under the revocation authority's long term key
+	bytes EpochPKSig = 3;
+
+	// RevocationAlg denotes which revocation algorithm is used
+	int32 RevocationAlg = 4;
+
+	// RevocationData contains data specific to the revocation algorithm used
+	bytes RevocationData = 5;
+}
