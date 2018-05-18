@@ -85,6 +85,6 @@ func (c *Components) Zookeeper(id int, network *docker.Network) *runner.Zookeepe
 
 func execute(r ifrit.Runner) {
 	p := ifrit.Invoke(r)
-	Eventually(p.Ready(), 2*time.Second).Should(BeClosed())
-	Eventually(p.Wait(), 45*time.Second).Should(Receive(BeNil()))
+	EventuallyWithOffset(1, p.Ready(), 2*time.Second).Should(BeClosed())
+	EventuallyWithOffset(1, p.Wait(), 45*time.Second).Should(Receive(BeNil()))
 }
