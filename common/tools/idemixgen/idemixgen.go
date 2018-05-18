@@ -41,6 +41,8 @@ const (
 var (
 	app = kingpin.New("idemixgen", "Utility for generating key material to be used with the Identity Mixer MSP in Hyperledger Fabric")
 
+	outputDir = app.Flag("output", "The output directory in which to place artifacts").Default("idemix-config").String()
+
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
 	genCredOU               = genSignerConfig.Flag("org-unit", "The Organizational Unit of the default signer").Short('u').String()
@@ -67,31 +69,31 @@ func main() {
 		revocationPkBytes := elliptic.Marshal(elliptic.P384(), revocationKey.X, revocationKey.Y)
 
 		// Prevent overwriting the existing key
-		path := filepath.Join(IdemixDirIssuer)
+		path := filepath.Join(*outputDir, IdemixDirIssuer)
 		checkDirectoryNotExists(path, fmt.Sprintf("Directory %s already exists", path))
 
-		path = msp.IdemixConfigDirMsp
+		path = filepath.Join(*outputDir, msp.IdemixConfigDirMsp)
 		checkDirectoryNotExists(path, fmt.Sprintf("Directory %s already exists", path))
 
 		// write private and public keys to the file
-		handleError(os.Mkdir(IdemixDirIssuer, 0770))
-		handleError(os.Mkdir(msp.IdemixConfigDirMsp, 0770))
-		writeFile(filepath.Join(IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
-		writeFile(filepath.Join(IdemixDirIssuer, IdemixConfigRevocationKey), revocationKeyBytes)
-		writeFile(filepath.Join(IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey), ipk)
-		writeFile(filepath.Join(msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), revocationPkBytes)
-		writeFile(filepath.Join(msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipk)
+		handleError(os.MkdirAll(filepath.Join(*outputDir, IdemixDirIssuer), 0770))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0770))
+		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
+		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey), revocationKeyBytes)
+		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey), ipk)
+		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), revocationPkBytes)
+		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipk)
 
 	case genSignerConfig.FullCommand():
 		config, err := idemixca.GenerateSignerConfig(*genCredIsAdmin, *genCredOU, *genCredEnrollmentId, *genCredRevocationHandle, readIssuerKey(), readRevocationKey())
 		handleError(err)
 
-		path := msp.IdemixConfigDirUser
+		path := filepath.Join(*outputDir, msp.IdemixConfigDirUser)
 		checkDirectoryNotExists(path, fmt.Sprintf("This MSP config already contains a directory \"%s\"", path))
 
 		// Write config to file
-		handleError(os.Mkdir(msp.IdemixConfigDirUser, 0770))
-		writeFile(filepath.Join(msp.IdemixConfigDirUser, msp.IdemixConfigFileSigner), config)
+		handleError(os.Mkdir(filepath.Join(*outputDir, msp.IdemixConfigDirUser), 0770))
+		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirUser, msp.IdemixConfigFileSigner), config)
 
 	case version.FullCommand():
 		printVersion()
