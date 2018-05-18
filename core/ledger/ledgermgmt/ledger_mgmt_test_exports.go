@@ -19,6 +19,8 @@ package ledgermgmt
 import (
 	"os"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -29,14 +31,14 @@ import (
 // InitializeTestEnv initializes ledgermgmt for tests
 func InitializeTestEnv() {
 	remove()
-	initialize(nil, nil)
+	initialize(nil, nil, platforms.NewRegistry(&golang.Platform{}))
 }
 
 // InitializeTestEnvWithCustomProcessors initializes ledgermgmt for tests with the supplied custom tx processors
 func InitializeTestEnvWithCustomProcessors(customTxProcessors customtx.Processors) {
 	remove()
 	customtx.InitializeTestEnv(customTxProcessors)
-	initialize(customTxProcessors, nil)
+	initialize(customTxProcessors, nil, platforms.NewRegistry(&golang.Platform{}))
 }
 
 // CleanupTestEnv closes the ledgermagmt and removes the store directory

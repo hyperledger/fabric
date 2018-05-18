@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -55,6 +56,7 @@ func NewChaincodeSupport(
 	aclProvider ACLProvider,
 	processor Processor,
 	sccp sysccprovider.SystemChaincodeProvider,
+	platformRegistry *platforms.Registry,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
 		UserRunsCC:      userRunsCC,
@@ -71,10 +73,11 @@ func NewChaincodeSupport(
 	}
 
 	cs.Runtime = &ContainerRuntime{
-		CertGenerator: certGenerator,
-		Processor:     processor,
-		CACert:        caCert,
-		PeerAddress:   peerAddress,
+		CertGenerator:    certGenerator,
+		Processor:        processor,
+		CACert:           caCert,
+		PeerAddress:      peerAddress,
+		PlatformRegistry: platformRegistry,
 		CommonEnv: []string{
 			"CORE_CHAINCODE_LOGGING_LEVEL=" + config.LogLevel,
 			"CORE_CHAINCODE_LOGGING_SHIM=" + config.ShimLogLevel,

@@ -22,6 +22,8 @@ import (
 	"os"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -54,7 +56,7 @@ func init() {
 	testutil.SetupCoreYAMLConfig()
 
 	cleanup()
-	ledgermgmt.Initialize(nil)
+	ledgermgmt.Initialize(nil, platforms.NewRegistry(&golang.Platform{}))
 	var err error
 	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
 	peerLedger, err = ledgermgmt.CreateLedger(gb)

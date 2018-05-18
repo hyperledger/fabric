@@ -98,6 +98,11 @@ func filter(vs []string, f func(string) bool) []string {
 	return vsf
 }
 
+// Name returns the name of this platform
+func (goPlatform *Platform) Name() string {
+	return pb.ChaincodeSpec_GOLANG.String()
+}
+
 // ValidateSpec validates Go chaincodes
 func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	path, err := url.Parse(spec.ChaincodeId.Path)

@@ -127,12 +127,13 @@ type StartContainerReq struct {
 // the dockercontroller package with the CDS, which is also
 // undesirable.
 type PlatformBuilder struct {
-	DeploymentSpec *pb.ChaincodeDeploymentSpec
+	DeploymentSpec   *pb.ChaincodeDeploymentSpec
+	PlatformRegistry *platforms.Registry
 }
 
 // Build a tar stream based on the CDS
 func (b *PlatformBuilder) Build() (io.Reader, error) {
-	return platforms.NewRegistry().GenerateDockerBuild(b.DeploymentSpec)
+	return b.PlatformRegistry.GenerateDockerBuild(b.DeploymentSpec)
 }
 
 func (si StartContainerReq) Do(ctxt context.Context, v VM) error {
@@ -195,10 +196,10 @@ func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq
 }
 
 // GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification
-func GetChaincodePackageBytes(spec *pb.ChaincodeSpec) ([]byte, error) {
+func GetChaincodePackageBytes(pr *platforms.Registry, spec *pb.ChaincodeSpec) ([]byte, error) {
 	if spec == nil || spec.ChaincodeId == nil {
 		return nil, fmt.Errorf("invalid chaincode spec")
 	}
 
-	return platforms.NewRegistry().GetDeploymentPayload(spec)
+	return pr.GetDeploymentPayload(spec)
 }

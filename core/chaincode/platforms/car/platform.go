@@ -35,6 +35,11 @@ import (
 type Platform struct {
 }
 
+// Name returns the name of this platform
+func (carPlatform *Platform) Name() string {
+	return pb.ChaincodeSpec_CAR.String()
+}
+
 // ValidateSpec validates the chaincode specification for CAR types to satisfy
 // the platform interface.  This chaincode type currently doesn't
 // require anything specific so we just implicitly approve any spec

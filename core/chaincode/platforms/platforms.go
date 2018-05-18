@@ -16,11 +16,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -28,6 +24,7 @@ import (
 // Interface for validating the specification and and writing the package for
 // the given platform
 type Platform interface {
+	Name() string
 	ValidateSpec(spec *pb.ChaincodeSpec) error
 	ValidateDeploymentSpec(spec *pb.ChaincodeDeploymentSpec) error
 	GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error)
@@ -53,15 +50,16 @@ type Registry struct {
 
 var logger = flogging.MustGetLogger("chaincode-platform")
 
-// TODO, ultimately this should take the platforms as parameters
-func NewRegistry() *Registry {
+func NewRegistry(platformTypes ...Platform) *Registry {
+	platforms := make(map[string]Platform)
+	for _, platform := range platformTypes {
+		if _, ok := platforms[platform.Name()]; ok {
+			logger.Panicf("Multiple platforms of the same name specified: %s", platform.Name())
+		}
+		platforms[platform.Name()] = platform
+	}
 	return &Registry{
-		Platforms: map[string]Platform{
-			pb.ChaincodeSpec_GOLANG.String(): &golang.Platform{},
-			pb.ChaincodeSpec_CAR.String():    &car.Platform{},
-			pb.ChaincodeSpec_JAVA.String():   &java.Platform{},
-			pb.ChaincodeSpec_NODE.String():   &node.Platform{},
-		},
+		Platforms:     platforms,
 		PackageWriter: PackageWriterWrapper(cutil.WriteBytesToPackage),
 	}
 }

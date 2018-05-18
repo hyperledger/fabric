@@ -12,6 +12,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/container"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -34,13 +35,13 @@ func NewVM() (*VM, error) {
 
 // BuildChaincodeContainer builds the container for the supplied chaincode specification
 func (vm *VM) BuildChaincodeContainer(spec *pb.ChaincodeSpec) error {
-	codePackage, err := container.GetChaincodePackageBytes(spec)
+	codePackage, err := container.GetChaincodePackageBytes(platforms.NewRegistry(&car.Platform{}), spec)
 	if err != nil {
 		return fmt.Errorf("Error getting chaincode package bytes: %s", err)
 	}
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
-	dockerSpec, err := platforms.NewRegistry().GenerateDockerBuild(cds)
+	dockerSpec, err := platforms.NewRegistry(&car.Platform{}).GenerateDockerBuild(cds)
 	if err != nil {
 		return fmt.Errorf("Error getting chaincode docker image: %s", err)
 	}

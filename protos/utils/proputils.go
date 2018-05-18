@@ -148,7 +148,7 @@ func GetProposalResponse(prBytes []byte) (*peer.ProposalResponse, error) {
 }
 
 // GetChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
-func GetChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpec, error) {
+func GetChaincodeDeploymentSpec(code []byte, pr *platforms.Registry) (*peer.ChaincodeDeploymentSpec, error) {
 	cds := &peer.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(code, cds)
 	if err != nil {
@@ -156,7 +156,7 @@ func GetChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpec, err
 	}
 
 	// FAB-2122: Validate the CDS according to platform specific requirements
-	return cds, platforms.NewRegistry().ValidateDeploymentSpec(cds)
+	return cds, pr.ValidateDeploymentSpec(cds)
 }
 
 // GetChaincodeAction gets the ChaincodeAction given chaicnode action bytes

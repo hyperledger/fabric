@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -119,13 +120,13 @@ func Test_Start(t *testing.T) {
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")},
 	}
-	codePackage, err := platforms.NewRegistry().GetDeploymentPayload(spec)
+	codePackage, err := platforms.NewRegistry(&golang.Platform{}).GetDeploymentPayload(spec)
 	if err != nil {
 		t.Fatal()
 	}
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
 	bldr := &mockBuilder{
-		buildFunc: func() (io.Reader, error) { return platforms.NewRegistry().GenerateDockerBuild(cds) },
+		buildFunc: func() (io.Reader, error) { return platforms.NewRegistry(&golang.Platform{}).GenerateDockerBuild(cds) },
 	}
 
 	// case 4: start called with builder and dockerClient.CreateContainer returns

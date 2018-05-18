@@ -9,13 +9,14 @@ package scc
 import (
 	//import system chaincodes here
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
 )
 
-func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider) []*SystemChaincode {
+func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider, pr *platforms.Registry) []*SystemChaincode {
 	return []*SystemChaincode{
 		{
 			Enabled:           true,
@@ -30,7 +31,7 @@ func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclP
 			Name:              "lscc",
 			Path:              "github.com/hyperledger/fabric/core/scc/lscc",
 			InitArgs:          nil,
-			Chaincode:         lscc.New(p, aclProvider),
+			Chaincode:         lscc.New(p, aclProvider, pr),
 			InvokableExternal: true, // lscc is invoked to deploy new chaincodes
 			InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
 		},

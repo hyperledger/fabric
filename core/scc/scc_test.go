@@ -29,7 +29,7 @@ func newTestProvider() *Provider {
 	ccp := &ccprovider2.MockCcProviderImpl{}
 	mockAclProvider := &aclmocks.MockACLProvider{}
 	p := NewProvider(peer.Default, peer.DefaultSupport, inproccontroller.NewRegistry())
-	for _, cc := range CreateSysCCs(ccp, p, mockAclProvider) {
+	for _, cc := range CreateSysCCs(ccp, p, mockAclProvider, nil) {
 		p.RegisterSysCC(cc)
 	}
 	return p
@@ -93,7 +93,7 @@ func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
 func TestRegisterSysCC(t *testing.T) {
 	ccp := &ccprovider2.MockCcProviderImpl{}
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	assert.NotPanics(t, func() { CreateSysCCs(ccp, newTestProvider(), mockAclProvider) }, "expected successful init")
+	assert.NotPanics(t, func() { CreateSysCCs(ccp, newTestProvider(), mockAclProvider, nil) }, "expected successful init")
 
 	p := &Provider{
 		Registrar: inproccontroller.NewRegistry(),

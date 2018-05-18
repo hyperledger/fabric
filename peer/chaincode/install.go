@@ -141,7 +141,7 @@ func getPackageFromFile(ccpackfile string) (proto.Message, *pb.ChaincodeDeployme
 		}
 
 		//...and get the CDS at last
-		cds, err = utils.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec)
+		cds, err = utils.GetChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec, platformRegistry)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error extracting chaincode deployment spec(%s)", err)
 		}

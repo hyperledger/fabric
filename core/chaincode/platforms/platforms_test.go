@@ -16,11 +16,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/mock"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	. "github.com/onsi/ginkgo"
@@ -297,13 +293,27 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 
 	Describe("NewRegistry", func() {
 		It("initializes with the known platform types and util writer", func() {
-			registry = platforms.NewRegistry()
+			fakePlatformFoo := &mock.Platform{}
+			fakePlatformFoo.NameReturns("foo")
+			fakePlatformBar := &mock.Platform{}
+			fakePlatformBar.NameReturns("bar")
+
+			registry = platforms.NewRegistry(fakePlatformFoo, fakePlatformBar)
+
 			Expect(registry.Platforms).To(Equal(map[string]platforms.Platform{
-				pb.ChaincodeSpec_GOLANG.String(): &golang.Platform{},
-				pb.ChaincodeSpec_CAR.String():    &car.Platform{},
-				pb.ChaincodeSpec_JAVA.String():   &java.Platform{},
-				pb.ChaincodeSpec_NODE.String():   &node.Platform{},
+				"foo": fakePlatformFoo,
+				"bar": fakePlatformBar,
 			}))
+		})
+
+		Context("when two platforms report the same name", func() {
+			It("panics", func() {
+				fakePlatformFoo1 := &mock.Platform{}
+				fakePlatformFoo1.NameReturns("foo")
+				fakePlatformFoo2 := &mock.Platform{}
+				fakePlatformFoo2.NameReturns("foo")
+				Expect(func() { platforms.NewRegistry(fakePlatformFoo1, fakePlatformFoo2) }).To(Panic())
+			})
 		})
 	})
 

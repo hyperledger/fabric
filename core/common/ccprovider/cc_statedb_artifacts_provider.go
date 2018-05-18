@@ -31,7 +31,7 @@ type TarFileEntry struct {
 // ExtractStatedbArtifactsAsTarbytes extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
 // This function is intented to be used during chaincode instantiate/upgrade so that statedb artifacts can be created.
-func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bool, statedbArtifactsTar []byte, err error) {
+func ExtractStatedbArtifactsForChaincode(ccname, ccversion string, pr *platforms.Registry) (installed bool, statedbArtifactsTar []byte, err error) {
 	ccpackage, err := GetChaincodeFromFS(ccname, ccversion)
 	if err != nil {
 		// TODO for now, we assume that an error indicates that the chaincode is not installed on the peer.
@@ -41,16 +41,16 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bo
 		return false, nil, nil
 	}
 
-	statedbArtifactsTar, err = ExtractStatedbArtifactsFromCCPackage(ccpackage)
+	statedbArtifactsTar, err = ExtractStatedbArtifactsFromCCPackage(ccpackage, pr)
 	return true, statedbArtifactsTar, err
 }
 
 // ExtractStatedbArtifactsFromCCPackage extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
 // This function is called during chaincode instantiate/upgrade (from above), and from install, so that statedb artifacts can be created.
-func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifactsTar []byte, err error) {
+func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage, pr *platforms.Registry) (statedbArtifactsTar []byte, err error) {
 	cds := ccpackage.GetDepSpec()
-	metaprov, err := platforms.NewRegistry().GetMetadataProvider(cds)
+	metaprov, err := pr.GetMetadataProvider(cds)
 	if err != nil {
 		ccproviderLogger.Infof("invalid deployment spec: %s", err)
 		return nil, fmt.Errorf("invalid deployment spec")
