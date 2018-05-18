@@ -769,7 +769,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, ledger.NotFoundInIndexErr(""))
 
 	queryExecutor := new(mockQueryExecutor)
 	queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
@@ -784,6 +784,59 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	assertion.Error(err)
 	// The error exptected to be of type VSCCInfoLookupFailureError
 	assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
+}
+
+func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
+	theLedger := new(mockLedger)
+	vcs := struct {
+		*mocktxvalidator.Support
+		*semaphore.Weighted
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	pm := &mocks.PluginMapper{}
+	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+
+	ccID := "mycc"
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
+
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Unable to connect to DB"))
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	err := validator.Validate(b)
+
+	assertion := assert.New(t)
+	// We expect a validation error because the ledger wasn't ready to tell us whether there was a tx with that ID or not
+	assertion.Error(err)
+}
+
+func TestDuplicateTxId(t *testing.T) {
+	theLedger := new(mockLedger)
+	vcs := struct {
+		*mocktxvalidator.Support
+		*semaphore.Weighted
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	pm := &mocks.PluginMapper{}
+	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+
+	ccID := "mycc"
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
+
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	err := validator.Validate(b)
+
+	assertion := assert.New(t)
+	// We expect no validation error because we simply mark the tx as invalid
+	assertion.NoError(err)
+
+	// We expect the tx to be invalid because of a duplicate txid
+	txsfltr := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	assertion.True(txsfltr.IsInvalid(0))
+	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
 }
 
 func TestValidationInvalidEndorsing(t *testing.T) {
@@ -805,7 +858,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, ledger.NotFoundInIndexErr(""))
 
 	cd := &ccp.ChaincodeData{
 		Name:    ccID,

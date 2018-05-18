@@ -20,6 +20,7 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/common/ledger"
+	l "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 )
@@ -44,7 +45,8 @@ type IndexConfig struct {
 
 var (
 	// ErrNotFoundInIndex is used to indicate missing entry in the index
-	ErrNotFoundInIndex = errors.New("Entry not found in index")
+	ErrNotFoundInIndex = l.NotFoundInIndexErr("")
+
 	// ErrAttrNotIndexed is used to indicate that an attribute is not indexed
 	ErrAttrNotIndexed = errors.New("Attribute not indexed")
 )
