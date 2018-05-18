@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/idemixgen/idemixca"
+	"github.com/hyperledger/fabric/common/tools/idemixgen/metadata"
 	"github.com/hyperledger/fabric/idemix"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
