@@ -66,7 +66,7 @@ func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) 
 	return payload, nil
 }
 
-func (javaPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
+func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
 
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))

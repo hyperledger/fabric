@@ -96,14 +96,12 @@ func TestGenerateDockerfile(t *testing.T) {
 		createTestJar(t)
 		defer os.RemoveAll(chaincodePathFolder)
 	}
-	payload, err := platform.GetDeploymentPayload(chaincodePath)
+	_, err = platform.GetDeploymentPayload(spec.Path())
 	if err != nil {
 		t.Fatalf("failed to get Java CC payload: %s", err)
 	}
-	cds := &pb.ChaincodeDeploymentSpec{
-		CodePackage: payload}
 
-	dockerfile, err := platform.GenerateDockerfile(cds)
+	dockerfile, err := platform.GenerateDockerfile()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, dockerfile)
 }

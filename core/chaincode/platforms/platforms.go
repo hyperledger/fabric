@@ -28,7 +28,7 @@ type Platform interface {
 	ValidatePath(path string) error
 	ValidateCodePackage(code []byte) error
 	GetDeploymentPayload(path string) ([]byte, error)
-	GenerateDockerfile(spec *pb.ChaincodeDeploymentSpec) (string, error)
+	GenerateDockerfile() (string, error)
 	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error
 	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider
 }
@@ -108,7 +108,7 @@ func (r *Registry) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, 
 	// ----------------------------------------------------------------------------------------------------
 	// Let the platform define the base Dockerfile
 	// ----------------------------------------------------------------------------------------------------
-	base, err := platform.GenerateDockerfile(cds)
+	base, err := platform.GenerateDockerfile()
 	if err != nil {
 		return "", fmt.Errorf("Failed to generate platform-specific Dockerfile: %s", err)
 	}

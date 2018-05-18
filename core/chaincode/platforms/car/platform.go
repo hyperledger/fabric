@@ -47,7 +47,7 @@ func (carPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	return ioutil.ReadFile(path)
 }
 
-func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
+func (carPlatform *Platform) GenerateDockerfile() (string, error) {
 
 	var buf []string
 
