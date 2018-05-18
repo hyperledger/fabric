@@ -611,6 +611,9 @@ func (g *gossipServiceImpl) IdentityInfo() api.PeerIdentitySet {
 
 // SendByCriteria sends a given message to all peers that match the given SendCriteria
 func (g *gossipServiceImpl) SendByCriteria(msg *proto.SignedGossipMessage, criteria SendCriteria) error {
+	if criteria.MaxPeers == 0 {
+		return nil
+	}
 	if criteria.Timeout == 0 {
 		return errors.New("Timeout should be specified")
 	}
@@ -620,9 +623,6 @@ func (g *gossipServiceImpl) SendByCriteria(msg *proto.SignedGossipMessage, crite
 	}
 
 	membership := g.disc.GetMembership()
-	if criteria.MaxPeers == 0 {
-		criteria.MaxPeers = len(membership)
-	}
 
 	if len(criteria.Channel) > 0 {
 		gc := g.chanState.getGossipChannelByChainID(criteria.Channel)

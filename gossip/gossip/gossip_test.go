@@ -1144,8 +1144,23 @@ func TestSendByCriteria(t *testing.T) {
 	defer stopPeers(peers)
 	msg, _ := createDataMsg(1, []byte{}, common.ChainID("A")).NoopSign()
 
+	// We send without specifying maximum peers,
+	// whic sets it to the zero value, and
+	// this is a no-op.
+	criteria := SendCriteria{
+		IsEligible: func(discovery.NetworkMember) bool {
+			t.Fatal("Shouldn't have called, because when max peers is 0, the operation is a no-op")
+			return false
+		},
+		Timeout: time.Second * 1,
+		MinAck:  1,
+	}
+	assert.NoError(t, g1.SendByCriteria(msg, criteria))
+
 	// We send without specifying a timeout
-	criteria := SendCriteria{}
+	criteria = SendCriteria{
+		MaxPeers: 100,
+	}
 	err := g1.SendByCriteria(msg, criteria)
 	assert.Error(t, err)
 	assert.Equal(t, "Timeout should be specified", err.Error())
