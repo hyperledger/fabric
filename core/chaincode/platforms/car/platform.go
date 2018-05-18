@@ -37,7 +37,7 @@ func (carPlatform *Platform) ValidatePath(path string) error {
 	return nil
 }
 
-func (carPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (carPlatform *Platform) ValidateCodePackage(codePackage []byte) error {
 	// CAR platform will validate the code package within chaintool
 	return nil
 }

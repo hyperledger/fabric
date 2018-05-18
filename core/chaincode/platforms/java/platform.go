@@ -38,7 +38,7 @@ func (javaPlatform *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
-func (javaPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 	// FIXME: Java platform needs to implement its own validation similar to GOLANG
 	return nil
 }

@@ -73,9 +73,9 @@ func (nodePlatform *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
-func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
 
-	if cds.CodePackage == nil || len(cds.CodePackage) == 0 {
+	if len(code) == 0 {
 		// Nothing to validate if no CodePackage was included
 		return nil
 	}
@@ -88,7 +88,7 @@ func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeployment
 	// resilient in enforcing constraints. However, we should still do our best to keep as much
 	// garbage out of the system as possible.
 	re := regexp.MustCompile(`(/)?src/.*`)
-	is := bytes.NewReader(cds.CodePackage)
+	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
 		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)

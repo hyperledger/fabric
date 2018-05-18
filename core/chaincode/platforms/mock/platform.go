@@ -30,15 +30,15 @@ type Platform struct {
 	validatePathReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ValidateDeploymentSpecStub        func(spec *pb.ChaincodeDeploymentSpec) error
-	validateDeploymentSpecMutex       sync.RWMutex
-	validateDeploymentSpecArgsForCall []struct {
-		spec *pb.ChaincodeDeploymentSpec
+	ValidateCodePackageStub        func(code []byte) error
+	validateCodePackageMutex       sync.RWMutex
+	validateCodePackageArgsForCall []struct {
+		code []byte
 	}
-	validateDeploymentSpecReturns struct {
+	validateCodePackageReturns struct {
 		result1 error
 	}
-	validateDeploymentSpecReturnsOnCall map[int]struct {
+	validateCodePackageReturnsOnCall map[int]struct {
 		result1 error
 	}
 	GetDeploymentPayloadStub        func(spec *pb.ChaincodeSpec) ([]byte, error)
@@ -182,50 +182,55 @@ func (fake *Platform) ValidatePathReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Platform) ValidateDeploymentSpec(spec *pb.ChaincodeDeploymentSpec) error {
-	fake.validateDeploymentSpecMutex.Lock()
-	ret, specificReturn := fake.validateDeploymentSpecReturnsOnCall[len(fake.validateDeploymentSpecArgsForCall)]
-	fake.validateDeploymentSpecArgsForCall = append(fake.validateDeploymentSpecArgsForCall, struct {
-		spec *pb.ChaincodeDeploymentSpec
-	}{spec})
-	fake.recordInvocation("ValidateDeploymentSpec", []interface{}{spec})
-	fake.validateDeploymentSpecMutex.Unlock()
-	if fake.ValidateDeploymentSpecStub != nil {
-		return fake.ValidateDeploymentSpecStub(spec)
+func (fake *Platform) ValidateCodePackage(code []byte) error {
+	var codeCopy []byte
+	if code != nil {
+		codeCopy = make([]byte, len(code))
+		copy(codeCopy, code)
+	}
+	fake.validateCodePackageMutex.Lock()
+	ret, specificReturn := fake.validateCodePackageReturnsOnCall[len(fake.validateCodePackageArgsForCall)]
+	fake.validateCodePackageArgsForCall = append(fake.validateCodePackageArgsForCall, struct {
+		code []byte
+	}{codeCopy})
+	fake.recordInvocation("ValidateCodePackage", []interface{}{codeCopy})
+	fake.validateCodePackageMutex.Unlock()
+	if fake.ValidateCodePackageStub != nil {
+		return fake.ValidateCodePackageStub(code)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.validateDeploymentSpecReturns.result1
+	return fake.validateCodePackageReturns.result1
 }
 
-func (fake *Platform) ValidateDeploymentSpecCallCount() int {
-	fake.validateDeploymentSpecMutex.RLock()
-	defer fake.validateDeploymentSpecMutex.RUnlock()
-	return len(fake.validateDeploymentSpecArgsForCall)
+func (fake *Platform) ValidateCodePackageCallCount() int {
+	fake.validateCodePackageMutex.RLock()
+	defer fake.validateCodePackageMutex.RUnlock()
+	return len(fake.validateCodePackageArgsForCall)
 }
 
-func (fake *Platform) ValidateDeploymentSpecArgsForCall(i int) *pb.ChaincodeDeploymentSpec {
-	fake.validateDeploymentSpecMutex.RLock()
-	defer fake.validateDeploymentSpecMutex.RUnlock()
-	return fake.validateDeploymentSpecArgsForCall[i].spec
+func (fake *Platform) ValidateCodePackageArgsForCall(i int) []byte {
+	fake.validateCodePackageMutex.RLock()
+	defer fake.validateCodePackageMutex.RUnlock()
+	return fake.validateCodePackageArgsForCall[i].code
 }
 
-func (fake *Platform) ValidateDeploymentSpecReturns(result1 error) {
-	fake.ValidateDeploymentSpecStub = nil
-	fake.validateDeploymentSpecReturns = struct {
+func (fake *Platform) ValidateCodePackageReturns(result1 error) {
+	fake.ValidateCodePackageStub = nil
+	fake.validateCodePackageReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *Platform) ValidateDeploymentSpecReturnsOnCall(i int, result1 error) {
-	fake.ValidateDeploymentSpecStub = nil
-	if fake.validateDeploymentSpecReturnsOnCall == nil {
-		fake.validateDeploymentSpecReturnsOnCall = make(map[int]struct {
+func (fake *Platform) ValidateCodePackageReturnsOnCall(i int, result1 error) {
+	fake.ValidateCodePackageStub = nil
+	if fake.validateCodePackageReturnsOnCall == nil {
+		fake.validateCodePackageReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.validateDeploymentSpecReturnsOnCall[i] = struct {
+	fake.validateCodePackageReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -436,8 +441,8 @@ func (fake *Platform) Invocations() map[string][][]interface{} {
 	defer fake.nameMutex.RUnlock()
 	fake.validatePathMutex.RLock()
 	defer fake.validatePathMutex.RUnlock()
-	fake.validateDeploymentSpecMutex.RLock()
-	defer fake.validateDeploymentSpecMutex.RUnlock()
+	fake.validateCodePackageMutex.RLock()
+	defer fake.validateCodePackageMutex.RUnlock()
 	fake.getDeploymentPayloadMutex.RLock()
 	defer fake.getDeploymentPayloadMutex.RUnlock()
 	fake.generateDockerfileMutex.RLock()

@@ -41,8 +41,8 @@ func TestValidatePath(t *testing.T) {
 
 }
 
-func TestValidateDeploymentSpec(t *testing.T) {
-	err := platform.ValidateDeploymentSpec(&peer.ChaincodeDeploymentSpec{CodePackage: []byte("dummy CodePackage content")})
+func TestValidateCodePackage(t *testing.T) {
+	err := platform.ValidateCodePackage([]byte("dummy CodePackage content"))
 	if err == nil {
 		t.Fatalf("should have returned an error on an invalid chaincode package")
 	} else if !strings.HasPrefix(err.Error(), "failure opening codepackage gzip stream") {
@@ -54,7 +54,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = platform.ValidateDeploymentSpec(&peer.ChaincodeDeploymentSpec{CodePackage: cp})
+	err = platform.ValidateCodePackage(cp)
 	if err == nil {
 		t.Fatal("should have failed to validate because file in the archive is in the root folder instead of 'src'")
 	} else if !strings.HasPrefix(err.Error(), "illegal file detected in payload") {
@@ -66,7 +66,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = platform.ValidateDeploymentSpec(&peer.ChaincodeDeploymentSpec{CodePackage: cp})
+	err = platform.ValidateCodePackage(cp)
 	if err == nil {
 		t.Fatal("should have failed to validate because file in the archive is executable")
 	} else if !strings.HasPrefix(err.Error(), "illegal file mode detected for file") {
@@ -78,7 +78,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = platform.ValidateDeploymentSpec(&peer.ChaincodeDeploymentSpec{CodePackage: cp})
+	err = platform.ValidateCodePackage(cp)
 	if err == nil {
 		t.Fatal("should have failed to validate because no 'package.json' found")
 	} else if !strings.HasPrefix(err.Error(), "no package.json found at the root of the chaincode package") {
@@ -90,7 +90,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = platform.ValidateDeploymentSpec(&peer.ChaincodeDeploymentSpec{CodePackage: cp})
+	err = platform.ValidateCodePackage(cp)
 	if err != nil {
 		t.Fatalf("should have returned no errors, but got '%s'", err)
 	}

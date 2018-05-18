@@ -90,7 +90,7 @@ func TestValidateCDS(t *testing.T) {
 	for _, s := range specs {
 		cds, err := generateFakeCDS(s.CCName, s.Path, s.File, s.Mode)
 
-		err = platform.ValidateDeploymentSpec(cds)
+		err = platform.ValidateCodePackage(cds.Bytes())
 		if s.SuccessExpected == true && err != nil {
 			t.Errorf("Unexpected failure: %s", err)
 		}
