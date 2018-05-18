@@ -15,13 +15,11 @@ import (
 	"path/filepath"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //tw is expected to have the chaincode in it from GenerateHashcode.
 //This method will just package the dockerfile
-func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
-	urlLocation := spec.ChaincodeId.Path
+func writeChaincodePackage(urlLocation string, tw *tar.Writer) error {
 	if urlLocation == "" {
 		return errors.New("ChaincodeSpec's path/URL cannot be empty")
 	}

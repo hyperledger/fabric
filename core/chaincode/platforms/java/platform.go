@@ -44,7 +44,7 @@ func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 }
 
 // WritePackage writes the java chaincode package
-func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -52,7 +52,7 @@ func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 	gw := gzip.NewWriter(inputbuf)
 	tw := tar.NewWriter(gw)
 
-	err = writeChaincodePackage(spec, tw)
+	err = writeChaincodePackage(path, tw)
 
 	tw.Close()
 	gw.Close()

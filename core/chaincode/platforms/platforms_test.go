@@ -103,12 +103,17 @@ var _ = Describe("Platforms", func() {
 		Describe("GetDeploymentPayload", func() {
 			It("returns the result of the underlying platform", func() {
 				fakePlatform.GetDeploymentPayloadReturns([]byte("payload"), errors.New("fake-error"))
-				spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG}
+				spec := &pb.ChaincodeSpec{
+					Type: pb.ChaincodeSpec_GOLANG,
+					ChaincodeId: &pb.ChaincodeID{
+						Path: "cc-path",
+					},
+				}
 				payload, err := registry.GetDeploymentPayload(spec)
 				Expect(payload).To(Equal([]byte("payload")))
 				Expect(err).To(MatchError(errors.New("fake-error")))
 				Expect(fakePlatform.GetDeploymentPayloadCallCount()).To(Equal(1))
-				Expect(fakePlatform.GetDeploymentPayloadArgsForCall(0)).To(Equal(spec))
+				Expect(fakePlatform.GetDeploymentPayloadArgsForCall(0)).To(Equal("cc-path"))
 			})
 
 			Context("when the platform is unknown", func() {

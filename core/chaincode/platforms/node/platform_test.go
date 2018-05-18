@@ -17,10 +17,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )
+
+var _ = platforms.Platform(&Platform{})
 
 var platform = &Platform{}
 
@@ -97,12 +100,7 @@ func TestValidateCodePackage(t *testing.T) {
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
-	ccSpec := &peer.ChaincodeSpec{
-		Type:        peer.ChaincodeSpec_NODE,
-		ChaincodeId: &peer.ChaincodeID{Path: ""},
-		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("invoke")}}}
-
-	_, err := platform.GetDeploymentPayload(ccSpec)
+	_, err := platform.GetDeploymentPayload("")
 	if err == nil {
 		t.Fatal("should have failed to product deployment payload due to empty chaincode path")
 	} else if !strings.HasPrefix(err.Error(), "ChaincodeSpec's path cannot be empty") {
@@ -184,7 +182,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 		ChaincodeId: &peer.ChaincodeID{Path: dir},
 		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("init")}}}
 
-	cp, _ := platform.GetDeploymentPayload(ccSpec)
+	cp, _ := platform.GetDeploymentPayload(ccSpec.Path())
 
 	cds := &peer.ChaincodeDeploymentSpec{
 		ChaincodeSpec: ccSpec,

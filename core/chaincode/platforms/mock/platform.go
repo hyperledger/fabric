@@ -41,10 +41,10 @@ type Platform struct {
 	validateCodePackageReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetDeploymentPayloadStub        func(spec *pb.ChaincodeSpec) ([]byte, error)
+	GetDeploymentPayloadStub        func(path string) ([]byte, error)
 	getDeploymentPayloadMutex       sync.RWMutex
 	getDeploymentPayloadArgsForCall []struct {
-		spec *pb.ChaincodeSpec
+		path string
 	}
 	getDeploymentPayloadReturns struct {
 		result1 []byte
@@ -235,16 +235,16 @@ func (fake *Platform) ValidateCodePackageReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (fake *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	fake.getDeploymentPayloadMutex.Lock()
 	ret, specificReturn := fake.getDeploymentPayloadReturnsOnCall[len(fake.getDeploymentPayloadArgsForCall)]
 	fake.getDeploymentPayloadArgsForCall = append(fake.getDeploymentPayloadArgsForCall, struct {
-		spec *pb.ChaincodeSpec
-	}{spec})
-	fake.recordInvocation("GetDeploymentPayload", []interface{}{spec})
+		path string
+	}{path})
+	fake.recordInvocation("GetDeploymentPayload", []interface{}{path})
 	fake.getDeploymentPayloadMutex.Unlock()
 	if fake.GetDeploymentPayloadStub != nil {
-		return fake.GetDeploymentPayloadStub(spec)
+		return fake.GetDeploymentPayloadStub(path)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -258,10 +258,10 @@ func (fake *Platform) GetDeploymentPayloadCallCount() int {
 	return len(fake.getDeploymentPayloadArgsForCall)
 }
 
-func (fake *Platform) GetDeploymentPayloadArgsForCall(i int) *pb.ChaincodeSpec {
+func (fake *Platform) GetDeploymentPayloadArgsForCall(i int) string {
 	fake.getDeploymentPayloadMutex.RLock()
 	defer fake.getDeploymentPayloadMutex.RUnlock()
-	return fake.getDeploymentPayloadArgsForCall[i].spec
+	return fake.getDeploymentPayloadArgsForCall[i].path
 }
 
 func (fake *Platform) GetDeploymentPayloadReturns(result1 []byte, result2 error) {

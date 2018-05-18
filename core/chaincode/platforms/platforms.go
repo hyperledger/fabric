@@ -27,7 +27,7 @@ type Platform interface {
 	Name() string
 	ValidatePath(path string) error
 	ValidateCodePackage(code []byte) error
-	GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error)
+	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile(spec *pb.ChaincodeDeploymentSpec) (string, error)
 	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error
 	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider
@@ -94,7 +94,7 @@ func (r *Registry) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) 
 		return nil, fmt.Errorf("Unknown chaincodeType: %s", spec.Type)
 	}
 
-	return platform.GetDeploymentPayload(spec)
+	return platform.GetDeploymentPayload(spec.Path())
 }
 
 func (r *Registry) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {

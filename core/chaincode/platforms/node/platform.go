@@ -133,7 +133,7 @@ func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
 }
 
 // Generates a deployment payload by putting source files in src/$file entries in .tar.gz format
-func (nodePlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -144,7 +144,7 @@ func (nodePlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	folder := spec.ChaincodeId.Path
+	folder := path
 	if folder == "" {
 		return nil, errors.New("ChaincodeSpec's path cannot be empty")
 	}

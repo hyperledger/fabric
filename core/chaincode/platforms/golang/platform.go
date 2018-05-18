@@ -245,14 +245,14 @@ func vendorDependencies(pkg string, files Sources) {
 }
 
 // Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
-func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (goPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
 	// --------------------------------------------------------------------------------------
 	// retrieve a CodeDescriptor from either HTTP or the filesystem
 	// --------------------------------------------------------------------------------------
-	code, err := getCode(spec)
+	code, err := getCode(path)
 	if err != nil {
 		return nil, err
 	}
@@ -470,10 +470,7 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 		err = gw.Close()
 	}
 	if err != nil {
-		return nil, errors.Wrapf(
-			err,
-			"failed to create tar for chaincode: %s",
-			spec.GetChaincodeId().GetName())
+		return nil, errors.Wrapf(err, "failed to create tar for chaincode")
 	}
 
 	return payload.Bytes(), nil

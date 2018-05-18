@@ -42,9 +42,9 @@ func (carPlatform *Platform) ValidateCodePackage(codePackage []byte) error {
 	return nil
 }
 
-func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (carPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
-	return ioutil.ReadFile(spec.ChaincodeId.Path)
+	return ioutil.ReadFile(path)
 }
 
 func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {

@@ -17,10 +17,13 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
+
+var _ = platforms.Platform(&java.Platform{})
 
 const chaincodePathFolder = "testdata"
 const chaincodePath = chaincodePathFolder + "/chaincode.jar"
@@ -45,9 +48,8 @@ func TestValidatePath(t *testing.T) {
 
 func TestGetDeploymentPayload(t *testing.T) {
 	platform := java.Platform{}
-	spec.ChaincodeId.Path = "pathdoesnotexist"
 
-	_, err := platform.GetDeploymentPayload(spec)
+	_, err := platform.GetDeploymentPayload("pathdoesnotexist")
 	assert.Contains(t, err.Error(), "no such file or directory")
 
 	spec.ChaincodeId.Path = chaincodePath
@@ -57,7 +59,7 @@ func TestGetDeploymentPayload(t *testing.T) {
 		defer os.RemoveAll(chaincodePathFolder)
 	}
 
-	payload, err := platform.GetDeploymentPayload(spec)
+	payload, err := platform.GetDeploymentPayload(chaincodePath)
 	assert.NoError(t, err)
 	assert.NotZero(t, len(payload))
 
@@ -94,7 +96,7 @@ func TestGenerateDockerfile(t *testing.T) {
 		createTestJar(t)
 		defer os.RemoveAll(chaincodePathFolder)
 	}
-	payload, err := platform.GetDeploymentPayload(spec)
+	payload, err := platform.GetDeploymentPayload(chaincodePath)
 	if err != nil {
 		t.Fatalf("failed to get Java CC payload: %s", err)
 	}
