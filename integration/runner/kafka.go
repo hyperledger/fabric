@@ -128,7 +128,7 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 
 	config := &docker.Config{
 		Image: k.Image,
-		Env:   k.setEnv(),
+		Env:   k.buildEnv(),
 	}
 
 	networkingConfig := &docker.NetworkingConfig{
@@ -201,33 +201,21 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 }
 
-func (k *Kafka) setEnv() []string {
+func (k *Kafka) buildEnv() []string {
 	env := []string{
 		"KAFKA_LOG_RETENTION_MS=-1",
-		fmt.Sprintf("KAFKA_MESSAGE_MAX_BYTES=%d",
-			k.MessageMaxBytes),
-		fmt.Sprintf("KAFKA_REPLICA_FETCH_MAX_BYTES=%d",
-			k.ReplicaFetchMaxBytes),
-		fmt.Sprintf("KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=%s",
-			strconv.FormatBool(k.UncleanLeaderElectionEnable)),
-		fmt.Sprintf("KAFKA_DEFAULT_REPLICATION_FACTOR=%d",
-			k.DefaultReplicationFactor),
-		fmt.Sprintf("KAFKA_MIN_INSYNC_REPLICAS=%d",
-			k.MinInsyncReplicas),
-		fmt.Sprintf("KAFKA_BROKER_ID=%d",
-			k.BrokerID),
-		fmt.Sprintf("KAFKA_ZOOKEEPER_CONNECT=%s",
-			k.ZookeeperConnect),
-		fmt.Sprintf("KAFKA_REPLICA_FETCH_RESPONSE_MAX_BYTES=%d",
-			k.ReplicaFetchResponseMaxBytes),
-		fmt.Sprintf("KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:%d,%s://%s:9093",
-			k.HostPort, k.NetworkName, k.Name),
-		fmt.Sprintf("KAFKA_LISTENERS=EXTERNAL://0.0.0.0:9092,%s://0.0.0.0:9093",
-			k.NetworkName),
-		fmt.Sprintf("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,%s:PLAINTEXT",
-			k.NetworkName),
-		fmt.Sprintf("KAFKA_INTER_BROKER_LISTENER_NAME=%s",
-			k.NetworkName),
+		fmt.Sprintf("KAFKA_MESSAGE_MAX_BYTES=%d", k.MessageMaxBytes),
+		fmt.Sprintf("KAFKA_REPLICA_FETCH_MAX_BYTES=%d", k.ReplicaFetchMaxBytes),
+		fmt.Sprintf("KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=%s", strconv.FormatBool(k.UncleanLeaderElectionEnable)),
+		fmt.Sprintf("KAFKA_DEFAULT_REPLICATION_FACTOR=%d", k.DefaultReplicationFactor),
+		fmt.Sprintf("KAFKA_MIN_INSYNC_REPLICAS=%d", k.MinInsyncReplicas),
+		fmt.Sprintf("KAFKA_BROKER_ID=%d", k.BrokerID),
+		fmt.Sprintf("KAFKA_ZOOKEEPER_CONNECT=%s", k.ZookeeperConnect),
+		fmt.Sprintf("KAFKA_REPLICA_FETCH_RESPONSE_MAX_BYTES=%d", k.ReplicaFetchResponseMaxBytes),
+		fmt.Sprintf("KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:%d,%s://%s:9093", k.HostPort, k.NetworkName, k.Name),
+		fmt.Sprintf("KAFKA_LISTENERS=EXTERNAL://0.0.0.0:9092,%s://0.0.0.0:9093", k.NetworkName),
+		fmt.Sprintf("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,%s:PLAINTEXT", k.NetworkName),
+		fmt.Sprintf("KAFKA_INTER_BROKER_LISTENER_NAME=%s", k.NetworkName),
 	}
 	return env
 }

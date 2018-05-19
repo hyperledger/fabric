@@ -23,12 +23,9 @@ import (
 
 var _ = Describe("Kafka Runner", func() {
 	var (
-		err         error
-		client      *docker.Client
-		network     *docker.Network
-		networkName string
+		client  *docker.Client
+		network *docker.Network
 
-		errBuffer *gbytes.Buffer
 		outBuffer *gbytes.Buffer
 		kafka     *runner.Kafka
 		zookeeper *runner.Zookeeper
@@ -37,15 +34,15 @@ var _ = Describe("Kafka Runner", func() {
 	)
 
 	BeforeEach(func() {
-		errBuffer = gbytes.NewBuffer()
 		outBuffer = gbytes.NewBuffer()
 		process = nil
 
+		var err error
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create a network
-		networkName = runner.UniqueName()
+		networkName := runner.UniqueName()
 		network, err = client.CreateNetwork(
 			docker.CreateNetworkOptions{
 				Name:   networkName,
@@ -65,7 +62,7 @@ var _ = Describe("Kafka Runner", func() {
 
 		kafka = &runner.Kafka{
 			Name:             "kafka1",
-			ErrorStream:      io.MultiWriter(errBuffer, GinkgoWriter),
+			ErrorStream:      GinkgoWriter,
 			OutputStream:     io.MultiWriter(outBuffer, GinkgoWriter),
 			ZookeeperConnect: "zookeeper0:2181",
 			BrokerID:         1,
@@ -83,7 +80,7 @@ var _ = Describe("Kafka Runner", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		if network != nil {
-			client.RemoveNetwork(networkName)
+			client.RemoveNetwork(network.Name)
 		}
 	})
 
