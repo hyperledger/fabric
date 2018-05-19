@@ -60,6 +60,7 @@ type World struct {
 	PeerOrgs           []PeerOrgConfig
 	Profiles           map[string]localconfig.Profile
 	Cryptogen          runner.Cryptogen
+	Idemixgen          runner.Idemixgen
 	Deployment         Deployment
 
 	LocalStoppers []Stopper

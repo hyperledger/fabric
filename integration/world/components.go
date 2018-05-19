@@ -29,6 +29,10 @@ func (c *Components) Build(args ...string) {
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["cryptogen"] = cryptogen
 
+	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/idemixgen", args...)
+	Expect(err).NotTo(HaveOccurred())
+	c.Paths["idemixgen"] = idemixgen
+
 	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/configtxgen", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["configtxgen"] = configtxgen
@@ -52,6 +56,12 @@ func (c *Components) Cleanup() {
 func (c *Components) Cryptogen() *runner.Cryptogen {
 	return &runner.Cryptogen{
 		Path: c.Paths["cryptogen"],
+	}
+}
+
+func (c *Components) Idemixgen() *runner.Idemixgen {
+	return &runner.Idemixgen{
+		Path: c.Paths["idemixgen"],
 	}
 }
 
