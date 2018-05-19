@@ -111,12 +111,12 @@ func writeFile(path string, contents []byte) {
 
 // readIssuerKey reads the issuer key from the current directory
 func readIssuerKey() *idemix.IssuerKey {
-	path := filepath.Join(IdemixDirIssuer, IdemixConfigIssuerSecretKey)
+	path := filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey)
 	isk, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open issuer secret key file: %s", path))
 	}
-	path = filepath.Join(IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey)
+	path = filepath.Join(*outputDir, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey)
 	ipkBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open issuer public key file: %s", path))
@@ -129,7 +129,7 @@ func readIssuerKey() *idemix.IssuerKey {
 }
 
 func readRevocationKey() *ecdsa.PrivateKey {
-	path := filepath.Join(IdemixDirIssuer, IdemixConfigRevocationKey)
+	path := filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey)
 	keyBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
