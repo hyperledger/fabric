@@ -13,7 +13,7 @@ create` command.
 
   2018-02-25 08:23:57.548 UTC [channelCmd] InitCmdFactory -> INFO 003 Endorser and orderer connections initialized
   2018-02-25 08:23:57.626 UTC [channelCmd] InitCmdFactory -> INFO 019 Endorser and orderer connections initialized
-  2018-02-25 08:23:57.834 UTC [channelCmd] readBlock -> DEBU 020 Received block: 0
+  2018-02-25 08:23:57.834 UTC [channelCmd] readBlock -> INFO 020 Received block: 0
   2018-02-25 08:23:57.835 UTC [main] main -> INFO 021 Exiting.....
 
   ```
@@ -32,7 +32,7 @@ Here's an example of the `peer channel create` command option.
 
     2018-02-23 06:31:58.568 UTC [channelCmd] InitCmdFactory -> INFO 003 Endorser and orderer connections initialized
     2018-02-23 06:31:58.669 UTC [channelCmd] InitCmdFactory -> INFO 019 Endorser and orderer connections initialized
-    2018-02-23 06:31:58.877 UTC [channelCmd] readBlock -> DEBU 020 Received block: 0
+    2018-02-23 06:31:58.877 UTC [channelCmd] readBlock -> INFO 020 Received block: 0
     2018-02-23 06:31:58.878 UTC [main] main -> INFO 021 Exiting.....
 
     ls -l
@@ -62,7 +62,7 @@ Here's some examples of the `peer channel fetch` command.
   peer channel fetch newest mychannel.block -c mychannel --orderer orderer.example.com:7050
 
   2018-02-25 13:10:16.137 UTC [channelCmd] InitCmdFactory -> INFO 003 Endorser and orderer connections initialized
-  2018-02-25 13:10:16.144 UTC [channelCmd] readBlock -> DEBU 00a Received block: 32
+  2018-02-25 13:10:16.144 UTC [channelCmd] readBlock -> INFO 00a Received block: 32
   2018-02-25 13:10:16.145 UTC [main] main -> INFO 00b Exiting.....
 
   ls -l
@@ -81,7 +81,7 @@ Here's some examples of the `peer channel fetch` command.
   peer channel fetch 16  -c mychannel --orderer orderer.example.com:7050
 
   2018-02-25 13:46:50.296 UTC [channelCmd] InitCmdFactory -> INFO 003 Endorser and orderer connections initialized
-  2018-02-25 13:46:50.302 UTC [channelCmd] readBlock -> DEBU 00a Received block: 16
+  2018-02-25 13:46:50.302 UTC [channelCmd] readBlock -> INFO 00a Received block: 16
   2018-02-25 13:46:50.302 UTC [main] main -> INFO 00b Exiting.....
 
   ls -l

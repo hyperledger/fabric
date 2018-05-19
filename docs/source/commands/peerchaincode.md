@@ -152,6 +152,8 @@ Flags:
   -n, --name string                    Name of the chaincode
       --peerAddresses stringArray      The addresses of the peers to connect to
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+      --waitForEvent                   Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully
+      --waitForEventTimeout duration   Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully (default 30s)
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -289,6 +291,7 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
+      --collections-config string      The file containing the configuration for the chaincode's collection
       --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
