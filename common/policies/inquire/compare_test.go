@@ -174,32 +174,6 @@ func TestNewComparablePrincipalSet(t *testing.T) {
 	})
 }
 
-func TestIsCoveredBy(t *testing.T) {
-	t.Run("Covered", func(t *testing.T) {
-		ou1 := NewComparablePrincipal(ou("Org1MSP"))
-		peer1 := NewComparablePrincipal(peer("Org1MSP"))
-		member1 := NewComparablePrincipal(member("Org1MSP"))
-		member2 := NewComparablePrincipal(member("Org2MSP"))
-
-		covered := ComparablePrincipalSet([]*ComparablePrincipal{ou1, peer1})
-		cover := ComparablePrincipalSet([]*ComparablePrincipal{member1, member2})
-
-		assert.True(t, covered.IsCoveredBy(cover))
-		assert.False(t, cover.IsCoveredBy(covered))
-	})
-
-	t.Run("Not Covered", func(t *testing.T) {
-		peer1 := NewComparablePrincipal(peer("Org1MSP"))
-		peer2 := NewComparablePrincipal(peer("Org1MSP"))
-		member1 := NewComparablePrincipal(member("Org1MSP"))
-
-		covered := ComparablePrincipalSet([]*ComparablePrincipal{peer1, peer2})
-		cover := ComparablePrincipalSet([]*ComparablePrincipal{member1})
-
-		assert.False(t, cover.IsCoveredBy(covered))
-	})
-}
-
 func member(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,

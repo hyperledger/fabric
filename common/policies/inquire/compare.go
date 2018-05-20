@@ -181,18 +181,3 @@ func (cps ComparablePrincipalSet) Clone() ComparablePrincipalSet {
 	}
 	return res
 }
-
-// IsCoveredBy returns whether the ComparablePrincipalSet is covered by the given ComparablePrincipalSet.
-// A ComparablePrincipalSet X is covered by another ComparablePrincipalSet Y if:
-// for each ComparablePrincipal x in X there is a ComparablePrincipal y in Y,
-// such that x.IsA(y) is true.
-// This method is useful for determining if the all elements of a ComparablePrincipalSet
-// are accepted by another ComparablePrincipalSet.
-func (cps ComparablePrincipalSet) IsCoveredBy(set ComparablePrincipalSet) bool {
-	for _, cp := range cps {
-		if !cp.IsFound(set...) {
-			return false
-		}
-	}
-	return true
-}
