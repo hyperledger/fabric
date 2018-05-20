@@ -29,7 +29,7 @@ type lockBasedQueryExecutor struct {
 }
 
 func newQueryExecutor(txmgr *LockBasedTxMgr, txid string) *lockBasedQueryExecutor {
-	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: nil}
+	helper := newQueryHelper(txmgr, nil)
 	logger.Debugf("constructing new query executor txid = [%s]", txid)
 	return &lockBasedQueryExecutor{helper, txid}
 }
