@@ -40,7 +40,7 @@ func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(EndorserNotRequired, OrdererNotRequired)
+		cf, err = InitCmdFactory(EndorserNotRequired, PeerDeliverNotRequired, OrdererNotRequired)
 		if err != nil {
 			return err
 		}

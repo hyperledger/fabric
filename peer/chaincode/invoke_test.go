@@ -16,9 +16,11 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/peer/chaincode/api"
+	ccapi "github.com/hyperledger/fabric/peer/chaincode/api"
 	"github.com/hyperledger/fabric/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/peer/common/api"
+	cmock "github.com/hyperledger/fabric/peer/common/mock"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -65,12 +67,14 @@ func TestInvokeCmd(t *testing.T) {
 	getBroadcastClient := common.GetBroadcastClientFnc
 	getDefaultSigner := common.GetDefaultSignerFnc
 	getDeliverClient := common.GetDeliverClientFnc
+	getPeerDeliverClient := common.GetPeerDeliverClientFnc
 	defer func() {
 		common.GetEndorserClientFnc = getEndorserClient
 		common.GetOrdererEndpointOfChainFnc = getOrdererEndpointOfChain
 		common.GetBroadcastClientFnc = getBroadcastClient
 		common.GetDefaultSignerFnc = getDefaultSigner
 		common.GetDeliverClientFnc = getDeliverClient
+		common.GetPeerDeliverClientFnc = getPeerDeliverClient
 	}()
 	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClients[0], nil
@@ -95,18 +99,26 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Error case 3: getDeliverClient returns error
 	t.Logf("Start error case 3: getDeliverClient returns error")
-	common.GetDeliverClientFnc = func(string, string) (api.DeliverClient, error) {
+	common.GetDeliverClientFnc = func(string, string) (pb.Deliver_DeliverClient, error) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
 	assert.Error(t, err)
 
-	// Error case 4: getDefaultSignerFnc returns error
-	t.Logf("Start error case 4: getDefaultSignerFnc returns error")
+	// Error case 4 : getPeerDeliverClient returns error
+	t.Logf("Start error case 4: getPeerDeliverClient returns error")
+	common.GetPeerDeliverClientFnc = func(string, string) (api.PeerDeliverClient, error) {
+		return nil, errors.New("error")
+	}
+	err = cmd.Execute()
+	assert.Error(t, err)
+
+	// Error case 5: getDefaultSignerFnc returns error
+	t.Logf("Start error case 5: getDefaultSignerFnc returns error")
 	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClients[0], nil
 	}
-	common.GetDeliverClientFnc = func(string, string) (api.DeliverClient, error) {
+	common.GetPeerDeliverClientFnc = func(string, string) (api.PeerDeliverClient, error) {
 		return mockCF.DeliverClients[0], nil
 	}
 	common.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
@@ -116,8 +128,8 @@ func TestInvokeCmd(t *testing.T) {
 	assert.Error(t, err)
 	common.GetDefaultSignerFnc = common.GetDefaultSigner
 
-	// Error case 5: getOrdererEndpointOfChainFnc returns error
-	t.Logf("Start error case 5: getOrdererEndpointOfChainFnc returns error")
+	// Error case 6: getOrdererEndpointOfChainFnc returns error
+	t.Logf("Start error case 6: getOrdererEndpointOfChainFnc returns error")
 	common.GetEndorserClientFnc = func(string, string) (pb.EndorserClient, error) {
 		return mockCF.EndorserClients[0], nil
 	}
@@ -127,8 +139,8 @@ func TestInvokeCmd(t *testing.T) {
 	err = cmd.Execute()
 	assert.Error(t, err)
 
-	// Error case 6: getBroadcastClient returns error
-	t.Logf("Start error case 6: getBroadcastClient returns error")
+	// Error case 7: getBroadcastClient returns error
+	t.Logf("Start error case 7: getBroadcastClient returns error")
 	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
 		return []string{"localhost:9999"}, nil
 	}
@@ -204,7 +216,7 @@ func getMockChaincodeCmdFactory() (*ChaincodeCmdFactory, error) {
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil), common.GetMockEndorserClient(mockResponse, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 	mockDC := getMockDeliverClient()
-	mockDeliverClients := []api.DeliverClient{mockDC, mockDC}
+	mockDeliverClients := []api.PeerDeliverClient{mockDC, mockDC}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -225,7 +237,7 @@ func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
 	errMsg := "invoke error"
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(nil, errors.New(errMsg))}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.DeliverClient{getMockDeliverClient()}
+	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClient()}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -261,7 +273,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockRespFailure, nil)}
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockDeliverClients := []api.DeliverClient{getMockDeliverClient()}
+	mockDeliverClients := []api.PeerDeliverClient{getMockDeliverClient()}
 	mockCF := &ChaincodeCmdFactory{
 		EndorserClients: mockEndorserClients,
 		Signer:          signer,
@@ -280,13 +292,13 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 }
 
 // creates a mock deliver client with a response that contains txid0
-func getMockDeliverClient() *mock.DeliverClient {
+func getMockDeliverClient() *cmock.PeerDeliverClient {
 	return getMockDeliverClientResponseWithTxID("txid0")
 }
 
-func getMockDeliverClientResponseWithTxID(txID string) *mock.DeliverClient {
-	mockDC := &mock.DeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error) {
+func getMockDeliverClientResponseWithTxID(txID string) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		return getMockDeliverConnectionResponseWithTxID(txID), nil
 	}
 	// mockDC.DeliverReturns(nil, fmt.Errorf("not implemented!!"))
@@ -305,9 +317,9 @@ func getMockDeliverConnectionResponseWithTxID(txID string) *mock.Deliver {
 	return mockDF
 }
 
-func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *mock.DeliverClient {
-	mockDC := &mock.DeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error) {
+func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		mockDF := &mock.Deliver{}
 		for i, f := range fb {
 			resp := &pb.DeliverResponse{
@@ -322,9 +334,9 @@ func getMockDeliverClientRespondsWithFilteredBlocks(fb []*pb.FilteredBlock) *moc
 	return mockDC
 }
 
-func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *mock.DeliverClient {
-	mockDC := &mock.DeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error) {
+func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		mockDF := &mock.Deliver{}
 		mockDF.SendStub = func(*cb.Envelope) error {
 			<-delayChan
@@ -335,9 +347,9 @@ func getMockDeliverClientRegisterAfterDelay(delayChan chan struct{}) *mock.Deliv
 	return mockDC
 }
 
-func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}) *mock.DeliverClient {
-	mockDC := &mock.DeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error) {
+func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		mockDF := &mock.Deliver{}
 		mockDF.RecvStub = func() (*pb.DeliverResponse, error) {
 			<-delayChan
@@ -353,9 +365,9 @@ func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}) *mock.Delive
 	return mockDC
 }
 
-func getMockDeliverClientWithErr(errMsg string) *mock.DeliverClient {
-	mockDC := &mock.DeliverClient{}
-	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (api.Deliver, error) {
+func getMockDeliverClientWithErr(errMsg string) *cmock.PeerDeliverClient {
+	mockDC := &cmock.PeerDeliverClient{}
+	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (ccapi.Deliver, error) {
 		return nil, fmt.Errorf(errMsg)
 	}
 	return mockDC

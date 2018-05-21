@@ -19,8 +19,7 @@ package channel
 import (
 	"fmt"
 	"io/ioutil"
-
-	"errors"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -31,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -162,7 +162,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	var broadcastClient common.BroadcastClient
 	broadcastClient, err = cf.BroadcastFactory()
 	if err != nil {
-		return fmt.Errorf("Error getting broadcast client: %s", err)
+		return errors.WithMessage(err, "error getting broadcast client")
 	}
 
 	defer broadcastClient.Close()
@@ -199,10 +199,35 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	return nil
 }
 
+func getGenesisBlock(cf *ChannelCmdFactory) (*cb.Block, error) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-timer.C:
+			cf.DeliverClient.Close()
+			return nil, errors.New("timeout waiting for channel creation")
+		default:
+			if block, err := cf.DeliverClient.GetSpecifiedBlock(0); err != nil {
+				cf.DeliverClient.Close()
+				cf, err = InitCmdFactory(EndorserNotRequired, PeerDeliverNotRequired, OrdererRequired)
+				if err != nil {
+					return nil, errors.WithMessage(err, "failed connecting")
+				}
+				time.Sleep(200 * time.Millisecond)
+			} else {
+				cf.DeliverClient.Close()
+				return block, nil
+			}
+		}
+	}
+}
+
 func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	// the global chainID filled by the "-c" command
 	if channelID == common.UndefinedParamValue {
-		return errors.New("Must supply channel ID")
+		return errors.New("must supply channel ID")
 	}
 
 	// Parsing of the command line is done so silence cmd usage
@@ -210,7 +235,7 @@ func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
+		cf, err = InitCmdFactory(EndorserNotRequired, PeerDeliverNotRequired, OrdererRequired)
 		if err != nil {
 			return err
 		}

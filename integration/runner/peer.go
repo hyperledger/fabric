@@ -192,3 +192,16 @@ func (p *Peer) InvokeChaincode(name string, channel string, args string, orderer
 
 	return r
 }
+
+func (p *Peer) SetLogLevel(moduleRegExp string, level string) *ginkgomon.Runner {
+	cmd := exec.Command(p.Path, "logging", "setlevel", moduleRegExp, level)
+	p.setupEnvironment(cmd)
+
+	r := ginkgomon.New(ginkgomon.Config{
+		Name:          "logging",
+		AnsiColorCode: "4;38m",
+		Command:       cmd,
+	})
+
+	return r
+}
