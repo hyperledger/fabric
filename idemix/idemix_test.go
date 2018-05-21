@@ -134,25 +134,23 @@ func TestIdemix(t *testing.T) {
 
 	disclosure := []byte{0, 0, 0, 0, 0}
 	msg := []byte{1, 2, 3, 4, 5}
-	sig, err := NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rng)
+	rhindex := 4
+	sig, err := NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rhindex, cri, rng)
 	assert.NoError(t, err)
 
-	err = sig.Ver(disclosure, key.IPk, msg, nil)
+	err = sig.Ver(disclosure, key.IPk, msg, nil, 0, &revocationKey.PublicKey, epoch)
 	if err != nil {
 		t.Fatalf("Signature should be valid but verification returned error: %s", err)
 		return
 	}
 
 	// Test signing selective disclosure
-	disclosure = []byte{0, 1, 1, 1, 1}
-	sig, err = NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rng)
+	disclosure = []byte{0, 1, 1, 1, 0}
+	sig, err = NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rhindex, cri, rng)
 	assert.NoError(t, err)
 
-	err = sig.Ver(disclosure, key.IPk, msg, attrs)
-	if err != nil {
-		t.Fatalf("Signature should be valid but verification returned error: %s", err)
-		return
-	}
+	err = sig.Ver(disclosure, key.IPk, msg, attrs, rhindex, &revocationKey.PublicKey, epoch)
+	assert.NoError(t, err)
 
 	// Test NymSignatures
 	nymsig, err := NewNymSignature(sk, Nym, RandNym, key.IPk, []byte("testing"), rng)

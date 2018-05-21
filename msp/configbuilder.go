@@ -372,9 +372,15 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")
 	}
 
+	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileRevocationPublicKey))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read revocation public key file")
+	}
+
 	idemixConfig := &msp.IdemixMSPConfig{
-		Name: ID,
-		IPk:  ipkBytes,
+		Name:         ID,
+		IPk:          ipkBytes,
+		RevocationPk: revocationPkBytes,
 	}
 
 	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))
