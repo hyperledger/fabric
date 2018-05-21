@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
-	"archive/tar"
-	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -17,7 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -323,11 +321,13 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	savePoint := version.NewHeight(2, 22)
 	db.ApplyUpdates(batch, savePoint)
 
-	//Create a tar file for test with 2 index definitions
-	dbArtifactsTarBytes := createTarBytesForTest(t,
-		[]*testFile{
+	//Create a tar file for test with 4 index definitions and 2 side dbs
+	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
 			{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", `{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`},
 			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{"META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json", `{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`},
+			{"META-INF/statedb/couchdb/collections/collectionMarblesPrivateDetails/indexes/indexCollPrivDetails.json", `{"index":{"fields":["docType","price"]},"ddoc":"indexPrivateDetails", "name":"indexPrivateDetails","type":"json"}`},
 		},
 	)
 
@@ -343,17 +343,16 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	_, err = db.ExecuteQuery("ns1", queryString)
 	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
 
-	handleDefinition, ok := db.(cceventmgmt.ChaincodeLifecycleEventListener)
+	indexCapable, ok := db.(statedb.IndexCapable)
+
 	if !ok {
-		t.Fatalf("Couchdb state impl is expected to implement interface `cceventmgmt.ChaincodeLifecycleEventListener`")
+		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
 
-	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: ""}
+	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
+	testutil.AssertNoError(t, errExtract, "")
 
-	//Test HandleChaincodeDefinition with a valid tar file
-	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
-	testutil.AssertNoError(t, err, "")
-
+	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
 	//Sleep to allow time for index creation
 	time.Sleep(100 * time.Millisecond)
 	//Create a query with a sort
@@ -367,17 +366,6 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	_, err = db.ExecuteQuery("ns2", queryString)
 	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
 
-	//Test HandleChaincodeDefinition with a nil tar file
-	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, nil)
-	testutil.AssertNoError(t, err, "")
-
-	//Test HandleChaincodeDefinition with a bad tar file
-	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, []byte(`This is a really bad tar file`))
-	testutil.AssertNoError(t, err, "Error should not have been thrown for a bad tar file")
-
-	//Test HandleChaincodeDefinition with a nil chaincodeDef
-	err = handleDefinition.HandleChaincodeDeploy(nil, dbArtifactsTarBytes)
-	testutil.AssertError(t, err, "Error should have been thrown for a nil chaincodeDefinition")
 }
 
 func TestTryCastingToJSON(t *testing.T) {
@@ -405,22 +393,26 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`), version.NewHeight(1, 1))
 	batch.Put("ns1", "key2", []byte(`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`), version.NewHeight(1, 2))
-	ccEventListener, _ := db.(cceventmgmt.ChaincodeLifecycleEventListener)
 
 	// Create a tar file for test with 2 index definitions - one of them being errorneous
 	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
-	dbArtifactsTarBytes := createTarBytesForTest(t,
-		[]*testFile{
+	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
 			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
 			{"META-INF/statedb/couchdb/indexes/badSyntax.json", badSyntaxFileContent},
 		},
 	)
-	// Test HandleChaincodeDefinition with a bad tar file
-	chaincodeName := "ns1"
-	chaincodeVer := "1.0"
-	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: chaincodeName, Hash: []byte("Hash for test chaincode"), Version: chaincodeVer}
-	err = ccEventListener.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
-	testutil.AssertNoError(t, err, "A tar with a bad syntax file should not cause an error")
+
+	indexCapable, ok := db.(statedb.IndexCapable)
+	if !ok {
+		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
+	}
+
+	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
+	testutil.AssertNoError(t, errExtract, "")
+
+	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
+
 	//Sleep to allow time for index creation
 	time.Sleep(100 * time.Millisecond)
 	//Query should complete without error
@@ -434,32 +426,6 @@ func TestIsBulkOptimizable(t *testing.T) {
 	if !ok {
 		t.Fatal("state couch db is expected to implement interface statedb.BulkOptimizable")
 	}
-}
-
-type testFile struct {
-	name, body string
-}
-
-func createTarBytesForTest(t *testing.T, testFiles []*testFile) []byte {
-	//Create a buffer for the tar file
-	buffer := new(bytes.Buffer)
-	tarWriter := tar.NewWriter(buffer)
-
-	for _, file := range testFiles {
-		tarHeader := &tar.Header{
-			Name: file.name,
-			Mode: 0600,
-			Size: int64(len(file.body)),
-		}
-		err := tarWriter.WriteHeader(tarHeader)
-		testutil.AssertNoError(t, err, "")
-
-		_, err = tarWriter.Write([]byte(file.body))
-		testutil.AssertNoError(t, err, "")
-	}
-	// Make sure to check the error on Close.
-	testutil.AssertNoError(t, tarWriter.Close(), "")
-	return buffer.Bytes()
 }
 
 func printCompositeKeys(keys []*statedb.CompositeKey) string {

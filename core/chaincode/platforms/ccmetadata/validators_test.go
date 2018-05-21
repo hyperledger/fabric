@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package ccmetadata
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,11 +23,10 @@ func TestGoodIndexJSON(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	fileName := "myIndex.json"
+	fileName := "META-INF/statedb/couchdb/indexes/myIndex.json"
 	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
-	metadataType := "META-INF/statedb/couchdb/indexes"
 
-	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
+	err := ValidateMetadataFile(fileName, fileBytes)
 	assert.NoError(t, err, "Error validating a good index")
 }
 
@@ -35,11 +35,10 @@ func TestBadIndexJSON(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	fileName := "myIndex.json"
+	fileName := "META-INF/statedb/couchdb/indexes/myIndex.json"
 	fileBytes := []byte("invalid json")
-	metadataType := "META-INF/statedb/couchdb/indexes"
 
-	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
+	err := ValidateMetadataFile(fileName, fileBytes)
 
 	assert.Error(t, err, "Should have received an InvalidIndexContentError")
 
@@ -55,12 +54,10 @@ func TestIndexWrongLocation(t *testing.T) {
 	cleanupDir(testDir)
 	defer cleanupDir(testDir)
 
-	fileName := "myIndex.json"
+	fileName := "META-INF/statedb/couchdb/myIndex.json"
 	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
-	// place the index one directory too high
-	metadataType := "META-INF/statedb/couchdb"
 
-	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
+	err := ValidateMetadataFile(fileName, fileBytes)
 	assert.Error(t, err, "Should have received an UnhandledDirectoryError")
 
 	// Type assertion on UnhandledDirectoryError
@@ -77,9 +74,8 @@ func TestInvalidMetadataType(t *testing.T) {
 
 	fileName := "myIndex.json"
 	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
-	metadataType := "Invalid metadata type"
 
-	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
+	err := ValidateMetadataFile(fileName, fileBytes)
 	assert.Error(t, err, "Should have received an UnhandledDirectoryError")
 
 	// Type assertion on UnhandledDirectoryError
@@ -94,14 +90,80 @@ func TestBadMetadataExtension(t *testing.T) {
 
 	fileName := "myIndex.go"
 	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
-	metadataType := "META-INF/statedb/couchdb/indexes"
 
-	err := ValidateMetadataFile(fileName, fileBytes, metadataType)
-	assert.Error(t, err, "Should have received an BadExtensionError")
+	err := ValidateMetadataFile(fileName, fileBytes)
+	assert.Error(t, err, "Should have received an error")
 
-	// Type assertion on BadExtensionError
-	_, ok := err.(*BadExtensionError)
-	assert.True(t, ok, "Should have received an BadExtensionError")
+}
+
+func TestBadFilePaths(t *testing.T) {
+	testDir := filepath.Join(packageTestDir, "BadMetadataExtension")
+	cleanupDir(testDir)
+	defer cleanupDir(testDir)
+
+	// Test bad META-INF
+	fileName := "META-INF1/statedb/couchdb/indexes/test1.json"
+	fileBytes := []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err := ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for bad META-INF directory")
+
+	// Test bad path length
+	fileName = "META-INF/statedb/test1.json"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for bad length")
+
+	// Test invalid database name
+	fileName = "META-INF/statedb/goleveldb/indexes/test1.json"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for invalid database")
+
+	// Test invalid indexes directory name
+	fileName = "META-INF/statedb/couchdb/index/test1.json"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for invalid indexes directory")
+
+	// Test invalid collections directory name
+	fileName = "META-INF/statedb/couchdb/collection/testcoll/indexes/test1.json"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for invalid collections directory")
+
+	// Test valid collections name
+	fileName = "META-INF/statedb/couchdb/collections/testcoll/indexes/test1.json"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.NoError(t, err, "Error should not have been thrown for a valid collection name")
+
+	// Test invalid collections name
+	fileName = "META-INF/statedb/couchdb/collections/#testcoll/indexes/test1.json"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for an invalid collection name")
+
+	// Test invalid collections name
+	fileName = "META-INF/statedb/couchdb/collections/testcoll/indexes/test1.txt"
+	fileBytes = []byte(`{"index":{"fields":["data.docType","data.owner"]},"name":"indexOwner","type":"json"}`)
+
+	err = ValidateMetadataFile(fileName, fileBytes)
+	fmt.Println(err)
+	assert.Error(t, err, "Should have received an error for an invalid file name")
 
 }
 

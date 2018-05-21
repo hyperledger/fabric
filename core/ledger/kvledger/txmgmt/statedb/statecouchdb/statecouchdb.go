@@ -14,7 +14,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -26,8 +25,6 @@ var logger = flogging.MustGetLogger("statecouchdb")
 // querySkip is implemented for future use by query paging
 // currently defaulted to 0 and is not used
 const querySkip = 0
-
-var dbArtifactsDirFilter = map[string]bool{"META-INF/statedb/couchdb/indexes": true}
 
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
@@ -47,11 +44,6 @@ func NewVersionedDBProvider() (*VersionedDBProvider, error) {
 		return nil, err
 	}
 	return &VersionedDBProvider{couchInstance, make(map[string]*VersionedDB), sync.Mutex{}, 0}, nil
-}
-
-// ChaincodeDeployDone is a noop for couchdb state impl
-func (vdb *VersionedDB) ChaincodeDeployDone(succeeded bool) {
-	// NOOP
 }
 
 // GetDBHandle gets the handle to a named database
@@ -123,37 +115,30 @@ func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchdb.CouchDa
 	return db, nil
 }
 
-//HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
-// This function delibrately suppresses the errors that occur during the creation of the indexes on couchdb.
-// This is because, in the present code, we do not differentiate between the errors because of couchdb interaction
-// and the errors because of bad index files - the later being unfixable by the admin. Note that the error suppression
-// is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries
-// may be affected, until a new chaincode with fixed indexes is installed and instantiated
-func (vdb *VersionedDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
-	logger.Debugf("Entering HandleChaincodeDeploy")
-	if chaincodeDefinition == nil {
-		return fmt.Errorf("chaincodeDefinition found nil while creating couchdb index on chain=%s", vdb.chainName)
-	}
-	db, err := vdb.getNamespaceDBHandle(chaincodeDefinition.Name)
+// ProcessIndexesForChaincodeDeploy creates indexes for a specified namespace
+func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, fileEntries []*ccprovider.TarFileEntry) error {
+
+	db, err := vdb.getNamespaceDBHandle(namespace)
 	if err != nil {
 		return err
 	}
-	fileEntries, err := ccprovider.ExtractFileEntries(dbArtifactsTar, dbArtifactsDirFilter)
-	if err != nil {
-		logger.Errorf("Error during extracting db artifacts from tar for chaincode=[%s] on chain=[%s]. Error=%s",
-			chaincodeDefinition, vdb.chainName, err)
-		return nil
-	}
+
 	for _, fileEntry := range fileEntries {
 		indexData := fileEntry.FileContent
 		filename := fileEntry.FileHeader.Name
 		_, err = db.CreateIndex(string(indexData))
 		if err != nil {
-			logger.Errorf("Error during creation of index from file=[%s] for chaincode=[%s] on chain=[%s]. Error=%s",
-				filename, chaincodeDefinition, vdb.chainName, err)
+			return fmt.Errorf("error during creation of index from file=[%s] for chain=[%s]. Error=%s",
+				filename, namespace, err)
 		}
 	}
+
 	return nil
+
+}
+
+func (vdb *VersionedDB) GetDBType() string {
+	return "couchdb"
 }
 
 // LoadCommittedVersions populates committedVersions and revisionNumbers into cache.

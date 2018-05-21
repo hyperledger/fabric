@@ -216,7 +216,7 @@ func Test_WriteFolderToTarPackageFailure2(t *testing.T) {
 
 	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
 	assert.Error(t, err, "Should have received error writing folder to package")
-	assert.Contains(t, err.Error(), "file [bad.json] is not a valid JSON")
+	assert.Contains(t, err.Error(), "Index metadata file [META-INF/statedb/couchdb/indexes/bad.json] is not a valid JSON")
 
 	tw.Close()
 	gw.Close()
@@ -231,7 +231,7 @@ func Test_WriteFolderToTarPackageFailure3(t *testing.T) {
 
 	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
 	assert.Error(t, err, "Should have received error writing folder to package")
-	assert.Contains(t, err.Error(), "Metadata not supported in directory: META-INF")
+	assert.Contains(t, err.Error(), "metadata file path must begin with META-INF/statedb")
 
 	tw.Close()
 	gw.Close()

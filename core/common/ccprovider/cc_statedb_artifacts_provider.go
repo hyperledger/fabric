@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 )
@@ -59,15 +60,19 @@ func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifacts
 }
 
 // ExtractFileEntries extract file entries from the given `tarBytes`. A file entry is included in the
-// returned results only if it is located in the dir specified in the `filterDirs` parameter
-func ExtractFileEntries(tarBytes []byte, filterDirs map[string]bool) ([]*TarFileEntry, error) {
-	var fileEntries []*TarFileEntry
-	//initialize a tar reader
+// returned results only if it is located in a directory under the indicated databaseType directory
+// Example for chaincode indexes:
+// "META-INF/statedb/couchdb/indexes/indexColorSortName.json"
+// Example for collection scoped indexes:
+// "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json"
+// An empty string will have the effect of returning all statedb metadata.  This is useful in validating an
+// archive in the future with multiple database types
+func ExtractFileEntries(tarBytes []byte, databaseType string) (map[string][]*TarFileEntry, error) {
+
+	indexArtifacts := map[string][]*TarFileEntry{}
 	tarReader := tar.NewReader(bytes.NewReader(tarBytes))
 	for {
-		//read the next header from the tar
-		tarHeader, err := tarReader.Next()
-		//if the EOF is detected, then exit
+		hdr, err := tarReader.Next()
 		if err == io.EOF {
 			// end of tar archive
 			break
@@ -75,17 +80,17 @@ func ExtractFileEntries(tarBytes []byte, filterDirs map[string]bool) ([]*TarFile
 		if err != nil {
 			return nil, err
 		}
-		ccproviderLogger.Debugf("Processing entry from tar: %s", tarHeader.Name)
-		//Ensure that this is a file located in the dir present in the 'filterDirs'
-		if !tarHeader.FileInfo().IsDir() && filterDirs[filepath.Dir(tarHeader.Name)] {
-			ccproviderLogger.Debugf("Selecting file entry from tar: %s", tarHeader.Name)
-			//read the tar entry into a byte array
+		//split the directory from the full name
+		dir, _ := filepath.Split(hdr.Name)
+		//remove the ending slash
+		if strings.HasPrefix(hdr.Name, "META-INF/statedb/"+databaseType) {
 			fileContent, err := ioutil.ReadAll(tarReader)
 			if err != nil {
 				return nil, err
 			}
-			fileEntries = append(fileEntries, &TarFileEntry{tarHeader, fileContent})
+			indexArtifacts[filepath.Clean(dir)] = append(indexArtifacts[filepath.Clean(dir)], &TarFileEntry{FileHeader: hdr, FileContent: fileContent})
 		}
 	}
-	return fileEntries, nil
+
+	return indexArtifacts, nil
 }

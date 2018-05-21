@@ -442,7 +442,7 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 			}
 
 			// Split the tar location (file.Name) into a tar package directory and filename
-			packageDir, filename := filepath.Split(file.Name)
+			_, filename := filepath.Split(file.Name)
 
 			// Hidden files are not supported as metadata, therefore ignore them.
 			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
@@ -457,9 +457,8 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 			}
 
 			// Validate metadata file for inclusion in tar
-			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
-			// Clean metadata directory to remove trailing slash
-			err = ccmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
+			// Validation is based on the passed filename with path
+			err = ccmetadata.ValidateMetadataFile(file.Name, fileBytes)
 			if err != nil {
 				return nil, err
 			}

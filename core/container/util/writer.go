@@ -94,7 +94,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 			packagepath = localpath[rootDirLen+1:]
 
 			// Split the tar packagepath into a tar package directory and filename
-			packageDir, filename := filepath.Split(packagepath)
+			_, filename := filepath.Split(packagepath)
 
 			// Hidden files are not supported as metadata, therefore ignore them.
 			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
@@ -103,15 +103,14 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 				return nil
 			}
 
-			fileBytes, err := ioutil.ReadFile(localpath)
-			if err != nil {
-				return err
+			fileBytes, errRead := ioutil.ReadFile(localpath)
+			if errRead != nil {
+				return errRead
 			}
 
 			// Validate metadata file for inclusion in tar
-			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
-			// Clean metadata directory to remove trailing slash
-			err = ccmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
+			// Validation is based on the fully qualified path of the file
+			err = ccmetadata.ValidateMetadataFile(packagepath, fileBytes)
 			if err != nil {
 				return err
 			}

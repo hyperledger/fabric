@@ -8,6 +8,7 @@ package statedb
 import (
 	"sort"
 
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
@@ -60,6 +61,13 @@ type BulkOptimizable interface {
 	LoadCommittedVersions(keys []*CompositeKey) error
 	GetCachedVersion(namespace, key string) (*version.Height, bool)
 	ClearCachedVersions()
+}
+
+//IndexCapable interface provides additional functions for
+//databases capable of index operations
+type IndexCapable interface {
+	GetDBType() string
+	ProcessIndexesForChaincodeDeploy(namespace string, fileEntries []*ccprovider.TarFileEntry) error
 }
 
 // CompositeKey encloses Namespace and Key components
