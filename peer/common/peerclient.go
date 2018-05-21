@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"time"
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/peer/chaincode/api"
@@ -56,8 +55,6 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 }
 
 func newPeerClientForClientConfig(address, override string, clientConfig comm.ClientConfig) (*PeerClient, error) {
-	// set timeout
-	clientConfig.Timeout = time.Second * 3
 	gClient, err := comm.NewGRPCClient(clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create PeerClient from config")

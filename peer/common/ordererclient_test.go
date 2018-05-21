@@ -16,22 +16,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func initOrdererTestEnv(t *testing.T) {
+func initOrdererTestEnv(t *testing.T) (cleanup func()) {
 	t.Helper()
 	cfgPath := "./testdata"
 	os.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	_ = common.InitConfig("test")
-	caFile := filepath.Join("certs", "ca.crt")
-	viper.Set("orderer.tls.rootcert.file", caFile)
-	keyFile := filepath.Join("certs", "client.key")
-	viper.Set("orderer.tls.clientKey.file", keyFile)
-	certFile := filepath.Join("certs", "client.crt")
-	viper.Set("orderer.tls.clientCert.file", certFile)
+
+	return func() {
+		err := os.Unsetenv("FABRIC_CFG_PATH")
+		assert.NoError(t, err)
+		viper.Reset()
+	}
 }
 
 func TestNewOrdererClientFromEnv(t *testing.T) {
-	initOrdererTestEnv(t)
+	cleanup := initOrdererTestEnv(t)
+	defer cleanup()
 
 	oClient, err := common.NewOrdererClientFromEnv()
 	assert.NoError(t, err)
@@ -73,14 +74,12 @@ func TestNewOrdererClientFromEnv(t *testing.T) {
 	oClient, err = common.NewOrdererClientFromEnv()
 	assert.Contains(t, err.Error(), "unable to load orderer.tls.rootcert.file")
 	assert.Nil(t, oClient)
-
-	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
-
 }
 
 func TestOrdererClient(t *testing.T) {
-	initOrdererTestEnv(t)
+	cleanup := initOrdererTestEnv(t)
+	defer cleanup()
+
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatalf("error creating server for test: %v", err)
@@ -97,30 +96,27 @@ func TestOrdererClient(t *testing.T) {
 	dc, err := oClient.Deliver()
 	assert.NoError(t, err)
 	assert.NotNil(t, dc)
+}
 
-	viper.Set("orderer.address", "")
-
+func TestOrdererClientTimeout(t *testing.T) {
 	t.Run("OrdererClient.Broadcast() timeout", func(t *testing.T) {
-		t.Parallel()
-		oClient2, err2 := common.NewOrdererClientFromEnv()
-		if err2 != nil {
-			t.Fatalf("failed to create OrdererClient for test: %v", err2)
+		cleanup := initOrdererTestEnv(t)
+		defer cleanup()
+		oClient, err := common.NewOrdererClientFromEnv()
+		if err != nil {
+			t.Fatalf("failed to create OrdererClient for test: %v", err)
 		}
-		_, err2 = oClient2.Broadcast()
-		assert.Contains(t, err2.Error(), "orderer client failed to connect")
+		_, err = oClient.Broadcast()
+		assert.Contains(t, err.Error(), "orderer client failed to connect")
 	})
-
 	t.Run("OrdererClient.Deliver() timeout", func(t *testing.T) {
-		t.Parallel()
-		oClient3, err3 := common.NewOrdererClientFromEnv()
-		if err3 != nil {
-			t.Fatalf("failed to create OrdererClient for test: %v", err3)
+		cleanup := initOrdererTestEnv(t)
+		defer cleanup()
+		oClient, err := common.NewOrdererClientFromEnv()
+		if err != nil {
+			t.Fatalf("failed to create OrdererClient for test: %v", err)
 		}
-		_, err3 = oClient3.Deliver()
-		assert.Contains(t, err3.Error(), "orderer client failed to connect")
+		_, err = oClient.Deliver()
+		assert.Contains(t, err.Error(), "orderer client failed to connect")
 	})
-
-	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
-
 }

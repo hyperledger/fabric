@@ -15,7 +15,6 @@ import (
 )
 
 func TestOrdererFlags(t *testing.T) {
-
 	var (
 		ca       = "root.crt"
 		key      = "client.key"

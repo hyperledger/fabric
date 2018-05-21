@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
+	"time"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -19,6 +21,7 @@ var (
 	keyFile                    string
 	certFile                   string
 	ordererTLSHostnameOverride string
+	connTimeout                time.Duration
 )
 
 // SetOrdererEnv adds orderer-specific settings to the global Viper environment
@@ -35,6 +38,7 @@ func SetOrdererEnv(cmd *cobra.Command, args []string) {
 	viper.Set("orderer.tls.serverhostoverride", ordererTLSHostnameOverride)
 	viper.Set("orderer.tls.enabled", tlsEnabled)
 	viper.Set("orderer.tls.clientAuthRequired", clientAuth)
+	viper.Set("orderer.client.connTimeout", connTimeout)
 }
 
 // AddOrdererFlags adds flags for orderer-related commands
@@ -55,4 +59,6 @@ func AddOrdererFlags(cmd *cobra.Command) {
 			"mutual TLS communication with the orderer endpoint")
 	flags.StringVarP(&ordererTLSHostnameOverride, "ordererTLSHostnameOverride",
 		"", "", "The hostname override to use when validating the TLS connection to the orderer.")
+	flags.DurationVarP(&connTimeout, "connTimeout",
+		"", 3*time.Second, "Timeout for client to connect")
 }

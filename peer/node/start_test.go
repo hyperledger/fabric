@@ -20,18 +20,21 @@ import (
 	"bytes"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
 func TestStartCmd(t *testing.T) {
-	startupTimeout := time.Second * 10
+	defer viper.Reset()
+
+	g := NewGomegaWithT(t)
+
 	viper.Set("peer.address", "localhost:6051")
 	viper.Set("peer.listenAddress", "0.0.0.0:6051")
 	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:6052")
@@ -52,14 +55,7 @@ func TestStartCmd(t *testing.T) {
 		assert.NoError(t, cmd.Execute(), "expected to successfully start command")
 	}()
 
-	for i := 0; i < 1000; i++ {
-		if grpcProbe("localhost:6051") {
-			return
-		}
-		time.Sleep(startupTimeout / 1000)
-	}
-
-	assert.Fail(t, "Peer didn't start within a timely manner")
+	g.Eventually(grpcProbe("localhost:6051")).Should(BeTrue())
 }
 
 func TestAdminHasSeparateListener(t *testing.T) {

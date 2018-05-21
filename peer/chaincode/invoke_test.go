@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
@@ -22,12 +23,16 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 func TestInvokeCmd(t *testing.T) {
+	defer viper.Reset()
+	defer resetFlags()
+
 	InitMSP()
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
@@ -49,6 +54,9 @@ func TestInvokeCmd(t *testing.T) {
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.NoError(t, err, "Run chaincode invoke cmd error")
+
+	// set timeout for error cases
+	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 
 	// Error case 1: no orderer endpoints
 	t.Logf("Start error case 1: no orderer endpoints")

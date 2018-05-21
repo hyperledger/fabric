@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -34,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -371,6 +373,8 @@ func TestCreateChainBCFail(t *testing.T) {
 }
 
 func TestCreateChainDeliverFail(t *testing.T) {
+	defer resetFlags()
+
 	InitMSP()
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
@@ -438,6 +442,7 @@ func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Env
 }
 
 func TestCreateChainFromTx(t *testing.T) {
+	defer resetFlags()
 	InitMSP()
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
@@ -495,6 +500,9 @@ func TestCreateChainFromTx(t *testing.T) {
 	assert.NoError(t, err, "Couldn't create tx file")
 	err = cmd.Execute()
 	assert.NoError(t, err)
+
+	// clean-up
+	resetFlags()
 }
 
 func TestCreateChainInvalidTx(t *testing.T) {
@@ -571,6 +579,9 @@ func TestCreateChainInvalidTx(t *testing.T) {
 }
 
 func TestCreateChainNilCF(t *testing.T) {
+	defer viper.Reset()
+	defer resetFlags()
+
 	InitMSP()
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
@@ -585,6 +596,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	file := filepath.Join(dir, mockchannel)
 
 	// Error case: grpc error
+	viper.Set("orderer.client.connTimeout", 10*time.Millisecond)
 	cmd := createCmd(nil)
 	AddFlags(cmd)
 	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
@@ -612,6 +624,8 @@ func TestCreateChainNilCF(t *testing.T) {
 }
 
 func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
+	defer resetFlags()
+
 	// Error case 1
 	env := &cb.Envelope{}
 	env.Payload = make([]byte, 10)

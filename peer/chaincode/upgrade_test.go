@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -146,10 +148,15 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 }
 
 func TestUpgradeCmdWithNilCF(t *testing.T) {
+	defer viper.Reset()
+	defer resetFlags()
+
+	// set timeout for failure cases
+	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 
 	// trap possible SIGSEV panic
 	defer func() {
-		var err error = nil
+		var err error
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
