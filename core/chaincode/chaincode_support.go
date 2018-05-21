@@ -136,7 +136,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream c
 	chaincodeLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
 
 	handler := &Handler{
-		Executor:                   cs,
+		Invoker:                    cs,
 		DefinitionGetter:           &Lifecycle{Executor: cs},
 		Keepalive:                  cs.Keepalive,
 		Registry:                   cs.HandlerRegistry,
@@ -174,31 +174,9 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 	return ccmsg, nil
 }
 
-// Execute - execute proposal, return original response of chaincode
+// Execute invokes chaincode and returns the original response.
 func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
-	var cctyp pb.ChaincodeMessage_Type
-	switch spec.(type) {
-	case *pb.ChaincodeDeploymentSpec:
-		cctyp = pb.ChaincodeMessage_INIT
-	case *pb.ChaincodeInvocationSpec:
-		cctyp = pb.ChaincodeMessage_TRANSACTION
-	default:
-		return nil, nil, errors.New("a deployment or invocation spec is required")
-	}
-
-	err := cs.Launch(ctxt, cccid, spec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	cMsg := spec.GetChaincodeSpec().Input
-	cMsg.Decorations = cccid.ProposalDecorations
-	ccMsg, err := createCCMessage(cctyp, cccid.ChainID, cccid.TxID, cMsg)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "failed to create chaincode message")
-	}
-
-	resp, err := cs.execute(ctxt, cccid, ccMsg)
+	resp, err := cs.Invoke(ctxt, cccid, spec)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to execute transaction %s", cccid.TxID)
 	}
@@ -226,6 +204,39 @@ func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCCo
 	default:
 		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.Type, cccid.TxID)
 	}
+}
+
+// Invoke will invoke chaincode and return the message containing the response.
+// The chaincode will be launched if it is not already running.
+func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error) {
+	var cctyp pb.ChaincodeMessage_Type
+	switch spec.(type) {
+	case *pb.ChaincodeDeploymentSpec:
+		cctyp = pb.ChaincodeMessage_INIT
+	case *pb.ChaincodeInvocationSpec:
+		cctyp = pb.ChaincodeMessage_TRANSACTION
+	default:
+		return nil, errors.New("a deployment or invocation spec is required")
+	}
+
+	chaincodeSpec := spec.GetChaincodeSpec()
+	if chaincodeSpec == nil {
+		return nil, errors.New("chaincode spec is nil")
+	}
+
+	err := cs.Launch(ctxt, cccid, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	input := chaincodeSpec.Input
+	input.Decorations = cccid.ProposalDecorations
+	ccMsg, err := createCCMessage(cctyp, cccid.ChainID, cccid.TxID, input)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create chaincode message")
+	}
+
+	return cs.execute(ctxt, cccid, ccMsg)
 }
 
 // execute executes a transaction and waits for it to complete until a timeout value.

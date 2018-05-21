@@ -58,6 +58,11 @@ type executor interface {
 	chaincode.Executor
 }
 
+//go:generate counterfeiter -o mock/invoker.go --fake-name Invoker . invoker
+type invoker interface {
+	chaincode.Invoker
+}
+
 //go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . packageProvider
 type packageProvider interface {
 	chaincode.PackageProvider
