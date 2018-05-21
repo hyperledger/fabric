@@ -194,7 +194,8 @@ func NewSignature(cred *Credential, sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP2
 
 // Ver verifies an idemix signature
 // Disclosure steers which attributes it expects to be disclosed
-// attributeValues[i] contains the desired attribute value for the i-th undisclosed attribute in Disclosure
+// attributeValues contains the desired attribute values.
+// This function will check that if attribute i is disclosed, the i-th attribute equals attributeValues[i].
 func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, attributeValues []*FP256BN.BIG, rhIndex int, revPk *ecdsa.PublicKey, epoch int) error {
 	if ipk == nil || revPk == nil {
 		return errors.Errorf("cannot verify idemix signature: received nil input")
