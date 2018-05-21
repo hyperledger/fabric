@@ -61,12 +61,12 @@ type ContextRegistry interface {
 	Close()
 }
 
-// PolicyChecker is used to evaluate instantiation policies.
-type PolicyChecker interface {
+// InstantiationPolicyChecker is used to evaluate instantiation policies.
+type InstantiationPolicyChecker interface {
 	CheckInstantiationPolicy(name, version string, cd *ccprovider.ChaincodeData) error
 }
 
-// Adapter from function to PolicyChecker interface.
+// Adapter from function to InstantiationPolicyChecker interface.
 type CheckInstantiationPolicyFunc func(name, version string, cd *ccprovider.ChaincodeData) error
 
 func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(name, version string, cd *ccprovider.ChaincodeData) error {
@@ -120,8 +120,8 @@ type Handler struct {
 	ActiveTransactions TransactionRegistry
 	// SystemCCProvider provides access to system chaincode metadata
 	SystemCCProvider SystemCCProvider
-	// PolicyChecker is used to evaluate the chaincode instantiation policies.
-	PolicyChecker PolicyChecker
+	// InstantiationPolicyChecker is used to evaluate the chaincode instantiation policies.
+	InstantiationPolicyChecker InstantiationPolicyChecker
 	// QueryResponeBuilder is used to build query responses
 	QueryResponseBuilder QueryResponseBuilder
 	// LedgerGetter is used to get the ledger associated with a channel
@@ -318,10 +318,9 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 
 	// if we are here, all we know is that the invoked chaincode is either
 	// - a system chaincode that *is* invokable through a cc2cc
-	//   (but we may still have to determine whether the invoker
-	//   can perform this invocation)
-	// - an application chaincode (and we still need to determine
-	//   whether the invoker can invoke it)
+	//   (but we may still have to determine whether the invoker can perform this invocation)
+	// - an application chaincode
+	//   (and we still need to determine whether the invoker can invoke it)
 
 	if h.SystemCCProvider.IsSysCC(ccIns.ChaincodeName) {
 		// Allow this call
@@ -863,7 +862,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 		version = cd.CCVersion()
 
-		err = h.PolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
+		err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

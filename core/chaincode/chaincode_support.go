@@ -136,19 +136,19 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream c
 	chaincodeLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
 
 	handler := &Handler{
-		Executor:             cs,
-		DefinitionGetter:     &Lifecycle{Executor: cs},
-		Keepalive:            cs.Keepalive,
-		Registry:             cs.HandlerRegistry,
-		ACLProvider:          cs.ACLProvider,
-		TXContexts:           NewTransactionContexts(),
-		ActiveTransactions:   NewActiveTransactions(),
-		SystemCCProvider:     cs.sccp,
-		SystemCCVersion:      util.GetSysCCVersion(),
-		PolicyChecker:        CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
-		QueryResponseBuilder: &QueryResponseGenerator{MaxResultLimit: 100},
-		UUIDGenerator:        UUIDGeneratorFunc(util.GenerateUUID),
-		LedgerGetter:         peer.Default,
+		Executor:                   cs,
+		DefinitionGetter:           &Lifecycle{Executor: cs},
+		Keepalive:                  cs.Keepalive,
+		Registry:                   cs.HandlerRegistry,
+		ACLProvider:                cs.ACLProvider,
+		TXContexts:                 NewTransactionContexts(),
+		ActiveTransactions:         NewActiveTransactions(),
+		SystemCCProvider:           cs.sccp,
+		SystemCCVersion:            util.GetSysCCVersion(),
+		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
+		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
+		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
+		LedgerGetter:               peer.Default,
 	}
 
 	return handler.ProcessStream(stream)

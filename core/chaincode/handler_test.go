@@ -28,19 +28,19 @@ import (
 
 var _ = Describe("Handler", func() {
 	var (
-		fakeTransactionRegistry  *mock.TransactionRegistry
-		fakeContextRegistry      *fake.ContextRegistry
-		fakeChatStream           *mock.ChaincodeStream
-		fakeSystemCCProvider     *mock.SystemCCProvider
-		fakeTxSimulator          *mock.TxSimulator
-		fakeHistoryQueryExecutor *mock.HistoryQueryExecutor
-		fakeQueryResponseBuilder *fake.QueryResponseBuilder
-		fakeACLProvider          *mock.ACLProvider
-		fakeDefinitionGetter     *mock.ChaincodeDefinitionGetter
-		fakePolicyChecker        *mock.PolicyChecker
-		fakeExecutor             *mock.Executor
-		fakeLedgerGetter         *mock.LedgerGetter
-		fakeHandlerRegistry      *fake.Registry
+		fakeTransactionRegistry        *mock.TransactionRegistry
+		fakeContextRegistry            *fake.ContextRegistry
+		fakeChatStream                 *mock.ChaincodeStream
+		fakeSystemCCProvider           *mock.SystemCCProvider
+		fakeTxSimulator                *mock.TxSimulator
+		fakeHistoryQueryExecutor       *mock.HistoryQueryExecutor
+		fakeQueryResponseBuilder       *fake.QueryResponseBuilder
+		fakeACLProvider                *mock.ACLProvider
+		fakeDefinitionGetter           *mock.ChaincodeDefinitionGetter
+		fakeInstantiationPolicyChecker *mock.InstantiationPolicyChecker
+		fakeExecutor                   *mock.Executor
+		fakeLedgerGetter               *mock.LedgerGetter
+		fakeHandlerRegistry            *fake.Registry
 
 		responseNotifier chan *pb.ChaincodeMessage
 		txContext        *chaincode.TransactionContext
@@ -69,7 +69,7 @@ var _ = Describe("Handler", func() {
 		fakeDefinitionGetter = &mock.ChaincodeDefinitionGetter{}
 		fakeExecutor = &mock.Executor{}
 		fakeLedgerGetter = &mock.LedgerGetter{}
-		fakePolicyChecker = &mock.PolicyChecker{}
+		fakeInstantiationPolicyChecker = &mock.InstantiationPolicyChecker{}
 		fakeQueryResponseBuilder = &fake.QueryResponseBuilder{}
 		fakeHandlerRegistry = &fake.Registry{}
 
@@ -78,17 +78,17 @@ var _ = Describe("Handler", func() {
 		fakeContextRegistry.CreateReturns(txContext, nil)
 
 		handler = &chaincode.Handler{
-			ACLProvider:          fakeACLProvider,
-			ActiveTransactions:   fakeTransactionRegistry,
-			DefinitionGetter:     fakeDefinitionGetter,
-			Executor:             fakeExecutor,
-			LedgerGetter:         fakeLedgerGetter,
-			PolicyChecker:        fakePolicyChecker,
-			QueryResponseBuilder: fakeQueryResponseBuilder,
-			Registry:             fakeHandlerRegistry,
-			SystemCCProvider:     fakeSystemCCProvider,
-			SystemCCVersion:      "system-cc-version",
-			TXContexts:           fakeContextRegistry,
+			ACLProvider:                fakeACLProvider,
+			ActiveTransactions:         fakeTransactionRegistry,
+			DefinitionGetter:           fakeDefinitionGetter,
+			Executor:                   fakeExecutor,
+			LedgerGetter:               fakeLedgerGetter,
+			InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
+			QueryResponseBuilder:       fakeQueryResponseBuilder,
+			Registry:                   fakeHandlerRegistry,
+			SystemCCProvider:           fakeSystemCCProvider,
+			SystemCCVersion:            "system-cc-version",
+			TXContexts:                 fakeContextRegistry,
 			UUIDGenerator: chaincode.UUIDGeneratorFunc(func() string {
 				return "generated-query-id"
 			}),
@@ -1591,8 +1591,8 @@ var _ = Describe("Handler", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakePolicyChecker.CheckInstantiationPolicyCallCount()).To(Equal(1))
-				name, version, cd := fakePolicyChecker.CheckInstantiationPolicyArgsForCall(0)
+				Expect(fakeInstantiationPolicyChecker.CheckInstantiationPolicyCallCount()).To(Equal(1))
+				name, version, cd := fakeInstantiationPolicyChecker.CheckInstantiationPolicyArgsForCall(0)
 				Expect(name).To(Equal("target-chaincode-name"))
 				Expect(version).To(Equal("target-chaincode-version"))
 				Expect(cd).To(Equal(targetDefinition))
@@ -1622,7 +1622,7 @@ var _ = Describe("Handler", func() {
 
 			Context("when the instantiation policy evaluation returns an error", func() {
 				BeforeEach(func() {
-					fakePolicyChecker.CheckInstantiationPolicyReturns(errors.New("raspberry-pie"))
+					fakeInstantiationPolicyChecker.CheckInstantiationPolicyReturns(errors.New("raspberry-pie"))
 				})
 
 				It("returns an error", func() {

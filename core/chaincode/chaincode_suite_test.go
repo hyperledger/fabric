@@ -93,9 +93,9 @@ type chaincodeDefinitionGetter interface {
 	chaincode.ChaincodeDefinitionGetter
 }
 
-//go:generate counterfeiter -o mock/policy_checker.go --fake-name PolicyChecker . policyChecker
-type policyChecker interface {
-	chaincode.PolicyChecker
+//go:generate counterfeiter -o mock/instantiation_policy_checker.go --fake-name InstantiationPolicyChecker . instantiationPolicyChecker
+type instantiationPolicyChecker interface {
+	chaincode.InstantiationPolicyChecker
 }
 
 //go:generate counterfeiter -o mock/ledger_getter.go --fake-name LedgerGetter . ledgerGetter
