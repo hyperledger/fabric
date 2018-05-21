@@ -1963,3 +1963,15 @@ func TestMain(m *testing.M) {
 
 	os.Exit(m.Run())
 }
+
+func TestInValidCollectionName(t *testing.T) {
+	validNames := []string{"collection1", "collection_2"}
+	inValidNames := []string{"collection.1", "collection%2", ""}
+
+	for _, name := range validNames {
+		assert.NoError(t, validateCollectionName(name), "Testing for name = "+name)
+	}
+	for _, name := range inValidNames {
+		assert.Error(t, validateCollectionName(name), "Testing for name = "+name)
+	}
+}

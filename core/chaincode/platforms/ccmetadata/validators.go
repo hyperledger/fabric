@@ -18,15 +18,16 @@ import (
 // fileValidators are used as handlers to validate specific metadata directories
 type fileValidator func(fileName string, fileBytes []byte) error
 
-const allowedCharsCollectionName = "[A-Za-z0-9_-]+"
+// AllowedCharsCollectionName captures the regex pattern for a valid collection name
+const AllowedCharsCollectionName = "[A-Za-z0-9_-]+"
 
 // Currently, the only metadata expected and allowed is for META-INF/statedb/couchdb/indexes.
 var fileValidators = map[*regexp.Regexp]fileValidator{
 	regexp.MustCompile("^META-INF/statedb/couchdb/indexes/.*[.]json"):                                                couchdbIndexFileValidator,
-	regexp.MustCompile("^META-INF/statedb/couchdb/collections/" + allowedCharsCollectionName + "/indexes/.*[.]json"): couchdbIndexFileValidator,
+	regexp.MustCompile("^META-INF/statedb/couchdb/collections/" + AllowedCharsCollectionName + "/indexes/.*[.]json"): couchdbIndexFileValidator,
 }
 
-var collectionNameValid = regexp.MustCompile("^" + allowedCharsCollectionName)
+var collectionNameValid = regexp.MustCompile("^" + AllowedCharsCollectionName)
 
 var fileNameValid = regexp.MustCompile("^.*[.]json")
 
