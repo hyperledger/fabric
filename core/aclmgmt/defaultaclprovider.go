@@ -35,7 +35,7 @@ type defaultACLProvider struct {
 	cResourcePolicyMap map[string]string
 }
 
-func newDefaultACLProvider() ACLProvider {
+func NewDefaultACLProvider() ACLProvider {
 	d := &defaultACLProvider{}
 	d.initialize()
 

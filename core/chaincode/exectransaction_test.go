@@ -25,10 +25,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/aclmgmt"
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -55,6 +57,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -128,7 +131,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
-		mockAclProvider,
+		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
 		container.NewVMController(
 			map[string]container.VMProvider{
 				dockercontroller.ContainerType: dockercontroller.NewProvider("", ""),
@@ -755,18 +758,18 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 		},
 	}
 
-	// TODO: Restore setup for policy and acl validation
-	// // as Bob, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel1
-	// _, _, _, err = invoke(ctxt, channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Bob"), chaincodeSupport)
-	// if err == nil {
-	// 	// Bob should not be able to call
-	// 	stopChaincode(ctxt, cccid1, chaincodeSupport)
-	// 	stopChaincode(ctxt, cccid2, chaincodeSupport)
-	// 	stopChaincode(ctxt, cccid3, chaincodeSupport)
-	// 	nextBlockNumber2++
-	// 	t.Fatalf("As Bob, invoking <%s/%s> via <%s/%s> should fail, but it succeeded.", cccid1.Name, cccid1.ChainID, chaincode2Name, channel2)
-	// 	return nextBlockNumber1, nextBlockNumber2
-	// }
+	// as Bob, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel1
+	_, _, _, err = invoke(ctxt, channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Bob"), chaincodeSupport)
+	if err == nil {
+		// Bob should not be able to call
+		stopChaincode(ctxt, cccid1, chaincodeSupport)
+		stopChaincode(ctxt, cccid2, chaincodeSupport)
+		stopChaincode(ctxt, cccid3, chaincodeSupport)
+		nextBlockNumber2++
+		t.Fatalf("As Bob, invoking <%s/%s> via <%s/%s> should fail, but it succeeded.", cccid1.Name, cccid1.ChainID, chaincode2Name, channel2)
+		return nextBlockNumber1, nextBlockNumber2
+	}
+	assert.True(t, strings.Contains(err.Error(), "[Creator not recognized [Bob]]"))
 
 	// as Alice, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel1
 	_, _, _, err = invoke(ctxt, channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Alice"), chaincodeSupport)
@@ -915,7 +918,6 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	}
 	defer cleanup()
 
-	// TODO: Restore setup for policy and acl validation
 	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	testCases := []tcicTc{
@@ -1007,7 +1009,6 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 	defer cleanup()
 
-	// TODO: Restore setup for policy and acl validation
 	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	// Deploy first chaincode
