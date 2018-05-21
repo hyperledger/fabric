@@ -8,6 +8,7 @@ package runner
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -23,6 +24,9 @@ type Peer struct {
 }
 
 func (p *Peer) setupEnvironment(cmd *exec.Cmd) {
+	for _, env := range os.Environ() {
+		cmd.Env = append(cmd.Env, env)
+	}
 	if p.ConfigDir != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", p.ConfigDir))
 	}
