@@ -382,19 +382,12 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 	}
 
 	chainID := chdr.ChannelId
-
-	// Check for uniqueness of prop.TxID with ledger
-	// Notice that ValidateProposalMessage has already verified
-	// that TxID is computed properly
 	txid := chdr.TxId
-	if txid == "" {
-		err = errors.New("invalid txID. It must be different from the empty string")
-		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-		return vr, err
-	}
 	endorserLogger.Debugf("[%s][%s] processing txid: %s", chainID, shorttxid(txid), txid)
+
 	if chainID != "" {
-		// here we handle uniqueness check and ACLs for proposals targeting a chain
+		// Here we handle uniqueness check and ACLs for proposals targeting a chain
+		// Notice that ValidateProposalMessage has already verified that TxID is computed properly
 		if _, err = e.s.GetTransactionByID(chainID, txid); err == nil {
 			err = errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
 			vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
