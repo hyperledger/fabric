@@ -83,6 +83,9 @@ type Support interface {
 
 	// EndorseWithPlugin endorses the response with a plugin
 	EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error)
+
+	// GetLedgerHeight returns ledger height for given channelID
+	GetLedgerHeight(channelID string) (uint64, error)
 }
 
 // Endorser provides the Endorser service ProcessProposal
@@ -285,6 +288,12 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 			if err != nil {
 				return nil, nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
 			}
+			endosedAt, err := e.s.GetLedgerHeight(chainID)
+			if err != nil {
+				return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", chainID))
+			}
+			// Add ledger height at which transaction was endorsed
+			pvtDataWithConfig.EndorsedAt = endosedAt
 			if err := e.distributePrivateData(chainID, txid, pvtDataWithConfig, simResult.SimulationBlkHt); err != nil {
 				return nil, nil, nil, nil, err
 			}

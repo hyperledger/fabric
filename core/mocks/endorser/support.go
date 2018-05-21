@@ -77,6 +77,11 @@ func (s *MockSupport) GetTransactionByID(chid, txID string) (*pb.ProcessedTransa
 	return nil, s.GetTransactionByIDErr
 }
 
+func (s *MockSupport) GetLedgerHeight(channelID string) (uint64, error) {
+	args := s.Called(channelID)
+	return args.Get(0).(uint64), args.Error(1)
+}
+
 func (s *MockSupport) IsSysCC(name string) bool {
 	if s.SysCCMap != nil {
 		_, in := s.SysCCMap[name]
