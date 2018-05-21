@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies/inquire"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
-	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
+	. "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
@@ -53,10 +53,10 @@ type gossipSupport interface {
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common.ChainID) discovery2.Members
+	PeersOfChannel(common.ChainID) Members
 
 	// Peers returns the NetworkMembers considered alive
-	Peers() discovery2.Members
+	Peers() Members
 }
 
 type endorsementAnalyzer struct {
@@ -76,33 +76,38 @@ func NewEndorsementAnalyzer(gs gossipSupport, pf policyFetcher, pe principalEval
 	}
 }
 
-type peerPrincipalEvaluator func(member discovery2.NetworkMember, principal *msp.MSPPrincipal) bool
+type peerPrincipalEvaluator func(member NetworkMember, principal *msp.MSPPrincipal) bool
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
 func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	metadataAndCollectionFilters, err := loadMetadataAndFilters(chainID, interest, ea)
+	identities := ea.IdentityInfo()
+	identitiesByID := identities.ByID()
+	metadataAndCollectionFilters, err := loadMetadataAndFilters(metadataAndFilterContext{
+		identityInfoByID: identitiesByID,
+		interest:         interest,
+		chainID:          chainID,
+		evaluator:        ea,
+		fetch:            ea,
+	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	metadata := metadataAndCollectionFilters.md
 	// Filter out peers that don't have the chaincode installed on them
-	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(metadataAndCollectionFilters.md...))
+	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(metadata...))
+	// Filter out peers that aren't authorized by the collection configs of the chaincode invocation chain
+	chanMembership = chanMembership.Filter(metadataAndCollectionFilters.isMemberAuthorized)
 	channelMembersById := chanMembership.ByID()
 	// Choose only the alive messages of those that have joined the channel
 	aliveMembership := ea.Peers().Intersect(chanMembership)
 	membersById := aliveMembership.ByID()
 	// Compute a mapping between the PKI-IDs of members to their identities
-	identities := ea.IdentityInfo()
+
 	identitiesOfMembers := computeIdentitiesOfMembers(identities, membersById)
-	filter := ea.excludeIfCCNotInstalled(membersById, identities.ByID())
+	filter := ea.excludeIfCCNotInstalled(membersById, identitiesByID)
 	principalsSets, err := ea.computePrincipalSets(chainID, interest, filter)
 	if err != nil {
 		logger.Warningf("Principal set computation failed: %v", err)
-		return nil, errors.WithStack(err)
-	}
-
-	// Filter the principal sets by the collections (if applicable)
-	principalsSets, err = metadataAndCollectionFilters.filter(principalsSets)
-	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -119,9 +124,9 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 type context struct {
 	chaincode           string
 	channel             string
-	aliveMembership     discovery2.Members
+	aliveMembership     Members
 	principalsSets      []policies.PrincipalSet
-	channelMembersById  map[string]discovery2.NetworkMember
+	channelMembersById  map[string]NetworkMember
 	identitiesOfMembers memberIdentities
 }
 
@@ -158,7 +163,7 @@ func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discov
 
 type principalFilter func(policies.PrincipalSet) bool
 
-func (ea *endorsementAnalyzer) excludeIfCCNotInstalled(membersById map[string]discovery2.NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) principalFilter {
+func (ea *endorsementAnalyzer) excludeIfCCNotInstalled(membersById map[string]NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) principalFilter {
 	// Obtain the MSP IDs of the members of the channel that are alive
 	mspIDsOfChannelPeers := mspIDsOfMembers(membersById, identitiesByID)
 	// Create an exclusion filter for MSP Principals which their peers don't have the chaincode installed
@@ -212,72 +217,104 @@ func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, inte
 	return cps.ToPrincipalSets(), nil
 }
 
-type filterFunc func(policies.PrincipalSets) (policies.PrincipalSets, error)
-
-type filterFunctions []filterFunc
-
-type metadataAndColFilter struct {
-	md     []*chaincode.Metadata
-	filter filterFunc
+type metadataAndFilterContext struct {
+	chainID          common.ChainID
+	interest         *discovery.ChaincodeInterest
+	fetch            chaincodeMetadataFetcher
+	identityInfoByID map[string]api.PeerIdentityInfo
+	evaluator        principalEvaluator
 }
 
-func loadMetadataAndFilters(chainID common.ChainID, interest *discovery.ChaincodeInterest, fetch chaincodeMetadataFetcher) (*metadataAndColFilter, error) {
-	var metadata []*chaincode.Metadata
-	var filters filterFunctions
+// metadataAndColFilter holds metadata and member filters
+type metadataAndColFilter struct {
+	md                 []*chaincode.Metadata
+	isMemberAuthorized memberFilter
+}
 
-	for _, chaincode := range interest.Chaincodes {
-		ccMD := fetch.Metadata(string(chainID), chaincode.Name, len(chaincode.CollectionNames) > 0)
+func loadMetadataAndFilters(ctx metadataAndFilterContext) (*metadataAndColFilter, error) {
+	var metadata []*chaincode.Metadata
+	var filters []identityFilter
+
+	for _, chaincode := range ctx.interest.Chaincodes {
+		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.Name, len(chaincode.CollectionNames) > 0)
 		if ccMD == nil {
-			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(chainID))
+			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(ctx.chainID))
 		}
 		metadata = append(metadata, ccMD)
 		if len(chaincode.CollectionNames) == 0 {
 			continue
 		}
-		f, err := newCollectionFilter(ccMD.CollectionsConfig)
+		principalSetByCollections, err := principalsFromCollectionConfig(ccMD.CollectionsConfig)
 		if err != nil {
 			logger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
 			return nil, errors.WithStack(err)
 		}
-		filters = append(filters, f.forCollections(chaincode.Name, chaincode.CollectionNames...))
+		filter, err := principalSetByCollections.toIdentityFilter(string(ctx.chainID), ctx.evaluator, chaincode)
+		if err != nil {
+			logger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.Name, err)
+			return nil, errors.WithStack(err)
+		}
+		filters = append(filters, filter)
 	}
 
-	return computeFiltersWithMetadata(filters, metadata), nil
+	return computeFiltersWithMetadata(filters, metadata, ctx.identityInfoByID), nil
 }
 
-func computeFiltersWithMetadata(filters filterFunctions, metadata []*chaincode.Metadata) *metadataAndColFilter {
+func computeFiltersWithMetadata(filters identityFilters, metadata []*chaincode.Metadata, identityInfoByID map[string]api.PeerIdentityInfo) *metadataAndColFilter {
 	if len(filters) == 0 {
 		return &metadataAndColFilter{
-			md:     metadata,
-			filter: noopFilter,
+			md:                 metadata,
+			isMemberAuthorized: noopMemberFilter,
 		}
 	}
-
+	filter := filters.combine().toMemberFilter(identityInfoByID)
 	return &metadataAndColFilter{
-		md:     metadata,
-		filter: filters.combine(),
+		isMemberAuthorized: filter,
+		md:                 metadata,
 	}
 }
 
-func noopFilter(policies policies.PrincipalSets) (policies.PrincipalSets, error) {
-	return policies, nil
+// identityFilter accepts or rejects peer identities
+type identityFilter func(api.PeerIdentityType) bool
+
+// identityFilters aggregates multiple identityFilters
+type identityFilters []identityFilter
+
+// memberFilter accepts or rejects NetworkMembers
+type memberFilter func(member NetworkMember) bool
+
+// noopMemberFilter accepts every NetworkMember
+func noopMemberFilter(_ NetworkMember) bool {
+	return true
 }
 
-func (filters filterFunctions) combine() filterFunc {
-	return func(principals policies.PrincipalSets) (policies.PrincipalSets, error) {
-		var err error
-		for _, filter := range filters {
-			principals, err = filter(principals)
-			if err != nil {
-				return nil, err
+// combine combines all identityFilters into a single identityFilter which only accepts identities
+// which all the original filters accept
+func (filters identityFilters) combine() identityFilter {
+	return func(identity api.PeerIdentityType) bool {
+		for _, f := range filters {
+			if !f(identity) {
+				return false
 			}
 		}
-		return principals, nil
+		return true
+	}
+}
+
+// toMemberFilter converts this identityFilter to a memberFilter based on the given mapping
+// from PKI-ID as strings, to PeerIdentityInfo which holds the peer identities
+func (idf identityFilter) toMemberFilter(identityInfoByID map[string]api.PeerIdentityInfo) memberFilter {
+	return func(member NetworkMember) bool {
+		identity, exists := identityInfoByID[string(member.PKIid)]
+		if !exists {
+			return false
+		}
+		return idf(identity.Identity)
 	}
 }
 
 func (ea *endorsementAnalyzer) satisfiesPrincipal(channel string, identitiesOfMembers memberIdentities) peerPrincipalEvaluator {
-	return func(member discovery2.NetworkMember, principal *msp.MSPPrincipal) bool {
+	return func(member NetworkMember, principal *msp.MSPPrincipal) bool {
 		err := ea.SatisfiesPrincipal(channel, identitiesOfMembers.identityByPKIID(member.PKIid), principal)
 		if err == nil {
 			// TODO: log the principals in a human readable form
@@ -292,7 +329,7 @@ func (ea *endorsementAnalyzer) satisfiesPrincipal(channel string, identitiesOfMe
 type peerMembershipCriteria struct {
 	satGraph        *principalPeerGraph
 	idOfMembers     memberIdentities
-	chanMemberById  map[string]discovery2.NetworkMember
+	chanMemberById  map[string]NetworkMember
 	possibleLayouts layouts
 }
 
@@ -320,7 +357,7 @@ func endorsersByGroup(criteria *peerMembershipCriteria) map[string]*discovery.Pe
 		peerList := &discovery.Peers{}
 		res[grp] = peerList
 		for _, peerVertex := range principalVertex.Neighbors() {
-			member := peerVertex.Data.(discovery2.NetworkMember)
+			member := peerVertex.Data.(NetworkMember)
 			peerList.Peers = append(peerList.Peers, &discovery.Peer{
 				Identity:       idOfMembers.identityByPKIID(member.PKIid),
 				StateInfo:      chanMemberById[string(member.PKIid)].Envelope,
@@ -383,7 +420,7 @@ type principalPeerGraph struct {
 }
 
 type principalAndPeerData struct {
-	members discovery2.Members
+	members Members
 	pGrps   principalGroupMapper
 }
 
@@ -405,7 +442,7 @@ func principalsToPeersGraph(data principalAndPeerData, satisfiesPrincipal peerPr
 		for _, peerVertex := range peerVertices {
 			// If the current peer satisfies the principal, connect their corresponding vertices with an edge
 			principal := principalVertex.Data.(*msp.MSPPrincipal)
-			member := peerVertex.Data.(discovery2.NetworkMember)
+			member := peerVertex.Data.(NetworkMember)
 			if satisfiesPrincipal(member, principal) {
 				peerVertex.AddNeighbor(principalVertex)
 			}
@@ -440,7 +477,7 @@ func (m memberIdentities) identityByPKIID(id common.PKIidType) api.PeerIdentityT
 	return m[string(id)]
 }
 
-func computeIdentitiesOfMembers(identitySet api.PeerIdentitySet, members map[string]discovery2.NetworkMember) memberIdentities {
+func computeIdentitiesOfMembers(identitySet api.PeerIdentitySet, members map[string]NetworkMember) memberIdentities {
 	identitiesByPKIID := make(map[string]api.PeerIdentityType)
 	identitiesOfMembers := make(map[string]api.PeerIdentityType, len(members))
 	for _, identity := range identitySet {
@@ -492,8 +529,8 @@ func (l layouts) groupsSet() map[string]struct{} {
 	return m
 }
 
-func peersWithChaincode(metadata ...*chaincode.Metadata) func(member discovery2.NetworkMember) bool {
-	return func(member discovery2.NetworkMember) bool {
+func peersWithChaincode(metadata ...*chaincode.Metadata) func(member NetworkMember) bool {
+	return func(member NetworkMember) bool {
 		if member.Properties == nil {
 			return false
 		}
@@ -512,7 +549,7 @@ func peersWithChaincode(metadata ...*chaincode.Metadata) func(member discovery2.
 	}
 }
 
-func mspIDsOfMembers(membersById map[string]discovery2.NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) map[string]struct{} {
+func mspIDsOfMembers(membersById map[string]NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) map[string]struct{} {
 	res := make(map[string]struct{})
 	for pkiID := range membersById {
 		if identity, exists := identitiesByID[string(pkiID)]; exists {

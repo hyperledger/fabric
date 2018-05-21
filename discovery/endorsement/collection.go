@@ -8,42 +8,27 @@ package endorsement
 
 import (
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/policies/inquire"
 	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric/gossip/api"
+	. "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/pkg/errors"
 )
 
-type filterPrincipalSets func(collectionName string, principalSets policies.PrincipalSets) (policies.PrincipalSets, error)
-
-func (f filterPrincipalSets) forCollections(ccName string, collections ...string) filterFunc {
-	return func(principalSets policies.PrincipalSets) (policies.PrincipalSets, error) {
-		var err error
-		for _, col := range collections {
-			principalSets, err = f(col, principalSets)
-			if err != nil {
-				logger.Warningf("Failed filtering collection for chaincode %s, collection %s: %v", ccName, col, err)
-				return nil, err
-			}
-		}
-		return principalSets, nil
-	}
-}
-
-func newCollectionFilter(configBytes []byte) (filterPrincipalSets, error) {
-	mapFilter := make(principalSetsByCollectionName)
+func principalsFromCollectionConfig(configBytes []byte) (principalSetsByCollectionName, error) {
+	principalSetsByCollections := make(principalSetsByCollectionName)
 	if len(configBytes) == 0 {
-		return mapFilter.filter, nil
+		return principalSetsByCollections, nil
 	}
 	ccp, err := privdata.ParseCollectionConfig(configBytes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid collection bytes")
 	}
-	for _, cfg := range ccp.Config {
-		staticCol := cfg.GetStaticCollectionConfig()
+	for _, colConfig := range ccp.Config {
+		staticCol := colConfig.GetStaticCollectionConfig()
 		if staticCol == nil {
 			// Right now we only support static collections, so if we got something else
 			// we should refuse to process further
-			return nil, errors.Errorf("expected a static collection but got %v instead", cfg)
+			return nil, errors.Errorf("expected a static collection but got %v instead", colConfig)
 		}
 		if staticCol.MemberOrgsPolicy == nil {
 			return nil, errors.Errorf("MemberOrgsPolicy of %s is nil", staticCol.Name)
@@ -57,31 +42,56 @@ func newCollectionFilter(configBytes []byte) (filterPrincipalSets, error) {
 		for _, principal := range pol.Identities {
 			principals = append(principals, principal)
 		}
-		principalSet := inquire.NewComparablePrincipalSet(principals)
-		if principalSet == nil {
-			return nil, errors.Errorf("failed constructing principal set for %s: principals given are %v", staticCol.Name, pol.Identities)
-		}
-		mapFilter[staticCol.Name] = principalSet
+		principalSetsByCollections[staticCol.Name] = principals
 	}
-	return mapFilter.filter, nil
+	return principalSetsByCollections, nil
 }
 
-type principalSetsByCollectionName map[string]inquire.ComparablePrincipalSet
+type principalSetsByCollectionName map[string]policies.PrincipalSet
 
-func (psbc principalSetsByCollectionName) filter(collectionName string, principalSets policies.PrincipalSets) (policies.PrincipalSets, error) {
-	collectionPrincipals, exists := psbc[collectionName]
-	if !exists {
-		return nil, errors.Errorf("collection %s wasn't found in configuration", collectionName)
-	}
-	var res policies.PrincipalSets
-	for _, ps := range principalSets {
-		comparablePS := inquire.NewComparablePrincipalSet(ps)
-		if comparablePS == nil {
-			return nil, errors.Errorf("principal set %v is invalid", ps)
+// toIdentityFilter converts this principalSetsByCollectionName mapping to a filter
+// which accepts or rejects identities of peers.
+func (psbc principalSetsByCollectionName) toIdentityFilter(channel string, evaluator principalEvaluator, cc *ChaincodeCall) (identityFilter, error) {
+	var principalSets policies.PrincipalSets
+	for _, col := range cc.CollectionNames {
+		// Each collection we're interested in should exist in the principalSetsByCollectionName mapping.
+		// Otherwise, we have no way of computing a filter because we can't locate the principals the peer identities
+		// need to satisfy.
+		principalSet, exists := psbc[col]
+		if !exists {
+			return nil, errors.Errorf("collection %s doesn't exist in collection config for chaincode %s", col, cc.Name)
 		}
-		if comparablePS.IsCoveredBy(collectionPrincipals) {
-			res = append(res, ps)
-		}
+		principalSets = append(principalSets, principalSet)
 	}
-	return res, nil
+	return filterForPrincipalSets(channel, evaluator, principalSets), nil
+}
+
+// filterForPrincipalSets creates a filter of peer identities out of the given PrincipalSets
+func filterForPrincipalSets(channel string, evaluator principalEvaluator, sets policies.PrincipalSets) identityFilter {
+	return func(identity api.PeerIdentityType) bool {
+		// Iterate over all principal sets and ensure each principal set
+		// authorizes the identity.
+		for _, principalSet := range sets {
+			if !isIdentityAuthorizedByPrincipalSet(channel, evaluator, principalSet, identity) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// isIdentityAuthorizedByPrincipalSet returns whether the given identity satisfies some principal out of the given PrincipalSet
+func isIdentityAuthorizedByPrincipalSet(channel string, evaluator principalEvaluator, principalSet policies.PrincipalSet, identity api.PeerIdentityType) bool {
+	// We look for a principal which authorizes the identity
+	// among all principals in the principalSet
+	for _, principal := range principalSet {
+		err := evaluator.SatisfiesPrincipal(channel, identity, principal)
+		if err != nil {
+			continue
+		}
+		// Else, err is nil, so we found a principal which authorized
+		// the given identity.
+		return true
+	}
+	return false
 }

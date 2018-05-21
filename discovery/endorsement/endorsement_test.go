@@ -230,8 +230,11 @@ func TestPeersForEndorsement(t *testing.T) {
 			peerRole("p0"),
 			peerRole("p12"),
 		}
+		col2principals := map[string][]*msp.MSPPrincipal{
+			"collection": collectionOrgs,
+		}
 		mf.On("Metadata").Return(&chaincode.Metadata{
-			Name: cc, Version: "1.0", CollectionsConfig: buildCollectionConfig("collection", collectionOrgs...),
+			Name: cc, Version: "1.0", CollectionsConfig: buildCollectionConfig(col2principals),
 		}).Once()
 		pb := principalBuilder{}
 		policy := pb.newSet().addPrincipal(peerRole("p0")).
@@ -359,6 +362,40 @@ func TestComputePrincipalSetsNoPolicies(t *testing.T) {
 	assert.Contains(t, err.Error(), "no principal sets remained after filtering")
 }
 
+func TestLoadMetadataAndFiltersCollectionNotPresentInConfig(t *testing.T) {
+	interest := &discoveryprotos.ChaincodeInterest{
+		Chaincodes: []*discoveryprotos.ChaincodeCall{
+			{
+				Name:            "mycc",
+				CollectionNames: []string{"bar"},
+			},
+		},
+	}
+
+	org1AndOrg2 := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
+	col2principals := map[string][]*msp.MSPPrincipal{
+		"foo": org1AndOrg2,
+	}
+	config := buildCollectionConfig(col2principals)
+
+	mdf := &metadataFetcher{}
+	mdf.On("Metadata").Return(&chaincode.Metadata{
+		Name:              "mycc",
+		CollectionsConfig: config,
+		Policy:            []byte{1, 2, 3},
+	})
+
+	_, err := loadMetadataAndFilters(metadataAndFilterContext{
+		identityInfoByID: nil,
+		evaluator:        nil,
+		chainID:          common.ChainID("mychannel"),
+		fetch:            mdf,
+		interest:         interest,
+	})
+
+	assert.Equal(t, "collection bar doesn't exist in collection config for chaincode mycc", err.Error())
+}
+
 func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 	interest := &discoveryprotos.ChaincodeInterest{
 		Chaincodes: []*discoveryprotos.ChaincodeCall{
@@ -375,7 +412,13 @@ func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 		Policy:            []byte{1, 2, 3},
 	})
 
-	_, err := loadMetadataAndFilters(common.ChainID("mychannel"), interest, mdf)
+	_, err := loadMetadataAndFilters(metadataAndFilterContext{
+		identityInfoByID: nil,
+		evaluator:        nil,
+		chainID:          common.ChainID("mychannel"),
+		fetch:            mdf,
+		interest:         interest,
+	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid collection bytes")
 }

@@ -7,87 +7,46 @@ SPDX-License-Identifier: Apache-2.0
 package endorsement
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/gossip/api"
+	gcommon "github.com/hyperledger/fabric/gossip/common"
+	disc "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestForCollections(t *testing.T) {
-	foos := policies.PrincipalSets{{orgPrincipal("foo")}}
-	bars := policies.PrincipalSets{{orgPrincipal("bar")}}
-	f := filterPrincipalSets(func(collectionName string, principalSets policies.PrincipalSets) (policies.PrincipalSets, error) {
-		switch collectionName {
-		case "foo":
-			return foos, nil
-		case "bar":
-			return bars, nil
-		default:
-			return nil, errors.Errorf("collection %s doesn't exist", collectionName)
+func TestPrincipalsFromCollectionConfig(t *testing.T) {
+	t.Run("Empty config", func(t *testing.T) {
+		res, err := principalsFromCollectionConfig(nil)
+		assert.NoError(t, err)
+		assert.Empty(t, res)
+	})
+
+	t.Run("Not empty config", func(t *testing.T) {
+		org1AndOrg2 := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
+		org3AndOrg4 := []*msp.MSPPrincipal{orgPrincipal("Org3MSP"), orgPrincipal("Org4MSP")}
+		col2principals := map[string][]*msp.MSPPrincipal{
+			"foo": org1AndOrg2,
+			"bar": org3AndOrg4,
 		}
-	})
-
-	res, err := f.forCollections("mycc", "foo")(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, foos, res)
-
-	res, err = f.forCollections("mycc", "bar")(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, bars, res)
-
-	res, err = f.forCollections("mycc", "baz")(nil)
-	assert.Equal(t, "collection baz doesn't exist", err.Error())
-}
-
-func TestCollectionFilter(t *testing.T) {
-	org1AndOrg2 := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
-	org1AndOrg3 := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org3MSP")}
-	org3AndOrg4 := []*msp.MSPPrincipal{orgPrincipal("Org3MSP"), orgPrincipal("Org4MSP")}
-
-	t.Run("Filter out a subset", func(t *testing.T) {
-		// Scenario I:
-		// Endorsement policy is: OR(
-		// 							AND(Org1MSP.peer, Org2MSP.peer),
-		//							AND(Org3MSP.peer, Org4MSP.peer),
-		// But collection config is OR(Org3MSP.peer, Org4MSP.peer).
-		// Therefore, only 1 principal set should be selected - the org3 and org4 combination
-		config := buildCollectionConfig("foo", org3AndOrg4...)
-		principalSets := policies.PrincipalSets{org1AndOrg2, org3AndOrg4}
-		filter, err := newCollectionFilter(config)
+		config := buildCollectionConfig(col2principals)
+		res, err := principalsFromCollectionConfig(config)
 		assert.NoError(t, err)
-		principalSets, err = filter("foo", principalSets)
-		assert.NoError(t, err)
-		assert.Equal(t, policies.PrincipalSets{org3AndOrg4}, principalSets)
-
-		principalSets, err = filter("bar", principalSets)
-		assert.Nil(t, principalSets)
-		assert.Contains(t, err.Error(), "collection bar wasn't found in configuration")
-	})
-
-	t.Run("Filter out all", func(t *testing.T) {
-		// Scenario II:
-		// Endorsement policy is: OR(
-		// 							AND(Org1MSP.peer, Org2MSP.peer),
-		//							AND(Org3MSP.peer, Org4MSP.peer),
-		// But collection config is OR(Org1MSP.peer, Org3MSP.peer).
-		// Therefore, no principal combination should be selected
-		config := buildCollectionConfig("foo", org1AndOrg3...)
-		principalSets := policies.PrincipalSets{org1AndOrg2, org3AndOrg4}
-		filter, err := newCollectionFilter(config)
-		assert.NoError(t, err)
-		principalSets, err = filter("foo", principalSets)
-		assert.NoError(t, err)
-		assert.Empty(t, principalSets)
+		assert.Equal(t, policies.PrincipalSet(org1AndOrg2), res["foo"])
+		assert.Equal(t, policies.PrincipalSet(org3AndOrg4), res["bar"])
+		assert.Empty(t, res["baz"])
 	})
 }
 
 func TestNewCollectionFilterInvalidInput(t *testing.T) {
 	t.Run("Invalid collection", func(t *testing.T) {
-		filter, err := newCollectionFilter([]byte{1, 2, 3})
+		filter, err := principalsFromCollectionConfig([]byte{1, 2, 3})
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "invalid collection bytes")
 	})
@@ -99,7 +58,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				Payload: nil,
 			},
 		}
-		filter, err := newCollectionFilter(utils.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(utils.MarshalOrPanic(collections))
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "expected a static collection")
 	})
@@ -115,7 +74,7 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				},
 			},
 		}
-		filter, err := newCollectionFilter(utils.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(utils.MarshalOrPanic(collections))
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "MemberOrgsPolicy of foo is nil")
 	})
@@ -132,50 +91,141 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 				},
 			},
 		}
-		filter, err := newCollectionFilter(utils.MarshalOrPanic(collections))
+		filter, err := principalsFromCollectionConfig(utils.MarshalOrPanic(collections))
 		assert.Nil(t, filter)
 		assert.Contains(t, err.Error(), "policy of foo is nil")
 	})
+}
 
-	t.Run("Unsupported principal", func(t *testing.T) {
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-			Principal:               []byte("identity"),
-		}
-		filter, err := newCollectionFilter(buildCollectionConfig("foo", principal))
+func TestToIdentityFilter(t *testing.T) {
+	col2principals := make(principalSetsByCollectionName)
+	col2principals["foo"] = []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
+
+	t.Run("collection doesn't exist in mapping", func(t *testing.T) {
+		filter, err := col2principals.toIdentityFilter("mychannel", &principalEvaluatorMock{}, &discovery.ChaincodeCall{
+			Name:            "mycc",
+			CollectionNames: []string{"bar"},
+		})
 		assert.Nil(t, filter)
-		assert.Contains(t, err.Error(), "failed constructing principal set for foo: principals given are")
+		assert.Equal(t, "collection bar doesn't exist in collection config for chaincode mycc", err.Error())
+	})
+
+	t.Run("collection exists in mapping", func(t *testing.T) {
+		filter, err := col2principals.toIdentityFilter("mychannel", &principalEvaluatorMock{}, &discovery.ChaincodeCall{
+			Name:            "mycc",
+			CollectionNames: []string{"foo"},
+		})
+		assert.NoError(t, err)
+		identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+			Mspid: "Org2MSP",
+		})
+		assert.True(t, filter(identity))
+		identity = utils.MarshalOrPanic(&msp.SerializedIdentity{
+			Mspid: "Org3MSP",
+		})
+		assert.False(t, filter(identity))
 	})
 }
 
-func TestCollectionFilterInvalid(t *testing.T) {
-	t.Run("Collection that doesn't exist", func(t *testing.T) {
-		filter, err := newCollectionFilter(nil)
-		assert.NoError(t, err)
-		_, err = filter("bla", nil)
-		assert.Contains(t, err.Error(), "collection bla wasn't found in configuration")
+func TestCombine(t *testing.T) {
+	filter1 := identityFilter(func(identity api.PeerIdentityType) bool {
+		return bytes.Equal([]byte("p1"), identity) || bytes.Equal([]byte("p2"), identity)
 	})
 
-	t.Run("Given principals are invalid", func(t *testing.T) {
-		principal := &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               utils.MarshalOrPanic(&msp.MSPRole{MspIdentifier: "Org1MSP", Role: msp.MSPRole_MEMBER}),
-		}
-		filter, err := newCollectionFilter(buildCollectionConfig("foo", principal))
-		assert.NoError(t, err)
-		principalSets := policies.PrincipalSets{[]*msp.MSPPrincipal{{PrincipalClassification: msp.MSPPrincipal_IDENTITY, Principal: []byte("identity")}}}
-		_, err = filter("foo", principalSets)
-		assert.Contains(t, err.Error(), "principal set [principal_classification:IDENTITY principal:\"identity\" ] is invalid")
+	filter2 := identityFilter(func(identity api.PeerIdentityType) bool {
+		return bytes.Equal([]byte("p2"), identity) || bytes.Equal([]byte("p3"), identity)
+	})
+
+	filter := identityFilters{filter1, filter2}.combine()
+	assert.False(t, filter(api.PeerIdentityType("p1")))
+	assert.True(t, filter(api.PeerIdentityType("p2")))
+	assert.False(t, filter(api.PeerIdentityType("p3")))
+	assert.False(t, filter(api.PeerIdentityType("p4")))
+}
+
+func TestToMemberFilter(t *testing.T) {
+	unauthorizedIdentity := api.PeerIdentityType("unauthorizedIdentity")
+	authorizedIdentity := api.PeerIdentityType("authorizedIdentity")
+	notPresentIdentity := api.PeerIdentityType("api.PeerIdentityInfo")
+
+	filter := identityFilter(func(identity api.PeerIdentityType) bool {
+		return bytes.Equal(authorizedIdentity, identity)
+	})
+	identityInfoByID := map[string]api.PeerIdentityInfo{
+		"authorizedIdentity":   {PKIId: gcommon.PKIidType(authorizedIdentity), Identity: authorizedIdentity},
+		"unauthorizedIdentity": {PKIId: gcommon.PKIidType(unauthorizedIdentity), Identity: unauthorizedIdentity},
+	}
+	memberFilter := filter.toMemberFilter(identityInfoByID)
+
+	t.Run("Member is authorized", func(t *testing.T) {
+		authorized := memberFilter(disc.NetworkMember{
+			PKIid: gcommon.PKIidType(authorizedIdentity),
+		})
+		assert.True(t, authorized)
+	})
+
+	t.Run("Member is unauthorized", func(t *testing.T) {
+		authorized := memberFilter(disc.NetworkMember{
+			PKIid: gcommon.PKIidType(unauthorizedIdentity),
+		})
+		assert.False(t, authorized)
+	})
+
+	t.Run("Member is not found in mapping", func(t *testing.T) {
+		authorized := memberFilter(disc.NetworkMember{
+			PKIid: gcommon.PKIidType(notPresentIdentity),
+		})
+		assert.False(t, authorized)
+	})
+
+}
+
+func TestIsIdentityAuthorizedByPrincipalSet(t *testing.T) {
+	principals := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
+	t.Run("Authorized", func(t *testing.T) {
+		identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+			Mspid: "Org1MSP",
+		})
+		authorized := isIdentityAuthorizedByPrincipalSet("mychannel", &principalEvaluatorMock{}, principals, identity)
+		assert.True(t, authorized)
+	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+			Mspid: "Org3MSP",
+		})
+		authorized := isIdentityAuthorizedByPrincipalSet("mychannel", &principalEvaluatorMock{}, principals, identity)
+		assert.False(t, authorized)
 	})
 }
 
-func buildCollectionConfig(name string, principals ...*msp.MSPPrincipal) []byte {
+func TestFilterForPrincipalSets(t *testing.T) {
+	org1AndOrg2 := []*msp.MSPPrincipal{orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")}
+	org2AndOrg3 := []*msp.MSPPrincipal{orgPrincipal("Org2MSP"), orgPrincipal("Org3MSP")}
+	org3AndOrg4 := []*msp.MSPPrincipal{orgPrincipal("Org3MSP"), orgPrincipal("Org4MSP")}
+
+	identity := utils.MarshalOrPanic(&msp.SerializedIdentity{
+		Mspid: "Org2MSP",
+	})
+
+	t.Run("Identity is authorized by all principals", func(t *testing.T) {
+		filter := filterForPrincipalSets("mychannel", &principalEvaluatorMock{}, policies.PrincipalSets{org1AndOrg2, org2AndOrg3})
+		assert.True(t, filter(identity))
+	})
+
+	t.Run("Identity is not authorized by all principals", func(t *testing.T) {
+		filter := filterForPrincipalSets("mychannel", &principalEvaluatorMock{}, policies.PrincipalSets{org1AndOrg2, org3AndOrg4})
+		assert.False(t, filter(identity))
+	})
+}
+
+func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte {
 	collections := &common.CollectionConfigPackage{}
-	collections.Config = []*common.CollectionConfig{
-		{
+	for col, principals := range col2principals {
+		collections.Config = append(collections.Config, &common.CollectionConfig{
 			Payload: &common.CollectionConfig_StaticCollectionConfig{
 				StaticCollectionConfig: &common.StaticCollectionConfig{
-					Name: name,
+					Name: col,
 					MemberOrgsPolicy: &common.CollectionPolicyConfig{
 						Payload: &common.CollectionPolicyConfig_SignaturePolicy{
 							SignaturePolicy: &common.SignaturePolicyEnvelope{
@@ -185,7 +235,7 @@ func buildCollectionConfig(name string, principals ...*msp.MSPPrincipal) []byte 
 					},
 				},
 			},
-		},
+		})
 	}
 	return utils.MarshalOrPanic(collections)
 }
