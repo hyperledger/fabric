@@ -136,6 +136,7 @@ func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter m
 	}
 	defer it.Close()
 
+	maxEndorsedAt := uint64(0)
 	for {
 		res, err := it.NextWithConfig()
 		if err != nil {
@@ -171,9 +172,10 @@ func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter m
 		}
 
 		pvtRWSet := dr.extractPvtRWsets(txPvtRWSet.NsPvtRwset, dig.Namespace, dig.Collection)
-		// TODO: Next CR will extend TxPvtReadWriteSetWithConfigInfo to have ledger height of
-		// endorsement time to be used here in order to select most updated collection config.
-		results.CollectionConfig = configs
+		if rws.EndorsedAt >= maxEndorsedAt {
+			maxEndorsedAt = rws.EndorsedAt
+			results.CollectionConfig = configs
+		}
 		results.RWSet = append(results.RWSet, pvtRWSet...)
 	}
 }

@@ -29,6 +29,7 @@ import "common/collection.proto";
 // read-write set and additional information about the configurations such as
 // the latest collection config when the transaction is simulated
 message TxPvtReadWriteSetWithConfigInfo {
-    rwset.TxPvtReadWriteSet pvt_rwset = 1;
-    map<string, common.CollectionConfigPackage> collection_configs = 2;
+    uint64 endorsed_at = 1;
+    rwset.TxPvtReadWriteSet pvt_rwset = 2;
+    map<string, common.CollectionConfigPackage> collection_configs = 3;
 }

@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -87,6 +89,21 @@ func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransa
 		return nil, errors.WithMessage(err, "GetTransactionByID failed")
 	}
 	return tx, nil
+}
+
+// GetLedgerHeight returns ledger height for given channelID
+func (s *SupportImpl) GetLedgerHeight(channelID string) (uint64, error) {
+	lgr := s.Peer.GetLedger(channelID)
+	if lgr == nil {
+		return 0, errors.Errorf("failed to look up the ledger for Channel %s", channelID)
+	}
+
+	info, err := lgr.GetBlockchainInfo()
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("failed to obtain information for Channel %s", channelID))
+	}
+
+	return info.Height, nil
 }
 
 // IsSysCC returns true if the name matches a system chaincode's
