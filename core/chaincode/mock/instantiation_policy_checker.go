@@ -7,7 +7,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
-type PolicyChecker struct {
+type InstantiationPolicyChecker struct {
 	CheckInstantiationPolicyStub        func(name, version string, cd *ccprovider.ChaincodeData) error
 	checkInstantiationPolicyMutex       sync.RWMutex
 	checkInstantiationPolicyArgsForCall []struct {
@@ -25,7 +25,7 @@ type PolicyChecker struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PolicyChecker) CheckInstantiationPolicy(name string, version string, cd *ccprovider.ChaincodeData) error {
+func (fake *InstantiationPolicyChecker) CheckInstantiationPolicy(name string, version string, cd *ccprovider.ChaincodeData) error {
 	fake.checkInstantiationPolicyMutex.Lock()
 	ret, specificReturn := fake.checkInstantiationPolicyReturnsOnCall[len(fake.checkInstantiationPolicyArgsForCall)]
 	fake.checkInstantiationPolicyArgsForCall = append(fake.checkInstantiationPolicyArgsForCall, struct {
@@ -44,26 +44,26 @@ func (fake *PolicyChecker) CheckInstantiationPolicy(name string, version string,
 	return fake.checkInstantiationPolicyReturns.result1
 }
 
-func (fake *PolicyChecker) CheckInstantiationPolicyCallCount() int {
+func (fake *InstantiationPolicyChecker) CheckInstantiationPolicyCallCount() int {
 	fake.checkInstantiationPolicyMutex.RLock()
 	defer fake.checkInstantiationPolicyMutex.RUnlock()
 	return len(fake.checkInstantiationPolicyArgsForCall)
 }
 
-func (fake *PolicyChecker) CheckInstantiationPolicyArgsForCall(i int) (string, string, *ccprovider.ChaincodeData) {
+func (fake *InstantiationPolicyChecker) CheckInstantiationPolicyArgsForCall(i int) (string, string, *ccprovider.ChaincodeData) {
 	fake.checkInstantiationPolicyMutex.RLock()
 	defer fake.checkInstantiationPolicyMutex.RUnlock()
 	return fake.checkInstantiationPolicyArgsForCall[i].name, fake.checkInstantiationPolicyArgsForCall[i].version, fake.checkInstantiationPolicyArgsForCall[i].cd
 }
 
-func (fake *PolicyChecker) CheckInstantiationPolicyReturns(result1 error) {
+func (fake *InstantiationPolicyChecker) CheckInstantiationPolicyReturns(result1 error) {
 	fake.CheckInstantiationPolicyStub = nil
 	fake.checkInstantiationPolicyReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *PolicyChecker) CheckInstantiationPolicyReturnsOnCall(i int, result1 error) {
+func (fake *InstantiationPolicyChecker) CheckInstantiationPolicyReturnsOnCall(i int, result1 error) {
 	fake.CheckInstantiationPolicyStub = nil
 	if fake.checkInstantiationPolicyReturnsOnCall == nil {
 		fake.checkInstantiationPolicyReturnsOnCall = make(map[int]struct {
@@ -75,7 +75,7 @@ func (fake *PolicyChecker) CheckInstantiationPolicyReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *PolicyChecker) Invocations() map[string][][]interface{} {
+func (fake *InstantiationPolicyChecker) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.checkInstantiationPolicyMutex.RLock()
@@ -87,7 +87,7 @@ func (fake *PolicyChecker) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *PolicyChecker) recordInvocation(key string, args []interface{}) {
+func (fake *InstantiationPolicyChecker) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
