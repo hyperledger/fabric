@@ -37,7 +37,7 @@ func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclP
 		{
 			Enabled:           true,
 			Name:              "qscc",
-			Path:              "github.com/hyperledger/fabric/core/chaincode/qscc",
+			Path:              "github.com/hyperledger/fabric/core/scc/qscc",
 			InitArgs:          nil,
 			Chaincode:         qscc.New(aclProvider),
 			InvokableExternal: true, // qscc can be invoked to retrieve blocks
