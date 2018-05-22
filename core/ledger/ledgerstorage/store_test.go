@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package ledgerstorage
@@ -28,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +41,7 @@ func TestStore(t *testing.T) {
 	defer store.Shutdown()
 
 	assert.NoError(t, err)
-	sampleData := sampleData(t)
+	sampleData := sampleDataWithPvtdataForSelectiveTx(t)
 	for _, sampleDatum := range sampleData {
 		assert.NoError(t, store.CommitWithPvtData(sampleDatum))
 	}
@@ -155,7 +146,159 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	assert.Equal(t, uint64(10), pvtdataBlockHt)
 }
 
-func sampleData(t *testing.T) []*ledger.BlockAndPvtData {
+func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider()
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
+	defer store.Shutdown()
+	assert.NoError(t, err)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t)
+	dataBeforeCrash := sampleData[0:3]
+	dataAtCrash := sampleData[3]
+
+	for _, sampleDatum := range dataBeforeCrash {
+		assert.NoError(t, store.CommitWithPvtData(sampleDatum))
+	}
+	blokNumAtCrash := dataAtCrash.Block.Header.Number
+	var pvtdataAtCrash []*ledger.TxPvtData
+	for _, p := range dataAtCrash.BlockPvtData {
+		pvtdataAtCrash = append(pvtdataAtCrash, p)
+	}
+	// Only call Prepare on pvt data store and mimic a crash
+	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash)
+	store.Shutdown()
+	provider.Close()
+	provider = NewProvider()
+	store, err = provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+
+	// When starting the storage after a crash, there should not be a trace of last block write
+	_, err = store.GetPvtDataByNum(blokNumAtCrash, nil)
+	_, ok := err.(*pvtdatastorage.ErrOutOfRange)
+	assert.True(t, ok)
+
+	//we should be able to write the last block again
+	assert.NoError(t, store.CommitWithPvtData(dataAtCrash))
+	pvtdata, err := store.GetPvtDataByNum(blokNumAtCrash, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, dataAtCrash.BlockPvtData, constructPvtdataMap(pvtdata))
+}
+
+func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider()
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
+	defer store.Shutdown()
+	assert.NoError(t, err)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t)
+	dataBeforeCrash := sampleData[0:3]
+	dataAtCrash := sampleData[3]
+
+	for _, sampleDatum := range dataBeforeCrash {
+		assert.NoError(t, store.CommitWithPvtData(sampleDatum))
+	}
+	blokNumAtCrash := dataAtCrash.Block.Header.Number
+	var pvtdataAtCrash []*ledger.TxPvtData
+	for _, p := range dataAtCrash.BlockPvtData {
+		pvtdataAtCrash = append(pvtdataAtCrash, p)
+	}
+
+	// Mimic a crash just short of calling the final commit on pvtdata store
+	// After starting the store again, the block and the pvtdata should be available
+	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash)
+	store.BlockStore.AddBlock(dataAtCrash.Block)
+	store.Shutdown()
+	provider.Close()
+	provider = NewProvider()
+	store, err = provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+	blkAndPvtdata, err := store.GetPvtDataAndBlockByNum(blokNumAtCrash, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, dataAtCrash, blkAndPvtdata)
+}
+
+func TestAddAfterPvtdataStoreError(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider()
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
+	defer store.Shutdown()
+	assert.NoError(t, err)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t)
+	for _, d := range sampleData[0:9] {
+		assert.NoError(t, store.CommitWithPvtData(d))
+	}
+	// try to write the last block again. The function should pass on the error raised by the private store
+	err = store.CommitWithPvtData(sampleData[8])
+	_, ok := err.(*pvtdatastorage.ErrIllegalArgs)
+	assert.True(t, ok)
+
+	// At the end, the pvt store status should not have changed
+	pvtStoreCommitHt, err := store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), pvtStoreCommitHt)
+	pvtStorePndingBatch, err := store.pvtdataStore.HasPendingBatch()
+	assert.NoError(t, err)
+	assert.False(t, pvtStorePndingBatch)
+
+	// commit the rightful next block
+	assert.NoError(t, store.CommitWithPvtData(sampleData[9]))
+	pvtStoreCommitHt, err = store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), pvtStoreCommitHt)
+
+	pvtStorePndingBatch, err = store.pvtdataStore.HasPendingBatch()
+	assert.NoError(t, err)
+	assert.False(t, pvtStorePndingBatch)
+}
+
+func TestAddAfterBlkStoreError(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider()
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
+	defer store.Shutdown()
+	assert.NoError(t, err)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t)
+	for _, d := range sampleData[0:9] {
+		assert.NoError(t, store.CommitWithPvtData(d))
+	}
+	lastBlkAndPvtData := sampleData[9]
+	// Add the block directly to blockstore
+	store.BlockStore.AddBlock(lastBlkAndPvtData.Block)
+	// Adding the same block should cause passing on the error caused by the block storgae
+	assert.Error(t, store.CommitWithPvtData(lastBlkAndPvtData))
+	// At the end, the pvt store status should not have changed
+	pvtStoreCommitHt, err := store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), pvtStoreCommitHt)
+
+	pvtStorePndingBatch, err := store.pvtdataStore.HasPendingBatch()
+	assert.NoError(t, err)
+	assert.False(t, pvtStorePndingBatch)
+}
+
+func TestConstructPvtdataMap(t *testing.T) {
+	assert.Nil(t, constructPvtdataMap(nil))
+}
+
+func sampleDataWithPvtdataForSelectiveTx(t *testing.T) []*ledger.BlockAndPvtData {
 	var blockAndpvtdata []*ledger.BlockAndPvtData
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	for i := 0; i < 10; i++ {
@@ -165,7 +308,20 @@ func sampleData(t *testing.T) []*ledger.BlockAndPvtData {
 	blockAndpvtdata[2].BlockPvtData = samplePvtData(t, []uint64{3, 5})
 	// txNum 4, 6 in block 3 has pvtdata
 	blockAndpvtdata[3].BlockPvtData = samplePvtData(t, []uint64{4, 6})
+	return blockAndpvtdata
+}
 
+func sampleDataWithPvtdataForAllTxs(t *testing.T) []*ledger.BlockAndPvtData {
+	var blockAndpvtdata []*ledger.BlockAndPvtData
+	blocks := testutil.ConstructTestBlocks(t, 10)
+	for i := 0; i < 10; i++ {
+		blockAndpvtdata = append(blockAndpvtdata,
+			&ledger.BlockAndPvtData{
+				Block:        blocks[i],
+				BlockPvtData: samplePvtData(t, []uint64{uint64(i), uint64(i + 1)}),
+			},
+		)
+	}
 	return blockAndpvtdata
 }
 
