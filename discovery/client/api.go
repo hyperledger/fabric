@@ -49,7 +49,9 @@ type ChannelResponse interface {
 	// The selection is based on the given selection hints:
 	// PrioritySelector: Determines which endorsers are selected over others
 	// ExclusionFilter: Determines which endorsers are not selected
-	Endorsers(cc string, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error)
+	// The given InvocationChain specifies the chaincode calls (along with collections)
+	// that the client passed during the construction of the request
+	Endorsers(invocationChain InvocationChain, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error)
 }
 
 // LocalResponse aggregates responses for a channel-less scope

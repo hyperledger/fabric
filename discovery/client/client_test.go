@@ -48,6 +48,10 @@ var (
 		{"A", "B"}, {"C"}, {"A", "D"},
 	}
 
+	orgCombinationsThatSatisfyPolicy2 = [][]string{
+		{"B", "D"},
+	}
+
 	expectedOrgCombinations = []map[string]struct{}{
 		{
 			"A": {},
@@ -62,13 +66,26 @@ var (
 		},
 	}
 
+	expectedOrgCombinations2 = []map[string]struct{}{
+		{
+			"B": {},
+			"C": {},
+			"D": {},
+		},
+	}
+
 	cc = &gossip.Chaincode{
 		Name:    "mycc",
 		Version: "1.0",
 	}
 
+	cc2 = &gossip.Chaincode{
+		Name:    "mycc2",
+		Version: "1.0",
+	}
+
 	propertiesWithChaincodes = &gossip.Properties{
-		Chaincodes: []*gossip.Chaincode{cc},
+		Chaincodes: []*gossip.Chaincode{cc, cc2},
 	}
 
 	expectedConf = &discovery.ConfigResult{
@@ -85,14 +102,14 @@ var (
 	}
 
 	channelPeersWithChaincodes = discovery3.Members{
-		newPeer(0, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(1, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(2, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(3, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(4, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(5, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(6, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
-		newPeer(7, stateInfoMessage(cc), propertiesWithChaincodes).NetworkMember,
+		newPeer(0, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(1, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(2, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(3, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(4, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(5, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(6, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
+		newPeer(7, stateInfoMessage(cc, cc2), propertiesWithChaincodes).NetworkMember,
 	}
 
 	channelPeersWithoutChaincodes = discovery3.Members{
@@ -254,16 +271,33 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 	pe := &principalEvaluator{}
 	pf := &policyFetcher{}
 
-	sig, _ := cauthdsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
-	polBytes, _ := proto.Marshal(sig)
-	mdf.On("Metadata").Return(&chaincode.Metadata{
+	sigPol, _ := cauthdsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
+	polBytes, _ := proto.Marshal(sigPol)
+	mdf.On("Metadata", "mycc").Return(&chaincode.Metadata{
 		Policy:  polBytes,
 		Name:    "mycc",
 		Version: "1.0",
 		Id:      []byte{1, 2, 3},
 	})
-	pf.On("PolicyByChaincode").Return(&inquireablePolicy{
+
+	pf.On("PolicyByChaincode", "mycc").Return(&inquireablePolicy{
 		orgCombinations: orgCombinationsThatSatisfyPolicy,
+	})
+
+	sigPol, _ = cauthdsl.FromString("AND('B.member', 'C.member')")
+	polBytes, _ = proto.Marshal(sigPol)
+	mdf.On("Metadata", "mycc2").Return(&chaincode.Metadata{
+		Policy:  polBytes,
+		Name:    "mycc2",
+		Version: "1.0",
+		Id:      []byte{1, 2, 3},
+		CollectionsConfig: buildCollectionConfig(map[string][]*msp.MSPPrincipal{
+			"col": {memberPrincipal("B"), memberPrincipal("C"), memberPrincipal("D")},
+		}),
+	})
+
+	pf.On("PolicyByChaincode", "mycc2").Return(&inquireablePolicy{
+		orgCombinations: orgCombinationsThatSatisfyPolicy2,
 	})
 	sup.On("Config", "mychannel").Return(expectedConf)
 	sup.On("Peers").Return(membershipPeers)
@@ -298,63 +332,96 @@ func TestClient(t *testing.T) {
 
 	sup.On("PeersOfChannel").Return(channelPeersWithoutChaincodes).Times(2)
 	req := NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery().AddLocalPeersQuery()
+	req.OfChannel("mychannel").AddPeersQuery().AddConfigQuery().AddLocalPeersQuery().AddEndorsersQuery(interest("mycc"))
 	r, err := cl.Send(ctx, req, authInfo)
 	assert.NoError(t, err)
 
-	// Check behavior for channels that we didn't query for.
-	fakeChannel := r.ForChannel("fakeChannel")
-	peers, err := fakeChannel.Peers()
-	assert.Equal(t, ErrNotFound, err)
-	assert.Nil(t, peers)
+	t.Run("Channel mismatch", func(t *testing.T) {
+		// Check behavior for channels that we didn't query for.
+		fakeChannel := r.ForChannel("fakeChannel")
+		peers, err := fakeChannel.Peers()
+		assert.Equal(t, ErrNotFound, err)
+		assert.Nil(t, peers)
 
-	endorsers, err := fakeChannel.Endorsers("mycc", NoPriorities, NoExclusion)
-	assert.Equal(t, ErrNotFound, err)
-	assert.Nil(t, endorsers)
+		endorsers, err := fakeChannel.Endorsers(ccCall("mycc"), NoPriorities, NoExclusion)
+		assert.Equal(t, ErrNotFound, err)
+		assert.Nil(t, endorsers)
 
-	conf, err := fakeChannel.Config()
-	assert.Equal(t, ErrNotFound, err)
-	assert.Nil(t, conf)
+		conf, err := fakeChannel.Config()
+		assert.Equal(t, ErrNotFound, err)
+		assert.Nil(t, conf)
+	})
 
-	// Check response for the correct channel
-	mychannel := r.ForChannel("mychannel")
-	conf, err = mychannel.Config()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedConf.Msps, conf.Msps)
-	assert.Equal(t, expectedConf.Orderers, conf.Orderers)
-	peers, err = mychannel.Peers()
-	assert.NoError(t, err)
-	// We should see all peers as provided above
-	assert.Len(t, peers, 8)
-	// Check response for peers when doing a local query
-	peers, err = r.ForLocal().Peers()
-	assert.NoError(t, err)
-	assert.Len(t, peers, 8)
+	t.Run("Peer membership query", func(t *testing.T) {
+		// Check response for the correct channel
+		mychannel := r.ForChannel("mychannel")
+		conf, err := mychannel.Config()
+		assert.NoError(t, err)
+		assert.Equal(t, expectedConf.Msps, conf.Msps)
+		assert.Equal(t, expectedConf.Orderers, conf.Orderers)
+		peers, err := mychannel.Peers()
+		assert.NoError(t, err)
+		// We should see all peers as provided above
+		assert.Len(t, peers, 8)
+		// Check response for peers when doing a local query
+		peers, err = r.ForLocal().Peers()
+		assert.NoError(t, err)
+		assert.Len(t, peers, 8)
+	})
 
-	endorsers, err = mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
-	// However, since we didn't provide any chaincodes to these peers - the server shouldn't
-	// be able to construct the descriptor.
-	// Just check that the appropriate error is returned, and nothing crashes.
-	assert.Contains(t, err.Error(), "failed constructing descriptor for chaincode")
-	assert.Nil(t, endorsers)
+	t.Run("Endorser query without chaincode installed", func(t *testing.T) {
+		mychannel := r.ForChannel("mychannel")
+		endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoPriorities, NoExclusion)
+		// However, since we didn't provide any chaincodes to these peers - the server shouldn't
+		// be able to construct the descriptor.
+		// Just check that the appropriate error is returned, and nothing crashes.
+		assert.Contains(t, err.Error(), "failed constructing descriptor for chaincode")
+		assert.Nil(t, endorsers)
+	})
 
-	// Next, we check the case when the peers publish chaincode for themselves.
-	sup.On("PeersOfChannel").Return(channelPeersWithChaincodes).Times(2)
-	req = NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery()
-	r, err = cl.Send(ctx, req, authInfo)
-	assert.NoError(t, err)
+	t.Run("Endorser query with chaincodes installed", func(t *testing.T) {
+		// Next, we check the case when the peers publish chaincode for themselves.
+		sup.On("PeersOfChannel").Return(channelPeersWithChaincodes).Times(2)
+		req = NewRequest()
+		req.OfChannel("mychannel").AddPeersQuery().AddEndorsersQuery(interest("mycc"))
+		r, err = cl.Send(ctx, req, authInfo)
+		assert.NoError(t, err)
 
-	mychannel = r.ForChannel("mychannel")
-	peers, err = mychannel.Peers()
-	assert.NoError(t, err)
-	assert.Len(t, peers, 8)
+		mychannel := r.ForChannel("mychannel")
+		peers, err := mychannel.Peers()
+		assert.NoError(t, err)
+		assert.Len(t, peers, 8)
 
-	// We should get a valid endorsement descriptor from the service
-	endorsers, err = mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
-	assert.NoError(t, err)
-	// The combinations of endorsers should be in the expected combinations
-	assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
+		// We should get a valid endorsement descriptor from the service
+		endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoPriorities, NoExclusion)
+		assert.NoError(t, err)
+		// The combinations of endorsers should be in the expected combinations
+		assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
+	})
+
+	t.Run("Endorser query with cc2cc and collections", func(t *testing.T) {
+		sup.On("PeersOfChannel").Return(channelPeersWithChaincodes).Twice()
+		req = NewRequest()
+		myccOnly := ccCall("mycc")
+		myccAndmycc2 := ccCall("mycc", "mycc2")
+		myccAndmycc2[1].CollectionNames = append(myccAndmycc2[1].CollectionNames, "col")
+		req.OfChannel("mychannel").AddEndorsersQuery(cc2ccInterests(myccAndmycc2, myccOnly)...)
+		r, err = cl.Send(ctx, req, authInfo)
+		assert.NoError(t, err)
+		mychannel := r.ForChannel("mychannel")
+
+		// Check the endorsers for the non cc2cc call
+		endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoPriorities, NoExclusion)
+		assert.NoError(t, err)
+		assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
+		// Check the endorsers for the cc2cc call with collections
+		call := ccCall("mycc", "mycc2")
+		call[1].CollectionNames = append(call[1].CollectionNames, "col")
+		endorsers, err = mychannel.Endorsers(call, NoPriorities, NoExclusion)
+		assert.NoError(t, err)
+		assert.Contains(t, expectedOrgCombinations2, getMSPs(endorsers))
+	})
+
 }
 
 func TestUnableToSign(t *testing.T) {
@@ -413,7 +480,7 @@ func TestBadResponses(t *testing.T) {
 	// Scenario I: discovery service sends back an error
 	svc.On("Discover").Return(nil, errors.New("foo")).Once()
 	req := NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery()
+	req.OfChannel("mychannel").AddPeersQuery().AddConfigQuery().AddEndorsersQuery(interest("mycc"))
 	r, err := cl.Send(ctx, req, auth)
 	assert.Contains(t, err.Error(), "foo")
 	assert.Nil(t, r)
@@ -421,7 +488,7 @@ func TestBadResponses(t *testing.T) {
 	// Scenario II: discovery service sends back an empty response
 	svc.On("Discover").Return(&discovery.Response{}, nil).Once()
 	req = NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc").AddPeersQuery().AddConfigQuery()
+	req.OfChannel("mychannel").AddPeersQuery().AddConfigQuery().AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
 	assert.Equal(t, "Sent 3 queries but received 0 responses back", err.Error())
 	assert.Nil(t, r)
@@ -443,13 +510,10 @@ func TestBadResponses(t *testing.T) {
 		},
 	}, nil).Once()
 	req = NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
+	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
-	assert.NoError(t, err)
-	mychannel := r.ForChannel("mychannel")
-	endorsers, err := mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
-	assert.Nil(t, endorsers)
-	assert.Equal(t, ErrNotFound, err)
+	assert.Nil(t, r)
+	assert.Contains(t, err.Error(), "expected chaincode mycc but got endorsement descriptor for notmycc")
 
 	// Scenario IV: discovery service sends back a layout that has empty envelopes
 	svc.On("Discover").Return(&discovery.Response{
@@ -460,7 +524,7 @@ func TestBadResponses(t *testing.T) {
 		},
 	}, nil).Once()
 	req = NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
+	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
 	assert.Contains(t, err.Error(), "received empty envelope(s) for endorsers for chaincode mycc")
 	assert.Nil(t, r)
@@ -475,11 +539,11 @@ func TestBadResponses(t *testing.T) {
 		},
 	}, nil).Once()
 	req = NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
+	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
 	assert.NoError(t, err)
-	mychannel = r.ForChannel("mychannel")
-	endorsers, err = mychannel.Endorsers("mycc", NoPriorities, NoExclusion)
+	mychannel := r.ForChannel("mychannel")
+	endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoPriorities, NoExclusion)
 	assert.Nil(t, endorsers)
 	assert.Contains(t, err.Error(), "no endorsement combination can be satisfied")
 
@@ -492,10 +556,26 @@ func TestBadResponses(t *testing.T) {
 		},
 	}, nil).Once()
 	req = NewRequest()
-	req.OfChannel("mychannel").AddEndorsersQuery("mycc")
+	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
 	assert.Contains(t, err.Error(), "group B isn't mapped to endorsers, but exists in a layout")
 	assert.Empty(t, r)
+}
+
+func TestAddEndorsersQueryInvalidInput(t *testing.T) {
+	_, err := NewRequest().AddEndorsersQuery()
+	assert.Contains(t, err.Error(), "no chaincode interests given")
+
+	_, err = NewRequest().AddEndorsersQuery(nil)
+	assert.Contains(t, err.Error(), "chaincode interest is nil")
+
+	_, err = NewRequest().AddEndorsersQuery(&discovery.ChaincodeInterest{})
+	assert.Contains(t, err.Error(), "invocation chain should not be empty")
+
+	_, err = NewRequest().AddEndorsersQuery(&discovery.ChaincodeInterest{
+		Chaincodes: []*discovery.ChaincodeCall{{}},
+	})
+	assert.Contains(t, err.Error(), "chaincode name should not be empty")
 }
 
 func TestValidateAliveMessage(t *testing.T) {
@@ -543,6 +623,20 @@ func TestValidateStateInfoMessage(t *testing.T) {
 	assert.Equal(t, "message isn't a stateInfo message", err.Error())
 }
 
+func TestString(t *testing.T) {
+	var ic InvocationChain
+	ic = append(ic, &discovery.ChaincodeCall{
+		Name:            "foo",
+		CollectionNames: []string{"c1", "c2"},
+	})
+	ic = append(ic, &discovery.ChaincodeCall{
+		Name:            "bar",
+		CollectionNames: []string{"c3", "c4"},
+	})
+	expected := `[{"name":"foo","collection_names":["c1","c2"]},{"name":"bar","collection_names":["c3","c4"]}]`
+	assert.Equal(t, expected, ic.String())
+}
+
 func getMSP(peer *Peer) string {
 	endpoint := peer.AliveMessage.GetAliveMsg().Membership.Endpoint
 	id, _ := strconv.ParseInt(endpoint[1:], 10, 64)
@@ -571,7 +665,7 @@ type ccMetadataFetcher struct {
 }
 
 func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ bool) *chaincode.Metadata {
-	return mdf.Called().Get(0).(*chaincode.Metadata)
+	return mdf.Called(cc).Get(0).(*chaincode.Metadata)
 }
 
 type principalEvaluator struct {
@@ -599,7 +693,7 @@ type policyFetcher struct {
 }
 
 func (pf *policyFetcher) PolicyByChaincode(channel string, cc string) policies.InquireablePolicy {
-	return pf.Called().Get(0).(policies.InquireablePolicy)
+	return pf.Called(cc).Get(0).(policies.InquireablePolicy)
 }
 
 type endorsementAnalyzer interface {
@@ -772,4 +866,67 @@ func (ds *mockDiscoveryServer) Discover(context.Context, *discovery.SignedReques
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*discovery.Response), nil
+}
+
+func ccCall(ccNames ...string) []*discovery.ChaincodeCall {
+	var call []*discovery.ChaincodeCall
+	for _, ccName := range ccNames {
+		call = append(call, &discovery.ChaincodeCall{
+			Name: ccName,
+		})
+	}
+	return call
+}
+
+func cc2ccInterests(invocationsChains ...[]*discovery.ChaincodeCall) []*discovery.ChaincodeInterest {
+	var interests []*discovery.ChaincodeInterest
+	for _, invocationChain := range invocationsChains {
+		interests = append(interests, &discovery.ChaincodeInterest{
+			Chaincodes: invocationChain,
+		})
+	}
+	return interests
+}
+
+func interest(ccNames ...string) *discovery.ChaincodeInterest {
+	interest := &discovery.ChaincodeInterest{
+		Chaincodes: []*discovery.ChaincodeCall{},
+	}
+	for _, cc := range ccNames {
+		interest.Chaincodes = append(interest.Chaincodes, &discovery.ChaincodeCall{
+			Name: cc,
+		})
+	}
+	return interest
+}
+
+func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) []byte {
+	collections := &common.CollectionConfigPackage{}
+	for col, principals := range col2principals {
+		collections.Config = append(collections.Config, &common.CollectionConfig{
+			Payload: &common.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &common.StaticCollectionConfig{
+					Name: col,
+					MemberOrgsPolicy: &common.CollectionPolicyConfig{
+						Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+							SignaturePolicy: &common.SignaturePolicyEnvelope{
+								Identities: principals,
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+	return utils.MarshalOrPanic(collections)
+}
+
+func memberPrincipal(mspID string) *msp.MSPPrincipal {
+	return &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal: utils.MarshalOrPanic(&msp.MSPRole{
+			MspIdentifier: mspID,
+			Role:          msp.MSPRole_MEMBER,
+		}),
+	}
 }
