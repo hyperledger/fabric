@@ -9,6 +9,9 @@ package builtin
 import (
 	"bytes"
 	"fmt"
+	"regexp"
+
+	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -35,6 +38,8 @@ var logger = flogging.MustGetLogger("vscc")
 const (
 	DUPLICATED_IDENTITY_ERROR = "Endorsement policy evaluation failure might be caused by duplicated identities"
 )
+
+var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
 // go:generate mockery -dir core/handlers/validation/api/capabilities/ -name Capabilities -case underscore -output core/handlers/validation/builtin/mocks/
 // go:generate mockery -dir core/handlers/validation/api/state/ -name StateFetcher -case underscore -output core/handlers/validation/builtin/mocks/
@@ -174,6 +179,11 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 
 		// Ensure that there are no duplicate collection names
 		collectionName := newCollection.GetName()
+
+		if err := validateCollectionName(collectionName); err != nil {
+			return policyErr(err)
+		}
+
 		if _, ok := newCollectionsMap[collectionName]; !ok {
 			newCollectionsMap[collectionName] = true
 		} else {
@@ -237,6 +247,18 @@ func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.Colle
 		}
 	}
 
+	return nil
+}
+
+func validateCollectionName(collectionName string) error {
+	if collectionName == "" {
+		return fmt.Errorf("empty collection-name is not allowed")
+	}
+	match := validCollectionNameRegex.FindString(collectionName)
+	if len(match) != len(collectionName) {
+		return fmt.Errorf("collection-name: %s not allowed. A valid collection name follows the pattern: %s",
+			collectionName, ccmetadata.AllowedCharsCollectionName)
+	}
 	return nil
 }
 
