@@ -6,14 +6,14 @@ as opposed to user chaincodes that run in separate docker containers. As
 such they have more access to resources in the peer and can be used for
 implementing features that are difficult or impossible to be implemented through
 user chaincodes. Examples of System Chaincodes include QSCC (Query System Chaincode)
-for ledger and other fabric related queries, CSCC (Configuration System Chaincode)
+for ledger and other Fabric-related queries, CSCC (Configuration System Chaincode)
 which helps regulate access control, and LSCC (Lifecycle System Chaincode).
 
 Unlike a user chaincode, a system chaincode is not installed and instantiated
 using proposals from SDKs or CLI. It is registered and deployed by the peer at
 start-up.
 
-System chaincodes can be linked to a peer in two ways: statically and dynamically,
+System chaincodes can be linked to a peer in two ways: statically, and dynamically
 using Go plugins. This tutorial will outline how to develop and load system chaincodes
 as plugins.
 
@@ -31,7 +31,7 @@ and export a constructor method that matches the signature ``func New() shim.Cha
 in the main package. An example can be found in the repository at ``examples/plugin/scc``.
 
 Existing chaincodes such as the QSCC can also serve as templates for certain
-features --- such as access control --- that are typically implemented through
+features, such as access control, that are typically implemented through
 system chaincodes. The existing system chaincodes also serve as a reference for
 best-practices on things like logging and testing.
 
@@ -42,7 +42,7 @@ best-practices on things like logging and testing.
 Configuring Plugins
 -------------------
 
-Plugins are configured in the ``chaincode.systemPlugin`` section in ```core.yaml``:
+Plugins are configured in the ``chaincode.systemPlugin`` section in ``core.yaml``:
 
 .. code-block:: bash
 
