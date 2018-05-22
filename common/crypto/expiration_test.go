@@ -45,7 +45,7 @@ func TestIdemixIdentityExpiresAt(t *testing.T) {
 	idemixId := &msp.SerializedIdemixIdentity{
 		NymX: []byte{1, 2, 3},
 		NymY: []byte{1, 2, 3},
-		OU:   []byte("OU1"),
+		Ou:   []byte("OU1"),
 	}
 	idemixBytes, err := proto.Marshal(idemixId)
 	assert.NoError(t, err)

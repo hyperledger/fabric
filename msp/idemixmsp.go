@@ -98,7 +98,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	mspLogger.Debugf("Setting up Idemix MSP instance %s", msp.name)
 
 	ipk := new(idemix.IssuerPublicKey)
-	err = proto.Unmarshal(conf.IPk, ipk)
+	err = proto.Unmarshal(conf.Ipk, ipk)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal ipk from idemix msp config")
 	}
@@ -266,7 +266,7 @@ func (msp *idemixmsp) deserializeIdentityInternal(serializedID []byte) (Identity
 	Nym := FP256BN.NewECPbigs(FP256BN.FromBytes(serialized.NymX), FP256BN.FromBytes(serialized.NymY))
 
 	ou := &m.OrganizationUnit{}
-	err = proto.Unmarshal(serialized.OU, ou)
+	err = proto.Unmarshal(serialized.Ou, ou)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot deserialize the OU of the identity")
 	}
@@ -542,7 +542,7 @@ func (id *idemixidentity) Serialize() ([]byte, error) {
 		return nil, errors.Wrapf(err, "could not marshal role of identity %s", id.id)
 	}
 
-	serialized.OU = ouBytes
+	serialized.Ou = ouBytes
 	serialized.Role = roleBytes
 
 	serialized.Proof, err = proto.Marshal(id.associationProof)

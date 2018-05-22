@@ -130,7 +130,7 @@ message MSPIdentityAnonymity {
         ANONYMOUS = 1; // Represents an anonymous MSP Identity
     }
 
-    MSPIdentityAnonymityType anonymityType = 1;
+    MSPIdentityAnonymityType anonymity_type = 1;
 
 }
 
