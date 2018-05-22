@@ -56,7 +56,7 @@ func TestCollectionStore(t *testing.T) {
 	assert.Error(t, err)
 
 	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{cc}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)

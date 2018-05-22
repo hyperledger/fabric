@@ -63,10 +63,10 @@ func NewNymSignature(sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *
 
 	// The signature consists of the Fiat-Shamir hash (ProofC), the s-values (ProofSSk, ProofSRNym), and the nonce.
 	return &NymSignature{
-		BigToBytes(ProofC),
-		BigToBytes(ProofSSk),
-		BigToBytes(ProofSRNym),
-		BigToBytes(Nonce)}, nil
+		ProofC:     BigToBytes(ProofC),
+		ProofSSk:   BigToBytes(ProofSSk),
+		ProofSRNym: BigToBytes(ProofSRNym),
+		Nonce:      BigToBytes(Nonce)}, nil
 }
 
 // Ver verifies an idemix NymSignature

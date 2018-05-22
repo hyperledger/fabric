@@ -39,7 +39,7 @@ func TestIdemixCa(t *testing.T) {
 
 	writeVerifierToFile(ipkBytes, elliptic.Marshal(elliptic.P384(), revocationkey.X, revocationkey.Y))
 
-	key := &idemix.IssuerKey{isk, ipk}
+	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
 	conf, err := GenerateSignerConfig(false, "OU1", "enrollmentid1", 1, key, revocationkey)
 	assert.NoError(t, err)

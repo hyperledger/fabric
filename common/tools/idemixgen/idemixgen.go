@@ -123,7 +123,7 @@ func readIssuerKey() *idemix.IssuerKey {
 	}
 	ipk := &idemix.IssuerPublicKey{}
 	handleError(proto.Unmarshal(ipkBytes, ipk))
-	key := &idemix.IssuerKey{isk, ipk}
+	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
 	return key
 }
