@@ -56,7 +56,7 @@ var _ = Describe("EndToEnd", func() {
 			MSPDir: "crypto/peerOrganizations/org2.example.com/msp",
 			AnchorPeers: []*localconfig.AnchorPeer{{
 				Host: "0.0.0.0",
-				Port: 8051,
+				Port: 14051,
 			}},
 		}}
 
