@@ -9,6 +9,7 @@ package discovery
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"math/rand"
 	"time"
 
@@ -34,8 +35,9 @@ type Client struct {
 // NewRequest creates a new request
 func NewRequest() *Request {
 	r := &Request{
-		queryMapping: make(map[discovery.QueryType]map[string]int),
-		Request:      &discovery.Request{},
+		invocationChainMapping: make(map[int][]InvocationChain),
+		queryMapping:           make(map[discovery.QueryType]map[string]int),
+		Request:                &discovery.Request{},
 	}
 	// pre-populate types
 	for _, queryType := range configTypes {
@@ -48,8 +50,10 @@ func NewRequest() *Request {
 type Request struct {
 	lastChannel string
 	lastIndex   int
-	// map from query type to channel (or channel + chaincode) to expected index in response
+	// map from query type to channel to expected index in response
 	queryMapping map[discovery.QueryType]map[string]int
+	// map from expected index in response to invocation chains
+	invocationChainMapping map[int][]InvocationChain
 	*discovery.Request
 }
 
@@ -68,22 +72,29 @@ func (req *Request) AddConfigQuery() *Request {
 }
 
 // AddEndorsersQuery adds to the request a query for given chaincodes
-func (req *Request) AddEndorsersQuery(chaincodes ...string) *Request {
+// interests are the chaincode interests that the client wants to query for.
+// All interests for a given channel should be supplied in an aggregated slice
+func (req *Request) AddEndorsersQuery(interests ...*discovery.ChaincodeInterest) (*Request, error) {
+	if err := validateInterests(interests...); err != nil {
+		return nil, err
+	}
 	ch := req.lastChannel
 	q := &discovery.Query_CcQuery{
-		CcQuery: &discovery.ChaincodeQuery{},
-	}
-	for _, cc := range chaincodes {
-		q.CcQuery.Interests = append(q.CcQuery.Interests, &discovery.ChaincodeInterest{
-			Chaincodes: []*discovery.ChaincodeCall{{Name: cc}},
-		})
+		CcQuery: &discovery.ChaincodeQuery{
+			Interests: interests,
+		},
 	}
 	req.Queries = append(req.Queries, &discovery.Query{
 		Channel: ch,
 		Query:   q,
 	})
+	var invocationChains []InvocationChain
+	for _, interest := range interests {
+		invocationChains = append(invocationChains, interest.Chaincodes)
+	}
+	req.addChaincodeQueryMapping(invocationChains)
 	req.addQueryMapping(discovery.ChaincodeQueryType, ch)
-	return req
+	return req, nil
 }
 
 // AddLocalPeersQuery adds to the request a local peer query
@@ -116,6 +127,10 @@ func (req *Request) AddPeersQuery() *Request {
 func (req *Request) OfChannel(ch string) *Request {
 	req.lastChannel = ch
 	return req
+}
+
+func (req *Request) addChaincodeQueryMapping(invocationChains []InvocationChain) {
+	req.invocationChainMapping[req.lastIndex] = invocationChains
 }
 
 func (req *Request) addQueryMapping(queryType discovery.QueryType, key string) {
@@ -165,7 +180,7 @@ func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInf
 	if n := len(resp.Results); n != req.lastIndex {
 		return nil, errors.Errorf("Sent %d queries but received %d responses back", req.lastIndex, n)
 	}
-	return computeResponse(req.queryMapping, resp)
+	return req.computeResponse(resp)
 }
 
 type resultOrError interface {
@@ -224,7 +239,7 @@ func (cr *channelResponse) Peers() ([]*Peer, error) {
 	return parsePeers(discovery.PeerMembershipQueryType, cr.response, cr.channel)
 }
 
-func (cr *channelResponse) Endorsers(cc string, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error) {
+func (cr *channelResponse) Endorsers(invocationChain InvocationChain, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error) {
 	// If we have a key that has no chaincode field,
 	// it means it's an error returned from the service
 	if err, exists := cr.response[key{
@@ -236,9 +251,9 @@ func (cr *channelResponse) Endorsers(cc string, ps PrioritySelector, ef Exclusio
 
 	// Else, the service returned a response that isn't an error
 	res, exists := cr.response[key{
-		queryType: discovery.ChaincodeQueryType,
-		channel:   cr.channel,
-		chaincode: cc,
+		queryType:       discovery.ChaincodeQueryType,
+		channel:         cr.channel,
+		invocationChain: invocationChain.String(),
 	}]
 
 	if !exists {
@@ -290,20 +305,20 @@ func (resp response) ForChannel(ch string) ChannelResponse {
 }
 
 type key struct {
-	queryType discovery.QueryType
-	channel   string
-	chaincode string
+	queryType       discovery.QueryType
+	channel         string
+	invocationChain string
 }
 
-func computeResponse(queryMapping map[discovery.QueryType]map[string]int, r *discovery.Response) (response, error) {
+func (req *Request) computeResponse(r *discovery.Response) (response, error) {
 	var err error
 	resp := make(response)
-	for configType, channel2index := range queryMapping {
+	for configType, channel2index := range req.queryMapping {
 		switch configType {
 		case discovery.ConfigQueryType:
 			err = resp.mapConfig(channel2index, r)
 		case discovery.ChaincodeQueryType:
-			err = resp.mapEndorsers(channel2index, r)
+			err = resp.mapEndorsers(channel2index, r, req.queryMapping, req.invocationChainMapping)
 		case discovery.PeerMembershipQueryType:
 			err = resp.mapPeerMembership(channel2index, r, discovery.PeerMembershipQueryType)
 		case discovery.LocalMembershipQueryType:
@@ -400,36 +415,46 @@ func isStateInfoExpected(qt discovery.QueryType) bool {
 	return qt != discovery.LocalMembershipQueryType
 }
 
-func (resp response) mapEndorsers(channel2index map[string]int, r *discovery.Response) error {
+func (resp response) mapEndorsers(
+	channel2index map[string]int,
+	r *discovery.Response,
+	queryMapping map[discovery.QueryType]map[string]int,
+	chaincodeQueryMapping map[int][]InvocationChain) error {
 	for ch, index := range channel2index {
 		ccQueryRes, err := r.EndorsersAt(index)
 		if ccQueryRes == nil && err == nil {
 			return errors.Errorf("expected QueryResult of either ChaincodeQueryResult or Error but got %v instead", r.Results[index])
 		}
 
-		key := key{
-			queryType: discovery.ChaincodeQueryType,
-			channel:   ch,
-		}
-
 		if err != nil {
+			key := key{
+				queryType: discovery.ChaincodeQueryType,
+				channel:   ch,
+			}
 			resp[key] = errors.New(err.Content)
 			continue
 		}
 
-		if err := resp.mapEndorsersOfChannel(ccQueryRes, ch); err != nil {
+		if err := resp.mapEndorsersOfChannel(ccQueryRes, ch, chaincodeQueryMapping[index]); err != nil {
 			return errors.Wrapf(err, "failed assembling endorsers of channel %s", ch)
 		}
 	}
 	return nil
 }
 
-func (resp response) mapEndorsersOfChannel(ccRs *discovery.ChaincodeQueryResult, channel string) error {
-	for _, desc := range ccRs.Content {
+func (resp response) mapEndorsersOfChannel(ccRs *discovery.ChaincodeQueryResult, channel string, invocationChain []InvocationChain) error {
+	if len(ccRs.Content) < len(invocationChain) {
+		return errors.Errorf("expected %d endorsement descriptors but got only %d", len(invocationChain), len(ccRs.Content))
+	}
+	for i, desc := range ccRs.Content {
+		expectedCCName := invocationChain[i][0].Name
+		if desc.Chaincode != expectedCCName {
+			return errors.Errorf("expected chaincode %s but got endorsement descriptor for %s", expectedCCName, desc.Chaincode)
+		}
 		key := key{
-			queryType: discovery.ChaincodeQueryType,
-			channel:   channel,
-			chaincode: desc.Chaincode,
+			queryType:       discovery.ChaincodeQueryType,
+			channel:         channel,
+			invocationChain: invocationChain[i].String(),
 		}
 
 		descriptor, err := resp.createEndorsementDescriptor(desc, channel)
@@ -541,6 +566,43 @@ func validateStateInfoMessage(message *gossip.SignedGossipMessage) error {
 	}
 	if si.Properties == nil {
 		return errors.New("properties is nil")
+	}
+	return nil
+}
+
+func validateInterests(interests ...*discovery.ChaincodeInterest) error {
+	if len(interests) == 0 {
+		return errors.New("no chaincode interests given")
+	}
+	for _, interest := range interests {
+		if interest == nil {
+			return errors.New("chaincode interest is nil")
+		}
+		if err := InvocationChain(interest.Chaincodes).ValidateInvocationChain(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InvocationChain aggregates ChaincodeCalls
+type InvocationChain []*discovery.ChaincodeCall
+
+// String returns a string representation of this invocation chain
+func (ic InvocationChain) String() string {
+	s, _ := json.Marshal(ic)
+	return string(s)
+}
+
+// ValidateInvocationChain validates the InvocationChain's structure
+func (ic InvocationChain) ValidateInvocationChain() error {
+	if len(ic) == 0 {
+		return errors.New("invocation chain should not be empty")
+	}
+	for _, cc := range ic {
+		if cc.Name == "" {
+			return errors.New("chaincode name should not be empty")
+		}
 	}
 	return nil
 }
