@@ -48,7 +48,7 @@ setGlobals () {
 		CORE_PEER_LOCALMSPID="Org3MSP"
 		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 		CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-		CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/idemix
+		CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/idemix/idemix-config
 		CORE_PEER_LOCALMSPTYPE=idemix
 	else
 		CORE_PEER_LOCALMSPID="Org2MSP"
@@ -310,8 +310,8 @@ installChaincode 1 2
 echo "Querying chaincode on peer1.org2..."
 chaincodeQuery 1 2 90
 
-#Query on chaincode on Peer0/Org1 with idemix MSP type, check if the result is 90
-echo "Querying chaincode on org1/peer0..."
+#Query on chaincode on peer1.org3 with idemix MSP type, check if the result is 90
+echo "Querying chaincode on peer1.org3..."
 chaincodeQuery 1 3 90
 
 echo

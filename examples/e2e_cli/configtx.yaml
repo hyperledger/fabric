@@ -113,7 +113,7 @@ Organizations:
         # Type of MSP - this org uses idemix for its MSP implementation
         MSPType: idemix
 
-        MSPDir: crypto-config/idemix
+        MSPDir: crypto-config/idemix/idemix-config
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
