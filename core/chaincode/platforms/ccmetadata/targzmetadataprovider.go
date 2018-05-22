@@ -74,15 +74,14 @@ func (tgzProv *TargzMetadataProvider) GetMetadataAsTarEntries() ([]byte, error) 
 			// We only get here if there are no more entries to scan
 			break
 		}
-
 		if err != nil {
 			return nil, err
 		}
 
-		logger.Debugf("header.Name = %s", header.Name)
 		if !strings.HasPrefix(header.Name, ccPackageStatedbDir) {
 			continue
 		}
+
 		if err = tw.WriteHeader(header); err != nil {
 			logger.Error("Error adding header to statedb tar:", err, header.Name)
 			return nil, err
