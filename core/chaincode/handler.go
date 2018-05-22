@@ -80,7 +80,7 @@ func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(name, version str
 }
 
 // QueryResponseBuilder is responsible for building QueryResponse messages for query
-// transcations initiated by chaincode.
+// transactions initiated by chaincode.
 type QueryResponseBuilder interface {
 	BuildQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator, iterID string) (*pb.QueryResponse, error)
 }
@@ -155,10 +155,9 @@ type Handler struct {
 
 // handleMessage is called by ProcessStream to dispatch messages.
 func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debugf("[%s] Fabric side Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, h.state)
+	chaincodeLogger.Debugf("[%s] Fabric side handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, h.state)
 
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
-		chaincodeLogger.Debug("Received KEEPALIVE Response")
 		return nil
 	}
 
@@ -168,7 +167,7 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	case Ready:
 		return h.handleMessageReadyState(msg)
 	default:
-		return errors.Errorf("handle message: invalid state %s for trnansaction %s", h.state, msg.Txid)
+		return errors.Errorf("handle message: invalid state %s for transaction %s", h.state, msg.Txid)
 	}
 }
 
@@ -391,7 +390,6 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 			}
 
 			in := rMsg.msg
-			chaincodeLogger.Debugf("[%s] Received message %s from shim", shorttxid(in.Txid), in.Type)
 
 			err := h.handleMessage(in)
 			if err != nil {
