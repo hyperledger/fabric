@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatapolicy
 
 import (
+	"math"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -34,6 +35,30 @@ func TestBTLPolicy(t *testing.T) {
 	assert.Equal(t, defaultBTL, btl3)
 
 	_, err = btlPolicy.GetBTL("ns1", "coll4")
+	_, ok := err.(privdata.NoSuchCollectionError)
+	assert.True(t, ok)
+}
+
+func TestExpiringBlock(t *testing.T) {
+	mockCollectionStore := testutil.NewMockCollectionStore()
+	mockCollectionStore.SetBTL("ns1", "coll1", 100)
+	mockCollectionStore.SetBTL("ns1", "coll2", 200)
+	mockCollectionStore.SetBTL("ns1", "coll3", 0)
+	btlPolicy := ConstructBTLPolicy(mockCollectionStore)
+
+	expiringBlk, err := btlPolicy.GetExpiringBlock("ns1", "coll1", 50)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(151), expiringBlk)
+
+	expiringBlk, err = btlPolicy.GetExpiringBlock("ns1", "coll2", 50)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(251), expiringBlk)
+
+	expiringBlk, err = btlPolicy.GetExpiringBlock("ns1", "coll3", 50)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(math.MaxUint64), expiringBlk)
+
+	expiringBlk, err = btlPolicy.GetExpiringBlock("ns1", "coll4", 50)
 	_, ok := err.(privdata.NoSuchCollectionError)
 	assert.True(t, ok)
 }
