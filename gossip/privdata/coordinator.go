@@ -677,9 +677,14 @@ func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *comm
 			}
 			policy := bi.accessPolicyForCollection(chdr, ns.NameSpace, hashedCollection.CollectionName)
 			if policy == nil {
+				logger.Errorf("Failed to retrieve collection config for channel [%s], chaincode [%s], collection name [%s] for txID [%s]. Skipping.",
+					chdr.ChannelId, ns.NameSpace, hashedCollection.CollectionName, chdr.TxId)
 				continue
 			}
 			if !bi.isEligible(policy, ns.NameSpace, hashedCollection.CollectionName) {
+				logger.Debugf("Peer is not eligible for collection, channel [%s], chaincode [%s], "+
+					"collection name [%s], txID [%s] the policy is [%#v]. Skipping.",
+					chdr.ChannelId, ns.NameSpace, hashedCollection.CollectionName, chdr.TxId, policy)
 				continue
 			}
 			key := rwSetKey{
