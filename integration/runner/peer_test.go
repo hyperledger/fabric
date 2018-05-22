@@ -7,11 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package runner_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -166,8 +164,8 @@ var _ = Describe("Peer", func() {
 		fRunner := fetchRun.FetchChannel("mychan", filepath.Join(tempDir, "mychan.block"), "0", "127.0.0.1:8050")
 		execute(fRunner)
 		time.Sleep(5 * time.Second)
-		Expect(string(ordererRunner.Err().Contents())).To(ContainSubstring(`[channel: mychan] Done delivering `))
-		Expect(string(fRunner.Err().Contents())).To(ContainSubstring("Received block: 0"))
+		Expect(ordererRunner.Err()).To(gbytes.Say(`\Q[channel: mychan] Done delivering \E`))
+		Expect(fRunner.Err()).To(gbytes.Say("Received block: 0"))
 
 		By("join channel")
 		joinRun := components.Peer()
@@ -176,20 +174,19 @@ var _ = Describe("Peer", func() {
 		jRunner := joinRun.JoinChannel(filepath.Join(tempDir, "mychan.block"))
 		err = execute(jRunner)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(jRunner.Err().Contents()).To(ContainSubstring("Successfully submitted proposal to join channel"))
+		Expect(jRunner.Err()).To(gbytes.Say("Successfully submitted proposal to join channel"))
 
 		By("installs chaincode")
-		copyDir(filepath.Join("testdata", "chaincode"), filepath.Join(tempDir, "chaincode"))
 		installCC := components.Peer()
 		installCC.ConfigDir = tempDir
 		installCC.LogLevel = "debug"
 		installCC.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		installCC.ExecPath = os.Getenv("PATH")
-		installCC.GoPath = filepath.Join(tempDir, "chaincode")
-		iRunner := installCC.InstallChaincode("mytest", "1.0", filepath.Join("simple", "cmd"))
-		execute(iRunner)
-		Expect(string(iRunner.Err().Contents())).To(ContainSubstring(`Installed remotely response:<status:200 payload:"OK" >`))
-		Expect(string(peerRunner.Err().Contents())).To(ContainSubstring(`Installed Chaincode [mytest] Version [1.0] to peer`))
+		iRunner := installCC.InstallChaincode("mytest", "1.0", "github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
+		err = execute(iRunner)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(iRunner.Err()).To(gbytes.Say(`\QInstalled remotely response:<status:200 payload:"OK" >\E`))
+		Expect(peerRunner.Err()).To(gbytes.Say(`\QInstalled Chaincode [mytest] Version [1.0] to peer\E`))
 
 		By("list installed chaincode")
 		listInstalled := components.Peer()
@@ -199,10 +196,8 @@ var _ = Describe("Peer", func() {
 		liRunner := listInstalled.ChaincodeListInstalled()
 		liProcess := ifrit.Invoke(liRunner)
 		Eventually(liProcess.Ready(), 2*time.Second).Should(BeClosed())
-		Eventually(liRunner.Buffer()).Should(gbytes.Say("Path: simple/cmd"))
-		Eventually(liProcess.Wait(), 5*time.Second).ShouldNot(Receive(BeNil()))
-		Expect(liRunner.Buffer().Contents()).To(ContainSubstring("Name: mytest"))
-		Expect(liRunner.Buffer().Contents()).To(ContainSubstring("Version: 1.0"))
+		Eventually(liProcess.Wait(), 5*time.Second).Should(Receive(BeNil()))
+		Expect(liRunner).To(gbytes.Say("Name: mytest, Version: 1.0,"))
 
 		By("instantiate channel")
 		instantiateCC := components.Peer()
@@ -214,26 +209,25 @@ var _ = Describe("Peer", func() {
 		Eventually(instProcess.Wait(), 10*time.Second).ShouldNot(Receive(BeNil()))
 
 		By("list instantiated chaincode")
-		listInstantiated := func() bool {
+		listInstantiated := func() *gbytes.Buffer {
 			listInstan := components.Peer()
 			listInstan.ConfigDir = tempDir
 			listInstan.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 			linstRunner := listInstan.ChaincodeListInstantiated("mychan")
 			err := execute(linstRunner)
 			if err != nil {
-				return false
+				return nil
 			}
-			return strings.Contains(string(linstRunner.Buffer().Contents()), fmt.Sprintf("Path: %s", "simple/cmd"))
+			return linstRunner.Buffer()
 		}
-		Eventually(listInstantiated, 30*time.Second, 500*time.Millisecond).Should(BeTrue())
+		Eventually(listInstantiated, 30*time.Second, 500*time.Millisecond).Should(gbytes.Say("Name: mytest, Version: 1.0,"))
 
 		listInstan := components.Peer()
 		listInstan.ConfigDir = tempDir
 		listInstan.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		linstRunner := listInstan.ChaincodeListInstantiated("mychan")
 		execute(linstRunner)
-		Expect(linstRunner.Buffer().Contents()).To(ContainSubstring("Name: mytest"))
-		Expect(linstRunner.Buffer().Contents()).To(ContainSubstring("Version: 1.0"))
+		Expect(linstRunner).To(gbytes.Say("Name: mytest, Version: 1.0"))
 
 		By("query channel")
 		queryChan := components.Peer()
@@ -241,7 +235,7 @@ var _ = Describe("Peer", func() {
 		queryChan.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		qRunner := queryChan.QueryChaincode("mytest", "mychan", `{"Args":["query","a"]}`)
 		execute(qRunner)
-		Expect(qRunner.Buffer().Contents()).To(ContainSubstring("100"))
+		Expect(qRunner).To(gbytes.Say("100"))
 
 		By("invoke channel")
 		invokeChan := components.Peer()
@@ -249,7 +243,6 @@ var _ = Describe("Peer", func() {
 		invokeChan.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		invkeRunner := invokeChan.InvokeChaincode("mytest", "mychan", `{"Args":["invoke","a","b","10"]}`, "127.0.0.1:8050")
 		execute(invkeRunner)
-		Expect(invkeRunner.Err().Contents()).To(ContainSubstring("Chaincode invoke successful. result: status:200"))
+		Expect(invkeRunner.Err()).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 	})
-
 })

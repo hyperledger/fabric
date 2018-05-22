@@ -313,8 +313,7 @@ var _ = Describe("Config", func() {
 				Chaincode: Chaincode{
 					Name:     "mycc",
 					Version:  "1.0",
-					Path:     filepath.Join("simple", "cmd"),
-					GoPath:   filepath.Join(tempDir, "chaincode"),
+					Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 					ExecPath: os.Getenv("PATH"),
 				},
 				Orderer:  "127.0.0.1:9050",
@@ -431,7 +430,6 @@ var _ = Describe("Config", func() {
 			w.BuildNetwork()
 
 			By("setting up and joining the channel")
-			copyDir(filepath.Join("testdata", "chaincode"), filepath.Join(tempDir, "chaincode"))
 			err = w.SetupChannel()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -444,7 +442,7 @@ var _ = Describe("Config", func() {
 			adminProcess := ifrit.Invoke(adminRunner)
 			Eventually(adminProcess.Ready(), 2*time.Second).Should(BeClosed())
 			Eventually(adminProcess.Wait(), 5*time.Second).ShouldNot(Receive(BeNil()))
-			Eventually(adminRunner.Buffer()).Should(gbytes.Say("Path: simple/cmd"))
+			Eventually(adminRunner.Buffer()).Should(gbytes.Say("Name: mycc, Version: 1.0,"))
 		})
 	})
 })
@@ -453,20 +451,5 @@ func copyFile(src, dest string) {
 	data, err := ioutil.ReadFile(src)
 	Expect(err).NotTo(HaveOccurred())
 	err = ioutil.WriteFile(dest, data, 0774)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func copyDir(src, dest string) {
-	os.MkdirAll(dest, 0755)
-	objects, err := ioutil.ReadDir(src)
-	for _, obj := range objects {
-		srcfileptr := src + "/" + obj.Name()
-		destfileptr := dest + "/" + obj.Name()
-		if obj.IsDir() {
-			copyDir(srcfileptr, destfileptr)
-		} else {
-			copyFile(srcfileptr, destfileptr)
-		}
-	}
 	Expect(err).NotTo(HaveOccurred())
 }

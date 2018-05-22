@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -93,8 +92,7 @@ var _ = Describe("EndToEnd", func() {
 			Chaincode: world.Chaincode{
 				Name:     "mycc",
 				Version:  "1.0",
-				Path:     filepath.Join("simple", "cmd"),
-				GoPath:   filepath.Join(testDir, "chaincode"),
+				Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 				ExecPath: os.Getenv("PATH"),
 			},
 			InitArgs: `{"Args":["init","a","100","b","200"]}`,
@@ -237,7 +235,6 @@ var _ = Describe("EndToEnd", func() {
 		w.BuildNetwork()
 
 		By("setting up the channel")
-		copyDir(filepath.Join("testdata", "chaincode"), filepath.Join(testDir, "chaincode"))
 		err := w.SetupChannel()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -252,34 +249,12 @@ var _ = Describe("EndToEnd", func() {
 		activations = CountValidationPluginActivations()
 		Expect(activations).To(Equal(peerCount))
 
-		By("verifying the chaincode is installed")
-		adminPeer := components.Peer()
-		adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
-		adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		adminRunner := adminPeer.ChaincodeListInstalled()
-		execute(adminRunner)
-		Eventually(adminRunner.Buffer()).Should(gbytes.Say("Path: simple/cmd"))
-
-		By("waiting for the chaincode to complete instantiation")
-		listInstantiated := func() bool {
-			p := components.Peer()
-			p.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
-			p.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			adminRunner := p.ChaincodeListInstantiated(w.Deployment.Channel)
-			err := execute(adminRunner)
-			if err != nil {
-				return false
-			}
-			return strings.Contains(string(adminRunner.Buffer().Contents()), "Path: simple/cmd")
-		}
-		Eventually(listInstantiated, 30*time.Second, 500*time.Millisecond).Should(BeTrue())
-
 		By("querying the chaincode")
-		adminPeer = components.Peer()
+		adminPeer := components.Peer()
 		adminPeer.LogLevel = "debug"
 		adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
 		adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		adminRunner = adminPeer.QueryChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["query","a"]}`)
+		adminRunner := adminPeer.QueryChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["query","a"]}`)
 		execute(adminRunner)
 		Eventually(adminRunner.Buffer()).Should(gbytes.Say("100"))
 
@@ -307,21 +282,6 @@ func copyFile(src, dest string) {
 	data, err := ioutil.ReadFile(src)
 	Expect(err).NotTo(HaveOccurred())
 	err = ioutil.WriteFile(dest, data, 0775)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func copyDir(src, dest string) {
-	os.MkdirAll(dest, 0755)
-	objects, err := ioutil.ReadDir(src)
-	for _, obj := range objects {
-		srcfileptr := src + "/" + obj.Name()
-		destfileptr := dest + "/" + obj.Name()
-		if obj.IsDir() {
-			copyDir(srcfileptr, destfileptr)
-		} else {
-			copyFile(srcfileptr, destfileptr)
-		}
-	}
 	Expect(err).NotTo(HaveOccurred())
 }
 

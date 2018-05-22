@@ -9,7 +9,6 @@ package runner_test
 import (
 	"encoding/json"
 	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/hyperledger/fabric/integration/world"
@@ -54,24 +53,10 @@ func copyFile(src, dest string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func execute(r ifrit.Runner) (err error) {
+func execute(r ifrit.Runner) error {
+	var err error
 	p := ifrit.Invoke(r)
 	EventuallyWithOffset(1, p.Ready()).Should(BeClosed())
 	EventuallyWithOffset(1, p.Wait(), 5*time.Second).Should(Receive(&err))
 	return err
-}
-
-func copyDir(src, dest string) {
-	os.MkdirAll(dest, 0755)
-	objects, err := ioutil.ReadDir(src)
-	for _, obj := range objects {
-		srcfileptr := src + "/" + obj.Name()
-		destfileptr := dest + "/" + obj.Name()
-		if obj.IsDir() {
-			copyDir(srcfileptr, destfileptr)
-		} else {
-			copyFile(srcfileptr, destfileptr)
-		}
-	}
-	Expect(err).NotTo(HaveOccurred())
 }
