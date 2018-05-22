@@ -234,7 +234,7 @@ func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs
 		MaxPropagationBurstSize:    20,
 		PropagateIterations:        1,
 		PropagatePeerNum:           3,
-		PullInterval:               time.Duration(2) * time.Second,
+		PullInterval:               time.Duration(4) * time.Second,
 		PullPeerNum:                5,
 		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
 		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
