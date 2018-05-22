@@ -288,12 +288,15 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 			if err != nil {
 				return nil, nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
 			}
-			endosedAt, err := e.s.GetLedgerHeight(chainID)
+			endorsedAt, err := e.s.GetLedgerHeight(chainID)
 			if err != nil {
 				return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", chainID))
 			}
-			// Add ledger height at which transaction was endorsed
-			pvtDataWithConfig.EndorsedAt = endosedAt
+			// Add ledger height at which transaction was endorsed,
+			// `endorsedAt` is obtained from the block storage and at times this could be 'endorsement Height + 1'.
+			// However, since we use this height only to select the configuration, this works for now.
+			// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
+			pvtDataWithConfig.EndorsedAt = endorsedAt
 			if err := e.distributePrivateData(chainID, txid, pvtDataWithConfig, simResult.SimulationBlkHt); err != nil {
 				return nil, nil, nil, nil, err
 			}
