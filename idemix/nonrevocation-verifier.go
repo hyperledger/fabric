@@ -12,11 +12,11 @@ import (
 )
 
 type nonRevocationVerifier interface {
-	recomputeFSContribution(proof *NonRevokedProof, chal *FP256BN.BIG, epochPK *FP256BN.ECP2, proofSRh *FP256BN.BIG) ([]byte, error)
+	recomputeFSContribution(proof *NonRevocationProof, chal *FP256BN.BIG, epochPK *FP256BN.ECP2, proofSRh *FP256BN.BIG) ([]byte, error)
 }
 type nopNonRevocationVerifier struct{}
 
-func (verifier *nopNonRevocationVerifier) recomputeFSContribution(proof *NonRevokedProof, chal *FP256BN.BIG, epochPK *FP256BN.ECP2, proofSRh *FP256BN.BIG) ([]byte, error) {
+func (verifier *nopNonRevocationVerifier) recomputeFSContribution(proof *NonRevocationProof, chal *FP256BN.BIG, epochPK *FP256BN.ECP2, proofSRh *FP256BN.BIG) ([]byte, error) {
 	return nil, nil
 }
 

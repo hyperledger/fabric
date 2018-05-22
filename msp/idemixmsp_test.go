@@ -95,7 +95,7 @@ func TestSetupBad(t *testing.T) {
 	assert.NoError(t, err)
 	key, err := idemix.NewIssuerKey([]string{}, rng)
 	assert.NoError(t, err)
-	ipkBytes, err := proto.Marshal(key.IPk)
+	ipkBytes, err := proto.Marshal(key.Ipk)
 	assert.NoError(t, err)
 	idemixconfig.IPk = ipkBytes
 

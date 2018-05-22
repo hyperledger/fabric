@@ -185,8 +185,8 @@ func NewSignature(cred *Credential, sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP2
 			BigToBytes(Nonce),
 			EcpToProto(Nym),
 			BigToBytes(ProofSRNym),
-			cri.EpochPK,
-			cri.EpochPKSig,
+			cri.EpochPk,
+			cri.EpochPkSig,
 			cri.Epoch,
 			nonRevokedProof},
 		nil
@@ -205,13 +205,13 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 		return errors.Errorf("cannot verify idemix signature: received invalid input")
 	}
 
-	if sig.NonRevokedProof.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
+	if sig.NonRevocationProof.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
 		return errors.Errorf("Attribute %d is disclosed but is also used as revocation handle, which should remain hidden.", rhIndex)
 	}
 
 	HiddenIndices := hiddenIndices(Disclosure)
 
-	err := VerifyEpochPK(revPk, sig.RevocationEpochPK, sig.RevocationPKSig, epoch, RevocationAlgorithm(sig.NonRevokedProof.RevocationAlg))
+	err := VerifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg))
 	if err != nil {
 		return errors.Wrap(err, "signature is based on an invalid revocation epoch public key")
 	}
@@ -282,14 +282,14 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 	t3 := HSk.Mul2(ProofSSk, HRand, ProofSRNym)
 	t3.Sub(Nym.Mul(ProofC))
 
-	nonRevokedVer, err := getNonRevocationVerifier(RevocationAlgorithm(sig.NonRevokedProof.RevocationAlg))
+	nonRevokedVer, err := getNonRevocationVerifier(RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg))
 	if err != nil {
 		return err
 	}
 
 	i := sort.SearchInts(HiddenIndices, rhIndex)
 	proofSRh := ProofSAttrs[i]
-	nonRevokedProofBytes, err := nonRevokedVer.recomputeFSContribution(sig.NonRevokedProof, ProofC, Ecp2FromProto(sig.RevocationEpochPK), proofSRh)
+	nonRevokedProofBytes, err := nonRevokedVer.recomputeFSContribution(sig.NonRevocationProof, ProofC, Ecp2FromProto(sig.RevocationEpochPk), proofSRh)
 	if err != nil {
 		return err
 	}
@@ -300,7 +300,7 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 	// one bigint (hash of the issuer public key) of length FieldBytes
 	// disclosed attributes
 	// message that was signed
-	proofData := make([]byte, len([]byte(signLabel))+7*(2*FieldBytes+1)+FieldBytes+len(Disclosure)+len(msg)+ProofBytes[RevocationAlgorithm(sig.NonRevokedProof.RevocationAlg)])
+	proofData := make([]byte, len([]byte(signLabel))+7*(2*FieldBytes+1)+FieldBytes+len(Disclosure)+len(msg)+ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)])
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t1)

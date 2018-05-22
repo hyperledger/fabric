@@ -36,12 +36,12 @@ import (
 // the user's secret key from a credential request
 func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *amcl.RAND) (*Credential, error) {
 	// check the credential request that contains
-	err := m.Check(key.IPk)
+	err := m.Check(key.Ipk)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(attrs) != len(key.IPk.AttributeNames) {
+	if len(attrs) != len(key.Ipk.AttributeNames) {
 		return nil, errors.Errorf("incorrect number of attribute values passed")
 	}
 
@@ -54,17 +54,17 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *am
 	B.Copy(GenG1)
 	Nym := EcpFromProto(m.Nym)
 	B.Add(Nym)
-	B.Add(EcpFromProto(key.IPk.HRand).Mul(S))
+	B.Add(EcpFromProto(key.Ipk.HRand).Mul(S))
 
 	// Use Mul2 instead of Mul as much as possible
 	for i := 0; i < len(attrs)/2; i++ {
-		B.Add(EcpFromProto(key.IPk.HAttrs[2*i]).Mul2(attrs[2*i], EcpFromProto(key.IPk.HAttrs[2*i+1]), attrs[2*i+1]))
+		B.Add(EcpFromProto(key.Ipk.HAttrs[2*i]).Mul2(attrs[2*i], EcpFromProto(key.Ipk.HAttrs[2*i+1]), attrs[2*i+1]))
 	}
 	if len(attrs)%2 != 0 {
-		B.Add(EcpFromProto(key.IPk.HAttrs[len(attrs)-1]).Mul(attrs[len(attrs)-1]))
+		B.Add(EcpFromProto(key.Ipk.HAttrs[len(attrs)-1]).Mul(attrs[len(attrs)-1]))
 	}
 
-	Exp := Modadd(FP256BN.FromBytes(key.GetISk()), E, GroupOrder)
+	Exp := Modadd(FP256BN.FromBytes(key.GetIsk()), E, GroupOrder)
 	Exp.Invmodp(GroupOrder)
 	A := B.Mul(Exp)
 

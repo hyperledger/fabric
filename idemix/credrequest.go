@@ -56,7 +56,7 @@ func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublic
 	proofC := HashModOrder(proofData)
 	proofS := Modadd(FP256BN.Modmul(proofC, sk, GroupOrder), rSk, GroupOrder)
 
-	return &CredRequest{EcpToProto(Nym), BigToBytes(IssuerNonce), BigToBytes(proofC), BigToBytes(proofS), nil}
+	return &CredRequest{EcpToProto(Nym), BigToBytes(IssuerNonce), BigToBytes(proofC), BigToBytes(proofS)}
 }
 
 // Check cryptographically verifies the credential request
@@ -64,7 +64,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	Nym := EcpFromProto(m.GetNym())
 	IssuerNonce := FP256BN.FromBytes(m.GetIssuerNonce())
 	ProofC := FP256BN.FromBytes(m.GetProofC())
-	ProofS := FP256BN.FromBytes(m.GetProofS1())
+	ProofS := FP256BN.FromBytes(m.GetProofS())
 
 	HSk := EcpFromProto(ipk.HSk)
 
