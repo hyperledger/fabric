@@ -249,7 +249,7 @@ configuration in commonly met scenarios.
 **1) Mapping between organizations/corporations and MSPs**
 
 We recommend that there is a one-to-one mapping between organizations and MSPs.
-If a different mapping type of mapping is chosen, the following needs to be to
+If a different type of mapping is chosen, the following needs to be to
 considered:
 
 - **One organization employing various MSPs.** This corresponds to the
@@ -322,7 +322,7 @@ peer/orderer MSP would be the administrators of that MSP.
 Another point to be considered with this approach is that peers
 authorize event registration requests based on membership of request
 originator within their local MSP. Clearly, since the originator of the
-request is a client, the request originator is always doomed to belong
+request is a client, the request originator is always deemed to belong
 to a different MSP than the requested peer and the peer would reject the
 request.
 
