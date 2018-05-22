@@ -40,6 +40,7 @@
 #   - enable_ci_only_tests - triggers unit-tests in downstream jobs. Applicable only for CI not to
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - help-docs - generate the command reference docs
 
 BASE_VERSION = 1.2.0
@@ -414,10 +415,16 @@ docker-list: $(patsubst %,%-docker-list, $(IMAGES))
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
-	-docker images -q $(DOCKER_NS)/fabric-$(TARGET) | xargs -I '{}' docker rmi -f '{}'
-	-@rm -rf $(BUILD_DIR)/image/$(TARGET)
+	-docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-$(BASE_VERSION)$(if $(EXTRA_VERSION),-snapshot-*,)' | xargs docker rmi -f
+	-@rm -rf $(BUILD_DIR)/image/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
+
+docker-tag-latest: $(IMAGES:%=%-docker-tag-latest)
+
+%-docker-tag-latest:
+	$(eval TARGET = ${patsubst %-docker-tag-latest,%,${@}})
+	docker tag $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG) $(DOCKER_NS)/fabric-$(TARGET):latest
 
 .PHONY: clean
 clean: docker-clean unit-test-clean release-clean
