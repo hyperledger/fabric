@@ -97,7 +97,7 @@ func TestSetupBad(t *testing.T) {
 	assert.NoError(t, err)
 	ipkBytes, err := proto.Marshal(key.Ipk)
 	assert.NoError(t, err)
-	idemixconfig.IPk = ipkBytes
+	idemixconfig.Ipk = ipkBytes
 
 	idemixConfigBytes, err := proto.Marshal(idemixconfig)
 	assert.NoError(t, err)
@@ -109,7 +109,7 @@ func TestSetupBad(t *testing.T) {
 
 	// Create MSP config with bad IPK bytes
 	ipkBytes = []byte("barf")
-	idemixconfig.IPk = ipkBytes
+	idemixconfig.Ipk = ipkBytes
 
 	idemixConfigBytes, err = proto.Marshal(idemixconfig)
 	assert.NoError(t, err)

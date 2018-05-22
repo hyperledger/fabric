@@ -301,8 +301,8 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 
 			nodeOUs = &msp.FabricNodeOUs{
 				Enable:             configuration.NodeOUs.Enable,
-				ClientOUIdentifier: &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier},
-				PeerOUIdentifier:   &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier},
+				ClientOuIdentifier: &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier},
+				PeerOuIdentifier:   &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier},
 			}
 
 			// Read certificates, if defined
@@ -313,7 +313,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 			if err != nil {
 				mspLogger.Infof("Failed loading ClientOU certificate at [%s]: [%s]", f, err)
 			} else {
-				nodeOUs.ClientOUIdentifier.Certificate = raw
+				nodeOUs.ClientOuIdentifier.Certificate = raw
 			}
 
 			// PeerOU
@@ -322,7 +322,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 			if err != nil {
 				mspLogger.Debugf("Failed loading PeerOU certificate at [%s]: [%s]", f, err)
 			} else {
-				nodeOUs.PeerOUIdentifier.Certificate = raw
+				nodeOUs.PeerOuIdentifier.Certificate = raw
 			}
 		}
 	} else {
@@ -347,7 +347,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 		CryptoConfig:                  cryptoConfig,
 		TlsRootCerts:                  tlsCACerts,
 		TlsIntermediateCerts:          tlsIntermediateCerts,
-		FabricNodeOUs:                 nodeOUs,
+		FabricNodeOus:                 nodeOUs,
 	}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
@@ -379,7 +379,7 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 
 	idemixConfig := &msp.IdemixMSPConfig{
 		Name:         ID,
-		IPk:          ipkBytes,
+		Ipk:          ipkBytes,
 		RevocationPk: revocationPkBytes,
 	}
 
