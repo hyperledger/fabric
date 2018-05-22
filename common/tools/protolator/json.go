@@ -28,6 +28,21 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// MostlyDeterministicMarshal is _NOT_ the function you are looking for.
+// It causes protobuf serialization consistent within a single build.  It
+// does not guarantee that the serialization is deterministic across proto
+// versions or proto implementations.  It is useful for situations where
+// the same process wants to compare binary messages for equality without
+// needing to unmarshal first, but should not be used generally.
+func MostlyDeterministicMarshal(msg proto.Message) ([]byte, error) {
+	buffer := proto.NewBuffer(make([]byte, 0))
+	buffer.SetDeterministic(true)
+	if err := buffer.Marshal(msg); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
 type protoFieldFactory interface {
 	// Handles should return whether or not this particular protoFieldFactory instance
 	// is responsible for the given proto's field
