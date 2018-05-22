@@ -249,8 +249,8 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	}
 
 	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
-	h.serialSendAsync(resp, false)
 	h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
+	h.serialSendAsync(resp, false)
 }
 
 func shorttxid(txid string) string {

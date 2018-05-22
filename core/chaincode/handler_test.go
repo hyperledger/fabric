@@ -157,7 +157,11 @@ var _ = Describe("Handler", func() {
 			Expect(msg).To(Equal(expectedResponse))
 		})
 
-		It("deregisters the message transaction ID", func() {
+		It("deregisters the transaction ID before sending the response", func() {
+			fakeTransactionRegistry.RemoveStub = func(channelID, txID string) {
+				Consistently(fakeChatStream.SendCallCount).Should(Equal(0))
+			}
+
 			handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
 
 			Expect(fakeTransactionRegistry.RemoveCallCount()).To(Equal(1))
