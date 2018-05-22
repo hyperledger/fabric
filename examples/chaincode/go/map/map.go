@@ -1,5 +1,3 @@
-// +build !experimental
-
 /*
 Copyright IBM Corp. All Rights Reserved.
 
@@ -42,6 +40,117 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	switch function {
+
+	case "putPrivate":
+		if len(args) < 3 {
+			return shim.Error("put operation on private data must include three arguments: [collection, key, value]")
+		}
+		collection := args[0]
+		key := args[1]
+		value := args[2]
+
+		if err := stub.PutPrivateData(collection, key, []byte(value)); err != nil {
+			fmt.Printf("Error putting private data%s", err)
+			return shim.Error(fmt.Sprintf("put operation failed. Error updating state: %s", err))
+		}
+
+		return shim.Success(nil)
+
+	case "removePrivate":
+		if len(args) < 2 {
+			return shim.Error("remove operation on private data must include two arguments: [collection, key]")
+		}
+		collection := args[0]
+		key := args[1]
+
+		err := stub.DelPrivateData(collection, key)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("remove operation on private data failed. Error updating state: %s", err))
+		}
+		return shim.Success(nil)
+
+	case "getPrivate":
+		if len(args) < 2 {
+			return shim.Error("get operation on private data must include two arguments: [collection, key]")
+		}
+		collection := args[0]
+		key := args[1]
+		value, err := stub.GetPrivateData(collection, key)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("get operation on private data failed. Error accessing state: %s", err))
+		}
+		jsonVal, err := json.Marshal(string(value))
+		return shim.Success(jsonVal)
+
+	case "keysPrivate":
+		if len(args) < 3 {
+			return shim.Error("range query operation on private data must include three arguments, a collection, key and value")
+		}
+		collection := args[0]
+		startKey := args[1]
+		endKey := args[2]
+
+		//sleep needed to test peer's timeout behavior when using iterators
+		stime := 0
+		if len(args) > 3 {
+			stime, _ = strconv.Atoi(args[3])
+		}
+
+		keysIter, err := stub.GetPrivateDataByRange(collection, startKey, endKey)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("keys operation failed on private data. Error accessing state: %s", err))
+		}
+		defer keysIter.Close()
+
+		var keys []string
+		for keysIter.HasNext() {
+			//if sleeptime is specied, take a nap
+			if stime > 0 {
+				time.Sleep(time.Duration(stime) * time.Millisecond)
+			}
+
+			response, iterErr := keysIter.Next()
+			if iterErr != nil {
+				return shim.Error(fmt.Sprintf("keys operation on private data failed. Error accessing state: %s", err))
+			}
+			keys = append(keys, response.Key)
+		}
+
+		for key, value := range keys {
+			fmt.Printf("key %d contains %s\n", key, value)
+		}
+
+		jsonKeys, err := json.Marshal(keys)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("keys operation on private data failed. Error marshaling JSON: %s", err))
+		}
+
+		return shim.Success(jsonKeys)
+
+	case "queryPrivate":
+		collection := args[0]
+		query := args[1]
+		keysIter, err := stub.GetPrivateDataQueryResult(collection, query)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation on private data failed. Error accessing state: %s", err))
+		}
+		defer keysIter.Close()
+
+		var keys []string
+		for keysIter.HasNext() {
+			response, iterErr := keysIter.Next()
+			if iterErr != nil {
+				return shim.Error(fmt.Sprintf("query operation on private data failed. Error accessing state: %s", err))
+			}
+			keys = append(keys, response.Key)
+		}
+
+		jsonKeys, err := json.Marshal(keys)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation on private data failed. Error marshaling JSON: %s", err))
+		}
+
+		return shim.Success(jsonKeys)
 
 	case "put":
 		if len(args) < 2 {

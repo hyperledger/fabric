@@ -107,3 +107,22 @@ func (ap *ApplicationProvider) MetadataLifecycle() bool {
 func (ap *ApplicationProvider) KeyLevelEndorsement() bool {
 	return ap.v12
 }
+
+// HasCapability returns true if the capability is supported by this binary.
+func (ap *ApplicationProvider) HasCapability(capability string) bool {
+	switch capability {
+	// Add new capability names here
+	case ApplicationV1_1:
+		return true
+	case ApplicationV1_2:
+		return true
+	case ApplicationPvtDataExperimental:
+		return true
+	case ApplicationResourcesTreeExperimental:
+		return true
+	case ApplicationChaincodeLifecycleExperimental:
+		return true
+	default:
+		return false
+	}
+}
