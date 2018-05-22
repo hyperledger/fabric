@@ -114,8 +114,8 @@ func Ecp2ToProto(p *FP256BN.ECP2) *ECP2 {
 // Ecp2FromProto converts a proto struct *ECP2 into an *amcl.ECP2
 func Ecp2FromProto(p *ECP2) *FP256BN.ECP2 {
 	return FP256BN.NewECP2fp2s(
-		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetXA()), FP256BN.FromBytes(p.GetXB())),
-		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetYA()), FP256BN.FromBytes(p.GetYB())))
+		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetXa()), FP256BN.FromBytes(p.GetXb())),
+		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetYa()), FP256BN.FromBytes(p.GetYb())))
 }
 
 // GetRand returns a new *amcl.RAND with a fresh seed

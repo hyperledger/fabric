@@ -14,15 +14,15 @@ import (
 
 type nonRevokedProver interface {
 	getFSContribution(rh *FP256BN.BIG, rRh *FP256BN.BIG, cri *CredentialRevocationInformation, rng *amcl.RAND) ([]byte, error)
-	getNonRevokedProof(chal *FP256BN.BIG) (*NonRevokedProof, error)
+	getNonRevokedProof(chal *FP256BN.BIG) (*NonRevocationProof, error)
 }
 type nopNonRevokedProver struct{}
 
 func (prover *nopNonRevokedProver) getFSContribution(rh *FP256BN.BIG, rRh *FP256BN.BIG, cri *CredentialRevocationInformation, rng *amcl.RAND) ([]byte, error) {
 	return nil, nil
 }
-func (prover *nopNonRevokedProver) getNonRevokedProof(chal *FP256BN.BIG) (*NonRevokedProof, error) {
-	ret := &NonRevokedProof{}
+func (prover *nopNonRevokedProver) getNonRevokedProof(chal *FP256BN.BIG) (*NonRevocationProof, error) {
+	ret := &NonRevocationProof{}
 	ret.RevocationAlg = int32(ALG_NO_REVOCATION)
 	return ret, nil
 }

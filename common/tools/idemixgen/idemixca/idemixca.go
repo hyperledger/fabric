@@ -34,9 +34,9 @@ func GenerateIssuerKey() ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "cannot generate CA key")
 	}
-	ipkSerialized, err := proto.Marshal(key.IPk)
+	ipkSerialized, err := proto.Marshal(key.Ipk)
 
-	return key.ISk, ipkSerialized, err
+	return key.Isk, ipkSerialized, err
 }
 
 // GenerateSignerConfig creates a new signer config.
@@ -70,7 +70,7 @@ func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, re
 	}
 	sk := idemix.RandModOrder(rng)
 	ni := idemix.RandModOrder(rng)
-	msg := idemix.NewCredRequest(sk, ni, key.IPk, rng)
+	msg := idemix.NewCredRequest(sk, ni, key.Ipk, rng)
 	cred, err := idemix.NewCredential(key, msg, attrs, rng)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate a credential")

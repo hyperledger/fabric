@@ -16,101 +16,98 @@ option go_package = "github.com/hyperledger/fabric/idemix";
 // ECP is an elliptic curve point specified by its coordinates
 // ECP corresponds to an element of the first group (G1)
 message ECP {
-	bytes X = 1;
-	bytes Y = 2;
+	bytes x = 1;
+	bytes y = 2;
 }
 
 // ECP2 is an elliptic curve point specified by its coordinates
 // ECP2 corresponds to an element of the second group (G2)
 message ECP2 {
-	bytes XA = 1;
-	bytes XB = 2;
-	bytes YA = 3;
-	bytes YB = 4;
+	bytes xa = 1;
+	bytes xb = 2;
+	bytes ya = 3;
+	bytes yb = 4;
 }
 
 // IssuerPublicKey specifies an issuer public key that consists of
-// AttributeNames - a list of the attribute names of a credential issued by the issuer
-// HSk, HRand, HAttrs, W, BarG1, BarG2 - group elements corresponding to the signing key, randomness, and attributes
-// ProofC, ProofS compose a zero-knowledge proof of knowledge of the secret key
-// Hash is a hash of the public key appended to it
+// attribute_names - a list of the attribute names of a credential issued by the issuer
+// h_sk, h_rand, h_attrs, w, bar_g1, bar_g2 - group elements corresponding to the signing key, randomness, and attributes
+// proof_c, proof_s compose a zero-knowledge proof of knowledge of the secret key
+// hash is a hash of the public key appended to it
 message IssuerPublicKey {
-	repeated string AttributeNames = 1;
-	ECP HSk = 2;
-	ECP HRand = 3;
-	repeated ECP HAttrs = 4;
-	ECP2 W = 5;
-	ECP BarG1 = 6;
-	ECP BarG2 = 7;
-	bytes ProofC = 8;
-	bytes ProofS = 9;
-	bytes Hash = 10;
+	repeated string attribute_names = 1;
+	ECP h_sk = 2;
+	ECP h_rand = 3;
+	repeated ECP h_attrs = 4;
+	ECP2 w = 5;
+	ECP bar_g1 = 6;
+	ECP bar_g2 = 7;
+	bytes proof_c = 8;
+	bytes proof_s = 9;
+	bytes hash = 10;
 }
 
 // IssuerKey specifies an issuer key pair that consists of
 // ISk - the issuer secret key and
 // IssuerPublicKey - the issuer public key
 message IssuerKey {
-	bytes ISk = 1;
-	IssuerPublicKey IPk = 2;
+	bytes isk = 1;
+	IssuerPublicKey ipk = 2;
 }
 
 // Credential specifies a credential object that consists of
-// A, B, E, S - signature value
-// Attrs - attribute values
+// a, b, e, s - signature value
+// attrs - attribute values
 message Credential {
-	ECP A = 1;
-	ECP B = 2;
-	bytes E = 3;
-	bytes S = 4;
-	repeated bytes Attrs = 5;
+	ECP a = 1;
+	ECP b = 2;
+	bytes e = 3;
+	bytes s = 4;
+	repeated bytes attrs = 5;
 }
 
 // CredRequest specifies a credential request object that consists of
-// Nym - a pseudonym, which is a commitment to the user secret
-// IssuerNonce - a random nonce provided by the issuer
-// ProofC, ProofS1, ProofS2 - a zero-knowledge proof of knowledge of the
+// nym - a pseudonym, which is a commitment to the user secret
+// issuer_nonce - a random nonce provided by the issuer
+// proof_c, proof_s - a zero-knowledge proof of knowledge of the
 // user secret inside Nym
 message CredRequest {
-	ECP Nym = 1;
-	bytes IssuerNonce = 2;
-	bytes ProofC = 3;
-	bytes ProofS1 = 4;
-	bytes ProofS2 = 5;
+	ECP nym = 1;
+	bytes issuer_nonce = 2;
+	bytes proof_c = 3;
+	bytes proof_s = 4;
 }
 
 // Signature specifies a signature object that consists of
-// APrime, ABar, BPrime, Proof* - randomized credential signature values
+// a_prime, a_bar, b_prime, proof_* - randomized credential signature values
 // and a zero-knowledge proof of knowledge of a credential
 // and the corresponding user secret together with the attribute values
-// Nonce - a fresh nonce used for the signature
-// Nym - a fresh pseudonym (a commitment to to the user secret)
-// ProofSRNym - a zero-knowledge proof of knowledge of the
-// user secret inside Nym
+// nonce - a fresh nonce used for the signature
+// nym - a fresh pseudonym (a commitment to to the user secret)
 message Signature {
-    ECP APrime = 1;
-    ECP ABar = 2;
-    ECP BPrime = 3;
-    bytes ProofC = 4;
-    bytes ProofSSk = 5;
-    bytes ProofSE = 6;
-    bytes ProofSR2 = 7;
-    bytes ProofSR3 = 8;
-    bytes ProofSSPrime = 9;
-    repeated bytes ProofSAttrs = 10;
-    bytes Nonce = 11;
-    ECP Nym = 12;
-    bytes ProofSRNym = 13;
-    ECP2 RevocationEpochPK = 14;
-    bytes RevocationPKSig = 15;
-    int64 Epoch = 16;
-    NonRevokedProof NonRevokedProof = 17;
+	ECP a_prime = 1;
+	ECP a_bar = 2;
+	ECP b_prime = 3;
+	bytes proof_c = 4;
+	bytes proof_s_sk = 5;
+	bytes proof_s_e = 6;
+	bytes proof_s_r2 = 7;
+	bytes proof_s_r3 = 8;
+	bytes proof_s_s_prime = 9;
+	repeated bytes proof_s_attrs = 10;
+	bytes nonce = 11;
+	ECP nym = 12;
+	bytes proof_s_r_nym = 13;
+	ECP2 revocation_epoch_pk = 14;
+	bytes revocation_pk_sig = 15;
+	int64 epoch = 16;
+	NonRevocationProof non_revocation_proof = 17;
 }
 
-// NonRevokedProof contains proof that the credential is not revoked
-message NonRevokedProof {
-    int32 RevocationAlg = 1;
-    bytes NonRevokedProof = 2;
+// NonRevocationProof contains proof that the credential is not revoked
+message NonRevocationProof {
+	int32 revocation_alg = 1;
+	bytes non_revocation_proof = 2;
 }
 
 // NymSignature specifies a signature object that signs a message
@@ -119,29 +116,29 @@ message NonRevokedProof {
 // a CA (issuer), whereas NymSignature only proves that the the owner of the pseudonym
 // signed the message
 message NymSignature {
-    // ProofC is the Fiat-Shamir challenge of the ZKP
-    bytes ProofC = 1;
-    // ProofSSK is the s-value proving knowledge of the user secret key
-    bytes ProofSSk = 2;
-    //ProofSRNym is the s-value proving knowledge of the pseudonym secret
-    bytes ProofSRNym = 3;
-    // Nonce is a fresh nonce used for the signature
-    bytes Nonce = 4;
+	// proof_c is the Fiat-Shamir challenge of the ZKP
+	bytes proof_c = 1;
+	// proof_s_sk is the s-value proving knowledge of the user secret key
+	bytes proof_s_sk = 2;
+	//proof_s_r_nym is the s-value proving knowledge of the pseudonym secret
+	bytes proof_s_r_nym = 3;
+	// nonce is a fresh nonce used for the signature
+	bytes nonce = 4;
 }
 
 message CredentialRevocationInformation {
-	// Epoch contains the epoch (time window) in which this CRI is valid
-	int64 Epoch = 1;
+	// epoch contains the epoch (time window) in which this CRI is valid
+	int64 epoch = 1;
 
-	// EpochPK is the public key that is used by the revocation authority in this epoch
-	ECP2 EpochPK = 2;
+	// epoch_pk is the public key that is used by the revocation authority in this epoch
+	ECP2 epoch_pk = 2;
 
-	// EpochPKSig is a signature on the EpochPK valid under the revocation authority's long term key
-	bytes EpochPKSig = 3;
+	// epoch_pk_sig is a signature on the EpochPK valid under the revocation authority's long term key
+	bytes epoch_pk_sig = 3;
 
-	// RevocationAlg denotes which revocation algorithm is used
-	int32 RevocationAlg = 4;
+	// revocation_alg denotes which revocation algorithm is used
+	int32 revocation_alg = 4;
 
-	// RevocationData contains data specific to the revocation algorithm used
-	bytes RevocationData = 5;
+	// revocation_data contains data specific to the revocation algorithm used
+	bytes revocation_data = 5;
 }

@@ -38,32 +38,32 @@ func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
 
 	// generate issuer secret key
 	ISk := RandModOrder(rng)
-	key.ISk = BigToBytes(ISk)
+	key.Isk = BigToBytes(ISk)
 
 	// generate the corresponding public key
-	key.IPk = new(IssuerPublicKey)
-	key.IPk.AttributeNames = AttributeNames
+	key.Ipk = new(IssuerPublicKey)
+	key.Ipk.AttributeNames = AttributeNames
 
 	W := GenG2.Mul(ISk)
-	key.IPk.W = Ecp2ToProto(W)
+	key.Ipk.W = Ecp2ToProto(W)
 
 	// generate bases that correspond to the attributes
-	key.IPk.HAttrs = make([]*ECP, len(AttributeNames))
+	key.Ipk.HAttrs = make([]*ECP, len(AttributeNames))
 	for i := 0; i < len(AttributeNames); i++ {
-		key.IPk.HAttrs[i] = EcpToProto(GenG1.Mul(RandModOrder(rng)))
+		key.Ipk.HAttrs[i] = EcpToProto(GenG1.Mul(RandModOrder(rng)))
 	}
 
 	HSk := GenG1.Mul(RandModOrder(rng))
-	key.IPk.HSk = EcpToProto(HSk)
+	key.Ipk.HSk = EcpToProto(HSk)
 
 	HRand := GenG1.Mul(RandModOrder(rng))
-	key.IPk.HRand = EcpToProto(HRand)
+	key.Ipk.HRand = EcpToProto(HRand)
 
 	BarG1 := GenG1.Mul(RandModOrder(rng))
-	key.IPk.BarG1 = EcpToProto(BarG1)
+	key.Ipk.BarG1 = EcpToProto(BarG1)
 
 	BarG2 := BarG1.Mul(ISk)
-	key.IPk.BarG2 = EcpToProto(BarG2)
+	key.Ipk.BarG2 = EcpToProto(BarG2)
 
 	// generate a zero-knowledge proof of knowledge (ZK PoK) of the secret key
 	r := RandModOrder(rng)
@@ -80,16 +80,16 @@ func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
 	index = appendBytesG1(proofData, index, BarG2)
 
 	proofC := HashModOrder(proofData)
-	key.IPk.ProofC = BigToBytes(proofC)
+	key.Ipk.ProofC = BigToBytes(proofC)
 
 	proofS := Modadd(FP256BN.Modmul(proofC, ISk, GroupOrder), r, GroupOrder)
-	key.IPk.ProofS = BigToBytes(proofS)
+	key.Ipk.ProofS = BigToBytes(proofS)
 
-	serializedIPk, err := proto.Marshal(key.IPk)
+	serializedIPk, err := proto.Marshal(key.Ipk)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal issuer public key")
 	}
-	key.IPk.Hash = BigToBytes(HashModOrder(serializedIPk))
+	key.Ipk.Hash = BigToBytes(HashModOrder(serializedIPk))
 
 	return key, nil
 }

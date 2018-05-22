@@ -51,11 +51,11 @@ func CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int
 
 	if alg == ALG_NO_REVOCATION {
 		// put a dummy PK in the proto
-		cri.EpochPK = Ecp2ToProto(GenG2)
+		cri.EpochPk = Ecp2ToProto(GenG2)
 	} else {
 		// create epoch key
 		_, epochPk := WBBKeyGen(rng)
-		cri.EpochPK = Ecp2ToProto(epochPk)
+		cri.EpochPk = Ecp2ToProto(epochPk)
 	}
 
 	// sign epoch + epoch key with long term key
@@ -66,7 +66,7 @@ func CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int
 	if err != nil {
 		return nil, err
 	}
-	cri.EpochPKSig = append(pkSigR.Bytes(), pkSigS.Bytes()...)
+	cri.EpochPkSig = append(pkSigR.Bytes(), pkSigS.Bytes()...)
 
 	if alg == ALG_NO_REVOCATION {
 		return cri, nil
@@ -86,7 +86,7 @@ func VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *ECP2, epochPkSig []byte, epoch 
 	}
 	cri := &CredentialRevocationInformation{}
 	cri.RevocationAlg = int32(alg)
-	cri.EpochPK = epochPK
+	cri.EpochPk = epochPK
 	cri.Epoch = int64(epoch)
 	bytesToSign, err := proto.Marshal(cri)
 	if err != nil {
