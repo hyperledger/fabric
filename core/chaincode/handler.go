@@ -28,18 +28,23 @@ import (
 
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
 
-// ACLProvider is responsible for performing access control checks when invoking
+// An ACLProvider performs access control checks when invoking
 // chaincode.
 type ACLProvider interface {
 	CheckACL(resName string, channelID string, idinfo interface{}) error
 }
 
-// Registry is responsible for tracking handlers.
+// A Registry is responsible for tracking handlers.
 type Registry interface {
 	Register(*Handler) error
 	Ready(cname string)
 	Failed(cname string, err error)
 	Deregister(cname string) error
+}
+
+// An Invoker invokes chaincode.
+type Invoker interface {
+	Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error)
 }
 
 // SystemCCProvider provides system chaincode metadata.
@@ -54,6 +59,7 @@ type TransactionRegistry interface {
 	Remove(channelID, txID string)
 }
 
+// A ContextRegistry is responsible for managing transaction contexts.
 type ContextRegistry interface {
 	Create(ctx context.Context, chainID, txID string, signedProp *pb.SignedProposal, proposal *pb.Proposal) (*TransactionContext, error)
 	Get(chainID, txID string) *TransactionContext
@@ -107,8 +113,8 @@ type Handler struct {
 	// DefinitionGetter is used to retrieve the chaincode definition from the
 	// Lifecycle System Chaincode.
 	DefinitionGetter ChaincodeDefinitionGetter
-	// Executor is used to invoke chaincode.
-	Executor Executor
+	// Invoker is used to invoke chaincode.
+	Invoker Invoker
 	// Registry is used to track active handlers.
 	Registry Registry
 	// ACLProvider is used to check if a chaincode invocation should be allowed.
@@ -875,14 +881,14 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
-	response, _, err := h.Executor.Execute(ctxt, cccid, cciSpec)
+	responseMessage, err := h.Invoker.Invoke(ctxt, cccid, cciSpec)
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
 	}
 
-	// payload is marshalled and send to the calling chaincode's shim which unmarshals and
+	// payload is marshalled and sent to the calling chaincode's shim which unmarshals and
 	// sends it to chaincode
-	res, err := proto.Marshal(response)
+	res, err := proto.Marshal(responseMessage)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshal failed")
 	}

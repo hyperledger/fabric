@@ -38,7 +38,7 @@ var _ = Describe("Handler", func() {
 		fakeACLProvider                *mock.ACLProvider
 		fakeDefinitionGetter           *mock.ChaincodeDefinitionGetter
 		fakeInstantiationPolicyChecker *mock.InstantiationPolicyChecker
-		fakeExecutor                   *mock.Executor
+		fakeInvoker                    *mock.Invoker
 		fakeLedgerGetter               *mock.LedgerGetter
 		fakeHandlerRegistry            *fake.Registry
 
@@ -67,7 +67,7 @@ var _ = Describe("Handler", func() {
 
 		fakeACLProvider = &mock.ACLProvider{}
 		fakeDefinitionGetter = &mock.ChaincodeDefinitionGetter{}
-		fakeExecutor = &mock.Executor{}
+		fakeInvoker = &mock.Invoker{}
 		fakeLedgerGetter = &mock.LedgerGetter{}
 		fakeInstantiationPolicyChecker = &mock.InstantiationPolicyChecker{}
 		fakeQueryResponseBuilder = &fake.QueryResponseBuilder{}
@@ -81,7 +81,7 @@ var _ = Describe("Handler", func() {
 			ACLProvider:                fakeACLProvider,
 			ActiveTransactions:         fakeTransactionRegistry,
 			DefinitionGetter:           fakeDefinitionGetter,
-			Executor:                   fakeExecutor,
+			Invoker:                    fakeInvoker,
 			LedgerGetter:               fakeLedgerGetter,
 			InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
 			QueryResponseBuilder:       fakeQueryResponseBuilder,
@@ -1357,7 +1357,7 @@ var _ = Describe("Handler", func() {
 			newHistoryQueryExecutor *mock.HistoryQueryExecutor
 			request                 *pb.ChaincodeSpec
 			incomingMessage         *pb.ChaincodeMessage
-			response                *pb.Response
+			responseMessage         *pb.ChaincodeMessage
 		)
 
 		BeforeEach(func() {
@@ -1400,8 +1400,8 @@ var _ = Describe("Handler", func() {
 				ChannelId: "channel-id",
 			}
 
-			response = &pb.Response{}
-			fakeExecutor.ExecuteReturns(response, nil, nil)
+			responseMessage = &pb.ChaincodeMessage{}
+			fakeInvoker.InvokeReturns(responseMessage, nil)
 		})
 
 		It("checks if the target is not invokable", func() {
@@ -1478,8 +1478,8 @@ var _ = Describe("Handler", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
-				ctx, _, _ := fakeExecutor.ExecuteArgsForCall(0)
+				Expect(fakeInvoker.InvokeCallCount()).To(Equal(1))
+				ctx, _, _ := fakeInvoker.InvokeArgsForCall(0)
 				sim := ctx.Value(chaincode.TXSimulatorKey)
 				Expect(sim).To(BeIdenticalTo(newTxSimulator)) // same instance, not just equal
 			})
@@ -1495,21 +1495,21 @@ var _ = Describe("Handler", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
-				ctx, _, _ := fakeExecutor.ExecuteArgsForCall(0)
+				Expect(fakeInvoker.InvokeCallCount()).To(Equal(1))
+				ctx, _, _ := fakeInvoker.InvokeArgsForCall(0)
 				hqe := ctx.Value(chaincode.HistoryQueryExecutorKey)
 				Expect(hqe).To(BeIdenticalTo(newHistoryQueryExecutor)) // same instance, not just equal
 			})
 
 			It("marks the new transaction simulator as done after execute", func() {
-				fakeExecutor.ExecuteStub = func(context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+				fakeInvoker.InvokeStub = func(context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error) {
 					Expect(newTxSimulator.DoneCallCount()).To(Equal(0))
-					return response, nil, nil
+					return responseMessage, nil
 				}
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
+				Expect(fakeInvoker.InvokeCallCount()).To(Equal(1))
 				Expect(newTxSimulator.DoneCallCount()).To(Equal(1))
 			})
 
@@ -1563,8 +1563,8 @@ var _ = Describe("Handler", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
-				_, cccid, _ := fakeExecutor.ExecuteArgsForCall(0)
+				Expect(fakeInvoker.InvokeCallCount()).To(Equal(1))
+				_, cccid, _ := fakeInvoker.InvokeArgsForCall(0)
 				Expect(cccid.Version).To(Equal("system-cc-version"))
 			})
 		})
@@ -1656,7 +1656,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when execute fails", func() {
 			BeforeEach(func() {
-				fakeExecutor.ExecuteReturns(nil, nil, errors.New("lemons"))
+				fakeInvoker.InvokeReturns(nil, errors.New("lemons"))
 			})
 
 			It("returns an error", func() {
@@ -1678,7 +1678,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when marshaling the response fails", func() {
 			BeforeEach(func() {
-				fakeExecutor.ExecuteReturns(nil, nil, nil)
+				fakeInvoker.InvokeReturns(nil, nil)
 			})
 
 			It("returns an error", func() {
