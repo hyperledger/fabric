@@ -83,10 +83,14 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 	var totalRetryTime time.Duration
 	var backoffDuration time.Duration
 	retry := true
+	resetAttemptCounter := func() {
+		attempt = 0
+		totalRetryTime = 0
+	}
 	for retry && !bc.shouldStop() {
-		attempt++
-		resp, err := bc.doAction(action)
+		resp, err := bc.doAction(action, resetAttemptCounter)
 		if err != nil {
+			attempt++
 			backoffDuration, retry = bc.shouldRetry(attempt, totalRetryTime)
 			if !retry {
 				logger.Warning("Got error:", err, "at", attempt, "attempt. Ceasing to retry")
@@ -105,12 +109,13 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 	return nil, fmt.Errorf("attempts (%d) or elapsed time (%v) exhausted", attempt, totalRetryTime)
 }
 
-func (bc *broadcastClient) doAction(action func() (interface{}, error)) (interface{}, error) {
+func (bc *broadcastClient) doAction(action func() (interface{}, error), actionOnNewConnection func()) (interface{}, error) {
 	if bc.conn == nil {
 		err := bc.connect()
 		if err != nil {
 			return nil, err
 		}
+		actionOnNewConnection()
 	}
 	resp, err := action()
 	if err != nil {
