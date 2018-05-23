@@ -1,9 +1,11 @@
-#!/bin/bash -e
+#!/bin/bash
 #
 # Copyright IBM Corp. All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
+
+set -e
 
 # regexes for packages to exclude from unit test
 excluded_packages=(
@@ -12,7 +14,7 @@ excluded_packages=(
 
 # regexes for packages that must be run serially
 serial_packages=(
-    "github.com/hyperledger/fabric/gossip"
+    "github.com/hyperledger/fabric/gossip/comm$"
 )
 
 # packages which need to be tested with build tag pluginsenabled
@@ -45,12 +47,22 @@ list_and_filter() {
 
 # remove packages that must be tested serially
 parallel_test_packages() {
-    echo "$@" | grep -Ev $(local IFS='|' ; echo "${serial_packages[*]}") || true
+    local filter=$(local IFS='|' ; echo "${serial_packages[*]}")
+    if [ -n "$filter" ]; then
+        echo "$@" | grep -Ev $(local IFS='|' ; echo "${serial_packages[*]}") || true
+    else
+        echo "$@"
+    fi
 }
 
 # get packages that must be tested serially
 serial_test_packages() {
-    echo "$@" | grep -E $(local IFS='|' ; echo "${serial_packages[*]}") || true
+    local filter=$(local IFS='|' ; echo "${serial_packages[*]}")
+    if [ -n "$filter" ]; then
+        echo "$@" | grep -E "${filter}" || true
+    else
+        echo "$@"
+    fi
 }
 
 # "go test" the provided packages. Packages that are not prsent in the serial package list
@@ -63,21 +75,23 @@ run_tests() {
 
     echo ${GO_TAGS}
 
-    local parallel=$(parallel_test_packages "$@")
-    if [ -n "${parallel}" ]; then
-        time go test ${flags} -tags "$GO_TAGS" ${parallel[@]} -short -timeout=20m
-    fi
+    time {
+        local parallel=$(parallel_test_packages "$@")
+        if [ -n "${parallel}" ]; then
+            go test ${flags} -tags "$GO_TAGS" ${parallel[@]} -short -timeout=20m
+        fi
 
-    local serial=$(serial_test_packages "$@")
-    if [ -n "${serial}" ]; then
-        time go test ${flags} -tags "$GO_TAGS" ${serial[@]} -short -p 1 -timeout=20m
-    fi
+        local serial=$(serial_test_packages "$@")
+        if [ -n "${serial}" ]; then
+            go test ${flags} -tags "$GO_TAGS" ${serial[@]} -short -p 1 -timeout=20m
+        fi
+    }
 }
 
 # "go test" the provided packages and generate code coverage reports.
 run_tests_with_coverage() {
     # run the tests serially
-    go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" $@ -timeout=20m
+    time go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" $@ -timeout=20m
     tail -n +2 profile_tmp.cov >> profile.cov && rm profile_tmp.cov
 }
 
