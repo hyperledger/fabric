@@ -145,25 +145,20 @@ func TestInstallFromBadPackage(t *testing.T) {
 		t.Fatal("expected error installing bad package")
 	}
 }
+func installEx02(t *testing.T) error {
+	defer viper.Reset()
+	viper.Set("chaincode.mode", "dev")
 
-func installEx02() error {
-	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		return fmt.Errorf("Get default signer error: %v", err)
-	}
+	fsPath := "/tmp/installtest"
+	cmd, mockCF := initInstallTest(fsPath, t)
+	defer cleanupInstallTest(fsPath)
 
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 200},
 		Endorsement: &pb.Endorsement{},
 	}
-	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockResponse, nil)}
-	mockCF := &ChaincodeCmdFactory{
-		EndorserClients: mockEndorserClients,
-		Signer:          signer,
-	}
-
-	cmd := installCmd(mockCF)
-	addFlags(cmd)
+	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
+	mockCF.EndorserClients = []pb.EndorserClient{mockEndorserClient}
 
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd", "-v", "anotherversion"}
 	cmd.SetArgs(args)
@@ -177,7 +172,7 @@ func installEx02() error {
 
 func TestInstall(t *testing.T) {
 	InitMSP()
-	if err := installEx02(); err != nil {
+	if err := installEx02(t); err != nil {
 		t.Fatalf("Install failed with error: %v", err)
 	}
 }
