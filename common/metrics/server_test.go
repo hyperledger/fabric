@@ -25,7 +25,7 @@ func TestStartSuccessStatsd(t *testing.T) {
 		Reporter: statsdReporterType,
 		Interval: 1 * time.Second,
 		StatsdReporterOpts: StatsdReporterOpts{
-			Address:       "127.0.0.1:8125",
+			Address:       "127.0.0.1:0",
 			FlushInterval: 2 * time.Second,
 			FlushBytes:    512,
 		}}
@@ -43,7 +43,7 @@ func TestStartSuccessProm(t *testing.T) {
 		Reporter: promReporterType,
 		Interval: 1 * time.Second,
 		PromReporterOpts: PromReporterOpts{
-			ListenAddress: "127.0.0.1:8081",
+			ListenAddress: "127.0.0.1:0",
 		}}
 	s, err := create(opts)
 	go s.Start()
@@ -99,7 +99,7 @@ func TestStartStatsdInvalidFlushInterval(t *testing.T) {
 		Interval: 1 * time.Second,
 		Reporter: statsdReporterType,
 		StatsdReporterOpts: StatsdReporterOpts{
-			Address:       "127.0.0.1:8125",
+			Address:       "127.0.0.1:0",
 			FlushInterval: 0,
 			FlushBytes:    512,
 		},
@@ -131,7 +131,7 @@ func TestStartStatsdInvalidFlushBytes(t *testing.T) {
 		Interval: 1 * time.Second,
 		Reporter: statsdReporterType,
 		StatsdReporterOpts: StatsdReporterOpts{
-			Address:       "127.0.0.1:8125",
+			Address:       "127.0.0.1:0",
 			FlushInterval: 2 * time.Second,
 			FlushBytes:    0,
 		},
@@ -162,7 +162,7 @@ func TestStartAndClose(t *testing.T) {
 		Reporter: statsdReporterType,
 		Interval: 1 * time.Second,
 		StatsdReporterOpts: StatsdReporterOpts{
-			Address:       "127.0.0.1:8125",
+			Address:       "127.0.0.1:0",
 			FlushInterval: 2 * time.Second,
 			FlushBytes:    512,
 		}}
