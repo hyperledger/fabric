@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// go:generate mockery -dir core/endorser/ -name QueryCreator -case underscore -output core/endorser/mocks/
+//go:generate mockery -dir . -name QueryCreator -case underscore -output mocks/
 // QueryCreator creates new QueryExecutors
 type QueryCreator interface {
 	NewQueryExecutor() (ledger.QueryExecutor, error)

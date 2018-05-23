@@ -31,7 +31,7 @@ type DefaultValidation struct {
 	TxValidator TransactionValidator
 }
 
-// go:generate mockery -dir core/handlers/validation/builtin/ -name TransactionValidator -case underscore -output core/handlers/validation/builtin/mocks/
+//go:generate mockery -dir . -name TransactionValidator -case underscore -output mocks/
 type TransactionValidator interface {
 	Validate(txData []byte, policy []byte) commonerrors.TxValidationError
 }

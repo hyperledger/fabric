@@ -2,7 +2,6 @@
 package mock
 
 import (
-	"io"
 	"sync"
 
 	container_test "github.com/hyperledger/fabric/core/container"
@@ -11,21 +10,6 @@ import (
 )
 
 type VM struct {
-	DeployStub        func(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
-	deployMutex       sync.RWMutex
-	deployArgsForCall []struct {
-		ctxt   context.Context
-		ccid   ccintf.CCID
-		args   []string
-		env    []string
-		reader io.Reader
-	}
-	deployReturns struct {
-		result1 error
-	}
-	deployReturnsOnCall map[int]struct {
-		result1 error
-	}
 	StartStub        func(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container_test.Builder) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
@@ -57,95 +41,8 @@ type VM struct {
 	stopReturnsOnCall map[int]struct {
 		result1 error
 	}
-	DestroyStub        func(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error
-	destroyMutex       sync.RWMutex
-	destroyArgsForCall []struct {
-		ctxt    context.Context
-		ccid    ccintf.CCID
-		force   bool
-		noprune bool
-	}
-	destroyReturns struct {
-		result1 error
-	}
-	destroyReturnsOnCall map[int]struct {
-		result1 error
-	}
-	GetVMNameStub        func(ccID ccintf.CCID) string
-	getVMNameMutex       sync.RWMutex
-	getVMNameArgsForCall []struct {
-		ccID ccintf.CCID
-	}
-	getVMNameReturns struct {
-		result1 string
-	}
-	getVMNameReturnsOnCall map[int]struct {
-		result1 string
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *VM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
-	var argsCopy []string
-	if args != nil {
-		argsCopy = make([]string, len(args))
-		copy(argsCopy, args)
-	}
-	var envCopy []string
-	if env != nil {
-		envCopy = make([]string, len(env))
-		copy(envCopy, env)
-	}
-	fake.deployMutex.Lock()
-	ret, specificReturn := fake.deployReturnsOnCall[len(fake.deployArgsForCall)]
-	fake.deployArgsForCall = append(fake.deployArgsForCall, struct {
-		ctxt   context.Context
-		ccid   ccintf.CCID
-		args   []string
-		env    []string
-		reader io.Reader
-	}{ctxt, ccid, argsCopy, envCopy, reader})
-	fake.recordInvocation("Deploy", []interface{}{ctxt, ccid, argsCopy, envCopy, reader})
-	fake.deployMutex.Unlock()
-	if fake.DeployStub != nil {
-		return fake.DeployStub(ctxt, ccid, args, env, reader)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.deployReturns.result1
-}
-
-func (fake *VM) DeployCallCount() int {
-	fake.deployMutex.RLock()
-	defer fake.deployMutex.RUnlock()
-	return len(fake.deployArgsForCall)
-}
-
-func (fake *VM) DeployArgsForCall(i int) (context.Context, ccintf.CCID, []string, []string, io.Reader) {
-	fake.deployMutex.RLock()
-	defer fake.deployMutex.RUnlock()
-	return fake.deployArgsForCall[i].ctxt, fake.deployArgsForCall[i].ccid, fake.deployArgsForCall[i].args, fake.deployArgsForCall[i].env, fake.deployArgsForCall[i].reader
-}
-
-func (fake *VM) DeployReturns(result1 error) {
-	fake.DeployStub = nil
-	fake.deployReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *VM) DeployReturnsOnCall(i int, result1 error) {
-	fake.DeployStub = nil
-	if fake.deployReturnsOnCall == nil {
-		fake.deployReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.deployReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *VM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container_test.Builder) error {
@@ -263,118 +160,13 @@ func (fake *VM) StopReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
-	fake.destroyMutex.Lock()
-	ret, specificReturn := fake.destroyReturnsOnCall[len(fake.destroyArgsForCall)]
-	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct {
-		ctxt    context.Context
-		ccid    ccintf.CCID
-		force   bool
-		noprune bool
-	}{ctxt, ccid, force, noprune})
-	fake.recordInvocation("Destroy", []interface{}{ctxt, ccid, force, noprune})
-	fake.destroyMutex.Unlock()
-	if fake.DestroyStub != nil {
-		return fake.DestroyStub(ctxt, ccid, force, noprune)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.destroyReturns.result1
-}
-
-func (fake *VM) DestroyCallCount() int {
-	fake.destroyMutex.RLock()
-	defer fake.destroyMutex.RUnlock()
-	return len(fake.destroyArgsForCall)
-}
-
-func (fake *VM) DestroyArgsForCall(i int) (context.Context, ccintf.CCID, bool, bool) {
-	fake.destroyMutex.RLock()
-	defer fake.destroyMutex.RUnlock()
-	return fake.destroyArgsForCall[i].ctxt, fake.destroyArgsForCall[i].ccid, fake.destroyArgsForCall[i].force, fake.destroyArgsForCall[i].noprune
-}
-
-func (fake *VM) DestroyReturns(result1 error) {
-	fake.DestroyStub = nil
-	fake.destroyReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *VM) DestroyReturnsOnCall(i int, result1 error) {
-	fake.DestroyStub = nil
-	if fake.destroyReturnsOnCall == nil {
-		fake.destroyReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.destroyReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *VM) GetVMName(ccID ccintf.CCID) string {
-	fake.getVMNameMutex.Lock()
-	ret, specificReturn := fake.getVMNameReturnsOnCall[len(fake.getVMNameArgsForCall)]
-	fake.getVMNameArgsForCall = append(fake.getVMNameArgsForCall, struct {
-		ccID ccintf.CCID
-	}{ccID})
-	fake.recordInvocation("GetVMName", []interface{}{ccID})
-	fake.getVMNameMutex.Unlock()
-	if fake.GetVMNameStub != nil {
-		return fake.GetVMNameStub(ccID)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.getVMNameReturns.result1
-}
-
-func (fake *VM) GetVMNameCallCount() int {
-	fake.getVMNameMutex.RLock()
-	defer fake.getVMNameMutex.RUnlock()
-	return len(fake.getVMNameArgsForCall)
-}
-
-func (fake *VM) GetVMNameArgsForCall(i int) ccintf.CCID {
-	fake.getVMNameMutex.RLock()
-	defer fake.getVMNameMutex.RUnlock()
-	return fake.getVMNameArgsForCall[i].ccID
-}
-
-func (fake *VM) GetVMNameReturns(result1 string) {
-	fake.GetVMNameStub = nil
-	fake.getVMNameReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *VM) GetVMNameReturnsOnCall(i int, result1 string) {
-	fake.GetVMNameStub = nil
-	if fake.getVMNameReturnsOnCall == nil {
-		fake.getVMNameReturnsOnCall = make(map[int]struct {
-			result1 string
-		})
-	}
-	fake.getVMNameReturnsOnCall[i] = struct {
-		result1 string
-	}{result1}
-}
-
 func (fake *VM) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.deployMutex.RLock()
-	defer fake.deployMutex.RUnlock()
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
-	fake.destroyMutex.RLock()
-	defer fake.destroyMutex.RUnlock()
-	fake.getVMNameMutex.RLock()
-	defer fake.getVMNameMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
