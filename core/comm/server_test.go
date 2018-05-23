@@ -358,10 +358,14 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	_, err = comm.NewGRPCServer("localhost:1BBB", comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{UseTLS: false}})
 	//check for possible errors based on platform and Go release
-	msgs := [3]string{"listen tcp: lookup tcp/1BBB: nodename nor servname provided, or not known",
-		"listen tcp: unknown port tcp/1BBB", "listen tcp: address tcp/1BBB: unknown port"}
+	msgs := []string{
+		"listen tcp: lookup tcp/1BBB: nodename nor servname provided, or not known",
+		"listen tcp: unknown port tcp/1BBB",
+		"listen tcp: address tcp/1BBB: unknown port",
+		"listen tcp: lookup tcp/1BBB: Servname not supported for ai_socktype",
+	}
 
-	if assert.Error(t, err, fmt.Sprintf("[%s], [%s] or [%s] expected", msgs[0], msgs[1], msgs[2])) {
+	if assert.Error(t, err, fmt.Sprintf("[%s], [%s] [%s] or [%s] expected", msgs[0], msgs[1], msgs[2], msgs[3])) {
 		assert.Contains(t, msgs, err.Error())
 	}
 	if err != nil {
