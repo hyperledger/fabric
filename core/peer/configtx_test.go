@@ -62,7 +62,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
 }
 
-func TestConfigTxUpdateResConfig(t *testing.T) {
+func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := &testHelper{t: t}
 	cleanup := setupPeerFS(t)
 	defer cleanup()
@@ -125,8 +125,7 @@ func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bo
 		profile.Orderer.Capabilities = make(map[string]bool)
 		profile.Orderer.Capabilities[capabilities.ApplicationV1_1] = true
 		profile.Application.Capabilities = make(map[string]bool)
-		profile.Application.Capabilities[capabilities.ApplicationV1_1] = true
-		profile.Application.Capabilities[capabilities.ApplicationResourcesTreeExperimental] = true
+		profile.Application.Capabilities[capabilities.ApplicationV1_2] = true
 	}
 	channelGroup, _ := encoder.NewChannelGroup(profile)
 	return &common.Config{

@@ -123,8 +123,8 @@ type ApplicationCapabilities interface {
 	// in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
 	ForbidDuplicateTXIdInBlock() bool
 
-	// ResourcesTree returns true if the peer should process the experimental resources transactions
-	ResourcesTree() bool
+	// ACLs returns true is ACLs may be specified in the Application portion of the config tree
+	ACLs() bool
 
 	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
 	// In v1.1, the private channel data is experimental and has to be enabled explicitly.

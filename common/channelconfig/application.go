@@ -45,6 +45,12 @@ func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
 
+	if !ac.Capabilities().ACLs() {
+		if _, ok := appGroup.Values[ACLsKey]; ok {
+			return nil, errors.New("ACLs may not be specified without the required capability")
+		}
+	}
+
 	var err error
 	for orgName, orgGroup := range appGroup.Groups {
 		ac.applicationOrgs[orgName], err = NewApplicationOrgConfig(orgName, orgGroup, mspConfig)

@@ -38,7 +38,7 @@ func (m *MockApplication) APIPolicyMapper() channelconfig.PolicyMapper {
 type MockApplicationCapabilities struct {
 	SupportedRv                  error
 	ForbidDuplicateTXIdInBlockRv bool
-	ResourcesTreeRv              bool
+	ACLsRv                       bool
 	PrivateChannelDataRv         bool
 	CollectionUpgradeRv          bool
 	V1_1ValidationRv             bool
@@ -55,8 +55,8 @@ func (mac *MockApplicationCapabilities) ForbidDuplicateTXIdInBlock() bool {
 	return mac.ForbidDuplicateTXIdInBlockRv
 }
 
-func (mac *MockApplicationCapabilities) ResourcesTree() bool {
-	return mac.ResourcesTreeRv
+func (mac *MockApplicationCapabilities) ACLs() bool {
+	return mac.ACLsRv
 }
 
 func (mac *MockApplicationCapabilities) PrivateChannelData() bool {

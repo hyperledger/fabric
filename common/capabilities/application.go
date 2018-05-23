@@ -35,11 +35,10 @@ const (
 // ApplicationProvider provides capabilities information for application level config.
 type ApplicationProvider struct {
 	*registry
-	v11                          bool
-	v12                          bool
-	v11PvtDataExperimental       bool
-	v11ResourcesTreeExperimental bool
-	v12LifecycleExperimental     bool
+	v11                      bool
+	v12                      bool
+	v11PvtDataExperimental   bool
+	v12LifecycleExperimental bool
 }
 
 // NewApplicationProvider creates a application capabilities provider.
@@ -49,7 +48,6 @@ func NewApplicationProvider(capabilities map[string]*cb.Capability) *Application
 	_, ap.v11 = capabilities[ApplicationV1_1]
 	_, ap.v12 = capabilities[ApplicationV1_2]
 	_, ap.v11PvtDataExperimental = capabilities[ApplicationPvtDataExperimental]
-	_, ap.v11ResourcesTreeExperimental = capabilities[ApplicationResourcesTreeExperimental]
 	_, ap.v12LifecycleExperimental = capabilities[ApplicationChaincodeLifecycleExperimental]
 	return ap
 }
@@ -59,9 +57,9 @@ func (ap *ApplicationProvider) Type() string {
 	return applicationTypeName
 }
 
-// ResourcesTree returns whether the experimental resources tree transaction processing should be enabled.
-func (ap *ApplicationProvider) ResourcesTree() bool {
-	return ap.v11ResourcesTreeExperimental
+// ACLs returns whether ACLs may be specified in the channel application config
+func (ap *ApplicationProvider) ACLs() bool {
+	return ap.v12
 }
 
 // ForbidDuplicateTXIdInBlock specifies whether two transactions with the same TXId are permitted
