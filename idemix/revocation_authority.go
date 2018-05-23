@@ -14,11 +14,10 @@ import (
 
 	"crypto/elliptic"
 
-	"math/big"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/pkg/errors"
 )
 
@@ -60,13 +59,16 @@ func CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int
 
 	// sign epoch + epoch key with long term key
 	bytesToSign, err := proto.Marshal(cri)
-	digest := sha256.New().Sum(bytesToSign)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal CRI")
+	}
 
-	pkSigR, pkSigS, err := ecdsa.Sign(rand.Reader, key, digest)
+	digest := sha256.Sum256(bytesToSign)
+
+	cri.EpochPkSig, err = key.Sign(rand.Reader, digest[:], nil)
 	if err != nil {
 		return nil, err
 	}
-	cri.EpochPkSig = append(pkSigR.Bytes(), pkSigS.Bytes()...)
 
 	if alg == ALG_NO_REVOCATION {
 		return cri, nil
@@ -92,13 +94,14 @@ func VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *ECP2, epochPkSig []byte, epoch 
 	if err != nil {
 		return err
 	}
-	digest := sha256.New().Sum(bytesToSign)
-	sigR := &big.Int{}
-	sigR.SetBytes(epochPkSig[0 : len(epochPkSig)/2])
-	sigS := &big.Int{}
-	sigS.SetBytes(epochPkSig[len(epochPkSig)/2:])
+	digest := sha256.Sum256(bytesToSign)
 
-	if !ecdsa.Verify(pk, digest, sigR, sigS) {
+	r, s, err := utils.UnmarshalECDSASignature(epochPkSig)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal ECDSA signature")
+	}
+
+	if !ecdsa.Verify(pk, digest[:], r, s) {
 		return errors.Errorf("EpochPKSig invalid")
 	}
 
