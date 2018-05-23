@@ -39,7 +39,7 @@ type LifeCycleChangeListener interface {
 // HandleMetadataUpdate is triggered upon a change in the chaincode lifecycle change
 type HandleMetadataUpdate func(channel string, chaincodes chaincode.MetadataSet)
 
-// go:generate mockery -dir core/cclifecycle -name LifeCycleChangeListener -case underscore  -output core/cclifecycle/mocks/
+//go:generate mockery -dir . -name LifeCycleChangeListener -case underscore  -output mocks/
 
 // LifeCycleChangeListener runs whenever there is a change to the metadata
 // // of a chaincode in the context of a specific channel
@@ -47,7 +47,7 @@ func (mdUpdate HandleMetadataUpdate) LifeCycleChangeListener(channel string, cha
 	mdUpdate(channel, chaincodes)
 }
 
-// go:generate mockery -dir core/cclifecycle -name Enumerator -case underscore  -output core/cclifecycle/mocks/
+//go:generate mockery -dir . -name Enumerator -case underscore  -output mocks/
 
 // Enumerator enumerates chaincodes
 type Enumerator interface {
@@ -63,7 +63,7 @@ func (listCCs Enumerate) Enumerate() ([]chaincode.InstalledChaincode, error) {
 	return listCCs()
 }
 
-// go:generate mockery -dir core/cclifecycle -name Query -case underscore  -output core/cclifecycle/mocks/
+//go:generate mockery -dir . -name Query -case underscore  -output mocks/
 
 // Query queries the state
 type Query interface {
@@ -74,7 +74,7 @@ type Query interface {
 	Done()
 }
 
-// go:generate mockery -dir core/cclifecycle -name QueryCreator -case underscore  -output core/cclifecycle/mocks/
+//go:generate mockery -dir . -name QueryCreator -case underscore  -output mocks/
 
 // QueryCreator creates queries
 type QueryCreator interface {

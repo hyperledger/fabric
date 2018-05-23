@@ -19,22 +19,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-// go:generate mockery -dir core/endorser/ -name TransientStoreRetriever -case underscore -output core/endorser/mocks/
-// go:generate mockery -dir core/transientstore/ -name Store -case underscore -output core/endorser/mocks/
+//go:generate mockery -dir . -name TransientStoreRetriever -case underscore -output mocks/
+//go:generate mockery -dir ../transientstore/ -name Store -case underscore -output mocks/
 // TransientStoreRetriever retrieves transient stores
 type TransientStoreRetriever interface {
 	// StoreForChannel returns the transient store for the given channel
 	StoreForChannel(channel string) transientstore.Store
 }
 
-// go:generate mockery -dir core/endorser/ -name ChannelStateRetriever -case underscore -output core/endorser/mocks/
+//go:generate mockery -dir . -name ChannelStateRetriever -case underscore -output mocks/
 // ChannelStateRetriever retrieves Channel state
 type ChannelStateRetriever interface {
 	// ChannelState returns a QueryCreator for the given Channel
 	NewQueryCreator(channel string) (QueryCreator, error)
 }
 
-// go:generate mockery -dir core/endorser/ -name PluginMapper -case underscore -output core/endorser/mocks/
+//go:generate mockery -dir . -name PluginMapper -case underscore -output mocks/
 // PluginMapper maps plugin names to their corresponding factories
 type PluginMapper interface {
 	PluginFactoryByName(name PluginName) endorsement.PluginFactory

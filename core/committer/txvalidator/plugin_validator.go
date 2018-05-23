@@ -30,9 +30,9 @@ func (m MapBasedPluginMapper) PluginFactoryByName(name PluginName) validation.Pl
 	return m[string(name)]
 }
 
-// go:generate mockery -dir core/committer/txvalidator/ -name PluginMapper -case underscore -output core/committer/txvalidator/mocks
-// go:generate mockery -dir core/handlers/validation/api/ -name PluginFactory -case underscore -output core/committer/txvalidator/mocks/
-// go:generate mockery -dir core/handlers/validation/api/ -name Plugin -case underscore -output core/committer/txvalidator/mocks/
+//go:generate mockery -dir . -name PluginMapper -case underscore -output mocks/
+//go:generate mockery -dir ../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
+//go:generate mockery -dir ../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
 
 // PluginMapper maps plugin names to their corresponding factory instance.
 // Returns nil if the name isn't associated to any plugin.
@@ -40,7 +40,7 @@ type PluginMapper interface {
 	PluginFactoryByName(name PluginName) validation.PluginFactory
 }
 
-// go:generate mockery -dir core/committer/txvalidator/ -name QueryExecutorCreator -case underscore -output core/committer/txvalidator/mocks
+//go:generate mockery -dir . -name QueryExecutorCreator -case underscore -output mocks/
 
 // QueryExecutorCreator creates new query executors
 type QueryExecutorCreator interface {
@@ -75,8 +75,8 @@ type PluginValidator struct {
 	capabilities Capabilities
 }
 
-// go:generate mockery -dir core/handlers/validation/api/capabilities/ -name Capabilities -case underscore -output core/committer/txvalidator/mocks/
-// go:generate mockery -dir msp/ -name IdentityDeserializer -case underscore -output core/committer/txvalidator/mocks
+//go:generate mockery -dir ../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
+//go:generate mockery -dir ../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
 
 // NewPluginValidator creates a new PluginValidator
 func NewPluginValidator(pm PluginMapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities) *PluginValidator {

@@ -41,10 +41,10 @@ const (
 
 var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
-// go:generate mockery -dir core/handlers/validation/api/capabilities/ -name Capabilities -case underscore -output core/handlers/validation/builtin/mocks/
-// go:generate mockery -dir core/handlers/validation/api/state/ -name StateFetcher -case underscore -output core/handlers/validation/builtin/mocks/
-// go:generate mockery -dir core/handlers/validation/api/identities/ -name IdentityDeserializer -case underscore -output core/handlers/validation/builtin/mocks/
-// go:generate mockery -dir core/handlers/validation/api/policies/ -name PolicyEvaluator -case underscore -output core/handlers/validation/builtin/mocks/
+//go:generate mockery -dir ../api/capabilities/ -name Capabilities -case underscore -output mocks/
+//go:generate mockery -dir ../api/state/ -name StateFetcher -case underscore -output mocks/
+//go:generate mockery -dir ../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
+//go:generate mockery -dir ../api/policies/ -name PolicyEvaluator -case underscore -output mocks/
 
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
