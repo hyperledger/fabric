@@ -56,7 +56,11 @@ func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublic
 	proofC := HashModOrder(proofData)
 	proofS := Modadd(FP256BN.Modmul(proofC, sk, GroupOrder), rSk, GroupOrder)
 
-	return &CredRequest{EcpToProto(Nym), BigToBytes(IssuerNonce), BigToBytes(proofC), BigToBytes(proofS)}
+	return &CredRequest{
+		Nym:         EcpToProto(Nym),
+		IssuerNonce: BigToBytes(IssuerNonce),
+		ProofC:      BigToBytes(proofC),
+		ProofS:      BigToBytes(proofS)}
 }
 
 // Check cryptographically verifies the credential request

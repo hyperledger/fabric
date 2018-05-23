@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 func newExpiryData() *ExpiryData {
-	return &ExpiryData{make(map[string]*Collections)}
+	return &ExpiryData{Map: make(map[string]*Collections)}
 }
 
 func newCollections() *Collections {
-	return &Collections{make(map[string]*TxNums)}
+	return &Collections{Map: make(map[string]*TxNums)}
 }
 
 func (e *ExpiryData) add(ns, coll string, txNum uint64) {

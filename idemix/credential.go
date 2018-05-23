@@ -74,11 +74,11 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *am
 	}
 
 	return &Credential{
-		EcpToProto(A),
-		EcpToProto(B),
-		BigToBytes(E),
-		BigToBytes(S),
-		CredAttrs}, nil
+		A:     EcpToProto(A),
+		B:     EcpToProto(B),
+		E:     BigToBytes(E),
+		S:     BigToBytes(S),
+		Attrs: CredAttrs}, nil
 }
 
 // Ver cryptographically verifies the credential by verifying the signature

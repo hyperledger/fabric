@@ -31,9 +31,9 @@ func (colls *Collections) getOrCreateKeysAndHashes(coll string) *KeysAndHashes {
 }
 
 func newPvtdataKeys() *PvtdataKeys {
-	return &PvtdataKeys{make(map[string]*Collections)}
+	return &PvtdataKeys{Map: make(map[string]*Collections)}
 }
 
 func newCollections() *Collections {
-	return &Collections{make(map[string]*KeysAndHashes)}
+	return &Collections{Map: make(map[string]*KeysAndHashes)}
 }

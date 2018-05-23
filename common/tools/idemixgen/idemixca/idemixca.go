@@ -92,12 +92,12 @@ func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, re
 	}
 
 	signer := &m.IdemixMSPSignerConfig{
-		credBytes,
-		idemix.BigToBytes(sk),
-		ouString,
-		isAdmin,
-		enrollmentId,
-		criBytes,
+		Cred: credBytes,
+		Sk:   idemix.BigToBytes(sk),
+		OrganizationalUnitIdentifier: ouString,
+		IsAdmin:                         isAdmin,
+		EnrollmentId:                    enrollmentId,
+		CredentialRevocationInformation: criBytes,
 	}
 
 	return proto.Marshal(signer)
