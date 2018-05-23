@@ -8,6 +8,20 @@ type Capabilities struct {
 	mock.Mock
 }
 
+// ACLs provides a mock function with given fields:
+func (_m *Capabilities) ACLs() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // CollectionUpgrade provides a mock function with given fields:
 func (_m *Capabilities) CollectionUpgrade() bool {
 	ret := _m.Called()
@@ -66,20 +80,6 @@ func (_m *Capabilities) MetadataLifecycle() bool {
 
 // PrivateChannelData provides a mock function with given fields:
 func (_m *Capabilities) PrivateChannelData() bool {
-	ret := _m.Called()
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// ResourcesTree provides a mock function with given fields:
-func (_m *Capabilities) ResourcesTree() bool {
 	ret := _m.Called()
 
 	var r0 bool

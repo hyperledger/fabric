@@ -52,6 +52,13 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 
 }
 
+func TestApplicationACLs(t *testing.T) {
+	ap := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationV1_2: {},
+	})
+	assert.True(t, ap.ACLs())
+}
+
 func TestApplicationCollectionUpgrade(t *testing.T) {
 	op := NewApplicationProvider(map[string]*cb.Capability{
 		ApplicationV1_2: {},
