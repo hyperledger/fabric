@@ -316,3 +316,10 @@ type ErrCollectionConfigNotYetAvailable struct {
 func (e *ErrCollectionConfigNotYetAvailable) Error() string {
 	return e.Msg
 }
+
+// NotFoundInIndexErr is used to indicate missing entry in the index
+type NotFoundInIndexErr string
+
+func (NotFoundInIndexErr) Error() string {
+	return "Entry not found in index"
+}

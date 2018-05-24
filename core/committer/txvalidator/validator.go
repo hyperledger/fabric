@@ -329,7 +329,10 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			// Check duplicate transactions
 			txID = chdr.TxId
-			if _, err := v.Support.Ledger().GetTransactionByID(txID); err == nil {
+			// GetTransactionByID will return:
+			_, err := v.Support.Ledger().GetTransactionByID(txID)
+			// 1) err == nil => there is already a tx in the ledger with the supplied id
+			if err == nil {
 				logger.Error("Duplicate transaction found, ", txID, ", skipping")
 				results <- &blockValidationResult{
 					tIdx:           tIdx,
@@ -337,6 +340,16 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				}
 				return
 			}
+			// 2) err is not of type blkstorage.NotFoundInIndexErr => we could not verify whether a tx with the supplied id is in the ledger
+			if _, isNotFoundInIndexErrType := err.(ledger.NotFoundInIndexErr); !isNotFoundInIndexErrType {
+				logger.Errorf("Ledger failure while attempting to detect duplicate status for txid %s, err '%s'. Aborting", txID, err)
+				results <- &blockValidationResult{
+					tIdx: tIdx,
+					err:  err,
+				}
+				return
+			}
+			// 3) err is of type blkstorage.NotFoundInIndexErr => there is no tx with the supplied id in the ledger
 
 			// Validate tx with vscc and policy
 			logger.Debug("Validating transaction vscc tx validate")

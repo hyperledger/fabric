@@ -200,7 +200,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 	testValidationWithNTXes(t, ledger, gbHash, 4096)
 }
 
-func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
+func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
@@ -216,13 +216,22 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	tValidator := &TxValidator{vcs, &validator.MockVsccValidator{}}
 
+	mockSigner, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	mockSignerSerialized, err := mockSigner.Serialize()
+	assert.NoError(t, err)
+
 	// Create simple endorsement transaction
 	payload := &common.Payload{
 		Header: &common.Header{
 			ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
-				TxId:      "simple_txID", // Fake txID
+				TxId:      "INVALID TXID!!!",
 				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
 				ChannelId: util2.GetTestChainID(),
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{
+				Nonce:   []byte("nonce"),
+				Creator: mockSignerSerialized,
 			}),
 		},
 		Data: []byte("test"),
@@ -233,9 +242,13 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	// Check marshaling didn't fail
 	assert.NoError(t, err)
 
+	sig, err := mockSigner.Sign(payloadBytes)
+	assert.NoError(t, err)
+
 	// Envelope the payload
 	envelope := &common.Envelope{
-		Payload: payloadBytes,
+		Payload:   payloadBytes,
+		Signature: sig,
 	}
 
 	envelopeBytes, err := proto.Marshal(envelope)
@@ -271,6 +284,9 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 
 	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txsfltr.IsInvalid(0))
+
+	// We expect the tx to be invalid because of a bad txid
+	assert.True(t, txsfltr.Flag(0) == peer.TxValidationCode_BAD_PROPOSAL_TXID)
 }
 
 func createCCUpgradeEnvelope(chainID, chaincodeName, chaincodeVersion string, signer msp.SigningIdentity) (*common.Envelope, error) {
