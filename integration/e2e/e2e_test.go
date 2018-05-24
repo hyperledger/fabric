@@ -27,17 +27,14 @@ import (
 
 var _ = Describe("EndToEnd", func() {
 	var (
-		testdataDir string
-		client      *docker.Client
-		network     *docker.Network
-		w           world.World
+		client  *docker.Client
+		network *docker.Network
+		w       world.World
 	)
 
 	BeforeEach(func() {
 		var err error
 
-		testdataDir, err = filepath.Abs("testdata")
-		Expect(err).NotTo(HaveOccurred())
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -63,7 +60,8 @@ var _ = Describe("EndToEnd", func() {
 			OrganizationName: "OrdererOrg",
 			Domain:           "example.com",
 			OrdererNames:     []string{"orderer"},
-			BrokerCount:      0,
+			BrokerCount:      2,
+			ZookeeperCount:   1,
 		}
 
 		peerOrgs := []world.PeerOrgConfig{{
@@ -125,33 +123,47 @@ var _ = Describe("EndToEnd", func() {
 				Brokers: []string{
 					"127.0.0.1:9092",
 					"127.0.0.1:8092",
-					"127.0.0.1:7092",
-					"127.0.0.1:6092",
 				},
 			},
 			Organizations: oOrg,
-			OrdererType:   "solo",
+			OrdererType:   "kafka",
 			Addresses:     []string{"0.0.0.0:7050"},
-			Capabilities:  map[string]bool{"V1_1": true},
+			Capabilities: map[string]bool{
+				"V1_1": true,
+			},
 		}
 
 		ordererProfile := localconfig.Profile{
 			Application: &localconfig.Application{
 				Organizations: oOrg,
-				Capabilities:  map[string]bool{"V1_2": true}},
+				Capabilities: map[string]bool{
+					"V1_2": true,
+				},
+			},
 			Orderer: orderer,
 			Consortiums: map[string]*localconfig.Consortium{
 				"SampleConsortium": &localconfig.Consortium{
 					Organizations: append(oOrg, pOrg...),
 				},
 			},
-			Capabilities: map[string]bool{"V1_1": true},
+			Capabilities: map[string]bool{
+				"V1_1": true,
+			},
 		}
 
 		profiles := map[string]localconfig.Profile{
 			"TwoOrgsOrdererGenesis": ordererProfile,
 			"TwoOrgsChannel":        peerProfile,
 		}
+
+		// Create a network
+		network, err = client.CreateNetwork(
+			docker.CreateNetworkOptions{
+				Name:   runner.UniqueName(),
+				Driver: "bridge",
+			},
+		)
+		Expect(err).NotTo(HaveOccurred())
 
 		crypto := runner.Cryptogen{
 			Config: filepath.Join(testDir, "crypto.yaml"),
@@ -162,6 +174,7 @@ var _ = Describe("EndToEnd", func() {
 			Rootpath:           testDir,
 			Components:         components,
 			Cryptogen:          crypto,
+			Network:            network,
 			Deployment:         deployment,
 			OrdererOrgs:        []world.OrdererConfig{ordererOrgs},
 			PeerOrgs:           peerOrgs,
@@ -215,7 +228,7 @@ var _ = Describe("EndToEnd", func() {
 		}
 	})
 
-	It("executes a basic solo network with 2 orgs", func() {
+	It("executes a basic kafka network with 2 orgs", func() {
 		By("generating files to bootstrap the network")
 		w.BootstrapNetwork()
 		Expect(filepath.Join(testDir, "configtx.yaml")).To(BeARegularFile())
@@ -292,7 +305,7 @@ func copyDir(src, dest string) {
 func execute(r ifrit.Runner) (err error) {
 	p := ifrit.Invoke(r)
 	Eventually(p.Ready()).Should(BeClosed())
-	Eventually(p.Wait(), 10*time.Second).Should(Receive(&err))
+	Eventually(p.Wait(), 30*time.Second).Should(Receive(&err))
 	return err
 }
 

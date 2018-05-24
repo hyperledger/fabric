@@ -56,15 +56,11 @@ var _ = Describe("Config", func() {
 			Filters: filters,
 		})
 		if len(allContainers) > 0 {
-			for _, peerOrg := range w.PeerOrgs {
-				for peer := 0; peer < peerOrg.PeerCount; peer++ {
-					peerName := fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)
-					id := fmt.Sprintf("%s-%s-%s-%s", network.Name, peerName, w.Deployment.Chaincode.Name, w.Deployment.Chaincode.Version)
-					client.RemoveContainer(docker.RemoveContainerOptions{
-						ID:    id,
-						Force: true,
-					})
-				}
+			for _, container := range allContainers {
+				client.RemoveContainer(docker.RemoveContainerOptions{
+					ID:    container.ID,
+					Force: true,
+				})
 			}
 		}
 

@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -184,17 +185,58 @@ func (w *World) BuildNetwork() {
 }
 
 func (w *World) ordererNetwork() {
-	var o *runner.Orderer
+	var (
+		zookeepers []string
+		z          *runner.Zookeeper
+		kafkas     []*runner.Kafka
+		o          *runner.Orderer
+	)
 
 	o = w.Components.Orderer()
 	o.ConfigDir = w.Rootpath
 	o.LedgerLocation = filepath.Join(w.Rootpath, "ledger")
 	o.LogLevel = "debug"
-	ordererRunner := o.New()
-	ordererProcess := ifrit.Invoke(ordererRunner)
-	Eventually(ordererProcess.Ready()).Should(BeClosed())
-	Consistently(ordererProcess.Wait()).ShouldNot(Receive())
-	w.LocalProcess = append(w.LocalProcess, ordererProcess)
+	for _, orderer := range w.OrdererOrgs {
+		if orderer.BrokerCount != 0 {
+			for id := 1; id <= orderer.ZookeeperCount; id++ {
+				// Start zookeeper
+				z = w.Components.Zookeeper(id, w.Network)
+				err := z.Start()
+				Expect(err).NotTo(HaveOccurred())
+				zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", z.Name))
+				w.LocalStoppers = append(w.LocalStoppers, z)
+			}
+
+			for id := 1; id <= orderer.BrokerCount; id++ {
+				var err error
+				// Start Kafka Broker
+				k := w.Components.Kafka(id, w.Network)
+				localKafkaAddress := w.Profiles[w.OrdererProfileName].Orderer.Kafka.Brokers[id-1]
+				k.HostPort, err = strconv.Atoi(strings.Split(localKafkaAddress, ":")[1])
+				Expect(err).NotTo(HaveOccurred())
+				k.MinInsyncReplicas = orderer.KafkaMinInsyncReplicas
+				k.DefaultReplicationFactor = orderer.KafkaDefaultReplicationFactor
+				k.AdvertisedListeners = localKafkaAddress
+				k.ZookeeperConnect = strings.Join(zookeepers, ",")
+				k.LogLevel = "debug"
+				err = k.Start()
+				Expect(err).NotTo(HaveOccurred())
+
+				w.LocalStoppers = append(w.LocalStoppers, k)
+				kafkas = append(kafkas, k)
+				o.ConfigtxOrdererKafkaBrokers = fmt.Sprint("%s %s", o.ConfigtxOrdererKafkaBrokers, k.HostAddress)
+			}
+		}
+
+		ordererRunner := o.New()
+		ordererProcess := ifrit.Invoke(ordererRunner)
+		Eventually(ordererProcess.Ready()).Should(BeClosed())
+		Consistently(ordererProcess.Wait()).ShouldNot(Receive())
+		if orderer.BrokerCount != 0 {
+			Eventually(ordererRunner.Err(), 90*time.Second).Should(gbytes.Say("Start phase completed successfully"))
+		}
+		w.LocalProcess = append(w.LocalProcess, ordererProcess)
+	}
 }
 
 func (w *World) peerNetwork() {
@@ -257,7 +299,7 @@ func (w *World) SetupChannel() error {
 		execute(adminRunner)
 		return strings.Contains(string(adminRunner.Buffer().Contents()), fmt.Sprintf("Path: %s", w.Deployment.Chaincode.Path))
 	}
-	Eventually(listInstantiated, 30*time.Second, 500*time.Millisecond).Should(BeTrue())
+	Eventually(listInstantiated, 90*time.Second, 500*time.Millisecond).Should(BeTrue())
 
 	return nil
 }

@@ -155,7 +155,7 @@ var _ = Describe("Peer", func() {
 		cRunner := createChan.CreateChannel("mychan", filepath.Join(tempDir, "mychan.tx"), "127.0.0.1:8050")
 		err = execute(cRunner)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(ordererRunner.Err(), 5*time.Second).Should(gbytes.Say("Created and starting new chain mychan"))
+		Eventually(ordererRunner.Err(), 30*time.Second).Should(gbytes.Say("Created and starting new chain mychan"))
 
 		By("fetch channel block file")
 		fetchRun := components.Peer()
@@ -196,7 +196,7 @@ var _ = Describe("Peer", func() {
 		liRunner := listInstalled.ChaincodeListInstalled()
 		liProcess := ifrit.Invoke(liRunner)
 		Eventually(liProcess.Ready(), 2*time.Second).Should(BeClosed())
-		Eventually(liProcess.Wait(), 5*time.Second).Should(Receive(BeNil()))
+		Eventually(liProcess.Wait(), 10*time.Second).Should(Receive(BeNil()))
 		Expect(liRunner).To(gbytes.Say("Name: mytest, Version: 1.0,"))
 
 		By("instantiate channel")
@@ -205,7 +205,7 @@ var _ = Describe("Peer", func() {
 		instantiateCC.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		instRunner := instantiateCC.InstantiateChaincode("mytest", "1.0", "127.0.0.1:8050", "mychan", `{"Args":["init","a","100","b","200"]}`, "")
 		instProcess := ifrit.Invoke(instRunner)
-		Eventually(instProcess.Ready(), 2*time.Second).Should(BeClosed())
+		Eventually(instProcess.Ready(), 10*time.Second).Should(BeClosed())
 		Eventually(instProcess.Wait(), 10*time.Second).ShouldNot(Receive(BeNil()))
 
 		By("list instantiated chaincode")
@@ -220,7 +220,7 @@ var _ = Describe("Peer", func() {
 			}
 			return linstRunner.Buffer()
 		}
-		Eventually(listInstantiated, 30*time.Second, 500*time.Millisecond).Should(gbytes.Say("Name: mytest, Version: 1.0,"))
+		Eventually(listInstantiated, 90*time.Second, 500*time.Millisecond).Should(gbytes.Say("Name: mytest, Version: 1.0,"))
 
 		listInstan := components.Peer()
 		listInstan.ConfigDir = tempDir

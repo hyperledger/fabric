@@ -37,6 +37,5 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
-	//fmt.Printf("\n---\n%s\n---\n", components.Paths)
 	components.Cleanup()
 })
