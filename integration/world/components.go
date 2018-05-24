@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package world
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -84,18 +86,38 @@ func (c *Components) Peer() *runner.Peer {
 }
 
 func (c *Components) Zookeeper(id int, network *docker.Network) *runner.Zookeeper {
+	name := fmt.Sprintf("zookeeper-%d", id)
+	colorCode := fmt.Sprintf("%dm", 31+id%6)
 	return &runner.Zookeeper{
 		ZooMyID:     id,
 		NetworkID:   network.ID,
 		NetworkName: network.Name,
+		OutputStream: gexec.NewPrefixedWriter(
+			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
+			ginkgo.GinkgoWriter,
+		),
+		ErrorStream: gexec.NewPrefixedWriter(
+			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", colorCode, name),
+			ginkgo.GinkgoWriter,
+		),
 	}
 }
 
 func (c *Components) Kafka(id int, network *docker.Network) *runner.Kafka {
+	name := fmt.Sprintf("kafka-%d", id)
+	colorCode := fmt.Sprintf("1;%dm", 31+id%6)
 	return &runner.Kafka{
 		BrokerID:    id,
 		NetworkID:   network.ID,
 		NetworkName: network.Name,
+		OutputStream: gexec.NewPrefixedWriter(
+			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
+			ginkgo.GinkgoWriter,
+		),
+		ErrorStream: gexec.NewPrefixedWriter(
+			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", colorCode, name),
+			ginkgo.GinkgoWriter,
+		),
 	}
 }
 
