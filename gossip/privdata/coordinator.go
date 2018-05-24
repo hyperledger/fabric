@@ -104,10 +104,17 @@ func (d2s dig2sources) keys() []*gossip2.PvtDataDigest {
 	return res
 }
 
+// FetchedPvtDataContainer container for pvt data elements
+// returned by Fetcher
+type FetchedPvtDataContainer struct {
+	AvailableElemenets []*gossip2.PvtDataElement
+	PurgedElements     []*gossip2.PvtDataDigest
+}
+
 // Fetcher interface which defines API to fetch missing
 // private data elements
 type Fetcher interface {
-	fetch(dig2src dig2sources) ([]*gossip2.PvtDataElement, error)
+	fetch(dig2src dig2sources, blockSeq uint64) (*FetchedPvtDataContainer, error)
 }
 
 // Support encapsulates set of interfaces to
@@ -262,14 +269,14 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 		}
 		dig2src[dig] = privateInfo.sources[k]
 	})
-	fetchedData, err := c.fetch(dig2src)
+	fetchedData, err := c.fetch(dig2src, blockSeq)
 	if err != nil {
 		logger.Warning("Failed fetching private data for block", blockSeq, "from peers:", err)
 		return
 	}
 
 	// Iterate over data fetched from peers
-	for _, element := range fetchedData {
+	for _, element := range fetchedData.AvailableElemenets {
 		dig := element.Digest
 		for _, rws := range element.Payload {
 			hash := hex.EncodeToString(util2.ComputeSHA256(rws))
@@ -290,6 +297,18 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 			// so our ledger height is i, since blocks start from 0.
 			c.TransientStore.Persist(dig.TxId, blockSeq, key.toTxPvtReadWriteSet(rws))
 			logger.Debug("Fetched", key)
+		}
+	}
+	// Iterate over purged data
+	for _, dig := range fetchedData.PurgedElements {
+		// delete purged key from missing keys
+		for missingPvtRWKey := range privateInfo.missingKeys {
+			if missingPvtRWKey.namespace == dig.Namespace &&
+				missingPvtRWKey.collection == dig.Collection &&
+				missingPvtRWKey.txID == dig.TxId {
+				delete(privateInfo.missingKeys, missingPvtRWKey)
+				logger.Debug(missingPvtRWKey, "was purged or will soon be purged, skipping fetch")
+			}
 		}
 	}
 }
