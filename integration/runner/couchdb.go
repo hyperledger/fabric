@@ -22,7 +22,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const DefaultCouchDBImage = "hyperledger/fabric-couchdb:latest"
+const CouchDBDefaultImage = "hyperledger/fabric-couchdb:latest"
 
 // CouchDB manages the execution of an instance of a dockerized CounchDB
 // for tests.
@@ -50,7 +50,7 @@ type CouchDB struct {
 // Run runs a CouchDB container. It implements the ifrit.Runner interface
 func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	if c.Image == "" {
-		c.Image = DefaultCouchDBImage
+		c.Image = CouchDBDefaultImage
 	}
 
 	if c.Name == "" {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -21,7 +22,16 @@ type Components struct {
 	Paths map[string]string
 }
 
+var RequiredImages = []string{
+	"hyperledger/fabric-ccenv:latest",
+	runner.CouchDBDefaultImage,
+	runner.KafkaDefaultImage,
+	runner.ZookeeperDefaultImage,
+}
+
 func (c *Components) Build(args ...string) {
+	helpers.AssertImagesExist(RequiredImages...)
+
 	if c.Paths == nil {
 		c.Paths = map[string]string{}
 	}
