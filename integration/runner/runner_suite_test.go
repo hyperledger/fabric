@@ -57,6 +57,6 @@ func execute(r ifrit.Runner) error {
 	var err error
 	p := ifrit.Invoke(r)
 	EventuallyWithOffset(1, p.Ready()).Should(BeClosed())
-	EventuallyWithOffset(1, p.Wait(), 5*time.Second).Should(Receive(&err))
+	EventuallyWithOffset(1, p.Wait(), 30*time.Second).Should(Receive(&err))
 	return err
 }

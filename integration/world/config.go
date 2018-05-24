@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/integration/runner"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
@@ -84,6 +86,163 @@ type Deployment struct {
 	Policy        string
 	Orderer       string
 	Peers         []string
+}
+
+func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir string, components *Components) (w World) {
+	var (
+		err     error
+		client  *docker.Client
+		network *docker.Network
+	)
+
+	client, err = docker.NewClientFromEnv()
+	Expect(err).NotTo(HaveOccurred())
+
+	pOrg := []*localconfig.Organization{}
+	peerOrgs := []PeerOrgConfig{}
+	peers := []string{}
+	policyMembers := []string{}
+	for orgCount := 1; orgCount <= numPeerOrgs; orgCount++ {
+		pOrg = append(pOrg,
+			&localconfig.Organization{
+				Name:   fmt.Sprintf("Org%d", orgCount),
+				ID:     fmt.Sprintf("Org%dMSP", orgCount),
+				MSPDir: fmt.Sprintf("crypto/peerOrganizations/org%d.example.com/msp", orgCount),
+				AnchorPeers: []*localconfig.AnchorPeer{{
+					Host: "0.0.0.0",
+					Port: 7051 + ((orgCount - 1) * 1000),
+				}},
+			})
+		peerOrgs = append(peerOrgs,
+			PeerOrgConfig{
+				OrganizationName: fmt.Sprintf("Org%d", orgCount),
+				Domain:           fmt.Sprintf("org%d.example.com", orgCount),
+				EnableNodeOUs:    false,
+				UserCount:        1,
+				PeerCount:        numPeers,
+			})
+		peers = append(peers, fmt.Sprintf("peer0.org%d.example.com", orgCount))
+		policyMembers = append(policyMembers, fmt.Sprintf("'Org%dMSP.member'", orgCount))
+	}
+
+	brokerCount := 0
+	zookeeperCount := 0
+	brokers := []string{}
+	if ordererType == "kafka" {
+		brokerCount = 2
+		zookeeperCount = 1
+		brokers = []string{
+			"127.0.0.1:9092",
+			"127.0.0.1:8092",
+		}
+	}
+
+	ordererOrgs := []OrdererConfig{{
+		OrganizationName: "OrdererOrg",
+		Domain:           "example.com",
+		OrdererNames:     []string{"orderer"},
+		BrokerCount:      brokerCount,
+		ZookeeperCount:   zookeeperCount,
+	}}
+
+	oOrg := []*localconfig.Organization{{
+		Name:   "OrdererOrg",
+		ID:     "OrdererMSP",
+		MSPDir: filepath.Join("crypto", "ordererOrganizations", "example.com", "orderers", "orderer.example.com", "msp"),
+	}}
+
+	policy := fmt.Sprintf(`OR (%s)`, strings.Join(policyMembers, ","))
+	deployment := Deployment{
+		SystemChannel: "systestchannel",
+		Channel:       "testchannel",
+		Chaincode: Chaincode{
+			Name:     "mycc",
+			Version:  "1.0",
+			Path:     filepath.Join("github.com", "hyperledger", "fabric", "integration", "chaincode", "simple", "cmd"),
+			ExecPath: os.Getenv("PATH"),
+		},
+		InitArgs: `{"Args":["init","a","100","b","200"]}`,
+		Peers:    peers,
+		Policy:   policy,
+		Orderer:  "127.0.0.1:7050",
+	}
+
+	peerProfile := localconfig.Profile{
+		Consortium: "SampleConsortium",
+		Application: &localconfig.Application{
+			Organizations: pOrg,
+			Capabilities: map[string]bool{
+				"V1_2": true,
+			},
+		},
+		Capabilities: map[string]bool{
+			"V1_1": true,
+		},
+	}
+
+	orderer := &localconfig.Orderer{
+		BatchTimeout: 1 * time.Second,
+		BatchSize: localconfig.BatchSize{
+			MaxMessageCount:   1,
+			AbsoluteMaxBytes:  (uint32)(98 * 1024 * 1024),
+			PreferredMaxBytes: (uint32)(512 * 1024),
+		},
+		Kafka: localconfig.Kafka{
+			Brokers: brokers,
+		},
+		Organizations: oOrg,
+		OrdererType:   ordererType,
+		Addresses:     []string{"0.0.0.0:7050"},
+		Capabilities:  map[string]bool{"V1_1": true},
+	}
+
+	ordererProfile := localconfig.Profile{
+		Application: &localconfig.Application{
+			Organizations: oOrg,
+			Capabilities:  map[string]bool{"V1_2": true},
+		},
+		Orderer: orderer,
+		Consortiums: map[string]*localconfig.Consortium{
+			"SampleConsortium": &localconfig.Consortium{
+				Organizations: append(oOrg, pOrg...),
+			},
+		},
+		Capabilities: map[string]bool{"V1_1": true},
+	}
+
+	profiles := map[string]localconfig.Profile{
+		"TwoOrgsOrdererGenesis": ordererProfile,
+		"TwoOrgsChannel":        peerProfile,
+	}
+
+	// Create a network
+	networkName := runner.UniqueName()
+	network, err = client.CreateNetwork(
+		docker.CreateNetworkOptions{
+			Name:   networkName,
+			Driver: "bridge",
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	crypto := runner.Cryptogen{
+		Config: filepath.Join(testDir, "crypto.yaml"),
+		Output: filepath.Join(testDir, "crypto"),
+	}
+
+	w = World{
+		Rootpath:           testDir,
+		Components:         components,
+		Cryptogen:          crypto,
+		Network:            network,
+		Deployment:         deployment,
+		OrdererOrgs:        ordererOrgs,
+		PeerOrgs:           peerOrgs,
+		OrdererProfileName: "TwoOrgsOrdererGenesis",
+		ChannelProfileName: "TwoOrgsChannel",
+		Profiles:           profiles,
+	}
+	return w
 }
 
 func (w *World) Construct() {
@@ -201,8 +360,11 @@ func (w *World) ordererNetwork() {
 			for id := 1; id <= orderer.ZookeeperCount; id++ {
 				// Start zookeeper
 				z = w.Components.Zookeeper(id, w.Network)
+				outBuffer := gbytes.NewBuffer()
+				z.OutputStream = io.MultiWriter(outBuffer, GinkgoWriter)
 				err := z.Start()
 				Expect(err).NotTo(HaveOccurred())
+				Eventually(outBuffer, 5*time.Second).Should(gbytes.Say(`binding to port 0.0.0.0/0.0.0.0:2181`))
 				zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", z.Name))
 				w.LocalStoppers = append(w.LocalStoppers, z)
 			}
@@ -224,7 +386,7 @@ func (w *World) ordererNetwork() {
 
 				w.LocalStoppers = append(w.LocalStoppers, k)
 				kafkas = append(kafkas, k)
-				o.ConfigtxOrdererKafkaBrokers = fmt.Sprint("%s %s", o.ConfigtxOrdererKafkaBrokers, k.HostAddress)
+				o.ConfigtxOrdererKafkaBrokers = fmt.Sprintf("%s %s", o.ConfigtxOrdererKafkaBrokers, k.HostAddress)
 			}
 		}
 
