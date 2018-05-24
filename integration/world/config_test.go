@@ -26,14 +26,14 @@ import (
 
 var _ = Describe("Config", func() {
 	var (
-		tempDir string
-		w       World
-		client  *docker.Client
-		network *docker.Network
-		err     error
+		tempDir    string
+		w          World
+		deployment Deployment
+		client     *docker.Client
 	)
 
 	BeforeEach(func() {
+		var err error
 		tempDir, err = ioutil.TempDir("", "crypto")
 		Expect(err).NotTo(HaveOccurred())
 		client, err = docker.NewClientFromEnv()
@@ -51,7 +51,7 @@ var _ = Describe("Config", func() {
 		// We should not need to find the chaincode containers to remove. Opened FAB-10044 to track the cleanup of chaincode.
 		// Remove this once this is fixed.
 		filters := map[string][]string{}
-		filters["name"] = []string{fmt.Sprintf("%s-%s", w.Deployment.Chaincode.Name, w.Deployment.Chaincode.Version)}
+		filters["name"] = []string{fmt.Sprintf("%s-%s", deployment.Chaincode.Name, deployment.Chaincode.Version)}
 		allContainers, _ := client.ListContainers(docker.ListContainersOptions{
 			Filters: filters,
 		})
@@ -66,7 +66,7 @@ var _ = Describe("Config", func() {
 
 		// Remove chaincode image
 		filters = map[string][]string{}
-		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", w.Deployment.Chaincode.Name)}
+		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", deployment.Chaincode.Name)}
 		images, _ := client.ListImages(docker.ListImagesOptions{
 			Filters: filters,
 		})
@@ -82,8 +82,8 @@ var _ = Describe("Config", func() {
 		}
 
 		// Remove any started networks
-		if network != nil {
-			client.RemoveNetwork(network.Name)
+		if w.Network != nil {
+			client.RemoveNetwork(w.Network.Name)
 		}
 	})
 
@@ -159,9 +159,8 @@ var _ = Describe("Config", func() {
 			Output: filepath.Join(tempDir, "crypto"),
 		}
 
-		deployment := Deployment{
-			SystemChannel: "syschannel",
-			Channel:       "mychannel",
+		deployment = Deployment{
+			Channel: "mychannel",
 			Chaincode: Chaincode{
 				Name:     "mycc",
 				Version:  "1.0",
@@ -170,7 +169,6 @@ var _ = Describe("Config", func() {
 				ExecPath: os.Getenv("PATH"),
 			},
 			InitArgs: `{"Args":["init","a","100","b","200"]}`,
-			Peers:    []string{"peer0.org1.example.com", "peer0.org2.example.com"},
 			Policy:   `OR ('Org1MSP.member','Org2MSP.member')`,
 			Orderer:  "127.0.0.1:9050",
 		}
@@ -225,7 +223,7 @@ var _ = Describe("Config", func() {
 			Components:         components,
 			Cryptogen:          crypto,
 			Network:            &docker.Network{},
-			Deployment:         deployment,
+			SystemChannel:      "syschannel",
 			OrdererOrgs:        ordererOrgs,
 			PeerOrgs:           peerOrgs,
 			OrdererProfileName: "TwoOrgsOrdererGenesis",
@@ -303,9 +301,8 @@ var _ = Describe("Config", func() {
 				MSPDir: "crypto/ordererOrganizations/example.com/orderers/orderer0.example.com/msp",
 			}}
 
-			deployment := Deployment{
-				SystemChannel: "syschannel",
-				Channel:       "mychannel",
+			deployment = Deployment{
+				Channel: "mychannel",
 				Chaincode: Chaincode{
 					Name:     "mycc",
 					Version:  "1.0",
@@ -314,7 +311,6 @@ var _ = Describe("Config", func() {
 				},
 				Orderer:  "127.0.0.1:9050",
 				InitArgs: `{"Args":["init","a","100","b","200"]}`,
-				Peers:    []string{"peer0.org1.example.com", "peer0.org2.example.com"},
 				Policy:   `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 			}
 
@@ -375,7 +371,7 @@ var _ = Describe("Config", func() {
 				Output: filepath.Join(tempDir, "crypto"),
 			}
 
-			network, err = client.CreateNetwork(
+			network, err := client.CreateNetwork(
 				docker.CreateNetworkOptions{
 					Name:   "mytestnet",
 					Driver: "bridge",
@@ -388,7 +384,7 @@ var _ = Describe("Config", func() {
 				Components:         components,
 				Cryptogen:          crypto,
 				Network:            network,
-				Deployment:         deployment,
+				SystemChannel:      "syschannel",
 				OrdererOrgs:        []OrdererConfig{ordererOrgs},
 				PeerOrgs:           peerOrgs,
 				OrdererProfileName: "TwoOrgsOrdererGenesis",
@@ -398,7 +394,7 @@ var _ = Describe("Config", func() {
 		})
 
 		It("boostraps network", func() {
-			w.BootstrapNetwork()
+			w.BootstrapNetwork(deployment.Channel)
 			Expect(filepath.Join(tempDir, "configtx.yaml")).To(BeARegularFile())
 			Expect(filepath.Join(tempDir, "crypto.yaml")).To(BeARegularFile())
 			Expect(filepath.Join(tempDir, "crypto", "peerOrganizations")).To(BeADirectory())
@@ -411,28 +407,33 @@ var _ = Describe("Config", func() {
 
 		It("builds network and sets up channel", func() {
 			By("generating the files used to bootstrap the network")
-			w.BootstrapNetwork()
+			w.BootstrapNetwork(deployment.Channel)
 
 			By("setting up the directory structure for peer and orderer configs")
+			peers := []string{}
 			copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
 			for _, peerOrg := range w.PeerOrgs {
 				for peer := 0; peer < peerOrg.PeerCount; peer++ {
-					err = os.Mkdir(filepath.Join(tempDir, fmt.Sprintf("%s_%d", peerOrg.Domain, peer)), 0755)
+					err := os.Mkdir(filepath.Join(tempDir, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)), 0755)
+					peers = append(peers, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain))
 					Expect(err).NotTo(HaveOccurred())
-					copyFile(filepath.Join("testdata", fmt.Sprintf("%s_%d-core.yaml", peerOrg.Domain, peer)), filepath.Join(tempDir, fmt.Sprintf("%s_%d/core.yaml", peerOrg.Domain, peer)))
+					copyFile(
+						filepath.Join("testdata", fmt.Sprintf("%s_%d-core.yaml", peerOrg.Domain, peer)),
+						filepath.Join(tempDir, fmt.Sprintf("peer%d.%s/core.yaml", peer, peerOrg.Domain)),
+					)
 				}
 			}
 			By("building the network")
 			w.BuildNetwork()
 
 			By("setting up and joining the channel")
-			err = w.SetupChannel()
+			err := w.SetupChannel(deployment, peers)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("verifying the chaincode is installed")
 			adminPeer := components.Peer()
 			adminPeer.LogLevel = "debug"
-			adminPeer.ConfigDir = filepath.Join(tempDir, "org1.example.com_0")
+			adminPeer.ConfigDir = filepath.Join(tempDir, "peer0.org1.example.com")
 			adminPeer.MSPConfigPath = filepath.Join(tempDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 			adminRunner := adminPeer.ChaincodeListInstalled()
 			adminProcess := ifrit.Invoke(adminRunner)

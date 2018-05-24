@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -64,7 +63,7 @@ type World struct {
 	Profiles           map[string]localconfig.Profile
 	Cryptogen          runner.Cryptogen
 	Idemixgen          runner.Idemixgen
-	Deployment         Deployment
+	SystemChannel      string
 
 	LocalStoppers []Stopper
 	LocalProcess  []ifrit.Process
@@ -79,13 +78,11 @@ type Chaincode struct {
 }
 
 type Deployment struct {
-	Chaincode     Chaincode
-	SystemChannel string
-	Channel       string
-	InitArgs      string
-	Policy        string
-	Orderer       string
-	Peers         []string
+	Chaincode Chaincode
+	Channel   string
+	InitArgs  string
+	Policy    string
+	Orderer   string
 }
 
 func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir string, components *Components) (w World) {
@@ -100,8 +97,6 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 
 	pOrg := []*localconfig.Organization{}
 	peerOrgs := []PeerOrgConfig{}
-	peers := []string{}
-	policyMembers := []string{}
 	for orgCount := 1; orgCount <= numPeerOrgs; orgCount++ {
 		pOrg = append(pOrg,
 			&localconfig.Organization{
@@ -121,8 +116,6 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 				UserCount:        1,
 				PeerCount:        numPeers,
 			})
-		peers = append(peers, fmt.Sprintf("peer0.org%d.example.com", orgCount))
-		policyMembers = append(policyMembers, fmt.Sprintf("'Org%dMSP.member'", orgCount))
 	}
 
 	brokerCount := 0
@@ -150,22 +143,6 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 		ID:     "OrdererMSP",
 		MSPDir: filepath.Join("crypto", "ordererOrganizations", "example.com", "orderers", "orderer.example.com", "msp"),
 	}}
-
-	policy := fmt.Sprintf(`OR (%s)`, strings.Join(policyMembers, ","))
-	deployment := Deployment{
-		SystemChannel: "systestchannel",
-		Channel:       "testchannel",
-		Chaincode: Chaincode{
-			Name:     "mycc",
-			Version:  "1.0",
-			Path:     filepath.Join("github.com", "hyperledger", "fabric", "integration", "chaincode", "simple", "cmd"),
-			ExecPath: os.Getenv("PATH"),
-		},
-		InitArgs: `{"Args":["init","a","100","b","200"]}`,
-		Peers:    peers,
-		Policy:   policy,
-		Orderer:  "127.0.0.1:7050",
-	}
 
 	peerProfile := localconfig.Profile{
 		Consortium: "SampleConsortium",
@@ -235,7 +212,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 		Components:         components,
 		Cryptogen:          crypto,
 		Network:            network,
-		Deployment:         deployment,
+		SystemChannel:      "systestchannel",
 		OrdererOrgs:        ordererOrgs,
 		PeerOrgs:           peerOrgs,
 		OrdererProfileName: "TwoOrgsOrdererGenesis",
@@ -297,7 +274,7 @@ func (w *World) buildTemplate(writer io.Writer, orgTemplate string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func (w *World) BootstrapNetwork() {
+func (w *World) BootstrapNetwork(channel string) {
 	w.Construct()
 
 	w.Cryptogen.Path = w.Components.Paths["cryptogen"]
@@ -306,20 +283,20 @@ func (w *World) BootstrapNetwork() {
 
 	configtxgen := runner.Configtxgen{
 		Path:      w.Components.Paths["configtxgen"],
-		ChannelID: w.Deployment.SystemChannel,
+		ChannelID: w.SystemChannel,
 		Profile:   w.OrdererProfileName,
 		ConfigDir: w.Rootpath,
-		Output:    filepath.Join(w.Rootpath, fmt.Sprintf("%s_block.pb", w.Deployment.SystemChannel)),
+		Output:    filepath.Join(w.Rootpath, fmt.Sprintf("%s_block.pb", w.SystemChannel)),
 	}
 	r = configtxgen.OutputBlock()
 	execute(r)
 
 	configtxgen = runner.Configtxgen{
 		Path:      w.Components.Paths["configtxgen"],
-		ChannelID: w.Deployment.Channel,
+		ChannelID: channel,
 		Profile:   w.ChannelProfileName,
 		ConfigDir: w.Rootpath,
-		Output:    filepath.Join(w.Rootpath, fmt.Sprintf("%s_tx.pb", w.Deployment.Channel)),
+		Output:    filepath.Join(w.Rootpath, fmt.Sprintf("%s_tx.pb", channel)),
 	}
 	r = configtxgen.OutputCreateChannelTx()
 	execute(r)
@@ -327,7 +304,7 @@ func (w *World) BootstrapNetwork() {
 	for _, peer := range w.PeerOrgs {
 		configtxgen = runner.Configtxgen{
 			Path:      w.Components.Paths["configtxgen"],
-			ChannelID: w.Deployment.Channel,
+			ChannelID: channel,
 			AsOrg:     peer.OrganizationName,
 			Profile:   w.ChannelProfileName,
 			ConfigDir: w.Rootpath,
@@ -407,7 +384,7 @@ func (w *World) peerNetwork() {
 	for _, peerOrg := range w.PeerOrgs {
 		for peer := 0; peer < peerOrg.PeerCount; peer++ {
 			p = w.Components.Peer()
-			p.ConfigDir = filepath.Join(w.Rootpath, fmt.Sprintf("%s_%d", peerOrg.Domain, peer))
+			p.ConfigDir = filepath.Join(w.Rootpath, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain))
 			peerProcess := ifrit.Invoke(p.NodeStart(peer))
 			Eventually(peerProcess.Ready()).Should(BeClosed())
 			Consistently(peerProcess.Wait()).ShouldNot(Receive())
@@ -416,50 +393,49 @@ func (w *World) peerNetwork() {
 	}
 }
 
-func (w *World) SetupChannel() error {
+func (w *World) SetupChannel(d Deployment, peers []string) error {
 	var p *runner.Peer
 
 	p = w.Components.Peer()
-	p.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+	p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	adminRunner := p.CreateChannel(w.Deployment.Channel, filepath.Join(w.Rootpath, fmt.Sprintf("%s_tx.pb", w.Deployment.Channel)), w.Deployment.Orderer)
+	adminRunner := p.CreateChannel(d.Channel, filepath.Join(w.Rootpath, fmt.Sprintf("%s_tx.pb", d.Channel)), d.Orderer)
 	execute(adminRunner)
 
-	for _, peerOrg := range w.PeerOrgs {
-		for peer := 0; peer < peerOrg.PeerCount; peer++ {
-			p = w.Components.Peer()
-			peerDir := fmt.Sprintf("%s_%d", peerOrg.Domain, peer)
-			p.ConfigDir = filepath.Join(w.Rootpath, peerDir)
-			p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg.Domain, "users", fmt.Sprintf("Admin@%s", peerOrg.Domain), "msp")
-			adminRunner = p.FetchChannel(w.Deployment.Channel, filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", w.Deployment.Channel)), "0", w.Deployment.Orderer)
-			execute(adminRunner)
-			Expect(adminRunner.Err()).To(gbytes.Say("Received block: 0"))
+	for _, peer := range peers {
+		p = w.Components.Peer()
+		peerDir := peer
+		peerOrg := strings.SplitN(peer, ".", 2)[1]
+		p.ConfigDir = filepath.Join(w.Rootpath, peerDir)
+		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg, "users", fmt.Sprintf("Admin@%s", peerOrg), "msp")
+		adminRunner = p.FetchChannel(d.Channel, filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", d.Channel)), "0", d.Orderer)
+		execute(adminRunner)
+		Expect(adminRunner.Err()).To(gbytes.Say("Received block: 0"))
 
-			adminRunner = p.JoinChannel(filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", w.Deployment.Channel)))
-			execute(adminRunner)
-			Expect(adminRunner.Err()).To(gbytes.Say("Successfully submitted proposal to join channel"))
+		adminRunner = p.JoinChannel(filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", d.Channel)))
+		execute(adminRunner)
+		Expect(adminRunner.Err()).To(gbytes.Say("Successfully submitted proposal to join channel"))
 
-			p.ExecPath = w.Deployment.Chaincode.ExecPath
-			p.GoPath = w.Deployment.Chaincode.GoPath
-			adminRunner = p.InstallChaincode(w.Deployment.Chaincode.Name, w.Deployment.Chaincode.Version, w.Deployment.Chaincode.Path)
-			execute(adminRunner)
-			Expect(adminRunner.Err()).To(gbytes.Say(`\QInstalled remotely response:<status:200 payload:"OK" >\E`))
-		}
+		p.ExecPath = d.Chaincode.ExecPath
+		p.GoPath = d.Chaincode.GoPath
+		adminRunner = p.InstallChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Chaincode.Path)
+		execute(adminRunner)
+		Expect(adminRunner.Err()).To(gbytes.Say(`\QInstalled remotely response:<status:200 payload:"OK" >\E`))
 	}
 
 	p = w.Components.Peer()
-	p.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+	p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	adminRunner = p.InstantiateChaincode(w.Deployment.Chaincode.Name, w.Deployment.Chaincode.Version, w.Deployment.Orderer, w.Deployment.Channel, w.Deployment.InitArgs, w.Deployment.Policy)
+	adminRunner = p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
 	execute(adminRunner)
 
 	listInstantiated := func() bool {
 		p = w.Components.Peer()
-		p.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+		p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		adminRunner = p.ChaincodeListInstantiated(w.Deployment.Channel)
+		adminRunner = p.ChaincodeListInstantiated(d.Channel)
 		execute(adminRunner)
-		return strings.Contains(string(adminRunner.Buffer().Contents()), fmt.Sprintf("Path: %s", w.Deployment.Chaincode.Path))
+		return strings.Contains(string(adminRunner.Buffer().Contents()), fmt.Sprintf("Path: %s", d.Chaincode.Path))
 	}
 	Eventually(listInstantiated, 90*time.Second, 500*time.Millisecond).Should(BeTrue())
 
