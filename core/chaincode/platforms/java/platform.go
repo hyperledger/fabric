@@ -52,14 +52,6 @@ func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 	gw := gzip.NewWriter(inputbuf)
 	tw := tar.NewWriter(gw)
 
-	//ignore the generated hash. Just use the tw
-	//The hash could be used in a future enhancement
-	//to check, warn of duplicate installs etc.
-	_, err = collectChaincodeFiles(spec, tw)
-	if err != nil {
-		return nil, err
-	}
-
 	err = writeChaincodePackage(spec, tw)
 
 	tw.Close()
