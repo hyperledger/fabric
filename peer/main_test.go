@@ -44,7 +44,6 @@ func TestPluginLoadingFailure(t *testing.T) {
 			out := string(rawOut)
 			assert.Contains(t, out, "panic: Error opening plugin at path testdata/invalid_plugins/invalidplugin.so")
 			assert.Contains(t, out, "plugin.Open")
-			assert.Contains(t, out, "invalid ELF header")
 		})
 	}
 }
