@@ -24,8 +24,10 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/policyprovider"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
+	mb "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -142,6 +144,87 @@ func (lscc *lifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, c
 	return err
 }
 
+// checkCollectionMemberPolicy checks whether the supplied collection configuration
+// complies to the given msp configuration
+func checkCollectionMemberPolicy(collectionConfig *common.CollectionConfig, mspmgr msp.MSPManager) error {
+	if mspmgr == nil {
+		return fmt.Errorf("msp manager not set")
+	}
+	msps, err := mspmgr.GetMSPs()
+	if err != nil {
+		return errors.Wrapf(err, "error getting channel msp")
+	}
+	if collectionConfig == nil {
+		return fmt.Errorf("collection configuration is not set")
+	}
+	coll := collectionConfig.GetStaticCollectionConfig()
+	if coll == nil {
+		return fmt.Errorf("collection configuration is empty")
+	}
+	if coll.MemberOrgsPolicy == nil {
+		return fmt.Errorf("collection member policy is not set")
+	}
+	if coll.MemberOrgsPolicy.GetSignaturePolicy() == nil {
+		return fmt.Errorf("collection member org policy is empty")
+	}
+	// make sure that the orgs listed are actually part of the channel
+	// check all principals in the signature policy
+	for _, principal := range coll.MemberOrgsPolicy.GetSignaturePolicy().Identities {
+		found := false
+		var orgID string
+		// the member org policy only supports certain principal types
+		switch principal.PrincipalClassification {
+
+		case mb.MSPPrincipal_ROLE:
+			msprole := &mb.MSPRole{}
+			err := proto.Unmarshal(principal.Principal, msprole)
+			if err != nil {
+				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identities", coll.GetName())
+			}
+			orgID = msprole.MspIdentifier
+			// the msp map is indexed using msp IDs - this behavior is implementation specific, making the following check a bit of a hack
+			for mspid := range msps {
+				if mspid == orgID {
+					found = true
+					break
+				}
+			}
+
+		case mb.MSPPrincipal_ORGANIZATION_UNIT:
+			mspou := &mb.OrganizationUnit{}
+			err := proto.Unmarshal(principal.Principal, mspou)
+			if err != nil {
+				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identities", coll.GetName())
+			}
+			orgID = mspou.MspIdentifier
+			// the msp map is indexed using msp IDs - this behavior is implementation specific, making the following check a bit of a hack
+			for mspid := range msps {
+				if mspid == orgID {
+					found = true
+					break
+				}
+			}
+
+		case mb.MSPPrincipal_IDENTITY:
+			orgID = "identity principal"
+			for _, msp := range msps {
+				_, err := msp.DeserializeIdentity(principal.Principal)
+				if err == nil {
+					found = true
+					break
+				}
+			}
+		default:
+			return fmt.Errorf("collection-name: %s -- principal type %v is not supported", coll.GetName(), principal.PrincipalClassification)
+		}
+		if !found {
+			logger.Warningf("collection-name: %s collection member %s is not part of the channel", coll.GetName(), orgID)
+		}
+	}
+
+	return nil
+}
+
 // putChaincodeCollectionData adds collection data for the chaincode
 func (lscc *lifeCycleSysCC) putChaincodeCollectionData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData, collectionConfigBytes []byte) error {
 	if cd == nil {
@@ -159,7 +242,16 @@ func (lscc *lifeCycleSysCC) putChaincodeCollectionData(stub shim.ChaincodeStubIn
 		return errors.Errorf("invalid collection configuration supplied for chaincode %s:%s", cd.Name, cd.Version)
 	}
 
-	// TODO: FAB-6526 - to add validation of the collections object
+	mspmgr := mgmt.GetManagerForChain(stub.GetChannelID())
+	if mspmgr == nil {
+		return fmt.Errorf("could not get MSP manager for channel %s", stub.GetChannelID())
+	}
+	for _, collectionConfig := range collections.Config {
+		err = checkCollectionMemberPolicy(collectionConfig, mspmgr)
+		if err != nil {
+			return errors.Wrapf(err, "collection member policy check failed")
+		}
+	}
 
 	key := privdata.BuildCollectionKVSKey(cd.Name)
 

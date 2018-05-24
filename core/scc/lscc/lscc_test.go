@@ -33,7 +33,9 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	mspmocks "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
+	mb "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -249,8 +251,7 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, true, ok)
 
 	collName1 := "mycollection1"
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := cauthdsl.SignedByAnyMember([]string{"SampleOrg"})
 	var requiredPeerCount, maximumPeerCount int32
 	requiredPeerCount = 1
 	maximumPeerCount = 2
@@ -474,8 +475,7 @@ func TestUpgrade(t *testing.T) {
 	scc.support.(*lscc.MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	collName1 := "mycollection1"
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := &common.SignaturePolicyEnvelope{}
 	var requiredPeerCount, maximumPeerCount int32
 	requiredPeerCount = 1
 	maximumPeerCount = 2
@@ -770,6 +770,7 @@ func TestErrors(t *testing.T) {
 func TestPutChaincodeCollectionData(t *testing.T) {
 	scc := new(lifeCycleSysCC)
 	stub := shim.NewMockStub("lscc", scc)
+	scc.support = &lscc.MockSupport{}
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -784,8 +785,10 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	err = scc.putChaincodeCollectionData(stub, cd, nil)
 	assert.NoError(t, err)
 
-	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
+	collName1 := "mycollection1"
+	policyEnvelope := &common.SignaturePolicyEnvelope{}
+	coll1 := createCollectionConfig(collName1, policyEnvelope, 1, 2)
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -801,8 +804,157 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	stub.MockTransactionEnd("foo")
 }
 
+func TestCheckCollectionMemberPolicy(t *testing.T) {
+	// error case: no msp manager set, no collection config set
+	err := checkCollectionMemberPolicy(nil, nil)
+	assert.Error(t, err)
+
+	mockmsp := new(mspmocks.MockMSP)
+	mockmsp.On("DeserializeIdentity", []byte("signer0")).Return(&mspmocks.MockIdentity{}, nil)
+	mockmsp.On("DeserializeIdentity", []byte("signer1")).Return(&mspmocks.MockIdentity{}, nil)
+	mockmsp.On("GetIdentifier").Return("Org1", nil)
+	mockmsp.On("GetType").Return(msp.FABRIC)
+	mspmgmt.GetManagerForChain("foochannel")
+	mgr := mspmgmt.GetManagerForChain("foochannel")
+
+	// error case: msp manager not set up, no collection config set
+	err = checkCollectionMemberPolicy(nil, mgr)
+	assert.Error(t, err)
+
+	// set up msp manager
+	mgr.Setup([]msp.MSP{mockmsp})
+
+	// error case: no collection config set
+	err = checkCollectionMemberPolicy(nil, mgr)
+	assert.Error(t, err)
+
+	// error case: empty collection config
+	cc := &common.CollectionConfig{}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.Error(t, err)
+
+	// error case: no static collection config
+	cc = &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{}}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.Error(t, err)
+
+	// error case: member org policy not set
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.Error(t, err)
+
+	// error case: member org policy config empty
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name: "mycollection",
+				MemberOrgsPolicy: &common.CollectionPolicyConfig{
+					Payload: &common.CollectionPolicyConfig_SignaturePolicy{},
+				},
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.Error(t, err)
+
+	// valid case: member org policy empty
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name: "mycollection",
+				MemberOrgsPolicy: &common.CollectionPolicyConfig{
+					Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+						SignaturePolicy: &common.SignaturePolicyEnvelope{},
+					},
+				},
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.NoError(t, err)
+
+	// check MSPPrincipal_IDENTITY type
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signaturePolicyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	signaturePolicy := &common.CollectionPolicyConfig_SignaturePolicy{
+		SignaturePolicy: signaturePolicyEnvelope,
+	}
+	accessPolicy := &common.CollectionPolicyConfig{
+		Payload: signaturePolicy,
+	}
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:             "mycollection",
+				MemberOrgsPolicy: accessPolicy,
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.NoError(t, err)
+	mockmsp.AssertNumberOfCalls(t, "DeserializeIdentity", 2)
+
+	// check MSPPrincipal_ROLE type
+	signaturePolicyEnvelope = cauthdsl.SignedByAnyMember([]string{"Org1"})
+	signaturePolicy.SignaturePolicy = signaturePolicyEnvelope
+	accessPolicy.Payload = signaturePolicy
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:             "mycollection",
+				MemberOrgsPolicy: accessPolicy,
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.NoError(t, err)
+
+	// check MSPPrincipal_ROLE type for unknown org
+	signaturePolicyEnvelope = cauthdsl.SignedByAnyMember([]string{"Org2"})
+	signaturePolicy.SignaturePolicy = signaturePolicyEnvelope
+	accessPolicy.Payload = signaturePolicy
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:             "mycollection",
+				MemberOrgsPolicy: accessPolicy,
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	// this does not raise an error but prints a warning logging message instead
+	assert.NoError(t, err)
+
+	// check MSPPrincipal_ORGANIZATION_UNIT type
+	principal := &mb.MSPPrincipal{
+		PrincipalClassification: mb.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               utils.MarshalOrPanic(&mb.OrganizationUnit{MspIdentifier: "Org1"}),
+	}
+	// create the policy: it requires exactly 1 signature from the first (and only) principal
+	signaturePolicy.SignaturePolicy = &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       cauthdsl.NOutOf(1, []*common.SignaturePolicy{cauthdsl.SignedBy(0)}),
+		Identities: []*mb.MSPPrincipal{principal},
+	}
+	accessPolicy.Payload = signaturePolicy
+	cc = &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:             "mycollection",
+				MemberOrgsPolicy: accessPolicy,
+			},
+		},
+	}
+	err = checkCollectionMemberPolicy(cc, mgr)
+	assert.NoError(t, err)
+}
+
 var id msp.SigningIdentity
-var chainid string = util.GetTestChainID()
+var chainid = util.GetTestChainID()
 var mockAclProvider *mocks.MockACLProvider
 
 func NewMockProvider() *mscc.MocksccProviderImpl {

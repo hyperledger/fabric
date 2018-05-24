@@ -1830,6 +1830,14 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.Errorf(t, err, "collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
 		collName3, maximumPeerCount, requiredPeerCount)
+
+	// Test 12: AND concatenation of orgs in access policy -> error
+	requiredPeerCount = 1
+	maximumPeerCount = 2
+	policyEnvelope = cauthdsl.Envelope(cauthdsl.And(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
 }
 
 func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
