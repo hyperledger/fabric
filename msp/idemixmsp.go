@@ -13,7 +13,11 @@ import (
 
 	"crypto/ecdsa"
 
-	"crypto/elliptic"
+	"crypto/x509"
+
+	"encoding/pem"
+
+	"reflect"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
@@ -129,12 +133,19 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	msp.rng = rng
 
 	// get the revocation public key from the config
-	revPkX, revPkY := elliptic.Unmarshal(elliptic.P384(), conf.RevocationPk)
-	msp.revocationPK = &ecdsa.PublicKey{
-		Curve: elliptic.P384(),
-		X:     revPkX,
-		Y:     revPkY,
+	blockPub, _ := pem.Decode(conf.RevocationPk)
+	if blockPub == nil {
+		return errors.New("Failed to decode revocation ECDSA public key")
 	}
+	revocationPk, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
+	if err != nil {
+		return errors.Wrap(err, "Failed to parse revocation ECDSA public key bytes")
+	}
+	ecdsaPublicKey, isECDSA := revocationPk.(*ecdsa.PublicKey)
+	if !isECDSA {
+		return errors.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
+	}
+	msp.revocationPK = ecdsaPublicKey
 
 	if conf.Signer == nil {
 		// No credential in config, so we don't setup a default signer

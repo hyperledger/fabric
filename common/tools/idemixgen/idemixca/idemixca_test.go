@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"crypto/elliptic"
+	"crypto/x509"
+
+	"encoding/pem"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/idemix"
@@ -37,7 +39,11 @@ func TestIdemixCa(t *testing.T) {
 	err = proto.Unmarshal(ipkBytes, ipk)
 	assert.NoError(t, err)
 
-	writeVerifierToFile(ipkBytes, elliptic.Marshal(elliptic.P384(), revocationkey.X, revocationkey.Y))
+	encodedRevocationPK, err := x509.MarshalPKIXPublicKey(revocationkey.Public())
+	assert.NoError(t, err)
+	pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
+
+	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
 
 	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
