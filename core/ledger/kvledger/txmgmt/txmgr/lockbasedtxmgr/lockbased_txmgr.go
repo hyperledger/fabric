@@ -91,6 +91,8 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) error {
 	block := blockAndPvtdata.Block
+	logger.Debugf("Waiting for purge mgr to finish the background job of computing expirying keys for the block")
+	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
 	batch, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
@@ -135,8 +137,9 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		txmgr.pvtdataPurgeMgr.usedOnce = true
 	}
 	defer func() {
-		txmgr.pvtdataPurgeMgr.BlockCommitDone()
+		txmgr.clearCache()
 		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.current.blockNum() + 1)
+		logger.Debugf("Cleared version cache and launched the background routine for preparing keys to purge with the next block")
 		txmgr.reset()
 		txmgr.commitRWLock.Unlock()
 	}()
@@ -157,8 +160,12 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
 		return err
 	}
-
 	logger.Debugf("Updates committed to state database")
+
+	// purge manager should be called (in this call the purge mgr removes the expiry entries from schedules) after committing to statedb
+	if err := txmgr.pvtdataPurgeMgr.BlockCommitDone(); err != nil {
+		return err
+	}
 	// In the case of error state listeners will not recieve this call - instead a peer panic is caused by the ledger upon receiveing
 	// an error from this function
 	txmgr.updateStateListeners()
@@ -223,10 +230,6 @@ func (txmgr *LockBasedTxMgr) updateStateListeners() {
 
 func (txmgr *LockBasedTxMgr) reset() {
 	txmgr.current = nil
-	// If statedb implementation needed bulk read optimization, cache might have been populated by
-	// ValidateAndPrepare(). Once the block is validated and committed, populated cache needs to
-	// be cleared.
-	defer txmgr.clearCache()
 }
 
 // pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
