@@ -128,6 +128,19 @@ func (p *Peer) JoinChannel(transactionFile string) *ginkgomon.Runner {
 	return r
 }
 
+func (p *Peer) SignConfigTx(transactionFile string) *ginkgomon.Runner {
+	cmd := exec.Command(p.Path, "channel", "signconfigtx", "-f", transactionFile)
+	p.setupEnvironment(cmd)
+
+	r := ginkgomon.New(ginkgomon.Config{
+		Name:          "channel signconfigtx",
+		AnsiColorCode: "4;38m",
+		Command:       cmd,
+	})
+
+	return r
+}
+
 func (p *Peer) UpdateChannel(transactionFile string, channel string, orderer string) *ginkgomon.Runner {
 	cmd := exec.Command(p.Path, "channel", "update", "-c", channel, "-o", orderer, "-f", transactionFile)
 	p.setupEnvironment(cmd)
@@ -180,8 +193,12 @@ func (p *Peer) QueryChaincode(name string, channel string, args string) *ginkgom
 	return r
 }
 
-func (p *Peer) InvokeChaincode(name string, channel string, args string, orderer string) *ginkgomon.Runner {
+func (p *Peer) InvokeChaincode(name string, channel string, args string, orderer string, extraArgs ...string) *ginkgomon.Runner {
 	cmd := exec.Command(p.Path, "chaincode", "invoke", "-n", name, "-C", channel, "-c", args, "-o", orderer)
+	for _, arg := range extraArgs {
+		cmd.Args = append(cmd.Args, arg)
+	}
+
 	p.setupEnvironment(cmd)
 
 	r := ginkgomon.New(ginkgomon.Config{

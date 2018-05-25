@@ -688,6 +688,10 @@ func (dg *deliverGroup) ClientWait(dc *deliverClient) {
 					return
 				}
 			}
+		case *pb.DeliverResponse_Status:
+			err = errors.Errorf("deliver completed with status (%s) before txid received", r.Status)
+			dg.setError(err)
+			return
 		default:
 			err = errors.Errorf("received unexpected response type (%T) from %s", r, dc.Address)
 			dg.setError(err)
