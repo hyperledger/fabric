@@ -19,7 +19,7 @@ import (
 
 func setupWorld(w *world.World) {
 	w.BootstrapNetwork()
-	copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
+	copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(w.Rootpath, "orderer.yaml"))
 	copyPeerConfigs(w.PeerOrgs, w.Rootpath)
 	w.BuildNetwork()
 	err := w.SetupChannel()
@@ -30,21 +30,6 @@ func copyFile(src, dest string) {
 	data, err := ioutil.ReadFile(src)
 	Expect(err).NotTo(HaveOccurred())
 	err = ioutil.WriteFile(dest, data, 0775)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func copyDir(src, dest string) {
-	os.MkdirAll(dest, 0755)
-	objects, err := ioutil.ReadDir(src)
-	for _, obj := range objects {
-		srcfileptr := src + "/" + obj.Name()
-		destfileptr := dest + "/" + obj.Name()
-		if obj.IsDir() {
-			copyDir(srcfileptr, destfileptr)
-		} else {
-			copyFile(srcfileptr, destfileptr)
-		}
-	}
 	Expect(err).NotTo(HaveOccurred())
 }
 
