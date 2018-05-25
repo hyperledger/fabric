@@ -486,14 +486,9 @@ func TestUpgrade(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
 
-	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
-	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, ccpBytes)
-	// Should contain an entry for the chaincodeData only as the V1_2Validation is disabled.
-	// Only in V1_2Validation, collection upgrades are allowed. Note that V1_2Validation
-	// would be replaced with CollectionUpgrade capability.
-	assert.Equal(t, 1, len(stub.State))
-	_, ok := stub.State["example02"]
-	assert.Equal(t, true, ok)
+	// As v12 capability is not enabled (which is required for the collection upgrade), an error is expected
+	expectedErrorMsg := "as V1_2 capability is not enabled, collection upgrades are not allowed"
+	testUpgrade(t, "example02", "0", "example02", "1", path, expectedErrorMsg, scc, stub, ccpBytes)
 
 	// Enable PrivateChannelData and V1_2Validation
 	mocksccProvider = (&mscc.MocksccProviderFactory{
@@ -517,7 +512,7 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, []byte("nil"))
 	// Should contain an entry for the chaincodeData only as the collectionConfigBytes is nil
 	assert.Equal(t, 1, len(stub.State))
-	_, ok = stub.State["example02"]
+	_, ok := stub.State["example02"]
 	assert.Equal(t, true, ok)
 
 	scc = New(mocksccProvider, mockAclProvider)

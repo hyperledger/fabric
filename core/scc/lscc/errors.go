@@ -126,3 +126,10 @@ type InstantiationPolicyMissing string
 func (f InstantiationPolicyMissing) Error() string {
 	return "instantiation policy missing"
 }
+
+// CollectionsConfigUpgradesNotAllowed when V1_2 capability is not enabled
+type CollectionsConfigUpgradesNotAllowed string
+
+func (f CollectionsConfigUpgradesNotAllowed) Error() string {
+	return "as V1_2 capability is not enabled, collection upgrades are not allowed"
+}
