@@ -590,6 +590,10 @@ func (lscc *lifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		if collectionConfigBytes != nil {
+			return nil, errors.New(CollectionsConfigUpgradesNotAllowed("").Error())
+		}
 	}
 
 	lifecycleEvent := &pb.LifecycleEvent{ChaincodeName: chaincodeName}
