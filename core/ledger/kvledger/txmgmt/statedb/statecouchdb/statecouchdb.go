@@ -74,6 +74,7 @@ type VersionedDB struct {
 	chainName          string                            // The name of the chain/channel.
 	namespaceDBs       map[string]*couchdb.CouchDatabase // One database per deployed chaincode.
 	committedDataCache *versionsCache                    // Used as a local cache during bulk processing of a block.
+	verCacheLock       sync.RWMutex
 	mux                sync.RWMutex
 }
 
@@ -168,6 +169,8 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 			}
 		}
 	}
+	vdb.verCacheLock.Lock()
+	defer vdb.verCacheLock.Unlock()
 	vdb.committedDataCache = committedDataCache
 	return nil
 }
@@ -190,6 +193,8 @@ func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Heigh
 // GetCachedVersion returns version from cache. `LoadCommittedVersions` function populates the cache
 func (vdb *VersionedDB) GetCachedVersion(namespace string, key string) (*version.Height, bool) {
 	logger.Debugf("Retrieving cached version: %s~%s", key, namespace)
+	vdb.verCacheLock.RLock()
+	defer vdb.verCacheLock.RUnlock()
 	return vdb.committedDataCache.getVersion(namespace, key)
 }
 
@@ -314,6 +319,8 @@ func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *versi
 // ClearCachedVersions clears committedVersions and revisionNumbers
 func (vdb *VersionedDB) ClearCachedVersions() {
 	logger.Debugf("Clear Cache")
+	vdb.verCacheLock.Lock()
+	defer vdb.verCacheLock.Unlock()
 	vdb.committedDataCache = newVersionCache()
 }
 
