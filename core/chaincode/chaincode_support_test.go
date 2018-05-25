@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
@@ -164,7 +165,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	peer.MockSetMSPIDGetter(mspGetter)
 
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
-	ca, _ := accesscontrol.NewCA()
+	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()
 	config.StartupTimeout = 10 * time.Second

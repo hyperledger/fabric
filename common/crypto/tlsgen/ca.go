@@ -4,7 +4,12 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package accesscontrol
+package tlsgen
+
+import (
+	"crypto"
+	"crypto/x509"
+)
 
 // CertKeyPair denotes a TLS certificate and corresponding key,
 // both PEM encoded
@@ -13,6 +18,9 @@ type CertKeyPair struct {
 	Cert []byte
 	// Key is the key corresponding to the certificate, PEM encoded
 	Key []byte
+
+	crypto.Signer
+	TLSCert *x509.Certificate
 }
 
 // CA defines a certificate authority that can generate
@@ -24,7 +32,7 @@ type CA interface {
 	// newCertKeyPair returns a certificate and private key pair and nil,
 	// or nil, error in case of failure
 	// The certificate is signed by the CA and is used for TLS client authentication
-	newClientCertKeyPair() (*certKeyPair, error)
+	NewClientCertKeyPair() (*CertKeyPair, error)
 
 	// NewServerCertKeyPair returns a CertKeyPair and nil,
 	// with a given custom SAN.
@@ -34,7 +42,7 @@ type CA interface {
 }
 
 type ca struct {
-	caCert *certKeyPair
+	caCert *CertKeyPair
 }
 
 func NewCA() (CA, error) {
@@ -55,17 +63,17 @@ func (c *ca) CertBytes() []byte {
 // newClientCertKeyPair returns a certificate and private key pair and nil,
 // or nil, error in case of failure
 // The certificate is signed by the CA and is used as a client TLS certificate
-func (c *ca) newClientCertKeyPair() (*certKeyPair, error) {
-	return newCertKeyPair(false, false, "", c.caCert.Signer, c.caCert.cert)
+func (c *ca) NewClientCertKeyPair() (*CertKeyPair, error) {
+	return newCertKeyPair(false, false, "", c.caCert.Signer, c.caCert.TLSCert)
 }
 
 // newServerCertKeyPair returns a certificate and private key pair and nil,
 // or nil, error in case of failure
 // The certificate is signed by the CA and is used as a server TLS certificate
 func (c *ca) NewServerCertKeyPair(host string) (*CertKeyPair, error) {
-	keypair, err := newCertKeyPair(false, true, host, c.caCert.Signer, c.caCert.cert)
+	keypair, err := newCertKeyPair(false, true, host, c.caCert.Signer, c.caCert.TLSCert)
 	if err != nil {
 		return nil, err
 	}
-	return keypair.CertKeyPair, nil
+	return keypair, nil
 }

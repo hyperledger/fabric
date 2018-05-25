@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"google.golang.org/grpc"
@@ -36,9 +37,9 @@ func (auth *Authenticator) Wrap(srv pb.ChaincodeSupportServer) pb.ChaincodeSuppo
 }
 
 // NewAuthenticator returns a new authenticator that can wrap a chaincode service
-func NewAuthenticator(ca CA) *Authenticator {
+func NewAuthenticator(ca tlsgen.CA) *Authenticator {
 	return &Authenticator{
-		mapper: newCertMapper(ca.newClientCertKeyPair),
+		mapper: newCertMapper(ca.NewClientCertKeyPair),
 	}
 }
 
@@ -51,8 +52,8 @@ func (ac *Authenticator) Generate(ccName string) (*CertAndPrivKeyPair, error) {
 		return nil, err
 	}
 	return &CertAndPrivKeyPair{
-		Key:  cert.privKeyString(),
-		Cert: cert.pubKeyString(),
+		Key:  cert.PrivKeyString(),
+		Cert: cert.PubKeyString(),
 	}, nil
 }
 

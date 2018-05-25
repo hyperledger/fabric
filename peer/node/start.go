@@ -19,6 +19,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
@@ -220,7 +221,7 @@ func serve(args []string) error {
 	ccprovider.EnableCCInfoCache()
 
 	// Create a self-signed CA for chaincode service
-	ca, err := accesscontrol.NewCA()
+	ca, err := tlsgen.NewCA()
 	if err != nil {
 		logger.Panic("Failed creating authentication layer:", err)
 	}
@@ -449,7 +450,7 @@ func registerDiscoveryService(peerServer *comm.GRPCServer, mcs api.MessageCrypto
 }
 
 //create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
-func createChaincodeServer(ca accesscontrol.CA, peerHostname string) (srv *comm.GRPCServer, ccEndpoint string, err error) {
+func createChaincodeServer(ca tlsgen.CA, peerHostname string) (srv *comm.GRPCServer, ccEndpoint string, err error) {
 	// before potentially setting chaincodeListenAddress, compute chaincode endpoint at first
 	ccEndpoint, err = computeChaincodeEndpoint(peerHostname)
 	if err != nil {
@@ -595,7 +596,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA, aclProvider aclmgmt.ACLProvider) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
+func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca tlsgen.CA, aclProvider aclmgmt.ACLProvider) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
