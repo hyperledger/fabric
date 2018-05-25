@@ -12,32 +12,40 @@ to read the entire thing in one sitting if you like; it's pretty enlightening!
 Anchor Peer
 -----------
 
-Anchor peers are used to bootstrap gossip communication between peers from
-different organizations. Cross-organization gossip is scoped to channels. In
-order for cross-org gossip to work, peers from one org need to know at
-least the address of a peer from another organization in the channel.
-Each organization added to a channel should identify at least one of its
-peers as an anchor peer. The anchor peer address is stored in the
-configuration block of the channel. Each organization that has a peer
-should have at least one (there can be more than one) of its peers
-defined as an anchor peer. Thus, the anchor peer is used as the entry point
-from another organization's peer on the same channel to get the message
-delivered to each of the peers in the anchor peer's org.
+Used to initiate gossip communication between peers from different
+organizations. The anchor peer serves as the entry point for another
+organization's peer on the same channel to communicate with each of the peers
+in the anchor peer's organization. Cross-organization gossip is scoped to
+channels. In order for cross-org gossip to work, peers from one organization
+need to know the address of at least one peer from another organization in the
+channel. Each organization added to a channel should identify at least one of
+its peers as an anchor peer (there can be more than one). The anchor peer
+address is stored in the configuration block of the channel.
 
 .. _glossary_ACL:
 
 ACL
 ---
 
-Access Control List. Used to associate policies with specific resources.
-Access control lists are defined in the ``configtx.yaml`` file, used by
-configtxgen to build channel configurations. An ACL is formatted as a key-value
-pair consisting of a resource function name followed by the name of the group
-with access to the resource. A set of default ACLs are provided in the
-``configtx.yaml`` file and  can be overridden by editing the configtx.yaml
-for the orderer system channel (new channels copy the configuration of the
-orderer system channel by default) or the ``configtx.yaml`` for a specific
-channel.
+An ACL, or Access Control List, associates access to specific peer
+resources (such as system chaincode APIs or event services) to a Policy_
+(which specifies how many and what types of organizations or roles are
+required). The ACL is part of a channel's configuration. It is therefore
+persisted in the channel's configuration blocks, and can be updated using the
+standard configuration update mechanism.
+
+An ACL is formatted as a list of key-value pairs, where the key identifies
+the resource whose access we wish to control, and the value identifies the
+channel policy (group) that is allowed to access it. For example
+``lscc/GetDeploymentSpec: /Channel/Application/Readers``
+defines that the access to the life cycle chaincode ``GetDeploymentSpec`` API
+(the resource) is accessible by identities which satisfy the
+``/Channel/Application/Readers`` policy.
+
+A set of default ACLs is provided in the ``configtx.yaml`` file which is
+used by configtxgen to build channel configurations. The defaults can be set
+in the top level "Application" section of ``configtx.yaml`` or overridden
+on a per profile basis in the "Profiles" section.
 
 .. _Block:
 
@@ -245,10 +253,11 @@ Leading Peer
 ------------
 
 Each Organization_ can own multiple peers on each channel that
-it subscribes to. One of these peers serves as the leading peer for the channel,
-in order to communicate with the network ordering service on behalf of the
-organization. The ordering service "delivers" blocks to the leading peer(s) on a
-channel, who then distribute them to other peers within the same org cluster.
+they subscribe to. One or more of these peers should serve as the leading peer
+for the channel, in order to communicate with the network ordering service on
+behalf of the organization. The ordering service delivers blocks to the
+leading peer(s) on a channel, who then distribute them to other peers within
+the same organization.
 
 .. _Ledger:
 
@@ -344,24 +353,14 @@ read/write operations to the ledger.  Peers are owned and maintained by members.
 Policy
 ------
 
-How members come to agreement on accepting or rejecting changes to the network
-or a channel. Policies include criteria for adding or removing members or peers
-from the network. They also include the requirements needed to update a channel
-or endorsements required to instantiate chaincode and have a transaction
-validated by a channel.
-
-Policies are fundamental to the way Fabric works because they allow the identity
-associated with a request to be checked against the policy associated with the
-resource (such as a chaincode API) needed to fulfill the request.  There are two
-types of policies -- ``Signature`` and ``ImplicitMeta``.  ``Signature`` policies
-define specific users who must sign in order for a policy to be satisfied such
-as ``Org1.Peer OR Org2.Peer``.  ``ImplicitMeta`` policies are only valid in the
-context of configuration and aggregate the result of policies deeper in the
-configuration hierarchy which are ultimately defined by Signature policies.
-They use a different syntax, for example  ``"MAJORITY Admins``.  Policies can be
-defined globally for the entire network in the ``configtx.yaml`` file under
-``Application: Policies``,  but channel specific policies may also be defined in
-the channel profile section as well.
+Policies are expressions composed of properties of digital identities, for
+example: ``Org1.Peer OR Org2.Peer``. They are used to restrict access to
+resources on a blockchain network. For instance, they dictate who can read from
+or write to a channel, or who can use a specific chaincode API via an ACL_.
+Policies may be defined in ``configtx.yaml`` prior to bootstrapping an ordering
+service or creating a channel, or they can be specified when instantiating
+chaincode on a channel. A default set of policies ship in the sample
+``configtx.yaml`` which will be appropriate for most networks.
 
 .. _Proposal:
 
