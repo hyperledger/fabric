@@ -30,7 +30,8 @@ type Runtime interface {
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(context context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error
+	Launch(context context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error
+	LaunchInit(context context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
@@ -96,10 +97,24 @@ func NewChaincodeSupport(
 	return cs
 }
 
+// LaunchForInit bypasses getting the chaincode spec from the LSCC table
+// as in the case of v1.0-v1.2 lifecycle, the chaincode will not yet be
+// defined in the LSCC table
+func (cs *ChaincodeSupport) LaunchInit(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
+	cname := cccid.GetCanonicalName()
+	if cs.HandlerRegistry.Handler(cname) != nil {
+		return nil
+	}
+
+	ctx = context.WithValue(ctx, ccintf.GetCCHandlerKey(), cs)
+
+	return cs.Launcher.LaunchInit(ctx, cccid, spec)
+}
+
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error {
+func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
 	cname := cccid.GetCanonicalName()
 	if cs.HandlerRegistry.Handler(cname) != nil {
 		return nil
@@ -177,9 +192,19 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 	return ccmsg, nil
 }
 
+// Execute init invokes chaincode and returns the original response.
+func (cs *ChaincodeSupport) ExecuteInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	resp, err := cs.InvokeInit(ctxt, cccid, spec)
+	return processChaincodeExecutionResult(cccid, resp, err)
+}
+
 // Execute invokes chaincode and returns the original response.
-func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	resp, err := cs.Invoke(ctxt, cccid, spec)
+	return processChaincodeExecutionResult(cccid, resp, err)
+}
+
+func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.ChaincodeMessage, err error) (*pb.Response, *pb.ChaincodeEvent, error) {
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to execute transaction %s", cccid.TxID)
 	}
@@ -209,18 +234,33 @@ func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCCo
 	}
 }
 
+func (cs *ChaincodeSupport) InvokeInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeMessage, error) {
+	cctyp := pb.ChaincodeMessage_INIT
+
+	err := cs.LaunchInit(ctxt, cccid, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	chaincodeSpec := spec.GetChaincodeSpec()
+	if chaincodeSpec == nil {
+		return nil, errors.New("chaincode spec is nil")
+	}
+
+	input := chaincodeSpec.Input
+	input.Decorations = cccid.ProposalDecorations
+	ccMsg, err := createCCMessage(cctyp, cccid.ChainID, cccid.TxID, input)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create chaincode message")
+	}
+
+	return cs.execute(ctxt, cccid, ccMsg)
+}
+
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
-func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error) {
-	var cctyp pb.ChaincodeMessage_Type
-	switch spec.(type) {
-	case *pb.ChaincodeDeploymentSpec:
-		cctyp = pb.ChaincodeMessage_INIT
-	case *pb.ChaincodeInvocationSpec:
-		cctyp = pb.ChaincodeMessage_TRANSACTION
-	default:
-		return nil, errors.New("a deployment or invocation spec is required")
-	}
+func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
+	cctyp := pb.ChaincodeMessage_TRANSACTION
 
 	chaincodeSpec := spec.GetChaincodeSpec()
 	if chaincodeSpec == nil {

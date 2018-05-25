@@ -480,12 +480,6 @@ func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
 // ProtoMessage just exists to make proto happy
 func (*ChaincodeData) ProtoMessage() {}
 
-// ChaincodeSpecGetter normalizes getting a chaincode spec from an
-// ChaincodeInvocationSpec or a ChaincodeDeploymentSpec.
-type ChaincodeSpecGetter interface {
-	GetChaincodeSpec() *pb.ChaincodeSpec
-}
-
 // ChaincodeProvider provides an abstraction layer that is
 // used for different packages to interact with code in the
 // chaincode package without importing it; more methods
@@ -498,7 +492,9 @@ type ChaincodeProvider interface {
 	// ExecuteChaincode executes the chaincode given context and args
 	ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)
-	Execute(ctxt context.Context, cccid *CCContext, spec ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle
+	ExecuteInit(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Stop stops the chaincode given context and deployment spec
 	Stop(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }

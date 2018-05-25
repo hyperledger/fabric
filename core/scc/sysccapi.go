@@ -131,7 +131,7 @@ func (syscc *SystemChaincode) deploySysCC(chainID string, ccprov ccprovider.Chai
 
 	cccid := ccprovider.NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
 
-	resp, _, err := ccprov.Execute(ctxt, cccid, chaincodeDeploymentSpec)
+	resp, _, err := ccprov.ExecuteInit(ctxt, cccid, chaincodeDeploymentSpec)
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}

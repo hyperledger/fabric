@@ -154,8 +154,13 @@ func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid *ccpro
 	}
 }
 
-// Execute executes the chaincode given context and spec (invocation or deploy)
-func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*peer.Response, *peer.ChaincodeEvent, error) {
+// ExecuteInit executes the chaincode given context and spec deploy
+func (c *MockCcProviderImpl) ExecuteInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
+	return &peer.Response{}, nil, nil
+}
+
+// Execute executes the chaincode given context and spec invocation
+func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec *peer.ChaincodeInvocationSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return &peer.Response{}, nil, nil
 }
 

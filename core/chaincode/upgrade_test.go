@@ -109,7 +109,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 
 	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil, nil)
 
-	if _, _, err = chaincodeSupport.Execute(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
+	if _, _, err = chaincodeSupport.ExecuteInit(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode for upgrade: %s", err)
 	}
 	return

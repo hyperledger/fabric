@@ -95,13 +95,11 @@ func (s *MockSupport) IsSysCC(name string) bool {
 	return s.IsSysCCRv
 }
 
-func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
-	if spec != nil {
-		if _, istype := spec.(*pb.ChaincodeDeploymentSpec); istype {
-			return s.ExecuteCDSResp, s.ExecuteCDSEvent, s.ExecuteCDSError
-		}
-	}
+func (s *MockSupport) ExecuteInit(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return s.ExecuteCDSResp, s.ExecuteCDSEvent, s.ExecuteCDSError
+}
 
+func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return s.ExecuteResp, s.ExecuteEvent, s.ExecuteError
 }
 

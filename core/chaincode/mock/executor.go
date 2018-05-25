@@ -10,12 +10,12 @@ import (
 )
 
 type Executor struct {
-	ExecuteStub        func(ctxt context.Context, cccid *ccprovider.CCContext, cis ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteStub        func(ctxt context.Context, cccid *ccprovider.CCContext, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
 		ctxt  context.Context
 		cccid *ccprovider.CCContext
-		cis   ccprovider.ChaincodeSpecGetter
+		cis   *pb.ChaincodeInvocationSpec
 	}
 	executeReturns struct {
 		result1 *pb.Response
@@ -31,13 +31,13 @@ type Executor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Executor) Execute(ctxt context.Context, cccid *ccprovider.CCContext, cis ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (fake *Executor) Execute(ctxt context.Context, cccid *ccprovider.CCContext, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	fake.executeMutex.Lock()
 	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
 		ctxt  context.Context
 		cccid *ccprovider.CCContext
-		cis   ccprovider.ChaincodeSpecGetter
+		cis   *pb.ChaincodeInvocationSpec
 	}{ctxt, cccid, cis})
 	fake.recordInvocation("Execute", []interface{}{ctxt, cccid, cis})
 	fake.executeMutex.Unlock()
@@ -56,7 +56,7 @@ func (fake *Executor) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *Executor) ExecuteArgsForCall(i int) (context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) {
+func (fake *Executor) ExecuteArgsForCall(i int) (context.Context, *ccprovider.CCContext, *pb.ChaincodeInvocationSpec) {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	return fake.executeArgsForCall[i].ctxt, fake.executeArgsForCall[i].cccid, fake.executeArgsForCall[i].cis
