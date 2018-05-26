@@ -535,7 +535,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			} else {
 				// there can only be a single ledger write
 				if len(lsccrwset.Writes) != 1 {
-					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon deploy/upgrade"))
+					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon deploy"))
 				}
 			}
 
@@ -584,7 +584,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			} else {
 				// there can only be a single ledger write
 				if len(lsccrwset.Writes) != 1 {
-					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon deploy/upgrade"))
+					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon upgrade"))
 				}
 			}
 
