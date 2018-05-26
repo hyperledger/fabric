@@ -1341,3 +1341,17 @@ func TestAnonymityIdentityFail(t *testing.T) {
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
 }
+
+func TestProviderTypeToString(t *testing.T) {
+	// Check that the provider type is found for FABRIC
+	pt := ProviderTypeToString(FABRIC)
+	assert.Equal(t, "bccsp", pt)
+
+	// Check that the provider type is found for IDEMIX
+	pt = ProviderTypeToString(IDEMIX)
+	assert.Equal(t, "idemix", pt)
+
+	// Check that the provider type is not found
+	pt = ProviderTypeToString(OTHER)
+	assert.Equal(t, "", pt)
+}
