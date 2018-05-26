@@ -282,7 +282,7 @@ func extend() {
 	}
 
 	for _, orgSpec := range config.OrdererOrgs {
-		renderOrgSpec(&orgSpec, "orderer")
+		err = renderOrgSpec(&orgSpec, "orderer")
 		if err != nil {
 			fmt.Printf("Error processing orderer configuration: %s", err)
 			os.Exit(-1)
@@ -388,7 +388,7 @@ func generate() {
 	}
 
 	for _, orgSpec := range config.OrdererOrgs {
-		renderOrgSpec(&orgSpec, "orderer")
+		err = renderOrgSpec(&orgSpec, "orderer")
 		if err != nil {
 			fmt.Printf("Error processing orderer configuration: %s", err)
 			os.Exit(-1)
