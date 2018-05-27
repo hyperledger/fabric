@@ -189,16 +189,17 @@ func (p *puller) handleResponse(message proto.ReceivedMessage) {
 
 func (p *puller) waitForMembership() []discovery.NetworkMember {
 	polIteration := 0
-	var members []discovery.NetworkMember
-	for len(members) == 0 {
-		members = p.PeersOfChannel(common.ChainID(p.channel))
+	for {
+		members := p.PeersOfChannel(common.ChainID(p.channel))
+		if len(members) != 0 {
+			return members
+		}
 		polIteration++
 		if polIteration == maxMembershipPollIterations {
 			return nil
 		}
 		time.Sleep(membershipPollingBackoff)
 	}
-	return members
 }
 
 func (p *puller) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error) {
