@@ -188,6 +188,11 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	limit := start.Add(retryThresh)
 	for len(privateInfo.missingKeys) > 0 && time.Now().Before(limit) {
 		c.fetchFromPeers(block.Header.Number, ownedRWsets, privateInfo)
+		// If succeeded to fetch everything, no need to sleep before
+		// retry
+		if len(privateInfo.missingKeys) == 0 {
+			break
+		}
 		time.Sleep(pullRetrySleepInterval)
 	}
 
