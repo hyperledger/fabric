@@ -195,22 +195,22 @@ func TestCheckLogLevel(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "Valie module name",
+			name:    "Valid module name",
 			args:    args{level: "warning"},
 			wantErr: false,
 		},
 		{
-			name:    "Valie module name",
+			name:    "Valid module name",
 			args:    args{level: "foobaz"},
 			wantErr: true,
 		},
 		{
-			name:    "Valie module name",
+			name:    "Valid module name",
 			args:    args{level: "error"},
 			wantErr: false,
 		},
 		{
-			name:    "Valie module name",
+			name:    "Valid module name",
 			args:    args{level: "info"},
 			wantErr: false,
 		},

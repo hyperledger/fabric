@@ -21,13 +21,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMissingBlockFile(t *testing.T) {
+	defer resetFlags()
+
 	resetFlags()
 
 	cmd := joinCmd(nil)
@@ -39,6 +43,8 @@ func TestMissingBlockFile(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
+	defer resetFlags()
+
 	InitMSP()
 	resetFlags()
 
@@ -56,10 +62,10 @@ func TestJoin(t *testing.T) {
 		Endorsement: &pb.Endorsement{},
 	}
 
-	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
+	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
 
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:   mockEndorerClient,
+		EndorserClient:   mockEndorserClient,
 		BroadcastFactory: mockBroadcastClientFactory,
 		Signer:           signer,
 	}
@@ -74,6 +80,8 @@ func TestJoin(t *testing.T) {
 }
 
 func TestJoinNonExistentBlock(t *testing.T) {
+	defer resetFlags()
+
 	InitMSP()
 	resetFlags()
 
@@ -87,10 +95,10 @@ func TestJoinNonExistentBlock(t *testing.T) {
 		Endorsement: &pb.Endorsement{},
 	}
 
-	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
+	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
 
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:   mockEndorerClient,
+		EndorserClient:   mockEndorserClient,
 		BroadcastFactory: mockBroadcastClientFactory,
 		Signer:           signer,
 	}
@@ -108,6 +116,8 @@ func TestJoinNonExistentBlock(t *testing.T) {
 }
 
 func TestBadProposalResponse(t *testing.T) {
+	defer resetFlags()
+
 	InitMSP()
 	resetFlags()
 
@@ -122,10 +132,10 @@ func TestBadProposalResponse(t *testing.T) {
 		Endorsement: &pb.Endorsement{},
 	}
 
-	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
+	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
 
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:   mockEndorerClient,
+		EndorserClient:   mockEndorserClient,
 		BroadcastFactory: mockBroadcastClientFactory,
 		Signer:           signer,
 	}
@@ -141,7 +151,11 @@ func TestBadProposalResponse(t *testing.T) {
 	assert.Error(t, err, "expected join command to fail")
 	assert.IsType(t, ProposalFailedErr(err.Error()), err, "expected error type of ProposalFailedErr")
 }
+
 func TestJoinNilCF(t *testing.T) {
+	defer viper.Reset()
+	defer resetFlags()
+
 	InitMSP()
 	resetFlags()
 
@@ -149,6 +163,7 @@ func TestJoinNilCF(t *testing.T) {
 	assert.NoError(t, err, "Could not create the directory %s", dir)
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
 	defer os.RemoveAll(dir)
+	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 	cmd := joinCmd(nil)
 	AddFlags(cmd)
 	args := []string{"-b", mockblockfile}

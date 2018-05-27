@@ -18,6 +18,7 @@ package node
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/core/admin"
 	"github.com/hyperledger/fabric/core/comm"
@@ -69,6 +70,8 @@ func TestStatusCmd(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
+	defer viper.Reset()
+
 	signer := &mocks.Signer{}
 	common2.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
 		return signer, nil
@@ -77,19 +80,19 @@ func TestStatus(t *testing.T) {
 		name          string
 		peerAddress   string
 		listenAddress string
-		expected      bool
+		shouldSucceed bool
 	}{
 		{
 			name:          "status function to success",
 			peerAddress:   "localhost:7071",
 			listenAddress: "localhost:7071",
-			expected:      true,
+			shouldSucceed: true,
 		},
 		{
 			name:          "admin client error",
 			peerAddress:   "",
 			listenAddress: "localhost:7072",
-			expected:      false,
+			shouldSucceed: false,
 		},
 	}
 
@@ -98,6 +101,7 @@ func TestStatus(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test: %s", test.name)
 			viper.Set("peer.address", test.peerAddress)
+			viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 			peerServer, err := peer.NewPeerServer(test.listenAddress, comm.ServerConfig{})
 			if err != nil {
 				t.Fatalf("Failed to create peer server (%s)", err)
@@ -105,7 +109,7 @@ func TestStatus(t *testing.T) {
 				pb.RegisterAdminServer(peerServer.Server(), admin.NewAdminServer(&mockEvaluator{}))
 				go peerServer.Start()
 				defer peerServer.Stop()
-				if test.expected {
+				if test.shouldSucceed {
 					assert.NoError(t, status())
 				} else {
 					assert.Error(t, status())
@@ -116,6 +120,8 @@ func TestStatus(t *testing.T) {
 }
 
 func TestStatusWithGetStatusError(t *testing.T) {
+	defer viper.Reset()
+
 	viper.Set("peer.address", "localhost:7073")
 	peerServer, err := peer.NewPeerServer(":7073", comm.ServerConfig{})
 	if err != nil {

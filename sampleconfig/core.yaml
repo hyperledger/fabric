@@ -329,6 +329,11 @@ peer:
     # will not be identified as valid by other nodes.
     localMspId: SampleOrg
 
+    # CLI common client config options
+    client:
+        # connection timeout
+        connTimeout: 3s
+
     # Delivery service related config
     deliveryclient:
         # It sets the total time the delivery service may spend in reconnection

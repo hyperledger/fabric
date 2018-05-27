@@ -17,22 +17,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func initPeerTestEnv(t *testing.T) {
+func initPeerTestEnv(t *testing.T) (cleanup func()) {
 	t.Helper()
 	cfgPath := "./testdata"
 	os.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	_ = common.InitConfig("test")
-	caFile := filepath.Join("certs", "ca.crt")
-	viper.Set("peer.tls.rootcert.file", caFile)
-	keyFile := filepath.Join("certs", "client.key")
-	viper.Set("peer.tls.clientKey.file", keyFile)
-	certFile := filepath.Join("certs", "client.crt")
-	viper.Set("peer.tls.clientCert.file", certFile)
+
+	return func() {
+		err := os.Unsetenv("FABRIC_CFG_PATH")
+		assert.NoError(t, err)
+		viper.Reset()
+	}
 }
 
 func TestNewPeerClientFromEnv(t *testing.T) {
-	initPeerTestEnv(t)
+	cleanup := initPeerTestEnv(t)
+	defer cleanup()
 
 	pClient, err := common.NewPeerClientFromEnv()
 	assert.NoError(t, err)
@@ -74,14 +75,12 @@ func TestNewPeerClientFromEnv(t *testing.T) {
 	pClient, err = common.NewPeerClientFromEnv()
 	assert.Contains(t, err.Error(), "unable to load peer.tls.rootcert.file")
 	assert.Nil(t, pClient)
-
-	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
-
 }
 
 func TestPeerClient(t *testing.T) {
-	initPeerTestEnv(t)
+	cleanup := initPeerTestEnv(t)
+	defer cleanup()
+
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatalf("error creating server for test: %v", err)
@@ -112,10 +111,12 @@ func TestPeerClient(t *testing.T) {
 	dClient, err = common.GetDeliverClient("", "")
 	assert.NoError(t, err)
 	assert.NotNil(t, dClient)
+}
 
-	viper.Set("peer.address", "")
+func TestPeerClientTimeout(t *testing.T) {
 	t.Run("PeerClient.GetEndorser() timeout", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
 			t.Fatalf("failed to create PeerClient for test: %v", err)
@@ -124,12 +125,14 @@ func TestPeerClient(t *testing.T) {
 		assert.Contains(t, err.Error(), "endorser client failed to connect")
 	})
 	t.Run("GetEndorserClient() timeout", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		_, err := common.GetEndorserClient("", "")
 		assert.Contains(t, err.Error(), "endorser client failed to connect")
 	})
 	t.Run("PeerClient.GetAdmin() timeout", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
 			t.Fatalf("failed to create PeerClient for test: %v", err)
@@ -138,12 +141,14 @@ func TestPeerClient(t *testing.T) {
 		assert.Contains(t, err.Error(), "admin client failed to connect")
 	})
 	t.Run("GetAdminClient() timeout", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		_, err := common.GetAdminClient()
 		assert.Contains(t, err.Error(), "admin client failed to connect")
 	})
 	t.Run("PeerClient.Deliver() timeout", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
 			t.Fatalf("failed to create PeerClient for test: %v", err)
@@ -152,12 +157,14 @@ func TestPeerClient(t *testing.T) {
 		assert.Contains(t, err.Error(), "deliver client failed to connect")
 	})
 	t.Run("GetDeliverClient() timeout", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		_, err := common.GetDeliverClient("", "")
 		assert.Contains(t, err.Error(), "deliver client failed to connect")
 	})
 	t.Run("PeerClient.Certificate()", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
 			t.Fatalf("failed to create PeerClient for test: %v", err)
@@ -166,18 +173,17 @@ func TestPeerClient(t *testing.T) {
 		assert.NotNil(t, cert)
 	})
 	t.Run("GetCertificate()", func(t *testing.T) {
-		t.Parallel()
+		cleanup := initPeerTestEnv(t)
+		defer cleanup()
 		cert, err := common.GetCertificate()
 		assert.NotEqual(t, cert, &tls.Certificate{})
 		assert.NoError(t, err)
 	})
-
-	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
 }
 
 func TestNewPeerClientForAddress(t *testing.T) {
-	initPeerTestEnv(t)
+	cleanup := initPeerTestEnv(t)
+	defer cleanup()
 
 	// TLS disabled
 	viper.Set("peer.tls.enabled", false)
@@ -209,13 +215,12 @@ func TestNewPeerClientForAddress(t *testing.T) {
 	pClient, err = common.NewPeerClientForAddress("badPeer", "")
 	assert.Contains(t, err.Error(), "tls root cert file must be set")
 	assert.Nil(t, pClient)
-
-	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
 }
 
 func TestGetClients_AddressError(t *testing.T) {
-	initPeerTestEnv(t)
+	cleanup := initPeerTestEnv(t)
+	defer cleanup()
+
 	viper.Set("peer.tls.enabled", true)
 
 	// failure
@@ -226,7 +231,4 @@ func TestGetClients_AddressError(t *testing.T) {
 	dClient, err := common.GetDeliverClient("peer0", "")
 	assert.Contains(t, err.Error(), "tls root cert file must be set")
 	assert.Nil(t, dClient)
-
-	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
 }

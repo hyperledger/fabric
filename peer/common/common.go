@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -36,6 +37,7 @@ import (
 const UndefinedParamValue = ""
 
 var (
+	defaultConnTimeout = 3 * time.Second
 	// These function variables (xyzFnc) can be used to invoke corresponding xyz function
 	// this will allow the invoking packages to mock these functions in their unit test cases
 
@@ -233,6 +235,11 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 	address = viper.GetString(prefix + ".address")
 	override = viper.GetString(prefix + ".tls.serverhostoverride")
 	clientConfig = comm.ClientConfig{}
+	connTimeout := viper.GetDuration(prefix + ".client.connTimeout")
+	if connTimeout == time.Duration(0) {
+		connTimeout = defaultConnTimeout
+	}
+	clientConfig.Timeout = connTimeout
 	secOpts := &comm.SecureOptions{
 		UseTLS:            viper.GetBool(prefix + ".tls.enabled"),
 		RequireClientCert: viper.GetBool(prefix + ".tls.clientAuthRequired")}

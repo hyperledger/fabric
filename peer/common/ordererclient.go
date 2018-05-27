@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"time"
 
 	"github.com/hyperledger/fabric/core/comm"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -30,8 +29,6 @@ func NewOrdererClientFromEnv() (*OrdererClient, error) {
 		return nil, errors.WithMessage(err,
 			"failed to load config for OrdererClient")
 	}
-	// set timeout
-	clientConfig.Timeout = time.Second * 3
 	gClient, err := comm.NewGRPCClient(clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err,
