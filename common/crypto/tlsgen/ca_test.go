@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package accesscontrol
+package tlsgen
 
 import (
 	"crypto/tls"
@@ -54,10 +54,10 @@ func TestTLSCA(t *testing.T) {
 	defer srv.Stop()
 	defer l.Close()
 
-	probeTLS := func(kp *certKeyPair) error {
-		keyBytes, err := base64.StdEncoding.DecodeString(kp.privKeyString())
+	probeTLS := func(kp *CertKeyPair) error {
+		keyBytes, err := base64.StdEncoding.DecodeString(kp.PrivKeyString())
 		assert.NoError(t, err)
-		certBytes, err := base64.StdEncoding.DecodeString(kp.pubKeyString())
+		certBytes, err := base64.StdEncoding.DecodeString(kp.PubKeyString())
 		assert.NoError(t, err)
 		cert, err := tls.X509KeyPair(certBytes, keyBytes)
 		tlsCfg := &tls.Config{
@@ -78,14 +78,14 @@ func TestTLSCA(t *testing.T) {
 
 	// Good path - use a cert key pair generated from the CA
 	// that the TLS server started with
-	kp, err := ca.newClientCertKeyPair()
+	kp, err := ca.NewClientCertKeyPair()
 	assert.NoError(t, err)
 	err = probeTLS(kp)
 	assert.NoError(t, err)
 
 	// Bad path - use a cert key pair generated from a foreign CA
 	foreignCA, _ := NewCA()
-	kp, err = foreignCA.newClientCertKeyPair()
+	kp, err = foreignCA.NewClientCertKeyPair()
 	assert.NoError(t, err)
 	err = probeTLS(kp)
 	assert.Error(t, err)

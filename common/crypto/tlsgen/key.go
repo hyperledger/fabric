@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package accesscontrol
+package tlsgen
 
 import (
 	"crypto"
@@ -20,19 +20,11 @@ import (
 	"time"
 )
 
-type KeyGenFunc func() (*certKeyPair, error)
-
-type certKeyPair struct {
-	*CertKeyPair
-	crypto.Signer
-	cert *x509.Certificate
-}
-
-func (p *certKeyPair) privKeyString() string {
+func (p *CertKeyPair) PrivKeyString() string {
 	return base64.StdEncoding.EncodeToString(p.Key)
 }
 
-func (p *certKeyPair) pubKeyString() string {
+func (p *CertKeyPair) PubKeyString() string {
 	return base64.StdEncoding.EncodeToString(p.Cert)
 }
 
@@ -62,7 +54,7 @@ func newCertTemplate() (x509.Certificate, error) {
 	}, nil
 }
 
-func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Signer, parent *x509.Certificate) (*certKeyPair, error) {
+func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Signer, parent *x509.Certificate) (*CertKeyPair, error) {
 	privateKey, privBytes, err := newPrivKey()
 	if err != nil {
 		return nil, err
@@ -87,10 +79,8 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 		template.NotAfter = tenYearsFromNow
 		template.ExtKeyUsage = append(template.ExtKeyUsage, x509.ExtKeyUsageServerAuth)
 		if ip := net.ParseIP(host); ip != nil {
-			logger.Debug("Classified", host, "as an IP address, adding it as an IP SAN")
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
-			logger.Debug("Classified", host, "as a hostname, adding it as a DNS SAN")
 			template.DNSNames = append(template.DNSNames, host)
 		}
 	}
@@ -111,12 +101,30 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 		return nil, err
 	}
 	privKey := encodePEM("EC PRIVATE KEY", privBytes)
-	return &certKeyPair{
-		CertKeyPair: &CertKeyPair{
-			Key:  privKey,
-			Cert: pubKey,
-		},
-		Signer: privateKey,
-		cert:   cert,
+	return &CertKeyPair{
+		Key:     privKey,
+		Cert:    pubKey,
+		Signer:  privateKey,
+		TLSCert: cert,
+	}, nil
+}
+
+func encodePEM(keyType string, data []byte) []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: keyType, Bytes: data})
+}
+
+// CertKeyPairFromString converts the given strings in base64 encoding to a CertKeyPair
+func CertKeyPairFromString(privKey string, pubKey string) (*CertKeyPair, error) {
+	priv, err := base64.StdEncoding.DecodeString(privKey)
+	if err != nil {
+		return nil, err
+	}
+	pub, err := base64.StdEncoding.DecodeString(pubKey)
+	if err != nil {
+		return nil, err
+	}
+	return &CertKeyPair{
+		Key:  priv,
+		Cert: pub,
 	}, nil
 }
