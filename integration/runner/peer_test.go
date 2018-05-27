@@ -163,7 +163,6 @@ var _ = Describe("Peer", func() {
 		fetchRun.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 		fRunner := fetchRun.FetchChannel("mychan", filepath.Join(tempDir, "mychan.block"), "0", "127.0.0.1:8050")
 		execute(fRunner)
-		time.Sleep(5 * time.Second)
 		Expect(ordererRunner.Err()).To(gbytes.Say(`\Q[channel: mychan] Done delivering \E`))
 		Expect(fRunner.Err()).To(gbytes.Say("Received block: 0"))
 
@@ -244,5 +243,27 @@ var _ = Describe("Peer", func() {
 		invkeRunner := invokeChan.InvokeChaincode("mytest", "mychan", `{"Args":["invoke","a","b","10"]}`, "127.0.0.1:8050")
 		execute(invkeRunner)
 		Expect(invkeRunner.Err()).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+
+		By("setting the log level for deliver to debug")
+		logRun := components.Peer()
+		logRun.ConfigDir = tempDir
+		logRun.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+		lRunner := logRun.SetLogLevel("common/deliver", "debug")
+		execute(lRunner)
+		Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': DEBUG"))
+
+		By("fetching the latest block from the peer")
+		fetchRun = components.Peer()
+		fetchRun.ConfigDir = tempDir
+		fetchRun.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+		fRunner = fetchRun.FetchChannel("mychan", filepath.Join(tempDir, "newest_block.pb"), "newest", "")
+		execute(fRunner)
+		Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: mychan] Done delivering \E`))
+		Expect(fRunner.Err()).To(gbytes.Say("Received block: "))
+
+		By("setting the log level for deliver to back to info")
+		lRunner = logRun.SetLogLevel("common/deliver", "info")
+		execute(lRunner)
+		Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
 	})
 })

@@ -24,8 +24,9 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/peer/chaincode/api"
+	ccapi "github.com/hyperledger/fabric/peer/chaincode/api"
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/peer/common/api"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -354,7 +355,7 @@ func validatePeerConnectionParameters(cmdName string) error {
 // ChaincodeCmdFactory holds the clients used by ChaincodeCmd
 type ChaincodeCmdFactory struct {
 	EndorserClients []pb.EndorserClient
-	DeliverClients  []api.DeliverClient
+	DeliverClients  []api.PeerDeliverClient
 	Certificate     tls.Certificate
 	Signer          msp.SigningIdentity
 	BroadcastClient common.BroadcastClient
@@ -364,7 +365,7 @@ type ChaincodeCmdFactory struct {
 func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
 	var err error
 	var endorserClients []pb.EndorserClient
-	var deliverClients []api.DeliverClient
+	var deliverClients []api.PeerDeliverClient
 	if isEndorserRequired {
 		if err = validatePeerConnectionParameters(cmdName); err != nil {
 			return nil, errors.WithMessage(err, "error validating peer connection parameters")
@@ -379,7 +380,7 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 				return nil, errors.WithMessage(err, fmt.Sprintf("error getting endorser client for %s", cmdName))
 			}
 			endorserClients = append(endorserClients, endorserClient)
-			deliverClient, err := common.GetDeliverClientFnc(address, tlsRootCertFile)
+			deliverClient, err := common.GetPeerDeliverClientFnc(address, tlsRootCertFile)
 			if err != nil {
 				return nil, errors.WithMessage(err, fmt.Sprintf("error getting deliver client for %s", cmdName))
 			}
@@ -451,7 +452,7 @@ func ChaincodeInvokeOrQuery(
 	signer msp.SigningIdentity,
 	certificate tls.Certificate,
 	endorserClients []pb.EndorserClient,
-	deliverClients []api.DeliverClient,
+	deliverClients []api.PeerDeliverClient,
 	bc common.BroadcastClient,
 ) (*pb.ProposalResponse, error) {
 	// Build the ChaincodeInvocationSpec message
@@ -564,12 +565,12 @@ type deliverGroup struct {
 // deliverClient holds the client/connection related to a specific
 // peer. The address is included for logging purposes
 type deliverClient struct {
-	Client     api.DeliverClient
-	Connection api.Deliver
+	Client     api.PeerDeliverClient
+	Connection ccapi.Deliver
 	Address    string
 }
 
-func newDeliverGroup(deliverClients []api.DeliverClient, peerAddresses []string, certificate tls.Certificate, channelID string, txid string) *deliverGroup {
+func newDeliverGroup(deliverClients []api.PeerDeliverClient, peerAddresses []string, certificate tls.Certificate, channelID string, txid string) *deliverGroup {
 	clients := make([]*deliverClient, len(deliverClients))
 	for i, client := range deliverClients {
 		dc := &deliverClient{

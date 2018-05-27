@@ -22,9 +22,10 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/peer/chaincode/api"
 	"github.com/hyperledger/fabric/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/peer/common/api"
+	cmock "github.com/hyperledger/fabric/peer/common/mock"
 	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -371,7 +372,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 	g.Expect(err).To(BeNil())
 
 	// failure - DeliverFiltered returns error
-	mockDC := &mock.DeliverClient{}
+	mockDC := &cmock.PeerDeliverClient{}
 	mockDC.DeliverFilteredReturns(nil, errors.New("icecream"))
 	mockDeliverClients = []*deliverClient{
 		{
@@ -388,10 +389,13 @@ func TestDeliverGroupConnect(t *testing.T) {
 		TxID: "txid0",
 	}
 	err = dg.Connect(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("error connecting to deliver filtered"))
 	g.Expect(err.Error()).To(ContainSubstring("icecream"))
 
 	// failure - Send returns error
-	mockDC.DeliverFilteredReturns(nil, errors.New("blah"))
+	mockD := &mock.Deliver{}
+	mockD.SendReturns(errors.New("blah"))
+	mockDC.DeliverFilteredReturns(mockD, nil)
 	mockDeliverClients = []*deliverClient{
 		{
 			Client:  mockDC,
@@ -407,6 +411,7 @@ func TestDeliverGroupConnect(t *testing.T) {
 		TxID: "txid0",
 	}
 	err = dg.Connect(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("error sending deliver seek info"))
 	g.Expect(err.Error()).To(ContainSubstring("blah"))
 
 	// failure - deliver registration timeout
@@ -476,6 +481,7 @@ func TestDeliverGroupWait(t *testing.T) {
 		TxID: "txid0",
 	}
 	err = dg.Wait(context.Background())
+	g.Expect(err.Error()).To(ContainSubstring("error receiving from deliver filtered"))
 	g.Expect(err.Error()).To(ContainSubstring("avocado"))
 
 	// failure - Recv returns unexpected type
@@ -564,7 +570,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	}
 	mockDCTwoBlocks := getMockDeliverClientRespondsWithFilteredBlocks(filteredBlocks)
 	mockDC := getMockDeliverClientResponseWithTxID("txid0")
-	mockDeliverClients := []api.DeliverClient{mockDCTwoBlocks, mockDC}
+	mockDeliverClients := []api.PeerDeliverClient{mockDCTwoBlocks, mockDC}
 
 	_, err = ChaincodeInvokeOrQuery(
 		&pb.ChaincodeSpec{},
@@ -582,7 +588,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	// failure - one of the deliver clients returns error
 	mockDCErr := getMockDeliverClientWithErr("moist")
 	mockDC = getMockDeliverClient()
-	mockDeliverClients = []api.DeliverClient{mockDCErr, mockDC}
+	mockDeliverClients = []api.PeerDeliverClient{mockDCErr, mockDC}
 
 	_, err = ChaincodeInvokeOrQuery(
 		&pb.ChaincodeSpec{},
@@ -603,7 +609,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	mockDC = getMockDeliverClientResponseWithTxID("garbage")
 	delayChan := make(chan struct{})
 	mockDCDelay := getMockDeliverClientRespondAfterDelay(delayChan)
-	mockDeliverClients = []api.DeliverClient{mockDC, mockDCDelay}
+	mockDeliverClients = []api.PeerDeliverClient{mockDC, mockDCDelay}
 	waitForEventTimeout = 10 * time.Millisecond
 
 	_, err = ChaincodeInvokeOrQuery(

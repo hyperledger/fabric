@@ -95,7 +95,7 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 func list(cf *ChannelCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(EndorserRequired, OrdererNotRequired)
+		cf, err = InitCmdFactory(EndorserRequired, PeerDeliverNotRequired, OrdererNotRequired)
 		if err != nil {
 			return err
 		}

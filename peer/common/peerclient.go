@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/peer/chaincode/api"
+	"github.com/hyperledger/fabric/peer/common/api"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -77,13 +78,23 @@ func (pc *PeerClient) Endorser() (pb.EndorserClient, error) {
 }
 
 // Deliver returns a client for the Deliver service
-func (pc *PeerClient) Deliver() (api.DeliverClient, error) {
+func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
+	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("deliver client failed to connect to %s", pc.address))
+	}
+	return pb.NewDeliverClient(conn).Deliver(context.TODO())
+}
+
+// PeerDeliver returns a client for the Deliver service for peer-specific use
+// cases (i.e. DeliverFiltered)
+func (pc *PeerClient) PeerDeliver() (api.PeerDeliverClient, error) {
 	conn, err := pc.commonClient.NewConnection(pc.address, pc.sn)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("deliver client failed to connect to %s", pc.address))
 	}
 	pbClient := pb.NewDeliverClient(conn)
-	return &DeliverClient{Client: pbClient}, nil
+	return &PeerDeliverClient{Client: pbClient}, nil
 }
 
 // Admin returns a client for the Admin service
@@ -137,11 +148,11 @@ func GetAdminClient() (pb.AdminClient, error) {
 	return peerClient.Admin()
 }
 
-// GetDeliverClient returns a new deliver client. If the both the address and
+// GetDeliverClient returns a new deliver client. If both the address and
 // tlsRootCertFile are not provided, the target values for the client are taken
 // from the configuration settings for "peer.address" and
 // "peer.tls.rootcert.file"
-func GetDeliverClient(address, tlsRootCertFile string) (api.DeliverClient, error) {
+func GetDeliverClient(address, tlsRootCertFile string) (pb.Deliver_DeliverClient, error) {
 	var peerClient *PeerClient
 	var err error
 	if address != "" {
@@ -153,4 +164,22 @@ func GetDeliverClient(address, tlsRootCertFile string) (api.DeliverClient, error
 		return nil, err
 	}
 	return peerClient.Deliver()
+}
+
+// GetPeerDeliverClient returns a new deliver client. If both the address and
+// tlsRootCertFile are not provided, the target values for the client are taken
+// from the configuration settings for "peer.address" and
+// "peer.tls.rootcert.file"
+func GetPeerDeliverClient(address, tlsRootCertFile string) (api.PeerDeliverClient, error) {
+	var peerClient *PeerClient
+	var err error
+	if address != "" {
+		peerClient, err = NewPeerClientForAddress(address, tlsRootCertFile)
+	} else {
+		peerClient, err = NewPeerClientFromEnv()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return peerClient.PeerDeliver()
 }

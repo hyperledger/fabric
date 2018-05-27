@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/peer/chaincode/api"
+	"github.com/hyperledger/fabric/peer/common/api"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -46,10 +46,15 @@ var (
 	// by default it is set to GetEndorserClient function
 	GetEndorserClientFnc func(address, tlsRootCertFile string) (pb.EndorserClient, error)
 
+	// GetPeerDeliverClientFnc is a function that returns a new deliver client connection
+	// to the provided peer address using the TLS root cert file,
+	// by default it is set to GetDeliverClient function
+	GetPeerDeliverClientFnc func(address, tlsRootCertFile string) (api.PeerDeliverClient, error)
+
 	// GetDeliverClientFnc is a function that returns a new deliver client connection
 	// to the provided peer address using the TLS root cert file,
 	// by default it is set to GetDeliverClient function
-	GetDeliverClientFnc func(address, tlsRootCertFile string) (api.DeliverClient, error)
+	GetDeliverClientFnc func(address, tlsRootCertFile string) (pb.Deliver_DeliverClient, error)
 
 	// GetDefaultSignerFnc is a function that returns a default Signer(Default/PERR)
 	// by default it is set to GetDefaultSigner function
@@ -80,6 +85,7 @@ func init() {
 	GetBroadcastClientFnc = GetBroadcastClient
 	GetOrdererEndpointOfChainFnc = GetOrdererEndpointOfChain
 	GetDeliverClientFnc = GetDeliverClient
+	GetPeerDeliverClientFnc = GetPeerDeliverClient
 	GetCertificateFnc = GetCertificate
 }
 

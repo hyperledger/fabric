@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package channel
@@ -20,8 +10,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strconv"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
@@ -54,9 +46,17 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	// Parsing of the command line is done so silence cmd usage
 	cmd.SilenceUsage = true
 
+	// default to fetching from orderer
+	ordererRequired := OrdererRequired
+	peerDeliverRequired := PeerDeliverNotRequired
+	if len(strings.Split(common.OrderingEndpoint, ":")) != 2 {
+		// if no orderer endpoint supplied, connect to peer's deliver service
+		ordererRequired = OrdererNotRequired
+		peerDeliverRequired = PeerDeliverRequired
+	}
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
+		cf, err = InitCmdFactory(EndorserNotRequired, peerDeliverRequired, ordererRequired)
 		if err != nil {
 			return err
 		}
@@ -66,11 +66,11 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	switch args[0] {
 	case "oldest":
-		block, err = cf.DeliverClient.getOldestBlock()
+		block, err = cf.DeliverClient.GetOldestBlock()
 	case "newest":
-		block, err = cf.DeliverClient.getNewestBlock()
+		block, err = cf.DeliverClient.GetNewestBlock()
 	case "config":
-		iBlock, err2 := cf.DeliverClient.getNewestBlock()
+		iBlock, err2 := cf.DeliverClient.GetNewestBlock()
 		if err2 != nil {
 			return err2
 		}
@@ -78,13 +78,13 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		if err2 != nil {
 			return err2
 		}
-		block, err = cf.DeliverClient.getSpecifiedBlock(lc)
+		block, err = cf.DeliverClient.GetSpecifiedBlock(lc)
 	default:
 		num, err2 := strconv.Atoi(args[0])
 		if err2 != nil {
 			return fmt.Errorf("fetch target illegal: %s", args[0])
 		}
-		block, err = cf.DeliverClient.getSpecifiedBlock(uint64(num))
+		block, err = cf.DeliverClient.GetSpecifiedBlock(uint64(num))
 	}
 
 	if err != nil {
