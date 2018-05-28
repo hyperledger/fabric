@@ -283,10 +283,10 @@ $(BUILD_DIR)/image/%/payload:
 $(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
 	mkdir -p $(@D)
 	@cat $< \
-		| sed -e 's/_BASE_NS_/$(BASE_DOCKER_NS)/g' \
-		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
-		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
-		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		| sed -e 's|_BASE_NS_|$(BASE_DOCKER_NS)|g' \
+		| sed -e 's|_NS_|$(DOCKER_NS)|g' \
+		| sed -e 's|_BASE_TAG_|$(BASE_DOCKER_TAG)|g' \
+		| sed -e 's|_TAG_|$(DOCKER_TAG)|g' \
 		> $@
 	@echo LABEL $(BASE_DOCKER_LABEL).version=$(PROJECT_VERSION) \\>>$@
 	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
@@ -387,10 +387,10 @@ release/%/bin/peer: $(PROJECT_FILES)
 release/%/install: $(PROJECT_FILES)
 	mkdir -p $(@D)/bin
 	@cat $(@D)/../templates/get-docker-images.in \
-		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
-		| sed -e 's/_ARCH_/$(GOARCH)/g' \
-		| sed -e 's/_VERSION_/$(PROJECT_VERSION)/g' \
-		| sed -e 's/_BASE_DOCKER_TAG_/$(BASE_DOCKER_TAG)/g' \
+		| sed -e 's|_NS_|$(DOCKER_NS)|g' \
+		| sed -e 's|_ARCH_|$(GOARCH)|g' \
+		| sed -e 's|_VERSION_|$(PROJECT_VERSION)|g' \
+		| sed -e 's|_BASE_DOCKER_TAG_|$(BASE_DOCKER_TAG)|g' \
 		> $(@D)/bin/get-docker-images.sh
 		@chmod +x $(@D)/bin/get-docker-images.sh
 
