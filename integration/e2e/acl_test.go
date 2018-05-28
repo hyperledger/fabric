@@ -119,6 +119,66 @@ var _ = Describe("EndToEndACL", func() {
 			execute(adminRunner)
 			Eventually(adminRunner.Err()).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
 		})
+
+		Context("when the ACL policy for Deliver is satisfied", func() {
+			By("setting the block event ACL policy to Org1/Admins")
+			policyName := resources.Event_Block
+			policy := "/Channel/Application/Org1/Admins"
+			SetACLPolicy(&w, policyName, policy)
+
+			By("setting the log level for deliver to debug")
+			logRun := w.Components.Peer()
+			logRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			logRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+			lRunner := logRun.SetLogLevel("common/deliver", "debug")
+			execute(lRunner)
+			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': DEBUG"))
+
+			By("fetching the latest block from the peer")
+			fetchRun := w.Components.Peer()
+			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+			fRunner := fetchRun.FetchChannel(w.Deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
+			execute(fRunner)
+			Expect(fRunner.Err()).To(gbytes.Say("Received block: "))
+			// TODO - enable this once the peer's logs are available here
+			// Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: testchannel] Done delivering \E`))
+
+			By("setting the log level for deliver to back to info")
+			lRunner = logRun.SetLogLevel("common/deliver", "info")
+			execute(lRunner)
+			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
+		})
+
+		Context("tests when the ACL policy for Deliver is not satisifed", func() {
+			By("setting the block event ACL policy to Org2/Admins")
+			policyName := resources.Event_Block
+			policy := "/Channel/Application/Org2/Admins"
+			SetACLPolicy(&w, policyName, policy)
+
+			By("setting the log level for deliver to debug")
+			logRun := w.Components.Peer()
+			logRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			logRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+			lRunner := logRun.SetLogLevel("common/deliver", "debug")
+			execute(lRunner)
+			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': DEBUG"))
+
+			By("fetching the latest block from the peer")
+			fetchRun := w.Components.Peer()
+			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+			fRunner := fetchRun.FetchChannel(w.Deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
+			execute(fRunner)
+			Expect(fRunner.Err()).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
+			// TODO - enable this once the peer's logs are available here
+			// Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: testchannel] Done delivering \Q`))
+
+			By("setting the log level for deliver to back to info")
+			lRunner = logRun.SetLogLevel("common/deliver", "info")
+			execute(lRunner)
+			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
+		})
 	})
 })
 
