@@ -48,6 +48,7 @@ func status() (err error) {
 	}
 	signer, err := common.GetDefaultSignerFnc()
 	if err != nil {
+		fmt.Println(&pb.ServerStatus{Status: pb.ServerStatus_UNKNOWN})
 		return errors.Errorf("failed obtaining default signer: %v", err)
 	}
 
