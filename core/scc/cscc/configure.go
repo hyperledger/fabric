@@ -110,6 +110,13 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub: [%s]", err))
 	}
 
+	return e.InvokeNoShim(args, sp)
+}
+
+func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Response {
+	var err error
+	fname := string(args[0])
+
 	switch fname {
 	case JoinChain:
 		if args[1] == nil {

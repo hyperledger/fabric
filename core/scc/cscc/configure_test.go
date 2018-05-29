@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -22,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/aclmgmt"
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -37,6 +40,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
+	"github.com/hyperledger/fabric/core/scc/cscc/mock"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -50,6 +54,21 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mock/config_manager.go --fake-name ConfigManager . configManager
+type configManager interface {
+	config.Manager
+}
+
+//go:generate counterfeiter -o mock/acl_provider.go --fake-name ACLProvider . aclProvider
+type aclProvider interface {
+	aclmgmt.ACLProvider
+}
+
+//go:generate counterfeiter -o mock/configtx_validator.go --fake-name ConfigtxValidator . configtxValidator
+type configtxValidator interface {
+	configtx.Validator
+}
 
 type mockDeliveryClient struct {
 }
@@ -327,6 +346,61 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	if len(cqr.GetChannels()) != 1 {
 		t.FailNow()
 	}
+}
+
+func TestGetConfigTree(t *testing.T) {
+	aclProvider := &mock.ACLProvider{}
+	configMgr := &mock.ConfigManager{}
+	pc := &PeerConfiger{
+		aclProvider: aclProvider,
+		configMgr:   configMgr,
+	}
+
+	args := [][]byte{[]byte("GetConfigTree"), []byte("testchan")}
+
+	t.Run("Success", func(t *testing.T) {
+		ctxv := &mock.ConfigtxValidator{}
+		configMgr.GetChannelConfigReturns(ctxv)
+		testConfig := &cb.Config{
+			ChannelGroup: &cb.ConfigGroup{
+				Values: map[string]*cb.ConfigValue{
+					"foo": {
+						Value: []byte("bar"),
+					},
+				},
+			},
+		}
+		ctxv.ConfigProtoReturns(testConfig)
+		res := pc.InvokeNoShim(args, nil)
+		assert.Equal(t, int32(shim.OK), res.Status)
+		checkConfig := &pb.ConfigTree{}
+		err := proto.Unmarshal(res.Payload, checkConfig)
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(testConfig, checkConfig.ChannelConfig))
+	})
+
+	t.Run("MissingConfig", func(t *testing.T) {
+		ctxv := &mock.ConfigtxValidator{}
+		configMgr.GetChannelConfigReturns(ctxv)
+		res := pc.InvokeNoShim(args, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "Unknown chain ID, testchan", res.Message)
+	})
+
+	t.Run("NilChannel", func(t *testing.T) {
+		ctxv := &mock.ConfigtxValidator{}
+		configMgr.GetChannelConfigReturns(ctxv)
+		res := pc.InvokeNoShim([][]byte{[]byte("GetConfigTree"), nil}, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "Chain ID must not be nil", res.Message)
+	})
+
+	t.Run("BadACL", func(t *testing.T) {
+		aclProvider.CheckACLReturns(fmt.Errorf("fake-error"))
+		res := pc.InvokeNoShim(args, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "\"GetConfigTree\" request failed authorization check for channel [testchan]: [fake-error]", res.Message)
+	})
 }
 
 func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
