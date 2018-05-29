@@ -47,6 +47,16 @@ func InitializeTestEnvWithCustomProcessors(customTxProcessors customtx.Processor
 	})
 }
 
+// InitializeExistingTestEnvWithCustomProcessors initializes ledgermgmt for tests with existing ledgers
+// This function does not remove the existing ledgers and is used in upgrade tests
+// TODO ledgermgmt should be reworked to move the package scoped functions to a struct
+func InitializeExistingTestEnvWithCustomProcessors(customTxProcessors customtx.Processors) {
+	customtx.InitializeTestEnv(customTxProcessors)
+	initialize(&Initializer{
+		CustomTxProcessors: customTxProcessors,
+	})
+}
+
 // CleanupTestEnv closes the ledgermagmt and removes the store directory
 func CleanupTestEnv() {
 	Close()
