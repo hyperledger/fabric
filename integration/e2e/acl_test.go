@@ -147,6 +147,28 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
 
 		//
+		// when the ACL policy for lscc/GetInstantiatedChaincodes is satisfied
+		//
+		By("setting the lscc/GetInstantiatedChaincodes ACL policy to Org1/Admins")
+		policyName = resources.Lscc_GetInstantiatedChaincodes
+		policy = "/Channel/Application/Org1/Admins"
+		SetACLPolicy(w, deployment, policyName, policy)
+
+		By("listing the instantiated chaincodes as a permitted Org1 Admin identity")
+		adminRunner = org1Peer0.ChaincodeListInstantiated(deployment.Channel)
+		execute(adminRunner)
+		Expect(adminRunner.Buffer()).To(gbytes.Say("Name: mycc, Version: 0.0, Path: github.com/hyperledger/fabric/integration/chaincode/simple/cmd, Escc: escc, Vscc: vscc"))
+
+		//
+		// when the ACL policy for lscc/GetInstantiatedChaincodes is not satisfied
+		//
+		By("listing the instantiated chaincodes as a forbidden Org2 Admin identity")
+		adminRunner = org2Peer0.ChaincodeListInstantiated(deployment.Channel)
+		execute(adminRunner)
+		Expect(adminRunner.Buffer()).NotTo(gbytes.Say("Name: mycc, Version: 0.0, Path: github.com/hyperledger/fabric/integration/chaincode/simple/cmd, Escc: escc, Vscc: vscc"))
+		Expect(adminRunner.Err()).To(gbytes.Say(`access denied for \[getchaincodes\]\[testchannel\](.*)signature set did not satisfy policy`))
+
+		//
 		// when a system chaincode ACL policy is set and a query is performed
 		//
 
