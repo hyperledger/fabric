@@ -14,7 +14,7 @@ excluded_packages=(
 
 # regexes for packages that must be run serially
 serial_packages=(
-    "github.com/hyperledger/fabric/gossip/comm$"
+    "github.com/hyperledger/fabric/gossip"
 )
 
 # packages which need to be tested with build tag pluginsenabled
