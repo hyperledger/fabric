@@ -100,7 +100,7 @@ type blockValidationResult struct {
 // NewTxValidator creates new transactions validator
 func NewTxValidator(support Support, sccp sysccprovider.SystemChaincodeProvider, pm PluginMapper) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := NewPluginValidator(pm, support.Ledger(), &dynamicDeserializer{support: support}, support.Capabilities())
+	pluginValidator := NewPluginValidator(pm, support.Ledger(), &dynamicDeserializer{support: support}, &dynamicCapabilities{support: support})
 	return &TxValidator{
 		Support: support,
 		Vscc:    newVSCCValidator(support, sccp, pluginValidator)}
@@ -585,4 +585,44 @@ func (ds *dynamicDeserializer) DeserializeIdentity(serializedIdentity []byte) (m
 
 func (ds *dynamicDeserializer) IsWellFormed(identity *mspprotos.SerializedIdentity) error {
 	return ds.support.MSPManager().IsWellFormed(identity)
+}
+
+type dynamicCapabilities struct {
+	support Support
+}
+
+func (ds *dynamicCapabilities) ACLs() bool {
+	return ds.support.Capabilities().ACLs()
+}
+
+func (ds *dynamicCapabilities) CollectionUpgrade() bool {
+	return ds.support.Capabilities().CollectionUpgrade()
+}
+
+func (ds *dynamicCapabilities) ForbidDuplicateTXIdInBlock() bool {
+	return ds.support.Capabilities().ForbidDuplicateTXIdInBlock()
+}
+
+func (ds *dynamicCapabilities) KeyLevelEndorsement() bool {
+	return ds.support.Capabilities().KeyLevelEndorsement()
+}
+
+func (ds *dynamicCapabilities) MetadataLifecycle() bool {
+	return ds.support.Capabilities().MetadataLifecycle()
+}
+
+func (ds *dynamicCapabilities) PrivateChannelData() bool {
+	return ds.support.Capabilities().PrivateChannelData()
+}
+
+func (ds *dynamicCapabilities) Supported() error {
+	return ds.support.Capabilities().Supported()
+}
+
+func (ds *dynamicCapabilities) V1_1Validation() bool {
+	return ds.support.Capabilities().V1_1Validation()
+}
+
+func (ds *dynamicCapabilities) V1_2Validation() bool {
+	return ds.support.Capabilities().V1_2Validation()
 }

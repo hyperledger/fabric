@@ -26,13 +26,16 @@ import (
 )
 
 type Support struct {
-	LedgerVal     ledger.PeerLedger
-	MSPManagerVal msp.MSPManager
-	ApplyVal      error
-	ACVal         channelconfig.ApplicationCapabilities
+	LedgerVal               ledger.PeerLedger
+	MSPManagerVal           msp.MSPManager
+	ApplyVal                error
+	ACVal                   channelconfig.ApplicationCapabilities
+	CapabilitiesInvokeCount int
+	MSPManagerInvokeCount   int
 }
 
 func (ms *Support) Capabilities() channelconfig.ApplicationCapabilities {
+	ms.CapabilitiesInvokeCount++
 	return ms.ACVal
 }
 
@@ -43,6 +46,7 @@ func (ms *Support) Ledger() ledger.PeerLedger {
 
 // MSPManager returns MSPManagerVal
 func (ms *Support) MSPManager() msp.MSPManager {
+	ms.MSPManagerInvokeCount++
 	return ms.MSPManagerVal
 }
 

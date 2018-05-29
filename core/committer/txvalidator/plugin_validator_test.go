@@ -7,15 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/testdata"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
@@ -85,6 +88,7 @@ func TestSamplePlugin(t *testing.T) {
 	})
 	deserializer.On("DeserializeIdentity", []byte{7, 8, 9}).Return(identity, nil)
 	capabilites := &mocks.Capabilities{}
+	capabilites.On("PrivateChannelData").Return(true)
 	factory := &mocks.PluginFactory{}
 	factory.On("New").Return(&testdata.SampleValidationPlugin{})
 	pm["vscc"] = factory
@@ -112,4 +116,20 @@ func TestSamplePlugin(t *testing.T) {
 		Channel: "mychannel",
 	}
 	assert.NoError(t, v.ValidateWithPlugin(ctx))
+}
+
+func TestCapabilitiesInterface(t *testing.T) {
+	// Make sure that the application capabilities are all implemented by the validation capabilities
+	// Obtain all methods of the ApplicationCapabilities and ensure
+	// that every method in ApplicationCapabilities exists in the validation capabilities
+	var appCapabilities *channelconfig.ApplicationCapabilities
+	appMeta := reflect.TypeOf(appCapabilities).Elem()
+
+	var validationCapabilities *Capabilities
+	validationMeta := reflect.TypeOf(validationCapabilities).Elem()
+	for i := 0; i < appMeta.NumMethod(); i++ {
+		method := appMeta.Method(i).Name
+		_, exists := validationMeta.MethodByName(method)
+		assert.True(t, exists, "method %s doesn't exist", method)
+	}
 }

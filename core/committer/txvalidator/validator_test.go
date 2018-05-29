@@ -22,12 +22,14 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/testdata"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
+	mocks2 "github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -747,6 +749,70 @@ func (exec *mockQueryExecutor) GetStateMetadata(namespace, key string) (map[stri
 
 func (exec *mockQueryExecutor) GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error) {
 	return nil, nil
+}
+
+func createCustomSupportAndLedger(t *testing.T) (*mocktxvalidator.Support, ledger.PeerLedger) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/validatortest")
+	ledgermgmt.InitializeTestEnv()
+	gb, err := ctxt.MakeGenesisBlock("TestLedger")
+	assert.NoError(t, err)
+	l, err := ledgermgmt.CreateLedger(gb)
+	assert.NoError(t, err)
+
+	identity := &mocks2.Identity{}
+	identity.GetIdentifierReturns(&msp.IdentityIdentifier{
+		Mspid: "SampleOrg",
+		Id:    "foo",
+	})
+	mspManager := &mocks2.MSPManager{}
+	mspManager.DeserializeIdentityReturns(identity, nil)
+	support := &mocktxvalidator.Support{LedgerVal: l, ACVal: &mockconfig.MockApplicationCapabilities{}, MSPManagerVal: mspManager}
+	return support, l
+}
+
+func TestDynamicCapabilitiesAndMSP(t *testing.T) {
+	factory := &mocks.PluginFactory{}
+	factory.On("New").Return(&testdata.SampleValidationPlugin{})
+	pm := &mocks.PluginMapper{}
+	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(factory)
+
+	support, l := createCustomSupportAndLedger(t)
+	defer l.Close()
+
+	vcs := struct {
+		*mocktxvalidator.Support
+		*semaphore.Weighted
+	}{support, semaphore.NewWeighted(10)}
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+
+	v := txvalidator.NewTxValidator(vcs, mp, pm)
+
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	// Perform a validation of a block
+	err := v.Validate(b)
+	assert.NoError(t, err)
+	assertValid(b, t)
+	// Record the number of times the capabilities and the MSP Manager were invoked
+	capabilityInvokeCount := support.CapabilitiesInvokeCount
+	mspManagerInvokeCount := support.MSPManagerInvokeCount
+
+	// Perform another validation pass, and ensure it is valid
+	err = v.Validate(b)
+	assert.NoError(t, err)
+	assertValid(b, t)
+
+	// Ensure that the capabilities were retrieved from the support twice,
+	// which proves that the capabilities are dynamically retrieved from the support each time
+	assert.Equal(t, 2*capabilityInvokeCount, support.CapabilitiesInvokeCount)
+	// Ensure that the MSP Manager was retrieved from the support twice,
+	// which proves that the MSP Manager is dynamically retrieved from the support each time
+	assert.Equal(t, 2*mspManagerInvokeCount, support.MSPManagerInvokeCount)
 }
 
 // TestLedgerIsNoAvailable simulates and provides a test for following scenario,

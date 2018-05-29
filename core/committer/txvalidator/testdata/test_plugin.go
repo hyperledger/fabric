@@ -66,6 +66,8 @@ func (p *SampleValidationPlugin) Validate(block *common.Block, namespace string,
 		return err
 	}
 
+	_ = p.c.PrivateChannelData()
+
 	if len(results) == 0 {
 		return errors.New("not instantiated")
 	}
