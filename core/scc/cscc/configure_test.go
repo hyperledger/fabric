@@ -403,6 +403,88 @@ func TestGetConfigTree(t *testing.T) {
 	})
 }
 
+func TestSimulateConfigTreeUpdate(t *testing.T) {
+	aclProvider := &mock.ACLProvider{}
+	configMgr := &mock.ConfigManager{}
+	pc := &PeerConfiger{
+		aclProvider: aclProvider,
+		configMgr:   configMgr,
+	}
+
+	testUpdate := &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					Type: int32(cb.HeaderType_CONFIG_UPDATE),
+				}),
+			},
+		}),
+	}
+
+	args := [][]byte{[]byte("SimulateConfigTreeUpdate"), []byte("testchan"), utils.MarshalOrPanic(testUpdate)}
+
+	t.Run("Success", func(t *testing.T) {
+		ctxv := &mock.ConfigtxValidator{}
+		configMgr.GetChannelConfigReturns(ctxv)
+		res := pc.InvokeNoShim(args, nil)
+		assert.Equal(t, int32(shim.OK), res.Status, res.Message)
+	})
+
+	t.Run("BadUpdate", func(t *testing.T) {
+		ctxv := &mock.ConfigtxValidator{}
+		configMgr.GetChannelConfigReturns(ctxv)
+		ctxv.ProposeConfigUpdateReturns(nil, fmt.Errorf("fake-error"))
+		res := pc.InvokeNoShim(args, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "fake-error", res.Message)
+	})
+
+	t.Run("BadType", func(t *testing.T) {
+		res := pc.InvokeNoShim([][]byte{
+			args[0],
+			args[1],
+			utils.MarshalOrPanic(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
+						}),
+					},
+				}),
+			}),
+		}, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "invalid payload header type: 3", res.Message)
+	})
+
+	t.Run("BadEnvelope", func(t *testing.T) {
+		res := pc.InvokeNoShim([][]byte{
+			args[0],
+			args[1],
+			[]byte("garbage"),
+		}, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Contains(t, res.Message, "proto:")
+	})
+
+	t.Run("NilChainID", func(t *testing.T) {
+		res := pc.InvokeNoShim([][]byte{
+			args[0],
+			nil,
+			args[2],
+		}, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "Chain ID must not be nil", res.Message)
+	})
+
+	t.Run("BadACL", func(t *testing.T) {
+		aclProvider.CheckACLReturns(fmt.Errorf("fake-error"))
+		res := pc.InvokeNoShim(args, nil)
+		assert.NotEqual(t, int32(shim.OK), res.Status)
+		assert.Equal(t, "\"SimulateConfigTreeUpdate\" request failed authorization check for channel [testchan]: [fake-error]", res.Message)
+	})
+}
+
 func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
 	os.Mkdir("/tmp/hyperledgertest", 0755)
