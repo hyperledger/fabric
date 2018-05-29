@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: Apache-2.0
+
+# level db snapshot contains '.log' files
+!**/*.log
