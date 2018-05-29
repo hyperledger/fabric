@@ -219,14 +219,14 @@ func main() {
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
 	flag.StringVar(&printOrg, "printOrg", "", "Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)")
 
+	version := flag.Bool("version", false, "Show version information")
+
+	flag.Parse()
+
 	if channelID == "" {
 		channelID = genesisconfig.TestChainID
 		logger.Warningf("Omitting the channel ID for configtxgen is deprecated.  Explicitly passing the channel ID will be required in the future, defaulting to '%s'.", channelID)
 	}
-
-	version := flag.Bool("version", false, "Show version information")
-
-	flag.Parse()
 
 	// show version
 	if *version {
