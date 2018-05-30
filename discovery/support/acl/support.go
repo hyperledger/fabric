@@ -141,6 +141,16 @@ func (s *DiscoverySupport) MSPOfPrincipal(principal *msp.MSPPrincipal) string {
 	return ""
 }
 
+//go:generate mockery -name ChannelPolicyManagerGetter -case underscore  -output ../mocks/
+
+// ChannelPolicyManagerGetter is a support interface
+// to get access to the policy manager of a given channel
+type ChannelPolicyManagerGetter interface {
+	// Returns the policy manager associated to the passed channel
+	// and true if it was the manager requested, or false if it is the default manager
+	Manager(channelID string) (policies.Manager, bool)
+}
+
 // NewChannelVerifier returns a new channel verifier from the given policy and policy manager getter
 func NewChannelVerifier(policy string, polMgr policies.ChannelPolicyManagerGetter) *ChannelVerifier {
 	return &ChannelVerifier{
