@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/admin"
-	cc "github.com/hyperledger/fabric/core/cclifecycle"
+	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
@@ -54,7 +54,6 @@ import (
 	"github.com/hyperledger/fabric/discovery/support/config"
 	"github.com/hyperledger/fabric/discovery/support/gossip"
 	"github.com/hyperledger/fabric/events/producer"
-	"github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
@@ -282,8 +281,9 @@ func serve(args []string) error {
 	// Initialize gossip component
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
+	policyMgr := peer.NewChannelPolicyManagerGetter()
 	messageCryptoService := peergossip.NewMCS(
-		peer.NewChannelPolicyManagerGetter(),
+		policyMgr,
 		localmsp.NewSigner(),
 		mgmt.NewDeserializersManager())
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
@@ -366,7 +366,7 @@ func serve(args []string) error {
 	}, ccp, sccp, txvalidator.MapBasedPluginMapper(validationPluginsByName))
 
 	if viper.GetBool("peer.discovery.enabled") {
-		registerDiscoveryService(peerServer, messageCryptoService, lifecycle)
+		registerDiscoveryService(peerServer, policyMgr, lifecycle)
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]",
@@ -427,13 +427,14 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 	return policy
 }
 
-func registerDiscoveryService(peerServer *comm.GRPCServer, mcs api.MessageCryptoService, lc *cc.Lifecycle) {
+func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {
 	mspID := viper.GetString("peer.localMspId")
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	if viper.GetBool("peer.discovery.orgMembersAllowedAccess") {
 		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
 	}
-	acl := discacl.NewDiscoverySupport(mcs, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetChannelConfig))
+	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
+	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetChannelConfig))
 	gSup := gossip.NewDiscoverySupport(service.GetGossipService())
 	ccSup := ccsupport.NewDiscoverySupport(lc)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, lc)
