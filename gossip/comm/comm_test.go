@@ -202,6 +202,50 @@ func TestViperConfig(t *testing.T) {
 	assert.Equal(t, 200, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
 }
 
+func TestMutualParallelSendWithAck(t *testing.T) {
+	t.Parallel()
+
+	// This test tests concurrent and parallel sending of many (1000) messages
+	// from 2 instances to one another at the same time.
+
+	msgNum := 1000
+
+	comm1, _ := newCommInstance(15201, naiveSec)
+	comm2, _ := newCommInstance(15202, naiveSec)
+	defer comm1.Stop()
+	defer comm2.Stop()
+
+	acceptData := func(o interface{}) bool {
+		return o.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+	}
+
+	inc1 := comm1.Accept(acceptData)
+	inc2 := comm2.Accept(acceptData)
+
+	// Send a message from comm1 to comm2, to make the instances establish a preliminary connection
+	comm1.Send(createGossipMsg(), remotePeer(15202))
+	// Wait for the message to be received in comm2
+	<-inc2
+
+	for i := 0; i < msgNum; i++ {
+		go comm1.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(15202))
+	}
+
+	for i := 0; i < msgNum; i++ {
+		go comm2.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(15201))
+	}
+
+	go func() {
+		for i := 0; i < msgNum; i++ {
+			<-inc1
+		}
+	}()
+
+	for i := 0; i < msgNum; i++ {
+		<-inc2
+	}
+}
+
 func TestHandshake(t *testing.T) {
 	t.Parallel()
 	signer := func(msg []byte) ([]byte, error) {

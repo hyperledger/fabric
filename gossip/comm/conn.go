@@ -256,15 +256,13 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 		conn.logger.Debug("Aborting send() to ", conn.info.Endpoint, "because connection is closing")
 		return
 	}
-	conn.Lock()
-	defer conn.Unlock()
 
 	m := &msgSending{
 		envelope: msg.Envelope,
 		onErr:    onErr,
 	}
 
-	if len(conn.outBuff) == util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize) {
+	if len(conn.outBuff) == cap(conn.outBuff) {
 		if conn.logger.IsEnabledFor(logging.DEBUG) {
 			conn.logger.Debug("Buffer to", conn.info.Endpoint, "overflowed, dropping message", msg.String())
 		}
@@ -272,6 +270,7 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 			return
 		}
 	}
+
 	conn.outBuff <- m
 }
 
