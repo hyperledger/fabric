@@ -211,11 +211,6 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 
 	HiddenIndices := hiddenIndices(Disclosure)
 
-	err := VerifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg))
-	if err != nil {
-		return errors.Wrap(err, "signature is based on an invalid revocation epoch public key")
-	}
-
 	APrime := EcpFromProto(sig.GetAPrime())
 	ABar := EcpFromProto(sig.GetABar())
 	BPrime := EcpFromProto(sig.GetBPrime())
