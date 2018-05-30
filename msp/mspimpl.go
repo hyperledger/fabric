@@ -108,6 +108,9 @@ func newBccspMsp(version MSPVersion) (MSP, error) {
 	case MSPv1_1:
 		theMsp.internalSetupFunc = theMsp.setupV11
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
+	case MSPv1_3:
+		theMsp.internalSetupFunc = theMsp.setupV11
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
 	default:
 		return nil, errors.Errorf("Invalid MSP version [%v]", version)
 	}

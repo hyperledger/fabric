@@ -787,7 +787,7 @@ func TestAdminPolicyPrincipal(t *testing.T) {
 }
 
 func TestAdminPolicyPrincipalFails(t *testing.T) {
-	id, err := localMsp.GetDefaultSigningIdentity()
+	id, err := localMspV13.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
 	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
@@ -798,7 +798,7 @@ func TestAdminPolicyPrincipalFails(t *testing.T) {
 		Principal:               principalBytes}
 
 	// remove the admin so validation will fail
-	localMsp.(*bccspmsp).admins = make([]Identity, 0)
+	localMspV13.(*bccspmsp).admins = make([]Identity, 0)
 
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
@@ -924,6 +924,8 @@ func TestIdentityPolicyPrincipalFails(t *testing.T) {
 
 var conf *msp.MSPConfig
 var localMsp MSP
+var localMspV11 MSP
+var localMspV13 MSP
 
 // Required because deleting the cert or msp options from localMsp causes parallel tests to fail
 var localMspBad MSP
@@ -952,6 +954,30 @@ func TestMain(m *testing.M) {
 	localMspBad, err = newBccspMsp(MSPv1_0)
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	localMspV13, err = newBccspMsp(MSPv1_3)
+	if err != nil {
+		fmt.Printf("Constructor for V1.3 msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	localMspV11, err = newBccspMsp(MSPv1_1)
+	if err != nil {
+		fmt.Printf("Constructor for V1.1 msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	err = localMspV11.Setup(conf)
+	if err != nil {
+		fmt.Printf("Setup for V1.1 msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	err = localMspV13.Setup(conf)
+	if err != nil {
+		fmt.Printf("Setup for V1.3 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 

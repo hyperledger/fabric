@@ -15,6 +15,7 @@ type MSPVersion int
 const (
 	MSPv1_0 = iota
 	MSPv1_1
+	MSPv1_3
 )
 
 // NewOpts represent
@@ -51,11 +52,15 @@ func New(opts NewOpts) (MSP, error) {
 			return newBccspMsp(MSPv1_0)
 		case MSPv1_1:
 			return newBccspMsp(MSPv1_1)
+		case MSPv1_3:
+			return newBccspMsp(MSPv1_3)
 		default:
 			return nil, errors.Errorf("Invalid *BCCSPNewOpts. Version not recognized [%v]", opts.GetVersion())
 		}
 	case *IdemixNewOpts:
 		switch opts.GetVersion() {
+		case MSPv1_3:
+			fallthrough
 		case MSPv1_1:
 			return newIdemixMsp()
 		default:
