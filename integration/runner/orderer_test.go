@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -30,7 +31,7 @@ var _ = Describe("Orderer", func() {
 		tempDir, err = ioutil.TempDir("", "orderer")
 		Expect(err).NotTo(HaveOccurred())
 
-		copyFile(filepath.Join("testdata", "cryptogen-config.yaml"), filepath.Join(tempDir, "cryptogen-config.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "cryptogen-config.yaml"), filepath.Join(tempDir, "cryptogen-config.yaml"))
 		cryptogen := components.Cryptogen()
 		cryptogen.Config = filepath.Join(tempDir, "cryptogen-config.yaml")
 		cryptogen.Output = filepath.Join(tempDir, "crypto-config")
@@ -38,7 +39,7 @@ var _ = Describe("Orderer", func() {
 		crypto := cryptogen.Generate()
 		Expect(execute(crypto)).To(Succeed())
 
-		copyFile(filepath.Join("testdata", "configtx.yaml"), filepath.Join(tempDir, "configtx.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "configtx.yaml"), filepath.Join(tempDir, "configtx.yaml"))
 		configtxgen := components.Configtxgen()
 		configtxgen.ChannelID = "mychannel"
 		configtxgen.Profile = "TwoOrgsOrdererGenesis"
@@ -49,7 +50,7 @@ var _ = Describe("Orderer", func() {
 		err = execute(r)
 		Expect(err).NotTo(HaveOccurred())
 
-		copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
 		orderer = components.Orderer()
 		orderer.ConfigDir = tempDir
 		orderer.LedgerLocation = tempDir

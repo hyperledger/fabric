@@ -8,8 +8,6 @@ package e2e
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"os"
 
 	"github.com/hyperledger/fabric/integration/world"
 	. "github.com/onsi/ginkgo"
@@ -23,10 +21,7 @@ func TestEndToEnd(t *testing.T) {
 	RunSpecs(t, "EndToEnd Suite")
 }
 
-var (
-	components *world.Components
-	testDir    string
-)
+var components *world.Components
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	components = &world.Components{}
@@ -39,16 +34,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(payload []byte) {
 	err := json.Unmarshal(payload, &components)
 	Expect(err).NotTo(HaveOccurred())
-})
-
-var _ = BeforeEach(func() {
-	var err error
-	testDir, err = ioutil.TempDir("", "e2e-suite")
-	Expect(err).NotTo(HaveOccurred())
-})
-
-var _ = AfterEach(func() {
-	os.RemoveAll(testDir)
 })
 
 var _ = SynchronizedAfterSuite(func() {

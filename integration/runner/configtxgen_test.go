@@ -16,6 +16,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/tedsuo/ifrit"
 )
@@ -40,7 +41,7 @@ var _ = Describe("Configtxgen", func() {
 		Expect(filepath.Join(tempDir, "crypto-config", "peerOrganizations")).To(BeADirectory())
 		Expect(filepath.Join(tempDir, "crypto-config", "ordererOrganizations")).To(BeADirectory())
 
-		copyFile(filepath.Join("testdata", "configtx.yaml"), filepath.Join(tempDir, "configtx.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "configtx.yaml"), filepath.Join(tempDir, "configtx.yaml"))
 	})
 
 	AfterEach(func() {

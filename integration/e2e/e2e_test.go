@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,15 +16,23 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/world"
 	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("EndToEnd", func() {
-	var w *world.World
-	var deployment world.Deployment
+	var (
+		testDir    string
+		w          *world.World
+		deployment world.Deployment
+	)
 
 	BeforeEach(func() {
+		var err error
+		testDir, err = ioutil.TempDir("", "e2e")
+		Expect(err).NotTo(HaveOccurred())
+
 		deployment = world.Deployment{
 			Channel: "testchannel",
 			Chaincode: world.Chaincode{
@@ -44,6 +51,7 @@ var _ = Describe("EndToEnd", func() {
 		if w != nil {
 			w.Close(deployment)
 		}
+		os.RemoveAll(testDir)
 	})
 
 	Describe("basic solo network with 2 orgs", func() {
@@ -64,15 +72,14 @@ var _ = Describe("EndToEnd", func() {
 			Expect(filepath.Join(testDir, "Org2_anchors_update_tx.pb")).To(BeARegularFile())
 
 			By("setting up directories for the network")
-			copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
-			copyPeerConfigs(w.PeerOrgs, w.Rootpath)
+			helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
+			w.CopyPeerConfigs("testdata")
 
 			By("building the network")
 			w.BuildNetwork()
 
 			By("setting up the channel")
-			err := w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
-			Expect(err).NotTo(HaveOccurred())
+			w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
 
 			RunQueryInvokeQuery(w, deployment)
 		})
@@ -124,27 +131,4 @@ func execute(r ifrit.Runner) (err error) {
 	Eventually(p.Ready()).Should(BeClosed())
 	Eventually(p.Wait(), 30*time.Second).Should(Receive(&err))
 	return err
-}
-
-func copyFile(src, dest string) {
-	data, err := ioutil.ReadFile(src)
-	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(dest, data, 0775)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func copyPeerConfigs(peerOrgs []world.PeerOrgConfig, rootPath string) {
-	for _, peerOrg := range peerOrgs {
-		for peer := 0; peer < peerOrg.PeerCount; peer++ {
-			peerDir := fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)
-			if _, err := os.Stat(filepath.Join(rootPath, peerDir)); os.IsNotExist(err) {
-				err := os.Mkdir(filepath.Join(rootPath, peerDir), 0755)
-				Expect(err).NotTo(HaveOccurred())
-			}
-			copyFile(
-				filepath.Join("testdata", fmt.Sprintf("%s_%d-core.yaml", peerOrg.Domain, peer)),
-				filepath.Join(rootPath, peerDir, "core.yaml"),
-			)
-		}
-	}
 }

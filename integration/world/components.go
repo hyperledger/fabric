@@ -140,8 +140,8 @@ func execute(r ifrit.Runner) {
 
 func (w *World) SetupWorld(d Deployment) {
 	w.BootstrapNetwork(d.Channel)
-	copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(w.Rootpath, "orderer.yaml"))
-	copyPeerConfigs(w.PeerOrgs, w.Rootpath)
+	helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(w.Rootpath, "orderer.yaml"))
+	w.CopyPeerConfigs("testdata")
 	w.BuildNetwork()
 
 	peers := []string{}
@@ -150,6 +150,5 @@ func (w *World) SetupWorld(d Deployment) {
 			peers = append(peers, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain))
 		}
 	}
-	err := w.SetupChannel(d, peers)
-	Expect(err).NotTo(HaveOccurred())
+	w.SetupChannel(d, peers)
 }

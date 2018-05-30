@@ -8,7 +8,6 @@ package runner_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"time"
 
 	"github.com/hyperledger/fabric/integration/world"
@@ -45,13 +44,6 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	components.Cleanup()
 })
-
-func copyFile(src, dest string) {
-	data, err := ioutil.ReadFile(src)
-	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(dest, data, 0775)
-	Expect(err).NotTo(HaveOccurred())
-}
 
 func execute(r ifrit.Runner) error {
 	var err error

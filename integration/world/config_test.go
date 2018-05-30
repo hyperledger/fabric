@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package world_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/hyperledger/fabric/integration/world"
 	"github.com/tedsuo/ifrit"
@@ -208,18 +208,16 @@ var _ = Describe("Config", func() {
 	Context("when world is defined", func() {
 		BeforeEach(func() {
 			pOrg := []*localconfig.Organization{{
-				Name: "Org1ExampleCom",
-				ID:   "Org1ExampleCom",
-				//ID:     "org1.example.com",
+				Name:   "Org1ExampleCom",
+				ID:     "Org1ExampleCom",
 				MSPDir: "crypto/peerOrganizations/org1.example.com/msp",
 				AnchorPeers: []*localconfig.AnchorPeer{{
 					Host: "127.0.0.1",
 					Port: 11051,
 				}},
 			}, {
-				Name: "Org2ExampleCom",
-				ID:   "Org2ExampleCom",
-				//ID:     "org2.example.com",
+				Name:   "Org2ExampleCom",
+				ID:     "Org2ExampleCom",
 				MSPDir: "crypto/peerOrganizations/org2.example.com/msp",
 				AnchorPeers: []*localconfig.AnchorPeer{{
 					Host: "127.0.0.1",
@@ -366,25 +364,14 @@ var _ = Describe("Config", func() {
 			w.BootstrapNetwork(deployment.Channel)
 
 			By("setting up the directory structure for peer and orderer configs")
-			peers := []string{}
-			copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
-			for _, peerOrg := range w.PeerOrgs {
-				for peer := 0; peer < peerOrg.PeerCount; peer++ {
-					err := os.Mkdir(filepath.Join(tempDir, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)), 0755)
-					peers = append(peers, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain))
-					Expect(err).NotTo(HaveOccurred())
-					copyFile(
-						filepath.Join("testdata", fmt.Sprintf("%s_%d-core.yaml", peerOrg.Domain, peer)),
-						filepath.Join(tempDir, fmt.Sprintf("peer%d.%s/core.yaml", peer, peerOrg.Domain)),
-					)
-				}
-			}
+			helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
+			w.CopyPeerConfigs("testdata")
+
 			By("building the network")
 			w.BuildNetwork()
 
 			By("setting up and joining the channel")
-			err := w.SetupChannel(deployment, peers)
-			Expect(err).NotTo(HaveOccurred())
+			w.SetupChannel(deployment, w.PeerIDs())
 
 			By("verifying the chaincode is installed")
 			adminPeer := components.Peer()
@@ -399,10 +386,3 @@ var _ = Describe("Config", func() {
 		})
 	})
 })
-
-func copyFile(src, dest string) {
-	data, err := ioutil.ReadFile(src)
-	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(dest, data, 0774)
-	Expect(err).NotTo(HaveOccurred())
-}

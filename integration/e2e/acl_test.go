@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/hyperledger/fabric/integration/world"
 	"github.com/hyperledger/fabric/protos/common"
@@ -26,12 +27,18 @@ import (
 
 var _ = Describe("EndToEndACL", func() {
 	var (
+		testDir    string
 		w          *world.World
 		deployment world.Deployment
-		org1Peer0  *runner.Peer
+
+		org1Peer0 *runner.Peer
 	)
 
 	BeforeEach(func() {
+		var err error
+		testDir, err = ioutil.TempDir("", "acl-e2e")
+		Expect(err).NotTo(HaveOccurred())
+
 		w = world.GenerateBasicConfig("solo", 2, 2, testDir, components)
 
 		// sets up the world for all tests
@@ -48,11 +55,10 @@ var _ = Describe("EndToEndACL", func() {
 			Orderer:  "127.0.0.1:7050",
 		}
 		w.BootstrapNetwork(deployment.Channel)
-		copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
-		copyPeerConfigs(w.PeerOrgs, w.Rootpath)
+		helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
+		w.CopyPeerConfigs("testdata")
 		w.BuildNetwork()
-		err := w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
-		Expect(err).NotTo(HaveOccurred())
+		w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
 
 		org1Peer0 = components.Peer()
 		org1Peer0.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
@@ -61,6 +67,7 @@ var _ = Describe("EndToEndACL", func() {
 
 	AfterEach(func() {
 		w.Close(deployment)
+		os.RemoveAll(testDir)
 	})
 
 	It("enforces access control list policies", func() {
@@ -137,14 +144,14 @@ var _ = Describe("EndToEndACL", func() {
 // signs the configuration with Org2's signer, and then submits the config update
 // using Org1
 func SetACLPolicy(w *world.World, deployment world.Deployment, policyName, policy string) {
-	outputFile := filepath.Join(testDir, "updated_config.pb")
+	outputFile := filepath.Join(w.Rootpath, "updated_config.pb")
 	GenerateACLConfigUpdate(w, deployment, policyName, policy, outputFile)
 
-	signConfigDir := filepath.Join(testDir, "peer0.org2.example.com")
+	signConfigDir := filepath.Join(w.Rootpath, "peer0.org2.example.com")
 	signMSPConfigPath := filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org2.example.com", "users", "Admin@org2.example.com", "msp")
 	SignConfigUpdate(w, outputFile, signConfigDir, signMSPConfigPath)
 
-	sendConfigDir := filepath.Join(testDir, "peer0.org1.example.com")
+	sendConfigDir := filepath.Join(w.Rootpath, "peer0.org1.example.com")
 	sendMSPConfigPath := filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	SendConfigUpdate(deployment, outputFile, sendConfigDir, sendMSPConfigPath)
 }
@@ -152,9 +159,9 @@ func SetACLPolicy(w *world.World, deployment world.Deployment, policyName, polic
 func GenerateACLConfigUpdate(w *world.World, deployment world.Deployment, policyName, policy, outputFile string) {
 	// fetch the config block
 	fetchRun := components.Peer()
-	fetchRun.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
+	fetchRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 	fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	output := filepath.Join(testDir, "config_block.pb")
+	output := filepath.Join(w.Rootpath, "config_block.pb")
 	fRunner := fetchRun.FetchChannel(deployment.Channel, output, "config", deployment.Orderer)
 	execute(fRunner)
 	Expect(fRunner.Err()).To(gbytes.Say("Received block: "))

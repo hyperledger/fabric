@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/alecthomas/template"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -89,7 +91,7 @@ type Deployment struct {
 
 func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir string, components *Components) (w *World) {
 	client, err := docker.NewClientFromEnv()
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	pOrg := []*localconfig.Organization{}
 	peerOrgs := []PeerOrgConfig{}
@@ -196,7 +198,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 			Driver: "bridge",
 		},
 	)
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	crypto := runner.Cryptogen{
 		Config: filepath.Join(testDir, "crypto.yaml"),
@@ -252,23 +254,23 @@ PeerOrgs:{{range .PeerOrgs}}
 	w.buildTemplate(buf, ordererCrypto)
 	w.buildTemplate(buf, peerCrypto)
 	err := ioutil.WriteFile(filepath.Join(w.Rootpath, "crypto.yaml"), buf.Bytes(), 0644)
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	// Generates the configtx config
 	type profiles struct {
 		Profiles map[string]localconfig.Profile `yaml:"Profiles"`
 	}
 	profileData, err := yaml.Marshal(&profiles{w.Profiles})
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	err = ioutil.WriteFile(filepath.Join(w.Rootpath, "configtx.yaml"), profileData, 0644)
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
 func (w *World) buildTemplate(writer io.Writer, orgTemplate string) {
 	tmpl, err := template.New("org").Parse(orgTemplate)
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
 	err = tmpl.Execute(writer, w)
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
 }
 
 func (w *World) BootstrapNetwork(channel string) {
@@ -337,8 +339,8 @@ func (w *World) ordererNetwork() {
 				outBuffer := gbytes.NewBuffer()
 				z.OutputStream = io.MultiWriter(outBuffer, GinkgoWriter)
 				err := z.Start()
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(outBuffer, 5*time.Second).Should(gbytes.Say(`binding to port 0.0.0.0/0.0.0.0:2181`))
+				ExpectWithOffset(2, err).NotTo(HaveOccurred())
+				EventuallyWithOffset(2, outBuffer, 5*time.Second).Should(gbytes.Say(`binding to port 0.0.0.0/0.0.0.0:2181`))
 				zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", z.Name))
 				w.LocalStoppers = append(w.LocalStoppers, z)
 			}
@@ -349,14 +351,14 @@ func (w *World) ordererNetwork() {
 				k := w.Components.Kafka(id, w.Network)
 				localKafkaAddress := w.Profiles[w.OrdererProfileName].Orderer.Kafka.Brokers[id-1]
 				k.HostPort, err = strconv.Atoi(strings.Split(localKafkaAddress, ":")[1])
-				Expect(err).NotTo(HaveOccurred())
+				ExpectWithOffset(2, err).NotTo(HaveOccurred())
 				k.MinInsyncReplicas = orderer.KafkaMinInsyncReplicas
 				k.DefaultReplicationFactor = orderer.KafkaDefaultReplicationFactor
 				k.AdvertisedListeners = localKafkaAddress
 				k.ZookeeperConnect = strings.Join(zookeepers, ",")
 				k.LogLevel = "debug"
 				err = k.Start()
-				Expect(err).NotTo(HaveOccurred())
+				ExpectWithOffset(2, err).NotTo(HaveOccurred())
 
 				w.LocalStoppers = append(w.LocalStoppers, k)
 				kafkas = append(kafkas, k)
@@ -366,10 +368,10 @@ func (w *World) ordererNetwork() {
 
 		ordererRunner := o.New()
 		ordererProcess := ifrit.Invoke(ordererRunner)
-		Eventually(ordererProcess.Ready()).Should(BeClosed())
-		Consistently(ordererProcess.Wait()).ShouldNot(Receive())
+		EventuallyWithOffset(2, ordererProcess.Ready()).Should(BeClosed())
+		ConsistentlyWithOffset(2, ordererProcess.Wait()).ShouldNot(Receive())
 		if orderer.BrokerCount != 0 {
-			Eventually(ordererRunner.Err(), 90*time.Second).Should(gbytes.Say("Start phase completed successfully"))
+			EventuallyWithOffset(2, ordererRunner.Err(), 90*time.Second).Should(gbytes.Say("Start phase completed successfully"))
 		}
 		w.LocalProcess = append(w.LocalProcess, ordererProcess)
 	}
@@ -383,14 +385,14 @@ func (w *World) peerNetwork() {
 			p = w.Components.Peer()
 			p.ConfigDir = filepath.Join(w.Rootpath, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain))
 			peerProcess := ifrit.Invoke(p.NodeStart(peer))
-			Eventually(peerProcess.Ready()).Should(BeClosed())
-			Consistently(peerProcess.Wait()).ShouldNot(Receive())
+			EventuallyWithOffset(2, peerProcess.Ready()).Should(BeClosed())
+			ConsistentlyWithOffset(2, peerProcess.Wait()).ShouldNot(Receive())
 			w.LocalProcess = append(w.LocalProcess, peerProcess)
 		}
 	}
 }
 
-func (w *World) SetupChannel(d Deployment, peers []string) error {
+func (w *World) SetupChannel(d Deployment, peers []string) {
 	var p *runner.Peer
 
 	p = w.Components.Peer()
@@ -407,11 +409,11 @@ func (w *World) SetupChannel(d Deployment, peers []string) error {
 		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg, "users", fmt.Sprintf("Admin@%s", peerOrg), "msp")
 		adminRunner = p.FetchChannel(d.Channel, filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", d.Channel)), "0", d.Orderer)
 		execute(adminRunner)
-		Expect(adminRunner.Err()).To(gbytes.Say("Received block: 0"))
+		ExpectWithOffset(1, adminRunner.Err()).To(gbytes.Say("Received block: 0"))
 
 		adminRunner = p.JoinChannel(filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", d.Channel)))
 		execute(adminRunner)
-		Expect(adminRunner.Err()).To(gbytes.Say("Successfully submitted proposal to join channel"))
+		ExpectWithOffset(1, adminRunner.Err()).To(gbytes.Say("Successfully submitted proposal to join channel"))
 
 		p.ExecPath = d.Chaincode.ExecPath
 		p.GoPath = d.Chaincode.GoPath
@@ -422,14 +424,38 @@ func (w *World) SetupChannel(d Deployment, peers []string) error {
 	p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
+}
 
-	return nil
+func (w *World) PeerIDs() []string {
+	ids := []string{}
+	for _, peerOrg := range w.PeerOrgs {
+		for i := 0; i < peerOrg.PeerCount; i++ {
+			ids = append(ids, fmt.Sprintf("peer%d.%s", i, peerOrg.Domain))
+		}
+	}
+	return ids
+}
+
+func (w *World) CopyPeerConfigs(fixtureDir string) {
+	for _, peerOrg := range w.PeerOrgs {
+		for peer := 0; peer < peerOrg.PeerCount; peer++ {
+			peerDir := fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)
+			if _, err := os.Stat(filepath.Join(w.Rootpath, peerDir)); os.IsNotExist(err) {
+				err := os.Mkdir(filepath.Join(w.Rootpath, peerDir), 0755)
+				ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			}
+			helpers.CopyFile(
+				filepath.Join(fixtureDir, fmt.Sprintf("%s_%d-core.yaml", peerOrg.Domain, peer)),
+				filepath.Join(w.Rootpath, peerDir, "core.yaml"),
+			)
+		}
+	}
 }
 
 func (w *World) Close(deployments ...Deployment) {
 	if w.DockerClient == nil {
 		client, err := docker.NewClientFromEnv()
-		Expect(err).NotTo(HaveOccurred())
+		ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		w.DockerClient = client
 	}
 
@@ -462,7 +488,7 @@ func (w *World) cleanupDeployment(d Deployment) {
 			"name": []string{fmt.Sprintf("%s-%s", d.Chaincode.Name, d.Chaincode.Version)},
 		},
 	})
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
 	for _, container := range containers {
 		w.DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
 	}
@@ -473,7 +499,7 @@ func (w *World) cleanupDeployment(d Deployment) {
 			"label": []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", d.Chaincode.Name)},
 		},
 	})
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
 	for _, image := range images {
 		w.DockerClient.RemoveImage(image.ID)
 	}

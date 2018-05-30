@@ -8,7 +8,6 @@ package e2e
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -90,32 +89,11 @@ var _ = Describe("EndToEnd", func() {
 	})
 })
 
-func copyFile(src, dest string) {
-	data, err := ioutil.ReadFile(src)
-	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(dest, data, 0775)
-	Expect(err).NotTo(HaveOccurred())
-}
-
 func execute(r ifrit.Runner) (err error) {
 	p := ifrit.Invoke(r)
 	Eventually(p.Ready()).Should(BeClosed())
 	Eventually(p.Wait(), 10*time.Second).Should(Receive(&err))
 	return err
-}
-
-func copyPeerConfigs(peerOrgs []world.PeerOrgConfig, rootPath string) {
-	for _, peerOrg := range peerOrgs {
-		for peer := 0; peer < peerOrg.PeerCount; peer++ {
-			peerDir := fmt.Sprintf("%s_%d", peerOrg.Domain, peer)
-			if _, err := os.Stat(filepath.Join(rootPath, peerDir)); os.IsNotExist(err) {
-				err := os.Mkdir(filepath.Join(rootPath, peerDir), 0755)
-				Expect(err).NotTo(HaveOccurred())
-			}
-			copyFile(filepath.Join("testdata", fmt.Sprintf("%s-core.yaml", peerDir)),
-				filepath.Join(rootPath, peerDir, "core.yaml"))
-		}
-	}
 }
 
 // compilePlugin compiles the plugin of the given type and returns the path for the plugin file

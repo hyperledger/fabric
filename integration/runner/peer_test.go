@@ -14,6 +14,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,7 +46,7 @@ var _ = Describe("Peer", func() {
 		cryptoDir = filepath.Join(tempDir, "crypto-config")
 		peer = components.Peer()
 
-		copyFile(filepath.Join("testdata", "cryptogen-config.yaml"), filepath.Join(tempDir, "cryptogen-config.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "cryptogen-config.yaml"), filepath.Join(tempDir, "cryptogen-config.yaml"))
 		cryptogen := components.Cryptogen()
 		cryptogen.Config = filepath.Join(tempDir, "cryptogen-config.yaml")
 		cryptogen.Output = cryptoDir
@@ -54,7 +55,7 @@ var _ = Describe("Peer", func() {
 		Expect(execute(crypto)).To(Succeed())
 
 		// Generate orderer config block
-		copyFile(filepath.Join("testdata", "configtx.yaml"), filepath.Join(tempDir, "configtx.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "configtx.yaml"), filepath.Join(tempDir, "configtx.yaml"))
 		configtxgen := components.Configtxgen()
 		configtxgen.ChannelID = "mychannel"
 		configtxgen.Profile = "TwoOrgsOrdererGenesis"
@@ -75,7 +76,7 @@ var _ = Describe("Peer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Start the orderer
-		copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(tempDir, "orderer.yaml"))
 		orderer = components.Orderer()
 		orderer.ConfigDir = tempDir
 		orderer.LedgerLocation = tempDir
@@ -86,7 +87,7 @@ var _ = Describe("Peer", func() {
 		Eventually(ordererProcess.Ready()).Should(BeClosed())
 		Consistently(ordererProcess.Wait()).ShouldNot(Receive())
 
-		copyFile(filepath.Join("testdata", "core.yaml"), filepath.Join(tempDir, "core.yaml"))
+		helpers.CopyFile(filepath.Join("testdata", "core.yaml"), filepath.Join(tempDir, "core.yaml"))
 		peer.ConfigDir = tempDir
 
 		client, err = docker.NewClientFromEnv()
