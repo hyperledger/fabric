@@ -61,6 +61,7 @@ const rhIndex = 3
 var discloseFlags = []byte{1, 1, 0, 0}
 
 type idemixmsp struct {
+	version      MSPVersion
 	ipk          *idemix.IssuerPublicKey
 	rng          *amcl.RAND
 	signer       *idemixSigningIdentity
@@ -70,10 +71,11 @@ type idemixmsp struct {
 }
 
 // newIdemixMsp creates a new instance of idemixmsp
-func newIdemixMsp() (MSP, error) {
+func newIdemixMsp(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
 	msp := idemixmsp{}
+	msp.version = version
 	return &msp, nil
 }
 
@@ -215,7 +217,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 
 // GetVersion returns the version of this MSP
 func (msp *idemixmsp) GetVersion() MSPVersion {
-	return MSPv1_1
+	return msp.version
 }
 
 func (msp *idemixmsp) GetType() ProviderType {
@@ -392,6 +394,10 @@ func (msp *idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 
 		return nil
 	case m.MSPPrincipal_COMBINED:
+		if msp.version <= MSPv1_1 {
+			return errors.Errorf("Combined MSP Principals are unsupported in MSPv1_1")
+		}
+
 		// Principal is a combination of multiple principals.
 		principals := &m.CombinedPrincipal{}
 		err := proto.Unmarshal(principal.Principal, principals)
@@ -413,6 +419,10 @@ func (msp *idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		// The identity satisfies all the principals
 		return nil
 	case m.MSPPrincipal_ANONYMITY:
+		if msp.version <= MSPv1_1 {
+			return errors.Errorf("Anonymity MSP Principals are unsupported in MSPv1_1")
+		}
+
 		anon := &m.MSPIdentityAnonymity{}
 		err := proto.Unmarshal(principal.Principal, anon)
 		if err != nil {

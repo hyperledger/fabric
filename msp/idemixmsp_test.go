@@ -17,7 +17,11 @@ import (
 )
 
 func setup(configPath string, ID string) (MSP, error) {
-	msp, err := newIdemixMsp()
+	return setupWithVersion(configPath, ID, MSPv1_3)
+}
+
+func setupWithVersion(configPath string, ID string, version MSPVersion) (MSP, error) {
+	msp, err := newIdemixMsp(version)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +69,7 @@ func TestSetupBad(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Getting MSP config failed")
 
-	msp1, err := newIdemixMsp()
+	msp1, err := newIdemixMsp(MSPv1_3)
 	assert.NoError(t, err)
 
 	// Setup with nil config
@@ -304,6 +308,25 @@ func TestAnonymityPrincipalBad(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	assert.Error(t, err, "Idemix identity is anonymous and should not pass NOMINAL anonymity principal")
 	assert.Contains(t, err.Error(), "principal is nominal, but idemix MSP is anonymous")
+}
+
+func TestAnonymityPrincipalV11(t *testing.T) {
+	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_NOMINAL})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Anonymity MSP Principals are unsupported in MSPv1_1")
 }
 
 func TestIdemixIsWellFormed(t *testing.T) {
@@ -617,4 +640,44 @@ func TestPrincipalCombinedBad(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principalsCombined)
 	assert.Error(t, err, "non-admin member of OU1 in MSP1 should not satisfy principal admin and OU1 in MSP1")
 	assert.Contains(t, err.Error(), "user is not an admin")
+}
+
+func TestPrincipalCombinedV11(t *testing.T) {
+	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+		MspIdentifier:                id1.GetMSPIdentifier(),
+		CertifiersIdentifier:         nil,
+	}
+	principalBytes, err := proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principalOU := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               principalBytes}
+
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+
+	principalRole := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+
+	assert.NoError(t, err)
+
+	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+
+	err = id1.SatisfiesPrincipal(principalsCombined)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Combined MSP Principals are unsupported in MSPv1_1")
 }

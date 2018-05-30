@@ -60,9 +60,9 @@ func New(opts NewOpts) (MSP, error) {
 	case *IdemixNewOpts:
 		switch opts.GetVersion() {
 		case MSPv1_3:
-			fallthrough
+			return newIdemixMsp(MSPv1_3)
 		case MSPv1_1:
-			return newIdemixMsp()
+			return newIdemixMsp(MSPv1_1)
 		default:
 			return nil, errors.Errorf("Invalid *IdemixNewOpts. Version not recognized [%v]", opts.GetVersion())
 		}
