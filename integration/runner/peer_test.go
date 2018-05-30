@@ -180,11 +180,7 @@ var _ = Describe("Peer", func() {
 		installCC.ConfigDir = tempDir
 		installCC.LogLevel = "debug"
 		installCC.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		installCC.ExecPath = os.Getenv("PATH")
-		iRunner := installCC.InstallChaincode("mytest", "1.0", "github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
-		err = execute(iRunner)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(iRunner.Err()).To(gbytes.Say(`\QInstalled remotely response:<status:200 payload:"OK" >\E`))
+		installCC.InstallChaincode("mytest", "1.0", "github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
 		Expect(peerRunner.Err()).To(gbytes.Say(`\QInstalled Chaincode [mytest] Version [1.0] to peer\E`))
 
 		By("list installed chaincode")

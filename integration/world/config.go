@@ -418,9 +418,7 @@ func (w *World) SetupChannel(d Deployment, peers []string) error {
 
 		p.ExecPath = d.Chaincode.ExecPath
 		p.GoPath = d.Chaincode.GoPath
-		adminRunner = p.InstallChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Chaincode.Path)
-		execute(adminRunner)
-		Expect(adminRunner.Err()).To(gbytes.Say(`\QInstalled remotely response:<status:200 payload:"OK" >\E`))
+		p.InstallChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Chaincode.Path)
 	}
 
 	p = w.Components.Peer()

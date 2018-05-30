@@ -10,7 +10,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
+	"github.com/hyperledger/fabric/integration/helpers"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
@@ -154,17 +159,21 @@ func (p *Peer) UpdateChannel(transactionFile string, channel string, orderer str
 	return r
 }
 
-func (p *Peer) InstallChaincode(name string, version string, path string) *ginkgomon.Runner {
+func (p *Peer) InstallChaincode(name, version, path string) {
 	cmd := exec.Command(p.Path, "chaincode", "install", "-n", name, "-v", version, "-p", path)
 	p.setupEnvironment(cmd)
 
-	r := ginkgomon.New(ginkgomon.Config{
-		Name:          "install",
-		AnsiColorCode: "4;34m",
-		Command:       cmd,
-	})
+	sess, err := helpers.StartSession(cmd, "install", "4;34m")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, time.Minute).Should(gexec.Exit(0))
 
-	return r
+	cmd = exec.Command(p.Path, "chaincode", "list", "--installed")
+	p.setupEnvironment(cmd)
+
+	sess, err = helpers.StartSession(cmd, "list", "4;33m")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, time.Minute).Should(gexec.Exit(0))
+	Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)))
 }
 
 func (p *Peer) InstantiateChaincode(name string, version string, orderer string, channel string, args string, policy string) *ginkgomon.Runner {
