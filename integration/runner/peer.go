@@ -176,17 +176,24 @@ func (p *Peer) InstallChaincode(name, version, path string) {
 	Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)))
 }
 
-func (p *Peer) InstantiateChaincode(name string, version string, orderer string, channel string, args string, policy string) *ginkgomon.Runner {
+func (p *Peer) InstantiateChaincode(name, version, orderer, channel, args, policy string) {
 	cmd := exec.Command(p.Path, "chaincode", "instantiate", "-n", name, "-v", version, "-o", orderer, "-C", channel, "-c", args, "-P", policy)
 	p.setupEnvironment(cmd)
 
-	r := ginkgomon.New(ginkgomon.Config{
-		Name:          "instantiate",
-		AnsiColorCode: "4;35m",
-		Command:       cmd,
-	})
+	sess, err := helpers.StartSession(cmd, "instantiate", "4;35m")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, time.Minute).Should(gexec.Exit(0))
 
-	return r
+	listInstantiated := func() *gbytes.Buffer {
+		cmd := exec.Command(p.Path, "chaincode", "list", "--instantiated", "-C", channel)
+		p.setupEnvironment(cmd)
+
+		sess, err := helpers.StartSession(cmd, "list instantiated", "4;34m")
+		ExpectWithOffset(1, err).NotTo(HaveOccurred())
+		EventuallyWithOffset(1, sess, 10*time.Second).Should(gexec.Exit(0))
+		return sess.Buffer()
+	}
+	EventuallyWithOffset(1, listInstantiated, time.Minute).Should(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)))
 }
 
 func (p *Peer) QueryChaincode(name string, channel string, args string) *ginkgomon.Runner {

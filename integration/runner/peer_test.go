@@ -194,29 +194,13 @@ var _ = Describe("Peer", func() {
 		Eventually(liProcess.Wait(), 10*time.Second).Should(Receive(BeNil()))
 		Expect(liRunner).To(gbytes.Say("Name: mytest, Version: 1.0,"))
 
-		By("instantiate channel")
+		By("instantiate chaincode")
 		instantiateCC := components.Peer()
 		instantiateCC.ConfigDir = tempDir
 		instantiateCC.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		instRunner := instantiateCC.InstantiateChaincode("mytest", "1.0", "127.0.0.1:8050", "mychan", `{"Args":["init","a","100","b","200"]}`, "")
-		instProcess := ifrit.Invoke(instRunner)
-		Eventually(instProcess.Ready(), 10*time.Second).Should(BeClosed())
-		Eventually(instProcess.Wait(), 10*time.Second).ShouldNot(Receive(BeNil()))
+		instantiateCC.InstantiateChaincode("mytest", "1.0", "127.0.0.1:8050", "mychan", `{"Args":["init","a","100","b","200"]}`, "")
 
 		By("list instantiated chaincode")
-		listInstantiated := func() *gbytes.Buffer {
-			listInstan := components.Peer()
-			listInstan.ConfigDir = tempDir
-			listInstan.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			linstRunner := listInstan.ChaincodeListInstantiated("mychan")
-			err := execute(linstRunner)
-			if err != nil {
-				return nil
-			}
-			return linstRunner.Buffer()
-		}
-		Eventually(listInstantiated, 90*time.Second, 500*time.Millisecond).Should(gbytes.Say("Name: mytest, Version: 1.0,"))
-
 		listInstan := components.Peer()
 		listInstan.ConfigDir = tempDir
 		listInstan.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")

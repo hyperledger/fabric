@@ -424,18 +424,7 @@ func (w *World) SetupChannel(d Deployment, peers []string) error {
 	p = w.Components.Peer()
 	p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	adminRunner = p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
-	execute(adminRunner)
-
-	listInstantiated := func() bool {
-		p = w.Components.Peer()
-		p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		adminRunner = p.ChaincodeListInstantiated(d.Channel)
-		execute(adminRunner)
-		return strings.Contains(string(adminRunner.Buffer().Contents()), fmt.Sprintf("Path: %s", d.Chaincode.Path))
-	}
-	Eventually(listInstantiated, 90*time.Second, 500*time.Millisecond).Should(BeTrue())
+	p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
 
 	return nil
 }
