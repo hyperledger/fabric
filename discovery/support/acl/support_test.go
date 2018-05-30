@@ -7,15 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package acl_test
 
 import (
-	"testing"
-
 	"math"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/discovery/support/acl"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
-	common2 "github.com/hyperledger/fabric/protos/common"
+	gmocks "github.com/hyperledger/fabric/peer/gossip/mocks"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -172,13 +173,13 @@ func TestEligibleForService(t *testing.T) {
 	e.EvaluateReturnsOnCall(1, nil)
 	chConfig := &mocks.ChanConfig{}
 	sup := acl.NewDiscoverySupport(v, e, chConfig)
-	err := sup.EligibleForService("mychannel", common2.SignedData{})
+	err := sup.EligibleForService("mychannel", cb.SignedData{})
 	assert.Equal(t, "verification failed", err.Error())
-	err = sup.EligibleForService("mychannel", common2.SignedData{})
+	err = sup.EligibleForService("mychannel", cb.SignedData{})
 	assert.NoError(t, err)
-	err = sup.EligibleForService("", common2.SignedData{})
+	err = sup.EligibleForService("", cb.SignedData{})
 	assert.Equal(t, "verification failed for local msp", err.Error())
-	err = sup.EligibleForService("", common2.SignedData{})
+	err = sup.EligibleForService("", cb.SignedData{})
 	assert.NoError(t, err)
 }
 
@@ -251,4 +252,54 @@ func TestSatisfiesPrincipal(t *testing.T) {
 		})
 
 	}
+}
+
+func TestChannelVerifier(t *testing.T) {
+	polMgr := &gmocks.ChannelPolicyManagerGetterWithManager{
+		Managers: map[string]policies.Manager{
+			"mychannel": &gmocks.ChannelPolicyManager{
+				Policy: &gmocks.Policy{
+					Deserializer: &gmocks.IdentityDeserializer{
+						Identity: []byte("Bob"), Msg: []byte("msg"),
+					},
+				},
+			},
+		},
+	}
+
+	verifier := &acl.ChannelVerifier{
+		Policy: "some policy string",
+		ChannelPolicyManagerGetter: polMgr,
+	}
+
+	t.Run("Valid channel, identity, signature", func(t *testing.T) {
+		err := verifier.VerifyByChannel("mychannel", &cb.SignedData{
+			Data:      []byte("msg"),
+			Identity:  []byte("Bob"),
+			Signature: []byte("msg"),
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("Invalid channel", func(t *testing.T) {
+		err := verifier.VerifyByChannel("notmychannel", &cb.SignedData{
+			Data:      []byte("msg"),
+			Identity:  []byte("Bob"),
+			Signature: []byte("msg"),
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "policy manager for channel notmychannel doesn't exist")
+	})
+
+	t.Run("Writers policy cannot be retrieved", func(t *testing.T) {
+		polMgr.Managers["mychannel"].(*gmocks.ChannelPolicyManager).Policy = nil
+		err := verifier.VerifyByChannel("mychannel", &cb.SignedData{
+			Data:      []byte("msg"),
+			Identity:  []byte("Bob"),
+			Signature: []byte("msg"),
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed obtaining channel application writers policy")
+	})
+
 }

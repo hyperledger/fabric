@@ -10,9 +10,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
-	common2 "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/common/policies"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
@@ -41,14 +40,14 @@ type Verifier interface {
 	// under a peer's verification key, but also in the context of a specific channel.
 	// If the verification succeeded, Verify returns nil meaning no error occurred.
 	// If peerIdentity is nil, then the verification fails.
-	VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
+	VerifyByChannel(channel string, sd *cb.SignedData) error
 }
 
 // Evaluator evaluates signatures.
 // It is used to evaluate signatures for the local MSP
 type Evaluator interface {
 	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-	Evaluate(signatureSet []*common2.SignedData) error
+	Evaluate(signatureSet []*cb.SignedData) error
 }
 
 // DiscoverySupport implements support that is used for service discovery
@@ -66,11 +65,11 @@ func NewDiscoverySupport(v Verifier, e Evaluator, chanConf ChannelConfigGetter) 
 
 // Eligible returns whether the given peer is eligible for receiving
 // service from the discovery service for a given channel
-func (s *DiscoverySupport) EligibleForService(channel string, data common2.SignedData) error {
+func (s *DiscoverySupport) EligibleForService(channel string, data cb.SignedData) error {
 	if channel == "" {
-		return s.Evaluate([]*common2.SignedData{&data})
+		return s.Evaluate([]*cb.SignedData{&data})
 	}
-	return s.VerifyByChannel(common.ChainID(channel), api.PeerIdentityType(data.Identity), data.Signature, data.Data)
+	return s.VerifyByChannel(channel, &data)
 }
 
 // ConfigSequence returns the configuration sequence of the given channel
@@ -140,4 +139,34 @@ func (s *DiscoverySupport) MSPOfPrincipal(principal *msp.MSPPrincipal) string {
 	}
 	logger.Warning("Received principal of unknown classification:", principal)
 	return ""
+}
+
+// NewChannelVerifier returns a new channel verifier from the given policy and policy manager getter
+func NewChannelVerifier(policy string, polMgr policies.ChannelPolicyManagerGetter) *ChannelVerifier {
+	return &ChannelVerifier{
+		Policy: policy,
+		ChannelPolicyManagerGetter: polMgr,
+	}
+}
+
+// ChannelVerifier verifies a signature and a message on the context of a channel
+type ChannelVerifier struct {
+	policies.ChannelPolicyManagerGetter
+	Policy string
+}
+
+// VerifyByChannel checks that signature is a valid signature of message
+// under a peer's verification key, but also in the context of a specific channel.
+// If the verification succeeded, Verify returns nil meaning no error occurred.
+// If peerIdentity is nil, then the verification fails.
+func (cv *ChannelVerifier) VerifyByChannel(channel string, sd *cb.SignedData) error {
+	mgr, _ := cv.Manager(channel)
+	if mgr == nil {
+		return errors.Errorf("policy manager for channel %s doesn't exist", channel)
+	}
+	pol, _ := mgr.GetPolicy(cv.Policy)
+	if pol == nil {
+		return errors.New("failed obtaining channel application writers policy")
+	}
+	return pol.Evaluate([]*cb.SignedData{sd})
 }

@@ -5,18 +5,15 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/discovery/support/acl"
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 type Verifier struct {
-	VerifyByChannelStub        func(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
+	VerifyByChannelStub        func(channel string, sd *cb.SignedData) error
 	verifyByChannelMutex       sync.RWMutex
 	verifyByChannelArgsForCall []struct {
-		chainID      common.ChainID
-		peerIdentity api.PeerIdentityType
-		signature    []byte
-		message      []byte
+		channel string
+		sd      *cb.SignedData
 	}
 	verifyByChannelReturns struct {
 		result1 error
@@ -28,29 +25,17 @@ type Verifier struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Verifier) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature []byte, message []byte) error {
-	var signatureCopy []byte
-	if signature != nil {
-		signatureCopy = make([]byte, len(signature))
-		copy(signatureCopy, signature)
-	}
-	var messageCopy []byte
-	if message != nil {
-		messageCopy = make([]byte, len(message))
-		copy(messageCopy, message)
-	}
+func (fake *Verifier) VerifyByChannel(channel string, sd *cb.SignedData) error {
 	fake.verifyByChannelMutex.Lock()
 	ret, specificReturn := fake.verifyByChannelReturnsOnCall[len(fake.verifyByChannelArgsForCall)]
 	fake.verifyByChannelArgsForCall = append(fake.verifyByChannelArgsForCall, struct {
-		chainID      common.ChainID
-		peerIdentity api.PeerIdentityType
-		signature    []byte
-		message      []byte
-	}{chainID, peerIdentity, signatureCopy, messageCopy})
-	fake.recordInvocation("VerifyByChannel", []interface{}{chainID, peerIdentity, signatureCopy, messageCopy})
+		channel string
+		sd      *cb.SignedData
+	}{channel, sd})
+	fake.recordInvocation("VerifyByChannel", []interface{}{channel, sd})
 	fake.verifyByChannelMutex.Unlock()
 	if fake.VerifyByChannelStub != nil {
-		return fake.VerifyByChannelStub(chainID, peerIdentity, signature, message)
+		return fake.VerifyByChannelStub(channel, sd)
 	}
 	if specificReturn {
 		return ret.result1
@@ -64,10 +49,10 @@ func (fake *Verifier) VerifyByChannelCallCount() int {
 	return len(fake.verifyByChannelArgsForCall)
 }
 
-func (fake *Verifier) VerifyByChannelArgsForCall(i int) (common.ChainID, api.PeerIdentityType, []byte, []byte) {
+func (fake *Verifier) VerifyByChannelArgsForCall(i int) (string, *cb.SignedData) {
 	fake.verifyByChannelMutex.RLock()
 	defer fake.verifyByChannelMutex.RUnlock()
-	return fake.verifyByChannelArgsForCall[i].chainID, fake.verifyByChannelArgsForCall[i].peerIdentity, fake.verifyByChannelArgsForCall[i].signature, fake.verifyByChannelArgsForCall[i].message
+	return fake.verifyByChannelArgsForCall[i].channel, fake.verifyByChannelArgsForCall[i].sd
 }
 
 func (fake *Verifier) VerifyByChannelReturns(result1 error) {
