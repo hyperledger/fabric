@@ -7,17 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
-	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/hyperledger/fabric/integration/world"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -29,18 +26,12 @@ import (
 
 var _ = Describe("EndToEndACL", func() {
 	var (
-		client     *docker.Client
-		w          world.World
+		w          *world.World
 		deployment world.Deployment
+		org1Peer0  *runner.Peer
 	)
 
 	BeforeEach(func() {
-		var err error
-
-		client, err = docker.NewClientFromEnv()
-		Expect(err).NotTo(HaveOccurred())
-
-		// generating files to bootstrap the network
 		w = world.GenerateBasicConfig("solo", 2, 2, testDir, components)
 
 		// sets up the world for all tests
@@ -60,144 +51,84 @@ var _ = Describe("EndToEndACL", func() {
 		copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
 		copyPeerConfigs(w.PeerOrgs, w.Rootpath)
 		w.BuildNetwork()
-		err = w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
+		err := w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
 		Expect(err).NotTo(HaveOccurred())
+
+		org1Peer0 = components.Peer()
+		org1Peer0.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
+		org1Peer0.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	})
 
 	AfterEach(func() {
-		// Stop the running chaincode containers
-		filters := map[string][]string{}
-		filters["name"] = []string{fmt.Sprintf("%s-%s", deployment.Chaincode.Name, deployment.Chaincode.Version)}
-		allContainers, _ := client.ListContainers(docker.ListContainersOptions{
-			Filters: filters,
-		})
-		if len(allContainers) > 0 {
-			for _, container := range allContainers {
-				client.RemoveContainer(docker.RemoveContainerOptions{
-					ID:    container.ID,
-					Force: true,
-				})
-			}
-		}
-
-		// Remove chaincode image
-		filters = map[string][]string{}
-		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", deployment.Chaincode.Name)}
-		images, _ := client.ListImages(docker.ListImagesOptions{
-			Filters: filters,
-		})
-		if len(images) > 0 {
-			for _, image := range images {
-				client.RemoveImage(image.ID)
-			}
-		}
-
-		// Stop the orderers and peers
-		for _, localProc := range w.LocalProcess {
-			localProc.Signal(syscall.SIGTERM)
-			Eventually(localProc.Wait(), 5*time.Second).Should(Receive())
-			localProc.Signal(syscall.SIGKILL)
-			Eventually(localProc.Wait(), 5*time.Second).Should(Receive())
-		}
-
-		// Remove any started networks
-		if w.Network != nil {
-			client.RemoveNetwork(w.Network.Name)
-		}
+		w.Close(deployment)
 	})
 
-	It("tests ACL policies", func() {
-		Context("when the ACL policy for DeliverFiltered is satisified", func() {
-			By("setting the filtered block event ACL policy to Org1/Admins")
-			policyName := resources.Event_FilteredBlock
-			policy := "/Channel/Application/Org1/Admins"
-			SetACLPolicy(&w, &deployment, policyName, policy)
+	It("enforces access control list policies", func() {
+		//
+		// when the ACL policy for DeliverFiltered is satisified
+		//
+		By("setting the filtered block event ACL policy to Org1/Admins")
+		policyName := resources.Event_FilteredBlock
+		policy := "/Channel/Application/Org1/Admins"
+		SetACLPolicy(w, deployment, policyName, policy)
 
-			By("waiting for the transaction to commit to the ledger using an Org1 Admin identity")
-			adminPeer := components.Peer()
-			adminPeer.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
-			adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+		By("invoking chaincode as a permitted Org1 Admin identity")
+		adminRunner := org1Peer0.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
+		execute(adminRunner)
+		Eventually(adminRunner.Err()).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-			adminRunner := adminPeer.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
-			execute(adminRunner)
-			Eventually(adminRunner.Err()).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
-		})
+		//
+		// when the ACL policy for DeliverFiltered is not satisifed
+		//
+		By("setting the filtered block event ACL policy to Org2/Admins")
+		policyName = resources.Event_FilteredBlock
+		policy = "/Channel/Application/Org2/Admins"
+		SetACLPolicy(w, deployment, policyName, policy)
 
-		Context("when the ACL policy for DeliverFiltered is not satisifed", func() {
-			By("setting the filtered block event ACL policy to Org2/Admins")
-			policyName := resources.Event_FilteredBlock
-			policy := "/Channel/Application/Org2/Admins"
-			SetACLPolicy(&w, &deployment, policyName, policy)
+		By("invoking chaincode as a forbidden Org1 Admin identity")
+		adminRunner = org1Peer0.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
+		execute(adminRunner)
+		Eventually(adminRunner.Err()).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
 
-			By("waiting for the transaction to commit to the ledger using an Org1 Admin identity")
-			adminPeer := components.Peer()
-			adminPeer.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
-			adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+		//
+		// when the ACL policy for Deliver is satisfied
+		//
+		By("setting the block event ACL policy to Org1/Admins")
+		policyName = resources.Event_Block
+		policy = "/Channel/Application/Org1/Admins"
+		SetACLPolicy(w, deployment, policyName, policy)
 
-			adminRunner := adminPeer.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
-			execute(adminRunner)
-			Eventually(adminRunner.Err()).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
-		})
+		By("setting the log level for deliver to debug")
+		lRunner := org1Peer0.SetLogLevel("common/deliver", "debug")
+		execute(lRunner)
+		Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': DEBUG"))
 
-		Context("when the ACL policy for Deliver is satisfied", func() {
-			By("setting the block event ACL policy to Org1/Admins")
-			policyName := resources.Event_Block
-			policy := "/Channel/Application/Org1/Admins"
-			SetACLPolicy(&w, &deployment, policyName, policy)
+		By("fetching the latest block from the peer as a permitted Org1 Admin identity")
+		fRunner := org1Peer0.FetchChannel(deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
+		execute(fRunner)
+		Expect(fRunner.Err()).To(gbytes.Say("Received block: "))
+		// TODO - enable this once the peer's logs are available here
+		// Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: testchannel] Done delivering \E`))
 
-			By("setting the log level for deliver to debug")
-			logRun := w.Components.Peer()
-			logRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-			logRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			lRunner := logRun.SetLogLevel("common/deliver", "debug")
-			execute(lRunner)
-			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': DEBUG"))
+		//
+		// when the ACL policy for Deliver is not satisifed
+		//
+		By("setting the block event ACL policy to Org2/Admins")
+		policyName = resources.Event_Block
+		policy = "/Channel/Application/Org2/Admins"
+		SetACLPolicy(w, deployment, policyName, policy)
 
-			By("fetching the latest block from the peer")
-			fetchRun := w.Components.Peer()
-			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-			fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			fRunner := fetchRun.FetchChannel(deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
-			execute(fRunner)
-			Expect(fRunner.Err()).To(gbytes.Say("Received block: "))
-			// TODO - enable this once the peer's logs are available here
-			// Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: testchannel] Done delivering \E`))
+		By("fetching the latest block from the peer as a forbidden Org1 Admin identity")
+		fRunner = org1Peer0.FetchChannel(deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
+		execute(fRunner)
+		Expect(fRunner.Err()).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
+		// TODO - enable this once the peer's logs are available here
+		// Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: testchannel] Done delivering \Q`))
 
-			By("setting the log level for deliver to back to info")
-			lRunner = logRun.SetLogLevel("common/deliver", "info")
-			execute(lRunner)
-			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
-		})
-
-		Context("tests when the ACL policy for Deliver is not satisifed", func() {
-			By("setting the block event ACL policy to Org2/Admins")
-			policyName := resources.Event_Block
-			policy := "/Channel/Application/Org2/Admins"
-			SetACLPolicy(&w, &deployment, policyName, policy)
-
-			By("setting the log level for deliver to debug")
-			logRun := w.Components.Peer()
-			logRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-			logRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			lRunner := logRun.SetLogLevel("common/deliver", "debug")
-			execute(lRunner)
-			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': DEBUG"))
-
-			By("fetching the latest block from the peer")
-			fetchRun := w.Components.Peer()
-			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-			fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			fRunner := fetchRun.FetchChannel(deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
-			execute(fRunner)
-			Expect(fRunner.Err()).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
-			// TODO - enable this once the peer's logs are available here
-			// Expect(peerRunner.Err()).To(gbytes.Say(`\Q[channel: testchannel] Done delivering \Q`))
-
-			By("setting the log level for deliver to back to info")
-			lRunner = logRun.SetLogLevel("common/deliver", "info")
-			execute(lRunner)
-			Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
-		})
+		By("setting the log level for deliver to back to info")
+		lRunner = org1Peer0.SetLogLevel("common/deliver", "info")
+		execute(lRunner)
+		Expect(lRunner.Err()).To(gbytes.Say("Log level set for peer modules matching regular expression 'common/deliver': INFO"))
 	})
 })
 
@@ -205,7 +136,7 @@ var _ = Describe("EndToEndACL", func() {
 // previously defined ACL policies. It performs the generation of the config update,
 // signs the configuration with Org2's signer, and then submits the config update
 // using Org1
-func SetACLPolicy(w *world.World, deployment *world.Deployment, policyName, policy string) {
+func SetACLPolicy(w *world.World, deployment world.Deployment, policyName, policy string) {
 	outputFile := filepath.Join(testDir, "updated_config.pb")
 	GenerateACLConfigUpdate(w, deployment, policyName, policy, outputFile)
 
@@ -218,7 +149,7 @@ func SetACLPolicy(w *world.World, deployment *world.Deployment, policyName, poli
 	SendConfigUpdate(deployment, outputFile, sendConfigDir, sendMSPConfigPath)
 }
 
-func GenerateACLConfigUpdate(w *world.World, deployment *world.Deployment, policyName, policy, outputFile string) {
+func GenerateACLConfigUpdate(w *world.World, deployment world.Deployment, policyName, policy, outputFile string) {
 	// fetch the config block
 	fetchRun := components.Peer()
 	fetchRun.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
@@ -300,7 +231,7 @@ func SignConfigUpdate(w *world.World, outputFile, configDir, mspConfigPath strin
 	Expect(err).To(BeNil())
 }
 
-func SendConfigUpdate(deployment *world.Deployment, outputFile, configDir, mspConfigPath string) {
+func SendConfigUpdate(deployment world.Deployment, outputFile, configDir, mspConfigPath string) {
 	updateRun := components.Peer()
 	updateRun.ConfigDir = configDir
 	updateRun.MSPConfigPath = mspConfigPath

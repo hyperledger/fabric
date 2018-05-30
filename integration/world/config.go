@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/template"
@@ -65,6 +66,7 @@ type World struct {
 	Idemixgen          runner.Idemixgen
 	SystemChannel      string
 
+	DockerClient  *docker.Client
 	LocalStoppers []Stopper
 	LocalProcess  []ifrit.Process
 }
@@ -85,14 +87,8 @@ type Deployment struct {
 	Orderer   string
 }
 
-func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir string, components *Components) (w World) {
-	var (
-		err     error
-		client  *docker.Client
-		network *docker.Network
-	)
-
-	client, err = docker.NewClientFromEnv()
+func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir string, components *Components) (w *World) {
+	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
 	pOrg := []*localconfig.Organization{}
@@ -194,7 +190,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 
 	// Create a network
 	networkName := runner.UniqueName()
-	network, err = client.CreateNetwork(
+	network, err := client.CreateNetwork(
 		docker.CreateNetworkOptions{
 			Name:   networkName,
 			Driver: "bridge",
@@ -207,7 +203,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 		Output: filepath.Join(testDir, "crypto"),
 	}
 
-	w = World{
+	w = &World{
 		Rootpath:           testDir,
 		Components:         components,
 		Cryptogen:          crypto,
@@ -218,6 +214,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 		OrdererProfileName: "TwoOrgsOrdererGenesis",
 		ChannelProfileName: "TwoOrgsChannel",
 		Profiles:           profiles,
+		DockerClient:       client,
 	}
 	return w
 }
@@ -427,4 +424,57 @@ func (w *World) SetupChannel(d Deployment, peers []string) error {
 	p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
 
 	return nil
+}
+
+func (w *World) Close(deployments ...Deployment) {
+	if w.DockerClient == nil {
+		client, err := docker.NewClientFromEnv()
+		Expect(err).NotTo(HaveOccurred())
+		w.DockerClient = client
+	}
+
+	// Stop the orderers and peers
+	for _, localProc := range w.LocalProcess {
+		localProc.Signal(syscall.SIGTERM)
+	}
+	for _, localProc := range w.LocalProcess {
+		localProc.Signal(syscall.SIGKILL)
+	}
+
+	// Stop the docker constainers for zookeeper and kafka
+	for _, cont := range w.LocalStoppers {
+		cont.Stop()
+	}
+
+	for _, deployment := range deployments {
+		w.cleanupDeployment(deployment)
+	}
+
+	if w.Network != nil {
+		w.DockerClient.RemoveNetwork(w.Network.Name)
+	}
+}
+
+func (w *World) cleanupDeployment(d Deployment) {
+	// cleanup containers
+	containers, err := w.DockerClient.ListContainers(docker.ListContainersOptions{
+		Filters: map[string][]string{
+			"name": []string{fmt.Sprintf("%s-%s", d.Chaincode.Name, d.Chaincode.Version)},
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+	for _, container := range containers {
+		w.DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
+	}
+
+	// cleanup images
+	images, err := w.DockerClient.ListImages(docker.ListImagesOptions{
+		Filters: map[string][]string{
+			"label": []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", d.Chaincode.Name)},
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+	for _, image := range images {
+		w.DockerClient.RemoveImage(image.ID)
+	}
 }

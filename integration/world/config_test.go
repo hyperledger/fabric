@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -40,51 +39,8 @@ var _ = Describe("Config", func() {
 	})
 
 	AfterEach(func() {
+		w.Close()
 		os.RemoveAll(tempDir)
-
-		// Stop the docker constainers for zookeeper and kafka
-		for _, cont := range w.LocalStoppers {
-			cont.Stop()
-		}
-
-		// Stop the running chaincode containers
-		// We should not need to find the chaincode containers to remove. Opened FAB-10044 to track the cleanup of chaincode.
-		// Remove this once this is fixed.
-		filters := map[string][]string{}
-		filters["name"] = []string{fmt.Sprintf("%s-%s", deployment.Chaincode.Name, deployment.Chaincode.Version)}
-		allContainers, _ := client.ListContainers(docker.ListContainersOptions{
-			Filters: filters,
-		})
-		if len(allContainers) > 0 {
-			for _, container := range allContainers {
-				client.RemoveContainer(docker.RemoveContainerOptions{
-					ID:    container.ID,
-					Force: true,
-				})
-			}
-		}
-
-		// Remove chaincode image
-		filters = map[string][]string{}
-		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", deployment.Chaincode.Name)}
-		images, _ := client.ListImages(docker.ListImagesOptions{
-			Filters: filters,
-		})
-		if len(images) > 0 {
-			for _, image := range images {
-				client.RemoveImage(image.ID)
-			}
-		}
-
-		// Stop the orderers and peers
-		for _, localProc := range w.LocalProcess {
-			localProc.Signal(syscall.SIGTERM)
-		}
-
-		// Remove any started networks
-		if w.Network != nil {
-			client.RemoveNetwork(w.Network.Name)
-		}
 	})
 
 	It("creates the crypto config file for use with cryptogen", func() {
