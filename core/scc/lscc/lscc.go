@@ -742,7 +742,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		// 2. check local MSP Admins policy
 		if err = lscc.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
-			return shim.Error(fmt.Sprintf("Authorization for INSTALL has been denied (error-%s)", err))
+			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", function, err))
 		}
 
 		depSpec := args[1]
@@ -849,12 +849,12 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			resource = resources.Lscc_GetChaincodeData
 		}
 		if err = lscc.aclProvider.CheckACL(resource, channel, sp); err != nil {
-			return shim.Error(fmt.Sprintf("Authorization request failed %s: %s", channel, err))
+			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: %s", function, channel, err))
 		}
 
 		cdbytes, err := lscc.getCCInstance(stub, ccname)
 		if err != nil {
-			logger.Errorf("error getting chaincode %s on channel: %s(err:%s)", ccname, channel, err)
+			logger.Errorf("error getting chaincode %s on channel [%s]: %s", ccname, channel, err)
 			return shim.Error(err.Error())
 		}
 
@@ -880,7 +880,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		if err = lscc.aclProvider.CheckACL(resources.Lscc_GetInstantiatedChaincodes, stub.GetChannelID(), sp); err != nil {
-			return shim.Error(fmt.Sprintf("Authorization for GETCHAINCODES on channel %s has been denied with error %s", args[0], err))
+			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: %s", function, stub.GetChannelID(), err))
 		}
 
 		return lscc.getChaincodes(stub)
@@ -891,7 +891,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		// 2. check local MSP Admins policy
 		if err = lscc.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
-			return shim.Error(fmt.Sprintf("Authorization for GETINSTALLEDCHAINCODES on channel %s has been denied with error %s", args[0], err))
+			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", function, err))
 		}
 
 		return lscc.getInstalledChaincodes()

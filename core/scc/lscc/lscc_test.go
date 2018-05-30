@@ -124,7 +124,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "", "0", path, false, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "1{}0", path, false, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "0", path, true, InvalidStatedbArtifactsErr("").Error(), "Alice", scc, stub)
-	testInstall(t, "example02", "0", path, false, "Authorization for INSTALL has been denied", "Bob", scc, stub)
+	testInstall(t, "example02", "0", path, false, "access denied for [install]", "Bob", scc, stub)
 	testInstall(t, "example02-2", "1.0-alpha+001", path, false, "", "Alice", scc, stub)
 	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, false, "", "Alice", scc, stub)
 
@@ -640,21 +640,23 @@ func TestFunctionsWithAliases(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 
 	testInvoke := func(function, resource string) {
-		res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1")}, nil)
-		assert.NotEqual(t, int32(shim.OK), res.Status)
-		assert.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
+		t.Run(function, func(t *testing.T) {
+			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1")}, nil)
+			assert.NotEqual(t, int32(shim.OK), res.Status)
+			assert.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
 
-		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(errors.New("bonanza"))
-		res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("chaincode")}, sProp)
-		assert.NotEqual(t, int32(shim.OK), res.Status, res.Message)
-		assert.Contains(t, res.Message, "Authorization request failed testchannel1: bonanza")
+			mockAclProvider.Reset()
+			mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(errors.New("bonanza"))
+			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("chaincode")}, sProp)
+			assert.NotEqual(t, int32(shim.OK), res.Status, res.Message)
+			assert.Equal(t, fmt.Sprintf("access denied for [%s][testchannel1]: bonanza", function), res.Message)
 
-		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(nil)
-		res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("nonexistentchaincode")}, sProp)
-		assert.NotEqual(t, int32(shim.OK), res.Status, res.Message)
-		assert.Equal(t, res.Message, "could not find chaincode with name 'nonexistentchaincode'")
+			mockAclProvider.Reset()
+			mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(nil)
+			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("nonexistentchaincode")}, sProp)
+			assert.NotEqual(t, int32(shim.OK), res.Status, res.Message)
+			assert.Equal(t, res.Message, "could not find chaincode with name 'nonexistentchaincode'")
+		})
 	}
 
 	testInvoke("getid", "lscc/ChaincodeExists")
@@ -686,7 +688,7 @@ func TestGetChaincodes(t *testing.T) {
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(errors.New("coyote"))
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
 			assert.NotEqual(t, int32(shim.OK), res.Status)
-			assert.Regexp(t, "Authorization for GETCHAINCODES on channel(.*)coyote", res.Message)
+			assert.Regexp(t, `access denied for \[`+function+`\]\[test\](.*)coyote`, res.Message)
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(nil)
@@ -726,7 +728,7 @@ func TestGetInstalledChaincodes(t *testing.T) {
 
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
 			assert.NotEqual(t, int32(shim.OK), res.Status)
-			assert.Contains(t, res.Message, "Authorization for GETINSTALLEDCHAINCODES")
+			assert.Contains(t, res.Message, "access denied for ["+function+"]")
 
 			sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 			identityDeserializer.Msg = sProp.ProposalBytes
