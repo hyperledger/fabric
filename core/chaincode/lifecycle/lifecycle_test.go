@@ -4,13 +4,13 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode_test
+package lifecycle_test
 
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/mock"
+	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -26,14 +26,14 @@ var _ = Describe("Lifecycle", func() {
 		signedProp   *pb.SignedProposal
 		proposal     *pb.Proposal
 
-		lifecycle *chaincode.Lifecycle
+		lifecycle *lc.Lifecycle
 	)
 
 	BeforeEach(func() {
 		fakeExecutor = &mock.Executor{}
 		signedProp = &pb.SignedProposal{ProposalBytes: []byte("some-proposal-bytes")}
 		proposal = &pb.Proposal{Payload: []byte("some-payload-bytes")}
-		lifecycle = &chaincode.Lifecycle{
+		lifecycle = &lc.Lifecycle{
 			Executor: fakeExecutor,
 		}
 	})

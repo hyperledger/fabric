@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
+	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -74,7 +75,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		}
 		fakeExecutor = &mock.Executor{}
 		fakeExecutor.ExecuteReturns(cdsResponse, nil, nil)
-		lifecycle := &chaincode.Lifecycle{
+		lifecycle := &lc.Lifecycle{
 			Executor: fakeExecutor,
 		}
 
