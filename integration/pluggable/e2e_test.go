@@ -16,8 +16,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/hyperledger/fabric/integration/world"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,148 +25,17 @@ import (
 
 var _ = Describe("EndToEnd", func() {
 	var (
-		testdataDir string
-		client      *docker.Client
-		network     *docker.Network
-		w           world.World
+		client     *docker.Client
+		network    *docker.Network
+		w          world.World
+		deployment world.Deployment
 	)
 
 	BeforeEach(func() {
 		var err error
 
-		testdataDir, err = filepath.Abs("testdata")
-		Expect(err).NotTo(HaveOccurred())
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
-
-		pOrg := []*localconfig.Organization{{
-			Name:   "Org1",
-			ID:     "Org1MSP",
-			MSPDir: "crypto/peerOrganizations/org1.example.com/msp",
-			AnchorPeers: []*localconfig.AnchorPeer{{
-				Host: "0.0.0.0",
-				Port: 7051,
-			}},
-		}, {
-			Name:   "Org2",
-			ID:     "Org2MSP",
-			MSPDir: "crypto/peerOrganizations/org2.example.com/msp",
-			AnchorPeers: []*localconfig.AnchorPeer{{
-				Host: "0.0.0.0",
-				Port: 8051,
-			}},
-		}}
-
-		ordererOrgs := world.OrdererConfig{
-			OrganizationName: "OrdererOrg",
-			Domain:           "example.com",
-			OrdererNames:     []string{"orderer"},
-			BrokerCount:      0,
-		}
-
-		peerOrgs := []world.PeerOrgConfig{{
-			OrganizationName: pOrg[0].Name,
-			Domain:           "org1.example.com",
-			EnableNodeOUs:    false,
-			UserCount:        1,
-			PeerCount:        1,
-		}, {
-			OrganizationName: pOrg[1].Name,
-			Domain:           "org2.example.com",
-			EnableNodeOUs:    false,
-			UserCount:        1,
-			PeerCount:        1,
-		}}
-
-		oOrg := []*localconfig.Organization{{
-			Name:   ordererOrgs.OrganizationName,
-			ID:     "OrdererMSP",
-			MSPDir: filepath.Join("crypto", "ordererOrganizations", "example.com", "orderers", "orderer.example.com", "msp"),
-		}}
-
-		deployment := world.Deployment{
-			SystemChannel: "systestchannel",
-			Channel:       "testchannel",
-			Chaincode: world.Chaincode{
-				Name:     "mycc",
-				Version:  "1.0",
-				Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				ExecPath: os.Getenv("PATH"),
-			},
-			InitArgs: `{"Args":["init","a","100","b","200"]}`,
-			Peers:    []string{"peer0.org1.example.com", "peer0.org2.example.com"},
-			Policy:   `OR ('Org1MSP.member','Org2MSP.member')`,
-			Orderer:  "127.0.0.1:7050",
-		}
-
-		peerProfile := localconfig.Profile{
-			Consortium: "SampleConsortium",
-			Application: &localconfig.Application{
-				Organizations: pOrg,
-				Capabilities: map[string]bool{
-					"V1_2": true,
-				},
-			},
-			Capabilities: map[string]bool{
-				"V1_1": true,
-			},
-		}
-
-		orderer := &localconfig.Orderer{
-			BatchTimeout: 1 * time.Second,
-			BatchSize: localconfig.BatchSize{
-				MaxMessageCount:   1,
-				AbsoluteMaxBytes:  (uint32)(98 * 1024 * 1024),
-				PreferredMaxBytes: (uint32)(512 * 1024),
-			},
-			Kafka: localconfig.Kafka{
-				Brokers: []string{
-					"127.0.0.1:9092",
-					"127.0.0.1:8092",
-					"127.0.0.1:7092",
-					"127.0.0.1:6092",
-				},
-			},
-			Organizations: oOrg,
-			OrdererType:   "solo",
-			Addresses:     []string{"0.0.0.0:7050"},
-			Capabilities:  map[string]bool{"V1_1": true},
-		}
-
-		ordererProfile := localconfig.Profile{
-			Application: &localconfig.Application{
-				Organizations: oOrg,
-				Capabilities:  map[string]bool{"V1_2": true}},
-			Orderer: orderer,
-			Consortiums: map[string]*localconfig.Consortium{
-				"SampleConsortium": &localconfig.Consortium{
-					Organizations: append(oOrg, pOrg...),
-				},
-			},
-			Capabilities: map[string]bool{"V1_1": true},
-		}
-
-		profiles := map[string]localconfig.Profile{
-			"TwoOrgsOrdererGenesis": ordererProfile,
-			"TwoOrgsChannel":        peerProfile,
-		}
-
-		crypto := runner.Cryptogen{
-			Config: filepath.Join(testDir, "crypto.yaml"),
-			Output: filepath.Join(testDir, "crypto"),
-		}
-
-		w = world.World{
-			Rootpath:           testDir,
-			Components:         components,
-			Cryptogen:          crypto,
-			Deployment:         deployment,
-			OrdererOrgs:        []world.OrdererConfig{ordererOrgs},
-			PeerOrgs:           peerOrgs,
-			OrdererProfileName: "TwoOrgsOrdererGenesis",
-			ChannelProfileName: "TwoOrgsChannel",
-			Profiles:           profiles,
-		}
 	})
 
 	AfterEach(func() {
@@ -179,7 +46,7 @@ var _ = Describe("EndToEnd", func() {
 
 		// Stop the running chaincode containers
 		filters := map[string][]string{}
-		filters["name"] = []string{fmt.Sprintf("%s-%s", w.Deployment.Chaincode.Name, w.Deployment.Chaincode.Version)}
+		filters["name"] = []string{fmt.Sprintf("%s-%s", deployment.Chaincode.Name, deployment.Chaincode.Version)}
 		allContainers, _ := client.ListContainers(docker.ListContainersOptions{
 			Filters: filters,
 		})
@@ -194,7 +61,7 @@ var _ = Describe("EndToEnd", func() {
 
 		// Remove chaincode image
 		filters = map[string][]string{}
-		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", w.Deployment.Chaincode.Name)}
+		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", deployment.Chaincode.Name)}
 		images, _ := client.ListImages(docker.ListImagesOptions{
 			Filters: filters,
 		})
@@ -215,28 +82,25 @@ var _ = Describe("EndToEnd", func() {
 		}
 	})
 
-	It("executes a basic solo network with 2 orgs", func() {
-		By("generating files to bootstrap the network")
-		w.BootstrapNetwork()
-		Expect(filepath.Join(testDir, "configtx.yaml")).To(BeARegularFile())
-		Expect(filepath.Join(testDir, "crypto.yaml")).To(BeARegularFile())
-		Expect(filepath.Join(testDir, "crypto", "peerOrganizations")).To(BeADirectory())
-		Expect(filepath.Join(testDir, "crypto", "ordererOrganizations")).To(BeADirectory())
-		Expect(filepath.Join(testDir, "systestchannel_block.pb")).To(BeARegularFile())
-		Expect(filepath.Join(testDir, "testchannel_tx.pb")).To(BeARegularFile())
-		Expect(filepath.Join(testDir, "Org1_anchors_update_tx.pb")).To(BeARegularFile())
-		Expect(filepath.Join(testDir, "Org2_anchors_update_tx.pb")).To(BeARegularFile())
+	It("executes a basic solo network with specified plugins", func() {
+		By("generating a basic config")
+		w = world.GenerateBasicConfig("solo", 1, 2, testDir, components)
 
-		By("setting up directories for the network")
-		copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
-		copyPeerConfigs(w.PeerOrgs, w.Rootpath)
+		deployment = world.Deployment{
+			Channel: "testchannel",
+			Chaincode: world.Chaincode{
+				Name:     "mycc",
+				Version:  "0.0",
+				Path:     filepath.Join("github.com", "hyperledger", "fabric", "integration", "chaincode", "simple", "cmd"),
+				ExecPath: os.Getenv("PATH"),
+			},
+			InitArgs: `{"Args":["init","a","100","b","200"]}`,
+			Policy:   `OR ('Org1MSP.member','Org2MSP.member')`,
+			Orderer:  "127.0.0.1:7050",
+		}
 
-		By("building the network")
-		w.BuildNetwork()
-
-		By("setting up the channel")
-		err := w.SetupChannel()
-		Expect(err).NotTo(HaveOccurred())
+		By("setting up the network")
+		w.SetupWorld(deployment)
 
 		// count peers
 		peerCount := 0
@@ -252,27 +116,27 @@ var _ = Describe("EndToEnd", func() {
 		By("querying the chaincode")
 		adminPeer := components.Peer()
 		adminPeer.LogLevel = "debug"
-		adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
+		adminPeer.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
 		adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		adminRunner := adminPeer.QueryChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["query","a"]}`)
+		adminRunner := adminPeer.QueryChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["query","a"]}`)
 		execute(adminRunner)
 		Eventually(adminRunner.Buffer()).Should(gbytes.Say("100"))
 
 		By("invoking the chaincode")
-		adminRunner = adminPeer.InvokeChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["invoke","a","b","10"]}`, w.Deployment.Orderer)
+		adminRunner = adminPeer.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer)
 		execute(adminRunner)
 		Eventually(adminRunner.Err()).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 		By("querying the chaincode again")
-		adminRunner = adminPeer.QueryChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["query","a"]}`)
+		adminRunner = adminPeer.QueryChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["query","a"]}`)
 		execute(adminRunner)
 		Eventually(adminRunner.Buffer()).Should(gbytes.Say("90"))
 
 		By("updating the channel")
 		adminPeer = components.Peer()
-		adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
+		adminPeer.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
 		adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		adminRunner = adminPeer.UpdateChannel(filepath.Join(testDir, "Org1_anchors_update_tx.pb"), w.Deployment.Channel, w.Deployment.Orderer)
+		adminRunner = adminPeer.UpdateChannel(filepath.Join(testDir, "Org1_anchors_update_tx.pb"), deployment.Channel, deployment.Orderer)
 		execute(adminRunner)
 		Eventually(adminRunner.Err()).Should(gbytes.Say("Successfully submitted channel update"))
 	})

@@ -9,6 +9,7 @@ package world
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -135,4 +136,20 @@ func execute(r ifrit.Runner) {
 	p := ifrit.Invoke(r)
 	EventuallyWithOffset(1, p.Ready(), 2*time.Second).Should(BeClosed())
 	EventuallyWithOffset(1, p.Wait(), 45*time.Second).Should(Receive(BeNil()))
+}
+
+func (w *World) SetupWorld(d Deployment) {
+	w.BootstrapNetwork(d.Channel)
+	copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(w.Rootpath, "orderer.yaml"))
+	copyPeerConfigs(w.PeerOrgs, w.Rootpath)
+	w.BuildNetwork()
+
+	peers := []string{}
+	for _, peerOrg := range w.PeerOrgs {
+		for peer := 0; peer < peerOrg.PeerCount; peer++ {
+			peers = append(peers, fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain))
+		}
+	}
+	err := w.SetupChannel(d, peers)
+	Expect(err).NotTo(HaveOccurred())
 }
