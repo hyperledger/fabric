@@ -133,6 +133,8 @@ type MSPPrincipal struct {
 	// For the ByOrganizationUnit/ByIdentity values of Classification,
 	// PolicyPrincipal acquires its value from an organization unit or
 	// identity, respectively.
+	// For the Combined Classification type, the Principal is a marshalled
+	// CombinedPrincipal.
 	Principal []byte `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
 }
 

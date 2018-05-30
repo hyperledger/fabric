@@ -78,6 +78,8 @@ message MSPPrincipal {
     // For the ByOrganizationUnit/ByIdentity values of Classification,
     // PolicyPrincipal acquires its value from an organization unit or
     // identity, respectively.
+    // For the Combined Classification type, the Principal is a marshalled
+    // CombinedPrincipal.
     bytes principal = 2;
 }
 

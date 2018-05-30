@@ -116,14 +116,16 @@ func TestInvalidMSPWithNodeOUAndOrganizationalUnits(t *testing.T) {
 	// OU_common in their OUs.
 	thisMSP, err := getLocalMSPWithVersionAndError(t, "testdata/nodeous7", MSPv1_1)
 	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "could not validate identity's OUs: none of the identity's organizational units")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "could not validate identity's OUs: none of the identity's organizational units")
+	}
 
 	// MSPv1_0 should fail as well
 	thisMSP, err = getLocalMSPWithVersionAndError(t, "testdata/nodeous7", MSPv1_0)
 	assert.False(t, thisMSP.(*bccspmsp).ouEnforcement)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "could not validate identity's OUs: none of the identity's organizational units")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "could not validate identity's OUs: none of the identity's organizational units")
+	}
 }
 
 func TestInvalidAdminOU(t *testing.T) {
