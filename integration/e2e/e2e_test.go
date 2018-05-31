@@ -42,7 +42,7 @@ var _ = Describe("EndToEnd", func() {
 				ExecPath: os.Getenv("PATH"),
 			},
 			InitArgs: `{"Args":["init","a","100","b","200"]}`,
-			Policy:   `OR ('Org1MSP.member','Org2MSP.member')`,
+			Policy:   `AND ('Org1MSP.member','Org2MSP.member')`,
 			Orderer:  "127.0.0.1:7050",
 		}
 	})
@@ -79,7 +79,7 @@ var _ = Describe("EndToEnd", func() {
 			w.BuildNetwork()
 
 			By("setting up the channel")
-			w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
+			w.SetupChannel(deployment, w.PeerIDs())
 
 			RunQueryInvokeQuery(w, deployment)
 		})
@@ -108,7 +108,15 @@ func RunQueryInvokeQuery(w *world.World, deployment world.Deployment) {
 	Eventually(adminRunner.Buffer()).Should(gbytes.Say("100"))
 
 	By("invoking the chaincode")
-	adminRunner = adminPeer.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
+	adminRunner = adminPeer.InvokeChaincode(
+		deployment.Chaincode.Name,
+		deployment.Channel,
+		`{"Args":["invoke","a","b","10"]}`,
+		deployment.Orderer,
+		"--waitForEvent",
+		"--peerAddresses", "127.0.0.1:7051",
+		"--peerAddresses", "127.0.0.1:8051",
+	)
 	execute(adminRunner)
 	Eventually(adminRunner.Err()).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
