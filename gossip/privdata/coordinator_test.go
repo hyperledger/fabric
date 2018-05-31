@@ -293,8 +293,7 @@ func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall
 	}
 }
 
-func (f *fetcherMock) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error) {
-	fmt.Println("XXX: Expected endorsers", f.expectedEndorsers)
+func (f *fetcherMock) fetch(dig2src dig2sources, _ uint64) (*FetchedPvtDataContainer, error) {
 	for _, endorsements := range dig2src {
 		for _, endorsement := range endorsements {
 			_, exists := f.expectedEndorsers[string(endorsement.Endorser)]
@@ -309,7 +308,7 @@ func (f *fetcherMock) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error
 	assert.Empty(f.t, f.expectedEndorsers)
 	args := f.Called(dig2src)
 	if args.Get(1) == nil {
-		return args.Get(0).([]*proto.PvtDataElement), nil
+		return args.Get(0).(*FetchedPvtDataContainer), nil
 	}
 	return nil, args.Get(1).(error)
 }
@@ -821,15 +820,17 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		{
 			TxId: "tx1", Namespace: "ns1", Collection: "c1", BlockSeq: 1,
 		},
-	}).expectingEndorsers("org1").Return([]*proto.PvtDataElement{
-		{
-			Digest: &proto.PvtDataDigest{
-				BlockSeq:   1,
-				Collection: "c1",
-				Namespace:  "ns1",
-				TxId:       "tx1",
+	}).expectingEndorsers("org1").Return(&FetchedPvtDataContainer{
+		AvailableElemenets: []*proto.PvtDataElement{
+			{
+				Digest: &proto.PvtDataDigest{
+					BlockSeq:   1,
+					Collection: "c1",
+					Namespace:  "ns1",
+					TxId:       "tx1",
+				},
+				Payload: [][]byte{[]byte("rws-original")},
 			},
-			Payload: [][]byte{[]byte("rws-original")},
 		},
 	}, nil)
 	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
@@ -945,25 +946,27 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		{
 			TxId: "tx2", Namespace: "ns2", Collection: "c1", BlockSeq: 1, SeqInBlock: 1,
 		},
-	}).expectingEndorsers("org1").Return([]*proto.PvtDataElement{
-		{
-			Digest: &proto.PvtDataDigest{
-				BlockSeq:   1,
-				Collection: "c2",
-				Namespace:  "ns1",
-				TxId:       "tx1",
+	}).expectingEndorsers("org1").Return(&FetchedPvtDataContainer{
+		AvailableElemenets: []*proto.PvtDataElement{
+			{
+				Digest: &proto.PvtDataDigest{
+					BlockSeq:   1,
+					Collection: "c2",
+					Namespace:  "ns1",
+					TxId:       "tx1",
+				},
+				Payload: [][]byte{[]byte("rws-pre-image")},
 			},
-			Payload: [][]byte{[]byte("rws-pre-image")},
-		},
-		{
-			Digest: &proto.PvtDataDigest{
-				SeqInBlock: 1,
-				BlockSeq:   1,
-				Collection: "c1",
-				Namespace:  "ns2",
-				TxId:       "tx2",
+			{
+				Digest: &proto.PvtDataDigest{
+					SeqInBlock: 1,
+					BlockSeq:   1,
+					Collection: "c1",
+					Namespace:  "ns2",
+					TxId:       "tx2",
+				},
+				Payload: [][]byte{[]byte("rws-pre-image")},
 			},
-			Payload: [][]byte{[]byte("rws-pre-image")},
 		},
 	}, nil)
 	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
@@ -994,15 +997,17 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		{
 			TxId: "tx3", Namespace: "ns3", Collection: "c3", BlockSeq: 1,
 		},
-	}).Return([]*proto.PvtDataElement{
-		{
-			Digest: &proto.PvtDataDigest{
-				BlockSeq:   1,
-				Collection: "c3",
-				Namespace:  "ns3",
-				TxId:       "tx3",
+	}).Return(&FetchedPvtDataContainer{
+		AvailableElemenets: []*proto.PvtDataElement{
+			{
+				Digest: &proto.PvtDataDigest{
+					BlockSeq:   1,
+					Collection: "c3",
+					Namespace:  "ns3",
+					TxId:       "tx3",
+				},
+				Payload: [][]byte{[]byte("rws-pre-image")},
 			},
-			Payload: [][]byte{[]byte("rws-pre-image")},
 		},
 	}, nil)
 	store = &mockTransientStore{t: t}
@@ -1123,15 +1128,17 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		{
 			TxId: "tx1", Namespace: "ns3", Collection: "c2", BlockSeq: 1,
 		},
-	}).Return([]*proto.PvtDataElement{
-		{
-			Digest: &proto.PvtDataDigest{
-				BlockSeq:   1,
-				Collection: "c2",
-				Namespace:  "ns3",
-				TxId:       "tx1",
+	}).Return(&FetchedPvtDataContainer{
+		AvailableElemenets: []*proto.PvtDataElement{
+			{
+				Digest: &proto.PvtDataDigest{
+					BlockSeq:   1,
+					Collection: "c2",
+					Namespace:  "ns3",
+					TxId:       "tx1",
+				},
+				Payload: [][]byte{[]byte("wrong pre-image")},
 			},
-			Payload: [][]byte{[]byte("wrong pre-image")},
 		},
 	}, nil)
 

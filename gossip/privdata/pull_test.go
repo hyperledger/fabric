@@ -45,8 +45,8 @@ func newCollectionStore() *mockCollectionStore {
 	}
 }
 
-func (cs *mockCollectionStore) withPolicy(collection string) *mockCollectionAccess {
-	coll := &mockCollectionAccess{cs: cs}
+func (cs *mockCollectionStore) withPolicy(collection string, btl uint64) *mockCollectionAccess {
+	coll := &mockCollectionAccess{cs: cs, btl: btl}
 	cs.m[collection] = coll
 	return coll
 }
@@ -63,12 +63,17 @@ func (cs mockCollectionStore) RetrieveCollectionConfigPackage(fcommon.Collection
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(fcommon.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
-	panic("implement me")
+func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(cc fcommon.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+	return cs.m[cc.Collection], nil
 }
 
 type mockCollectionAccess struct {
-	cs *mockCollectionStore
+	cs  *mockCollectionStore
+	btl uint64
+}
+
+func (mc *mockCollectionAccess) BlockToLive() uint64 {
+	return mc.btl
 }
 
 func (mc *mockCollectionAccess) thatMapsTo(peers ...string) *mockCollectionStore {
@@ -197,18 +202,33 @@ func (g *mockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (
 	return nil, g.msgChan
 }
 
+type peerData struct {
+	id           string
+	ledgerHeight uint64
+}
+
+func membership(knownPeers ...peerData) []discovery.NetworkMember {
+	var peers []discovery.NetworkMember
+	for _, peer := range knownPeers {
+		peers = append(peers, discovery.NetworkMember{
+			Endpoint: peer.id,
+			PKIid:    common.PKIidType(peer.id),
+			Properties: &proto.Properties{
+				LedgerHeight: peer.ledgerHeight,
+			},
+		})
+	}
+	return peers
+}
+
 type gossipNetwork struct {
 	peers []*mockGossip
 }
 
-func (gn *gossipNetwork) newPuller(id string, ps privdata.CollectionStore, factory CollectionAccessFactory, knownMembers ...string) *puller {
+func (gn *gossipNetwork) newPuller(id string, ps privdata.CollectionStore, factory CollectionAccessFactory, knownMembers ...discovery.NetworkMember) *puller {
 	g := newMockGossip(&comm.RemotePeer{PKIID: common.PKIidType(id), Endpoint: id})
 	g.network = gn
-	var peers []discovery.NetworkMember
-	for _, member := range knownMembers {
-		peers = append(peers, discovery.NetworkMember{Endpoint: member, PKIid: common.PKIidType(member)})
-	}
-	g.On("PeersOfChannel", mock.Anything).Return(peers)
+	g.On("PeersOfChannel", mock.Anything).Return(knownMembers)
 
 	p := NewPuller(ps, g, &dataRetrieverMock{}, factory, "A")
 	gn.peers = append(gn.peers, g)
@@ -229,14 +249,14 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	// and succeeds - p1 asks from p2 (and not from p3!) for the
 	// expected digest
 	gn := &gossipNetwork{}
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock1 := &collectionAccessFactoryMock{}
 	policyMock1 := &collectionAccessPolicyMock{}
 	policyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
 		return bytes.Equal(data.Identity, []byte("p2"))
 	}, []string{"org1", "org2"})
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock1, nil)
-	p1 := gn.newPuller("p1", policyStore, factoryMock1, "p2", "p3")
+	p1 := gn.newPuller("p1", policyStore, factoryMock1, membership(peerData{"p2", uint64(1)}, peerData{"p3", uint64(1)})...)
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
@@ -248,7 +268,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 			},
 		},
 	}
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p1")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	policyMock2 := &collectionAccessPolicyMock{}
 	policyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -278,9 +298,9 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 
 	dasf := &digestsAndSourceFactory{}
 
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create())
-	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create(), uint64(1))
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	assert.NoError(t, err)
 	assert.Equal(t, p2TransientStore.RWSet, fetched)
@@ -291,13 +311,13 @@ func TestPullerDataNotAvailable(t *testing.T) {
 	// Scenario: p1 pulls from p2 and not from p3
 	// but the data in p2 doesn't exist
 	gn := &gossipNetwork{}
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock := &collectionAccessFactoryMock{}
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(&collectionAccessPolicyMock{}, nil)
 
-	p1 := gn.newPuller("p1", policyStore, factoryMock, "p2", "p3")
+	p1 := gn.newPuller("p1", policyStore, factoryMock, membership(peerData{"p2", uint64(1)}, peerData{"p3", uint64(1)})...)
 
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p1")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
 	p2 := gn.newPuller("p2", policyStore, factoryMock)
 	dig := &proto.PvtDataDigest{
 		TxId:       "txID1",
@@ -315,8 +335,8 @@ func TestPullerDataNotAvailable(t *testing.T) {
 	})
 
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create())
-	assert.Empty(t, fetchedMessages)
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create(), uint64(1))
+	assert.Empty(t, fetchedMessages.AvailableElemenets)
 	assert.NoError(t, err)
 }
 
@@ -324,14 +344,14 @@ func TestPullerNoPeersKnown(t *testing.T) {
 	t.Parallel()
 	// Scenario: p1 doesn't know any peer and therefore fails fetching
 	gn := &gossipNetwork{}
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2").withPolicy("col1").thatMapsTo("p3")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2", "p3")
 	factoryMock := &collectionAccessFactoryMock{}
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(&collectionAccessPolicyMock{}, nil)
 
 	p1 := gn.newPuller("p1", policyStore, factoryMock)
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s)
+	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.Empty(t, fetchedMessages)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Empty membership")
@@ -341,7 +361,7 @@ func TestPullPeerFilterError(t *testing.T) {
 	t.Parallel()
 	// Scenario: p1 attempts to fetch for the wrong channel
 	gn := &gossipNetwork{}
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock := &collectionAccessFactoryMock{}
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(&collectionAccessPolicyMock{}, nil)
 
@@ -349,7 +369,7 @@ func TestPullPeerFilterError(t *testing.T) {
 	gn.peers[0].On("PeerFilter", mock.Anything, mock.Anything).Return(nil, errors.New("Failed obtaining filter"))
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s)
+	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed obtaining filter")
 	assert.Empty(t, fetchedMessages)
@@ -360,7 +380,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	// Scenario: p1 pulls from p2 or from p3
 	// but it's not eligible for pulling data from p2 or from p3
 	gn := &gossipNetwork{}
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2").withPolicy("col1").thatMapsTo("p3")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2", "p3")
 	factoryMock1 := &collectionAccessFactoryMock{}
 	accessPolicyMock1 := &collectionAccessPolicyMock{}
 	accessPolicyMock1.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -368,9 +388,9 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	}, []string{"org1", "org2"})
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
 
-	p1 := gn.newPuller("p1", policyStore, factoryMock1, "p2", "p3")
+	p1 := gn.newPuller("p1", policyStore, factoryMock1, membership(peerData{"p2", uint64(1)}, peerData{"p3", uint64(1)})...)
 
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p2")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
 	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -397,7 +417,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 		},
 	})
 
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p3")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p3")
 	factoryMock3 := &collectionAccessFactoryMock{}
 	accessPolicyMock3 := &collectionAccessPolicyMock{}
 	accessPolicyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -418,8 +438,8 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	})
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s)
-	assert.Empty(t, fetchedMessages)
+	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	assert.Empty(t, fetchedMessages.AvailableElemenets)
 	assert.NoError(t, err)
 }
 
@@ -435,8 +455,8 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	}, []string{"org1", "org2"})
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
 
-	policyStore := newCollectionStore().withPolicy("col2").thatMapsTo("p2").withPolicy("col3").thatMapsTo("p3")
-	p1 := gn.newPuller("p1", policyStore, factoryMock1, "p2", "p3")
+	policyStore := newCollectionStore().withPolicy("col2", uint64(100)).thatMapsTo("p2").withPolicy("col3", uint64(100)).thatMapsTo("p3")
+	p1 := gn.newPuller("p1", policyStore, factoryMock1, membership(peerData{"p2", uint64(1)}, peerData{"p3", uint64(1)})...)
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
@@ -449,7 +469,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 		},
 	}
 
-	policyStore = newCollectionStore().withPolicy("col2").thatMapsTo("p1")
+	policyStore = newCollectionStore().withPolicy("col2", uint64(100)).thatMapsTo("p1")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
 	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -477,7 +497,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 		},
 	}
 
-	policyStore = newCollectionStore().withPolicy("col3").thatMapsTo("p1")
+	policyStore = newCollectionStore().withPolicy("col3", uint64(100)).thatMapsTo("p1")
 	factoryMock3 := &collectionAccessFactoryMock{}
 	accessPolicyMock3 := &collectionAccessPolicyMock{}
 	accessPolicyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -495,12 +515,12 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig2).Return(p3TransientStore)
 
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig1).toSources().mapDigest(dig2).toSources().create())
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig1).toSources().mapDigest(dig2).toSources().create(), uint64(1))
 	assert.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	assert.Contains(t, fetched, p2TransientStore.RWSet[0])
 	assert.Contains(t, fetched, p2TransientStore.RWSet[1])
@@ -524,8 +544,9 @@ func TestPullerRetries(t *testing.T) {
 	factoryMock1.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
 
 	// p1
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2", "p3", "p4", "p5")
-	p1 := gn.newPuller("p1", policyStore, factoryMock1, "p2", "p3", "p4", "p5")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2", "p3", "p4", "p5")
+	p1 := gn.newPuller("p1", policyStore, factoryMock1, membership(peerData{"p2", uint64(1)},
+		peerData{"p3", uint64(1)}, peerData{"p4", uint64(1)}, peerData{"p5", uint64(1)})...)
 
 	// p2, p3, p4, and p5 have the same transient store
 	transientStore := &util.PrivateRWSetWithConfig{
@@ -546,7 +567,7 @@ func TestPullerRetries(t *testing.T) {
 	}
 
 	// p2
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p2")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
 	factoryMock2 := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
 	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -558,7 +579,7 @@ func TestPullerRetries(t *testing.T) {
 	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig).Return(transientStore)
 
 	// p3
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p1")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
 	factoryMock3 := &collectionAccessFactoryMock{}
 	accessPolicyMock3 := &collectionAccessPolicyMock{}
 	accessPolicyMock3.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -570,7 +591,7 @@ func TestPullerRetries(t *testing.T) {
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig).Return(transientStore)
 
 	// p4
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p4")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p4")
 	factoryMock4 := &collectionAccessFactoryMock{}
 	accessPolicyMock4 := &collectionAccessPolicyMock{}
 	accessPolicyMock4.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -582,7 +603,7 @@ func TestPullerRetries(t *testing.T) {
 	p4.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig).Return(transientStore)
 
 	// p5
-	policyStore = newCollectionStore().withPolicy("col1").thatMapsTo("p5")
+	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p5")
 	factoryMock5 := &collectionAccessFactoryMock{}
 	accessPolicyMock5 := &collectionAccessPolicyMock{}
 	accessPolicyMock5.Setup(1, 2, func(data fcommon.SignedData) bool {
@@ -595,10 +616,10 @@ func TestPullerRetries(t *testing.T) {
 
 	// Fetch from someone
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create())
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create(), uint64(1))
 	assert.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	assert.NoError(t, err)
 	assert.Equal(t, transientStore.RWSet, fetched)
@@ -618,8 +639,13 @@ func TestPullerPreferEndorsers(t *testing.T) {
 	}, []string{"org1", "org2"})
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
 
-	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p1", "p2", "p3", "p4", "p5").withPolicy("col2").thatMapsTo("p1", "p2")
-	p1 := gn.newPuller("p1", policyStore, factoryMock, "p2", "p3", "p4", "p5")
+	policyStore := newCollectionStore().
+		withPolicy("col1", uint64(100)).
+		thatMapsTo("p1", "p2", "p3", "p4", "p5").
+		withPolicy("col2", uint64(100)).
+		thatMapsTo("p1", "p2")
+	p1 := gn.newPuller("p1", policyStore, factoryMock, membership(peerData{"p2", uint64(1)},
+		peerData{"p3", uint64(1)}, peerData{"p4", uint64(1)}, peerData{"p5", uint64(1)})...)
 
 	p3TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
@@ -670,15 +696,76 @@ func TestPullerPreferEndorsers(t *testing.T) {
 
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(dig1).toSources("p3").mapDigest(dig2).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s)
+	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	assert.Contains(t, fetched, p3TransientStore.RWSet[0])
 	assert.Contains(t, fetched, p3TransientStore.RWSet[1])
 	assert.Contains(t, fetched, p2TransientStore.RWSet[0])
 	assert.Contains(t, fetched, p2TransientStore.RWSet[1])
+}
+
+func TestPullerAvoidPullingPurgedData(t *testing.T) {
+	// Scenario: p1 missing private data for col1
+	// p2 and p3 is suppose to have it, while p3 has more advanced
+	// ledger and based on BTL already purged data for, so p1
+	// suppose to fetch data only from p2
+
+	t.Parallel()
+	gn := &gossipNetwork{}
+	factoryMock := &collectionAccessFactoryMock{}
+	accessPolicyMock2 := &collectionAccessPolicyMock{}
+	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p1"))
+	}, []string{"org1", "org2"})
+	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
+
+	policyStore := newCollectionStore().
+		withPolicy("col1", uint64(100)).
+		thatMapsTo("p1", "p2", "p3")
+
+	// p2 is at ledger height 1, while p2 is at 111 which is beyond BTL defined for col1 (100)
+	p1 := gn.newPuller("p1", policyStore, factoryMock, membership(peerData{"p2", uint64(1)},
+		peerData{"p3", uint64(111)})...)
+
+	transientStore := &util.PrivateRWSetWithConfig{
+		RWSet: newPRWSet(),
+		CollectionConfig: &fcommon.CollectionConfig{
+			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+					Name: "col1",
+				},
+			},
+		},
+	}
+
+	p2 := gn.newPuller("p2", policyStore, factoryMock)
+	p3 := gn.newPuller("p3", policyStore, factoryMock)
+
+	dig1 := &proto.PvtDataDigest{
+		TxId:       "txID1",
+		Collection: "col1",
+		Namespace:  "ns1",
+	}
+
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig1).Return(transientStore)
+
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig1).Return(transientStore).
+		Run(
+			func(mock.Arguments) {
+				assert.Fail(t, "we should not fetch private data from peers where it was purged")
+			},
+		)
+
+	dasf := &digestsAndSourceFactory{}
+	d2s := dasf.mapDigest(dig1).toSources("p3", "p2").create()
+	// trying to fetch missing pvt data for block seq 1
+	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(fetchedMessages.PurgedElements))
+	assert.Equal(t, dig1, fetchedMessages.PurgedElements[0])
 }

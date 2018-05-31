@@ -231,6 +231,12 @@ peer:
             # pushAckTimeout is the maximum time to wait for an acknowledgement from each peer
             # at private data push at endorsement time.
             pushAckTimeout: 3s
+            # Block to live pulling margin, used as a buffer
+            # to prevent peer from trying to pull private data
+            # from peers that is soon to be purged in next N blocks.
+            # This helps a newly joined peer catch up to current
+            # blockchain height quicker.
+            btlPullMargin: 10
 
     # EventHub related configuration
     events:
