@@ -18,9 +18,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"crypto/elliptic"
-
 	"crypto/ecdsa"
+
+	"encoding/pem"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/idemixgen/idemixca"
@@ -64,9 +64,13 @@ func main() {
 
 		revocationKey, err := idemix.GenerateLongTermRevocationKey()
 		handleError(err)
-		revocationKeyBytes, err := x509.MarshalECPrivateKey(revocationKey)
+		encodedRevocationSK, err := x509.MarshalECPrivateKey(revocationKey)
 		handleError(err)
-		revocationPkBytes := elliptic.Marshal(elliptic.P384(), revocationKey.X, revocationKey.Y)
+		pemEncodedRevocationSK := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedRevocationSK})
+		handleError(err)
+		encodedRevocationPK, err := x509.MarshalPKIXPublicKey(revocationKey.Public())
+		handleError(err)
+		pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
 
 		// Prevent overwriting the existing key
 		path := filepath.Join(*outputDir, IdemixDirIssuer)
@@ -79,9 +83,9 @@ func main() {
 		handleError(os.MkdirAll(filepath.Join(*outputDir, IdemixDirIssuer), 0770))
 		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0770))
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
-		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey), revocationKeyBytes)
+		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey), pemEncodedRevocationSK)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey), ipk)
-		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), revocationPkBytes)
+		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), pemEncodedRevocationPK)
 		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipk)
 
 	case genSignerConfig.FullCommand():
@@ -134,7 +138,12 @@ func readRevocationKey() *ecdsa.PrivateKey {
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
 	}
-	key, err := x509.ParseECPrivateKey(keyBytes)
+
+	block, _ := pem.Decode(keyBytes)
+	if block == nil {
+		handleError(errors.Errorf("failed to decode ECDSA private key"))
+	}
+	key, err := x509.ParseECPrivateKey(block.Bytes)
 	handleError(err)
 
 	return key
