@@ -140,11 +140,15 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	cancel()
 	close(ready)
 
-	select {
-	case err := <-containerExit:
-		return err
-	case <-sigCh:
-		return c.Stop()
+	for {
+		select {
+		case err := <-containerExit:
+			return err
+		case <-sigCh:
+			if err := c.Stop(); err != nil {
+				return err
+			}
+		}
 	}
 }
 
@@ -186,9 +190,11 @@ func (c *CouchDB) ready(ctx context.Context, addr string) <-chan struct{} {
 func (c *CouchDB) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
-		if _, err := c.Client.WaitContainer(c.containerID); err != nil {
-			exitCh <- err
+		exitCode, err := c.Client.WaitContainer(c.containerID)
+		if err == nil {
+			err = fmt.Errorf("couchdb: process exited with %d", exitCode)
 		}
+		exitCh <- err
 	}()
 
 	return exitCh

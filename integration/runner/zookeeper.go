@@ -167,20 +167,26 @@ func (z *Zookeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 
 	close(ready)
 
-	select {
-	case err := <-containerExit:
-		return err
-	case <-sigCh:
-		return z.Stop()
+	for {
+		select {
+		case err := <-containerExit:
+			return err
+		case <-sigCh:
+			if err := z.Stop(); err != nil {
+				return err
+			}
+		}
 	}
 }
 
 func (z *Zookeeper) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
-		if _, err := z.Client.WaitContainer(z.containerID); err != nil {
-			exitCh <- err
+		exitCode, err := z.Client.WaitContainer(z.containerID)
+		if err == nil {
+			err = fmt.Errorf("zookeeper: process exited with %d", exitCode)
 		}
+		exitCh <- err
 	}()
 
 	return exitCh

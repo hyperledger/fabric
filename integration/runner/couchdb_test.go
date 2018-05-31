@@ -195,7 +195,7 @@ var _ = Describe("CouchDB Runner", func() {
 
 		By("terminating the container")
 		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait()).Should(Receive(BeNil()))
+		Eventually(process.Wait()).Should(Receive())
 		process = nil
 
 		Eventually(func() error {
