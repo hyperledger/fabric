@@ -21,6 +21,7 @@ import (
 
 //go:generate mockery -dir . -name TransientStoreRetriever -case underscore -output mocks/
 //go:generate mockery -dir ../transientstore/ -name Store -case underscore -output mocks/
+
 // TransientStoreRetriever retrieves transient stores
 type TransientStoreRetriever interface {
 	// StoreForChannel returns the transient store for the given channel
@@ -28,6 +29,7 @@ type TransientStoreRetriever interface {
 }
 
 //go:generate mockery -dir . -name ChannelStateRetriever -case underscore -output mocks/
+
 // ChannelStateRetriever retrieves Channel state
 type ChannelStateRetriever interface {
 	// ChannelState returns a QueryCreator for the given Channel
@@ -35,6 +37,7 @@ type ChannelStateRetriever interface {
 }
 
 //go:generate mockery -dir . -name PluginMapper -case underscore -output mocks/
+
 // PluginMapper maps plugin names to their corresponding factories
 type PluginMapper interface {
 	PluginFactoryByName(name PluginName) endorsement.PluginFactory
@@ -157,10 +160,10 @@ type PluginEndorser struct {
 
 // EndorseWithPlugin endorses the response with a plugin
 func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error) {
-	endorserLogger.Info("Entering endorsement for", ctx)
+	endorserLogger.Debug("Entering endorsement for", ctx)
 
 	if ctx.Response == nil {
-		return nil, errors.New("Response is nil")
+		return nil, errors.New("response is nil")
 	}
 
 	if ctx.Response.Status >= shim.ERRORTHRESHOLD {
@@ -191,7 +194,7 @@ func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, 
 		Payload:     prpBytes,
 		Response:    ctx.Response,
 	}
-	endorserLogger.Info("Exiting", ctx)
+	endorserLogger.Debug("Exiting", ctx)
 	return resp, nil
 }
 
