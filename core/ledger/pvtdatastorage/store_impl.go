@@ -75,6 +75,8 @@ func (p *provider) OpenStore(ledgerid string) (Store, error) {
 	if err := s.initState(); err != nil {
 		return nil, err
 	}
+	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d], batchPending [%t]",
+		s.isEmpty, s.lastCommittedBlock, s.batchPending)
 	return s, nil
 }
 
@@ -197,6 +199,9 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 
 	for itr.Next() {
 		dataKeyBytes := itr.Key()
+		if v11Format(dataKeyBytes) {
+			return v11RetrievePvtdata(itr, filter)
+		}
 		dataValueBytes := itr.Value()
 		dataKey := decodeDatakey(dataKeyBytes)
 		expired, err := isExpired(dataKey, s.btlPolicy, s.lastCommittedBlock)
