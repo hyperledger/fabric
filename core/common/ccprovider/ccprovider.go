@@ -163,36 +163,12 @@ func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackag
 	return cccdspack, nil
 }
 
-// The following lines create the cache of CCPackage data that sits
-// on top of the file system and avoids a trip to the file system
-// every time. The cache is disabled by default and only enabled
-// if EnableCCInfoCache is called. This is an unfortunate hack
-// required by some legacy tests that remove chaincode packages
-// from the file system as a means of simulating particular test
-// conditions. This way of testing is incompatible with the
-// immutable nature of chaincode packages that is assumed by hlf v1
-// and implemented by this cache. For this reason, tests are for now
-// allowed to run with the cache disabled (unless they enable it)
-// until a later time in which they are fixed. The peer process on
-// the other hand requires the benefits of this cache and therefore
-// enables it.
-// TODO: (post v1) enable cache by default as soon as https://jira.hyperledger.org/browse/FAB-3785 is completed
-
 // ccInfoFSStorageMgr is the storage manager used either by the cache or if the
 // cache is bypassed
 var ccInfoFSProvider = &CCInfoFSImpl{}
 
 // ccInfoCache is the cache instance itself
 var ccInfoCache = NewCCInfoCache(ccInfoFSProvider)
-
-// ccInfoCacheEnabled keeps track of whether the cache is enable
-// (it is disabled by default)
-var ccInfoCacheEnabled bool
-
-// EnableCCInfoCache can be called to enable the cache
-func EnableCCInfoCache() {
-	ccInfoCacheEnabled = true
-}
 
 // GetChaincodeFromFS retrieves chaincode information from the file system
 func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
@@ -209,16 +185,8 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 
 // GetChaincodeData gets chaincode data from cache if there's one
 func GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
-	if ccInfoCacheEnabled {
-		ccproviderLogger.Debugf("Getting chaincode data for <%s, %s> from cache", ccname, ccversion)
-		return ccInfoCache.GetChaincodeData(ccname, ccversion)
-	}
-	if ccpack, err := ccInfoFSProvider.GetChaincode(ccname, ccversion); err != nil {
-		return nil, err
-	} else {
-		ccproviderLogger.Infof("Putting chaincode data for <%s, %s> into cache", ccname, ccversion)
-		return ccpack.GetChaincodeData(), nil
-	}
+	ccproviderLogger.Debugf("Getting chaincode data for <%s, %s> from cache", ccname, ccversion)
+	return ccInfoCache.GetChaincodeData(ccname, ccversion)
 }
 
 func CheckInstantiationPolicy(name, version string, cdLedger *ChaincodeData) error {

@@ -236,9 +236,6 @@ func serve(args []string) error {
 	// Setup chaincode path
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 
-	// enable the cache of chaincode info
-	ccprovider.EnableCCInfoCache()
-
 	// Create a self-signed CA for chaincode service
 	ca, err := tlsgen.NewCA()
 	if err != nil {
