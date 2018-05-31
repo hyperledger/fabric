@@ -93,6 +93,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -111,7 +112,7 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
-      --collections-config string      The file containing the configuration for the chaincode's collection
+      --collections-config string      The fully qualified path to the collection JSON file including the file name
       --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
@@ -128,6 +129,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -159,6 +161,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -188,6 +191,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -219,6 +223,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -250,6 +255,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -273,6 +279,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
@@ -291,7 +298,7 @@ Usage:
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
-      --collections-config string      The file containing the configuration for the chaincode's collection
+      --collections-config string      The fully qualified path to the collection JSON file including the file name
       --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
   -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
@@ -309,6 +316,7 @@ Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
       --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
       --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
