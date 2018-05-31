@@ -92,7 +92,7 @@ var _ = Describe("EndToEnd", func() {
 			Chaincode: world.Chaincode{
 				Name:     "mycc",
 				Version:  "0.0",
-				Path:     filepath.Join("github.com", "hyperledger", "fabric", "integration", "chaincode", "simple", "cmd"),
+				Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 				ExecPath: os.Getenv("PATH"),
 			},
 			InitArgs: `{"Args":["init","a","100","b","200"]}`,

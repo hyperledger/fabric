@@ -9,6 +9,7 @@ package e2e
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -28,8 +29,9 @@ import (
 
 var _ = Describe("EndToEndACL", func() {
 	var (
-		client *docker.Client
-		w      world.World
+		client     *docker.Client
+		w          world.World
+		deployment world.Deployment
 	)
 
 	BeforeEach(func() {
@@ -42,13 +44,30 @@ var _ = Describe("EndToEndACL", func() {
 		w = world.GenerateBasicConfig("solo", 2, 2, testDir, components)
 
 		// sets up the world for all tests
-		setupWorld(&w)
+		deployment = world.Deployment{
+			Channel: "testchannel",
+			Chaincode: world.Chaincode{
+				Name:     "mycc",
+				Version:  "0.0",
+				Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				ExecPath: os.Getenv("PATH"),
+			},
+			InitArgs: `{"Args":["init","a","100","b","200"]}`,
+			Policy:   `OR ('Org1MSP.member','Org2MSP.member')`,
+			Orderer:  "127.0.0.1:7050",
+		}
+		w.BootstrapNetwork(deployment.Channel)
+		copyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
+		copyPeerConfigs(w.PeerOrgs, w.Rootpath)
+		w.BuildNetwork()
+		err = w.SetupChannel(deployment, []string{"peer0.org1.example.com", "peer0.org2.example.com"})
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		// Stop the running chaincode containers
 		filters := map[string][]string{}
-		filters["name"] = []string{fmt.Sprintf("%s-%s", w.Deployment.Chaincode.Name, w.Deployment.Chaincode.Version)}
+		filters["name"] = []string{fmt.Sprintf("%s-%s", deployment.Chaincode.Name, deployment.Chaincode.Version)}
 		allContainers, _ := client.ListContainers(docker.ListContainersOptions{
 			Filters: filters,
 		})
@@ -63,7 +82,7 @@ var _ = Describe("EndToEndACL", func() {
 
 		// Remove chaincode image
 		filters = map[string][]string{}
-		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", w.Deployment.Chaincode.Name)}
+		filters["label"] = []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", deployment.Chaincode.Name)}
 		images, _ := client.ListImages(docker.ListImagesOptions{
 			Filters: filters,
 		})
@@ -92,14 +111,14 @@ var _ = Describe("EndToEndACL", func() {
 			By("setting the filtered block event ACL policy to Org1/Admins")
 			policyName := resources.Event_FilteredBlock
 			policy := "/Channel/Application/Org1/Admins"
-			SetACLPolicy(&w, policyName, policy)
+			SetACLPolicy(&w, &deployment, policyName, policy)
 
 			By("waiting for the transaction to commit to the ledger using an Org1 Admin identity")
 			adminPeer := components.Peer()
-			adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
+			adminPeer.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
 			adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 
-			adminRunner := adminPeer.InvokeChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["invoke","a","b","10"]}`, w.Deployment.Orderer, "--waitForEvent")
+			adminRunner := adminPeer.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
 			execute(adminRunner)
 			Eventually(adminRunner.Err()).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
 		})
@@ -108,14 +127,14 @@ var _ = Describe("EndToEndACL", func() {
 			By("setting the filtered block event ACL policy to Org2/Admins")
 			policyName := resources.Event_FilteredBlock
 			policy := "/Channel/Application/Org2/Admins"
-			SetACLPolicy(&w, policyName, policy)
+			SetACLPolicy(&w, &deployment, policyName, policy)
 
 			By("waiting for the transaction to commit to the ledger using an Org1 Admin identity")
 			adminPeer := components.Peer()
-			adminPeer.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
+			adminPeer.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
 			adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 
-			adminRunner := adminPeer.InvokeChaincode(w.Deployment.Chaincode.Name, w.Deployment.Channel, `{"Args":["invoke","a","b","10"]}`, w.Deployment.Orderer, "--waitForEvent")
+			adminRunner := adminPeer.InvokeChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["invoke","a","b","10"]}`, deployment.Orderer, "--waitForEvent")
 			execute(adminRunner)
 			Eventually(adminRunner.Err()).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
 		})
@@ -124,11 +143,11 @@ var _ = Describe("EndToEndACL", func() {
 			By("setting the block event ACL policy to Org1/Admins")
 			policyName := resources.Event_Block
 			policy := "/Channel/Application/Org1/Admins"
-			SetACLPolicy(&w, policyName, policy)
+			SetACLPolicy(&w, &deployment, policyName, policy)
 
 			By("setting the log level for deliver to debug")
 			logRun := w.Components.Peer()
-			logRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			logRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 			logRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 			lRunner := logRun.SetLogLevel("common/deliver", "debug")
 			execute(lRunner)
@@ -136,9 +155,9 @@ var _ = Describe("EndToEndACL", func() {
 
 			By("fetching the latest block from the peer")
 			fetchRun := w.Components.Peer()
-			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 			fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			fRunner := fetchRun.FetchChannel(w.Deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
+			fRunner := fetchRun.FetchChannel(deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
 			execute(fRunner)
 			Expect(fRunner.Err()).To(gbytes.Say("Received block: "))
 			// TODO - enable this once the peer's logs are available here
@@ -154,11 +173,11 @@ var _ = Describe("EndToEndACL", func() {
 			By("setting the block event ACL policy to Org2/Admins")
 			policyName := resources.Event_Block
 			policy := "/Channel/Application/Org2/Admins"
-			SetACLPolicy(&w, policyName, policy)
+			SetACLPolicy(&w, &deployment, policyName, policy)
 
 			By("setting the log level for deliver to debug")
 			logRun := w.Components.Peer()
-			logRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			logRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 			logRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 			lRunner := logRun.SetLogLevel("common/deliver", "debug")
 			execute(lRunner)
@@ -166,9 +185,9 @@ var _ = Describe("EndToEndACL", func() {
 
 			By("fetching the latest block from the peer")
 			fetchRun := w.Components.Peer()
-			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "org1.example.com_0")
+			fetchRun.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
 			fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-			fRunner := fetchRun.FetchChannel(w.Deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
+			fRunner := fetchRun.FetchChannel(deployment.Channel, filepath.Join(testDir, "newest_block.pb"), "newest", "")
 			execute(fRunner)
 			Expect(fRunner.Err()).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
 			// TODO - enable this once the peer's logs are available here
@@ -186,26 +205,26 @@ var _ = Describe("EndToEndACL", func() {
 // previously defined ACL policies. It performs the generation of the config update,
 // signs the configuration with Org2's signer, and then submits the config update
 // using Org1
-func SetACLPolicy(w *world.World, policyName, policy string) {
+func SetACLPolicy(w *world.World, deployment *world.Deployment, policyName, policy string) {
 	outputFile := filepath.Join(testDir, "updated_config.pb")
-	GenerateACLConfigUpdate(w, policyName, policy, outputFile)
+	GenerateACLConfigUpdate(w, deployment, policyName, policy, outputFile)
 
-	signConfigDir := filepath.Join(testDir, "org2.example.com_0")
+	signConfigDir := filepath.Join(testDir, "peer0.org2.example.com")
 	signMSPConfigPath := filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org2.example.com", "users", "Admin@org2.example.com", "msp")
 	SignConfigUpdate(w, outputFile, signConfigDir, signMSPConfigPath)
 
-	sendConfigDir := filepath.Join(testDir, "org1.example.com_0")
+	sendConfigDir := filepath.Join(testDir, "peer0.org1.example.com")
 	sendMSPConfigPath := filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	SendConfigUpdate(w, outputFile, sendConfigDir, sendMSPConfigPath)
+	SendConfigUpdate(deployment, outputFile, sendConfigDir, sendMSPConfigPath)
 }
 
-func GenerateACLConfigUpdate(w *world.World, policyName, policy, outputFile string) {
+func GenerateACLConfigUpdate(w *world.World, deployment *world.Deployment, policyName, policy, outputFile string) {
 	// fetch the config block
 	fetchRun := components.Peer()
-	fetchRun.ConfigDir = filepath.Join(testDir, "org1.example.com_0")
+	fetchRun.ConfigDir = filepath.Join(testDir, "peer0.org1.example.com")
 	fetchRun.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	output := filepath.Join(testDir, "config_block.pb")
-	fRunner := fetchRun.FetchChannel(w.Deployment.Channel, output, "config", w.Deployment.Orderer)
+	fRunner := fetchRun.FetchChannel(deployment.Channel, output, "config", deployment.Orderer)
 	execute(fRunner)
 	Expect(fRunner.Err()).To(gbytes.Say("Received block: "))
 	// TODO - enable this once the orderer's logs are available here
@@ -257,11 +276,11 @@ func GenerateACLConfigUpdate(w *world.World, policyName, policy, outputFile stri
 	// compute the config update and package it into an envelope
 	configUpdate, err := update.Compute(config, updatedConfig)
 	Expect(err).To(BeNil())
-	configUpdate.ChannelId = w.Deployment.Channel
+	configUpdate.ChannelId = deployment.Channel
 	configUpdateEnvelope := &common.ConfigUpdateEnvelope{
 		ConfigUpdate: utils.MarshalOrPanic(configUpdate),
 	}
-	signedEnv, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, w.Deployment.Channel, nil, configUpdateEnvelope, 0, 0)
+	signedEnv, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, deployment.Channel, nil, configUpdateEnvelope, 0, 0)
 	Expect(err).To(BeNil())
 	Expect(signedEnv).NotTo(BeNil())
 
@@ -281,11 +300,11 @@ func SignConfigUpdate(w *world.World, outputFile, configDir, mspConfigPath strin
 	Expect(err).To(BeNil())
 }
 
-func SendConfigUpdate(w *world.World, outputFile, configDir, mspConfigPath string) {
+func SendConfigUpdate(deployment *world.Deployment, outputFile, configDir, mspConfigPath string) {
 	updateRun := components.Peer()
 	updateRun.ConfigDir = configDir
 	updateRun.MSPConfigPath = mspConfigPath
-	uRunner := updateRun.UpdateChannel(outputFile, w.Deployment.Channel, w.Deployment.Orderer)
+	uRunner := updateRun.UpdateChannel(outputFile, deployment.Channel, deployment.Orderer)
 	execute(uRunner)
 	Expect(uRunner.Err()).To(gbytes.Say("Successfully submitted channel update"))
 }
