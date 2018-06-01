@@ -14,4 +14,3 @@ Operations Guides
    logging-control
    enable_tls
    kafka
-   idemixgen
