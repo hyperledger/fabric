@@ -12,12 +12,10 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +63,7 @@ func TestContainerRuntimeLaunchConfigArgs(t *testing.T) {
 			PeerAddress: "peer-address",
 		}
 
-		lc, err := cr.LaunchConfig(tc.name, tc.ccType)
+		lc, err := cr.LaunchConfig(tc.name, tc.ccType.String())
 		if tc.expectedErr != "" {
 			assert.EqualError(t, err, tc.expectedErr)
 			continue
@@ -111,7 +109,7 @@ func TestContainerRuntimeLaunchConfigEnv(t *testing.T) {
 			cr.CertGenerator = tc.certGenerator
 		}
 
-		lc, err := cr.LaunchConfig(tc.name, pb.ChaincodeSpec_GOLANG)
+		lc, err := cr.LaunchConfig(tc.name, pb.ChaincodeSpec_GOLANG.String())
 		assert.NoError(t, err)
 		assert.Equal(t, append(commonEnv, tc.expectedEnv...), lc.Envs)
 		if tc.certGenerator != nil {
@@ -130,7 +128,7 @@ func TestContainerRuntimeLaunchConfigFiles(t *testing.T) {
 		CertGenerator: certGenerator,
 	}
 
-	lc, err := cr.LaunchConfig("chaincode-name", pb.ChaincodeSpec_GOLANG)
+	lc, err := cr.LaunchConfig("chaincode-name", pb.ChaincodeSpec_GOLANG.String())
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]byte{
 		"/etc/hyperledger/fabric/client.crt": []byte("certificate"),
@@ -154,67 +152,53 @@ func TestContainerRuntimeLaunchConfigGenerateFail(t *testing.T) {
 		certGenerator.GenerateReturns(tc.keyPair, tc.generateErr)
 		cr := &chaincode.ContainerRuntime{CertGenerator: certGenerator}
 
-		_, err := cr.LaunchConfig("chaincode-id", pb.ChaincodeSpec_GOLANG)
+		_, err := cr.LaunchConfig("chaincode-id", pb.ChaincodeSpec_GOLANG.String())
 		assert.EqualError(t, err, tc.errValue)
 	}
 }
 
 func TestContainerRuntimeStart(t *testing.T) {
-	tests := []struct {
-		execEnv pb.ChaincodeDeploymentSpec_ExecutionEnvironment
-		vmType  string
-	}{
-		{pb.ChaincodeDeploymentSpec_DOCKER, dockercontroller.ContainerType},
-		{pb.ChaincodeDeploymentSpec_SYSTEM, inproccontroller.ContainerType},
+	fakeProcessor := &mock.Processor{}
+	cr := &chaincode.ContainerRuntime{
+		Processor:   fakeProcessor,
+		PeerAddress: "peer.example.com",
 	}
 
-	for _, tc := range tests {
-		fakeProcessor := &mock.Processor{}
-		cr := &chaincode.ContainerRuntime{
-			Processor:   fakeProcessor,
-			PeerAddress: "peer.example.com",
-		}
-
-		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
-		cds := &pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				Type: pb.ChaincodeSpec_GOLANG,
-				ChaincodeId: &pb.ChaincodeID{
-					Name: "chaincode-id-name",
-				},
-			},
-			ExecEnv: tc.execEnv,
-		}
-
-		err := cr.Start(context.Background(), ccctx, cds)
-		assert.NoError(t, err)
-
-		assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
-		ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
-		assert.Equal(t, context.Background(), ctx)
-		assert.Equal(t, vmType, tc.vmType)
-		startReq, ok := req.(container.StartContainerReq)
-		assert.True(t, ok)
-
-		assert.NotNil(t, startReq.Builder)
-		assert.Equal(t, startReq.Args, []string{"chaincode", "-peer.address=peer.example.com"})
-		assert.Equal(t, startReq.Env, []string{"CORE_CHAINCODE_ID_NAME=context-name:context-version", "CORE_PEER_TLS_ENABLED=false"})
-		assert.Nil(t, startReq.FilesToUpload)
-		assert.Equal(t, startReq.CCID, ccintf.CCID{
-			Name:    "chaincode-id-name",
-			Version: "context-version",
-		})
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Type:          pb.ChaincodeSpec_GOLANG.String(),
+		Name:          "chaincode-name",
+		Version:       "chaincode-version",
+		ContainerType: "container-type",
 	}
+
+	err := cr.Start(context.Background(), ccci, nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
+	ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
+	assert.Equal(t, context.Background(), ctx)
+	assert.Equal(t, vmType, "container-type")
+	startReq, ok := req.(container.StartContainerReq)
+	assert.True(t, ok)
+
+	assert.NotNil(t, startReq.Builder)
+	assert.Equal(t, startReq.Args, []string{"chaincode", "-peer.address=peer.example.com"})
+	assert.Equal(t, startReq.Env, []string{"CORE_CHAINCODE_ID_NAME=chaincode-name:chaincode-version", "CORE_PEER_TLS_ENABLED=false"})
+	assert.Nil(t, startReq.FilesToUpload)
+	assert.Equal(t, startReq.CCID, ccintf.CCID{
+		Name:    "chaincode-name",
+		Version: "chaincode-version",
+	})
 }
 
 func TestContainerRuntimeStartErrors(t *testing.T) {
 	tests := []struct {
-		chaincodeType pb.ChaincodeSpec_Type
+		chaincodeType string
 		processErr    error
 		errValue      string
 	}{
-		{pb.ChaincodeSpec_Type(999), nil, "unknown chaincodeType: 999"},
-		{pb.ChaincodeSpec_GOLANG, errors.New("process-failed"), "error starting container: process-failed"},
+		{"bad-type", nil, "unknown chaincodeType: bad-type"},
+		{pb.ChaincodeSpec_GOLANG.String(), errors.New("process-failed"), "error starting container: process-failed"},
 	}
 
 	for _, tc := range tests {
@@ -226,64 +210,46 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			PeerAddress: "peer.example.com",
 		}
 
-		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
-		cds := &pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				Type: tc.chaincodeType,
-				ChaincodeId: &pb.ChaincodeID{
-					Name: "chaincode-id-name",
-				},
-			},
+		ccci := &lifecycle.ChaincodeContainerInfo{
+			Type:    tc.chaincodeType,
+			Name:    "chaincode-id-name",
+			Version: "chaincode-version",
 		}
 
-		err := cr.Start(context.Background(), ccctx, cds)
+		err := cr.Start(context.Background(), ccci, nil)
 		assert.EqualError(t, err, tc.errValue)
 	}
 }
 
 func TestContainerRuntimeStop(t *testing.T) {
-	tests := []struct {
-		execEnv pb.ChaincodeDeploymentSpec_ExecutionEnvironment
-		vmType  string
-	}{
-		{pb.ChaincodeDeploymentSpec_DOCKER, dockercontroller.ContainerType},
-		{pb.ChaincodeDeploymentSpec_SYSTEM, inproccontroller.ContainerType},
+	fakeProcessor := &mock.Processor{}
+	cr := &chaincode.ContainerRuntime{
+		Processor: fakeProcessor,
 	}
 
-	for _, tc := range tests {
-		fakeProcessor := &mock.Processor{}
-		cr := &chaincode.ContainerRuntime{
-			Processor: fakeProcessor,
-		}
-
-		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
-		cds := &pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				Type: pb.ChaincodeSpec_GOLANG,
-				ChaincodeId: &pb.ChaincodeID{
-					Name: "chaincode-id-name",
-				},
-			},
-			ExecEnv: tc.execEnv,
-		}
-
-		err := cr.Stop(context.Background(), ccctx, cds)
-		assert.NoError(t, err)
-
-		assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
-		ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
-		assert.Equal(t, context.Background(), ctx)
-		assert.Equal(t, vmType, tc.vmType)
-		stopReq, ok := req.(container.StopContainerReq)
-		assert.True(t, ok)
-
-		assert.Equal(t, stopReq.Timeout, uint(0))
-		assert.Equal(t, stopReq.Dontremove, false)
-		assert.Equal(t, stopReq.CCID, ccintf.CCID{
-			Name:    "chaincode-id-name",
-			Version: "context-version",
-		})
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Type:          pb.ChaincodeSpec_GOLANG.String(),
+		Name:          "chaincode-id-name",
+		Version:       "chaincode-version",
+		ContainerType: "container-type",
 	}
+
+	err := cr.Stop(context.Background(), ccci)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
+	ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
+	assert.Equal(t, context.Background(), ctx)
+	assert.Equal(t, vmType, "container-type")
+	stopReq, ok := req.(container.StopContainerReq)
+	assert.True(t, ok)
+
+	assert.Equal(t, stopReq.Timeout, uint(0))
+	assert.Equal(t, stopReq.Dontremove, false)
+	assert.Equal(t, stopReq.CCID, ccintf.CCID{
+		Name:    "chaincode-id-name",
+		Version: "chaincode-version",
+	})
 }
 
 func TestContainerRuntimeStopErrors(t *testing.T) {
@@ -302,17 +268,14 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 			Processor: fakeProcessor,
 		}
 
-		ccctx := ccprovider.NewCCContext("context-chain-id", "context-name", "context-version", "context-tx-id", false, nil, nil)
-		cds := &pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				Type: pb.ChaincodeSpec_GOLANG,
-				ChaincodeId: &pb.ChaincodeID{
-					Name: "chaincode-id-name",
-				},
-			},
+		ccci := &lifecycle.ChaincodeContainerInfo{
+			Type:          pb.ChaincodeSpec_GOLANG.String(),
+			Name:          "chaincode-id-name",
+			Version:       "chaincode-version",
+			ContainerType: "container-type",
 		}
 
-		err := cr.Stop(context.Background(), ccctx, cds)
+		err := cr.Stop(context.Background(), ccci)
 		if err != nil || tc.errValue != "" {
 			assert.EqualError(t, err, tc.errValue)
 			continue

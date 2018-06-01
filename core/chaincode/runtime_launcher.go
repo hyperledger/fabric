@@ -9,6 +9,7 @@ package chaincode
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -99,10 +100,18 @@ func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext
 		return errors.Wrapf(err, "failed to register %s as launching", cname)
 	}
 
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Name:          cds.Name(),
+		Version:       cccid.Version,
+		Path:          cds.Path(),
+		Type:          cds.CCType(),
+		ContainerType: getVMType(cds),
+	}
+
 	startFail := make(chan error, 1)
 	go func() {
 		chaincodeLogger.Debugf("chaincode %s is being launched", cname)
-		err := r.Runtime.Start(ctx, cccid, cds)
+		err := r.Runtime.Start(ctx, ccci, cds.Bytes())
 		if err != nil {
 			startFail <- errors.WithMessage(err, "error starting container")
 		}
@@ -121,7 +130,7 @@ func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext
 	if err != nil {
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
 		defer r.Registry.Deregister(cname)
-		if err := r.Runtime.Stop(ctx, cccid, cds); err != nil {
+		if err := r.Runtime.Stop(ctx, ccci); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
 		return err

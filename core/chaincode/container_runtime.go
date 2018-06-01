@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
@@ -47,10 +47,10 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
-	cname := cccid.GetCanonicalName()
+func (c *ContainerRuntime) Start(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error {
+	cname := ccci.Name + ":" + ccci.Version
 
-	lc, err := c.LaunchConfig(cname, cds.ChaincodeSpec.Type)
+	lc, err := c.LaunchConfig(cname, ccci.Type)
 	if err != nil {
 		return err
 	}
@@ -61,25 +61,23 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 
 	scr := container.StartContainerReq{
 		Builder: &container.PlatformBuilder{
-			Type:             cds.CCType(),
-			Name:             cds.Name(),
-			Version:          cds.Version(),
-			Path:             cds.Path(),
-			CodePackage:      cds.Bytes(),
+			Type:             ccci.Type,
+			Name:             ccci.Name,
+			Version:          ccci.Version,
+			Path:             ccci.Path,
+			CodePackage:      codePackage,
 			PlatformRegistry: c.PlatformRegistry,
 		},
 		Args:          lc.Args,
 		Env:           lc.Envs,
 		FilesToUpload: lc.Files,
 		CCID: ccintf.CCID{
-			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
-			Version: cccid.Version,
+			Name:    ccci.Name,
+			Version: ccci.Version,
 		},
 	}
 
-	vmtype := getVMType(cds)
-
-	if err := c.Processor.Process(ctxt, vmtype, scr); err != nil {
+	if err := c.Processor.Process(ctxt, ccci.ContainerType, scr); err != nil {
 		return errors.WithMessage(err, "error starting container")
 	}
 
@@ -87,17 +85,17 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 }
 
 // Stop terminates chaincode and its container runtime environment.
-func (c *ContainerRuntime) Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (c *ContainerRuntime) Stop(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
 	scr := container.StopContainerReq{
 		CCID: ccintf.CCID{
-			Name:    cds.ChaincodeSpec.ChaincodeId.Name,
-			Version: cccid.Version,
+			Name:    ccci.Name,
+			Version: ccci.Version,
 		},
 		Timeout:    0,
 		Dontremove: false,
 	}
 
-	if err := c.Processor.Process(ctxt, getVMType(cds), scr); err != nil {
+	if err := c.Processor.Process(ctxt, ccci.ContainerType, scr); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 
@@ -138,7 +136,7 @@ type LaunchConfig struct {
 }
 
 // LaunchConfig creates the LaunchConfig for chaincode running in a container.
-func (c *ContainerRuntime) LaunchConfig(cname string, ccType pb.ChaincodeSpec_Type) (*LaunchConfig, error) {
+func (c *ContainerRuntime) LaunchConfig(cname string, ccType string) (*LaunchConfig, error) {
 	var lc LaunchConfig
 
 	// common environment variables
@@ -146,11 +144,11 @@ func (c *ContainerRuntime) LaunchConfig(cname string, ccType pb.ChaincodeSpec_Ty
 
 	// language specific arguments
 	switch ccType {
-	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
+	case pb.ChaincodeSpec_GOLANG.String(), pb.ChaincodeSpec_CAR.String():
 		lc.Args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", c.PeerAddress)}
-	case pb.ChaincodeSpec_JAVA:
+	case pb.ChaincodeSpec_JAVA.String():
 		lc.Args = []string{"/root/chaincode-java/start", "--peerAddress", c.PeerAddress}
-	case pb.ChaincodeSpec_NODE:
+	case pb.ChaincodeSpec_NODE.String():
 		lc.Args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", c.PeerAddress)}
 	default:
 		return nil, errors.Errorf("unknown chaincodeType: %s", ccType)

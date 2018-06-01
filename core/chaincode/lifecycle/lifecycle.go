@@ -26,6 +26,17 @@ type Lifecycle struct {
 	Executor Executor
 }
 
+// ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
+type ChaincodeContainerInfo struct {
+	Name    string
+	Version string
+	Path    string
+	Type    string
+
+	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
+	ContainerType string
+}
+
 // GetChaincodeDeploymentSpec retrieves a chaincode deployment spec for the specified chaincode.
 func (l *Lifecycle) GetChaincodeDeploymentSpec(
 	ctx context.Context,
