@@ -434,7 +434,7 @@ func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.Chann
 		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
 	}
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
-	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetChannelConfig))
+	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peer.GetStableChannelConfig))
 	gSup := gossip.NewDiscoverySupport(service.GetGossipService())
 	ccSup := ccsupport.NewDiscoverySupport(lc)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, lc)
