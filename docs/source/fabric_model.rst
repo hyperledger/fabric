@@ -13,9 +13,10 @@ fulfill its promise of a comprehensive, yet customizable, enterprise blockchain 
 * :ref:`Ledger-Features` --- The immutable, shared ledger encodes the entire
   transaction history for each channel, and includes SQL-like query capability
   for efficient auditing and dispute resolution.
-* :ref:`Privacy-through-Channels` --- Channels enable multi-lateral transactions
-  with the high degrees of privacy and confidentiality required by competing
-  businesses and regulated industries that exchange assets on a common network.
+* :ref:`Privacy` --- Channels and private data collections enable multi-lateral
+  transactions with the high degrees of privacy and confidentiality required by
+  competing businesses and regulated industries that exchange assets on a common
+  network.
 * :ref:`Security-Membership-Services` --- Permissioned membership provides a
   trusted blockchain network, where participants know that all transactions can
   be detected and traced by authorized regulators and auditors.
@@ -80,13 +81,13 @@ Some features of a Fabric ledger:
 
 See the :doc:`ledger` topic for a deeper dive on the databases, storage structure, and "query-ability."
 
-.. _Privacy-through-Channels:
+.. _Privacy:
 
-Privacy through Channels
-------------------------
+Privacy
+-------
 
 Hyperledger Fabric employs an immutable ledger on a per-channel basis, as well as
-chaincodes that can manipulate and modify the current state of assets (i.e. update
+chaincode that can manipulate and modify the current state of assets (i.e. update
 key-value pairs).  A ledger exists in the scope of a channel --- it can be shared
 across the entire network (assuming every participant is operating on one common
 channel) --- or it can be privatized to include only a specific set of participants.
@@ -98,12 +99,24 @@ chaincode can be installed only on peers that need to access the asset states
 to perform reads and writes (in other words, if a chaincode is not installed on
 a peer, it will not be able to properly interface with the ledger).
 
+When a subset of organizations on that channel need to keep their transaction
+data confidential, a private data collection (collection) is used to segregate
+this data in a private database, logically separate from the channel ledger,
+accessible only to the authorized subset of organizations.
+
+Thus, channels keep transactions private from the broader network whereas
+collections keep data private between subsets of organizations on the channel.
+
 To further obfuscate the data, values within chaincode can be encrypted
 (in part or in total) using common cryptographic algorithms such as AES before
 sending transactions to the ordering service and appending blocks to the ledger.
 Once encrypted data has been written to the ledger, it can be decrypted only by
-a user in possession of the corresponding key that was used to generate the cipher text.
-For further details on chaincode encryption, see the :doc:`chaincode4ade` topic.
+a user in possession of the corresponding key that was used to generate the cipher
+text. For further details on chaincode encryption, see the :doc:`chaincode4ade`
+topic.
+
+See the :doc:`private-data-arch` topic for more details on
+how to implement privacy on your blockchain network.
 
 .. _Security-Membership-Services:
 
