@@ -201,8 +201,7 @@ func TestPluginEndorserErrors(t *testing.T) {
 	t.Run("ResponseIsNil", func(t *testing.T) {
 		resp, err := pluginEndorser.EndorseWithPlugin(endorser.Context{})
 		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "Response is nil")
-
+		assert.Contains(t, err.Error(), "response is nil")
 	})
 }
 
