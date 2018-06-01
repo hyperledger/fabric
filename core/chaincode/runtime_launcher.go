@@ -24,7 +24,7 @@ type LaunchRegistry interface {
 
 // PackageProvider gets chaincode packages from the filesystem.
 type PackageProvider interface {
-	GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error)
+	GetChaincodeCodePackage(ccname string, ccversion string) ([]byte, error)
 }
 
 // RuntimeLauncher is responsible for launching chaincode runtimes.
@@ -84,14 +84,15 @@ func (r *RuntimeLauncher) getDeploymentSpec(ctx context.Context, cccid *ccprovid
 }
 
 func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+	codePackage := cds.CodePackage
 	// Note, it is not actually possible for cds.CodePackage to be non-nil in the real world
 	// But some of the tests rely on the idea that it might be set.
-	if cds.CodePackage == nil && cds.ExecEnv != pb.ChaincodeDeploymentSpec_SYSTEM {
-		ccpack, err := r.PackageProvider.GetChaincode(cds.Name(), cds.Version())
+	if codePackage == nil && cds.ExecEnv != pb.ChaincodeDeploymentSpec_SYSTEM {
+		var err error
+		codePackage, err = r.PackageProvider.GetChaincodeCodePackage(cds.Name(), cccid.Version)
 		if err != nil {
 			return errors.Wrap(err, "failed to get chaincode package")
 		}
-		cds = ccpack.GetDepSpec()
 	}
 
 	cname := cccid.GetCanonicalName()
@@ -111,7 +112,7 @@ func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext
 	startFail := make(chan error, 1)
 	go func() {
 		chaincodeLogger.Debugf("chaincode %s is being launched", cname)
-		err := r.Runtime.Start(ctx, ccci, cds.Bytes())
+		err := r.Runtime.Start(ctx, ccci, codePackage)
 		if err != nil {
 			startFail <- errors.WithMessage(err, "error starting container")
 		}

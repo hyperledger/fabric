@@ -3,77 +3,75 @@ package mock
 
 import (
 	"sync"
-
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 type PackageProvider struct {
-	GetChaincodeStub        func(ccname string, ccversion string) (ccprovider.CCPackage, error)
-	getChaincodeMutex       sync.RWMutex
-	getChaincodeArgsForCall []struct {
+	GetChaincodeCodePackageStub        func(ccname string, ccversion string) ([]byte, error)
+	getChaincodeCodePackageMutex       sync.RWMutex
+	getChaincodeCodePackageArgsForCall []struct {
 		ccname    string
 		ccversion string
 	}
-	getChaincodeReturns struct {
-		result1 ccprovider.CCPackage
+	getChaincodeCodePackageReturns struct {
+		result1 []byte
 		result2 error
 	}
-	getChaincodeReturnsOnCall map[int]struct {
-		result1 ccprovider.CCPackage
+	getChaincodeCodePackageReturnsOnCall map[int]struct {
+		result1 []byte
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PackageProvider) GetChaincode(ccname string, ccversion string) (ccprovider.CCPackage, error) {
-	fake.getChaincodeMutex.Lock()
-	ret, specificReturn := fake.getChaincodeReturnsOnCall[len(fake.getChaincodeArgsForCall)]
-	fake.getChaincodeArgsForCall = append(fake.getChaincodeArgsForCall, struct {
+func (fake *PackageProvider) GetChaincodeCodePackage(ccname string, ccversion string) ([]byte, error) {
+	fake.getChaincodeCodePackageMutex.Lock()
+	ret, specificReturn := fake.getChaincodeCodePackageReturnsOnCall[len(fake.getChaincodeCodePackageArgsForCall)]
+	fake.getChaincodeCodePackageArgsForCall = append(fake.getChaincodeCodePackageArgsForCall, struct {
 		ccname    string
 		ccversion string
 	}{ccname, ccversion})
-	fake.recordInvocation("GetChaincode", []interface{}{ccname, ccversion})
-	fake.getChaincodeMutex.Unlock()
-	if fake.GetChaincodeStub != nil {
-		return fake.GetChaincodeStub(ccname, ccversion)
+	fake.recordInvocation("GetChaincodeCodePackage", []interface{}{ccname, ccversion})
+	fake.getChaincodeCodePackageMutex.Unlock()
+	if fake.GetChaincodeCodePackageStub != nil {
+		return fake.GetChaincodeCodePackageStub(ccname, ccversion)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getChaincodeReturns.result1, fake.getChaincodeReturns.result2
+	return fake.getChaincodeCodePackageReturns.result1, fake.getChaincodeCodePackageReturns.result2
 }
 
-func (fake *PackageProvider) GetChaincodeCallCount() int {
-	fake.getChaincodeMutex.RLock()
-	defer fake.getChaincodeMutex.RUnlock()
-	return len(fake.getChaincodeArgsForCall)
+func (fake *PackageProvider) GetChaincodeCodePackageCallCount() int {
+	fake.getChaincodeCodePackageMutex.RLock()
+	defer fake.getChaincodeCodePackageMutex.RUnlock()
+	return len(fake.getChaincodeCodePackageArgsForCall)
 }
 
-func (fake *PackageProvider) GetChaincodeArgsForCall(i int) (string, string) {
-	fake.getChaincodeMutex.RLock()
-	defer fake.getChaincodeMutex.RUnlock()
-	return fake.getChaincodeArgsForCall[i].ccname, fake.getChaincodeArgsForCall[i].ccversion
+func (fake *PackageProvider) GetChaincodeCodePackageArgsForCall(i int) (string, string) {
+	fake.getChaincodeCodePackageMutex.RLock()
+	defer fake.getChaincodeCodePackageMutex.RUnlock()
+	return fake.getChaincodeCodePackageArgsForCall[i].ccname, fake.getChaincodeCodePackageArgsForCall[i].ccversion
 }
 
-func (fake *PackageProvider) GetChaincodeReturns(result1 ccprovider.CCPackage, result2 error) {
-	fake.GetChaincodeStub = nil
-	fake.getChaincodeReturns = struct {
-		result1 ccprovider.CCPackage
+func (fake *PackageProvider) GetChaincodeCodePackageReturns(result1 []byte, result2 error) {
+	fake.GetChaincodeCodePackageStub = nil
+	fake.getChaincodeCodePackageReturns = struct {
+		result1 []byte
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *PackageProvider) GetChaincodeReturnsOnCall(i int, result1 ccprovider.CCPackage, result2 error) {
-	fake.GetChaincodeStub = nil
-	if fake.getChaincodeReturnsOnCall == nil {
-		fake.getChaincodeReturnsOnCall = make(map[int]struct {
-			result1 ccprovider.CCPackage
+func (fake *PackageProvider) GetChaincodeCodePackageReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.GetChaincodeCodePackageStub = nil
+	if fake.getChaincodeCodePackageReturnsOnCall == nil {
+		fake.getChaincodeCodePackageReturnsOnCall = make(map[int]struct {
+			result1 []byte
 			result2 error
 		})
 	}
-	fake.getChaincodeReturnsOnCall[i] = struct {
-		result1 ccprovider.CCPackage
+	fake.getChaincodeCodePackageReturnsOnCall[i] = struct {
+		result1 []byte
 		result2 error
 	}{result1, result2}
 }
@@ -81,8 +79,8 @@ func (fake *PackageProvider) GetChaincodeReturnsOnCall(i int, result1 ccprovider
 func (fake *PackageProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getChaincodeMutex.RLock()
-	defer fake.getChaincodeMutex.RUnlock()
+	fake.getChaincodeCodePackageMutex.RLock()
+	defer fake.getChaincodeCodePackageMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

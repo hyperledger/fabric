@@ -27,7 +27,6 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry        *fake.LaunchRegistry
 		fakeLifecycle       *mock.Lifecycle
 		fakePackageProvider *mock.PackageProvider
-		fakePackage         *mock.CCPackage
 		launchState         *chaincode.LaunchState
 
 		cccid          *ccprovider.CCContext
@@ -45,8 +44,8 @@ var _ = Describe("RuntimeLauncher", func() {
 		cccid = ccprovider.NewCCContext("chain-id", "context-name", "context-version", "tx-id", false, signedProp, proposal)
 		chaincodeID = &pb.ChaincodeID{Name: "chaincode-name", Version: "chaincode-version"}
 		deploymentSpec = &pb.ChaincodeDeploymentSpec{
-			CodePackage:   []byte("code-package"),
 			ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID},
+			CodePackage:   []byte("code-package"),
 		}
 
 		launchState = chaincode.NewLaunchState()
@@ -59,10 +58,8 @@ var _ = Describe("RuntimeLauncher", func() {
 			return nil
 		}
 
-		fakePackage = &mock.CCPackage{}
-		fakePackage.GetDepSpecReturns(deploymentSpec)
 		fakePackageProvider = &mock.PackageProvider{}
-		fakePackageProvider.GetChaincodeReturns(fakePackage, nil)
+		fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-package"), nil)
 
 		fakeLifecycle = &mock.Lifecycle{}
 		fakeLifecycle.GetChaincodeDeploymentSpecReturns(deploymentSpec, nil)
@@ -137,15 +134,15 @@ var _ = Describe("RuntimeLauncher", func() {
 				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakePackageProvider.GetChaincodeCallCount()).To(Equal(1))
-				name, version := fakePackageProvider.GetChaincodeArgsForCall(0)
+				Expect(fakePackageProvider.GetChaincodeCodePackageCallCount()).To(Equal(1))
+				name, version := fakePackageProvider.GetChaincodeCodePackageArgsForCall(0)
 				Expect(name).To(Equal("chaincode-name"))
-				Expect(version).To(Equal("chaincode-version"))
+				Expect(version).To(Equal("context-version"))
 			})
 
 			Context("when getting the package fails", func() {
 				BeforeEach(func() {
-					fakePackageProvider.GetChaincodeReturns(nil, errors.New("tangerine"))
+					fakePackageProvider.GetChaincodeCodePackageReturns(nil, errors.New("tangerine"))
 				})
 
 				It("returns a wrapped error", func() {
@@ -169,8 +166,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 	Context("when launch is provided with a deployment spec", func() {
 		BeforeEach(func() {
-			fakePackage.GetDepSpecReturns(deploymentSpec)
-			fakePackageProvider.GetChaincodeReturns(fakePackage, nil)
+			deploymentSpec.CodePackage = []byte("code-package")
 		})
 
 		It("does not get the deployment spec from lifecycle", func() {
