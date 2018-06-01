@@ -9,7 +9,6 @@ package chaincode
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -32,7 +31,7 @@ type RuntimeLauncher struct {
 	Runtime         Runtime
 	Registry        LaunchRegistry
 	PackageProvider PackageProvider
-	Lifecycle       *lifecycle.Lifecycle
+	Lifecycle       Lifecycle
 	StartupTimeout  time.Duration
 }
 
