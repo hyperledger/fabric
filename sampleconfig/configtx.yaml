@@ -38,13 +38,13 @@ Organizations:
                 Rule: "OR('SampleOrg.member')"
                 # If your MSP is configured with the new NodeOUs, you might
                 # want to use a more specific rule like the following:
-                # Rule: "OR('SampleOrg.admin', 'SampleOrg.peer')"
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.peer', 'SampleOrg.client')"
             Writers:
                 Type: Signature
                 Rule: "OR('SampleOrg.member')"
                 # If your MSP is configured with the new NodeOUs, you might
                 # want to use a more specific rule like the following:
-                # Rule: "OR('SampleOrg.admin', 'SampleOrg.client'')"
+                # Rule: "OR('SampleOrg.admin', 'SampleOrg.client')"
             Admins:
                 Type: Signature
                 Rule: "OR('SampleOrg.admin')"
@@ -189,7 +189,7 @@ Application: &ApplicationDefaults
         cscc/GetConfigTree: /Channel/Application/Readers
 
         # ACL policy for cscc's "SimulateConfigTreeUpdate" function
-        cscc/SimulateConfigTreeUpdate: /Channel/Application/Writers
+        cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
 
         #---Miscellanesous peer function to policy mapping for access control---#
 
