@@ -183,7 +183,7 @@ testenv: $(BUILD_DIR)/image/testenv/$(DUMMY)
 ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
 
 .PHONY: integration-test
-integration-test: ccenv docker-thirdparty
+integration-test: gotool.ginkgo ccenv docker-thirdparty
 	./scripts/run-integration-tests.sh
 
 unit-test: unit-test-clean peer-docker testenv ccenv
