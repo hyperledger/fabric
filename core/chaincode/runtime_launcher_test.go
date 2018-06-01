@@ -107,7 +107,7 @@ var _ = Describe("RuntimeLauncher", func() {
 				Name:          deploymentSpec.Name(),
 				Path:          deploymentSpec.Path(),
 				Type:          deploymentSpec.CCType(),
-				Version:       cccid.Version,
+				Version:       deploymentSpec.Version(),
 				ContainerType: "DOCKER",
 			}))
 			Expect(codePackage).To(Equal([]byte("code-package")))
@@ -137,7 +137,7 @@ var _ = Describe("RuntimeLauncher", func() {
 				Expect(fakePackageProvider.GetChaincodeCodePackageCallCount()).To(Equal(1))
 				name, version := fakePackageProvider.GetChaincodeCodePackageArgsForCall(0)
 				Expect(name).To(Equal("chaincode-name"))
-				Expect(version).To(Equal("context-version"))
+				Expect(version).To(Equal("chaincode-version"))
 			})
 
 			Context("when getting the package fails", func() {
@@ -155,24 +155,14 @@ var _ = Describe("RuntimeLauncher", func() {
 		Context("when launching a system chaincode", func() {
 			BeforeEach(func() {
 				cccid = ccprovider.NewCCContext("chain-id", "lscc", "latest", "tx-id", true, signedProp, proposal)
+				deploymentSpec.ExecEnv = pb.ChaincodeDeploymentSpec_SYSTEM
 			})
 
-			It("returns an error", func() {
+			It("does not get the codepackage", func() {
 				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
-				Expect(err).To(MatchError("a syscc should be running (it cannot be launched) lscc:latest"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakePackageProvider.GetChaincodeCodePackageCallCount()).To(Equal(0))
 			})
-		})
-	})
-
-	Context("when launch is provided with a deployment spec", func() {
-		BeforeEach(func() {
-			deploymentSpec.CodePackage = []byte("code-package")
-		})
-
-		It("does not get the deployment spec from lifecycle", func() {
-			err := runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fakeLifecycle.GetChaincodeDeploymentSpecCallCount()).To(Equal(0))
 		})
 	})
 
@@ -182,7 +172,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		Expect(fakeRegistry.LaunchingCallCount()).To(Equal(1))
 		cname := fakeRegistry.LaunchingArgsForCall(0)
-		Expect(cname).To(Equal("context-name:context-version"))
+		Expect(cname).To(Equal("chaincode-name:context-version"))
 	})
 
 	It("starts the runtime for the chaincode", func() {
@@ -227,7 +217,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		It("returns an error", func() {
 			err := runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
-			Expect(err).To(MatchError("failed to register context-name:context-version as launching: gargoyle"))
+			Expect(err).To(MatchError("failed to register chaincode-name:context-version as launching: gargoyle"))
 		})
 	})
 
@@ -261,7 +251,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("context-name:context-version"))
+			Expect(cname).To(Equal("chaincode-name:context-version"))
 		})
 	})
 
@@ -298,7 +288,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("context-name:context-version"))
+			Expect(cname).To(Equal("chaincode-name:context-version"))
 		})
 	})
 
@@ -310,7 +300,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		It("returns a meaningful error", func() {
 			err := runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
-			Expect(err).To(MatchError("timeout expired while starting chaincode context-name:context-version for transaction tx-id"))
+			Expect(err).To(MatchError("timeout expired while starting chaincode chaincode-name:context-version for transaction"))
 		})
 
 		It("stops the runtime", func() {
@@ -333,7 +323,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
-			Expect(cname).To(Equal("context-name:context-version"))
+			Expect(cname).To(Equal("chaincode-name:context-version"))
 		})
 	})
 
