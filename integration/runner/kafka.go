@@ -193,11 +193,15 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	cancel()
 	close(ready)
 
-	select {
-	case err := <-containerExit:
-		return err
-	case <-sigCh:
-		return k.Stop()
+	for {
+		select {
+		case err := <-containerExit:
+			return err
+		case <-sigCh:
+			if err := k.Stop(); err != nil {
+				return err
+			}
+		}
 	}
 }
 
@@ -248,9 +252,11 @@ func (k *Kafka) ready(ctx context.Context, addr string) <-chan struct{} {
 func (k *Kafka) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
-		if _, err := k.Client.WaitContainer(k.ContainerID); err != nil {
-			exitCh <- err
+		exitCode, err := k.Client.WaitContainer(k.ContainerID)
+		if err == nil {
+			err = fmt.Errorf("kafka: process exited with %d", exitCode)
 		}
+		exitCh <- err
 	}()
 
 	return exitCh

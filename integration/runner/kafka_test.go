@@ -112,7 +112,7 @@ var _ = Describe("Kafka Runner", func() {
 
 		By("terminating the container")
 		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), 2*time.Second).Should(Receive(BeNil()))
+		Eventually(process.Wait(), 10*time.Second).Should(Receive())
 
 		_, err = client.InspectContainer("kafka1")
 		Expect(err).To(MatchError("No such container: kafka1"))
