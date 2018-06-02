@@ -403,15 +403,14 @@ func (w *World) SetupChannel(d Deployment, peers []string) {
 
 	for _, peer := range peers {
 		p = w.Components.Peer()
-		peerDir := peer
 		peerOrg := strings.SplitN(peer, ".", 2)[1]
-		p.ConfigDir = filepath.Join(w.Rootpath, peerDir)
+		p.ConfigDir = filepath.Join(w.Rootpath, peer)
 		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg, "users", fmt.Sprintf("Admin@%s", peerOrg), "msp")
-		adminRunner = p.FetchChannel(d.Channel, filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", d.Channel)), "0", d.Orderer)
+		adminRunner = p.FetchChannel(d.Channel, filepath.Join(w.Rootpath, peer, fmt.Sprintf("%s_block.pb", d.Channel)), "0", d.Orderer)
 		execute(adminRunner)
 		ExpectWithOffset(1, adminRunner.Err()).To(gbytes.Say("Received block: 0"))
 
-		adminRunner = p.JoinChannel(filepath.Join(w.Rootpath, peerDir, fmt.Sprintf("%s_block.pb", d.Channel)))
+		adminRunner = p.JoinChannel(filepath.Join(w.Rootpath, peer, fmt.Sprintf("%s_block.pb", d.Channel)))
 		execute(adminRunner)
 		ExpectWithOffset(1, adminRunner.Err()).To(gbytes.Say("Successfully submitted proposal to join channel"))
 
@@ -439,14 +438,14 @@ func (w *World) PeerIDs() []string {
 func (w *World) CopyPeerConfigs(fixtureDir string) {
 	for _, peerOrg := range w.PeerOrgs {
 		for peer := 0; peer < peerOrg.PeerCount; peer++ {
-			peerDir := fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)
-			if _, err := os.Stat(filepath.Join(w.Rootpath, peerDir)); os.IsNotExist(err) {
-				err := os.Mkdir(filepath.Join(w.Rootpath, peerDir), 0755)
+			peerName := fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)
+			if _, err := os.Stat(filepath.Join(w.Rootpath, peerName)); os.IsNotExist(err) {
+				err := os.Mkdir(filepath.Join(w.Rootpath, peerName), 0755)
 				ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			}
 			helpers.CopyFile(
-				filepath.Join(fixtureDir, fmt.Sprintf("%s_%d-core.yaml", peerOrg.Domain, peer)),
-				filepath.Join(w.Rootpath, peerDir, "core.yaml"),
+				filepath.Join(fixtureDir, fmt.Sprintf("%s-core.yaml", peerName)),
+				filepath.Join(w.Rootpath, peerName, "core.yaml"),
 			)
 		}
 	}

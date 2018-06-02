@@ -41,9 +41,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(payload []byte) {
 	err := json.Unmarshal(payload, &components)
 	Expect(err).NotTo(HaveOccurred())
-
-	testDir, err = ioutil.TempDir("", "e2e-suite")
-	Expect(err).NotTo(HaveOccurred())
+})
+var _ = BeforeEach(func() {
+        var err error
+        testDir, err = ioutil.TempDir("", "e2e-suite")
+        Expect(err).NotTo(HaveOccurred())
 
 	// Compile plugins
 	endorsementPluginFilePath = compilePlugin("endorsement")
@@ -59,6 +61,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err = os.Mkdir(dir, 0700)
 	Expect(err).NotTo(HaveOccurred())
 	SetValidationPluginActivationFolder(dir)
+})
+
+var _ = AfterEach(func() {
+        os.RemoveAll(testDir)
 })
 
 var _ = SynchronizedAfterSuite(func() {
