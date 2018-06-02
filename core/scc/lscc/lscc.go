@@ -146,6 +146,30 @@ func New(sccp sysccprovider.SystemChaincodeProvider, ACLProvider aclmgmt.ACLProv
 	}
 }
 
+func (lscc *LifeCycleSysCC) ChaincodeDeploymentSpec(channelID, ccName string) (*pb.ChaincodeDeploymentSpec, error) {
+	qe, err := lscc.SCCProvider.GetQueryExecutorForLedger(channelID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve QueryExecutor for channel %s", channelID)
+	}
+	defer qe.Done()
+
+	chaincodeDataBytes, err := qe.GetState("lscc", ccName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s on channel %s", ccName, channelID)
+	}
+
+	if chaincodeDataBytes == nil {
+		return nil, errors.Errorf("chaincode %s not found on channel %s", ccName, channelID)
+	}
+
+	cds, _, err := lscc.getCCCode(ccName, chaincodeDataBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not get chaincode code")
+	}
+
+	return cds, nil
+}
+
 //create the chaincode on the given chain
 func (lscc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData) error {
 	cdbytes, err := proto.Marshal(cd)
