@@ -15,6 +15,11 @@ import (
 )
 
 // CreateSysCCs creates all of the system chaincodes which are compiled into fabric
-func CreateSysCCs(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider, pr *platforms.Registry) []*SystemChaincode {
-	return builtInSystemChaincodes(ccp, p, aclProvider, pr)
+func CreateSysCCs(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider, pr *platforms.Registry) []SelfDescribingSysCC {
+	bscs := builtInSystemChaincodes(ccp, p, aclProvider, pr)
+	sdscs := make([]SelfDescribingSysCC, len(bscs))
+	for i, bsc := range bscs {
+		sdscs[i] = &SysCCWrapper{SCC: bsc}
+	}
+	return sdscs
 }

@@ -47,10 +47,10 @@ func TestDeploy(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 	err := peer.MockCreateChain("a")
 	fmt.Println(err)
-	(&SystemChaincode{
+	deploySysCC("a", ccp, &SysCCWrapper{SCC: &SystemChaincode{
 		Enabled: true,
 		Name:    "lscc",
-	}).deploySysCC("a", ccp)
+	}})
 }
 
 func TestDeDeploySysCC(t *testing.T) {
@@ -98,18 +98,22 @@ func TestRegisterSysCC(t *testing.T) {
 	p := &Provider{
 		Registrar: inproccontroller.NewRegistry(),
 	}
-	_, err := p.registerSysCC(&SystemChaincode{
-		Name:      "lscc",
-		Path:      "path",
-		Enabled:   true,
-		Chaincode: nil,
+	_, err := p.registerSysCC(&SysCCWrapper{
+		SCC: &SystemChaincode{
+			Name:      "lscc",
+			Path:      "path",
+			Enabled:   true,
+			Chaincode: nil,
+		},
 	})
 	assert.NoError(t, err)
-	_, err = p.registerSysCC(&SystemChaincode{
-		Name:      "lscc",
-		Path:      "path",
-		Enabled:   true,
-		Chaincode: nil,
+	_, err = p.registerSysCC(&SysCCWrapper{
+		SCC: &SystemChaincode{
+			Name:      "lscc",
+			Path:      "path",
+			Enabled:   true,
+			Chaincode: nil,
+		},
 	})
 	assert.Error(t, err)
 	assert.Contains(t, "lscc-latest already registered", err)

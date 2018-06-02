@@ -51,7 +51,7 @@ func builtInSystemChaincodes(ccp ccprovider.ChaincodeProvider, p *Provider, aclP
 //note the chaincode must still be deployed and launched like a user chaincode will be
 func (p *Provider) DeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
 	for _, sysCC := range p.SysCCs {
-		sysCC.deploySysCC(chainID, ccp)
+		deploySysCC(chainID, ccp, sysCC)
 	}
 }
 
@@ -60,6 +60,6 @@ func (p *Provider) DeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider
 //in the same process
 func (p *Provider) DeDeploySysCCs(chainID string, ccp ccprovider.ChaincodeProvider) {
 	for _, sysCC := range p.SysCCs {
-		sysCC.deDeploySysCC(chainID, ccp)
+		deDeploySysCC(chainID, ccp, sysCC)
 	}
 }
