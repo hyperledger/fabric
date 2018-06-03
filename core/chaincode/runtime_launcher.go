@@ -44,7 +44,7 @@ func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCCo
 		Version:       cccid.Version,
 		Path:          spec.Path(),
 		Type:          spec.CCType(),
-		ContainerType: getVMType(spec),
+		ContainerType: spec.ExecEnv.String(),
 	}
 
 	err := r.start(ctx, ccci)
@@ -61,17 +61,9 @@ func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCCo
 // Launch chaincode with the appropriate runtime.
 func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
 	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
-	cds, err := r.Lifecycle.GetChaincodeDeploymentSpec(cccid.ChainID, chaincodeID.Name)
+	ccci, err := r.Lifecycle.ChaincodeContainerInfo(cccid.ChainID, chaincodeID.Name)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get deployment spec for %s", cccid.GetCanonicalName())
-	}
-
-	ccci := &lifecycle.ChaincodeContainerInfo{
-		Name:          cds.Name(),
-		Version:       cds.Version(),
-		Path:          cds.Path(),
-		Type:          cds.CCType(),
-		ContainerType: getVMType(cds),
 	}
 
 	err = r.start(ctx, ccci)

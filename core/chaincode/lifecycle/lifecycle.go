@@ -44,13 +44,13 @@ type ChaincodeContainerInfo struct {
 }
 
 // GetChaincodeDeploymentSpec retrieves a chaincode deployment spec for the specified chaincode.
-func (l *Lifecycle) GetChaincodeDeploymentSpec(channelID, chaincodeName string) (*pb.ChaincodeDeploymentSpec, error) {
+func (l *Lifecycle) ChaincodeContainerInfo(channelID, chaincodeName string) (*ChaincodeContainerInfo, error) {
 	cds, err := l.InstantiatedChaincodeStore.ChaincodeDeploymentSpec(channelID, chaincodeName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not retrieve deployment spec for %s/%s", channelID, chaincodeName)
 	}
 
-	return cds, nil
+	return DeploymentSpecToChaincodeContainerInfo(cds), nil
 }
 
 // GetChaincodeDefinition returns a ccprovider.ChaincodeDefinition for the chaincode
@@ -90,4 +90,14 @@ func (l *Lifecycle) GetChaincodeDefinition(
 	}
 
 	return cd, nil
+}
+
+func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {
+	return &ChaincodeContainerInfo{
+		Name:          cds.Name(),
+		Version:       cds.Version(),
+		Path:          cds.Path(),
+		Type:          cds.CCType(),
+		ContainerType: cds.ExecEnv.String(),
+	}
 }

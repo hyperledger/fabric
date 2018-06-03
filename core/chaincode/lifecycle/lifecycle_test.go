@@ -28,17 +28,23 @@ var _ = Describe("Lifecycle", func() {
 	BeforeEach(func() {
 	})
 
-	Describe("GetChaincodeDeploymentSpec", func() {
+	Describe("ChaincodeContainerInfo", func() {
 		var (
 			fakeInstantiatedCCStore *mock.InstantiatedChaincodeStore
 			deploymentSpec          *pb.ChaincodeDeploymentSpec
 		)
 
 		BeforeEach(func() {
-			chaincodeID := &pb.ChaincodeID{Name: "chaincode-name", Version: "chaincode-version"}
 			deploymentSpec = &pb.ChaincodeDeploymentSpec{
-				CodePackage:   []byte("code-package"),
-				ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID},
+				ChaincodeSpec: &pb.ChaincodeSpec{
+					ChaincodeId: &pb.ChaincodeID{
+						Name:    "chaincode-name",
+						Version: "chaincode-version",
+						Path:    "chaincode-path",
+					},
+					Type: pb.ChaincodeSpec_GOLANG,
+				},
+				ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM,
 			}
 
 			fakeInstantiatedCCStore = &mock.InstantiatedChaincodeStore{}
@@ -50,9 +56,13 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("invokes lscc getdepspec with the correct args", func() {
-			cds, err := lifecycle.GetChaincodeDeploymentSpec("chain-id", "chaincode-name")
+			ccci, err := lifecycle.ChaincodeContainerInfo("chain-id", "chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(cds, deploymentSpec)).To(BeTrue())
+			Expect(ccci.Name).To(Equal("chaincode-name"))
+			Expect(ccci.Version).To(Equal("chaincode-version"))
+			Expect(ccci.Path).To(Equal("chaincode-path"))
+			Expect(ccci.Type).To(Equal("GOLANG"))
+			Expect(ccci.ContainerType).To(Equal("SYSTEM"))
 
 			Expect(fakeInstantiatedCCStore.ChaincodeDeploymentSpecCallCount()).To(Equal(1))
 			channelID, chaincodeName := fakeInstantiatedCCStore.ChaincodeDeploymentSpecArgsForCall(0)
@@ -66,7 +76,7 @@ var _ = Describe("Lifecycle", func() {
 			})
 
 			It("returns a wrapped error", func() {
-				_, err := lifecycle.GetChaincodeDeploymentSpec("chain-id", "chaincode-id")
+				_, err := lifecycle.ChaincodeContainerInfo("chain-id", "chaincode-id")
 				Expect(err).To(MatchError("could not retrieve deployment spec for chain-id/chaincode-id: mango-tango"))
 			})
 		})

@@ -17,8 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -100,13 +98,6 @@ func (c *ContainerRuntime) Stop(ctxt context.Context, ccci *lifecycle.ChaincodeC
 	}
 
 	return nil
-}
-
-func getVMType(cds *pb.ChaincodeDeploymentSpec) string {
-	if cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM {
-		return inproccontroller.ContainerType
-	}
-	return dockercontroller.ContainerType
 }
 
 const (

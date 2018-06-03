@@ -4,6 +4,7 @@ package mock
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
@@ -28,18 +29,18 @@ type Lifecycle struct {
 		result1 ccprovider.ChaincodeDefinition
 		result2 error
 	}
-	GetChaincodeDeploymentSpecStub        func(chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error)
-	getChaincodeDeploymentSpecMutex       sync.RWMutex
-	getChaincodeDeploymentSpecArgsForCall []struct {
+	ChaincodeContainerInfoStub        func(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error)
+	chaincodeContainerInfoMutex       sync.RWMutex
+	chaincodeContainerInfoArgsForCall []struct {
 		chainID     string
 		chaincodeID string
 	}
-	getChaincodeDeploymentSpecReturns struct {
-		result1 *pb.ChaincodeDeploymentSpec
+	chaincodeContainerInfoReturns struct {
+		result1 *lifecycle.ChaincodeContainerInfo
 		result2 error
 	}
-	getChaincodeDeploymentSpecReturnsOnCall map[int]struct {
-		result1 *pb.ChaincodeDeploymentSpec
+	chaincodeContainerInfoReturnsOnCall map[int]struct {
+		result1 *lifecycle.ChaincodeContainerInfo
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -102,54 +103,54 @@ func (fake *Lifecycle) GetChaincodeDefinitionReturnsOnCall(i int, result1 ccprov
 	}{result1, result2}
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpec(chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error) {
-	fake.getChaincodeDeploymentSpecMutex.Lock()
-	ret, specificReturn := fake.getChaincodeDeploymentSpecReturnsOnCall[len(fake.getChaincodeDeploymentSpecArgsForCall)]
-	fake.getChaincodeDeploymentSpecArgsForCall = append(fake.getChaincodeDeploymentSpecArgsForCall, struct {
+func (fake *Lifecycle) ChaincodeContainerInfo(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error) {
+	fake.chaincodeContainerInfoMutex.Lock()
+	ret, specificReturn := fake.chaincodeContainerInfoReturnsOnCall[len(fake.chaincodeContainerInfoArgsForCall)]
+	fake.chaincodeContainerInfoArgsForCall = append(fake.chaincodeContainerInfoArgsForCall, struct {
 		chainID     string
 		chaincodeID string
 	}{chainID, chaincodeID})
-	fake.recordInvocation("GetChaincodeDeploymentSpec", []interface{}{chainID, chaincodeID})
-	fake.getChaincodeDeploymentSpecMutex.Unlock()
-	if fake.GetChaincodeDeploymentSpecStub != nil {
-		return fake.GetChaincodeDeploymentSpecStub(chainID, chaincodeID)
+	fake.recordInvocation("ChaincodeContainerInfo", []interface{}{chainID, chaincodeID})
+	fake.chaincodeContainerInfoMutex.Unlock()
+	if fake.ChaincodeContainerInfoStub != nil {
+		return fake.ChaincodeContainerInfoStub(chainID, chaincodeID)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getChaincodeDeploymentSpecReturns.result1, fake.getChaincodeDeploymentSpecReturns.result2
+	return fake.chaincodeContainerInfoReturns.result1, fake.chaincodeContainerInfoReturns.result2
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpecCallCount() int {
-	fake.getChaincodeDeploymentSpecMutex.RLock()
-	defer fake.getChaincodeDeploymentSpecMutex.RUnlock()
-	return len(fake.getChaincodeDeploymentSpecArgsForCall)
+func (fake *Lifecycle) ChaincodeContainerInfoCallCount() int {
+	fake.chaincodeContainerInfoMutex.RLock()
+	defer fake.chaincodeContainerInfoMutex.RUnlock()
+	return len(fake.chaincodeContainerInfoArgsForCall)
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpecArgsForCall(i int) (string, string) {
-	fake.getChaincodeDeploymentSpecMutex.RLock()
-	defer fake.getChaincodeDeploymentSpecMutex.RUnlock()
-	return fake.getChaincodeDeploymentSpecArgsForCall[i].chainID, fake.getChaincodeDeploymentSpecArgsForCall[i].chaincodeID
+func (fake *Lifecycle) ChaincodeContainerInfoArgsForCall(i int) (string, string) {
+	fake.chaincodeContainerInfoMutex.RLock()
+	defer fake.chaincodeContainerInfoMutex.RUnlock()
+	return fake.chaincodeContainerInfoArgsForCall[i].chainID, fake.chaincodeContainerInfoArgsForCall[i].chaincodeID
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpecReturns(result1 *pb.ChaincodeDeploymentSpec, result2 error) {
-	fake.GetChaincodeDeploymentSpecStub = nil
-	fake.getChaincodeDeploymentSpecReturns = struct {
-		result1 *pb.ChaincodeDeploymentSpec
+func (fake *Lifecycle) ChaincodeContainerInfoReturns(result1 *lifecycle.ChaincodeContainerInfo, result2 error) {
+	fake.ChaincodeContainerInfoStub = nil
+	fake.chaincodeContainerInfoReturns = struct {
+		result1 *lifecycle.ChaincodeContainerInfo
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpecReturnsOnCall(i int, result1 *pb.ChaincodeDeploymentSpec, result2 error) {
-	fake.GetChaincodeDeploymentSpecStub = nil
-	if fake.getChaincodeDeploymentSpecReturnsOnCall == nil {
-		fake.getChaincodeDeploymentSpecReturnsOnCall = make(map[int]struct {
-			result1 *pb.ChaincodeDeploymentSpec
+func (fake *Lifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 *lifecycle.ChaincodeContainerInfo, result2 error) {
+	fake.ChaincodeContainerInfoStub = nil
+	if fake.chaincodeContainerInfoReturnsOnCall == nil {
+		fake.chaincodeContainerInfoReturnsOnCall = make(map[int]struct {
+			result1 *lifecycle.ChaincodeContainerInfo
 			result2 error
 		})
 	}
-	fake.getChaincodeDeploymentSpecReturnsOnCall[i] = struct {
-		result1 *pb.ChaincodeDeploymentSpec
+	fake.chaincodeContainerInfoReturnsOnCall[i] = struct {
+		result1 *lifecycle.ChaincodeContainerInfo
 		result2 error
 	}{result1, result2}
 }
@@ -159,8 +160,8 @@ func (fake *Lifecycle) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.getChaincodeDefinitionMutex.RLock()
 	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	fake.getChaincodeDeploymentSpecMutex.RLock()
-	defer fake.getChaincodeDeploymentSpecMutex.RUnlock()
+	fake.chaincodeContainerInfoMutex.RLock()
+	defer fake.chaincodeContainerInfoMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
