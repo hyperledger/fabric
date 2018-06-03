@@ -213,7 +213,7 @@ Let's describe these folders in a little more detail and see why they are import
   There must be at least one Root CA X.509 certificate in this MSP folder.
 
   This is the most important folder because it identifies the CAs from
-  which all other certificates must be derived to be considered members of the
+  which all other certificates must be derived in order to be considered members of the
   corresponding organization.
 
 
@@ -251,7 +251,7 @@ Let's describe these folders in a little more detail and see why they are import
   actors who have the role of administrators for this organization. For the standard MSP type,
   there should be one or more X.509 certificates in this list.
 
-  It's worth noting that just because a actor has the role of an administrator it doesn't
+  It's worth noting that just because an actor has the role of an administrator it doesn't
   mean that they can administer particular resources! The actual power a given identity has
   with respect to administering the system is determined by the policies that manage system
   resources. For example, a channel policy might specify that `ORG1-MANUFACTURING`
@@ -279,15 +279,15 @@ Let's describe these folders in a little more detail and see why they are import
 
   This list is conceptually the same as a CA's Certificate Revocation List (CRL),
   but it also relates to revocation of membership from the organization. As a result,
-  the administrator of an MSP, local or channel, can quickly revoke a actor or node
+  the administrator of an MSP, local or channel, can quickly revoke an actor or node
   from an organization by advertising the updated CRL of the CA the revoked certificate
-  as issued by. This "list of lists" is optional. It will only become populated
+  is issued by. This "list of lists" is optional. It will only become populated
   as certificates are revoked.
 
 
 * **Node Identity:** This folder contains the identity of the node, i.e.,
-  cryptographic material that --- in combination to the content of `KeyStore` --- would
-  allow the node to authenticate itself in the messages that is sends to other
+  cryptographic material that --- in combination with the content of `KeyStore` --- would
+  allow the node to authenticate itself in the messages that it sends to other
   participants of its channels and network. For X.509 based identities, this
   folder contains an **X.509 certificate**. This is the certificate a peer places
   in a transaction proposal response, for example, to indicate that the peer has
@@ -300,7 +300,7 @@ Let's describe these folders in a little more detail and see why they are import
 
 * **`KeyStore` for Private Key:** This folder is defined for the local MSP of a peer or
   orderer node (or in an client's local MSP), and contains the node's **signing key**.
-  This key matches cryptographically the node's identity included in **Node Identity**
+  This key matches cryptographically the node's identity included in the **Node Identity**
   folder and is used to sign data --- for example to sign a transaction proposal response,
   as part of the endorsement phase.
 
@@ -308,7 +308,7 @@ Let's describe these folders in a little more detail and see why they are import
   Obviously, access to this folder must be limited only to the identities of users who have
   administrative responsibility on the peer.
 
-  Configuration of a **channel MSPs** does not include this folder, as channel MSPs
+  Configuration of a **channel MSP** does not include this folder, as channel MSPs
   solely aim to offer identity validation functionalities and not signing abilities.
 
 
