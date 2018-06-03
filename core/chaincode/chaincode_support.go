@@ -48,14 +48,7 @@ type Lifecycle interface {
 	) (ccprovider.ChaincodeDefinition, error)
 
 	// GetChaincodeDeploymentSpec returns the package necessary to launch a chaincode
-	GetChaincodeDeploymentSpec(
-		ctx context.Context,
-		txid string,
-		signedProp *pb.SignedProposal,
-		prop *pb.Proposal,
-		chainID string,
-		chaincodeID string,
-	) (*pb.ChaincodeDeploymentSpec, error)
+	GetChaincodeDeploymentSpec(chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error)
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
@@ -78,6 +71,7 @@ func NewChaincodeSupport(
 	caCert []byte,
 	certGenerator CertGenerator,
 	packageProvider PackageProvider,
+	chaincodeStore lifecycle.InstantiatedChaincodeStore,
 	aclProvider ACLProvider,
 	processor Processor,
 	sccp sysccprovider.SystemChaincodeProvider,
@@ -114,8 +108,11 @@ func NewChaincodeSupport(
 		Runtime:         cs.Runtime,
 		Registry:        cs.HandlerRegistry,
 		PackageProvider: packageProvider,
-		Lifecycle:       &lifecycle.Lifecycle{Executor: cs},
-		StartupTimeout:  config.StartupTimeout,
+		Lifecycle: &lifecycle.Lifecycle{
+			Executor:                   cs,
+			InstantiatedChaincodeStore: chaincodeStore,
+		},
+		StartupTimeout: config.StartupTimeout,
 	}
 
 	return cs

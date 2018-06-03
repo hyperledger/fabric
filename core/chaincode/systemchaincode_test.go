@@ -135,6 +135,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
+		nil,
 		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{

@@ -21,9 +21,15 @@ type Executor interface {
 	Execute(ctxt context.Context, cccid *ccprovider.CCContext, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 }
 
+// InstantiatedChaincodeStore returns information on chaincodes which are instantiated
+type InstantiatedChaincodeStore interface {
+	ChaincodeDeploymentSpec(channelID, chaincodeName string) (*pb.ChaincodeDeploymentSpec, error)
+}
+
 // Lifecycle provides methods to invoke the lifecycle system chaincode.
 type Lifecycle struct {
-	Executor Executor
+	Executor                   Executor
+	InstantiatedChaincodeStore InstantiatedChaincodeStore
 }
 
 // ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
@@ -38,42 +44,10 @@ type ChaincodeContainerInfo struct {
 }
 
 // GetChaincodeDeploymentSpec retrieves a chaincode deployment spec for the specified chaincode.
-func (l *Lifecycle) GetChaincodeDeploymentSpec(
-	ctx context.Context,
-	txid string,
-	signedProp *pb.SignedProposal,
-	prop *pb.Proposal,
-	chainID string,
-	chaincodeID string,
-) (*pb.ChaincodeDeploymentSpec, error) {
-	version := util.GetSysCCVersion()
-	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
-
-	invocationSpec := &pb.ChaincodeInvocationSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeId: &pb.ChaincodeID{Name: cccid.Name},
-			Input: &pb.ChaincodeInput{
-				Args: util.ToChaincodeArgs("getdepspec", chainID, chaincodeID),
-			},
-		},
-	}
-
-	res, _, err := l.Executor.Execute(ctx, cccid, invocationSpec)
+func (l *Lifecycle) GetChaincodeDeploymentSpec(channelID, chaincodeName string) (*pb.ChaincodeDeploymentSpec, error) {
+	cds, err := l.InstantiatedChaincodeStore.ChaincodeDeploymentSpec(channelID, chaincodeName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getdepspec %s/%s failed", chainID, chaincodeID)
-	}
-	if res.Status != shim.OK {
-		return nil, errors.Errorf("getdepspec %s/%s responded with error: %s", chainID, chaincodeID, res.Message)
-	}
-	if res.Payload == nil {
-		return nil, errors.Errorf("getdepspec %s/%s failed: payload is nil", chainID, chaincodeID)
-	}
-
-	cds := &pb.ChaincodeDeploymentSpec{}
-	err = proto.Unmarshal(res.Payload, cds)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal deployment spec payload for %s/%s", chainID, chaincodeID)
+		return nil, errors.Wrapf(err, "could not retrieve deployment spec for %s/%s", channelID, chaincodeName)
 	}
 
 	return cds, nil

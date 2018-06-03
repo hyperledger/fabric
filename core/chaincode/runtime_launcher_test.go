@@ -87,11 +87,7 @@ var _ = Describe("RuntimeLauncher", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLifecycle.GetChaincodeDeploymentSpecCallCount()).To(Equal(1))
-			ctx, txid, signedProp, prop, chainID, chaincodeID := fakeLifecycle.GetChaincodeDeploymentSpecArgsForCall(0)
-			Expect(ctx).To(Equal(context.Background()))
-			Expect(txid).To(Equal("tx-id"))
-			Expect(signedProp).To(Equal(cccid.SignedProposal))
-			Expect(prop).To(Equal(cccid.Proposal))
+			chainID, chaincodeID := fakeLifecycle.GetChaincodeDeploymentSpecArgsForCall(0)
 			Expect(chainID).To(Equal("chain-id"))
 			Expect(chaincodeID).To(Equal("chaincode-name"))
 		})

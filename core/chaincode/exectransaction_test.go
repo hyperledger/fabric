@@ -129,6 +129,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	config := GlobalConfig()
 	config.StartupTimeout = 3 * time.Minute
 	pr := platforms.NewRegistry(&golang.Platform{})
+	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		peerAddress,
@@ -136,6 +137,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
+		lsccImpl,
 		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
 		container.NewVMController(
 			map[string]container.VMProvider{
@@ -152,7 +154,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
-	sccp.RegisterSysCC(lscc.New(sccp, mockAclProvider, pr))
+	sccp.RegisterSysCC(lsccImpl)
 
 	for _, id := range chainIDs {
 		sccp.DeDeploySysCCs(id, ccp)
