@@ -46,6 +46,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/scc/lscc"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	plgr "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -196,9 +197,8 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
-	for _, cc := range scc.CreateSysCCs(ccp, sccp, mockAclProvider, pr) {
-		sccp.RegisterSysCC(cc)
-	}
+
+	sccp.RegisterSysCC(lscc.New(sccp, mockAclProvider, pr))
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {

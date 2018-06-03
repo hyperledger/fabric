@@ -51,6 +51,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/scc/cscc"
+	"github.com/hyperledger/fabric/core/scc/lscc"
+	"github.com/hyperledger/fabric/core/scc/qscc"
 	"github.com/hyperledger/fabric/discovery"
 	"github.com/hyperledger/fabric/discovery/endorsement"
 	discsupport "github.com/hyperledger/fabric/discovery/support"
@@ -647,9 +650,13 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		ccSrv = authenticator.Wrap(ccSrv)
 	}
 
-	//Now that chaincode is initialized, register all system chaincodes.
-	sccs := scc.CreateSysCCs(ccp, sccp, aclProvider, pr)
-	for _, cc := range sccs {
+	lsccInst := lscc.New(sccp, aclProvider, pr)
+	csccInst := cscc.New(ccp, sccp, aclProvider)
+	qsccInst := qscc.New(aclProvider)
+
+	//Now that chaincode is initialized, register all plugin system chaincodes.
+	sccs := scc.CreatePluginSysCCs(sccp)
+	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst}, sccs...) {
 		sccp.RegisterSysCC(cc)
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
