@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -38,15 +37,7 @@ type RuntimeLauncher struct {
 
 // LaunchInit launches a container which is not yet defined in the LSCC table
 // This is only necessary for the pre v1.3 lifecycle
-func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
-	ccci := &lifecycle.ChaincodeContainerInfo{
-		Name:          spec.Name(),
-		Version:       cccid.Version,
-		Path:          spec.Path(),
-		Type:          spec.CCType(),
-		ContainerType: spec.ExecEnv.String(),
-	}
-
+func (r *RuntimeLauncher) LaunchInit(ctx context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
 	err := r.start(ctx, ccci)
 	if err != nil {
 		chaincodeLogger.Errorf("start failed: %+v", err)
@@ -80,7 +71,7 @@ func (r *RuntimeLauncher) start(ctx context.Context, ccci *lifecycle.ChaincodeCo
 	var codePackage []byte
 	// Note, it is not actually possible for cds.CodePackage to be non-nil in the real world
 	// But some of the tests rely on the idea that it might be set.
-	if ccci.ContainerType != pb.ChaincodeDeploymentSpec_SYSTEM.String() {
+	if ccci.ContainerType != inproccontroller.ContainerType {
 		var err error
 		codePackage, err = r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
 		if err != nil {
