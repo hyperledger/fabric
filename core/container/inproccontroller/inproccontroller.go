@@ -14,8 +14,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
-	"golang.org/x/net/context"
 )
 
 // ContainerType is the string which the inproc container type
@@ -100,7 +98,7 @@ func NewInprocVM(r *Registry) *InprocVM {
 	}
 }
 
-func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContainer, instName string, args []string, env []string) (*inprocContainer, error) {
+func (vm *InprocVM) getInstance(ipctemplate *inprocContainer, instName string, args []string, env []string) (*inprocContainer, error) {
 	ipc := vm.registry.instRegistry[instName]
 	if ipc != nil {
 		inprocLogger.Warningf("chaincode instance exists for %s", instName)
@@ -118,7 +116,7 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 	return ipc, nil
 }
 
-func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args []string, env []string) error {
+func (ipc *inprocContainer) launchInProc(id string, args []string, env []string) error {
 	if ipc.ChaincodeSupport == nil {
 		inprocLogger.Panicf("Chaincode support is nil, most likely you forgot to set it immediately after calling inproccontroller.NewRegsitry()")
 	}
@@ -152,7 +150,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		defer close(ccsupportchan)
 		inprocStream := newInProcStream(peerRcvCCSend, ccRcvPeerSend)
 		inprocLogger.Debugf("chaincode-support started for  %s", id)
-		err := ipc.ChaincodeSupport.HandleChaincodeStream(ctxt, inprocStream)
+		err := ipc.ChaincodeSupport.HandleChaincodeStream(inprocStream)
 		if err != nil {
 			err = fmt.Errorf("chaincode ended with err: %s", err)
 			inprocLoggerErrorf("%s", err)
@@ -176,7 +174,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 }
 
 //Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
+func (vm *InprocVM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
 	path := ccid.GetName()
 
 	ipctemplate := vm.registry.typeRegistry[path]
@@ -187,7 +185,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 
 	instName := vm.GetVMName(ccid)
 
-	ipc, err := vm.getInstance(ctxt, ipctemplate, instName, args, env)
+	ipc, err := vm.getInstance(ipctemplate, instName, args, env)
 
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("could not create instance for %s", instName))
@@ -205,14 +203,14 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 				inprocLogger.Criticalf("caught panic from chaincode  %s", instName)
 			}
 		}()
-		ipc.launchInProc(ctxt, instName, args, env)
+		ipc.launchInProc(instName, args, env)
 	}()
 
 	return nil
 }
 
 //Stop stops a system codechain
-func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
+func (vm *InprocVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	path := ccid.GetName()
 
 	ipctemplate := vm.registry.typeRegistry[path]

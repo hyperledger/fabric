@@ -19,12 +19,11 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Processor processes vm and container requests.
 type Processor interface {
-	Process(ctxt context.Context, vmtype string, req container.VMCReq) error
+	Process(vmtype string, req container.VMCReq) error
 }
 
 // CertGenerator generates client certificates for chaincode.
@@ -45,7 +44,7 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error {
+func (c *ContainerRuntime) Start(ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error {
 	cname := ccci.Name + ":" + ccci.Version
 
 	lc, err := c.LaunchConfig(cname, ccci.Type)
@@ -75,7 +74,7 @@ func (c *ContainerRuntime) Start(ctxt context.Context, ccci *lifecycle.Chaincode
 		},
 	}
 
-	if err := c.Processor.Process(ctxt, ccci.ContainerType, scr); err != nil {
+	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
 		return errors.WithMessage(err, "error starting container")
 	}
 
@@ -83,7 +82,7 @@ func (c *ContainerRuntime) Start(ctxt context.Context, ccci *lifecycle.Chaincode
 }
 
 // Stop terminates chaincode and its container runtime environment.
-func (c *ContainerRuntime) Stop(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
+func (c *ContainerRuntime) Stop(ccci *lifecycle.ChaincodeContainerInfo) error {
 	scr := container.StopContainerReq{
 		CCID: ccintf.CCID{
 			Name:    ccci.Name,
@@ -93,7 +92,7 @@ func (c *ContainerRuntime) Stop(ctxt context.Context, ccci *lifecycle.ChaincodeC
 		Dontremove: false,
 	}
 
-	if err := c.Processor.Process(ctxt, ccci.ContainerType, scr); err != nil {
+	if err := c.Processor.Process(ccci.ContainerType, scr); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 

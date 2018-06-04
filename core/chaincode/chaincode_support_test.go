@@ -336,7 +336,7 @@ func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *Ch
 	flogging.SetModuleLevel("chaincode", "debug")
 	//register peer side with ccsupport
 	go func() {
-		chaincodeSupport.HandleChaincodeStream(context.Background(), peerSide)
+		chaincodeSupport.HandleChaincodeStream(peerSide)
 	}()
 
 	done := setuperror()
@@ -1026,7 +1026,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
 		handlerRegistry.Ready("testcc:0")
 		return nil
 	}
@@ -1050,7 +1050,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	}
 
 	//actual test - everythings good
-	err := launcher.Launch(context.Background(), ccci)
+	err := launcher.Launch(ccci)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -1059,7 +1059,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -1083,7 +1083,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 	}
 
 	//the actual test - timeout 1000 > 500
-	err := launcher.Launch(context.Background(), ccci)
+	err := launcher.Launch(ccci)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -1092,7 +1092,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ context.Context, _ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
@@ -1115,7 +1115,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 	}
 
 	//actual test - container launch gives error
-	err := launcher.Launch(context.Background(), ccci)
+	err := launcher.Launch(ccci)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}

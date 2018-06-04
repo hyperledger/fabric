@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
@@ -152,10 +142,10 @@ func TestUpgradeCC(t *testing.T) {
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 
 	if err != nil {
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		t.Fail()
 		t.Logf("Error deploying chaincode %s(%s)", chaincodeID, err)
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
 
@@ -169,12 +159,12 @@ func TestUpgradeCC(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl01 should fail transaction: %s", err)
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	} else if !strings.Contains(err.Error(), "Invalid invoke function name. Expecting \"invoke\"") {
 		t.Fail()
 		t.Logf("expected <Invalid invoke function name. Expecting \"invoke\"> found <%s>", err)
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
 
@@ -192,9 +182,9 @@ func TestUpgradeCC(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error upgrading chaincode %s(%s)", chaincodeID, err)
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		if cccid2 != nil {
-			chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		}
 		return
 	}
@@ -207,12 +197,12 @@ func TestUpgradeCC(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl02 did not succeed: %s", err)
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-	chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestInvalUpgradeCC - test basic upgrade
@@ -250,12 +240,12 @@ func TestInvalUpgradeCC(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Logf("Error expected upgrading to fail but it succeeded%s(%s)", chaincodeID, err)
-		chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		if cccid2 != nil {
-			chaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		}
 		return
 	}
 
-	chaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }

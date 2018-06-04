@@ -187,7 +187,6 @@ func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Se
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
 
-	ctx := context.Background()
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
 
@@ -196,7 +195,7 @@ func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Se
 
 	cccid := ccprovider.NewCCContext(chainID, syscc.Name(), version, "", true, nil, nil)
 
-	err := ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
+	err := ccprov.Stop(cccid, chaincodeDeploymentSpec)
 
 	return err
 }

@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -75,7 +73,7 @@ func TestGetInstanceChaincodeDoesntExist(t *testing.T) {
 	vm := NewInprocVM(r)
 	args := []string{"a", "b"}
 	env := []string{"a", "b"}
-	container, err := vm.getInstance(nil, mockInprocContainer, "instName", args, env)
+	container, err := vm.getInstance(mockInprocContainer, "instName", args, env)
 	assert.NotNil(t, container, "container should not be nil")
 	assert.Nil(t, err, "err should be nil")
 
@@ -99,7 +97,7 @@ func TestGetInstaceChaincodeExists(t *testing.T) {
 
 	r.instRegistry["instName"] = ipc
 
-	container, err := vm.getInstance(nil, mockInprocContainer, "instName", args, env)
+	container, err := vm.getInstance(mockInprocContainer, "instName", args, env)
 	assert.NotNil(t, container, "container should not be nil")
 	assert.Nil(t, err, "err should be nil")
 
@@ -116,7 +114,7 @@ func (r MockReader) Read(p []byte) (n int, err error) {
 type MockCCSupport struct {
 }
 
-func (ccs MockCCSupport) HandleChaincodeStream(ctx context.Context, stream ccintf.ChaincodeStream) error {
+func (ccs MockCCSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	return nil
 }
 func TestLaunchInprocCCSupportChan(t *testing.T) {
@@ -140,7 +138,7 @@ func TestLaunchInprocCCSupportChan(t *testing.T) {
 
 	_ = &inprocContainer{args: args, env: env, chaincode: mockInprocContainer.chaincode, stopChan: make(chan struct{})}
 
-	err := mockInprocContainer.launchInProc(nil, "ID", args, env)
+	err := mockInprocContainer.launchInProc("ID", args, env)
 	assert.Nil(t, err, "err should be nil")
 }
 
@@ -174,7 +172,7 @@ func TestLaunchprocNoArgs(t *testing.T) {
 
 	r.typeRegistry["path"] = ipc
 
-	err := mockInprocContainer.launchInProc(nil, "ID", args, env)
+	err := mockInprocContainer.launchInProc("ID", args, env)
 	assert.Nil(t, err, "err should be nil")
 }
 
@@ -214,7 +212,7 @@ func TestLaunchprocNoEnv(t *testing.T) {
 
 	r.typeRegistry["path"] = ipc
 
-	err := mockInprocContainer.launchInProc(nil, "ID", args, env)
+	err := mockInprocContainer.launchInProc("ID", args, env)
 	assert.Nil(t, err, "err should be nil")
 }
 
@@ -261,7 +259,7 @@ func TestLaunchprocShimStartInProcErr(t *testing.T) {
 
 	r.typeRegistry["path"] = ipc
 
-	err := mockInprocContainer.launchInProc(nil, "ID", args, env)
+	err := mockInprocContainer.launchInProc("ID", args, env)
 	assert.Nil(t, err, "err should be nil")
 	<-done
 }
@@ -269,7 +267,7 @@ func TestLaunchprocShimStartInProcErr(t *testing.T) {
 type MockCCSupportErr struct {
 }
 
-func (ccs MockCCSupportErr) HandleChaincodeStream(ctx context.Context, stream ccintf.ChaincodeStream) error {
+func (ccs MockCCSupportErr) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	return errors.New("errors")
 }
 func TestLaunchprocCCSupportHandleChaincodeStreamError(t *testing.T) {
@@ -307,7 +305,7 @@ func TestLaunchprocCCSupportHandleChaincodeStreamError(t *testing.T) {
 
 	r.typeRegistry["path"] = ipc
 
-	err := mockInprocContainer.launchInProc(nil, "ID", args, env)
+	err := mockInprocContainer.launchInProc("ID", args, env)
 	assert.Nil(t, err, "err should be nil")
 }
 
@@ -335,7 +333,7 @@ func TestStart(t *testing.T) {
 
 	r.typeRegistry["name"] = ipc
 
-	err := vm.Start(nil, ccid, args, env, files, nil)
+	err := vm.Start(ccid, args, env, files, nil)
 	assert.Nil(t, err, "err should be nil")
 }
 
@@ -364,7 +362,7 @@ func TestStop(t *testing.T) {
 	r.instRegistry["name-1"] = ipc
 
 	go func() {
-		err := vm.Stop(nil, ccid, 1000, true, true)
+		err := vm.Stop(ccid, 1000, true, true)
 		assert.Nil(t, err, "err should be nil")
 	}()
 
@@ -382,7 +380,7 @@ func TestStopNoIPCTemplate(t *testing.T) {
 		Version: "1",
 	}
 
-	err := vm.Stop(nil, ccid, 1000, true, true)
+	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
 	assert.Equal(t, err.Error(), "name-1 not registered", "error should be correct")
 }
@@ -409,7 +407,7 @@ func TestStopNoIPC(t *testing.T) {
 
 	r.typeRegistry["name-1"] = ipc
 
-	err := vm.Stop(nil, ccid, 1000, true, true)
+	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
 	assert.Equal(t, err.Error(), "name-1 not found", "error should be correct")
 }
@@ -437,7 +435,7 @@ func TestStopIPCNotRunning(t *testing.T) {
 	r.typeRegistry["name-1"] = ipc
 	r.instRegistry["name-1"] = ipc
 
-	err := vm.Stop(nil, ccid, 1000, true, true)
+	err := vm.Stop(ccid, 1000, true, true)
 	assert.NotNil(t, err, "err should not be nil")
 	assert.Equal(t, err.Error(), "name-1 not running", "error should be correct")
 }

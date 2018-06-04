@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -171,12 +170,11 @@ func TestContainerRuntimeStart(t *testing.T) {
 		ContainerType: "container-type",
 	}
 
-	err := cr.Start(context.Background(), ccci, nil)
+	err := cr.Start(ccci, nil)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
-	ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
-	assert.Equal(t, context.Background(), ctx)
+	vmType, req := fakeProcessor.ProcessArgsForCall(0)
 	assert.Equal(t, vmType, "container-type")
 	startReq, ok := req.(container.StartContainerReq)
 	assert.True(t, ok)
@@ -216,7 +214,7 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			Version: "chaincode-version",
 		}
 
-		err := cr.Start(context.Background(), ccci, nil)
+		err := cr.Start(ccci, nil)
 		assert.EqualError(t, err, tc.errValue)
 	}
 }
@@ -234,12 +232,11 @@ func TestContainerRuntimeStop(t *testing.T) {
 		ContainerType: "container-type",
 	}
 
-	err := cr.Stop(context.Background(), ccci)
+	err := cr.Stop(ccci)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
-	ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
-	assert.Equal(t, context.Background(), ctx)
+	vmType, req := fakeProcessor.ProcessArgsForCall(0)
 	assert.Equal(t, vmType, "container-type")
 	stopReq, ok := req.(container.StopContainerReq)
 	assert.True(t, ok)
@@ -275,7 +272,7 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 			ContainerType: "container-type",
 		}
 
-		err := cr.Stop(context.Background(), ccci)
+		err := cr.Stop(ccci)
 		if err != nil || tc.errValue != "" {
 			assert.EqualError(t, err, tc.errValue)
 			continue

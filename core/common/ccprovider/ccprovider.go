@@ -532,5 +532,5 @@ type ChaincodeProvider interface {
 	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle
 	ExecuteInit(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Stop stops the chaincode given context and deployment spec
-	Stop(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
+	Stop(cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }

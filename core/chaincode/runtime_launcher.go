@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // LaunchRegistry tracks launching chaincode instances.
@@ -34,7 +33,7 @@ type RuntimeLauncher struct {
 	StartupTimeout  time.Duration
 }
 
-func (r *RuntimeLauncher) Launch(ctx context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
+func (r *RuntimeLauncher) Launch(ccci *lifecycle.ChaincodeContainerInfo) error {
 	var codePackage []byte
 	if ccci.ContainerType != inproccontroller.ContainerType {
 		var err error
@@ -53,7 +52,7 @@ func (r *RuntimeLauncher) Launch(ctx context.Context, ccci *lifecycle.ChaincodeC
 	startFail := make(chan error, 1)
 	go func() {
 		chaincodeLogger.Debugf("chaincode %s is being launched", cname)
-		err := r.Runtime.Start(ctx, ccci, codePackage)
+		err := r.Runtime.Start(ccci, codePackage)
 		if err != nil {
 			startFail <- errors.WithMessage(err, "error starting container")
 		}
@@ -72,7 +71,7 @@ func (r *RuntimeLauncher) Launch(ctx context.Context, ccci *lifecycle.ChaincodeC
 	if err != nil {
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
 		defer r.Registry.Deregister(cname)
-		if err := r.Runtime.Stop(ctx, ccci); err != nil {
+		if err := r.Runtime.Stop(ccci); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
 		return err

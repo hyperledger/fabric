@@ -26,13 +26,13 @@ import (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error
-	Stop(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo) error
+	Start(ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error
+	Stop(ccci *lifecycle.ChaincodeContainerInfo) error
 }
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(context context.Context, ccci *lifecycle.ChaincodeContainerInfo) error
+	Launch(ccci *lifecycle.ChaincodeContainerInfo) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -112,24 +112,22 @@ func NewChaincodeSupport(
 // LaunchForInit bypasses getting the chaincode spec from the LSCC table
 // as in the case of v1.0-v1.2 lifecycle, the chaincode will not yet be
 // defined in the LSCC table
-func (cs *ChaincodeSupport) LaunchInit(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
+func (cs *ChaincodeSupport) LaunchInit(cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
 	if cs.HandlerRegistry.Handler(cname) != nil {
 		return nil
 	}
 
-	ctx = context.WithValue(ctx, ccintf.GetCCHandlerKey(), cs)
-
 	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(spec)
 	ccci.Version = cccid.Version
 
-	return cs.Launcher.Launch(ctx, ccci)
+	return cs.Launcher.Launch(ccci)
 }
 
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
+func (cs *ChaincodeSupport) Launch(cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
 	cname := cccid.GetCanonicalName()
 	if cs.HandlerRegistry.Handler(cname) != nil {
 		return nil
@@ -142,10 +140,6 @@ func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCCont
 		)
 	}
 
-	// This is hacky. The only user of this context value is the in-process controller
-	// used to support system chaincode. It should really be instantiated with the
-	// appropriate reference to ChaincodeSupport.
-	ctx = context.WithValue(ctx, ccintf.GetCCHandlerKey(), cs)
 	chaincodeName := spec.GetChaincodeSpec().Name()
 
 	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(cccid.ChainID, chaincodeName)
@@ -153,17 +147,17 @@ func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCCont
 		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", cccid.ChainID, chaincodeName)
 	}
 
-	return cs.Launcher.Launch(ctx, ccci)
+	return cs.Launcher.Launch(ccci)
 }
 
 // Stop stops a chaincode if running.
-func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (cs *ChaincodeSupport) Stop(cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	cname := cccid.GetCanonicalName()
 	defer cs.HandlerRegistry.Deregister(cname)
 
 	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(cds)
 	ccci.Version = cccid.Version
-	err := cs.Runtime.Stop(ctx, ccci)
+	err := cs.Runtime.Stop(ccci)
 	if err != nil {
 		return err
 	}
@@ -172,10 +166,7 @@ func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContex
 }
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
-func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream ccintf.ChaincodeStream) error {
-	deadline, ok := ctxt.Deadline()
-	chaincodeLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
-
+func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	handler := &Handler{
 		Invoker:                    cs,
 		DefinitionGetter:           cs.Lifecycle,
@@ -197,7 +188,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream c
 
 // Register the bidi stream entry point called by chaincode to register with the Peer.
 func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) error {
-	return cs.HandleChaincodeStream(stream.Context(), stream)
+	return cs.HandleChaincodeStream(stream)
 }
 
 // createCCMessage creates a transaction message.
@@ -260,7 +251,7 @@ func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.Chain
 func (cs *ChaincodeSupport) InvokeInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeMessage, error) {
 	cctyp := pb.ChaincodeMessage_INIT
 
-	err := cs.LaunchInit(ctxt, cccid, spec)
+	err := cs.LaunchInit(cccid, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +281,7 @@ func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCCon
 		return nil, errors.New("chaincode spec is nil")
 	}
 
-	err := cs.Launch(ctxt, cccid, spec)
+	err := cs.Launch(cccid, spec)
 	if err != nil {
 		return nil, err
 	}
