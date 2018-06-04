@@ -199,7 +199,7 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 
 		}
 		if requiredPeerCount < 0 {
-			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be lesser than zero (%d)",
+			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero (%d)",
 				collectionName, maximumPeerCount, requiredPeerCount)
 
 		}
@@ -327,8 +327,8 @@ func (vscc *ValidatorOneValidSignature) validateRWSetAndCollection(
 	}
 
 	if !bytes.Equal(collectionsConfigArg, collectionsConfigLedger) {
-		return policyErr(fmt.Errorf("collection configuration mismatch for chaincode %s:%s arg: %s writeset: %s",
-			cdRWSet.Name, cdRWSet.Version, collectionsConfigArg, collectionsConfigLedger))
+		return policyErr(fmt.Errorf("collection configuration arguments supplied for chaincode %s:%s do not match the configuration in the lscc writeset",
+			cdRWSet.Name, cdRWSet.Version))
 
 	}
 
