@@ -23,11 +23,12 @@ import (
 const ContainerType = "SYSTEM"
 
 type inprocContainer struct {
-	chaincode shim.Chaincode
-	running   bool
-	args      []string
-	env       []string
-	stopChan  chan struct{}
+	ChaincodeSupport ccintf.CCSupport
+	chaincode        shim.Chaincode
+	running          bool
+	args             []string
+	env              []string
+	stopChan         chan struct{}
 }
 
 var (
@@ -51,11 +52,16 @@ func (s SysCCRegisteredErr) Error() string {
 // Registry stores registered system chaincodes.
 // It implements container.VMProvider and scc.Registrar
 type Registry struct {
-	typeRegistry map[string]*inprocContainer
-	instRegistry map[string]*inprocContainer
+	typeRegistry     map[string]*inprocContainer
+	instRegistry     map[string]*inprocContainer
+	ChaincodeSupport ccintf.CCSupport
 }
 
 // NewRegistry creates an initialized registry, ready to register system chaincodes.
+// The returned *Registry is _not_ ready to use as is.  You must set the ChaincodeSupport
+// as soon as one is available, before any chaincode invocations occur.  This is because
+// the chaincode support used to be a latent dependency, snuck in on the context, but now
+// it is being made an explicit part of the startup.
 func NewRegistry() *Registry {
 	return &Registry{
 		typeRegistry: make(map[string]*inprocContainer),
@@ -100,13 +106,23 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 		inprocLogger.Warningf("chaincode instance exists for %s", instName)
 		return ipc, nil
 	}
-	ipc = &inprocContainer{args: args, env: env, chaincode: ipctemplate.chaincode, stopChan: make(chan struct{})}
+	ipc = &inprocContainer{
+		ChaincodeSupport: vm.registry.ChaincodeSupport,
+		args:             args,
+		env:              env,
+		chaincode:        ipctemplate.chaincode,
+		stopChan:         make(chan struct{}),
+	}
 	vm.registry.instRegistry[instName] = ipc
 	inprocLogger.Debugf("chaincode instance created for %s", instName)
 	return ipc, nil
 }
 
-func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args []string, env []string, ccSupport ccintf.CCSupport) error {
+func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args []string, env []string) error {
+	if ipc.ChaincodeSupport == nil {
+		inprocLogger.Panicf("Chaincode support is nil, most likely you forgot to set it immediately after calling inproccontroller.NewRegsitry()")
+	}
+
 	peerRcvCCSend := make(chan *pb.ChaincodeMessage)
 	ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
 	var err error
@@ -136,7 +152,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		defer close(ccsupportchan)
 		inprocStream := newInProcStream(peerRcvCCSend, ccRcvPeerSend)
 		inprocLogger.Debugf("chaincode-support started for  %s", id)
-		err := ccSupport.HandleChaincodeStream(ctxt, inprocStream)
+		err := ipc.ChaincodeSupport.HandleChaincodeStream(ctxt, inprocStream)
 		if err != nil {
 			err = fmt.Errorf("chaincode ended with err: %s", err)
 			inprocLoggerErrorf("%s", err)
@@ -181,13 +197,6 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 		return fmt.Errorf(fmt.Sprintf("chaincode running %s", path))
 	}
 
-	//TODO VALIDITY CHECKS ?
-
-	ccSupport, ok := ctxt.Value(ccintf.GetCCHandlerKey()).(ccintf.CCSupport)
-	if !ok || ccSupport == nil {
-		return fmt.Errorf("in-process communication generator not supplied")
-	}
-
 	ipc.running = true
 
 	go func() {
@@ -196,7 +205,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 				inprocLogger.Criticalf("caught panic from chaincode  %s", instName)
 			}
 		}()
-		ipc.launchInProc(ctxt, instName, args, env, ccSupport)
+		ipc.launchInProc(ctxt, instName, args, env)
 	}()
 
 	return nil

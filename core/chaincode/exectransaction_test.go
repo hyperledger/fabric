@@ -151,6 +151,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		sccp,
 		pr,
 	)
+	ipRegistry.ChaincodeSupport = chaincodeSupport
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	// Mock policy checker

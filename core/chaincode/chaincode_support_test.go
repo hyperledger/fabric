@@ -196,6 +196,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		sccp,
 		pr,
 	)
+	ipRegistry.ChaincodeSupport = chaincodeSupport
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})

@@ -146,6 +146,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 		sccp,
 		platforms.NewRegistry(&golang.Platform{}),
 	)
+	ipRegistry.ChaincodeSupport = chaincodeSupport
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	go grpcServer.Serve(lis)

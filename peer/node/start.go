@@ -652,6 +652,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		sccp,
 		pr,
 	)
+	ipRegistry.ChaincodeSupport = chaincodeSupport
 	ccp := chaincode.NewProvider(chaincodeSupport)
 
 	ccSrv := pb.ChaincodeSupportServer(chaincodeSupport)
