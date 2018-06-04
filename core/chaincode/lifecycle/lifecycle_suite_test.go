@@ -15,11 +15,6 @@ import (
 	"testing"
 )
 
-//go:generate counterfeiter -o mock/executor.go --fake-name Executor . executor
-type executor interface {
-	lifecycle.Executor
-}
-
 //go:generate counterfeiter -o mock/instantiated_cc_store.go --fake-name InstantiatedChaincodeStore . instantiatedChaincodeStore
 type instantiatedChaincodeStore interface {
 	lifecycle.InstantiatedChaincodeStore

@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -37,14 +38,7 @@ type Launcher interface {
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
 type Lifecycle interface {
 	// GetChaincodeDefinition returns the details for a chaincode by name
-	GetChaincodeDefinition(
-		ctx context.Context,
-		txid string,
-		signedProp *pb.SignedProposal,
-		prop *pb.Proposal,
-		chainID string,
-		chaincodeID string,
-	) (ccprovider.ChaincodeDefinition, error)
+	GetChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 
 	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
 	ChaincodeContainerInfo(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error)
@@ -71,7 +65,7 @@ func NewChaincodeSupport(
 	caCert []byte,
 	certGenerator CertGenerator,
 	packageProvider PackageProvider,
-	chaincodeStore lifecycle.InstantiatedChaincodeStore,
+	lifecycle Lifecycle,
 	aclProvider ACLProvider,
 	processor Processor,
 	sccp sysccprovider.SystemChaincodeProvider,
@@ -84,16 +78,12 @@ func NewChaincodeSupport(
 		HandlerRegistry: NewHandlerRegistry(userRunsCC),
 		ACLProvider:     aclProvider,
 		sccp:            sccp,
+		Lifecycle:       lifecycle,
 	}
 
 	// Keep TestQueries working
 	if !config.TLSEnabled {
 		certGenerator = nil
-	}
-
-	cs.Lifecycle = &lifecycle.Lifecycle{
-		Executor:                   cs,
-		InstantiatedChaincodeStore: chaincodeStore,
 	}
 
 	cs.Runtime = &ContainerRuntime{
@@ -188,7 +178,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream c
 
 	handler := &Handler{
 		Invoker:                    cs,
-		DefinitionGetter:           &lifecycle.Lifecycle{Executor: cs},
+		DefinitionGetter:           cs.Lifecycle,
 		Keepalive:                  cs.Keepalive,
 		Registry:                   cs.HandlerRegistry,
 		ACLProvider:                cs.ACLProvider,

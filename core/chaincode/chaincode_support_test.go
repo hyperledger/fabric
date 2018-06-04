@@ -183,7 +183,9 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
-		lsccImpl,
+		&lifecycle.Lifecycle{
+			InstantiatedChaincodeStore: lsccImpl,
+		},
 		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{

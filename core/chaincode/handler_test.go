@@ -1583,12 +1583,9 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeDefinitionGetter.GetChaincodeDefinitionCallCount()).To(Equal(1))
-				_, txid, signedProp, prop, chainID, ccname := fakeDefinitionGetter.GetChaincodeDefinitionArgsForCall(0)
-				Expect(txid).To(Equal("tx-id"))
-				Expect(signedProp).To(Equal(expectedSignedProp))
-				Expect(prop).To(Equal(expectedProposal))
-				Expect(chainID).To(Equal("channel-id"))
+				ccname, txSim := fakeDefinitionGetter.GetChaincodeDefinitionArgsForCall(0)
 				Expect(ccname).To(Equal("target-chaincode-name"))
+				Expect(txSim).To(Equal(newTxSimulator))
 			})
 
 			It("checks the instantiation policy on the target", func() {

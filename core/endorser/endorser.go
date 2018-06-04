@@ -65,7 +65,7 @@ type Support interface {
 	ExecuteInit(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
-	GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, error)
+	GetChaincodeDefinition(chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 
 	// CheckACL checks the ACL for the resource for the channel using the
 	// SignedProposal from which an id can be extracted for testing against a policy
@@ -271,7 +271,7 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 	var version string
 
 	if !e.s.IsSysCC(cid.Name) {
-		cdLedger, err = e.s.GetChaincodeDefinition(ctx, chainID, txid, signedProp, prop, cid.Name, txsim)
+		cdLedger, err = e.s.GetChaincodeDefinition(cid.Name, txsim)
 		if err != nil {
 			return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("make sure the chaincode %s has been successfully instantiated and try again", cid.Name))
 		}

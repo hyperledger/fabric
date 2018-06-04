@@ -6,20 +6,15 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"golang.org/x/net/context"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type Lifecycle struct {
-	GetChaincodeDefinitionStub        func(ctx context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error)
+	GetChaincodeDefinitionStub        func(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 	getChaincodeDefinitionMutex       sync.RWMutex
 	getChaincodeDefinitionArgsForCall []struct {
-		ctx         context.Context
-		txid        string
-		signedProp  *pb.SignedProposal
-		prop        *pb.Proposal
-		chainID     string
-		chaincodeID string
+		chaincodeName string
+		txSim         ledger.QueryExecutor
 	}
 	getChaincodeDefinitionReturns struct {
 		result1 ccprovider.ChaincodeDefinition
@@ -47,21 +42,17 @@ type Lifecycle struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Lifecycle) GetChaincodeDefinition(ctx context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error) {
+func (fake *Lifecycle) GetChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	fake.getChaincodeDefinitionMutex.Lock()
 	ret, specificReturn := fake.getChaincodeDefinitionReturnsOnCall[len(fake.getChaincodeDefinitionArgsForCall)]
 	fake.getChaincodeDefinitionArgsForCall = append(fake.getChaincodeDefinitionArgsForCall, struct {
-		ctx         context.Context
-		txid        string
-		signedProp  *pb.SignedProposal
-		prop        *pb.Proposal
-		chainID     string
-		chaincodeID string
-	}{ctx, txid, signedProp, prop, chainID, chaincodeID})
-	fake.recordInvocation("GetChaincodeDefinition", []interface{}{ctx, txid, signedProp, prop, chainID, chaincodeID})
+		chaincodeName string
+		txSim         ledger.QueryExecutor
+	}{chaincodeName, txSim})
+	fake.recordInvocation("GetChaincodeDefinition", []interface{}{chaincodeName, txSim})
 	fake.getChaincodeDefinitionMutex.Unlock()
 	if fake.GetChaincodeDefinitionStub != nil {
-		return fake.GetChaincodeDefinitionStub(ctx, txid, signedProp, prop, chainID, chaincodeID)
+		return fake.GetChaincodeDefinitionStub(chaincodeName, txSim)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -75,10 +66,10 @@ func (fake *Lifecycle) GetChaincodeDefinitionCallCount() int {
 	return len(fake.getChaincodeDefinitionArgsForCall)
 }
 
-func (fake *Lifecycle) GetChaincodeDefinitionArgsForCall(i int) (context.Context, string, *pb.SignedProposal, *pb.Proposal, string, string) {
+func (fake *Lifecycle) GetChaincodeDefinitionArgsForCall(i int) (string, ledger.QueryExecutor) {
 	fake.getChaincodeDefinitionMutex.RLock()
 	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	return fake.getChaincodeDefinitionArgsForCall[i].ctx, fake.getChaincodeDefinitionArgsForCall[i].txid, fake.getChaincodeDefinitionArgsForCall[i].signedProp, fake.getChaincodeDefinitionArgsForCall[i].prop, fake.getChaincodeDefinitionArgsForCall[i].chainID, fake.getChaincodeDefinitionArgsForCall[i].chaincodeID
+	return fake.getChaincodeDefinitionArgsForCall[i].chaincodeName, fake.getChaincodeDefinitionArgsForCall[i].txSim
 }
 
 func (fake *Lifecycle) GetChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {

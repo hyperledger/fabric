@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
-	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
@@ -144,15 +143,8 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 }
 
 // GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
-func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, error) {
-	ctxt := ctx
-	if txsim != nil {
-		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
-	}
-	lifecycle := &lc.Lifecycle{
-		Executor: s.ChaincodeSupport,
-	}
-	return lifecycle.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+func (s *SupportImpl) GetChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	return s.ChaincodeSupport.Lifecycle.GetChaincodeDefinition(chaincodeName, txsim)
 }
 
 // CheckACL checks the ACL for the resource for the Channel using the
