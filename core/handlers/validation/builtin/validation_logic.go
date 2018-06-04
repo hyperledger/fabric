@@ -174,34 +174,59 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 
 		newCollection := newCollectionConfig.GetStaticCollectionConfig()
 		if newCollection == nil {
-			return policyErr(errors.New("unknown collection configuration type"))
+			return errors.New("unknown collection configuration type")
 		}
 
 		// Ensure that there are no duplicate collection names
 		collectionName := newCollection.GetName()
 
 		if err := validateCollectionName(collectionName); err != nil {
-			return policyErr(err)
+			return err
 		}
 
 		if _, ok := newCollectionsMap[collectionName]; !ok {
 			newCollectionsMap[collectionName] = true
 		} else {
-			return policyErr(fmt.Errorf("collection-name: %s -- found duplicate collection configuration", collectionName))
+			return fmt.Errorf("collection-name: %s -- found duplicate collection configuration", collectionName)
 		}
 
 		// Validate gossip related parameters present in the collection config
 		maximumPeerCount := newCollection.GetMaximumPeerCount()
 		requiredPeerCount := newCollection.GetRequiredPeerCount()
 		if maximumPeerCount < requiredPeerCount {
-			return policyErr(fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
-				collectionName, maximumPeerCount, requiredPeerCount))
+			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+				collectionName, maximumPeerCount, requiredPeerCount)
 
 		}
 		if requiredPeerCount < 0 {
-			return policyErr(fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be lesser than zero (%d)",
-				collectionName, maximumPeerCount, requiredPeerCount))
+			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be lesser than zero (%d)",
+				collectionName, maximumPeerCount, requiredPeerCount)
 
+		}
+
+		// make sure that the signature policy is meaningful (only consists of ORs)
+		err := validateSpOrConcat(newCollection.MemberOrgsPolicy.GetSignaturePolicy().Rule)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("collection-name: %s -- error in member org policy", collectionName))
+		}
+	}
+	return nil
+}
+
+// validateSpOrConcat checks if the supplied signature policy is just an OR-concatenation of identities
+func validateSpOrConcat(sp *common.SignaturePolicy) error {
+	if sp.GetNOutOf() == nil {
+		return nil
+	}
+	// check if N == 1 (OR concatenation)
+	if sp.GetNOutOf().N != 1 {
+		return errors.New(fmt.Sprintf("signature policy is not an OR concatenation, NOutOf %d", sp.GetNOutOf().N))
+	}
+	// recurse into all sub-rules
+	for _, rule := range sp.GetNOutOf().Rules {
+		err := validateSpOrConcat(rule)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -381,8 +406,6 @@ func (vscc *ValidatorOneValidSignature) validateRWSetAndCollection(
 			}
 		}
 	}
-
-	// TODO: FAB-6526 - to add validation of the collections object
 
 	return nil
 }

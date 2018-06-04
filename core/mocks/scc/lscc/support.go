@@ -8,6 +8,7 @@ package lscc
 
 import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -22,6 +23,7 @@ type MockSupport struct {
 	CheckInstantiationPolicyErr      error
 	GetInstantiationPolicyMap        map[string][]byte
 	CheckInstantiationPolicyMap      map[string]error
+	CheckCollectionConfigErr         error
 }
 
 func (s *MockSupport) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
@@ -50,4 +52,8 @@ func (s *MockSupport) CheckInstantiationPolicy(signedProp *peer.SignedProposal, 
 		return s.CheckInstantiationPolicyMap[string(instantiationPolicy)]
 	}
 	return s.CheckInstantiationPolicyErr
+}
+
+func (s *MockSupport) CheckCollectionConfig(collectionConfig *common.CollectionConfig, channelName string) error {
+	return s.CheckCollectionConfigErr
 }
