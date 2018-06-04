@@ -124,14 +124,6 @@ func RunQueryInvokeQuery(w *world.World, deployment world.Deployment) {
 	adminRunner = adminPeer.QueryChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["query","a"]}`)
 	execute(adminRunner)
 	Eventually(adminRunner.Buffer()).Should(gbytes.Say("90"))
-
-	By("updating the channel")
-	adminPeer = components.Peer()
-	adminPeer.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-	adminPeer.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	adminRunner = adminPeer.UpdateChannel(filepath.Join(w.Rootpath, "Org1_anchors_update_tx.pb"), deployment.Channel, deployment.Orderer)
-	execute(adminRunner)
-	Eventually(adminRunner.Err()).Should(gbytes.Say("Successfully submitted channel update"))
 }
 
 func execute(r ifrit.Runner) (err error) {
