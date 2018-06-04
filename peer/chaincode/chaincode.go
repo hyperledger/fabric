@@ -112,7 +112,7 @@ func resetFlags() {
 	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
 		"Get the instantiated chaincodes on a channel")
 	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
-		fmt.Sprint("The file containing the configuration for the chaincode's collection"))
+		fmt.Sprint("The fully qualified path to the collection JSON file including the file name"))
 	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
 		fmt.Sprint("The addresses of the peers to connect to"))
 	flags.StringArrayVarP(&tlsRootCertFiles, "tlsRootCertFiles", "", []string{common.UndefinedParamValue},
