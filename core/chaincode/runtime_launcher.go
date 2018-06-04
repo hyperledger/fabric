@@ -31,46 +31,11 @@ type RuntimeLauncher struct {
 	Runtime         Runtime
 	Registry        LaunchRegistry
 	PackageProvider PackageProvider
-	Lifecycle       Lifecycle
 	StartupTimeout  time.Duration
 }
 
-// LaunchInit launches a container which is not yet defined in the LSCC table
-// This is only necessary for the pre v1.3 lifecycle
-func (r *RuntimeLauncher) LaunchInit(ctx context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
-	err := r.start(ctx, ccci)
-	if err != nil {
-		chaincodeLogger.Errorf("start failed: %+v", err)
-		return err
-	}
-
-	chaincodeLogger.Debug("launch complete")
-
-	return nil
-}
-
-// Launch chaincode with the appropriate runtime.
-func (r *RuntimeLauncher) Launch(ctx context.Context, channelID, chaincodeName string) error {
-	ccci, err := r.Lifecycle.ChaincodeContainerInfo(channelID, chaincodeName)
-	if err != nil {
-		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", channelID, chaincodeName)
-	}
-
-	err = r.start(ctx, ccci)
-	if err != nil {
-		chaincodeLogger.Errorf("start failed: %+v", err)
-		return err
-	}
-
-	chaincodeLogger.Debug("launch complete")
-
-	return nil
-}
-
-func (r *RuntimeLauncher) start(ctx context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
+func (r *RuntimeLauncher) Launch(ctx context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
 	var codePackage []byte
-	// Note, it is not actually possible for cds.CodePackage to be non-nil in the real world
-	// But some of the tests rely on the idea that it might be set.
 	if ccci.ContainerType != inproccontroller.ContainerType {
 		var err error
 		codePackage, err = r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
@@ -113,5 +78,6 @@ func (r *RuntimeLauncher) start(ctx context.Context, ccci *lifecycle.ChaincodeCo
 		return err
 	}
 
+	chaincodeLogger.Debug("launch complete")
 	return nil
 }
