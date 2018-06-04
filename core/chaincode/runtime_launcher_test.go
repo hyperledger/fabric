@@ -92,7 +92,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		})
 
 		It("gets the chaincode container info", func() {
-			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid.ChainID, invocationSpec.ChaincodeSpec.Name())
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLifecycle.ChaincodeContainerInfoCallCount()).To(Equal(1))
@@ -102,7 +102,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		})
 
 		It("uses the chaincode container info when starting the runtime", func() {
-			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
+			err := runtimeLauncher.Launch(context.Background(), cccid.ChainID, invocationSpec.ChaincodeSpec.Name())
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeRuntime.StartCallCount()).To(Equal(1))
@@ -118,8 +118,8 @@ var _ = Describe("RuntimeLauncher", func() {
 			})
 
 			It("returns a wrapped error", func() {
-				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
-				Expect(err).To(MatchError(MatchRegexp("failed to get deployment spec for context-name:context-version: king-kong")))
+				err := runtimeLauncher.Launch(context.Background(), cccid.ChainID, invocationSpec.ChaincodeSpec.Name())
+				Expect(err).To(MatchError("[channel chain-id] failed to get chaincode container info for chaincode-name: king-kong"))
 			})
 		})
 
@@ -128,7 +128,7 @@ var _ = Describe("RuntimeLauncher", func() {
 			})
 
 			It("gets the package from the package provider", func() {
-				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
+				err := runtimeLauncher.Launch(context.Background(), cccid.ChainID, invocationSpec.ChaincodeSpec.Name())
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakePackageProvider.GetChaincodeCodePackageCallCount()).To(Equal(1))
@@ -143,7 +143,7 @@ var _ = Describe("RuntimeLauncher", func() {
 				})
 
 				It("returns a wrapped error", func() {
-					err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
+					err := runtimeLauncher.Launch(context.Background(), cccid.ChainID, invocationSpec.ChaincodeSpec.Name())
 					Expect(err).To(MatchError("failed to get chaincode package: tangerine"))
 				})
 			})
@@ -155,7 +155,7 @@ var _ = Describe("RuntimeLauncher", func() {
 			})
 
 			It("does not get the codepackage", func() {
-				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
+				err := runtimeLauncher.Launch(context.Background(), cccid.ChainID, invocationSpec.ChaincodeSpec.Name())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakePackageProvider.GetChaincodeCodePackageCallCount()).To(Equal(0))
 			})

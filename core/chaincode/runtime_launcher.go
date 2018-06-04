@@ -59,11 +59,10 @@ func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCCo
 }
 
 // Launch chaincode with the appropriate runtime.
-func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
-	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
-	ccci, err := r.Lifecycle.ChaincodeContainerInfo(cccid.ChainID, chaincodeID.Name)
+func (r *RuntimeLauncher) Launch(ctx context.Context, channelID, chaincodeName string) error {
+	ccci, err := r.Lifecycle.ChaincodeContainerInfo(channelID, chaincodeName)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get deployment spec for %s", cccid.GetCanonicalName())
+		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", channelID, chaincodeName)
 	}
 
 	err = r.start(ctx, ccci)

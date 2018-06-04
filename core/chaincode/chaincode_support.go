@@ -31,7 +31,7 @@ type Runtime interface {
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(context context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error
+	Launch(context context.Context, channelID, chaincodeName string) error
 	LaunchInit(context context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }
 
@@ -153,7 +153,7 @@ func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCCont
 	// appropriate reference to ChaincodeSupport.
 	ctx = context.WithValue(ctx, ccintf.GetCCHandlerKey(), cs)
 
-	return cs.Launcher.Launch(ctx, cccid, spec)
+	return cs.Launcher.Launch(ctx, cccid.ChainID, spec.ChaincodeSpec.ChaincodeId.Name)
 }
 
 // Stop stops a chaincode if running.
