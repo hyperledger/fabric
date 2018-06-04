@@ -256,8 +256,8 @@ func (p *puller) fetch(dig2src dig2sources, blockSeq uint64) (*FetchedPvtDataCon
 		subscriptions := p.scatterRequests(members, peer2digests)
 		responses := p.gatherResponses(subscriptions)
 		for _, resp := range responses {
-			logger.Debug("Got empty response for", resp.Digest)
 			if len(resp.Payload) == 0 {
+				logger.Debug("Got empty response for", resp.Digest)
 				continue
 			}
 			delete(dig2Filter, *resp.Digest)
