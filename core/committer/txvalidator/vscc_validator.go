@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// vsccValidator implementation which used to call
-// vscc chaincode and validate block transactions
+// VsccValidatorImpl is the implementation used to call
+// the vscc chaincode and validate block transactions
 type VsccValidatorImpl struct {
 	support         Support
 	sccprovider     sysccprovider.SystemChaincodeProvider
@@ -258,7 +258,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 }
 
 func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
-	logger.Info("Validating", ctx, "with plugin")
+	logger.Debug("Validating", ctx, "with plugin")
 	err := v.pluginValidator.ValidateWithPlugin(ctx)
 	if err == nil {
 		return nil
