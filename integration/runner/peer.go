@@ -107,6 +107,19 @@ func (p *Peer) CreateChannel(channel string, filename string, orderer string) *g
 	return r
 }
 
+func (p *Peer) GetChannelInfo(channel string) *ginkgomon.Runner {
+	cmd := exec.Command(p.Path, "channel", "getinfo", "-c", channel)
+	p.setupEnvironment(cmd)
+
+	r := ginkgomon.New(ginkgomon.Config{
+		Name:          "channel get info",
+		AnsiColorCode: "4;35m",
+		Command:       cmd,
+	})
+
+	return r
+}
+
 func (p *Peer) FetchChannel(channel string, filename string, block string, orderer string) *ginkgomon.Runner {
 	cmd := exec.Command(p.Path, "channel", "fetch", block, "-c", channel, "-o", orderer, filename)
 	p.setupEnvironment(cmd)
