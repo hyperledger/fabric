@@ -1752,13 +1752,12 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	// Test 1: More than two entries in the rwset -> error
 	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: "b"}, {Key: "c"}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "LSCC can only issue one or two putState upon deploy")
+	assert.EqualError(t, err, "LSCC can only issue one or two putState upon deploy")
 
 	// Test 2: Invalid key for the collection config package -> error
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: "b"}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "invalid key for the collection of chaincode %s:%s; expected '%s', received '%s'",
-		cdRWSet.Name, cdRWSet.Version, privdata.BuildCollectionKVSKey(rwset.Writes[1].Key), rwset.Writes[1].Key)
+	assert.EqualError(t, err, "invalid key for the collection of chaincode mycc:1.0; expected 'mycc~collection', received 'b'")
 
 	// Test 3: No collection config package -> success
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}}}
@@ -1774,15 +1773,15 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
-	// Test 5: Invalid collection config package -> error
+	// Test 5: Collection configuration of the lscc args doesn't match the rwset
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "invalid collection configuration supplied for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
+	assert.EqualError(t, err, "collection configuration arguments supplied for chaincode mycc:1.0 do not match the configuration in the lscc writeset")
 
 	// Test 6: Invalid collection config package -> error
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "invalid collection configuration supplied for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
+	assert.EqualError(t, err, "invalid collection configuration supplied for chaincode mycc:1.0")
 
 	// Test 7: Valid collection config package -> success
 	collName1 := "mycollection1"
@@ -1820,7 +1819,16 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 
 	// Test 10: Duplicate collections in the collection config package -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "collection-name: %s -- found duplicate collection configuration", collName1)
+	assert.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
+
+	// Test 11: requiredPeerCount < 0 -> error
+	requiredPeerCount = -2
+	maximumPeerCount = 1
+	blockToLive = 10000
+	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	assert.EqualError(t, err, "collection-name: mycollection3 -- requiredPeerCount (1) cannot be less than zero (-2)",
+		collName3, maximumPeerCount, requiredPeerCount)
 
 	// Test 11: requiredPeerCount > maximumPeerCount -> error
 	requiredPeerCount = 2
@@ -1828,8 +1836,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
-		collName3, maximumPeerCount, requiredPeerCount)
+	assert.EqualError(t, err, "collection-name: mycollection3 -- maximum peer count (1) cannot be greater than the required peer count (2)")
 
 	// Test 12: AND concatenation of orgs in access policy -> error
 	requiredPeerCount = 1
@@ -1838,6 +1845,14 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
+
+	// Test 13: deploy with existing collection config on the ledger -> error
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	state["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
+	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
+	assert.EqualError(t, err, "collection data should not exist for chaincode mycc:1.0")
 }
 
 func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
@@ -1887,12 +1902,11 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 
 	// Test 3: missing one existing collection (check based on the length) -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "Some existing collection configurations are missing in the new collection configuration package")
+	assert.EqualError(t, err, "Some existing collection configurations are missing in the new collection configuration package")
 
 	// Test 4: missing one existing collection (check based on the collection names) -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "existing collection named %s is missing in the new collection configuration package",
-		collName2)
+	assert.EqualError(t, err, "existing collection named mycollection2 is missing in the new collection configuration package")
 
 	// Test 5: adding a new collection along with the existing collections -> success
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
@@ -1903,7 +1917,7 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 
 	// Test 6: modify the BlockToLive in an existing collection -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.Errorf(t, err, "BlockToLive in the existing collection named %s cannot be changed", collName2)
+	assert.EqualError(t, err, "BlockToLive in the existing collection named mycollection2 cannot be changed")
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"
