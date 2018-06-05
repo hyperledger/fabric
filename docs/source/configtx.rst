@@ -212,7 +212,7 @@ For example, given the configuration:
 
     Channel: (version 0)
         Orderer (version 0)
-        Appplication (version 3)
+        Application (version 3)
            Org1 (version 2)
 
 To submit a configuration update which modifies ``Org1``, the
