@@ -514,6 +514,9 @@ func randomizeMemberList(members []discovery.NetworkMember) []discovery.NetworkM
 func digestsAsPointerSlice(digests []proto.PvtDataDigest) []*proto.PvtDataDigest {
 	res := make([]*proto.PvtDataDigest, len(digests))
 	for i, dig := range digests {
+		// re-introduce dig variable to allocate
+		// new address for each iteration
+		dig := dig
 		res[i] = &dig
 	}
 	return res
