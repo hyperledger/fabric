@@ -47,7 +47,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", false, nil, nil)
+	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", nil, nil)
 
 	var nextBlockNumber uint64 = 1
 	// this test assumes four collections

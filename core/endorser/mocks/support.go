@@ -101,7 +101,7 @@ type Support struct {
 	isSysCCReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	ExecuteStub        func(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteStub        func(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
 		ctxt       context.Context
@@ -109,7 +109,6 @@ type Support struct {
 		name       string
 		version    string
 		txid       string
-		syscc      bool
 		signedProp *pb.SignedProposal
 		prop       *pb.Proposal
 		spec       *pb.ChaincodeInvocationSpec
@@ -124,7 +123,7 @@ type Support struct {
 		result2 *pb.ChaincodeEvent
 		result3 error
 	}
-	ExecuteInitStub        func(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteInitStub        func(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	executeInitMutex       sync.RWMutex
 	executeInitArgsForCall []struct {
 		ctxt       context.Context
@@ -132,7 +131,6 @@ type Support struct {
 		name       string
 		version    string
 		txid       string
-		syscc      bool
 		signedProp *pb.SignedProposal
 		prop       *pb.Proposal
 		spec       *pb.ChaincodeDeploymentSpec
@@ -620,7 +618,7 @@ func (fake *Support) IsSysCCReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *Support) Execute(ctxt context.Context, cid string, name string, version string, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (fake *Support) Execute(ctxt context.Context, cid string, name string, version string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	fake.executeMutex.Lock()
 	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
@@ -629,15 +627,14 @@ func (fake *Support) Execute(ctxt context.Context, cid string, name string, vers
 		name       string
 		version    string
 		txid       string
-		syscc      bool
 		signedProp *pb.SignedProposal
 		prop       *pb.Proposal
 		spec       *pb.ChaincodeInvocationSpec
-	}{ctxt, cid, name, version, txid, syscc, signedProp, prop, spec})
-	fake.recordInvocation("Execute", []interface{}{ctxt, cid, name, version, txid, syscc, signedProp, prop, spec})
+	}{ctxt, cid, name, version, txid, signedProp, prop, spec})
+	fake.recordInvocation("Execute", []interface{}{ctxt, cid, name, version, txid, signedProp, prop, spec})
 	fake.executeMutex.Unlock()
 	if fake.ExecuteStub != nil {
-		return fake.ExecuteStub(ctxt, cid, name, version, txid, syscc, signedProp, prop, spec)
+		return fake.ExecuteStub(ctxt, cid, name, version, txid, signedProp, prop, spec)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
@@ -651,10 +648,10 @@ func (fake *Support) ExecuteCallCount() int {
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *Support) ExecuteArgsForCall(i int) (context.Context, string, string, string, string, bool, *pb.SignedProposal, *pb.Proposal, *pb.ChaincodeInvocationSpec) {
+func (fake *Support) ExecuteArgsForCall(i int) (context.Context, string, string, string, string, *pb.SignedProposal, *pb.Proposal, *pb.ChaincodeInvocationSpec) {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
-	return fake.executeArgsForCall[i].ctxt, fake.executeArgsForCall[i].cid, fake.executeArgsForCall[i].name, fake.executeArgsForCall[i].version, fake.executeArgsForCall[i].txid, fake.executeArgsForCall[i].syscc, fake.executeArgsForCall[i].signedProp, fake.executeArgsForCall[i].prop, fake.executeArgsForCall[i].spec
+	return fake.executeArgsForCall[i].ctxt, fake.executeArgsForCall[i].cid, fake.executeArgsForCall[i].name, fake.executeArgsForCall[i].version, fake.executeArgsForCall[i].txid, fake.executeArgsForCall[i].signedProp, fake.executeArgsForCall[i].prop, fake.executeArgsForCall[i].spec
 }
 
 func (fake *Support) ExecuteReturns(result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {
@@ -682,7 +679,7 @@ func (fake *Support) ExecuteReturnsOnCall(i int, result1 *pb.Response, result2 *
 	}{result1, result2, result3}
 }
 
-func (fake *Support) ExecuteInit(ctxt context.Context, cid string, name string, version string, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (fake *Support) ExecuteInit(ctxt context.Context, cid string, name string, version string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	fake.executeInitMutex.Lock()
 	ret, specificReturn := fake.executeInitReturnsOnCall[len(fake.executeInitArgsForCall)]
 	fake.executeInitArgsForCall = append(fake.executeInitArgsForCall, struct {
@@ -691,15 +688,14 @@ func (fake *Support) ExecuteInit(ctxt context.Context, cid string, name string, 
 		name       string
 		version    string
 		txid       string
-		syscc      bool
 		signedProp *pb.SignedProposal
 		prop       *pb.Proposal
 		spec       *pb.ChaincodeDeploymentSpec
-	}{ctxt, cid, name, version, txid, syscc, signedProp, prop, spec})
-	fake.recordInvocation("ExecuteInit", []interface{}{ctxt, cid, name, version, txid, syscc, signedProp, prop, spec})
+	}{ctxt, cid, name, version, txid, signedProp, prop, spec})
+	fake.recordInvocation("ExecuteInit", []interface{}{ctxt, cid, name, version, txid, signedProp, prop, spec})
 	fake.executeInitMutex.Unlock()
 	if fake.ExecuteInitStub != nil {
-		return fake.ExecuteInitStub(ctxt, cid, name, version, txid, syscc, signedProp, prop, spec)
+		return fake.ExecuteInitStub(ctxt, cid, name, version, txid, signedProp, prop, spec)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
@@ -713,10 +709,10 @@ func (fake *Support) ExecuteInitCallCount() int {
 	return len(fake.executeInitArgsForCall)
 }
 
-func (fake *Support) ExecuteInitArgsForCall(i int) (context.Context, string, string, string, string, bool, *pb.SignedProposal, *pb.Proposal, *pb.ChaincodeDeploymentSpec) {
+func (fake *Support) ExecuteInitArgsForCall(i int) (context.Context, string, string, string, string, *pb.SignedProposal, *pb.Proposal, *pb.ChaincodeDeploymentSpec) {
 	fake.executeInitMutex.RLock()
 	defer fake.executeInitMutex.RUnlock()
-	return fake.executeInitArgsForCall[i].ctxt, fake.executeInitArgsForCall[i].cid, fake.executeInitArgsForCall[i].name, fake.executeInitArgsForCall[i].version, fake.executeInitArgsForCall[i].txid, fake.executeInitArgsForCall[i].syscc, fake.executeInitArgsForCall[i].signedProp, fake.executeInitArgsForCall[i].prop, fake.executeInitArgsForCall[i].spec
+	return fake.executeInitArgsForCall[i].ctxt, fake.executeInitArgsForCall[i].cid, fake.executeInitArgsForCall[i].name, fake.executeInitArgsForCall[i].version, fake.executeInitArgsForCall[i].txid, fake.executeInitArgsForCall[i].signedProp, fake.executeInitArgsForCall[i].prop, fake.executeInitArgsForCall[i].spec
 }
 
 func (fake *Support) ExecuteInitReturns(result1 *pb.Response, result2 *pb.ChaincodeEvent, result3 error) {

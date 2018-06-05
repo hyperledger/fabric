@@ -364,9 +364,6 @@ type CCContext struct {
 	// TxID is the transaction id for the proposal (if any)
 	TxID string
 
-	// Syscc is this a system chaincode
-	Syscc bool
-
 	// SignedProposal for this invoke (if any) this is kept here for access
 	// control and in case we need to pass something from this to the chaincode
 	SignedProposal *pb.SignedProposal
@@ -383,13 +380,12 @@ type CCContext struct {
 }
 
 // NewCCContext just construct a new struct with whatever args
-func NewCCContext(cname, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) *CCContext {
+func NewCCContext(cname, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal) *CCContext {
 	cccid := &CCContext{
 		ChainID:             cname,
 		Name:                name,
 		Version:             version,
 		TxID:                txid,
-		Syscc:               syscc,
 		SignedProposal:      signedProp,
 		Proposal:            prop,
 		canonicalName:       name + ":" + version,
@@ -407,8 +403,8 @@ func NewCCContext(cname, name, version, txid string, syscc bool, signedProp *pb.
 }
 
 func (cccid *CCContext) String() string {
-	return fmt.Sprintf("chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s",
-		cccid.ChainID, cccid.Name, cccid.Version, cccid.TxID, cccid.Syscc, cccid.Proposal, cccid.canonicalName)
+	return fmt.Sprintf("chain=%s,chaincode=%s,version=%s,txid=%s,proposal=%p,canname=%s",
+		cccid.ChainID, cccid.Name, cccid.Version, cccid.TxID, cccid.Proposal, cccid.canonicalName)
 }
 
 // GetCanonicalName returns the canonical name associated with the proposal context
@@ -543,7 +539,7 @@ type ChaincodeProvider interface {
 	Execute(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle
 	ExecuteInit(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
-	// Stop stops the chaincode given
+	// Stop stops the chaincode give
 	Stop(ccci *ChaincodeContainerInfo) error
 }
 

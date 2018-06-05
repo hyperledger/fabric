@@ -211,16 +211,16 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 }
 
 func TestNewCCContext(t *testing.T) {
-	ccctx := NewCCContext("foo", "foo", "1.0", "", false, nil, nil)
+	ccctx := NewCCContext("foo", "foo", "1.0", "", nil, nil)
 	assert.NotNil(t, ccctx)
 	canName := ccctx.GetCanonicalName()
 	assert.NotEmpty(t, canName)
 
 	assert.Panics(t, func() {
-		NewCCContext("foo", "foo", "", "", false, nil, nil)
+		NewCCContext("foo", "foo", "", "", nil, nil)
 	}, "NewCCContext should have paniced if version is empty")
 
-	ccctx = &CCContext{"foo", "foo", "1.0", "", false, nil, nil, "", nil}
+	ccctx = &CCContext{"foo", "foo", "1.0", "", nil, nil, "", nil}
 	assert.Panics(t, func() {
 		ccctx.GetCanonicalName()
 	}, "GetConnonicalName should have paniced if cannonical name is empty")

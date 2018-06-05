@@ -1714,7 +1714,7 @@ var _ = Describe("Handler", func() {
 				Signature:     []byte("signature"),
 			}
 
-			cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", false, expectedSignedProp, expectedProposal)
+			cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", expectedSignedProp, expectedProposal)
 			incomingMessage = &pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_TRANSACTION,
 				Txid:      "tx-id",
@@ -1777,7 +1777,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when the proposal is missing", func() {
 			BeforeEach(func() {
-				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", false, expectedSignedProp, nil)
+				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", expectedSignedProp, nil)
 			})
 
 			It("sends a nil proposal", func() {
@@ -1794,7 +1794,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when the signed proposal is missing", func() {
 			BeforeEach(func() {
-				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", false, nil, expectedProposal)
+				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", nil, expectedProposal)
 			})
 
 			It("returns an error", func() {
@@ -2117,7 +2117,7 @@ var _ = Describe("Handler", func() {
 
 				expectedProposal = &pb.Proposal{}
 				expectedSignedProp = &pb.SignedProposal{}
-				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", false, expectedSignedProp, expectedProposal)
+				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", expectedSignedProp, expectedProposal)
 
 				incomingMessage = &pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_TRANSACTION,

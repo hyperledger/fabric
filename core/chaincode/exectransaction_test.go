@@ -444,7 +444,7 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 
 	sysCCVers := util.GetSysCCVersion()
 	sprop, prop := putils.MockSignedEndorserProposal2OrPanic(cccid.ChainID, cis.ChaincodeSpec, signer)
-	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, sprop, prop)
+	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, sprop, prop)
 
 	//write to lscc
 	if _, _, err = chaincodeSupport.Execute(ctx, lsccid, cis); err != nil {
@@ -492,7 +492,7 @@ func invokeWithVersion(ctx context.Context, chainID string, version string, spec
 		creator = []byte("Admin")
 	}
 	sprop, prop := putils.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
-	cccid := ccprovider.NewCCContext(chainID, cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name, version, uuid, false, sprop, prop)
+	cccid := ccprovider.NewCCContext(chainID, cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name, version, uuid, sprop, prop)
 	var resp *pb.Response
 	resp, ccevt, err = chaincodeSupport.Execute(ctx, cccid, cdInvocationSpec)
 	if err != nil {
@@ -526,7 +526,7 @@ func executeDeployTransaction(t *testing.T, chainID string, name string, url str
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: url, Version: "0"}, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := ccprovider.NewCCContext(chainID, name, "0", "", false, nil, nil)
+	cccid := ccprovider.NewCCContext(chainID, name, "0", "", nil, nil)
 
 	defer chaincodeSupport.Stop(
 		ccprovider.DeploymentSpecToChaincodeContainerInfo(
@@ -907,7 +907,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID1, Input: &pb.ChaincodeInput{Args: args}}
 
 	sProp, prop := putils.MockSignedEndorserProposalOrPanic(util.GetTestChainID(), spec1, []byte([]byte("Alice")), nil)
-	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", false, sProp, prop)
+	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", sProp, prop)
 
 	var nextBlockNumber uint64 = 1
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
@@ -936,7 +936,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID2, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid2 := ccprovider.NewCCContext(chainID, "pthru", "0", "", false, sProp, prop)
+	cccid2 := ccprovider.NewCCContext(chainID, "pthru", "0", "", sProp, prop)
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
 		Name:          cID2.Name,
@@ -1002,7 +1002,7 @@ func TestQueries(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", false, nil, nil)
+	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", nil, nil)
 
 	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
 		Name:          cID.Name,
@@ -1359,7 +1359,7 @@ func deployChaincode(ctx context.Context, name string, version string, chaincode
 
 	signedProposal, proposal := putils.MockSignedEndorserProposal2OrPanic(channel, chaincodeSpec, signer)
 
-	chaincodeCtx := ccprovider.NewCCContext(channel, name, version, "", false, signedProposal, proposal)
+	chaincodeCtx := ccprovider.NewCCContext(channel, name, version, "", signedProposal, proposal)
 
 	result, err := deploy(ctx, chaincodeCtx, chaincodeSpec, nextBlockNumber, chaincodeSupport)
 	if err != nil {

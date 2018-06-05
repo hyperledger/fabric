@@ -132,17 +132,17 @@ func (cs *ChaincodeSupport) Launch(cccid *ccprovider.CCContext, spec *pb.Chainco
 		return nil
 	}
 
-	// TODO: There has to be a better way to do this...
-	if cs.UserRunsCC && !cccid.Syscc {
-		chaincodeLogger.Error(
-			"You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?",
-		)
-	}
-
 	chaincodeName := spec.GetChaincodeSpec().Name()
 
 	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(cccid.ChainID, chaincodeName)
 	if err != nil {
+		// TODO: There has to be a better way to do this...
+		if cs.UserRunsCC {
+			chaincodeLogger.Error(
+				"You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?",
+			)
+		}
+
 		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", cccid.ChainID, chaincodeName)
 	}
 

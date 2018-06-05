@@ -59,10 +59,10 @@ type Support interface {
 	IsSysCC(name string) bool
 
 	// Execute - execute proposal, return original response of chaincode
-	Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// ExecuteInit - executes a deployment proposal, return original response of chaincode
-	ExecuteInit(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteInit(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
 	GetChaincodeDefinition(chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
@@ -137,9 +137,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	}
 
 	// is this a system chaincode
-	scc := e.s.IsSysCC(cid.Name)
-
-	res, ccevent, err = e.s.Execute(ctxt, chainID, cid.Name, version, txid, scc, signedProp, prop, cis)
+	res, ccevent, err = e.s.Execute(ctxt, chainID, cid.Name, version, txid, signedProp, prop, cis)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -176,7 +174,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 			return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, chainID)
 		}
 
-		_, _, err = e.s.ExecuteInit(ctxt, chainID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txid, false, signedProp, prop, cds)
+		_, _, err = e.s.ExecuteInit(ctxt, chainID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txid, signedProp, prop, cds)
 		if err != nil {
 			return nil, nil, err
 		}

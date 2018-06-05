@@ -123,15 +123,15 @@ func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 }
 
 // ExecuteInit a deployment proposal and return the chaincode response
-func (s *SupportImpl) ExecuteInit(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
+func (s *SupportImpl) ExecuteInit(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	cccid := ccprovider.NewCCContext(cid, name, version, txid, signedProp, prop)
 
 	return s.ChaincodeSupport.ExecuteInit(ctxt, cccid, cds)
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
+func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	cccid := ccprovider.NewCCContext(cid, name, version, txid, signedProp, prop)
 
 	// decorate the chaincode input
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
