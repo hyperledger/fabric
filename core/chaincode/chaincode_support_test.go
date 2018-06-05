@@ -1026,7 +1026,7 @@ func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
 		handlerRegistry.Ready("testcc:0")
 		return nil
 	}
@@ -1042,7 +1042,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		PackageProvider: fakePackageProvider,
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          "GOLANG",
 		Name:          "testcc",
 		Version:       "0",
@@ -1059,7 +1059,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -1075,7 +1075,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 		PackageProvider: fakePackageProvider,
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          "GOLANG",
 		Name:          "testcc",
 		Version:       "0",
@@ -1092,7 +1092,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *lifecycle.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
@@ -1107,7 +1107,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 		PackageProvider: fakePackageProvider,
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          "GOLANG",
 		Name:          "testcc",
 		Version:       "0",

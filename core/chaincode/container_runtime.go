@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -44,7 +44,7 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error {
+func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
 	cname := ccci.Name + ":" + ccci.Version
 
 	lc, err := c.LaunchConfig(cname, ccci.Type)
@@ -82,7 +82,7 @@ func (c *ContainerRuntime) Start(ccci *lifecycle.ChaincodeContainerInfo, codePac
 }
 
 // Stop terminates chaincode and its container runtime environment.
-func (c *ContainerRuntime) Stop(ccci *lifecycle.ChaincodeContainerInfo) error {
+func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	scr := container.StopContainerReq{
 		CCID: ccintf.CCID{
 			Name:    ccci.Name,

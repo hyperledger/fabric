@@ -516,6 +516,18 @@ func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
 // ProtoMessage just exists to make proto happy
 func (*ChaincodeData) ProtoMessage() {}
 
+// ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
+type ChaincodeContainerInfo struct {
+	Name        string
+	Version     string
+	Path        string
+	Type        string
+	CodePackage []byte
+
+	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
+	ContainerType string
+}
+
 // ChaincodeProvider provides an abstraction layer that is
 // used for different packages to interact with code in the
 // chaincode package without importing it; more methods

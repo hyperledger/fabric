@@ -9,7 +9,7 @@ package chaincode
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/pkg/errors"
 )
@@ -33,7 +33,7 @@ type RuntimeLauncher struct {
 	StartupTimeout  time.Duration
 }
 
-func (r *RuntimeLauncher) Launch(ccci *lifecycle.ChaincodeContainerInfo) error {
+func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error {
 	var codePackage []byte
 	if ccci.ContainerType != inproccontroller.ContainerType {
 		var err error

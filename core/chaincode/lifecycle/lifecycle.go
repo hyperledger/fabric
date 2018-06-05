@@ -24,19 +24,8 @@ type Lifecycle struct {
 	InstantiatedChaincodeStore InstantiatedChaincodeStore
 }
 
-// ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
-type ChaincodeContainerInfo struct {
-	Name    string
-	Version string
-	Path    string
-	Type    string
-
-	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
-	ContainerType string
-}
-
 // GetChaincodeDeploymentSpec retrieves a chaincode deployment spec for the specified chaincode.
-func (l *Lifecycle) ChaincodeContainerInfo(channelID, chaincodeName string) (*ChaincodeContainerInfo, error) {
+func (l *Lifecycle) ChaincodeContainerInfo(channelID, chaincodeName string) (*ccprovider.ChaincodeContainerInfo, error) {
 	cds, err := l.InstantiatedChaincodeStore.ChaincodeDeploymentSpec(channelID, chaincodeName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not retrieve deployment spec for %s/%s", channelID, chaincodeName)
@@ -51,8 +40,8 @@ func (l *Lifecycle) GetChaincodeDefinition(chaincodeName string, txSim ledger.Qu
 	return l.InstantiatedChaincodeStore.ChaincodeDefinition(chaincodeName, txSim)
 }
 
-func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {
-	return &ChaincodeContainerInfo{
+func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ccprovider.ChaincodeContainerInfo {
+	return &ccprovider.ChaincodeContainerInfo{
 		Name:          cds.Name(),
 		Version:       cds.Version(),
 		Path:          cds.Path(),

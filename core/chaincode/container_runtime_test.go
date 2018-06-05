@@ -11,8 +11,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -163,7 +163,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 		PeerAddress: "peer.example.com",
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          pb.ChaincodeSpec_GOLANG.String(),
 		Name:          "chaincode-name",
 		Version:       "chaincode-version",
@@ -208,7 +208,7 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			PeerAddress: "peer.example.com",
 		}
 
-		ccci := &lifecycle.ChaincodeContainerInfo{
+		ccci := &ccprovider.ChaincodeContainerInfo{
 			Type:    tc.chaincodeType,
 			Name:    "chaincode-id-name",
 			Version: "chaincode-version",
@@ -225,7 +225,7 @@ func TestContainerRuntimeStop(t *testing.T) {
 		Processor: fakeProcessor,
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          pb.ChaincodeSpec_GOLANG.String(),
 		Name:          "chaincode-id-name",
 		Version:       "chaincode-version",
@@ -265,7 +265,7 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 			Processor: fakeProcessor,
 		}
 
-		ccci := &lifecycle.ChaincodeContainerInfo{
+		ccci := &ccprovider.ChaincodeContainerInfo{
 			Type:          pb.ChaincodeSpec_GOLANG.String(),
 			Name:          "chaincode-id-name",
 			Version:       "chaincode-version",

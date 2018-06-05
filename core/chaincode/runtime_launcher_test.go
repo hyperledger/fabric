@@ -11,8 +11,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
-	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -25,7 +25,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry        *fake.LaunchRegistry
 		launchState         *chaincode.LaunchState
 
-		ccci *lc.ChaincodeContainerInfo
+		ccci *ccprovider.ChaincodeContainerInfo
 
 		runtimeLauncher *chaincode.RuntimeLauncher
 	)
@@ -36,7 +36,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry.LaunchingReturns(launchState, nil)
 
 		fakeRuntime = &mock.Runtime{}
-		fakeRuntime.StartStub = func(*lc.ChaincodeContainerInfo, []byte) error {
+		fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo, []byte) error {
 			launchState.Notify(nil)
 			return nil
 		}
@@ -44,7 +44,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakePackageProvider = &mock.PackageProvider{}
 		fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-package"), nil)
 
-		ccci = &lc.ChaincodeContainerInfo{
+		ccci = &ccprovider.ChaincodeContainerInfo{
 			Name:          "chaincode-name",
 			Path:          "chaincode-path",
 			Version:       "chaincode-version",
@@ -137,7 +137,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 	Context("when handler registration fails", func() {
 		BeforeEach(func() {
-			fakeRuntime.StartStub = func(*lc.ChaincodeContainerInfo, []byte) error {
+			fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo, []byte) error {
 				launchState.Notify(errors.New("papaya"))
 				return nil
 			}

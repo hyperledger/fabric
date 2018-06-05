@@ -26,13 +26,13 @@ import (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error
-	Stop(ccci *lifecycle.ChaincodeContainerInfo) error
+	Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
+	Stop(ccci *ccprovider.ChaincodeContainerInfo) error
 }
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(ccci *lifecycle.ChaincodeContainerInfo) error
+	Launch(ccci *ccprovider.ChaincodeContainerInfo) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -41,7 +41,7 @@ type Lifecycle interface {
 	GetChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 
 	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
-	ChaincodeContainerInfo(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error)
+	ChaincodeContainerInfo(chainID string, chaincodeID string) (*ccprovider.ChaincodeContainerInfo, error)
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.

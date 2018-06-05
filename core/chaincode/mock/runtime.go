@@ -4,14 +4,14 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 type Runtime struct {
-	StartStub        func(ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error
+	StartStub        func(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
-		ccci        *lifecycle.ChaincodeContainerInfo
+		ccci        *ccprovider.ChaincodeContainerInfo
 		codePackage []byte
 	}
 	startReturns struct {
@@ -20,10 +20,10 @@ type Runtime struct {
 	startReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StopStub        func(ccci *lifecycle.ChaincodeContainerInfo) error
+	StopStub        func(ccci *ccprovider.ChaincodeContainerInfo) error
 	stopMutex       sync.RWMutex
 	stopArgsForCall []struct {
-		ccci *lifecycle.ChaincodeContainerInfo
+		ccci *ccprovider.ChaincodeContainerInfo
 	}
 	stopReturns struct {
 		result1 error
@@ -35,7 +35,7 @@ type Runtime struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Runtime) Start(ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error {
+func (fake *Runtime) Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
 	var codePackageCopy []byte
 	if codePackage != nil {
 		codePackageCopy = make([]byte, len(codePackage))
@@ -44,7 +44,7 @@ func (fake *Runtime) Start(ccci *lifecycle.ChaincodeContainerInfo, codePackage [
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
-		ccci        *lifecycle.ChaincodeContainerInfo
+		ccci        *ccprovider.ChaincodeContainerInfo
 		codePackage []byte
 	}{ccci, codePackageCopy})
 	fake.recordInvocation("Start", []interface{}{ccci, codePackageCopy})
@@ -64,7 +64,7 @@ func (fake *Runtime) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *Runtime) StartArgsForCall(i int) (*lifecycle.ChaincodeContainerInfo, []byte) {
+func (fake *Runtime) StartArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	return fake.startArgsForCall[i].ccci, fake.startArgsForCall[i].codePackage
@@ -89,11 +89,11 @@ func (fake *Runtime) StartReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Runtime) Stop(ccci *lifecycle.ChaincodeContainerInfo) error {
+func (fake *Runtime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	fake.stopMutex.Lock()
 	ret, specificReturn := fake.stopReturnsOnCall[len(fake.stopArgsForCall)]
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
-		ccci *lifecycle.ChaincodeContainerInfo
+		ccci *ccprovider.ChaincodeContainerInfo
 	}{ccci})
 	fake.recordInvocation("Stop", []interface{}{ccci})
 	fake.stopMutex.Unlock()
@@ -112,7 +112,7 @@ func (fake *Runtime) StopCallCount() int {
 	return len(fake.stopArgsForCall)
 }
 
-func (fake *Runtime) StopArgsForCall(i int) *lifecycle.ChaincodeContainerInfo {
+func (fake *Runtime) StopArgsForCall(i int) *ccprovider.ChaincodeContainerInfo {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
 	return fake.stopArgsForCall[i].ccci
