@@ -498,7 +498,7 @@ and bootstraps the orderer with our previously generated ``genesis.block``.
 We want to go through the commands manually in order to expose the
 syntax and functionality of each call.
 
-First let's start your network:
+First let's start our network:
 
 .. code:: bash
 
