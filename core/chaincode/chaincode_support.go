@@ -46,15 +46,15 @@ type Lifecycle interface {
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	Keepalive       time.Duration
-	ExecuteTimeout  time.Duration
-	UserRunsCC      bool
-	Runtime         Runtime
-	ACLProvider     ACLProvider
-	HandlerRegistry *HandlerRegistry
-	Launcher        Launcher
-	sccp            sysccprovider.SystemChaincodeProvider
-	Lifecycle       Lifecycle
+	Keepalive        time.Duration
+	ExecuteTimeout   time.Duration
+	UserRunsCC       bool
+	Runtime          Runtime
+	ACLProvider      ACLProvider
+	HandlerRegistry  *HandlerRegistry
+	Launcher         Launcher
+	SystemCCProvider sysccprovider.SystemChaincodeProvider
+	Lifecycle        Lifecycle
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance.
@@ -68,17 +68,17 @@ func NewChaincodeSupport(
 	lifecycle Lifecycle,
 	aclProvider ACLProvider,
 	processor Processor,
-	sccp sysccprovider.SystemChaincodeProvider,
+	SystemCCProvider sysccprovider.SystemChaincodeProvider,
 	platformRegistry *platforms.Registry,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
-		UserRunsCC:      userRunsCC,
-		Keepalive:       config.Keepalive,
-		ExecuteTimeout:  config.ExecuteTimeout,
-		HandlerRegistry: NewHandlerRegistry(userRunsCC),
-		ACLProvider:     aclProvider,
-		sccp:            sccp,
-		Lifecycle:       lifecycle,
+		UserRunsCC:       userRunsCC,
+		Keepalive:        config.Keepalive,
+		ExecuteTimeout:   config.ExecuteTimeout,
+		HandlerRegistry:  NewHandlerRegistry(userRunsCC),
+		ACLProvider:      aclProvider,
+		SystemCCProvider: SystemCCProvider,
+		Lifecycle:        lifecycle,
 	}
 
 	// Keep TestQueries working
@@ -175,7 +175,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		ACLProvider:                cs.ACLProvider,
 		TXContexts:                 NewTransactionContexts(),
 		ActiveTransactions:         NewActiveTransactions(),
-		SystemCCProvider:           cs.sccp,
+		SystemCCProvider:           cs.SystemCCProvider,
 		SystemCCVersion:            util.GetSysCCVersion(),
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
