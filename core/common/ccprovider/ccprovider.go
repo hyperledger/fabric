@@ -543,8 +543,8 @@ type ChaincodeProvider interface {
 	Execute(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle
 	ExecuteInit(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
-	// Stop stops the chaincode given context and deployment spec
-	Stop(cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
+	// Stop stops the chaincode given
+	Stop(ccci *ChaincodeContainerInfo) error
 }
 
 func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {

@@ -165,7 +165,7 @@ func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCC
 }
 
 // Stop stops the chaincode given context and deployment spec
-func (c *MockCcProviderImpl) Stop(cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) error {
+func (c *MockCcProviderImpl) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	return nil
 }
 

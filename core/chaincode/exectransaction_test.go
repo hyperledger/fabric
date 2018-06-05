@@ -529,7 +529,6 @@ func executeDeployTransaction(t *testing.T, chainID string, name string, url str
 	}
 
 	defer cleanup()
-
 	var ctxt = context.Background()
 
 	f := "init"
@@ -538,17 +537,20 @@ func executeDeployTransaction(t *testing.T, chainID string, name string, url str
 
 	cccid := ccprovider.NewCCContext(chainID, name, "0", "", false, nil, nil)
 
+	defer chaincodeSupport.Stop(
+		ccprovider.DeploymentSpecToChaincodeContainerInfo(
+			&pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec},
+		),
+	)
+
 	_, err = deploy(ctxt, cccid, spec, 0, chaincodeSupport)
 
 	cID := spec.ChaincodeId.Name
 	if err != nil {
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		t.Fail()
 		t.Logf("Error deploying <%s>: %s", cID, err)
 		return
 	}
-
-	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 // Check the correctness of the final state after transaction execution.
@@ -861,7 +863,13 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 				t.Log("Invoke test passed")
 			}
 
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccID}})
+			chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+				Name:          ccID.Name,
+				Path:          ccID.Path,
+				Version:       cccid.Version,
+				ContainerType: "DOCKER",
+				Type:          "GOLANG",
+			})
 			cleanup()
 		})
 	}
@@ -889,6 +897,14 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "example02", "0", "", false, nil, nil)
 
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          ccID.Name,
+		Version:       cccid.Version,
+		Path:          ccID.Path,
+		ContainerType: "DOCKER",
+		Type:          "GOLANG",
+	})
+
 	//FAIL, FAIL!
 	args := []string{"x", "-1"}
 	err = invokeExample02Transaction(ctxt, cccid, ccID, pb.ChaincodeSpec_GOLANG, args, chaincodeSupport)
@@ -898,15 +914,11 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 		errStr := err.Error()
 		t.Logf("Got error %s\n", errStr)
 		t.Log("InvalidInvoke test passed")
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccID}})
-
 		return
 	}
 
 	t.Fail()
 	t.Logf("Error invoking transaction %s", err)
-
-	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccID}})
 }
 
 // testcase parameters for TestChaincodeInvokeChaincode
@@ -993,15 +1005,12 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 }
 
 func stopChaincode(ctx context.Context, chaincodeCtx *ccprovider.CCContext, chaincodeSupport *ChaincodeSupport) {
-	chaincodeSupport.Stop(chaincodeCtx,
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{
-					Name:    chaincodeCtx.Name,
-					Version: chaincodeCtx.Version,
-				},
-			},
-		})
+	chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          chaincodeCtx.Name,
+		Version:       chaincodeCtx.Version,
+		ContainerType: "DOCKER",
+		Type:          "GOLANG",
+	})
 }
 
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from
@@ -1030,6 +1039,13 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", false, sProp, prop)
 
 	var nextBlockNumber uint64 = 1
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID1.Name,
+		Version:       cID1.Version,
+		Path:          cID1.Path,
+		ContainerType: "DOCKER",
+		Type:          "GOLANG",
+	})
 
 	_, err = deploy(ctxt, cccid1, spec1, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
@@ -1037,7 +1053,6 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID1, err)
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
 		return
 	}
 
@@ -1052,14 +1067,19 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	cccid2 := ccprovider.NewCCContext(chainID, "pthru", "0", "", false, sProp, prop)
 
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID2.Name,
+		Version:       cID2.Version,
+		Path:          cID2.Path,
+		ContainerType: "DOCKER",
+		Type:          "GOLANG",
+	})
 	_, err = deploy(ctxt, cccid2, spec2, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID2 := spec2.ChaincodeId.Name
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID2, err)
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		return
 	}
 
@@ -1076,21 +1096,14 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID2, err)
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		return
 	}
 
 	if strings.Index(err.Error(), "Error invoking chaincode: Incorrect number of arguments. Expecting 3") < 0 {
 		t.Fail()
 		t.Logf("Unexpected error %s", err)
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		return
 	}
-
-	chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-	chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 }
 
 // Test the invocation of a transaction.
@@ -1120,6 +1133,14 @@ func TestQueries(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", false, nil, nil)
 
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID.Name,
+		Version:       cID.Version,
+		Path:          cID.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
+
 	var nextBlockNumber uint64 = 1
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
@@ -1127,7 +1148,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1159,7 +1179,6 @@ func TestQueries(t *testing.T) {
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1175,7 +1194,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1183,7 +1201,6 @@ func TestQueries(t *testing.T) {
 	if len(keys) != 10 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 10 but returned %v", len(keys))
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1202,7 +1219,6 @@ func TestQueries(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Logf("expected timeout error but succeeded")
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1221,7 +1237,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1233,7 +1248,6 @@ func TestQueries(t *testing.T) {
 	if len(keys) != 101 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 101 but returned %v", len(keys))
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1249,7 +1263,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1261,7 +1274,6 @@ func TestQueries(t *testing.T) {
 	if len(keys) != 101 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 101 but returned %v", len(keys))
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1281,7 +1293,6 @@ func TestQueries(t *testing.T) {
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1292,7 +1303,6 @@ func TestQueries(t *testing.T) {
 		if len(keys) != 100 {
 			t.Fail()
 			t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 		//Reset the query limit to 5
@@ -1308,7 +1318,6 @@ func TestQueries(t *testing.T) {
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1318,7 +1327,6 @@ func TestQueries(t *testing.T) {
 		if len(keys) != 5 {
 			t.Fail()
 			t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1336,7 +1344,6 @@ func TestQueries(t *testing.T) {
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1348,7 +1355,6 @@ func TestQueries(t *testing.T) {
 		if len(keys) != 50 {
 			t.Fail()
 			t.Logf("Error detected with the rich query, should have returned 50 but returned %v", len(keys))
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1365,7 +1371,6 @@ func TestQueries(t *testing.T) {
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1376,7 +1381,6 @@ func TestQueries(t *testing.T) {
 		if len(keys) != 5 {
 			t.Fail()
 			t.Logf("Error detected with the rich query, should have returned 5 but returned %v", len(keys))
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
@@ -1391,7 +1395,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1403,7 +1406,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1416,7 +1418,6 @@ func TestQueries(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1425,11 +1426,8 @@ func TestQueries(t *testing.T) {
 	if len(history) != 3 {
 		t.Fail()
 		t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(history))
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-
-	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 func TestGetEvent(t *testing.T) {
@@ -1469,13 +1467,19 @@ func TestGetEvent(t *testing.T) {
 			spec := &pb.ChaincodeSpec{Type: tc.chaincodeType, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
 
 			cccid := ccprovider.NewCCContext(chainID, cID.Name, cID.Version, "", false, nil, nil)
+			defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+				Name:          cID.Name,
+				Version:       cID.Version,
+				Path:          tc.chaincodePath,
+				Type:          "GOLANG",
+				ContainerType: "DOCKER",
+			})
 			_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 			nextBlockNumber++
 			ccID := spec.ChaincodeId.Name
 			if err != nil {
 				t.Fail()
 				t.Logf("Error initializing chaincode %s(%s)", ccID, err)
-				chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 				return
 			}
 
@@ -1508,8 +1512,6 @@ func TestGetEvent(t *testing.T) {
 				t.Logf("Error expected event not found (%s)", string(ccevt.Payload))
 				t.Fail()
 			}
-
-			chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		})
 	}
 
@@ -1547,11 +1549,17 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	sProp, prop := putils.MockSignedEndorserProposalOrPanic(util.GetTestChainID(), spec1, []byte([]byte("Alice")), nil)
 	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", false, sProp, prop)
 	var nextBlockNumber uint64
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID1.Name,
+		Version:       cID1.Version,
+		Path:          cID1.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
 	_, err = deploy(ctxt, cccid1, spec1, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID1 := spec1.ChaincodeId.Name
 	if err != nil {
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID1, err)
 		return
@@ -1570,12 +1578,17 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 
 	cccid2 := ccprovider.NewCCContext(chainID, "example05", "0", "", false, sProp, prop)
 
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID2.Name,
+		Version:       cID2.Version,
+		Path:          cID2.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
 	_, err = deploy(ctxt, cccid2, spec2, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID2 := spec2.ChaincodeId.Name
 	if err != nil {
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID2, err)
 		return
@@ -1593,8 +1606,6 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	_, _, retVal, err = invoke(ctxt, chainID, spec2, nextBlockNumber, []byte("Alice"), chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID2, err)
 		return
@@ -1603,8 +1614,6 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	// Check the return value
 	result, err := strconv.Atoi(string(retVal))
 	if err != nil || result != 300 {
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		t.Fail()
 		t.Logf("Incorrect final state after transaction for <%s>: %s", ccID1, err)
 		return
@@ -1619,8 +1628,6 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	_, _, retVal, err = invoke(ctxt, chainID, spec2, nextBlockNumber, []byte("Alice"), chaincodeSupport)
 
 	if err != nil {
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		t.Fail()
 		t.Logf("Error querying <%s>: %s", ccID2, err)
 		return
@@ -1629,15 +1636,10 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	// Check the return value
 	result, err = strconv.Atoi(string(retVal))
 	if err != nil || result != 300 {
-		chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 		t.Fail()
 		t.Logf("Incorrect final value after query for <%s>: %s", ccID1, err)
 		return
 	}
-
-	chaincodeSupport.Stop(cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-	chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 }
 
 // test that invoking a security-sensitive system chaincode fails
@@ -1668,13 +1670,19 @@ func TestChaincodeInvokesForbiddenSystemChaincode(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "pthru", "0", "", false, nil, nil)
 
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID.Name,
+		Version:       cID.Version,
+		Path:          cID.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1688,7 +1696,6 @@ func TestChaincodeInvokesForbiddenSystemChaincode(t *testing.T) {
 	// Invoke chaincode
 	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err == nil {
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		t.Logf("invoking <%s> should have failed", ccID)
 		t.Fail()
 		return
@@ -1724,13 +1731,19 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "pthru", "0", "", false, nil, nil)
 
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cID.Name,
+		Version:       cID.Version,
+		Path:          cID.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -1747,18 +1760,14 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking <%s>: %s", ccID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
 	if string(retval) != "pthru" {
 		t.Fail()
 		t.Logf("Expected to get back \"pthru\" from lscc but got back %s", string(retval))
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-
-	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 func TestChaincodeInitializeInitError(t *testing.T) {

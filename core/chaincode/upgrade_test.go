@@ -139,13 +139,18 @@ func TestUpgradeCC(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil, nil)
 	var nextBlockNumber uint64 = 1
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          chaincodeID.Name,
+		Version:       chaincodeID.Version,
+		Path:          chaincodeID.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 
 	if err != nil {
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		t.Fail()
 		t.Logf("Error deploying chaincode %s(%s)", chaincodeID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
 
@@ -159,12 +164,10 @@ func TestUpgradeCC(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl01 should fail transaction: %s", err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	} else if !strings.Contains(err.Error(), "Invalid invoke function name. Expecting \"invoke\"") {
 		t.Fail()
 		t.Logf("expected <Invalid invoke function name. Expecting \"invoke\"> found <%s>", err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
 
@@ -178,14 +181,17 @@ func TestUpgradeCC(t *testing.T) {
 
 	//...and get back the ccid with the new version
 	nextBlockNumber++
+	chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          chaincodeID.Name,
+		Version:       chaincodeID.Version,
+		Path:          chaincodeID.Path,
+		Type:          "GOLANG",
+		ContainerType: "DOCKER",
+	})
 	cccid2, err := upgrade(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error upgrading chaincode %s(%s)", chaincodeID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		if cccid2 != nil {
-			chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		}
 		return
 	}
 
@@ -197,12 +203,8 @@ func TestUpgradeCC(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl02 did not succeed: %s", err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-	chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestInvalUpgradeCC - test basic upgrade
@@ -237,15 +239,23 @@ func TestInvalUpgradeCC(t *testing.T) {
 	//...and get back the ccid with the new version
 	var nextBlockNumber uint64
 	cccid2, err := upgrade(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cccid.Name,
+		Version:       cccid.Version,
+		Path:          url,
+		ContainerType: "DOCKER",
+		Type:          "GOLANG",
+	})
+	defer chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+		Name:          cccid2.Name,
+		Version:       cccid2.Version,
+		Path:          url,
+		ContainerType: "DOCKER",
+		Type:          "GOLANG",
+	})
 	if err == nil {
 		t.Fail()
 		t.Logf("Error expected upgrading to fail but it succeeded%s(%s)", chaincodeID, err)
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		if cccid2 != nil {
-			chaincodeSupport.Stop(cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		}
 		return
 	}
-
-	chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }

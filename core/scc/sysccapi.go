@@ -184,18 +184,18 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 
 // deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
 func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
-	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
-
-	// First build and get the deployment spec
-	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
-
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprovider.NewCCContext(chainID, syscc.Name(), version, "", true, nil, nil)
+	ccci := &ccprovider.ChaincodeContainerInfo{
+		Type:          "GOLANG",
+		Name:          syscc.Name(),
+		Path:          syscc.Path(),
+		Version:       version,
+		ContainerType: inproccontroller.ContainerType,
+	}
 
-	err := ccprov.Stop(cccid, chaincodeDeploymentSpec)
+	err := ccprov.Stop(ccci)
 
 	return err
 }

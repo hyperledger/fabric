@@ -150,12 +150,7 @@ func (cs *ChaincodeSupport) Launch(cccid *ccprovider.CCContext, spec *pb.Chainco
 }
 
 // Stop stops a chaincode if running.
-func (cs *ChaincodeSupport) Stop(cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
-	cname := cccid.GetCanonicalName()
-	defer cs.HandlerRegistry.Deregister(cname)
-
-	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(cds)
-	ccci.Version = cccid.Version
+func (cs *ChaincodeSupport) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 	err := cs.Runtime.Stop(ccci)
 	if err != nil {
 		return err

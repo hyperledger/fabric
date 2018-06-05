@@ -57,6 +57,6 @@ func (c *CCProviderImpl) ExecuteInit(ctxt context.Context, cccid *ccprovider.CCC
 }
 
 // Stop stops the chaincode given context and spec
-func (c *CCProviderImpl) Stop(cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
-	return c.cs.Stop(cccid, spec)
+func (c *CCProviderImpl) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
+	return c.cs.Stop(ccci)
 }

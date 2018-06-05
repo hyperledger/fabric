@@ -47,7 +47,14 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil, nil)
 
-	defer chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	ccci := &ccprovider.ChaincodeContainerInfo{
+		Type:          "GOLANG",
+		Name:          "nkpi",
+		Version:       "0",
+		Path:          url,
+		ContainerType: "DOCKER",
+	}
+	defer chaincodeSupport.Stop(ccci)
 
 	var nextBlockNumber uint64
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber, chaincodeSupport)

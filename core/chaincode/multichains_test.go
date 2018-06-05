@@ -42,7 +42,13 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 		} else {
 			t.Logf("Invoke test passed for chain %s", c)
 		}
-		chaincodeSupport.Stop(cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		chaincodeSupport.Stop(&ccprovider.ChaincodeContainerInfo{
+			Name:          chaincodeID.Name,
+			Version:       chaincodeID.Version,
+			Path:          chaincodeID.Path,
+			Type:          "GOLANG",
+			ContainerType: "DOCKER",
+		})
 	}
 
 }
