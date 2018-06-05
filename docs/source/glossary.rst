@@ -84,6 +84,7 @@ peers in the channel, and transacting parties must be properly authenticated to
 a channel in order to interact with it.  Channels are defined by a
 Configuration-Block_.
 
+
 .. _Commitment:
 
 Commitment
@@ -361,6 +362,31 @@ Policies may be defined in ``configtx.yaml`` prior to bootstrapping an ordering
 service or creating a channel, or they can be specified when instantiating
 chaincode on a channel. A default set of policies ship in the sample
 ``configtx.yaml`` which will be appropriate for most networks.
+
+.. _glossary-Private-Data:
+
+Private Data
+------------
+
+Confidential data that is stored in a private database on each authorized peer,
+logically separate from the channel ledger data. Access to this data is
+restricted to one or more organizations on a channel via a private data
+collection definition. Unauthorized organizations will have a hash of the
+private data on the channel ledger as evidence of the transaction data. Also,
+for further privacy, hashes of the private data go through the
+Ordering-Service_, not the private data itself, so this keeps private data
+confidential from Orderer.
+
+.. _glossary-Private-Data-Collection:
+
+Private Data Collection (Collection)
+------------------------------------
+
+Used to manage confidential data that two or more organizations on a channel
+want to keep private from other organizations on that channel. The collection
+definition describes a subset of organizations on a channel entitled to store
+a set of private data, which by extension implies that only these organizations
+can transact with the private data.
 
 .. _Proposal:
 
