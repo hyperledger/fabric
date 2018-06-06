@@ -111,14 +111,11 @@ func NewChaincodeSupport(
 // LaunchForInit bypasses getting the chaincode spec from the LSCC table
 // as in the case of v1.0-v1.2 lifecycle, the chaincode will not yet be
 // defined in the LSCC table
-func (cs *ChaincodeSupport) LaunchInit(cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
-	cname := cccid.GetCanonicalName()
+func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) error {
+	cname := ccci.Name + ":" + ccci.Version
 	if cs.HandlerRegistry.Handler(cname) != nil {
 		return nil
 	}
-
-	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
-	ccci.Version = cccid.Version
 
 	return cs.Launcher.Launch(ccci)
 }
@@ -126,15 +123,13 @@ func (cs *ChaincodeSupport) LaunchInit(cccid *ccprovider.CCContext, spec *pb.Cha
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
-	cname := cccid.GetCanonicalName()
+func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion string) error {
+	cname := chaincodeName + ":" + chaincodeVersion
 	if cs.HandlerRegistry.Handler(cname) != nil {
 		return nil
 	}
 
-	chaincodeName := spec.GetChaincodeSpec().Name()
-
-	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(cccid.ChainID, chaincodeName)
+	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(chainID, chaincodeName)
 	if err != nil {
 		// TODO: There has to be a better way to do this...
 		if cs.UserRunsCC {
@@ -143,7 +138,7 @@ func (cs *ChaincodeSupport) Launch(cccid *ccprovider.CCContext, spec *pb.Chainco
 			)
 		}
 
-		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", cccid.ChainID, chaincodeName)
+		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", chainID, cname)
 	}
 
 	return cs.Launcher.Launch(ccci)
@@ -245,7 +240,10 @@ func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.Chain
 func (cs *ChaincodeSupport) InvokeInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeMessage, error) {
 	cctyp := pb.ChaincodeMessage_INIT
 
-	err := cs.LaunchInit(cccid, spec)
+	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
+	ccci.Version = cccid.Version
+
+	err := cs.LaunchInit(ccci)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +273,7 @@ func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCCon
 		return nil, errors.New("chaincode spec is nil")
 	}
 
-	err := cs.Launch(cccid, spec)
+	err := cs.Launch(cccid.ChainID, chaincodeSpec.Name(), cccid.Version)
 	if err != nil {
 		return nil, err
 	}

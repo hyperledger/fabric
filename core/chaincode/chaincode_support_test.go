@@ -473,7 +473,6 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 		},
 	}
 
-	cccid.Version = "1"
 	execCC(t, ctxt, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, cccid, txsim, cis)
