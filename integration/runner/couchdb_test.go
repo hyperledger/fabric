@@ -198,10 +198,7 @@ var _ = Describe("CouchDB Runner", func() {
 		Eventually(process.Wait()).Should(Receive())
 		process = nil
 
-		Eventually(func() error {
-			_, err = client.InspectContainer(containerName)
-			return err
-		}).Should(MatchError("No such container: " + containerName))
+		Eventually(ContainerExists(client, containerName)).Should(BeFalse())
 	})
 
 	It("can be started and stopped with ifrit", func() {

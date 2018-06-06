@@ -52,7 +52,7 @@ var _ = Describe("Kafka Runner", func() {
 
 		// Start a zookeeper
 		zookeeper = &runner.Zookeeper{
-			Name:        "zookeeper0",
+			Name:        runner.UniqueName(),
 			ZooMyID:     1,
 			NetworkID:   network.ID,
 			NetworkName: network.Name,
@@ -61,10 +61,9 @@ var _ = Describe("Kafka Runner", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		kafka = &runner.Kafka{
-			Name:             "kafka1",
 			ErrorStream:      GinkgoWriter,
 			OutputStream:     io.MultiWriter(outBuffer, GinkgoWriter),
-			ZookeeperConnect: "zookeeper0:2181",
+			ZookeeperConnect: net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:         1,
 			NetworkID:        network.ID,
 			NetworkName:      network.Name,
@@ -85,15 +84,18 @@ var _ = Describe("Kafka Runner", func() {
 	})
 
 	It("starts and stops a docker container with the specified image", func() {
+		By("naming the container")
+		kafka.Name = "kafka0"
+
 		By("starting kafka broker")
 		process = ifrit.Invoke(kafka)
 		Eventually(process.Ready(), runner.DefaultStartTimeout).Should(BeClosed())
 		Consistently(process.Wait()).ShouldNot(Receive())
 
 		By("inspecting the container by name")
-		container, err := client.InspectContainer("kafka1")
+		container, err := client.InspectContainer("kafka0")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(container.Name).To(Equal("/kafka1"))
+		Expect(container.Name).To(Equal("/kafka0"))
 		Expect(container.State.Status).To(Equal("running"))
 		Expect(container.Config).NotTo(BeNil())
 		Expect(container.Config.Image).To(Equal("hyperledger/fabric-kafka:latest"))
@@ -113,9 +115,9 @@ var _ = Describe("Kafka Runner", func() {
 		By("terminating the container")
 		process.Signal(syscall.SIGTERM)
 		Eventually(process.Wait(), 10*time.Second).Should(Receive())
+		process = nil
 
-		_, err = client.InspectContainer("kafka1")
-		Expect(err).To(MatchError("No such container: kafka1"))
+		Eventually(ContainerExists(client, "kafka0")).Should(BeFalse())
 	})
 
 	It("can be started and stopped without ifrit", func() {
@@ -128,8 +130,7 @@ var _ = Describe("Kafka Runner", func() {
 
 	It("multiples can be started and stopped", func() {
 		k1 := &runner.Kafka{
-			Name:                     "kafka1",
-			ZookeeperConnect:         "zookeeper0:2181",
+			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 1,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
@@ -140,8 +141,7 @@ var _ = Describe("Kafka Runner", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		k2 := &runner.Kafka{
-			Name:                     "kafka2",
-			ZookeeperConnect:         "zookeeper0:2181",
+			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 2,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
@@ -152,8 +152,7 @@ var _ = Describe("Kafka Runner", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		k3 := &runner.Kafka{
-			Name:                     "kafka3",
-			ZookeeperConnect:         "zookeeper0:2181",
+			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 3,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
@@ -164,8 +163,7 @@ var _ = Describe("Kafka Runner", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		k4 := &runner.Kafka{
-			Name:                     "kafka4",
-			ZookeeperConnect:         "zookeeper0:2181",
+			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 4,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
@@ -175,14 +173,15 @@ var _ = Describe("Kafka Runner", func() {
 		err = k4.Start()
 		Expect(err).NotTo(HaveOccurred())
 
-		err = k1.Stop()
-		Expect(err).NotTo(HaveOccurred())
-		err = k2.Stop()
-		Expect(err).NotTo(HaveOccurred())
-		err = k3.Stop()
-		Expect(err).NotTo(HaveOccurred())
-		err = k4.Stop()
-		Expect(err).NotTo(HaveOccurred())
+		Expect(k1.Stop()).To(Succeed())
+		Expect(k2.Stop()).To(Succeed())
+		Expect(k3.Stop()).To(Succeed())
+		Expect(k4.Stop()).To(Succeed())
+
+		Eventually(ContainerExists(k1.Client, k1.Name)).Should(BeFalse())
+		Eventually(ContainerExists(k2.Client, k2.Name)).Should(BeFalse())
+		Eventually(ContainerExists(k3.Client, k3.Name)).Should(BeFalse())
+		Eventually(ContainerExists(k4.Client, k4.Name)).Should(BeFalse())
 	})
 
 	Context("when the container has already been stopped", func() {
@@ -195,30 +194,6 @@ var _ = Describe("Kafka Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 			err = kafka.Stop()
 			Expect(err).To(MatchError(fmt.Sprintf("container %s already stopped", containerID)))
-		})
-	})
-
-	Context("when a name isn't provided", func() {
-		It("generates a unique name", func() {
-			k1 := &runner.Kafka{}
-			err := k1.Start()
-			Expect(err).To(HaveOccurred())
-			Expect(k1.Name).ShouldNot(BeEmpty())
-			Expect(k1.Name).To(HaveLen(26))
-
-			k2 := &runner.Kafka{}
-			err = k2.Start()
-			Expect(err).To(HaveOccurred())
-			Expect(k2.Name).ShouldNot(BeEmpty())
-			Expect(k2.Name).To(HaveLen(26))
-
-			Expect(k1.Name).NotTo(Equal(k2.Name))
-
-			err = k1.Stop()
-			Expect(err).To(HaveOccurred())
-
-			err = k2.Stop()
-			Expect(err).To(HaveOccurred())
 		})
 	})
 })
