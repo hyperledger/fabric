@@ -10,6 +10,7 @@ Operations Guides
    configtx
    endorsement-policies
    pluggable_endorsement_and_validation
+   access_control.md
    error-handling
    logging-control
    enable_tls
