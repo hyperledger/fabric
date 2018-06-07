@@ -12,9 +12,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/endorser/mocks"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	em "github.com/hyperledger/fabric/core/mocks/endorser"
@@ -525,4 +527,56 @@ func TestMain(m *testing.M) {
 
 	retVal := m.Run()
 	os.Exit(retVal)
+}
+
+//go:generate counterfeiter -o mocks/support.go --fake-name Support . support
+type support interface {
+	Support
+}
+
+func TestUserCDSSanitization(t *testing.T) {
+	fakeSupport := &mocks.Support{}
+	e := NewEndorserServer(nil, fakeSupport)
+
+	userCDS := &pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name:    "user-cc-name",
+				Version: "user-cc-version",
+				Path:    "user-cc-path",
+			},
+			Input: &pb.ChaincodeInput{
+				Args: [][]byte{[]byte("foo"), []byte("bar")},
+			},
+			Type: pb.ChaincodeSpec_GOLANG,
+		},
+		CodePackage: []byte("user-code"),
+	}
+
+	fsCDS := &pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name:    "fs-cc-name",
+				Version: "fs-cc-version",
+				Path:    "fs-cc-path",
+			},
+			Type: pb.ChaincodeSpec_GOLANG,
+		},
+		CodePackage: []byte("fs-code"),
+	}
+
+	fakeSupport.GetChaincodeDeploymentSpecFSReturns(fsCDS, nil)
+
+	sanitizedCDS, err := e.(*Endorser).SanitizeUserCDS(userCDS)
+	assert.NoError(t, err)
+	assert.Nil(t, sanitizedCDS.CodePackage)
+	assert.True(t, proto.Equal(userCDS.ChaincodeSpec.Input, sanitizedCDS.ChaincodeSpec.Input))
+	assert.True(t, proto.Equal(fsCDS.ChaincodeSpec.ChaincodeId, sanitizedCDS.ChaincodeSpec.ChaincodeId))
+
+	t.Run("BadPath", func(t *testing.T) {
+		fakeSupport.GetChaincodeDeploymentSpecFSReturns(nil, fmt.Errorf("fake-error"))
+		_, err := e.(*Endorser).SanitizeUserCDS(userCDS)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "fake-error")
+	})
 }

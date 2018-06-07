@@ -77,6 +77,10 @@ func (s *MockSupport) GetChaincodeDefinition(ctx context.Context, chainID string
 	return s.ChaincodeDefinitionRv, s.ChaincodeDefinitionError
 }
 
+func (s *MockSupport) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	return cds, nil
+}
+
 func (s *MockSupport) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
 	return s.CheckACLErr
 }
