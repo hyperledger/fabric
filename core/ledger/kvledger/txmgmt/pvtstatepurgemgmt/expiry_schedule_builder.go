@@ -68,6 +68,8 @@ func buildExpirySchedule(
 	hashedUpdateKeys := hashedUpdates.ToCompositeKeyMap()
 	expiryScheduleBuilder := newExpiryScheduleBuilder(btlPolicy)
 
+	logger.Debugf("Building the expiry schedules based on the update batch")
+
 	// Iterate through the private data updates and for each key add into the expiry schedule
 	// i.e., when these private data key and it's hashed-keys are going to be expired
 	// Note that the 'hashedUpdateKeys'  may be superset of the pvtUpdates. This is because,
@@ -75,15 +77,21 @@ func buildExpirySchedule(
 	// or because we allow proceeding with the missing private data data
 	for pvtUpdateKey, vv := range pvtUpdates.ToCompositeKeyMap() {
 		keyHash := util.ComputeStringHash(pvtUpdateKey.Key)
+		hashedCompisiteKey := privacyenabledstate.HashedCompositeKey{
+			Namespace:      pvtUpdateKey.Namespace,
+			CollectionName: pvtUpdateKey.CollectionName,
+			KeyHash:        string(keyHash),
+		}
+		logger.Debugf("Adding expiry schedule for key and key hash [%s]", &hashedCompisiteKey)
 		if err := expiryScheduleBuilder.add(pvtUpdateKey.Namespace, pvtUpdateKey.CollectionName, pvtUpdateKey.Key, keyHash, vv); err != nil {
 			return nil, err
 		}
-		delete(hashedUpdateKeys, privacyenabledstate.HashedCompositeKey{
-			Namespace: pvtUpdateKey.Namespace, CollectionName: pvtUpdateKey.CollectionName, KeyHash: string(keyHash)})
+		delete(hashedUpdateKeys, hashedCompisiteKey)
 	}
 
 	// Add entries for the leftover key hashes i.e., the hashes corresponding to which there is not private key is present
 	for hashedUpdateKey, vv := range hashedUpdateKeys {
+		logger.Debugf("Adding expiry schedule for key hash [%s]", &hashedUpdateKey)
 		if err := expiryScheduleBuilder.add(hashedUpdateKey.Namespace, hashedUpdateKey.CollectionName, "", []byte(hashedUpdateKey.KeyHash), vv); err != nil {
 			return nil, err
 		}

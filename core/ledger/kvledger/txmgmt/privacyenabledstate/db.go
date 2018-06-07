@@ -114,7 +114,7 @@ func (b UpdateMap) Put(ns, coll, key string, value []byte, version *version.Heig
 	b.getOrCreateNsBatch(ns).Put(coll, key, value, version)
 }
 
-// Delete removes the entry from the batch for a given combination of namespace and collection name
+// Delete adds a delete marker in the batch for a given combination of namespace and collection name
 func (b UpdateMap) Delete(ns, coll, key string, version *version.Height) {
 	b.getOrCreateNsBatch(ns).Delete(coll, key, version)
 }
@@ -126,6 +126,15 @@ func (b UpdateMap) Get(ns, coll, key string) *statedb.VersionedValue {
 		return nil
 	}
 	return nsPvtBatch.Get(coll, key)
+}
+
+// Contains returns true if the given <ns,coll,key> tuple is present in the batch
+func (b UpdateMap) Contains(ns, coll, key string) bool {
+	nsBatch, ok := b[ns]
+	if !ok {
+		return false
+	}
+	return nsBatch.Exists(coll, key)
 }
 
 func (nsb nsBatch) GetCollectionNames() []string {
@@ -143,11 +152,7 @@ func (b UpdateMap) getOrCreateNsBatch(ns string) nsBatch {
 
 // Contains returns true if the given <ns,coll,keyHash> tuple is present in the batch
 func (h HashedUpdateBatch) Contains(ns, coll string, keyHash []byte) bool {
-	nsBatch, ok := h.UpdateMap[ns]
-	if !ok {
-		return false
-	}
-	return nsBatch.Exists(coll, string(keyHash))
+	return h.UpdateMap.Contains(ns, coll, string(keyHash))
 }
 
 // Put overrides the function in UpdateMap for allowing the key to be a []byte instead of a string
