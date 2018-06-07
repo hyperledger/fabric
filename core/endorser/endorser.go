@@ -9,6 +9,7 @@ package endorser
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -73,6 +74,9 @@ type Support interface {
 	// CheckInstantiationPolicy returns an error if the instantiation in the supplied
 	// ChaincodeDefinition differs from the instantiation policy stored on the ledger
 	CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error
+
+	// GetChaincodeDeploymentSpecFS returns the deploymentspec for a chaincode from the fs
+	GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error)
 
 	// GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel
 	// and whether the Application config exists
@@ -150,8 +154,13 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
 	if cid.Name == "lscc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
+		userCDS, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
+		if err != nil {
+			return nil, nil, err
+		}
+
 		var cds *pb.ChaincodeDeploymentSpec
-		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
+		cds, err = e.SanitizeUserCDS(userCDS)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -169,6 +178,19 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	// ----- END -------
 
 	return res, ccevent, err
+}
+
+func (e *Endorser) SanitizeUserCDS(userCDS *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	fsCDS, err := e.s.GetChaincodeDeploymentSpecFS(userCDS)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot deploy a chaincode which is not installed")
+	}
+
+	sanitizedCDS := proto.Clone(fsCDS).(*pb.ChaincodeDeploymentSpec)
+	sanitizedCDS.CodePackage = nil
+	sanitizedCDS.ChaincodeSpec.Input = userCDS.ChaincodeSpec.Input
+
+	return sanitizedCDS, nil
 }
 
 // TO BE REMOVED WHEN JAVA CC IS ENABLED

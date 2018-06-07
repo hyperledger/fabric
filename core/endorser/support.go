@@ -112,6 +112,16 @@ func (s *SupportImpl) IsSysCC(name string) bool {
 	return s.SysCCProvider.IsSysCC(name)
 }
 
+// GetChaincode returns the CCPackage from the fs
+func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	ccpack, err := ccprovider.GetChaincodeFromFS(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not get chaincode from fs")
+	}
+
+	return ccpack.GetDepSpec(), nil
+}
+
 // Execute a proposal and return the chaincode response
 func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)

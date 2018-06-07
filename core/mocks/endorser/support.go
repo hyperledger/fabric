@@ -100,6 +100,10 @@ func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid str
 	return s.ExecuteResp, s.ExecuteEvent, s.ExecuteError
 }
 
+func (s *MockSupport) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	return cds, nil
+}
+
 func (s *MockSupport) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, error) {
 	return s.ChaincodeDefinitionRv, s.ChaincodeDefinitionError
 }
