@@ -48,7 +48,7 @@ func newChainSupport(
 	cs := &ChainSupport{
 		ledgerResources: ledgerResources,
 		LocalSigner:     signer,
-		cutter:          blockcutter.NewReceiverImpl(ledgerResources.SharedConfig()),
+		cutter:          blockcutter.NewReceiverImpl(ledgerResources),
 	}
 
 	// Set up the msgprocessor

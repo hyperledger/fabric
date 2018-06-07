@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package blockcutter
@@ -19,13 +9,24 @@ package blockcutter
 import (
 	"testing"
 
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter/mock"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mock/config_fetcher.go --fake-name OrdererConfigFetcher . ordererConfigFetcher
+type ordererConfigFetcher interface {
+	OrdererConfigFetcher
+}
+
+//go:generate counterfeiter -o mock/orderer_config.go --fake-name OrdererConfig . ordererConfig
+type ordererConfig interface {
+	channelconfig.Orderer
+}
 
 func init() {
 	flogging.SetModuleLevel(pkgLogID, "DEBUG")
@@ -38,7 +39,17 @@ func TestNormalBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
 	absoluteMaxBytes := uint32(1000)
 	preferredMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}})
+	mockConfig := &mock.OrdererConfig{}
+	mockConfig.BatchSizeReturns(&ab.BatchSize{
+		MaxMessageCount:   maxMessageCount,
+		AbsoluteMaxBytes:  absoluteMaxBytes,
+		PreferredMaxBytes: preferredMaxBytes,
+	})
+
+	mockConfigFetcher := &mock.OrdererConfigFetcher{}
+	mockConfigFetcher.OrdererConfigReturns(mockConfig, true)
+
+	r := NewReceiverImpl(mockConfigFetcher)
 
 	batches, pending := r.Ordered(tx)
 	assert.Nil(t, batches, "Should not have created batch")
@@ -58,7 +69,17 @@ func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 	// set message count > 9
 	maxMessageCount := uint32(20)
 
-	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 2, PreferredMaxBytes: preferredMaxBytes}})
+	mockConfig := &mock.OrdererConfig{}
+	mockConfig.BatchSizeReturns(&ab.BatchSize{
+		MaxMessageCount:   maxMessageCount,
+		AbsoluteMaxBytes:  preferredMaxBytes * 2,
+		PreferredMaxBytes: preferredMaxBytes,
+	})
+
+	mockConfigFetcher := &mock.OrdererConfigFetcher{}
+	mockConfigFetcher.OrdererConfigReturns(mockConfig, true)
+
+	r := NewReceiverImpl(mockConfigFetcher)
 
 	// enqueue 9 messages
 	for i := 0; i < 9; i++ {
@@ -89,7 +110,17 @@ func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
 	// set message count > 1
 	maxMessageCount := uint32(20)
 
-	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 3, PreferredMaxBytes: preferredMaxBytes}})
+	mockConfig := &mock.OrdererConfig{}
+	mockConfig.BatchSizeReturns(&ab.BatchSize{
+		MaxMessageCount:   maxMessageCount,
+		AbsoluteMaxBytes:  preferredMaxBytes * 3,
+		PreferredMaxBytes: preferredMaxBytes,
+	})
+
+	mockConfigFetcher := &mock.OrdererConfigFetcher{}
+	mockConfigFetcher.OrdererConfigReturns(mockConfig, true)
+
+	r := NewReceiverImpl(mockConfigFetcher)
 
 	// submit normal message
 	batches, pending := r.Ordered(tx)
@@ -104,4 +135,10 @@ func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
 	for i, batch := range batches {
 		assert.Len(t, batch, 1, "Should have had one normal tx in batch %d", i)
 	}
+}
+
+func TestPanicOnMissingConfig(t *testing.T) {
+	mockConfigFetcher := &mock.OrdererConfigFetcher{}
+	r := NewReceiverImpl(mockConfigFetcher)
+	assert.Panics(t, func() { r.Ordered(tx) })
 }

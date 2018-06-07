@@ -22,6 +22,10 @@ func init() {
 	logger = flogging.MustGetLogger(pkgLogID)
 }
 
+type OrdererConfigFetcher interface {
+	OrdererConfig() (channelconfig.Orderer, bool)
+}
+
 // Receiver defines a sink for the ordered broadcast messages
 type Receiver interface {
 	// Ordered should be invoked sequentially as messages are ordered
@@ -35,15 +39,15 @@ type Receiver interface {
 }
 
 type receiver struct {
-	sharedConfigManager   channelconfig.Orderer
+	sharedConfigFetcher   OrdererConfigFetcher
 	pendingBatch          []*cb.Envelope
 	pendingBatchSizeBytes uint32
 }
 
 // NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager
-func NewReceiverImpl(sharedConfigManager channelconfig.Orderer) Receiver {
+func NewReceiverImpl(sharedConfigFetcher OrdererConfigFetcher) Receiver {
 	return &receiver{
-		sharedConfigManager: sharedConfigManager,
+		sharedConfigFetcher: sharedConfigFetcher,
 	}
 }
 
@@ -64,9 +68,15 @@ func NewReceiverImpl(sharedConfigManager channelconfig.Orderer) Receiver {
 //
 // Note that messageBatches can not be greater than 2.
 func (r *receiver) Ordered(msg *cb.Envelope) (messageBatches [][]*cb.Envelope, pending bool) {
+	ordererConfig, ok := r.sharedConfigFetcher.OrdererConfig()
+	if !ok {
+		logger.Panicf("Could not retrieve orderer config to query batch parameters, block cutting is not possible")
+	}
+	batchSize := ordererConfig.BatchSize()
+
 	messageSizeBytes := messageSizeBytes(msg)
-	if messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes {
-		logger.Debugf("The current message, with %v bytes, is larger than the preferred batch size of %v bytes and will be isolated.", messageSizeBytes, r.sharedConfigManager.BatchSize().PreferredMaxBytes)
+	if messageSizeBytes > batchSize.PreferredMaxBytes {
+		logger.Debugf("The current message, with %v bytes, is larger than the preferred batch size of %v bytes and will be isolated.", messageSizeBytes, batchSize.PreferredMaxBytes)
 
 		// cut pending batch, if it has any messages
 		if len(r.pendingBatch) > 0 {
@@ -80,7 +90,7 @@ func (r *receiver) Ordered(msg *cb.Envelope) (messageBatches [][]*cb.Envelope, p
 		return
 	}
 
-	messageWillOverflowBatchSizeBytes := r.pendingBatchSizeBytes+messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes
+	messageWillOverflowBatchSizeBytes := r.pendingBatchSizeBytes+messageSizeBytes > batchSize.PreferredMaxBytes
 
 	if messageWillOverflowBatchSizeBytes {
 		logger.Debugf("The current message, with %v bytes, will overflow the pending batch of %v bytes.", messageSizeBytes, r.pendingBatchSizeBytes)
@@ -94,7 +104,7 @@ func (r *receiver) Ordered(msg *cb.Envelope) (messageBatches [][]*cb.Envelope, p
 	r.pendingBatchSizeBytes += messageSizeBytes
 	pending = true
 
-	if uint32(len(r.pendingBatch)) >= r.sharedConfigManager.BatchSize().MaxMessageCount {
+	if uint32(len(r.pendingBatch)) >= batchSize.MaxMessageCount {
 		logger.Debugf("Batch size met, cutting batch")
 		messageBatch := r.Cut()
 		messageBatches = append(messageBatches, messageBatch)
