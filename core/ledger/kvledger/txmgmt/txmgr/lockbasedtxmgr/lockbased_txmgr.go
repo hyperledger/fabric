@@ -141,7 +141,6 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.current.blockNum() + 1)
 		logger.Debugf("Cleared version cache and launched the background routine for preparing keys to purge with the next block")
 		txmgr.reset()
-		txmgr.commitRWLock.Unlock()
 	}()
 
 	logger.Debugf("Committing updates to state database")
@@ -155,6 +154,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	}
 
 	txmgr.commitRWLock.Lock()
+	defer txmgr.commitRWLock.Unlock()
 	logger.Debugf("Write lock acquired for committing updates to state database")
 	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
