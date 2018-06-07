@@ -12,35 +12,35 @@ import "fmt"
 type InvalidFunctionErr string
 
 func (f InvalidFunctionErr) Error() string {
-	return fmt.Sprintf("invalid function to lscc %s", string(f))
+	return fmt.Sprintf("invalid function to lscc: %s", string(f))
 }
 
 //InvalidArgsLenErr invalid arguments length error
 type InvalidArgsLenErr int
 
 func (i InvalidArgsLenErr) Error() string {
-	return fmt.Sprintf("invalid number of argument to lscc %d", int(i))
+	return fmt.Sprintf("invalid number of arguments to lscc: %d", int(i))
 }
 
 //TXNotFoundErr transaction not found error
 type TXNotFoundErr string
 
 func (t TXNotFoundErr) Error() string {
-	return fmt.Sprintf("transaction not found %s", string(t))
+	return fmt.Sprintf("transaction not found: %s", string(t))
 }
 
 //InvalidDeploymentSpecErr invalid chaincode deployment spec error
 type InvalidDeploymentSpecErr string
 
 func (f InvalidDeploymentSpecErr) Error() string {
-	return fmt.Sprintf("invalid deployment spec : %s", string(f))
+	return fmt.Sprintf("invalid deployment spec: %s", string(f))
 }
 
 //ExistsErr chaincode exists error
 type ExistsErr string
 
 func (t ExistsErr) Error() string {
-	return fmt.Sprintf("chaincode exists %s", string(t))
+	return fmt.Sprintf("chaincode with name '%s' already exists", string(t))
 }
 
 //NotFoundErr chaincode not registered with LSCC error
@@ -50,11 +50,11 @@ func (t NotFoundErr) Error() string {
 	return fmt.Sprintf("could not find chaincode with name '%s'", string(t))
 }
 
-//InvalidChainNameErr invalid chain name error
-type InvalidChainNameErr string
+//InvalidChannelNameErr invalid channel name error
+type InvalidChannelNameErr string
 
-func (f InvalidChainNameErr) Error() string {
-	return fmt.Sprintf("invalid chain name %s", string(f))
+func (f InvalidChannelNameErr) Error() string {
+	return fmt.Sprintf("invalid channel name: %s", string(f))
 }
 
 //InvalidChaincodeNameErr invalid chaincode name error
@@ -89,7 +89,7 @@ func (f InvalidStatedbArtifactsErr) Error() string {
 type ChaincodeMismatchErr string
 
 func (f ChaincodeMismatchErr) Error() string {
-	return fmt.Sprintf("chaincode name mismatch %s", string(f))
+	return fmt.Sprintf("chaincode name mismatch: %s", string(f))
 }
 
 //EmptyVersionErr empty version error
@@ -103,7 +103,7 @@ func (f EmptyVersionErr) Error() string {
 type MarshallErr string
 
 func (m MarshallErr) Error() string {
-	return fmt.Sprintf("error while marshalling %s", string(m))
+	return fmt.Sprintf("error while marshalling: %s", string(m))
 }
 
 //IdenticalVersionErr trying to upgrade to same version of Chaincode
@@ -117,7 +117,7 @@ func (f IdenticalVersionErr) Error() string {
 type InvalidCCOnFSError string
 
 func (f InvalidCCOnFSError) Error() string {
-	return fmt.Sprintf("chaincode fingerprint mismatch %s", string(f))
+	return fmt.Sprintf("chaincode fingerprint mismatch: %s", string(f))
 }
 
 //InstantiationPolicyMissing when no existing instantiation policy is found when upgrading CC

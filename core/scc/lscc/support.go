@@ -24,7 +24,7 @@ type supportImpl struct {
 // package to local storage (i.e. the file system)
 func (s *supportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
 	if err := ccpack.PutChaincodeToFS(); err != nil {
-		return errors.Errorf("Error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().CCName(), ccpack.GetChaincodeData().CCVersion(), err)
+		return errors.Errorf("error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().CCName(), ccpack.GetChaincodeData().CCVersion(), err)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 	if isSccpack {
 		ip = sccpack.GetInstantiationPolicy()
 		if ip == nil {
-			return nil, errors.Errorf("Instantiation policy cannot be null for a SignedCCDeploymentSpec")
+			return nil, errors.Errorf("instantiation policy cannot be nil for a SignedCCDeploymentSpec")
 		}
 	} else {
 		// the default instantiation policy allows any of the channel MSP admins
@@ -62,7 +62,7 @@ func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 		p := cauthdsl.SignedByAnyAdmin(mspids)
 		ip, err = utils.Marshal(p)
 		if err != nil {
-			return nil, errors.Errorf("Error marshalling default instantiation policy")
+			return nil, errors.Errorf("error marshalling default instantiation policy")
 		}
 
 	}
@@ -75,7 +75,7 @@ func (s *supportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, ch
 	// create a policy object from the policy bytes
 	mgr := mgmt.GetManagerForChain(chainName)
 	if mgr == nil {
-		return errors.Errorf("Error checking chaincode instantiation policy: MSP manager for chain %s not found", chainName)
+		return errors.Errorf("error checking chaincode instantiation policy: MSP manager for channel %s not found", chainName)
 	}
 	npp := cauthdsl.NewPolicyProvider(mgr)
 	instPol, _, err := npp.NewPolicy(instantiationPolicy)
