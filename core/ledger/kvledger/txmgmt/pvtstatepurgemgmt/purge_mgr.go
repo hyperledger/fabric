@@ -21,12 +21,14 @@ import (
 type PurgeMgr interface {
 	// PrepareForExpiringKeys gives a chance to the PurgeMgr to do background work in advance if any
 	PrepareForExpiringKeys(expiringAtBlk uint64)
+	// WaitForPrepareToFinish holds the caller till the background goroutine lauched by 'PrepareForExpiringKeys' is finished
+	WaitForPrepareToFinish()
 	// DeleteExpiredAndUpdateBookkeeping updates the bookkeeping and modifies the update batch by adding the deletes for the expired pvtdata
 	DeleteExpiredAndUpdateBookkeeping(
 		pvtUpdates *privacyenabledstate.PvtUpdateBatch,
 		hashedUpdates *privacyenabledstate.HashedUpdateBatch) error
 	// BlockCommitDone is a callback to the PurgeMgr when the block is committed to the ledger
-	BlockCommitDone()
+	BlockCommitDone() error
 }
 
 type keyAndVersion struct {
@@ -76,6 +78,12 @@ func (p *purgeMgr) PrepareForExpiringKeys(expiringAtBlk uint64) {
 		p.workingset = p.prepareWorkingsetFor(expiringAtBlk)
 	}()
 	p.waitGrp.Wait()
+}
+
+// WaitForPrepareToFinish implements function in the interface 'PurgeMgr'
+func (p *purgeMgr) WaitForPrepareToFinish() {
+	p.lock.Lock()
+	p.lock.Unlock()
 }
 
 // DeleteExpiredAndUpdateBookkeeping implements function in the interface 'PurgeMgr'
@@ -129,9 +137,9 @@ func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
 // Also, the another way is to club the delete of these entries in the same batch that adds entries for the future expirations -
 // however, that requires updating the expiry store by replaying the last block from blockchain in order to sustain a crash between
 // entries updates and block commit
-func (p *purgeMgr) BlockCommitDone() {
-	p.expKeeper.updateBookkeeping(nil, p.workingset.toClearFromSchedule)
-	p.workingset = nil
+func (p *purgeMgr) BlockCommitDone() error {
+	defer func() { p.workingset = nil }()
+	return p.expKeeper.updateBookkeeping(nil, p.workingset.toClearFromSchedule)
 }
 
 // prepareWorkingsetFor returns a working set for a given expiring block 'expiringAtBlk'.
