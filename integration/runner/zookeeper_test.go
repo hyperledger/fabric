@@ -85,6 +85,8 @@ var _ = Describe("Zookeeper Runner", func() {
 		By("terminating the container")
 		err = zookeeper.Stop()
 		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(ContainerExists(zookeeper.Client, "zookeeper0")).Should(BeFalse())
 	})
 
 	It("starts and stops multiple zookeepers", func() {
@@ -129,11 +131,12 @@ var _ = Describe("Zookeeper Runner", func() {
 		Expect(container.Config.Env).To(ContainElement(ContainSubstring("ZOO_MY_ID=3")))
 		Expect(container.Config.Env).To(ContainElement(ContainSubstring("ZOO_SERVERS=server.1=zookeeper1:2888:3888 server.2=zookeeper2:2888:3888 server.3=zookeeper3:2888:3888")))
 
-		err = zk3.Stop()
-		Expect(err).NotTo(HaveOccurred())
-		err = zk2.Stop()
-		Expect(err).NotTo(HaveOccurred())
-		err = zk1.Stop()
-		Expect(err).NotTo(HaveOccurred())
+		Expect(zk3.Stop()).To(Succeed())
+		Expect(zk2.Stop()).To(Succeed())
+		Expect(zk1.Stop()).To(Succeed())
+
+		Eventually(ContainerExists(zk1.Client, "zookeeper1")).Should(BeFalse())
+		Eventually(ContainerExists(zk2.Client, "zookeeper2")).Should(BeFalse())
+		Eventually(ContainerExists(zk3.Client, "zookeeper3")).Should(BeFalse())
 	})
 })
