@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -395,17 +396,24 @@ func (w *World) peerNetwork() {
 func (w *World) SetupChannel(d Deployment, peers []string) {
 	var p *runner.Peer
 
-	p = w.Components.Peer()
-	p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+	if len(peers) == 0 {
+		return
+	}
+
+	setupPeerRunner := func(peerID string) *runner.Peer {
+		p = w.Components.Peer()
+		peerOrg := strings.SplitN(peerID, ".", 2)[1]
+		p.ConfigDir = filepath.Join(w.Rootpath, peerID)
+		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg, "users", fmt.Sprintf("Admin@%s", peerOrg), "msp")
+		return p
+	}
+
+	p = setupPeerRunner(peers[0])
 	adminRunner := p.CreateChannel(d.Channel, filepath.Join(w.Rootpath, fmt.Sprintf("%s_tx.pb", d.Channel)), d.Orderer)
 	execute(adminRunner)
 
 	for _, peer := range peers {
-		p = w.Components.Peer()
-		peerOrg := strings.SplitN(peer, ".", 2)[1]
-		p.ConfigDir = filepath.Join(w.Rootpath, peer)
-		p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", peerOrg, "users", fmt.Sprintf("Admin@%s", peerOrg), "msp")
+		p = setupPeerRunner(peer)
 		adminRunner = p.FetchChannel(d.Channel, filepath.Join(w.Rootpath, peer, fmt.Sprintf("%s_block.pb", d.Channel)), "0", d.Orderer)
 		execute(adminRunner)
 		ExpectWithOffset(1, adminRunner.Err()).To(gbytes.Say("Received block: 0"))
@@ -419,10 +427,21 @@ func (w *World) SetupChannel(d Deployment, peers []string) {
 		p.InstallChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Chaincode.Path)
 	}
 
-	p = w.Components.Peer()
-	p.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-	p.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
+	p = setupPeerRunner(peers[0])
 	p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
+
+	for _, peer := range peers[1:] {
+		p = setupPeerRunner(peer)
+		listInstantiated := func() *gbytes.Buffer {
+			adminRunner = p.ChaincodeListInstantiated(d.Channel)
+
+			sess, err := helpers.StartSession(adminRunner.Command, "list instantiated", "4;34m")
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			EventuallyWithOffset(1, sess, 10*time.Second).Should(gexec.Exit(0))
+			return sess.Buffer()
+		}
+		EventuallyWithOffset(1, listInstantiated, time.Minute).Should(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", d.Chaincode.Name, d.Chaincode.Version)))
+	}
 }
 
 func (w *World) PeerIDs() []string {
