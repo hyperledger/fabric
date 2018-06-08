@@ -8,7 +8,6 @@ package ccprovider
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -540,12 +539,6 @@ type TransactionParams struct {
 // chaincode package without importing it; more methods
 // should be added below if necessary
 type ChaincodeProvider interface {
-	// GetContext returns a ledger context and a tx simulator; it's the
-	// caller's responsability to release the simulator by calling its
-	// done method once it is no longer useful
-	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error)
-	// ExecuteChaincode executes the chaincode given context and args
-	ExecuteChaincode(txParams *TransactionParams, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)
 	Execute(txParams *TransactionParams, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle

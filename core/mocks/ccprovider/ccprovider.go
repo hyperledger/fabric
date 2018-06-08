@@ -7,10 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package ccprovider
 
 import (
-	"context"
-
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -130,28 +127,6 @@ func (m *MockTxSim) SetPrivateDataMetadata(namespace, collection, key string, me
 
 func (m *MockTxSim) DeletePrivateDataMetadata(namespace, collection, key string) error {
 	return nil
-}
-
-// GetContext does nothing
-func (c *MockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error) {
-	return nil, &MockTxSim{}, nil
-}
-
-// GetCCValidationInfoFromLSCC does nothing
-func (c *MockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
-	return "vscc", nil, nil
-}
-
-// ExecuteChaincode does nothing
-func (c *MockCcProviderImpl) ExecuteChaincode(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
-	if c.ExecuteResultProvider != nil {
-		return c.ExecuteResultProvider.ExecuteChaincodeResult()
-	}
-	if c.ExecuteChaincodeResponse == nil {
-		return &peer.Response{Status: shim.OK}, nil, nil
-	} else {
-		return c.ExecuteChaincodeResponse, nil, nil
-	}
 }
 
 // ExecuteInit executes the chaincode given context and spec deploy
