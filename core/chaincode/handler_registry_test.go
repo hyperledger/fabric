@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -218,7 +218,10 @@ var _ = Describe("HandlerRegistry", func() {
 			fakeResultsIterator = &mock.ResultsIterator{}
 			transactionContexts := chaincode.NewTransactionContexts()
 
-			txContext, err := transactionContexts.Create(context.Background(), "chain-id", "transaction-id", nil, nil)
+			txContext, err := transactionContexts.Create(&ccprovider.TransactionParams{
+				ChannelID: "chain-id",
+				TxID:      "transaction-id",
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			handler.TXContexts = transactionContexts

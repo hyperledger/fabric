@@ -5,19 +5,14 @@ import (
 	"sync"
 
 	chaincode_test "github.com/hyperledger/fabric/core/chaincode"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"golang.org/x/net/context"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 type ContextRegistry struct {
-	CreateStub        func(ctx context.Context, chainID, txID string, signedProp *pb.SignedProposal, proposal *pb.Proposal) (*chaincode_test.TransactionContext, error)
+	CreateStub        func(txParams *ccprovider.TransactionParams) (*chaincode_test.TransactionContext, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
-		ctx        context.Context
-		chainID    string
-		txID       string
-		signedProp *pb.SignedProposal
-		proposal   *pb.Proposal
+		txParams *ccprovider.TransactionParams
 	}
 	createReturns struct {
 		result1 *chaincode_test.TransactionContext
@@ -52,20 +47,16 @@ type ContextRegistry struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ContextRegistry) Create(ctx context.Context, chainID string, txID string, signedProp *pb.SignedProposal, proposal *pb.Proposal) (*chaincode_test.TransactionContext, error) {
+func (fake *ContextRegistry) Create(txParams *ccprovider.TransactionParams) (*chaincode_test.TransactionContext, error) {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
-		ctx        context.Context
-		chainID    string
-		txID       string
-		signedProp *pb.SignedProposal
-		proposal   *pb.Proposal
-	}{ctx, chainID, txID, signedProp, proposal})
-	fake.recordInvocation("Create", []interface{}{ctx, chainID, txID, signedProp, proposal})
+		txParams *ccprovider.TransactionParams
+	}{txParams})
+	fake.recordInvocation("Create", []interface{}{txParams})
 	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
-		return fake.CreateStub(ctx, chainID, txID, signedProp, proposal)
+		return fake.CreateStub(txParams)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -79,10 +70,10 @@ func (fake *ContextRegistry) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *ContextRegistry) CreateArgsForCall(i int) (context.Context, string, string, *pb.SignedProposal, *pb.Proposal) {
+func (fake *ContextRegistry) CreateArgsForCall(i int) *ccprovider.TransactionParams {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
-	return fake.createArgsForCall[i].ctx, fake.createArgsForCall[i].chainID, fake.createArgsForCall[i].txID, fake.createArgsForCall[i].signedProp, fake.createArgsForCall[i].proposal
+	return fake.createArgsForCall[i].txParams
 }
 
 func (fake *ContextRegistry) CreateReturns(result1 *chaincode_test.TransactionContext, result2 error) {

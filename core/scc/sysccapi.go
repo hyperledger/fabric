@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/net/context"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -143,22 +141,26 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 
 	txid := util.GenerateUUID()
 
-	ctxt := context.Background()
+	// Note, this structure is barely initialized,
+	// we omit the history query executor, the proposal
+	// and the signed proposal
+	txParams := &ccprovider.TransactionParams{
+		TxID:      txid,
+		ChannelID: chainID,
+	}
+
 	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name(), chainID))
 		}
 
-		//init can do GetState (and other Get's) even if Puts cannot be
-		//be handled. Need ledger for this
-		ctxt2, txsim, err := ccprov.GetContext(lgr, txid)
+		txsim, err := lgr.NewTxSimulator(txid)
 		if err != nil {
 			return err
 		}
 
-		ctxt = ctxt2
-
+		txParams.TXSimulator = txsim
 		defer txsim.Done()
 	}
 
@@ -172,7 +174,7 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 
 	cccid := ccprovider.NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, nil, nil)
 
-	resp, _, err := ccprov.ExecuteInit(ctxt, cccid, chaincodeDeploymentSpec)
+	resp, _, err := ccprov.ExecuteInit(txParams, cccid, chaincodeDeploymentSpec)
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}

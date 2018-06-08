@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
@@ -44,7 +43,7 @@ type Registry interface {
 
 // An Invoker invokes chaincode.
 type Invoker interface {
-	Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error)
+	Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error)
 }
 
 // SystemCCProvider provides system chaincode metadata.
@@ -61,7 +60,7 @@ type TransactionRegistry interface {
 
 // A ContextRegistry is responsible for managing transaction contexts.
 type ContextRegistry interface {
-	Create(ctx context.Context, chainID, txID string, signedProp *pb.SignedProposal, proposal *pb.Proposal) (*TransactionContext, error)
+	Create(txParams *ccprovider.TransactionParams) (*TransactionContext, error)
 	Get(chainID, txID string) *TransactionContext
 	Delete(chainID, txID string)
 	Close()
@@ -500,7 +499,7 @@ func (h *Handler) isValidTxSim(channelID string, txid string, fmtStr string, arg
 	txContext := h.TXContexts.Get(channelID, txid)
 	if txContext == nil || txContext.TXSimulator == nil {
 		err := errors.Errorf(fmtStr, args...)
-		chaincodeLogger.Errorf("%+v", err)
+		chaincodeLogger.Errorf("no ledger context: %s %s\n\n %+v", channelID, txid, err)
 		return nil, err
 	}
 	return txContext, nil
@@ -827,9 +826,15 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 	// Set up a new context for the called chaincode if on a different channel
 	// We grab the called channel's ledger simulator to hold the new state
-	ctxt := context.Background()
-	txsim := txContext.TXSimulator
-	historyQueryExecutor := txContext.HistoryQueryExecutor
+	txParams := &ccprovider.TransactionParams{
+		TxID:                 msg.Txid,
+		ChannelID:            targetInstance.ChainID,
+		SignedProp:           txContext.SignedProp,
+		Proposal:             txContext.Proposal,
+		TXSimulator:          txContext.TXSimulator,
+		HistoryQueryExecutor: txContext.HistoryQueryExecutor,
+	}
+
 	if targetInstance.ChainID != txContext.ChainID {
 		lgr := h.LedgerGetter.GetLedger(targetInstance.ChainID)
 		if lgr == nil {
@@ -847,18 +852,16 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 			return nil, errors.WithStack(err)
 		}
 
-		txsim = sim
-		historyQueryExecutor = hqe
+		txParams.TXSimulator = sim
+		txParams.HistoryQueryExecutor = hqe
 	}
-	ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
-	ctxt = context.WithValue(ctxt, HistoryQueryExecutorKey, historyQueryExecutor)
 
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
 
 	version := h.SystemCCVersion
 	if !h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName) {
 		// if its a user chaincode, get the details
-		cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChaincodeName, txsim)
+		cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChaincodeName, txParams.TXSimulator)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -878,7 +881,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
-	responseMessage, err := h.Invoker.Invoke(ctxt, cccid, cciSpec)
+	responseMessage, err := h.Invoker.Invoke(txParams, cccid, cciSpec)
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
 	}
@@ -893,11 +896,11 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
-func (h *Handler) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
+func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
 
-	txctx, err := h.TXContexts.Create(ctxt, msg.ChannelId, msg.Txid, cccid.SignedProposal, cccid.Proposal)
+	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {
 		return nil, err
 	}

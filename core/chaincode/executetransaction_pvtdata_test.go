@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 )
 
 // Test the invocation of a transaction for private data.
@@ -36,8 +35,6 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 
 	defer cleanup()
-
-	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/map"
 	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}
@@ -60,7 +57,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		Type:          "GOLANG",
 		ContainerType: "DOCKER",
 	})
-	_, err = deployWithCollectionConfigs(ctxt, cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
+	_, err = deployWithCollectionConfigs(cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
 	if err != nil {
@@ -91,7 +88,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		argsString := fmt.Sprintf("{\"docType\":\"marble\",\"name\":\"%s\",\"color\":\"%s\",\"size\":35,\"owner\":\"%s\"}", key, color, owner)
 		args = util.ToChaincodeArgs(f, key, argsString)
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 
 		if err != nil {
@@ -105,7 +102,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		key = fmt.Sprintf("pmarble%03d", i)
 		args = util.ToChaincodeArgs(f, "c1", key, argsString)
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 
 		if err != nil {
@@ -125,7 +122,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		t.Logf("invoking PutPrivateData with collection:<%s> key:%s", collection, "marble001")
 		args = util.ToChaincodeArgs(f, collection, "pmarble001", value)
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 
 		if err != nil {
@@ -140,7 +137,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c3", "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err := invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err := invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -163,7 +160,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c3", "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -177,7 +174,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c4", "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -191,7 +188,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c3", "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -213,7 +210,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "pmarble001")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 
 	if err != nil {
@@ -233,7 +230,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "c1", "pmarble001", "pmarble011")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -253,7 +250,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "marble001", "marble011")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -279,7 +276,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "marble001", "marble002", "2000")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	if err == nil {
 		t.Fail()
 		t.Logf("expected timeout error but succeeded")
@@ -296,7 +293,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "marble001", "marble102")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -322,7 +319,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	args = util.ToChaincodeArgs(f, "", "")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -351,7 +348,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		args = util.ToChaincodeArgs(f, "{\"selector\":{\"color\":\"blue\"}}")
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 
 		if err != nil {
@@ -373,7 +370,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		args = util.ToChaincodeArgs(f, "c1", "{\"selector\":{\"color\":\"blue\"}}")
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 		if err != nil {
 			t.Fail()
@@ -398,7 +395,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		args = util.ToChaincodeArgs(f, "marble001", "marble011")
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err := invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, retval, err := invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 		if err != nil {
 			t.Fail()
@@ -423,7 +420,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 
 		if err != nil {
@@ -451,7 +448,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+		_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 		nextBlockNumber++
 		if err != nil {
 			t.Fail()
@@ -475,7 +472,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	f = "put"
 	args = util.ToChaincodeArgs(f, "marble012", "{\"docType\":\"marble\",\"name\":\"marble012\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -486,7 +483,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	f = "put"
 	args = util.ToChaincodeArgs(f, "marble012", "{\"docType\":\"marble\",\"name\":\"marble012\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, _, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -498,7 +495,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	f = "history"
 	args = util.ToChaincodeArgs(f, "marble012")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil, chaincodeSupport)
+	_, _, retval, err = invoke(chainID, spec, nextBlockNumber, nil, chaincodeSupport)
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()

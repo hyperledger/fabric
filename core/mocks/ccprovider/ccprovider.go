@@ -143,7 +143,7 @@ func (c *MockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, t
 }
 
 // ExecuteChaincode does nothing
-func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) ExecuteChaincode(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
 	if c.ExecuteResultProvider != nil {
 		return c.ExecuteResultProvider.ExecuteChaincodeResult()
 	}
@@ -155,12 +155,12 @@ func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid *ccpro
 }
 
 // ExecuteInit executes the chaincode given context and spec deploy
-func (c *MockCcProviderImpl) ExecuteInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) ExecuteInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return &peer.Response{}, nil, nil
 }
 
 // Execute executes the chaincode given context and spec invocation
-func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec *peer.ChaincodeInvocationSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeInvocationSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return &peer.Response{}, nil, nil
 }
 

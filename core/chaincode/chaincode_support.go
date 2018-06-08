@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Runtime is used to manage chaincode runtime instances.
@@ -196,14 +195,14 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 }
 
 // Execute init invokes chaincode and returns the original response.
-func (cs *ChaincodeSupport) ExecuteInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	resp, err := cs.InvokeInit(ctxt, cccid, spec)
+func (cs *ChaincodeSupport) ExecuteInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	resp, err := cs.InvokeInit(txParams, cccid, spec)
 	return processChaincodeExecutionResult(cccid, resp, err)
 }
 
 // Execute invokes chaincode and returns the original response.
-func (cs *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	resp, err := cs.Invoke(ctxt, cccid, spec)
+func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	resp, err := cs.Invoke(txParams, cccid, spec)
 	return processChaincodeExecutionResult(cccid, resp, err)
 }
 
@@ -237,7 +236,7 @@ func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.Chain
 	}
 }
 
-func (cs *ChaincodeSupport) InvokeInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeMessage, error) {
+func (cs *ChaincodeSupport) InvokeInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeMessage, error) {
 	cctyp := pb.ChaincodeMessage_INIT
 
 	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
@@ -260,12 +259,12 @@ func (cs *ChaincodeSupport) InvokeInit(ctxt context.Context, cccid *ccprovider.C
 		return nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
 
-	return cs.execute(ctxt, cccid, ccMsg)
+	return cs.execute(txParams, cccid, ccMsg)
 }
 
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
-func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
+func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
 	cctyp := pb.ChaincodeMessage_TRANSACTION
 
 	chaincodeSpec := spec.GetChaincodeSpec()
@@ -285,11 +284,11 @@ func (cs *ChaincodeSupport) Invoke(ctxt context.Context, cccid *ccprovider.CCCon
 		return nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
 
-	return cs.execute(ctxt, cccid, ccMsg)
+	return cs.execute(txParams, cccid, ccMsg)
 }
 
 // execute executes a transaction and waits for it to complete until a timeout value.
-func (cs *ChaincodeSupport) execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
+func (cs *ChaincodeSupport) execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
 	cname := cccid.GetCanonicalName()
 	chaincodeLogger.Debugf("canonical name: %s", cname)
 
@@ -299,7 +298,7 @@ func (cs *ChaincodeSupport) execute(ctxt context.Context, cccid *ccprovider.CCCo
 		return nil, errors.Errorf("unable to invoke chaincode %s", cname)
 	}
 
-	ccresp, err := handler.Execute(ctxt, cccid, msg, cs.ExecuteTimeout)
+	ccresp, err := handler.Execute(txParams, cccid, msg, cs.ExecuteTimeout)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
 	}

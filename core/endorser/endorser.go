@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -59,10 +58,10 @@ type Support interface {
 	IsSysCC(name string) bool
 
 	// Execute - execute proposal, return original response of chaincode
-	Execute(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// ExecuteInit - executes a deployment proposal, return original response of chaincode
-	ExecuteInit(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
 	GetChaincodeDefinition(chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
@@ -125,19 +124,15 @@ func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms
 }
 
 // call specified chaincode (system or user)
-func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*pb.Response, *pb.ChaincodeEvent, error) {
-	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s version: %s", chainID, txid, cid, version)
-	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, txid)
+func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, version string, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID) (*pb.Response, *pb.ChaincodeEvent, error) {
+	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s version: %s", txParams.ChannelID, txParams.TxID, cid, version)
+	defer endorserLogger.Debugf("[%s][%s] Exit", txParams.ChannelID, txParams.TxID)
 	var err error
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
 
-	if txsim != nil {
-		ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
-	}
-
 	// is this a system chaincode
-	res, ccevent, err = e.s.Execute(ctxt, chainID, cid.Name, version, txid, signedProp, prop, cis)
+	res, ccevent, err = e.s.Execute(txParams, txParams.ChannelID, cid.Name, version, txParams.TxID, txParams.SignedProp, txParams.Proposal, cis)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -171,10 +166,10 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 
 		// this should not be a system chaincode
 		if e.s.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
-			return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, chainID)
+			return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
 		}
 
-		_, _, err = e.s.ExecuteInit(ctxt, chainID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txid, signedProp, prop, cds)
+		_, _, err = e.s.ExecuteInit(txParams, txParams.ChannelID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txParams.TxID, txParams.SignedProp, txParams.Proposal, cds)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -249,13 +244,13 @@ func (e *Endorser) DisableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 }
 
 // SimulateProposal simulates the proposal by calling the chaincode
-func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
-	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), cid)
-	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
+func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid *pb.ChaincodeID) (ccprovider.ChaincodeDefinition, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
+	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), cid)
+	defer endorserLogger.Debugf("[%s][%s] Exit", txParams.ChannelID, shorttxid(txParams.TxID))
 	// we do expect the payload to be a ChaincodeInvocationSpec
 	// if we are supporting other payloads in future, this be glaringly point
 	// as something that should change
-	cis, err := putils.GetChaincodeInvocationSpec(prop)
+	cis, err := putils.GetChaincodeInvocationSpec(txParams.Proposal)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -269,7 +264,7 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 	var version string
 
 	if !e.s.IsSysCC(cid.Name) {
-		cdLedger, err = e.s.GetChaincodeDefinition(cid.Name, txsim)
+		cdLedger, err = e.s.GetChaincodeDefinition(cid.Name, txParams.TXSimulator)
 		if err != nil {
 			return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("make sure the chaincode %s has been successfully instantiated and try again", cid.Name))
 		}
@@ -288,35 +283,35 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 	var pubSimResBytes []byte
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
-	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
+	res, ccevent, err = e.callChaincode(txParams, version, cis, cid)
 	if err != nil {
-		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", chainID, shorttxid(txid), cid, err)
+		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", txParams.ChannelID, shorttxid(txParams.TxID), cid, err)
 		return nil, nil, nil, nil, err
 	}
 
-	if txsim != nil {
-		if simResult, err = txsim.GetTxSimulationResults(); err != nil {
-			txsim.Done()
+	if txParams.TXSimulator != nil {
+		if simResult, err = txParams.TXSimulator.GetTxSimulationResults(); err != nil {
+			txParams.TXSimulator.Done()
 			return nil, nil, nil, nil, err
 		}
 
 		if simResult.PvtSimulationResults != nil {
 			if cid.Name == "lscc" {
 				// TODO: remove once we can store collection configuration outside of LSCC
-				txsim.Done()
+				txParams.TXSimulator.Done()
 				return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
 			}
-			pvtDataWithConfig, err := e.AssemblePvtRWSet(simResult.PvtSimulationResults, txsim)
+			pvtDataWithConfig, err := e.AssemblePvtRWSet(simResult.PvtSimulationResults, txParams.TXSimulator)
 			// To read collection config need to read collection updates before
-			// releasing the lock, hence txsim.Done()  moved down here
-			txsim.Done()
+			// releasing the lock, hence txParams.TXSimulator.Done()  moved down here
+			txParams.TXSimulator.Done()
 
 			if err != nil {
 				return nil, nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
 			}
-			endorsedAt, err := e.s.GetLedgerHeight(chainID)
+			endorsedAt, err := e.s.GetLedgerHeight(txParams.ChannelID)
 			if err != nil {
-				return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", chainID))
+				return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", txParams.ChannelID))
 			}
 			// Add ledger height at which transaction was endorsed,
 			// `endorsedAt` is obtained from the block storage and at times this could be 'endorsement Height + 1'.
@@ -324,12 +319,12 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 			// manage transient store purge for orphaned private writesets (4th parameter in distributePrivateData), this works for now.
 			// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
 			pvtDataWithConfig.EndorsedAt = endorsedAt
-			if err := e.distributePrivateData(chainID, txid, pvtDataWithConfig, endorsedAt); err != nil {
+			if err := e.distributePrivateData(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}
 
-		txsim.Done()
+		txParams.TXSimulator.Done()
 		if pubSimResBytes, err = simResult.GetPubSimulationBytes(); err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -489,10 +484,15 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		if historyQueryExecutor, err = e.s.GetHistoryQueryExecutor(chainID); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
-		// Add the historyQueryExecutor to context
-		// TODO shouldn't we also add txsim to context here as well? Rather than passing txsim parameter
-		// around separately, since eventually it gets added to context anyways
-		ctx = context.WithValue(ctx, chaincode.HistoryQueryExecutorKey, historyQueryExecutor)
+	}
+
+	txParams := &ccprovider.TransactionParams{
+		ChannelID:            chainID,
+		TxID:                 txid,
+		SignedProp:           signedProp,
+		Proposal:             prop,
+		TXSimulator:          txsim,
+		HistoryQueryExecutor: historyQueryExecutor,
 	}
 	// this could be a request to a chainless SysCC
 
@@ -502,7 +502,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//       to validate the supplied action before endorsing it
 
 	// 1 -- simulate
-	cd, res, simulationResult, ccevent, err := e.SimulateProposal(ctx, chainID, txid, signedProp, prop, hdrExt.ChaincodeId, txsim)
+	cd, res, simulationResult, ccevent, err := e.SimulateProposal(txParams, hdrExt.ChaincodeId)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}

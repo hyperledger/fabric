@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -49,22 +50,22 @@ func contextID(chainID, txID string) string {
 // Create creates a new TransactionContext for the specified chain and
 // transaction ID. An error is returned when a transaction context has already
 // been created for the specified chain and transaction ID.
-func (c *TransactionContexts) Create(ctx context.Context, chainID, txID string, signedProp *pb.SignedProposal, proposal *pb.Proposal) (*TransactionContext, error) {
+func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*TransactionContext, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	ctxID := contextID(chainID, txID)
+	ctxID := contextID(txParams.ChannelID, txParams.TxID)
 	if c.contexts[ctxID] != nil {
-		return nil, errors.Errorf("txid: %s(%s) exists", txID, chainID)
+		return nil, errors.Errorf("txid: %s(%s) exists", txParams.TxID, txParams.ChannelID)
 	}
 
 	txctx := &TransactionContext{
-		ChainID:              chainID,
-		SignedProp:           signedProp,
-		Proposal:             proposal,
+		ChainID:              txParams.ChannelID,
+		SignedProp:           txParams.SignedProp,
+		Proposal:             txParams.Proposal,
 		ResponseNotifier:     make(chan *pb.ChaincodeMessage, 1),
-		TXSimulator:          getTxSimulator(ctx),
-		HistoryQueryExecutor: getHistoryQueryExecutor(ctx),
+		TXSimulator:          txParams.TXSimulator,
+		HistoryQueryExecutor: txParams.HistoryQueryExecutor,
 		queryIteratorMap:     map[string]commonledger.ResultsIterator{},
 		pendingQueryResults:  map[string]*PendingQueryResult{},
 	}

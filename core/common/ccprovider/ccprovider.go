@@ -524,6 +524,17 @@ type ChaincodeContainerInfo struct {
 	ContainerType string
 }
 
+// TransactionParams are parameters which are tied to a particular transaction
+// and which are required for invoking chaincode.
+type TransactionParams struct {
+	TxID                 string
+	ChannelID            string
+	SignedProp           *pb.SignedProposal
+	Proposal             *pb.Proposal
+	TXSimulator          ledger.TxSimulator
+	HistoryQueryExecutor ledger.HistoryQueryExecutor
+}
+
 // ChaincodeProvider provides an abstraction layer that is
 // used for different packages to interact with code in the
 // chaincode package without importing it; more methods
@@ -534,11 +545,11 @@ type ChaincodeProvider interface {
 	// done method once it is no longer useful
 	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error)
 	// ExecuteChaincode executes the chaincode given context and args
-	ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteChaincode(txParams *TransactionParams, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)
-	Execute(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(txParams *TransactionParams, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle
-	ExecuteInit(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteInit(txParams *TransactionParams, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Stop stops the chaincode give
 	Stop(ccci *ChaincodeContainerInfo) error
 }

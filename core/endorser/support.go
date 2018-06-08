@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // SupportImpl provides an implementation of the endorser.Support interface
@@ -123,14 +122,14 @@ func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 }
 
 // ExecuteInit a deployment proposal and return the chaincode response
-func (s *SupportImpl) ExecuteInit(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *SupportImpl) ExecuteInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := ccprovider.NewCCContext(cid, name, version, txid, signedProp, prop)
 
-	return s.ChaincodeSupport.ExecuteInit(ctxt, cccid, cds)
+	return s.ChaincodeSupport.ExecuteInit(txParams, cccid, cds)
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := ccprovider.NewCCContext(cid, name, version, txid, signedProp, prop)
 
 	// decorate the chaincode input
@@ -139,7 +138,7 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 	cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
 	cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
 
-	return s.ChaincodeSupport.Execute(ctxt, cccid, cis)
+	return s.ChaincodeSupport.Execute(txParams, cccid, cis)
 }
 
 // GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
