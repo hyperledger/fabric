@@ -44,7 +44,10 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", nil, nil)
+	cccid := &ccprovider.CCContext{
+		Name:    "tmap",
+		Version: "0",
+	}
 
 	var nextBlockNumber uint64 = 1
 	// this test assumes four collections
@@ -57,7 +60,7 @@ func TestQueriesPrivateData(t *testing.T) {
 		Type:          "GOLANG",
 		ContainerType: "DOCKER",
 	})
-	_, err = deployWithCollectionConfigs(cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
+	_, err = deployWithCollectionConfigs(chainID, cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
 	if err != nil {

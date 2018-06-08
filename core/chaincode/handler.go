@@ -877,7 +877,10 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	// Launch the new chaincode if not already running
 	chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
 
-	cccid := ccprovider.NewCCContext(targetInstance.ChainID, targetInstance.ChaincodeName, version, msg.Txid, txContext.SignedProp, txContext.Proposal)
+	cccid := &ccprovider.CCContext{
+		Name:    targetInstance.ChaincodeName,
+		Version: version,
+	}
 	cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
@@ -906,7 +909,7 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 	}
 	defer h.TXContexts.Delete(msg.ChannelId, msg.Txid)
 
-	if err := h.setChaincodeProposal(cccid.SignedProposal, cccid.Proposal, msg); err != nil {
+	if err := h.setChaincodeProposal(txParams.SignedProp, txParams.Proposal, msg); err != nil {
 		return nil, err
 	}
 

@@ -1712,7 +1712,10 @@ var _ = Describe("Handler", func() {
 				Signature:     []byte("signature"),
 			}
 
-			cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", expectedSignedProp, expectedProposal)
+			cccid = &ccprovider.CCContext{
+				Name:    "chaincode-name",
+				Version: "chaincode-version",
+			}
 			incomingMessage = &pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_TRANSACTION,
 				Txid:      "tx-id",
@@ -1777,7 +1780,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when the proposal is missing", func() {
 			BeforeEach(func() {
-				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", expectedSignedProp, nil)
+				txParams.Proposal = nil
 			})
 
 			It("sends a nil proposal", func() {
@@ -1794,7 +1797,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when the signed proposal is missing", func() {
 			BeforeEach(func() {
-				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", nil, expectedProposal)
+				txParams.SignedProp = nil
 			})
 
 			It("returns an error", func() {
@@ -2102,10 +2105,8 @@ var _ = Describe("Handler", func() {
 
 		Context("when an async error is sent", func() {
 			var (
-				cccid              *ccprovider.CCContext
-				incomingMessage    *pb.ChaincodeMessage
-				expectedProposal   *pb.Proposal
-				expectedSignedProp *pb.SignedProposal
+				cccid           *ccprovider.CCContext
+				incomingMessage *pb.ChaincodeMessage
 
 				recvChan chan *pb.ChaincodeMessage
 			)
@@ -2115,9 +2116,10 @@ var _ = Describe("Handler", func() {
 				payload, err := proto.Marshal(request)
 				Expect(err).NotTo(HaveOccurred())
 
-				expectedProposal = &pb.Proposal{}
-				expectedSignedProp = &pb.SignedProposal{}
-				cccid = ccprovider.NewCCContext("channel-name", "chaincode-name", "chaincode-version", "tx-id", expectedSignedProp, expectedProposal)
+				cccid = &ccprovider.CCContext{
+					Name:    "chaincode-name",
+					Version: "chaincode-version",
+				}
 
 				incomingMessage = &pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_TRANSACTION,

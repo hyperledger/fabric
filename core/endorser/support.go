@@ -123,20 +123,26 @@ func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 
 // ExecuteInit a deployment proposal and return the chaincode response
 func (s *SupportImpl) ExecuteInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, signedProp, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    name,
+		Version: version,
+	}
 
 	return s.ChaincodeSupport.ExecuteInit(txParams, cccid, cds)
 }
 
 // Execute a proposal and return the chaincode response
 func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, signedProp, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    name,
+		Version: version,
+	}
 
 	// decorate the chaincode input
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
 	cis.ChaincodeSpec.Input.Decorations = make(map[string][]byte)
 	cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
-	cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
+	txParams.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
 
 	return s.ChaincodeSupport.Execute(txParams, cccid, cis)
 }

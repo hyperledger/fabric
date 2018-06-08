@@ -172,7 +172,10 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprovider.NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, nil, nil)
+	cccid := &ccprovider.CCContext{
+		Name:    chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name,
+		Version: version,
+	}
 
 	resp, _, err := ccprov.ExecuteInit(txParams, cccid, chaincodeDeploymentSpec)
 	if err == nil && resp.Status != shim.OK {

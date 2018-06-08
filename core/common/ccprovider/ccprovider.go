@@ -351,68 +351,16 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 
 // CCContext pass this around instead of string of args
 type CCContext struct {
-	// ChainID chain id
-	ChainID string
-
 	// Name chaincode name
 	Name string
 
 	// Version used to construct the chaincode image and register
 	Version string
-
-	// TxID is the transaction id for the proposal (if any)
-	TxID string
-
-	// SignedProposal for this invoke (if any) this is kept here for access
-	// control and in case we need to pass something from this to the chaincode
-	SignedProposal *pb.SignedProposal
-
-	// Proposal for this invoke (if any) this is kept here just in case we need to
-	// pass something from this to the chaincode
-	Proposal *pb.Proposal
-
-	// canonicalName is not set but computed
-	canonicalName string
-
-	// this is additional data passed to the chaincode
-	ProposalDecorations map[string][]byte
-}
-
-// NewCCContext just construct a new struct with whatever args
-func NewCCContext(cname, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal) *CCContext {
-	cccid := &CCContext{
-		ChainID:             cname,
-		Name:                name,
-		Version:             version,
-		TxID:                txid,
-		SignedProposal:      signedProp,
-		Proposal:            prop,
-		canonicalName:       name + ":" + version,
-		ProposalDecorations: nil,
-	}
-
-	// The version CANNOT be empty. The chaincode namespace has to use version and chain name.
-	// Note that neither channel name nor version are stored on the ledger.
-	if version == "" {
-		panic(fmt.Sprintf("---empty version---(%s)", cccid))
-	}
-
-	ccproviderLogger.Debugf("NewCCCC(%s)", cccid)
-	return cccid
-}
-
-func (cccid *CCContext) String() string {
-	return fmt.Sprintf("chain=%s,chaincode=%s,version=%s,txid=%s,proposal=%p,canname=%s",
-		cccid.ChainID, cccid.Name, cccid.Version, cccid.TxID, cccid.Proposal, cccid.canonicalName)
 }
 
 // GetCanonicalName returns the canonical name associated with the proposal context
 func (cccid *CCContext) GetCanonicalName() string {
-	if cccid.canonicalName == "" {
-		panic(fmt.Sprintf("missing canonical name: %s", cccid))
-	}
-
-	return cccid.canonicalName
+	return cccid.Name + ":" + cccid.Version
 }
 
 //-------- ChaincodeDefinition - interface for ChaincodeData ------
@@ -532,6 +480,9 @@ type TransactionParams struct {
 	Proposal             *pb.Proposal
 	TXSimulator          ledger.TxSimulator
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
+
+	// this is additional data passed to the chaincode
+	ProposalDecorations map[string][]byte
 }
 
 // ChaincodeProvider provides an abstraction layer that is

@@ -197,26 +197,26 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 // Execute init invokes chaincode and returns the original response.
 func (cs *ChaincodeSupport) ExecuteInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	resp, err := cs.InvokeInit(txParams, cccid, spec)
-	return processChaincodeExecutionResult(cccid, resp, err)
+	return processChaincodeExecutionResult(txParams.TxID, cccid.Name, resp, err)
 }
 
 // Execute invokes chaincode and returns the original response.
 func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	resp, err := cs.Invoke(txParams, cccid, spec)
-	return processChaincodeExecutionResult(cccid, resp, err)
+	return processChaincodeExecutionResult(txParams.TxID, cccid.Name, resp, err)
 }
 
-func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.ChaincodeMessage, err error) (*pb.Response, *pb.ChaincodeEvent, error) {
+func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMessage, err error) (*pb.Response, *pb.ChaincodeEvent, error) {
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to execute transaction %s", cccid.TxID)
+		return nil, nil, errors.Wrapf(err, "failed to execute transaction %s", txid)
 	}
 	if resp == nil {
-		return nil, nil, errors.Errorf("nil response from transaction %s", cccid.TxID)
+		return nil, nil, errors.Errorf("nil response from transaction %s", txid)
 	}
 
 	if resp.ChaincodeEvent != nil {
-		resp.ChaincodeEvent.ChaincodeId = cccid.Name
-		resp.ChaincodeEvent.TxId = cccid.TxID
+		resp.ChaincodeEvent.ChaincodeId = ccName
+		resp.ChaincodeEvent.TxId = txid
 	}
 
 	switch resp.Type {
@@ -224,7 +224,7 @@ func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.Chain
 		res := &pb.Response{}
 		err := proto.Unmarshal(resp.Payload, res)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "failed to unmarshal response for transaction %s", cccid.TxID)
+			return nil, nil, errors.Wrapf(err, "failed to unmarshal response for transaction %s", txid)
 		}
 		return res, resp.ChaincodeEvent, nil
 
@@ -232,7 +232,7 @@ func processChaincodeExecutionResult(cccid *ccprovider.CCContext, resp *pb.Chain
 		return nil, resp.ChaincodeEvent, errors.Errorf("transaction returned with failure: %s", resp.Payload)
 
 	default:
-		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.Type, cccid.TxID)
+		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.Type, txid)
 	}
 }
 
@@ -253,8 +253,8 @@ func (cs *ChaincodeSupport) InvokeInit(txParams *ccprovider.TransactionParams, c
 	}
 
 	input := chaincodeSpec.Input
-	input.Decorations = cccid.ProposalDecorations
-	ccMsg, err := createCCMessage(cctyp, cccid.ChainID, cccid.TxID, input)
+	input.Decorations = txParams.ProposalDecorations
+	ccMsg, err := createCCMessage(cctyp, txParams.ChannelID, txParams.TxID, input)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
@@ -272,14 +272,14 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 		return nil, errors.New("chaincode spec is nil")
 	}
 
-	err := cs.Launch(cccid.ChainID, chaincodeSpec.Name(), cccid.Version)
+	err := cs.Launch(txParams.ChannelID, chaincodeSpec.Name(), cccid.Version)
 	if err != nil {
 		return nil, err
 	}
 
 	input := chaincodeSpec.Input
-	input.Decorations = cccid.ProposalDecorations
-	ccMsg, err := createCCMessage(cctyp, cccid.ChainID, cccid.TxID, input)
+	input.Decorations = txParams.ProposalDecorations
+	ccMsg, err := createCCMessage(cctyp, txParams.ChannelID, txParams.TxID, input)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create chaincode message")
 	}

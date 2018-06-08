@@ -286,7 +286,7 @@ func processDone(t *testing.T, done chan error, expecterr bool) {
 	}
 }
 
-func startTx(t *testing.T, chainID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator, *pb.SignedProposal, *pb.Proposal) {
+func startTx(t *testing.T, chainID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator) {
 	creator := []byte([]byte("Alice"))
 	sprop, prop := putils.MockSignedEndorserProposalOrPanic(chainID, cis.ChaincodeSpec, creator, []byte("msg1"))
 	txsim, hqe, err := startTxSimulation(chainID, txId)
@@ -303,14 +303,14 @@ func startTx(t *testing.T, chainID string, cis *pb.ChaincodeInvocationSpec, txId
 		HistoryQueryExecutor: hqe,
 	}
 
-	return txParams, txsim, sprop, prop
+	return txParams, txsim
 }
 
-func endTx(t *testing.T, cccid *ccprovider.CCContext, txsim ledger.TxSimulator, cis *pb.ChaincodeInvocationSpec) {
-	if err := endTxSimulationCIS(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId, cccid.TxID, txsim, []byte("invoke"), true, cis, globalBlockNum[cccid.ChainID]); err != nil {
+func endTx(t *testing.T, txParams *ccprovider.TransactionParams, txsim ledger.TxSimulator, cis *pb.ChaincodeInvocationSpec) {
+	if err := endTxSimulationCIS(txParams.ChannelID, cis.ChaincodeSpec.ChaincodeId, txParams.TxID, txsim, []byte("invoke"), true, cis, globalBlockNum[txParams.ChannelID]); err != nil {
 		t.Fatalf("simulation failed with error %s", err)
 	}
-	globalBlockNum[cccid.ChainID] = globalBlockNum[cccid.ChainID] + 1
+	globalBlockNum[txParams.ChannelID] = globalBlockNum[txParams.ChannelID] + 1
 }
 
 func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mockpeer.MockCCComm, cccid *ccprovider.CCContext, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
@@ -403,10 +403,12 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccpro
 	sysCCVers := util.GetSysCCVersion()
 
 	//wrap the deployment in an invocation spec to lscc...
-	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(cccid.ChainID), b}}}}
+	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
 
-	sprop, prop := putils.MockSignedEndorserProposal2OrPanic(cccid.ChainID, lsccSpec.ChaincodeSpec, signer)
-	lsccid := ccprovider.NewCCContext(cccid.ChainID, lsccSpec.ChaincodeSpec.ChaincodeId.Name, sysCCVers, cccid.TxID, sprop, prop)
+	lsccid := &ccprovider.CCContext{
+		Name:    lsccSpec.ChaincodeSpec.ChaincodeId.Name,
+		Version: sysCCVers,
+	}
 
 	//write to lscc
 	if _, _, err := chaincodeSupport.Execute(txParams, lsccid, lsccSpec); err != nil {
@@ -426,13 +428,13 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
 	//bad txid in response (should be "1"), should fail
 	resp := &mockpeer.MockResponse{
@@ -450,13 +452,19 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 		Responses: []*mockpeer.MockResponse{resp},
 	}
 
-	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
 	//set the right TxID in response now
 	resp.RespMsg.(*pb.ChaincodeMessage).Txid = txid
 
-	badcccid := ccprovider.NewCCContext(chainID, ccname, "unknownver", txid, sprop, prop)
+	badcccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "unknownver",
+	}
 
 	//we are not going to reach the chaincode and so won't get a response from it. processDone will not
 	//be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
@@ -482,7 +490,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 
 	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
@@ -498,13 +506,13 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
 	respSet := &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
@@ -519,7 +527,10 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 		},
 	}
 
-	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
 	//delete the extra var
@@ -533,8 +544,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 		},
 	}
 
-	cccid.TxID = "3"
-	txParams.TxID = cccid.TxID
+	txParams.TxID = "3"
 	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
 	//get the extra var and delete it
@@ -547,11 +557,10 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 		},
 	}
 
-	cccid.TxID = "4"
-	txParams.TxID = cccid.TxID
+	txParams.TxID = "4"
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
@@ -567,7 +576,7 @@ func invokePrivateDataGetPutDelCC(t *testing.T, chainID, ccname string, ccSide *
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("invokePrivateData")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	respSet := &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
@@ -578,7 +587,10 @@ func invokePrivateDataGetPutDelCC(t *testing.T, chainID, ccname string, ccSide *
 		},
 	}
 
-	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
 	respSet = &mockpeer.MockResponseSet{
@@ -594,13 +606,16 @@ func invokePrivateDataGetPutDelCC(t *testing.T, chainID, ccname string, ccSide *
 		},
 	}
 
-	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid = &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	txid = util.GenerateUUID()
-	txParams, txsim, sprop, prop = startTx(t, chainID, cis, txid)
+	txParams, txsim = startTx(t, chainID, cis, txid)
 
 	respSet = &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
@@ -611,10 +626,13 @@ func invokePrivateDataGetPutDelCC(t *testing.T, chainID, ccname string, ccSide *
 		},
 	}
 
-	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid = &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
@@ -630,13 +648,13 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
 	//create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
@@ -684,14 +702,17 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 		Responses: mkpeer,
 	}
 
-	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	if collection == "" {
 		execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 	} else {
 		execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 	}
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
@@ -716,38 +737,41 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	//first deploy the new cc to LSCC
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
-	cccid := ccprovider.NewCCContext(chainID, calledCC, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    calledCC,
+		Version: "0",
+	}
 
 	deployCC(t, txParams, cccid, cis.ChaincodeSpec, chaincodeSupport)
 
 	//commit
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	//now do the cc2cc
 	chaincodeID = &pb.ChaincodeID{Name: ccname, Version: "0"}
 	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invokecc")}, Decorations: nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
-	txParams, txsim, sprop, prop = startTx(t, chainID, cis, txid)
+	txParams, txsim = startTx(t, chainID, cis, txid)
 
 	//we want hooks for both chaincodes
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
 	sysCCVers := util.GetSysCCVersion()
 	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
@@ -771,27 +795,30 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	}
 	calledCCSide.SetResponses(respSet2)
 
-	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid = &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	//finally lets try a Bad ACL with CC-calling-CC
 	chaincodeID = &pb.ChaincodeID{Name: ccname, Version: "0"}
 	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invokecc")}, Decorations: nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
-	txParams, txsim, sprop, prop = startTx(t, chainID, cis, txid)
+	txParams, txsim = startTx(t, chainID, cis, txid)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, sprop).Return(errors.New("Bad ACL calling CC"))
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, txParams.SignedProp).Return(errors.New("Bad ACL calling CC"))
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 	//call regular cc but without ACL on called CC
 	respSet = &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
@@ -811,11 +838,14 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 
 	calledCCSide.SetResponses(respSet2)
 
-	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid = &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
@@ -831,12 +861,12 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := 0; i < 1000; i++ {
@@ -894,14 +924,17 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 		Responses: mkpeer,
 	}
 
-	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	if collection == "" {
 		execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 	} else {
 		execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 	}
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
@@ -917,12 +950,12 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+	txParams, txsim := startTx(t, chainID, cis, txid)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := 0; i < 1000; i++ {
@@ -958,17 +991,23 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 		},
 	}
 
-	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	return nil
 }
 
 func getLaunchConfigs(t *testing.T, cr *ContainerRuntime) {
 	gt := NewGomegaWithT(t)
-	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", nil, nil)
+	ccContext := &ccprovider.CCContext{
+		Name:    "mycc",
+		Version: "v0",
+	}
 	lc, err := cr.LaunchConfig(ccContext.GetCanonicalName(), pb.ChaincodeSpec_GOLANG.String())
 	if err != nil {
 		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
@@ -1261,21 +1300,24 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 
 	txid := util.GenerateUUID()
-	txParams, txsim, sprop, prop := startTx(t, chainID2, cis, txid)
+	txParams, txsim := startTx(t, chainID2, cis, txid)
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID2, txParams.SignedProp).Return(nil)
 
-	cccid := ccprovider.NewCCContext(chainID2, ccname, "0", txid, sprop, prop)
+	cccid := &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 
 	deployCC(t, txParams, cccid, cis.ChaincodeSpec, chaincodeSupport)
 
 	//commit
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 
 	done := setuperror()
 
@@ -1288,17 +1330,17 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
-	txParams, txsim, sprop, prop = startTx(t, chainID, cis, txid)
+	txParams, txsim = startTx(t, chainID, cis, txid)
 
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID, txParams.SignedProp).Return(nil)
 
-	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_ChaincodeToChaincode, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, chainID2, txParams.SignedProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.Peer_Propose, chainID2, txParams.SignedProp).Return(nil)
 
 	txid = "cctosamecctx"
 	respSet := &mockpeer.MockResponseSet{
@@ -1310,11 +1352,14 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 		},
 	}
 
-	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, sprop, prop)
+	cccid = &ccprovider.CCContext{
+		Name:    ccname,
+		Version: "0",
+	}
 
 	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
 
-	endTx(t, cccid, txsim, cis)
+	endTx(t, txParams, txsim, cis)
 }
 
 func TestCCFramework(t *testing.T) {
