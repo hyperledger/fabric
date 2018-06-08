@@ -22,8 +22,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	ledgerutil "github.com/hyperledger/fabric/core/ledger/util"
 
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -167,6 +169,74 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 			testutil.AssertEquals(t, txEnvelopeFromFileMgr, txEnvelope)
 		}
 	}
+}
+
+// TestBlockfileMgrGetTxByIdDuplicateTxid tests that a transaction with an existing txid
+// (within same block or a different block) should not over-write the index by-txid (FAB-8557)
+func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	blkStore, err := env.provider.OpenBlockStore("testLedger")
+	testutil.AssertNoError(env.t, err, "")
+	blkFileMgr := blkStore.(*fsBlockStore).fileMgr
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	testutil.AssertNoError(t, blkFileMgr.addBlock(gb), "")
+
+	block1 := bg.NextBlockWithTxid(
+		[][]byte{
+			[]byte("tx with id=txid-1"),
+			[]byte("tx with id=txid-2"),
+			[]byte("another tx with existing id=txid-1"),
+		},
+		[]string{"txid-1", "txid-2", "txid-1"},
+	)
+	txValidationFlags := ledgerutil.NewTxValidationFlags(3)
+	txValidationFlags.SetFlag(0, peer.TxValidationCode_VALID)
+	txValidationFlags.SetFlag(1, peer.TxValidationCode_INVALID_OTHER_REASON)
+	txValidationFlags.SetFlag(2, peer.TxValidationCode_DUPLICATE_TXID)
+	block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txValidationFlags
+	testutil.AssertNoError(t, blkFileMgr.addBlock(block1), "")
+
+	block2 := bg.NextBlockWithTxid(
+		[][]byte{
+			[]byte("tx with id=txid-3"),
+			[]byte("yet another tx with existing id=txid-1"),
+		},
+		[]string{"txid-3", "txid-1"},
+	)
+	txValidationFlags = ledgerutil.NewTxValidationFlags(2)
+	txValidationFlags.SetFlag(0, peer.TxValidationCode_VALID)
+	txValidationFlags.SetFlag(1, peer.TxValidationCode_DUPLICATE_TXID)
+	block2.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txValidationFlags
+	testutil.AssertNoError(t, blkFileMgr.addBlock(block2), "")
+
+	txenvp1, err := putil.GetEnvelopeFromBlock(block1.Data.Data[0])
+	testutil.AssertNoError(t, err, "")
+	txenvp2, err := putil.GetEnvelopeFromBlock(block1.Data.Data[1])
+	testutil.AssertNoError(t, err, "")
+	txenvp3, err := putil.GetEnvelopeFromBlock(block2.Data.Data[0])
+	testutil.AssertNoError(t, err, "")
+
+	indexedTxenvp, _ := blkFileMgr.retrieveTransactionByID("txid-1")
+	testutil.AssertEquals(t, indexedTxenvp, txenvp1)
+	indexedTxenvp, _ = blkFileMgr.retrieveTransactionByID("txid-2")
+	testutil.AssertEquals(t, indexedTxenvp, txenvp2)
+	indexedTxenvp, _ = blkFileMgr.retrieveTransactionByID("txid-3")
+	testutil.AssertEquals(t, indexedTxenvp, txenvp3)
+
+	blk, _ := blkFileMgr.retrieveBlockByTxID("txid-1")
+	testutil.AssertEquals(t, blk, block1)
+	blk, _ = blkFileMgr.retrieveBlockByTxID("txid-2")
+	testutil.AssertEquals(t, blk, block1)
+	blk, _ = blkFileMgr.retrieveBlockByTxID("txid-3")
+	testutil.AssertEquals(t, blk, block2)
+
+	validationCode, _ := blkFileMgr.retrieveTxValidationCodeByTxID("txid-1")
+	testutil.AssertEquals(t, validationCode, peer.TxValidationCode_VALID)
+	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-2")
+	testutil.AssertEquals(t, validationCode, peer.TxValidationCode_INVALID_OTHER_REASON)
+	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-3")
+	testutil.AssertEquals(t, validationCode, peer.TxValidationCode_VALID)
 }
 
 func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {

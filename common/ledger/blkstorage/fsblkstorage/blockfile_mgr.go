@@ -142,7 +142,9 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	}
 
 	// Create a new KeyValue store database handler for the blocks index in the keyvalue database
-	mgr.index = newBlockIndex(indexConfig, indexStore)
+	if mgr.index, err = newBlockIndex(indexConfig, indexStore); err != nil {
+		panic(fmt.Sprintf("error in block index: %s", err))
+	}
 
 	// Update the manager with the checkpoint info and the file writer
 	mgr.cpInfo = cpInfo
@@ -307,9 +309,11 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		txOffset.loc.offset += len(blockBytesEncodedLen)
 	}
 	//save the index in the database
-	mgr.index.indexBlock(&blockIdxInfo{
+	if err = mgr.index.indexBlock(&blockIdxInfo{
 		blockNum: block.Header.Number, blockHash: blockHash,
-		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata})
+		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata}); err != nil {
+		return err
+	}
 
 	//update the checkpoint info (for storage) and the blockchain info (for APIs) in the manager
 	mgr.updateCheckpoint(newCPInfo)

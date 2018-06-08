@@ -31,8 +31,9 @@ type serializedBlockInfo struct {
 
 //The order of the transactions must be maintained for history
 type txindexInfo struct {
-	txID string
-	loc  *locPointer
+	txID        string
+	loc         *locPointer
+	isDuplicate bool
 }
 
 func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
@@ -118,7 +119,7 @@ func addDataBytes(blockData *common.BlockData, buf *proto.Buffer) ([]*txindexInf
 		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
 			return nil, err
 		}
-		idxInfo := &txindexInfo{txid, &locPointer{offset, len(buf.Bytes()) - offset}}
+		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{offset, len(buf.Bytes()) - offset}}
 		txOffsets = append(txOffsets, idxInfo)
 	}
 	return txOffsets, nil
@@ -178,7 +179,7 @@ func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, err
 			return nil, nil, err
 		}
 		data.Data = append(data.Data, txEnvBytes)
-		idxInfo := &txindexInfo{txid, &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}}
+		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}}
 		txOffsets = append(txOffsets, idxInfo)
 	}
 	return data, txOffsets, nil
