@@ -169,6 +169,5 @@ func tamperBytes(original []byte) []byte {
 }
 
 func channelNameForTest(t *testing.T) string {
-	name := strings.Split(fmt.Sprint(t), " ")[18] // w/golang 1.8, use t.Name()
-	return fmt.Sprintf("%s.channel", strings.Replace(strings.ToLower(name), "/", ".", -1))
+	return fmt.Sprintf("%s.channel", strings.Replace(strings.ToLower(t.Name()), "/", ".", -1))
 }
