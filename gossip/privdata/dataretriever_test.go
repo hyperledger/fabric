@@ -152,7 +152,7 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 
 	// Request digest for private data which is greater than current ledger height
 	// to make it query transient store for missed private data
-	rwSets := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
+	rwSets, err := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   2,
@@ -161,6 +161,7 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	})
 
 	assertion := assert.New(t)
+	assertion.NoError(err)
 	assertion.NotNil(rwSets)
 	assertion.NotEmpty(rwSets.RWSet)
 	assertion.Equal(2, len(rwSets.RWSet))
@@ -231,7 +232,7 @@ func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
 
 	// Request digest for private data which is greater than current ledger height
 	// to make it query ledger for missed private data
-	rwSets := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
+	rwSets, err := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   uint64(5),
@@ -240,6 +241,7 @@ func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
 	})
 
 	assertion := assert.New(t)
+	assertion.NoError(err)
 	assertion.NotNil(rwSets)
 	assertion.NotEmpty(rwSets)
 	assertion.Equal(2, len(rwSets.RWSet))
@@ -267,7 +269,7 @@ func TestNewDataRetriever_FailGetPvtDataFromLedger(t *testing.T) {
 
 	// Request digest for private data which is greater than current ledger height
 	// to make it query transient store for missed private data
-	rwSets := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
+	rwSets, err := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   uint64(5),
@@ -276,6 +278,7 @@ func TestNewDataRetriever_FailGetPvtDataFromLedger(t *testing.T) {
 	})
 
 	assertion := assert.New(t)
+	assertion.Error(err)
 	assertion.Nil(rwSets)
 }
 
@@ -345,7 +348,7 @@ func TestNewDataRetriever_GetOnlyRelevantPvtData(t *testing.T) {
 
 	// Request digest for private data which is greater than current ledger height
 	// to make it query transient store for missed private data
-	rwSets := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
+	rwSets, err := retriever.CollectionRWSet(&gossip2.PvtDataDigest{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   uint64(5),
@@ -354,6 +357,7 @@ func TestNewDataRetriever_GetOnlyRelevantPvtData(t *testing.T) {
 	})
 
 	assertion := assert.New(t)
+	assertion.NoError(err)
 	assertion.NotNil(rwSets)
 	assertion.NotEmpty(rwSets)
 	assertion.Equal(2, len(rwSets.RWSet))

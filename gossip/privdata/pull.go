@@ -39,7 +39,7 @@ const (
 // of retrieving required private data
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
-	CollectionRWSet(dig *proto.PvtDataDigest) *util.PrivateRWSetWithConfig
+	CollectionRWSet(dig *proto.PvtDataDigest) (*util.PrivateRWSetWithConfig, error)
 }
 
 // gossip defines capabilities that the gossip module gives the Coordinator
@@ -140,7 +140,17 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	}()
 	msg := message.GetGossipMessage()
 	for _, dig := range msg.GetPrivateReq().Digests {
-		rwSets := p.CollectionRWSet(dig)
+		rwSets, err := p.CollectionRWSet(dig)
+		if err != nil {
+			logger.Errorf("Wasn't able to get private rwset for [%s] channel, chaincode [%s], collection [%s], txID = [%s], due to [%s]",
+				p.channel, dig.Namespace, dig.Collection, dig.TxId, err)
+			continue
+		}
+		if rwSets == nil {
+			logger.Errorf("No private rwset for [%s] channel, chaincode [%s], collection [%s], txID = [%s] is available, skipping...",
+				p.channel, dig.Namespace, dig.Collection, dig.TxId)
+			continue
+		}
 		logger.Debug("Found", len(rwSets.RWSet), "for TxID", dig.TxId, ", collection", dig.Collection, "for", message.GetConnectionInfo().Endpoint)
 		if len(rwSets.RWSet) == 0 {
 			continue
