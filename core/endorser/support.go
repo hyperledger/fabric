@@ -122,17 +122,17 @@ func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 }
 
 // ExecuteInit a deployment proposal and return the chaincode response
-func (s *SupportImpl) ExecuteInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := &ccprovider.CCContext{
 		Name:    name,
 		Version: version,
 	}
 
-	return s.ChaincodeSupport.ExecuteInit(txParams, cccid, cds)
+	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, cccid, cds)
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	cccid := &ccprovider.CCContext{
 		Name:    name,
 		Version: version,
@@ -140,11 +140,11 @@ func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name,
 
 	// decorate the chaincode input
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
-	cis.ChaincodeSpec.Input.Decorations = make(map[string][]byte)
-	cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
-	txParams.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
+	input.Decorations = make(map[string][]byte)
+	input = decoration.Apply(prop, input, decorators...)
+	txParams.ProposalDecorations = input.Decorations
 
-	return s.ChaincodeSupport.Execute(txParams, cccid, cis)
+	return s.ChaincodeSupport.Execute(txParams, cccid, input)
 }
 
 // GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name

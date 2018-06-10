@@ -316,7 +316,7 @@ func endTx(t *testing.T, txParams *ccprovider.TransactionParams, txsim ledger.Tx
 func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mockpeer.MockCCComm, cccid *ccprovider.CCContext, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
 	ccSide.SetResponses(respSet)
 
-	resp, _, err := chaincodeSupport.Execute(txParams, cccid, cis)
+	resp, _, err := chaincodeSupport.Execute(txParams, cccid, cis.ChaincodeSpec.Input)
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}
@@ -411,7 +411,7 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccpro
 	}
 
 	//write to lscc
-	if _, _, err := chaincodeSupport.Execute(txParams, lsccid, lsccSpec); err != nil {
+	if _, _, err := chaincodeSupport.Execute(txParams, lsccid, lsccSpec.ChaincodeSpec.Input); err != nil {
 		t.Fatalf("Error deploying chaincode %v (err: %s)", cccid, err)
 	}
 }

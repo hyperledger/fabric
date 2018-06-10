@@ -455,12 +455,12 @@ func deploy2(chainID string, cccid *ccprovider.CCContext, chaincodeDeploymentSpe
 	}
 
 	//write to lscc
-	if _, _, err = chaincodeSupport.Execute(txParams, lsccid, cis); err != nil {
+	if _, _, err = chaincodeSupport.Execute(txParams, lsccid, cis.ChaincodeSpec.Input); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
 
 	var resp *pb.Response
-	if resp, _, err = chaincodeSupport.ExecuteInit(txParams, cccid, chaincodeDeploymentSpec); err != nil {
+	if resp, _, err = chaincodeSupport.ExecuteLegacyInit(txParams, cccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
 
@@ -513,7 +513,7 @@ func invokeWithVersion(chainID string, version string, spec *pb.ChaincodeSpec, b
 		Proposal:             prop,
 	}
 
-	resp, ccevt, err = chaincodeSupport.Execute(txParams, cccid, cdInvocationSpec)
+	resp, ccevt, err = chaincodeSupport.Execute(txParams, cccid, cdInvocationSpec.ChaincodeSpec.Input)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s", err)
 	}

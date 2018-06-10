@@ -122,10 +122,10 @@ func (cs *ChaincodeSupport) LaunchInit(ccci *ccprovider.ChaincodeContainerInfo) 
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion string) error {
+func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion string) (*Handler, error) {
 	cname := chaincodeName + ":" + chaincodeVersion
-	if cs.HandlerRegistry.Handler(cname) != nil {
-		return nil
+	if h := cs.HandlerRegistry.Handler(cname); h != nil {
+		return h, nil
 	}
 
 	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(chainID, chaincodeName)
@@ -137,10 +137,19 @@ func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion stri
 			)
 		}
 
-		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", chainID, cname)
+		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", chainID, cname)
 	}
 
-	return cs.Launcher.Launch(ccci)
+	if err := cs.Launcher.Launch(ccci); err != nil {
+		return nil, errors.Wrapf(err, "[channel %s] could not launch chaincode %s", chainID, cname)
+	}
+
+	h := cs.HandlerRegistry.Handler(cname)
+	if h == nil {
+		return nil, errors.Wrapf(err, "[channel %s] claimed to start chaincode container for %s but could not find handler", chainID, cname)
+	}
+
+	return h, nil
 }
 
 // Stop stops a chaincode if running.
@@ -194,15 +203,32 @@ func createCCMessage(messageType pb.ChaincodeMessage_Type, cid string, txid stri
 	return ccmsg, nil
 }
 
-// Execute init invokes chaincode and returns the original response.
-func (cs *ChaincodeSupport) ExecuteInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	resp, err := cs.InvokeInit(txParams, cccid, spec)
+// ExecuteLegacyInit is a temporary method which should be removed once the old style lifecycle
+// is entirely deprecated.  Ideally one release after the introduction of the new lifecycle.
+// It does not attempt to start the chaincode based on the information from lifecycle, but instead
+// accepts the container information directly in the form of a ChaincodeDeploymentSpec.
+func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
+	ccci.Version = cccid.Version
+
+	err := cs.LaunchInit(ccci)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cname := ccci.Name + ":" + ccci.Version
+	h := cs.HandlerRegistry.Handler(cname)
+	if h == nil {
+		return nil, nil, errors.Wrapf(err, "[channel %s] claimed to start chaincode container for %s but could not find handler", txParams.ChannelID, cname)
+	}
+
+	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, cccid, spec.GetChaincodeSpec().Input, h)
 	return processChaincodeExecutionResult(txParams.TxID, cccid.Name, resp, err)
 }
 
 // Execute invokes chaincode and returns the original response.
-func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	resp, err := cs.Invoke(txParams, cccid, spec)
+func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	resp, err := cs.Invoke(txParams, cccid, input)
 	return processChaincodeExecutionResult(txParams.TxID, cccid.Name, resp, err)
 }
 
@@ -236,69 +262,47 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 	}
 }
 
-func (cs *ChaincodeSupport) InvokeInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeMessage, error) {
-	cctyp := pb.ChaincodeMessage_INIT
-
-	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
-	ccci.Version = cccid.Version
-
-	err := cs.LaunchInit(ccci)
+func (cs *ChaincodeSupport) InvokeInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+	h, err := cs.Launch(txParams.ChannelID, cccid.Name, cccid.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	chaincodeSpec := spec.GetChaincodeSpec()
-	if chaincodeSpec == nil {
-		return nil, errors.New("chaincode spec is nil")
-	}
-
-	input := chaincodeSpec.Input
-	input.Decorations = txParams.ProposalDecorations
-	ccMsg, err := createCCMessage(cctyp, txParams.ChannelID, txParams.TxID, input)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create chaincode message")
-	}
-
-	return cs.execute(txParams, cccid, ccMsg)
+	return cs.execute(pb.ChaincodeMessage_INIT, txParams, cccid, input, h)
 }
 
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
-func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
-	cctyp := pb.ChaincodeMessage_TRANSACTION
-
-	chaincodeSpec := spec.GetChaincodeSpec()
-	if chaincodeSpec == nil {
-		return nil, errors.New("chaincode spec is nil")
-	}
-
-	err := cs.Launch(txParams.ChannelID, chaincodeSpec.Name(), cccid.Version)
+func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+	h, err := cs.Launch(txParams.ChannelID, cccid.Name, cccid.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	input := chaincodeSpec.Input
+	// TODO add Init exactly once semantics here once new lifecycle
+	// is available.  Enforced if the target channel is using the new lifecycle
+	//
+	// First, the function name of the chaincode to invoke should be checked.  If it is
+	// "init", then consider this invocation to be of type pb.ChaincodeMessage_INIT,
+	// otherwise consider it to be of type pb.ChaincodeMessage_TRANSACTION,
+	//
+	// Secondly, A check should be made whether the chaincode has been
+	// inited, then, if true, only allow cctyp pb.ChaincodeMessage_TRANSACTION,
+	// otherwise, only allow cctype pb.ChaincodeMessage_INIT,
+	cctype := pb.ChaincodeMessage_TRANSACTION
+
+	return cs.execute(cctype, txParams, cccid, input, h)
+}
+
+// execute executes a transaction and waits for it to complete until a timeout value.
+func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput, h *Handler) (*pb.ChaincodeMessage, error) {
 	input.Decorations = txParams.ProposalDecorations
 	ccMsg, err := createCCMessage(cctyp, txParams.ChannelID, txParams.TxID, input)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create chaincode message")
 	}
 
-	return cs.execute(txParams, cccid, ccMsg)
-}
-
-// execute executes a transaction and waits for it to complete until a timeout value.
-func (cs *ChaincodeSupport) execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage) (*pb.ChaincodeMessage, error) {
-	cname := cccid.GetCanonicalName()
-	chaincodeLogger.Debugf("canonical name: %s", cname)
-
-	handler := cs.HandlerRegistry.Handler(cname)
-	if handler == nil {
-		chaincodeLogger.Debugf("chaincode is not running: %s", cname)
-		return nil, errors.Errorf("unable to invoke chaincode %s", cname)
-	}
-
-	ccresp, err := handler.Execute(txParams, cccid, msg, cs.ExecuteTimeout)
+	ccresp, err := h.Execute(txParams, cccid, ccMsg, cs.ExecuteTimeout)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
 	}

@@ -130,12 +130,12 @@ func (m *MockTxSim) DeletePrivateDataMetadata(namespace, collection, key string)
 }
 
 // ExecuteInit executes the chaincode given context and spec deploy
-func (c *MockCcProviderImpl) ExecuteInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeDeploymentSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return &peer.Response{}, nil, nil
 }
 
 // Execute executes the chaincode given context and spec invocation
-func (c *MockCcProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeInvocationSpec) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *peer.ChaincodeInput) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return &peer.Response{}, nil, nil
 }
 

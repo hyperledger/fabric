@@ -177,7 +177,7 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 		Version: version,
 	}
 
-	resp, _, err := ccprov.ExecuteInit(txParams, cccid, chaincodeDeploymentSpec)
+	resp, _, err := ccprov.ExecuteLegacyInit(txParams, cccid, chaincodeDeploymentSpec)
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}

@@ -43,7 +43,7 @@ type Registry interface {
 
 // An Invoker invokes chaincode.
 type Invoker interface {
-	Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error)
+	Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.ChaincodeMessage, error)
 }
 
 // SystemCCProvider provides system chaincode metadata.
@@ -881,10 +881,9 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		Name:    targetInstance.ChaincodeName,
 		Version: version,
 	}
-	cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
-	responseMessage, err := h.Invoker.Invoke(txParams, cccid, cciSpec)
+	responseMessage, err := h.Invoker.Invoke(txParams, cccid, chaincodeSpec.Input)
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
 	}
