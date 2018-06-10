@@ -195,7 +195,12 @@ func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height 
 	return s.VersionedDB.ApplyUpdates(updates.PubUpdates.UpdateBatch, height)
 }
 
-//HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
+// HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
+// This function delibrately suppresses the errors that occur during the creation of the indexes on couchdb.
+// This is because, in the present code, we do not differentiate between the errors because of couchdb interaction
+// and the errors because of bad index files - the later being unfixable by the admin. Note that the error suppression
+// is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries
+// may be affected, until a new chaincode with fixed indexes is installed and instantiated
 func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
 
 	//Check to see if the interface for IndexCapable is implemented
@@ -219,14 +224,20 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 		directoryPathArray := strings.Split(directoryPath, "/")
 		// process the indexes for the chain
 		if directoryPathArray[3] == "indexes" {
-			indexCapable.ProcessIndexesForChaincodeDeploy(chaincodeDefinition.Name, archiveDirectoryEntries)
+			err := indexCapable.ProcessIndexesForChaincodeDeploy(chaincodeDefinition.Name, archiveDirectoryEntries)
+			if err != nil {
+				logger.Errorf(err.Error())
+			}
 			continue
 		}
 		// check for the indexes directory for the collection
 		if directoryPathArray[3] == "collections" && directoryPathArray[5] == "indexes" {
 			collectionName := directoryPathArray[4]
-			indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
+			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
 				archiveDirectoryEntries)
+			if err != nil {
+				logger.Errorf(err.Error())
+			}
 		}
 	}
 	return nil
