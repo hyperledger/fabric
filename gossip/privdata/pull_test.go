@@ -113,7 +113,8 @@ type dataRetrieverMock struct {
 }
 
 func (dr *dataRetrieverMock) CollectionRWSet(dig *proto.PvtDataDigest) (*util.PrivateRWSetWithConfig, error) {
-	return dr.Called(dig).Get(0).(*util.PrivateRWSetWithConfig), dr.Called(dig).Error(1)
+	args := dr.Called(dig)
+	return args.Get(0).(*util.PrivateRWSetWithConfig), args.Error(1)
 }
 
 type receivedMsg struct {
@@ -720,24 +721,33 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	factoryMock := &collectionAccessFactoryMock{}
 	accessPolicyMock2 := &collectionAccessPolicyMock{}
 	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
-		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p1"))
+		return bytes.Equal(data.Identity, []byte("p1"))
 	}, []string{"org1", "org2"})
 	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
 
-	policyStore := newCollectionStore().
-		withPolicy("col1", uint64(100)).
-		thatMapsTo("p1", "p2", "p3")
+	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1", "p2", "p3").
+		withPolicy("col2", uint64(1000)).thatMapsTo("p1", "p2", "p3")
 
 	// p2 is at ledger height 1, while p2 is at 111 which is beyond BTL defined for col1 (100)
 	p1 := gn.newPuller("p1", policyStore, factoryMock, membership(peerData{"p2", uint64(1)},
 		peerData{"p3", uint64(111)})...)
 
-	transientStore := &util.PrivateRWSetWithConfig{
+	privateData1 := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
 		CollectionConfig: &fcommon.CollectionConfig{
 			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
 				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
 					Name: "col1",
+				},
+			},
+		},
+	}
+	privateData2 := &util.PrivateRWSetWithConfig{
+		RWSet: newPRWSet(),
+		CollectionConfig: &fcommon.CollectionConfig{
+			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+					Name: "col2",
 				},
 			},
 		},
@@ -752,20 +762,37 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 		Namespace:  "ns1",
 	}
 
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig1).Return(transientStore, nil)
+	dig2 := &proto.PvtDataDigest{
+		TxId:       "txID1",
+		Collection: "col2",
+		Namespace:  "ns1",
+	}
 
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig1).Return(transientStore, nil).
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig1).Return(privateData1, nil)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig1).Return(privateData1, nil).
 		Run(
-			func(mock.Arguments) {
+			func(arg mock.Arguments) {
 				assert.Fail(t, "we should not fetch private data from peers where it was purged")
 			},
 		)
 
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig2).Return(privateData2, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig2).Return(privateData2, nil).
+		Run(
+			func(mock.Arguments) {
+				assert.Fail(t, "we should not fetch private data of collection2 from peer 2")
+
+			},
+		)
+
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(dig1).toSources("p3", "p2").create()
+	d2s := dasf.mapDigest(dig1).toSources("p3", "p2").mapDigest(dig2).toSources("p3").create()
 	// trying to fetch missing pvt data for block seq 1
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(fetchedMessages.PurgedElements))
 	assert.Equal(t, dig1, fetchedMessages.PurgedElements[0])
+	p3.PrivateDataRetriever.(*dataRetrieverMock).AssertNumberOfCalls(t, "CollectionRWSet", 1)
+
 }
