@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -42,8 +43,10 @@ func TestLedgerProvider(t *testing.T) {
 	existingLedgerIDs, err := provider.List()
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, len(existingLedgerIDs), 0)
+	genesisBlocks := make([]*common.Block, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
+		genesisBlocks[i] = genesisBlock
 		provider.Create(genesisBlock)
 	}
 	existingLedgerIDs, err = provider.List()
@@ -61,14 +64,23 @@ func TestLedgerProvider(t *testing.T) {
 		testutil.AssertEquals(t, ledgerIds[i], constructTestLedgerID(i))
 	}
 	for i := 0; i < numLedgers; i++ {
-		status, _ := provider.Exists(constructTestLedgerID(i))
+		ledgerid := constructTestLedgerID(i)
+		status, _ := provider.Exists(ledgerid)
 		testutil.AssertEquals(t, status, true)
-		ledger, err := provider.Open(constructTestLedgerID(i))
+		ledger, err := provider.Open(ledgerid)
 		testutil.AssertNoError(t, err, "")
 		bcInfo, err := ledger.GetBlockchainInfo()
 		ledger.Close()
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, bcInfo.Height, uint64(1))
+
+		// check that the genesis block was persisted in the provider's db
+		s := provider.(*Provider).idStore
+		gbBytesInProviderStore, err := s.db.Get(s.encodeLedgerKey(ledgerid))
+		testutil.AssertNoError(t, err, "")
+		gb := &common.Block{}
+		testutil.AssertNoError(t, proto.Unmarshal(gbBytesInProviderStore, gb), "")
+		testutil.AssertEquals(t, gb, genesisBlocks[i])
 	}
 	gb, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(2))
 	_, err = provider.Create(gb)

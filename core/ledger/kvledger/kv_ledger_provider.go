@@ -271,14 +271,14 @@ func (s *idStore) createLedgerID(ledgerID string, gb *common.Block) error {
 	key := s.encodeLedgerKey(ledgerID)
 	var val []byte
 	var err error
-	if val, err = proto.Marshal(gb); err != nil {
-		return err
-	}
 	if val, err = s.db.Get(key); err != nil {
 		return err
 	}
 	if val != nil {
 		return ErrLedgerIDExists
+	}
+	if val, err = proto.Marshal(gb); err != nil {
+		return err
 	}
 	batch := &leveldb.Batch{}
 	batch.Put(key, val)
