@@ -1902,11 +1902,11 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 
 	// Test 3: missing one existing collection (check based on the length) -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "Some existing collection configurations are missing in the new collection configuration package")
+	assert.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
 
 	// Test 4: missing one existing collection (check based on the collection names) -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "existing collection named mycollection2 is missing in the new collection configuration package")
+	assert.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
 
 	// Test 5: adding a new collection along with the existing collections -> success
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
@@ -1917,7 +1917,7 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 
 	// Test 6: modify the BlockToLive in an existing collection -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "BlockToLive in the existing collection named mycollection2 cannot be changed")
+	assert.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"

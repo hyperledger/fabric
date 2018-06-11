@@ -232,20 +232,9 @@ func validateSpOrConcat(sp *common.SignaturePolicy) error {
 	return nil
 }
 
-func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.CollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func checkForMissingCollections(newCollectionsMap map[string]*common.StaticCollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
 ) error {
-	// All old collections must exist in the new collection config package
-	if len(newCollectionConfigs) < len(oldCollectionConfigs) {
-		return policyErr(fmt.Errorf("Some existing collection configurations are missing in the new collection configuration package"))
-	}
-	newCollectionsMap := make(map[string]*common.StaticCollectionConfig, len(newCollectionConfigs))
-
-	for _, newCollectionConfig := range newCollectionConfigs {
-		newCollection := newCollectionConfig.GetStaticCollectionConfig()
-		// Collection object itself is stored as value so that we can
-		// check whether the block to live is changed -- FAB-7810
-		newCollectionsMap[newCollection.GetName()] = newCollection
-	}
+	var missingCollections []string
 
 	// In the new collection config package, ensure that there is one entry per old collection. Any
 	// number of new collections are allowed.
@@ -259,17 +248,67 @@ func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.Colle
 
 		// All old collection must exist in the new collection config package
 		oldCollectionName := oldCollection.GetName()
-		newCollection, ok := newCollectionsMap[oldCollectionName]
+		_, ok := newCollectionsMap[oldCollectionName]
 		if !ok {
-			return policyErr(fmt.Errorf("existing collection named %s is missing in the new collection configuration package",
-				oldCollectionName))
+			missingCollections = append(missingCollections, oldCollectionName)
 		}
+	}
+
+	if len(missingCollections) > 0 {
+		return policyErr(fmt.Errorf("the following existing collections are missing in the new collection configuration package: %v",
+			missingCollections))
+	}
+
+	return nil
+}
+
+func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*common.StaticCollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+) error {
+	var modifiedCollectionsBTL []string
+
+	// In the new collection config package, ensure that the block to live value is not
+	// modified for the existing collections.
+	for _, oldCollectionConfig := range oldCollectionConfigs {
+
+		oldCollection := oldCollectionConfig.GetStaticCollectionConfig()
+		// It cannot be nil
+		if oldCollection == nil {
+			return policyErr(fmt.Errorf("unknown collection configuration type"))
+		}
+
+		oldCollectionName := oldCollection.GetName()
+		newCollection, _ := newCollectionsMap[oldCollectionName]
 		// BlockToLive cannot be changed
 		if newCollection.GetBlockToLive() != oldCollection.GetBlockToLive() {
-			return policyErr(fmt.Errorf("BlockToLive in the existing collection named %s cannot be changed",
-				oldCollectionName))
-
+			modifiedCollectionsBTL = append(modifiedCollectionsBTL, oldCollectionName)
 		}
+	}
+
+	if len(modifiedCollectionsBTL) > 0 {
+		return policyErr(fmt.Errorf("the BlockToLive in the following existing collections must not be modified: %v",
+			modifiedCollectionsBTL))
+	}
+
+	return nil
+}
+
+func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.CollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+) error {
+	newCollectionsMap := make(map[string]*common.StaticCollectionConfig, len(newCollectionConfigs))
+
+	for _, newCollectionConfig := range newCollectionConfigs {
+		newCollection := newCollectionConfig.GetStaticCollectionConfig()
+		// Collection object itself is stored as value so that we can
+		// check whether the block to live is changed -- FAB-7810
+		newCollectionsMap[newCollection.GetName()] = newCollection
+	}
+
+	if err := checkForMissingCollections(newCollectionsMap, oldCollectionConfigs); err != nil {
+		return err
+	}
+
+	if err := checkForModifiedCollectionsBTL(newCollectionsMap, oldCollectionConfigs); err != nil {
+		return err
 	}
 
 	return nil
