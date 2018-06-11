@@ -66,7 +66,12 @@ func (s *MockSupport) IsSysCCAndNotInvokableExternal(name string) bool {
 }
 
 func (s *MockSupport) GetTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
-	return s.GetTxSimulatorRv, s.GetTxSimulatorErr
+	if s.Mock == nil {
+		return s.GetTxSimulatorRv, s.GetTxSimulatorErr
+	}
+
+	args := s.Called(ledgername, txid)
+	return args.Get(0).(ledger.TxSimulator), args.Error(1)
 }
 
 func (s *MockSupport) GetHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {

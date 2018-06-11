@@ -66,6 +66,14 @@ func getSignedPropWithCHIdAndArgs(chid, ccid, ccver string, ccargs [][]byte, t *
 	return &pb.SignedProposal{ProposalBytes: propBytes, Signature: signature}
 }
 
+func newMockTxSim() *mockccprovider.MockTxSim {
+	return &mockccprovider.MockTxSim{
+		GetTxSimulationResultsRv: &ledger.TxSimulationResults{
+			PubSimulationResults: &rwset.TxReadWriteSet{},
+		},
+	}
+}
+
 func TestEndorserNilProp(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -172,6 +180,7 @@ func TestEndorserSysCC(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
 		Mock: m,
 		GetApplicationConfigBoolRv: true,
@@ -180,11 +189,6 @@ func TestEndorserSysCC(t *testing.T) {
 		IsSysCCRv:                  true,
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -448,6 +452,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
 		Mock: m,
 		GetApplicationConfigBoolRv: true,
@@ -456,11 +461,6 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		ExecuteEvent:               &pb.ChaincodeEvent{},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -498,6 +498,7 @@ func TestEndorserGoodPath(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
 		Mock: m,
 		GetApplicationConfigBoolRv: true,
@@ -505,11 +506,6 @@ func TestEndorserGoodPath(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -525,6 +521,7 @@ func TestEndorserLSCC(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
 		Mock: m,
 		GetApplicationConfigBoolRv: true,
@@ -532,11 +529,6 @@ func TestEndorserLSCC(t *testing.T) {
 		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
 	}
 	attachPluginEndorser(support)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
@@ -576,6 +568,7 @@ func TestEndorseWithPlugin(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
 		Mock: m,
 		GetApplicationConfigBoolRv: true,
@@ -583,11 +576,6 @@ func TestEndorseWithPlugin(t *testing.T) {
 		GetTransactionByIDErr:      errors.New("can't find this transaction in the index"),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
 	}
 	attachPluginEndorser(support)
 
@@ -646,6 +634,55 @@ func TestEndorserJavaChecks(t *testing.T) {
 	assert.NoError(t, err)
 	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install")}}}})
 	assert.Error(t, err)
+}
+
+func TestEndorserAcquireTxSimulator(t *testing.T) {
+	tc := []struct {
+		name          string
+		chainID       string
+		chaincodeName string
+		simAcquired   bool
+	}{
+		{"empty channel", "", "ignored", false},
+		{"query scc", util.GetTestChainID(), "qscc", false},
+		{"config scc", util.GetTestChainID(), "cscc", false},
+		{"mainline", util.GetTestChainID(), "chaincode", true},
+	}
+
+	expectedResponse := &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})}
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mock.Mock{}
+			m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+			m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+			m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
+			support := &em.MockSupport{
+				Mock: m,
+				GetApplicationConfigBoolRv: true,
+				GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+				GetTransactionByIDErr:      errors.New(""),
+				ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
+				ExecuteResp:                expectedResponse,
+			}
+			attachPluginEndorser(support)
+			es := endorser.NewEndorserServer(pvtEmptyDistributor, support)
+
+			t.Parallel()
+			args := [][]byte{[]byte("args")}
+			signedProp := getSignedPropWithCHIdAndArgs(tt.chainID, tt.chaincodeName, "version", args, t)
+
+			resp, err := es.ProcessProposal(context.Background(), signedProp)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedResponse, resp.Response)
+
+			if tt.simAcquired {
+				m.AssertCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			} else {
+				m.AssertNotCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			}
+		})
+	}
 }
 
 var signer msp.SigningIdentity

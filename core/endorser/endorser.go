@@ -408,8 +408,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 
 	// block invocations to security-sensitive system chaincodes
 	if e.s.IsSysCCAndNotInvokableExternal(hdrExt.ChaincodeId.Name) {
-		endorserLogger.Errorf("Error: an attempt was made by %#v to invoke system chaincode %s",
-			shdr.Creator, hdrExt.ChaincodeId.Name)
+		endorserLogger.Errorf("Error: an attempt was made by %#v to invoke system chaincode %s", shdr.Creator, hdrExt.ChaincodeId.Name)
 		err = errors.Errorf("chaincode %s cannot be invoked through a proposal", hdrExt.ChaincodeId.Name)
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 		return vr, err
@@ -468,10 +467,11 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// Also obtain a history query executor for history queries, since tx simulator does not cover history
 	var txsim ledger.TxSimulator
 	var historyQueryExecutor ledger.HistoryQueryExecutor
-	if chainID != "" {
+	if acquireTxSimulator(chainID, vr.hdrExt.ChaincodeId) {
 		if txsim, err = e.s.GetTxSimulator(chainID, txid); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
+
 		// txsim acquires a shared lock on the stateDB. As this would impact the block commits (i.e., commit
 		// of valid write-sets to the stateDB), we must release the lock as early as possible.
 		// Hence, this txsim object is closed in simulateProposal() as soon as the tx is simulated and
@@ -545,6 +545,24 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	pResp.Response = res
 
 	return pResp, nil
+}
+
+// determine whether or not a transaction simulator should be
+// obtained for a proposal.
+func acquireTxSimulator(chainID string, ccid *pb.ChaincodeID) bool {
+	if chainID == "" {
+		return false
+	}
+
+	// ¯\_(ツ)_/¯ locking.
+	// Don't get a simulator for the query and config system chaincode.
+	// These don't need the simulator and its read lock results in deadlocks.
+	switch ccid.Name {
+	case "qscc", "cscc":
+		return false
+	default:
+		return true
+	}
 }
 
 // shorttxid replicates the chaincode package function to shorten txids.
