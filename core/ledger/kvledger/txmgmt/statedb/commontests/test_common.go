@@ -75,10 +75,12 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	vv2 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
 	vv3 := statedb.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)}
 	vv4 := statedb.VersionedValue{Value: []byte{}, Version: version.NewHeight(1, 4)}
+	vv5 := statedb.VersionedValue{Value: []byte("null"), Version: version.NewHeight(1, 5)}
 	batch.Put("ns1", "key1", vv1.Value, vv1.Version)
 	batch.Put("ns1", "key2", vv2.Value, vv2.Version)
 	batch.Put("ns2", "key3", vv3.Value, vv3.Version)
 	batch.Put("ns2", "key4", vv4.Value, vv4.Version)
+	batch.Put("ns2", "key5", vv5.Value, vv5.Version)
 	savePoint := version.NewHeight(2, 5)
 	db.ApplyUpdates(batch, savePoint)
 
@@ -87,6 +89,9 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 	vv, _ = db.GetState("ns2", "key4")
 	testutil.AssertEquals(t, vv, &vv4)
+
+	vv, _ = db.GetState("ns2", "key5")
+	testutil.AssertEquals(t, vv, &vv5)
 
 	sp, err = db.GetLatestSavePoint()
 	testutil.AssertNoError(t, err, "")

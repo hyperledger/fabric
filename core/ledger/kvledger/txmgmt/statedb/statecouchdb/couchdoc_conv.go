@@ -117,12 +117,18 @@ func keyValToCouchDoc(kv *keyValue, revision string) (*couchdb.CouchDoc, error) 
 	switch {
 	case value == nil:
 		kvtype = kvTypeDelete
-	case json.Unmarshal(value, &jsonMap) == nil:
+	// check for the case where the jsonMap is nil,  this will indicate
+	// a special case for the Unmarshal that results in a valid JSON returning nil
+	case json.Unmarshal(value, &jsonMap) == nil && jsonMap != nil:
 		kvtype = kvTypeJSON
 		if err := jsonMap.checkReservedFieldsNotPresent(); err != nil {
 			return nil, err
 		}
 	default:
+		// create an empty map, if the map is nil
+		if jsonMap == nil {
+			jsonMap = make(jsonValue)
+		}
 		kvtype = kvTypeAttachment
 	}
 
