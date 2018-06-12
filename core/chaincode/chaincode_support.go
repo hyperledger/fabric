@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -37,8 +36,8 @@ type Launcher interface {
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
 type Lifecycle interface {
-	// GetChaincodeDefinition returns the details for a chaincode by name
-	GetChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	// ChaincodeDefinition returns the details for a chaincode by name
+	ChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 
 	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
 	ChaincodeContainerInfo(chainID string, chaincodeID string) (*ccprovider.ChaincodeContainerInfo, error)
@@ -118,7 +117,7 @@ func (cs *ChaincodeSupport) LaunchInit(cccid *ccprovider.CCContext, spec *pb.Cha
 		return nil
 	}
 
-	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(spec)
+	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec)
 	ccci.Version = cccid.Version
 
 	return cs.Launcher.Launch(ccci)
@@ -155,7 +154,7 @@ func (cs *ChaincodeSupport) Stop(cccid *ccprovider.CCContext, cds *pb.ChaincodeD
 	cname := cccid.GetCanonicalName()
 	defer cs.HandlerRegistry.Deregister(cname)
 
-	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(cds)
+	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(cds)
 	ccci.Version = cccid.Version
 	err := cs.Runtime.Stop(ccci)
 	if err != nil {

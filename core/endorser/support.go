@@ -144,7 +144,7 @@ func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid str
 
 // GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
 func (s *SupportImpl) GetChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
-	return s.ChaincodeSupport.Lifecycle.GetChaincodeDefinition(chaincodeName, txsim)
+	return s.ChaincodeSupport.Lifecycle.ChaincodeDefinition(chaincodeName, txsim)
 }
 
 // CheckACL checks the ACL for the resource for the Channel using the

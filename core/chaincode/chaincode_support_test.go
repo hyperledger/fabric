@@ -30,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
@@ -183,9 +182,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
-		&lifecycle.Lifecycle{
-			InstantiatedChaincodeStore: lsccImpl,
-		},
+		lsccImpl,
 		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{

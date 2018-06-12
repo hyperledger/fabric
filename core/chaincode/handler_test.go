@@ -1387,7 +1387,7 @@ var _ = Describe("Handler", func() {
 				Name:    "target-chaincode-data-name",
 				Version: "target-chaincode-version",
 			}
-			fakeDefinitionGetter.GetChaincodeDefinitionReturns(targetDefinition, nil)
+			fakeDefinitionGetter.ChaincodeDefinitionReturns(targetDefinition, nil)
 
 			request = &pb.ChaincodeSpec{
 				ChaincodeId: &pb.ChaincodeID{
@@ -1582,8 +1582,8 @@ var _ = Describe("Handler", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeDefinitionGetter.GetChaincodeDefinitionCallCount()).To(Equal(1))
-				ccname, txSim := fakeDefinitionGetter.GetChaincodeDefinitionArgsForCall(0)
+				Expect(fakeDefinitionGetter.ChaincodeDefinitionCallCount()).To(Equal(1))
+				ccname, txSim := fakeDefinitionGetter.ChaincodeDefinitionArgsForCall(0)
 				Expect(ccname).To(Equal("target-chaincode-name"))
 				Expect(txSim).To(Equal(newTxSimulator))
 			})
@@ -1601,7 +1601,7 @@ var _ = Describe("Handler", func() {
 
 			Context("when getting the chaincode definition fails", func() {
 				BeforeEach(func() {
-					fakeDefinitionGetter.GetChaincodeDefinitionReturns(nil, errors.New("blueberry-cobbler"))
+					fakeDefinitionGetter.ChaincodeDefinitionReturns(nil, errors.New("blueberry-cobbler"))
 				})
 
 				It("returns an error", func() {

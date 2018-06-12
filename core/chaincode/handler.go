@@ -88,7 +88,7 @@ type QueryResponseBuilder interface {
 // ChaincodeDefinitionGetter is responsible for retrieving a chaincode definition
 // from the system. The definition is used by the InstantiationPolicyChecker.
 type ChaincodeDefinitionGetter interface {
-	GetChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	ChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 }
 
 // LedgerGetter is used to get ledgers for chaincode.
@@ -858,7 +858,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	version := h.SystemCCVersion
 	if !h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName) {
 		// if its a user chaincode, get the details
-		cd, err := h.DefinitionGetter.GetChaincodeDefinition(targetInstance.ChaincodeName, txsim)
+		cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChaincodeName, txsim)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

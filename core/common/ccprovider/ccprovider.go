@@ -546,3 +546,13 @@ type ChaincodeProvider interface {
 	// Stop stops the chaincode given context and deployment spec
 	Stop(cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }
+
+func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {
+	return &ChaincodeContainerInfo{
+		Name:          cds.Name(),
+		Version:       cds.Version(),
+		Path:          cds.Path(),
+		Type:          cds.CCType(),
+		ContainerType: cds.ExecEnv.String(),
+	}
+}

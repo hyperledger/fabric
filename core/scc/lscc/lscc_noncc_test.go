@@ -83,9 +83,9 @@ var _ = Describe("LSCC", func() {
 		})
 
 		It("returns the chaincode deployment spec for a valid chaincode", func() {
-			cds, err := l.ChaincodeDeploymentSpec("channel-foo", "chaincode-data-name")
+			ccci, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cds).To(Equal(deploymentSpec))
+			Expect(ccci).To(Equal(ccprovider.DeploymentSpecToChaincodeContainerInfo(deploymentSpec)))
 
 			Expect(fakeSCCProvider.GetQueryExecutorForLedgerCallCount()).To(Equal(1))
 			Expect(fakeSCCProvider.GetQueryExecutorForLedgerArgsForCall(0)).To(Equal("channel-foo"))
@@ -103,7 +103,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := l.ChaincodeDeploymentSpec("channel-foo", "chaincode-data-name")
+				_, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
 				Expect(err).To(MatchError("could not retrieve QueryExecutor for channel channel-foo: fake-error"))
 			})
 		})
@@ -114,7 +114,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := l.ChaincodeDeploymentSpec("channel-foo", "chaincode-data-name")
+				_, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
 				Expect(err).To(MatchError("could not retrieve state for chaincode chaincode-data-name on channel channel-foo: fake-error"))
 			})
 		})
@@ -125,7 +125,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.ChaincodeDeploymentSpec("channel-foo", "chaincode-data-name")
+				_, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
 				Expect(err).To(MatchError("chaincode chaincode-data-name not found on channel channel-foo"))
 			})
 		})
