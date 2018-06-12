@@ -40,9 +40,7 @@ complex rich queries if needed in the future.
 .. note:: A JSON document cannot use the following field names at the top level.
    These are reserved for internal use.
 
-   - ``_deleted``
-   - ``_id``
-   - ``_rev``
+   - ``Any field beginning with an underscore, "_"``
    - ``~version``
 
 Using CouchDB from Chaincode
