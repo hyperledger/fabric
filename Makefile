@@ -56,7 +56,6 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-IS_RELEASE = false
 EXPERIMENTAL ?= true
 
 BUILD_DIR ?= .build
@@ -65,12 +64,8 @@ ifeq ($(EXPERIMENTAL),true)
 GO_TAGS += experimental
 endif
 
-ifneq ($(IS_RELEASE),true)
-EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
-PROJECT_VERSION=$(BASE_VERSION)-$(EXTRA_VERSION)
-else
-PROJECT_VERSION=$(BASE_VERSION)
-endif
+EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
+PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)
 
 PKGNAME = github.com/$(PROJECT_NAME)
 CGO_FLAGS = CGO_CFLAGS=" "
@@ -78,7 +73,8 @@ ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
 
 # defined in common/metadata/metadata.go
-METADATA_VAR = Version=$(PROJECT_VERSION)
+METADATA_VAR = Version=$(BASE_VERSION)
+METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
@@ -162,16 +158,16 @@ orderer: $(BUILD_DIR)/bin/orderer
 orderer-docker: $(BUILD_DIR)/image/orderer/$(DUMMY)
 
 .PHONY: configtxgen
-configtxgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+configtxgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 configtxgen: $(BUILD_DIR)/bin/configtxgen
 
-configtxlator: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+configtxlator: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 configtxlator: $(BUILD_DIR)/bin/configtxlator
 
-cryptogen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+cryptogen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 cryptogen: $(BUILD_DIR)/bin/cryptogen
 
-idemixgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+idemixgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 idemixgen: $(BUILD_DIR)/bin/idemixgen
 
 tools-docker: $(BUILD_DIR)/image/tools/$(DUMMY)
@@ -330,7 +326,7 @@ release: $(patsubst %,release/%, $(MARCH))
 # builds release packages for all target platforms
 release-all: $(patsubst %,release/%, $(RELEASE_PLATFORMS))
 
-release/%: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+release/%: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 
 release/windows-amd64: GOOS=windows
 release/windows-amd64: $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS)) release/windows-amd64/install
