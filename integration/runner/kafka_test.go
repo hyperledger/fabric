@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -42,7 +43,7 @@ var _ = Describe("Kafka Runner", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create a network
-		networkName := runner.UniqueName()
+		networkName := helpers.UniqueName()
 		network, err = client.CreateNetwork(
 			docker.CreateNetworkOptions{
 				Name:   networkName,
@@ -52,7 +53,7 @@ var _ = Describe("Kafka Runner", func() {
 
 		// Start a zookeeper
 		zookeeper = &runner.Zookeeper{
-			Name:        runner.UniqueName(),
+			Name:        helpers.UniqueName(),
 			ZooMyID:     1,
 			NetworkID:   network.ID,
 			NetworkName: network.Name,

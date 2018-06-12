@@ -486,7 +486,8 @@
   name = "github.com/tedsuo/ifrit"
   packages = [
     ".",
-    "ginkgomon"
+    "ginkgomon",
+    "grouper"
   ]
   revision = "e89a512c3162f0e5762a0948ace8509995e9820d"
 
@@ -632,6 +633,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "eb3b508a6fc5ff17c2f1aad3bea9996764e573e0e9bb905755fdf09bd9e0f19d"
+  inputs-digest = "0b9967a9ce9370ccee1fb5c3880f03ffbad05c5dd1b39290568b62cd77a3dc20"
   solver-name = "gps-cdcl"
   solver-version = 1

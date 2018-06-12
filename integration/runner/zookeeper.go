@@ -114,7 +114,15 @@ func (z *Zookeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		Config: config,
 	}
 
-	if z.NetworkName != "" && z.NetworkID != "" {
+	if z.NetworkName != "" {
+		nw, err := z.Client.NetworkInfo(z.NetworkName)
+		if err != nil {
+			return err
+		}
+		if z.NetworkID == "" {
+			z.NetworkID = nw.ID
+		}
+
 		networkingConfig := &docker.NetworkingConfig{
 			EndpointsConfig: map[string]*docker.EndpointConfig{
 				z.NetworkName: &docker.EndpointConfig{

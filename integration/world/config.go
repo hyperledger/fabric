@@ -192,7 +192,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 	}
 
 	// Create a network
-	networkName := runner.UniqueName()
+	networkName := helpers.UniqueName()
 	network, err := client.CreateNetwork(
 		docker.CreateNetworkOptions{
 			Name:   networkName,

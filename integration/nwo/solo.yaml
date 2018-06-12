@@ -1,0 +1,77 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+---
+organizations:
+- name: orderer-org
+  msp_id: OrdererOrgExampleCom
+  domain: orderer.example.com
+  enable_node_organizational_units: false
+  users: 0
+  ca:
+    hostname: ca
+- name: org1
+  msp_id: Org1ExampleCom
+  domain: org1.example.com
+  enable_node_organizational_units: true
+  users: 2
+  ca:
+    hostname: ca
+- name: org2
+  msp_id: Org2ExampleCom
+  domain: org2.example.com
+  enable_node_organizational_units: true
+  users: 2
+  ca:
+    hostname: ca
+
+consortiums:
+- name: SampleConsortium
+  organizations:
+  - org1
+  - org2
+
+consensus:
+  type: solo
+
+system_channel:
+  name: systemchannel
+  profile: TwoOrgsOrdererGenesis
+
+orderers:
+- name: orderer0
+  organization: orderer-org
+
+channels:
+- name: testchannel
+  profile: TwoOrgsChannel
+
+peers:
+- name: peer1
+  organization: org1
+  channels:
+  - name: testchannel
+    anchor: true
+- name: peer2
+  organization: org1
+  channels:
+  - name: testchannel
+- name: peer1
+  organization: org2
+  channels:
+  - name: testchannel
+- name: peer2
+  organization: org2
+  channels:
+  - name: testchannel
+    anchor: true
+
+profiles:
+- name: TwoOrgsOrdererGenesis
+  orderers:
+  - orderer0
+- name: TwoOrgsChannel
+  consortium: SampleConsortium
+  organizations:
+  - org1
+  - org2
