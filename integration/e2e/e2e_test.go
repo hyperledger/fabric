@@ -9,23 +9,27 @@ package e2e
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
+	"syscall"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-
-	"github.com/hyperledger/fabric/integration/helpers"
-	"github.com/hyperledger/fabric/integration/world"
+	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+
+	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 )
 
 var _ = Describe("EndToEnd", func() {
 	var (
-		testDir    string
-		w          *world.World
-		deployment world.Deployment
+		testDir   string
+		client    *docker.Client
+		network   *nwo.Network
+		chaincode nwo.Chaincode
+		process   ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -33,102 +37,111 @@ var _ = Describe("EndToEnd", func() {
 		testDir, err = ioutil.TempDir("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
-		deployment = world.Deployment{
-			Channel: "testchannel",
-			Chaincode: world.Chaincode{
-				Name:     "mycc",
-				Version:  "0.0",
-				Path:     "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				ExecPath: os.Getenv("PATH"),
-			},
-			InitArgs: `{"Args":["init","a","100","b","200"]}`,
-			Policy:   `AND ('Org1MSP.member','Org2MSP.member')`,
-			Orderer:  "127.0.0.1:7050",
+		client, err = docker.NewClientFromEnv()
+		Expect(err).NotTo(HaveOccurred())
+
+		chaincode = nwo.Chaincode{
+			Name:    "mycc",
+			Version: "0.0",
+			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
 		}
 	})
 
 	AfterEach(func() {
-		if w != nil {
-			w.Close(deployment)
+		if process != nil {
+			process.Signal(syscall.SIGTERM)
+			Eventually(process.Wait(), time.Minute).Should(Receive())
+		}
+		if network != nil {
+			network.Cleanup()
 		}
 		os.RemoveAll(testDir)
 	})
 
 	Describe("basic solo network with 2 orgs", func() {
 		BeforeEach(func() {
-			w = world.GenerateBasicConfig("solo", 1, 2, testDir, components)
+			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
 		})
 
 		It("executes a basic solo network with 2 orgs", func() {
-			By("generating files to bootstrap the network")
-			w.BootstrapNetwork(deployment.Channel)
-			Expect(filepath.Join(testDir, "configtx.yaml")).To(BeARegularFile())
-			Expect(filepath.Join(testDir, "crypto.yaml")).To(BeARegularFile())
-			Expect(filepath.Join(testDir, "crypto", "peerOrganizations")).To(BeADirectory())
-			Expect(filepath.Join(testDir, "crypto", "ordererOrganizations")).To(BeADirectory())
-			Expect(filepath.Join(testDir, "systestchannel_block.pb")).To(BeARegularFile())
-			Expect(filepath.Join(testDir, "testchannel_tx.pb")).To(BeARegularFile())
-			Expect(filepath.Join(testDir, "Org1_anchors_update_tx.pb")).To(BeARegularFile())
-			Expect(filepath.Join(testDir, "Org2_anchors_update_tx.pb")).To(BeARegularFile())
-
-			By("setting up directories for the network")
-			helpers.CopyFile(filepath.Join("testdata", "orderer.yaml"), filepath.Join(testDir, "orderer.yaml"))
-			w.CopyPeerConfigs("testdata")
-
-			By("building the network")
-			w.BuildNetwork()
+			By("getting the orderer by name")
+			orderer := network.Orderer("orderer")
 
 			By("setting up the channel")
-			w.SetupChannel(deployment, w.PeerIDs())
+			network.CreateAndJoinChannel(orderer, "testchannel")
 
-			RunQueryInvokeQuery(w, deployment)
+			By("deploying the chaincode")
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			By("getting the client peer by name")
+			peer := network.Peer("Org1", "peer1")
+
+			RunQueryInvokeQuery(network, orderer, peer)
 		})
 	})
 
 	Describe("basic kaka network with 2 orgs", func() {
 		BeforeEach(func() {
-			w = world.GenerateBasicConfig("kafka", 2, 2, testDir, components)
-			w.SetupWorld(deployment)
+			network = nwo.New(nwo.BasicKafka(), testDir, client, 31000, components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
 		})
 
 		It("executes a basic kafka network with 2 orgs", func() {
-			RunQueryInvokeQuery(w, deployment)
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer1")
+
+			network.CreateAndJoinChannel(orderer, "testchannel")
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			RunQueryInvokeQuery(network, orderer, peer)
 		})
 	})
 })
 
-func RunQueryInvokeQuery(w *world.World, deployment world.Deployment) {
+func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	By("querying the chaincode")
-	adminPeer := components.Peer()
-	adminPeer.LogLevel = "debug"
-	adminPeer.ConfigDir = filepath.Join(w.Rootpath, "peer0.org1.example.com")
-	adminPeer.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-	adminRunner := adminPeer.QueryChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["query","a"]}`)
-	execute(adminRunner)
-	Eventually(adminRunner.Buffer()).Should(gbytes.Say("100"))
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		ChannelID: "testchannel",
+		Name:      "mycc",
+		Ctor:      `{"Args":["query","a"]}`,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Expect(sess).To(gbytes.Say("100"))
 
-	By("invoking the chaincode")
-	adminRunner = adminPeer.InvokeChaincode(
-		deployment.Chaincode.Name,
-		deployment.Channel,
-		`{"Args":["invoke","a","b","10"]}`,
-		deployment.Orderer,
-		"--waitForEvent",
-		"--peerAddresses", "127.0.0.1:7051",
-		"--peerAddresses", "127.0.0.1:8051",
-	)
-	execute(adminRunner)
-	Eventually(adminRunner.Err()).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
+	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: "testchannel",
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      "mycc",
+		Ctor:      `{"Args":["invoke","a","b","10"]}`,
+		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-	By("querying the chaincode again")
-	adminRunner = adminPeer.QueryChaincode(deployment.Chaincode.Name, deployment.Channel, `{"Args":["query","a"]}`)
-	execute(adminRunner)
-	Eventually(adminRunner.Buffer()).Should(gbytes.Say("90"))
-}
-
-func execute(r ifrit.Runner) (err error) {
-	p := ifrit.Invoke(r)
-	Eventually(p.Ready()).Should(BeClosed())
-	Eventually(p.Wait(), 30*time.Second).Should(Receive(&err))
-	return err
+	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		ChannelID: "testchannel",
+		Name:      "mycc",
+		Ctor:      `{"Args":["query","a"]}`,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Expect(sess).To(gbytes.Say("90"))
 }

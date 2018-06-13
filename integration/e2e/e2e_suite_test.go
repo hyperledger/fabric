@@ -9,7 +9,7 @@ package e2e
 import (
 	"encoding/json"
 
-	"github.com/hyperledger/fabric/integration/world"
+	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -21,10 +21,10 @@ func TestEndToEnd(t *testing.T) {
 	RunSpecs(t, "EndToEnd Suite")
 }
 
-var components *world.Components
+var components *nwo.Components
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	components = &world.Components{}
+	components = &nwo.Components{}
 	components.Build()
 
 	payload, err := json.Marshal(components)
