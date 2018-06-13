@@ -331,7 +331,6 @@ func createTempFile(t *testing.T) string {
 
 // TODO restore this test once multi-arch has been established
 func TestDockerPull(t *testing.T) {
-	t.Skip()
 	codepackage, output := io.Pipe()
 	go func() {
 		tw := tar.NewWriter(output)
@@ -342,7 +341,7 @@ func TestDockerPull(t *testing.T) {
 
 	binpackage := bytes.NewBuffer(nil)
 
-	// Perform a nop operation within a fixed target.  We choose 1.0.0-alpha2 because we know it's
+	// Perform a nop operation within a fixed target.  We choose 1.1.0 because we know it's
 	// published and available.  Ideally we could choose something that we know is both multi-arch
 	// and ok to delete prior to executing DockerBuild.  This would ensure that we exercise the
 	// image pull logic.  However, no suitable target exists that meets all the criteria.  Therefore
@@ -354,7 +353,7 @@ func TestDockerPull(t *testing.T) {
 	// Future considerations: publish a known dummy image that is multi-arch and free to randomly
 	// delete, and use that here instead.
 	err := DockerBuild(DockerBuildOptions{
-		Image:        cutil.ParseDockerfileTemplate("hyperledger/fabric-ccenv:$(ARCH)-1.0.0-alpha2"),
+		Image:        cutil.ParseDockerfileTemplate("hyperledger/fabric-ccenv:$(ARCH)-1.1.0"),
 		Cmd:          "/bin/true",
 		InputStream:  codepackage,
 		OutputStream: binpackage,
