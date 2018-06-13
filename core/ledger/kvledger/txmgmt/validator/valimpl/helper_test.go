@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	lgrutil "github.com/hyperledger/fabric/core/ledger/util"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -117,8 +118,10 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	tx3TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx3SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
 	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &valinternal.Transaction{IndexInBlock: 2, ID: "tx3", RWSet: tx3TxRWSet})
-
-	actualPreProcessedBlock, err := preprocessProtoBlock(nil, block, false)
+	alwaysValidKVFunc := func(key string, value []byte) error {
+		return nil
+	}
+	actualPreProcessedBlock, err := preprocessProtoBlock(nil, alwaysValidKVFunc, block, false)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPerProcessedBlock, actualPreProcessedBlock)
 
@@ -149,25 +152,27 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 }
 
 func TestPreprocessProtoBlock(t *testing.T) {
-
+	allwaysValidKVfunc := func(key string, value []byte) error {
+		return nil
+	}
 	// good block
 	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
-	_, err := preprocessProtoBlock(nil, gb, false)
+	_, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.NoError(t, err)
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
-	_, err = preprocessProtoBlock(nil, gb, false)
+	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad payload
 	gb = testutil.ConstructTestBlock(t, 12, 1, 1)
 	envBytes, _ := putils.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, err = preprocessProtoBlock(nil, gb, false)
+	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad channel header
@@ -177,7 +182,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	})
 	envBytes, _ = putils.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, err = preprocessProtoBlock(nil, gb, false)
+	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 
@@ -191,7 +196,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	flags := lutils.NewTxValidationFlags(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
-	_, err = preprocessProtoBlock(nil, gb, false)
+	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.NoError(t, err) // invalid filter should take precendence
 
 	// new block
@@ -205,7 +210,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// set logging backend for test
 	backend := logging.NewMemoryBackend(1)
 	logging.SetBackend(backend)
-	_, err = preprocessProtoBlock(nil, gb, false)
+	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.NoError(t, err)
 	expected := fmt.Sprintf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
 		" marked as invalid by committer. Reason code [%s]",
@@ -215,6 +220,42 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	//assert.Equal(t, message, MemoryRecordN(backend, i).Message())
 	t.Log(memoryRecordN(backend, 0).Message())
 
+}
+
+func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
+	kvValidationFunc := func(key string, value []byte) error {
+		if value[0] == '_' {
+			return fmt.Errorf("value [%s] found to be invalid by 'kvValidationFunc for testing'", value)
+		}
+		return nil
+	}
+
+	rwSetBuilder := rwsetutil.NewRWSetBuilder()
+	rwSetBuilder.AddToWriteSet("ns", "key", []byte("_invalidValue")) // bad value
+	simulation1, err := rwSetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	simulation1Bytes, err := simulation1.GetPubSimulationBytes()
+	assert.NoError(t, err)
+
+	rwSetBuilder = rwsetutil.NewRWSetBuilder()
+	rwSetBuilder.AddToWriteSet("ns", "key", []byte("validValue")) // good value
+	simulation2, err := rwSetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	simulation2Bytes, err := simulation2.GetPubSimulationBytes()
+	assert.NoError(t, err)
+
+	block := testutil.ConstructBlock(t, 1, testutil.ConstructRandomBytes(t, 32),
+		[][]byte{simulation1Bytes, simulation2Bytes}, false) // block with two txs
+	txfilter := lgrutil.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	assert.True(t, txfilter.IsValid(0))
+	assert.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
+
+	internalBlock, err := preprocessProtoBlock(nil, kvValidationFunc, block, false)
+	assert.NoError(t, err)
+	assert.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
+	assert.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
+	assert.Len(t, internalBlock.Txs, 1)
+	assert.Equal(t, internalBlock.Txs[0].IndexInBlock, 1)
 }
 
 // from go-logging memory_test.go

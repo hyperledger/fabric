@@ -241,10 +241,9 @@ func TestAddAfterPvtdataStoreError(t *testing.T) {
 	for _, d := range sampleData[0:9] {
 		assert.NoError(t, store.CommitWithPvtData(d))
 	}
-	// try to write the last block again. The function should pass on the error raised by the private store
-	err = store.CommitWithPvtData(sampleData[8])
-	_, ok := err.(*pvtdatastorage.ErrIllegalArgs)
-	assert.True(t, ok)
+	// try to write the last block again. The function should skip adding block to the private store
+	// as the pvt store but the block storage should return error
+	assert.Error(t, store.CommitWithPvtData(sampleData[8]))
 
 	// At the end, the pvt store status should not have changed
 	pvtStoreCommitHt, err := store.pvtdataStore.LastCommittedBlockHeight()
