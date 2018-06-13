@@ -13,10 +13,12 @@ import (
 	mc "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
 )
 
 type MockSupport struct {
+	*mock.Mock
 	IsSysCCAndNotInvokableExternalRv bool
 	IsSysCCRv                        bool
 	ExecuteCDSResp                   *pb.Response
@@ -44,7 +46,12 @@ func (s *MockSupport) IsSysCCAndNotInvokableExternal(name string) bool {
 }
 
 func (s *MockSupport) GetTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
-	return s.GetTxSimulatorRv, s.GetTxSimulatorErr
+	if s.Mock == nil {
+		return s.GetTxSimulatorRv, s.GetTxSimulatorErr
+	}
+
+	args := s.Called(ledgername, txid)
+	return args.Get(0).(ledger.TxSimulator), args.Error(1)
 }
 
 func (s *MockSupport) GetHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {

@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func getSignedPropWithCHID(ccid, ccver, chid string, t *testing.T) *pb.SignedProposal {
@@ -506,6 +507,57 @@ func TestEndorserJavaChecks(t *testing.T) {
 func TestChaincodeError_Error(t *testing.T) {
 	ce := &chaincodeError{status: 1, msg: "foo"}
 	assert.Equal(t, ce.Error(), "chaincode error (status: 1, message: foo)")
+}
+
+func TestEndorserAcquireTxSimulator(t *testing.T) {
+	tc := []struct {
+		name          string
+		chainID       string
+		chaincodeName string
+		simAcquired   bool
+	}{
+		{"empty channel", "", "ignored", false},
+		{"query scc", util.GetTestChainID(), "qscc", false},
+		{"config scc", util.GetTestChainID(), "cscc", false},
+		{"mainline", util.GetTestChainID(), "chaincode", true},
+	}
+
+	expectedResponse := &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})}
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mock.Mock{}
+			mockSim := &ccprovider.MockTxSim{
+				GetTxSimulationResultsRv: &ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}},
+			}
+			m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(mockSim, nil)
+			support := &em.MockSupport{
+				Mock: m,
+				GetApplicationConfigBoolRv: true,
+				GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+				GetTransactionByIDErr:      errors.New(""),
+				ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
+				ExecuteResp:                expectedResponse,
+			}
+			es := NewEndorserServer(
+				func(string, string, *rwset.TxPvtReadWriteSet) error { return nil },
+				support,
+			)
+			t.Parallel()
+			args := [][]byte{[]byte("args")}
+			signedProp := getSignedPropWithCHIdAndArgs(tt.chainID, tt.chaincodeName, "version", args, t)
+
+			resp, err := es.ProcessProposal(context.Background(), signedProp)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedResponse.Payload, resp.Response.Payload)
+
+			if tt.simAcquired {
+				m.AssertCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			} else {
+				m.AssertNotCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			}
+		})
+	}
 }
 
 var signer msp.SigningIdentity
