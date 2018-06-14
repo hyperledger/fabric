@@ -16,6 +16,6 @@ import (
 
 // NewPluginFactory is the function ran by the plugin infrastructure to create a validation plugin factory.
 func NewPluginFactory() validation.PluginFactory {
-	e2e.PublishValidationPluginActivation()
+	pluggable.PublishValidationPluginActivation()
 	return &builtin.DefaultValidationFactory{}
 }

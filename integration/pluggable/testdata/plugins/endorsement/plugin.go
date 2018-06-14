@@ -16,6 +16,6 @@ import (
 
 // NewPluginFactory is the function ran by the plugin infrastructure to create an endorsement plugin factory.
 func NewPluginFactory() endorsement.PluginFactory {
-	e2e.PublishEndorsementPluginActivation()
+	pluggable.PublishEndorsementPluginActivation()
 	return &builtin.DefaultEndorsementFactory{}
 }
