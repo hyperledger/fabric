@@ -33,9 +33,8 @@ const (
 	revField      = "_rev"
 	versionField  = "~version"
 	deletedField  = "_deleted"
+	metadataField = "~metadata"
 )
-
-var reservedFields = []string{idField, revField, versionField, deletedField}
 
 var dbArtifactsDirFilter = map[string]bool{"META-INF/statedb/couchdb/indexes": true}
 
@@ -1010,9 +1009,9 @@ func createCouchdbDocJSON(id, revision string, value []byte, version *version.He
 
 // checkReservedFieldsNotUsed verifies that the reserve field was not included
 func checkReservedFieldsNotUsed(jsonMap map[string]interface{}) error {
-	for _, fieldName := range reservedFields {
-		if _, fieldFound := jsonMap[fieldName]; fieldFound {
-			return fmt.Errorf("The reserved field %s was found", fieldName)
+	for fieldName := range jsonMap {
+		if fieldName == versionField || fieldName == metadataField || strings.HasPrefix(fieldName, "_") {
+			return fmt.Errorf("The field [%s] is not valid for the CouchDB state database", fieldName)
 		}
 	}
 	return nil
