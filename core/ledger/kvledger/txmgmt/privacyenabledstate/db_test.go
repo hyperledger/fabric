@@ -12,12 +12,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -421,12 +423,32 @@ func TestHandleChainCodeDeployOnCouchDB(t *testing.T) {
 	}
 }
 
+func createCollectionConfig(collectionName string) *common.CollectionConfig {
+	return &common.CollectionConfig{
+		Payload: &common.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
+				Name:              collectionName,
+				MemberOrgsPolicy:  nil,
+				RequiredPeerCount: 0,
+				MaximumPeerCount:  0,
+				BlockToLive:       0,
+			},
+		},
+	}
+}
+
 func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
 	db := env.GetDBHandle("test-handle-chaincode-deploy")
 
-	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: ""}
+	coll1 := createCollectionConfig("collectionMarbles")
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccpBytes}
 
 	commonStorageDB := db.(*CommonStorageDB)
 
@@ -458,6 +480,32 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	actualJSON := fileEntries["META-INF/statedb/couchdb/collections/collectionMarbles/indexes"][0].FileContent
 	assert.Equal(t, expectedJSON, actualJSON)
 
+	// The collection config is added to the chaincodeDef but missing collectionMarblesPrivateDetails.
+	// Hence, the index on collectionMarblesPrivateDetails cannot be created
+	err = commonStorageDB.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
+	assert.NoError(t, err)
+
+	coll2 := createCollectionConfig("collectionMarblesPrivateDetails")
+	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
+	ccpBytes, err = proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	chaincodeDef = &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccpBytes}
+
+	// The collection config is added to the chaincodeDef and it contains all collections
+	// including collectionMarblesPrivateDetails which was missing earlier.
+	// Hence, the existing indexes must be updated and the new index must be created for
+	// collectionMarblesPrivateDetails
+	err = commonStorageDB.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
+	assert.NoError(t, err)
+
+	chaincodeDef = &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: nil}
+
+	// The collection config is not added to the chaincodeDef. In this case, the index creation
+	// process reads the collection config from state db. However, the state db does not contain
+	// any collection config for this chaincode. Hence, index creation/update on all collections
+	// should fail
 	err = commonStorageDB.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
 	assert.NoError(t, err)
 

@@ -10,9 +10,12 @@ import (
 	"encoding/base64"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/protos/common"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
@@ -182,7 +185,7 @@ func (s CommonStorageDB) ExecuteQueryOnPrivateData(namespace, collection, query 
 	return s.ExecuteQuery(derivePvtDataNs(namespace, collection), query)
 }
 
-// ApplyUpdates overrides the funciton in statedb.VersionedDB and throws appropriate error message
+// ApplyUpdates overrides the function in statedb.VersionedDB and throws appropriate error message
 // Otherwise, somewhere in the code, usage of this function could lead to updating only public data.
 func (s *CommonStorageDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 	return errors.New("this function should not be invoked on this type. Please invoke function ApplyPrivacyAwareUpdates")
@@ -193,6 +196,53 @@ func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height 
 	addPvtUpdates(updates.PubUpdates, updates.PvtUpdates)
 	addHashedUpdates(updates.PubUpdates, updates.HashUpdates, !s.BytesKeySuppoted())
 	return s.VersionedDB.ApplyUpdates(updates.PubUpdates.UpdateBatch, height)
+}
+
+func (s *CommonStorageDB) getCollectionConfigMap(chaincodeDefinition *cceventmgmt.ChaincodeDefinition) (map[string]bool, error) {
+	var collectionConfigsBytes []byte
+	collectionConfigsMap := make(map[string]bool)
+
+	// We need use the collection config present in the chaincodeDefinition to build the
+	// collection map.  If the chaincode definition does not contain the collection config,
+	// we need to fetch config from the state database if exists
+	if chaincodeDefinition.CollectionConfigs != nil {
+		// When the collection configs are passed in the instantiate/upgrade request,
+		// the passed collection config would be present in the chaincodeDefinition
+		collectionConfigsBytes = chaincodeDefinition.CollectionConfigs
+	} else {
+		// When the collection configs are not passed in the instantiate/upgrade or
+		// when the current request is install after an instantiate, we need to fetch the
+		// collection config from the state database
+		lsccNamespace := "lscc"
+		collectionConfigKey := privdata.BuildCollectionKVSKey(chaincodeDefinition.Name)
+
+		versionedValue, err := s.VersionedDB.GetState(lsccNamespace, collectionConfigKey)
+		if err != nil {
+			return nil, err
+		}
+		// if there is no collection config for the given chaincode in the state db,
+		// the versionedValue would be nil
+		if versionedValue != nil {
+			collectionConfigsBytes = versionedValue.Value
+		}
+	}
+
+	if collectionConfigsBytes != nil {
+		collectionConfigs := &common.CollectionConfigPackage{}
+		if err := proto.Unmarshal(collectionConfigsBytes, collectionConfigs); err != nil {
+			return nil, err
+		}
+
+		for _, config := range collectionConfigs.Config {
+			sConfig := config.GetStaticCollectionConfig()
+			if sConfig == nil {
+				continue
+			}
+			collectionConfigsMap[sConfig.Name] = true
+		}
+	}
+
+	return collectionConfigsMap, nil
 }
 
 // HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
@@ -215,9 +265,17 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 
 	dbArtifacts, err := ccprovider.ExtractFileEntries(dbArtifactsTar, indexCapable.GetDBType())
 	if err != nil {
-		logger.Errorf("Error extracting db artifacts from tar for chaincode [%s]: %s", chaincodeDefinition.Name, err)
+		logger.Errorf("Index creation: error extracting db artifacts from tar for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 		return nil
 	}
+
+	collectionConfigMap, err := s.getCollectionConfigMap(chaincodeDefinition)
+	if err != nil {
+		logger.Errorf("Error while retrieving collection config for chaincode=[%s]: %s",
+			chaincodeDefinition.Name, err)
+		return nil
+	}
+
 	for directoryPath, archiveDirectoryEntries := range dbArtifacts {
 		// split the directory name
 		directoryPathArray := strings.Split(directoryPath, "/")
@@ -232,10 +290,16 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 		// check for the indexes directory for the collection
 		if directoryPathArray[3] == "collections" && directoryPathArray[5] == "indexes" {
 			collectionName := directoryPathArray[4]
-			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
-				archiveDirectoryEntries)
-			if err != nil {
-				logger.Errorf("Error processing collection index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
+			_, ok := collectionConfigMap[collectionName]
+			if !ok {
+				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]", chaincodeDefinition.Name, collectionName)
+			} else {
+
+				err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
+					archiveDirectoryEntries)
+				if err != nil {
+					logger.Errorf("Error processing collection index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
+				}
 			}
 		}
 	}
