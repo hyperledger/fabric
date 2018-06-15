@@ -29,7 +29,7 @@ var _ = Describe("Kafka Runner", func() {
 
 		outBuffer *gbytes.Buffer
 		kafka     *runner.Kafka
-		zookeeper *runner.Zookeeper
+		zookeeper *runner.ZooKeeper
 
 		process ifrit.Process
 	)
@@ -51,11 +51,10 @@ var _ = Describe("Kafka Runner", func() {
 			},
 		)
 
-		// Start a zookeeper
-		zookeeper = &runner.Zookeeper{
+		// Start a ZooKeeper
+		zookeeper = &runner.ZooKeeper{
 			Name:        helpers.UniqueName(),
 			ZooMyID:     1,
-			NetworkID:   network.ID,
 			NetworkName: network.Name,
 		}
 		err = zookeeper.Start()
@@ -64,9 +63,8 @@ var _ = Describe("Kafka Runner", func() {
 		kafka = &runner.Kafka{
 			ErrorStream:      GinkgoWriter,
 			OutputStream:     io.MultiWriter(outBuffer, GinkgoWriter),
-			ZookeeperConnect: net.JoinHostPort(zookeeper.Name, "2181"),
+			ZooKeeperConnect: net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:         1,
-			NetworkID:        network.ID,
 			NetworkName:      network.Name,
 		}
 	})
@@ -131,44 +129,40 @@ var _ = Describe("Kafka Runner", func() {
 
 	It("multiples can be started and stopped", func() {
 		k1 := &runner.Kafka{
-			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
+			ZooKeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 1,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
-			NetworkID:                network.ID,
 			NetworkName:              network.Name,
 		}
 		err := k1.Start()
 		Expect(err).NotTo(HaveOccurred())
 
 		k2 := &runner.Kafka{
-			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
+			ZooKeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 2,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
-			NetworkID:                network.ID,
 			NetworkName:              network.Name,
 		}
 		err = k2.Start()
 		Expect(err).NotTo(HaveOccurred())
 
 		k3 := &runner.Kafka{
-			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
+			ZooKeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 3,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
-			NetworkID:                network.ID,
 			NetworkName:              network.Name,
 		}
 		err = k3.Start()
 		Expect(err).NotTo(HaveOccurred())
 
 		k4 := &runner.Kafka{
-			ZookeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
+			ZooKeeperConnect:         net.JoinHostPort(zookeeper.Name, "2181"),
 			BrokerID:                 4,
 			MinInsyncReplicas:        2,
 			DefaultReplicationFactor: 3,
-			NetworkID:                network.ID,
 			NetworkName:              network.Name,
 		}
 		err = k4.Start()

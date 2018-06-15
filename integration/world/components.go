@@ -29,7 +29,7 @@ var RequiredImages = []string{
 	"hyperledger/fabric-ccenv:latest",
 	runner.CouchDBDefaultImage,
 	runner.KafkaDefaultImage,
-	runner.ZookeeperDefaultImage,
+	runner.ZooKeeperDefaultImage,
 }
 
 func (c *Components) Build(args ...string) {
@@ -96,12 +96,11 @@ func (c *Components) Peer() *runner.Peer {
 	}
 }
 
-func (c *Components) Zookeeper(id int, network *docker.Network) *runner.Zookeeper {
+func (c *Components) ZooKeeper(id int, network *docker.Network) *runner.ZooKeeper {
 	name := fmt.Sprintf("zookeeper-%d", id)
 	colorCode := fmt.Sprintf("%dm", 31+id%6)
-	return &runner.Zookeeper{
+	return &runner.ZooKeeper{
 		ZooMyID:     id,
-		NetworkID:   network.ID,
 		NetworkName: network.Name,
 		OutputStream: gexec.NewPrefixedWriter(
 			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
@@ -119,7 +118,6 @@ func (c *Components) Kafka(id int, network *docker.Network) *runner.Kafka {
 	colorCode := fmt.Sprintf("1;%dm", 31+id%6)
 	return &runner.Kafka{
 		BrokerID:    id,
-		NetworkID:   network.ID,
 		NetworkName: network.Name,
 		OutputStream: gexec.NewPrefixedWriter(
 			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),

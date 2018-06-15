@@ -73,7 +73,7 @@ var _ = Describe("Config", func() {
 			Domain:                        "OrdererMSP",
 			OrdererNames:                  []string{"orderer0"},
 			BrokerCount:                   0,
-			ZookeeperCount:                1,
+			ZooKeeperCount:                1,
 			KafkaMinInsyncReplicas:        2,
 			KafkaDefaultReplicationFactor: 3,
 		}, {
@@ -81,7 +81,7 @@ var _ = Describe("Config", func() {
 			Domain:                        "OrdererMSP",
 			OrdererNames:                  []string{"orderer1"},
 			BrokerCount:                   0,
-			ZookeeperCount:                2,
+			ZooKeeperCount:                2,
 			KafkaMinInsyncReplicas:        2,
 			KafkaDefaultReplicationFactor: 3,
 		}}
@@ -230,7 +230,7 @@ var _ = Describe("Config", func() {
 				Domain:                        "example.com",
 				OrdererNames:                  []string{"orderer0"},
 				BrokerCount:                   0,
-				ZookeeperCount:                1,
+				ZooKeeperCount:                1,
 				KafkaMinInsyncReplicas:        2,
 				KafkaDefaultReplicationFactor: 3,
 			}
