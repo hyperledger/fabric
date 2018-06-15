@@ -38,7 +38,7 @@ On Windows machines you will also need the following which provides a better alt
           development environment with limited functionality. It is
           suitable to run docker based scenarios, such as
           :doc:`getting_started`, but you may not be able to find a
-          suitable ``make`` command to successfuly go through the
+          suitable ``make`` command to successfully go through the
           scenario described here.
 
 Setting the $GOPATH
