@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package producer
@@ -26,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -113,54 +102,55 @@ func TestEvents(t *testing.T) {
 	gEventProcessor.Timeout = prevTimeout
 }
 
-func TestDeRegister(t *testing.T) {
+func TestDeregister(t *testing.T) {
 	f := func() {
-		deRegisterHandler(nil, nil)
+		gEventProcessor.deregisterHandler(nil, nil)
 	}
 	assert.Panics(t, f)
-	assert.Error(t, deRegisterHandler(&peer.Interest{EventType: 100}, nil))
-	assert.Error(t, deRegisterHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, nil))
+	assert.Error(t, gEventProcessor.deregisterHandler(&peer.Interest{EventType: 100}, nil))
+	assert.NoError(t, gEventProcessor.deregisterHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, nil))
 }
 
 func TestRegisterHandler(t *testing.T) {
 	f := func() {
-		registerHandler(nil, nil)
+		gEventProcessor.registerHandler(nil, nil)
 	}
 	assert.Panics(t, f)
 
 	// attempt to register handlers (invalid type or nil handlers)
-	assert.Error(t, registerHandler(&peer.Interest{EventType: 100}, nil))
-	assert.Error(t, registerHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, nil))
-	assert.Error(t, registerHandler(&peer.Interest{EventType: peer.EventType_CHAINCODE}, nil))
+	assert.Error(t, gEventProcessor.registerHandler(&peer.Interest{EventType: 100}, nil))
+	assert.Error(t, gEventProcessor.registerHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, nil))
+	assert.Error(t, gEventProcessor.registerHandler(&peer.Interest{EventType: peer.EventType_CHAINCODE}, nil))
 
 	// attempt to register valid handler
 	m := newMockEventhub()
 	defer close(m.recvChan)
-	handler := newEventHandler(m)
-	assert.NoError(t, registerHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, handler))
+	handler := newHandler(m, gEventProcessor)
+	assert.NoError(t, handler.eventProcessor.registerHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, handler))
 
 	// clean up by deregistering handler
-	assert.NoError(t, deRegisterHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, handler))
+	assert.NoError(t, handler.eventProcessor.deregisterHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, handler))
 }
 
 func TestProcessEvents(t *testing.T) {
-	cl := newClient()
+	c := newClient()
 	interests := []*peer.Interest{
 		{EventType: peer.EventType_BLOCK},
-		{EventType: peer.EventType_CHAINCODE, RegInfo: &peer.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &peer.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}},
-		{EventType: peer.EventType_CHAINCODE, RegInfo: &peer.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &peer.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
 	}
-	cl.register(interests)
+	c.register(interests)
 	e, err := createRegisterEvent(nil, nil)
 	assert.NoError(t, err)
 	go Send(e)
-	time.Sleep(time.Second * 2)
-	cl.unregister(interests)
-	time.Sleep(time.Second * 2)
+	c.unregister(interests)
 }
 
 func TestInitializeEvents_twice(t *testing.T) {
-	config := &EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
+	config := &EventsServerConfig{
+		BufferSize:  100,
+		Timeout:     0,
+		SendTimeout: 0,
+		TimeWindow:  0,
+	}
 	initializeEventsTwice := func() {
 		initializeEvents(config)
 	}
@@ -168,5 +158,5 @@ func TestInitializeEvents_twice(t *testing.T) {
 }
 
 func TestAddEventType_alreadyDefined(t *testing.T) {
-	assert.Error(t, AddEventType(ehpb.EventType_CHAINCODE), "chaincode type already defined")
+	assert.Error(t, gEventProcessor.addEventType(ehpb.EventType_BLOCK), "BLOCK type already defined")
 }

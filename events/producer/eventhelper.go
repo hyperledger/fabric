@@ -138,22 +138,12 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 	return CreateBlockEvent(blockForEvent), CreateFilteredBlockEvent(filteredBlockForEvent), channelID, nil
 }
 
-//CreateBlockEvent creates a Event from a Block
+// CreateBlockEvent creates a Event from a Block
 func CreateBlockEvent(te *common.Block) *pb.Event {
 	return &pb.Event{Event: &pb.Event_Block{Block: te}}
 }
 
-//CreateFilteredBlockEvent creates a Event from a FilteredBlock
+// CreateFilteredBlockEvent creates a Event from a FilteredBlock
 func CreateFilteredBlockEvent(te *pb.FilteredBlock) *pb.Event {
 	return &pb.Event{Event: &pb.Event_FilteredBlock{FilteredBlock: te}}
-}
-
-//CreateChaincodeEvent creates a Event from a ChaincodeEvent
-func CreateChaincodeEvent(te *pb.ChaincodeEvent) *pb.Event {
-	return &pb.Event{Event: &pb.Event_ChaincodeEvent{ChaincodeEvent: te}}
-}
-
-//CreateRejectionEvent creates an Event from TxResults
-func CreateRejectionEvent(tx *pb.Transaction, errorMsg string) *pb.Event {
-	return &pb.Event{Event: &pb.Event_Rejection{Rejection: &pb.Rejection{Tx: tx, ErrorMsg: errorMsg}}}
 }

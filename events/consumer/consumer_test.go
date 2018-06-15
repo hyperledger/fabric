@@ -21,8 +21,7 @@ import (
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
-	ehpb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/viper"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -43,41 +42,39 @@ type BadAdapter struct {
 }
 
 var peerAddress = "0.0.0.0:7303"
-var ies = []*ehpb.Interest{{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}}}
+var ies = []*pb.Interest{{EventType: pb.EventType_BLOCK}}
 var testCert = &x509.Certificate{
 	Raw: []byte("test"),
 }
 
 var adapter *MockAdapter
-var obcEHClient *EventsClient
+var ehClient *EventsClient
 
-func (a *ZeroAdapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
-	return []*ehpb.Interest{}, nil
+func (a *ZeroAdapter) GetInterestedEvents() ([]*pb.Interest, error) {
+	return []*pb.Interest{}, nil
 }
-func (a *ZeroAdapter) Recv(msg *ehpb.Event) (bool, error) {
+func (a *ZeroAdapter) Recv(msg *pb.Event) (bool, error) {
 	panic("not implemented")
 }
 func (a *ZeroAdapter) Disconnected(err error) {
 	panic("not implemented")
 }
 
-func (a *BadAdapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
-	return []*ehpb.Interest{}, fmt.Errorf("Error")
+func (a *BadAdapter) GetInterestedEvents() ([]*pb.Interest, error) {
+	return []*pb.Interest{}, fmt.Errorf("Error")
 }
-func (a *BadAdapter) Recv(msg *ehpb.Event) (bool, error) {
+func (a *BadAdapter) Recv(msg *pb.Event) (bool, error) {
 	panic("not implemented")
 }
 func (a *BadAdapter) Disconnected(err error) {
 	panic("not implemented")
 }
 
-func (a *MockAdapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
-	return []*ehpb.Interest{
-		{EventType: ehpb.EventType_BLOCK},
-	}, nil
+func (a *MockAdapter) GetInterestedEvents() ([]*pb.Interest, error) {
+	return ies, nil
 }
 
-func (a *MockAdapter) Recv(msg *ehpb.Event) (bool, error) {
+func (a *MockAdapter) Recv(msg *pb.Event) (bool, error) {
 	return true, nil
 }
 
@@ -159,25 +156,28 @@ func TestUnregisterAsync(t *testing.T) {
 	done := make(chan struct{})
 	adapter := &MockAdapter{notify: done}
 
-	obcEHClient, _ = NewEventsClient(peerAddress, 5, adapter)
+	ehClient, _ = NewEventsClient(peerAddress, 5, adapter)
 
-	if err = obcEHClient.Start(); err != nil {
-		obcEHClient.Stop()
+	if err = ehClient.Start(); err != nil {
+		ehClient.Stop()
 		t.Fail()
 	}
 
-	regConfig := &RegistrationConfig{InterestedEvents: ies, Timestamp: util.CreateUtcTimestamp(), TlsCert: testCert}
-	obcEHClient.RegisterAsync(regConfig)
-	err = obcEHClient.UnregisterAsync(ies)
+	regConfig := &RegistrationConfig{
+		InterestedEvents: ies,
+		Timestamp:        util.CreateUtcTimestamp(),
+		TlsCert:          testCert,
+	}
+	ehClient.RegisterAsync(regConfig)
+	err = ehClient.UnregisterAsync(ies)
 	assert.NoError(t, err)
 
-	obcEHClient.Stop()
-
+	ehClient.Stop()
 }
 
 func TestStart(t *testing.T) {
 	var err error
-	var regTimeout = 5 * time.Second
+	var regTimeout = 1 * time.Second
 	done := make(chan struct{})
 
 	var cases = []struct {
@@ -215,33 +215,32 @@ func TestStart(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test: %s", test.name)
-			obcEHClient, _ = NewEventsClient(test.address, regTimeout, test.adapter)
-			err = obcEHClient.Start()
+			ehClient, _ = NewEventsClient(test.address, regTimeout, test.adapter)
+			err = ehClient.Start()
 			if test.expected {
 				assert.NoError(t, err)
 			} else {
 				assert.Error(t, err)
 			}
-			obcEHClient.Stop()
+			ehClient.Stop()
 		})
 	}
 }
 
 func TestStop(t *testing.T) {
 	var err error
-	var regTimeout = 5 * time.Second
+	var regTimeout = 1 * time.Second
 	done := make(chan struct{})
 	adapter := &MockAdapter{notify: done}
 
-	obcEHClient, _ = NewEventsClient(peerAddress, regTimeout, adapter)
+	ehClient, _ = NewEventsClient(peerAddress, regTimeout, adapter)
 
-	if err = obcEHClient.Start(); err != nil {
+	if err = ehClient.Start(); err != nil {
 		t.Fail()
-		t.Logf("Error client start %s", err)
+		t.Logf("Error starting client: %s", err)
 	}
-	err = obcEHClient.Stop()
+	err = ehClient.Stop()
 	assert.NoError(t, err)
-
 }
 
 func TestMain(m *testing.M) {
@@ -263,24 +262,25 @@ func TestMain(m *testing.M) {
 	}
 
 	extract := func(msg proto.Message) []byte {
-		evt, isEvent := msg.(*ehpb.Event)
+		evt, isEvent := msg.(*pb.Event)
 		if !isEvent || evt == nil {
 			return nil
 		}
 		return evt.TlsCertHash
 	}
 
+	timeout := 10 * time.Millisecond
 	ehConfig := &producer.EventsServerConfig{
-		BufferSize:       uint(viper.GetInt("peer.events.buffersize")),
-		Timeout:          viper.GetDuration("peer.events.timeout"),
-		TimeWindow:       viper.GetDuration("peer.events.timewindow"),
-		BindingInspector: comm.NewBindingInspector(false, extract)}
+		BufferSize:       100,
+		Timeout:          timeout,
+		SendTimeout:      timeout,
+		TimeWindow:       time.Minute,
+		BindingInspector: comm.NewBindingInspector(false, extract),
+	}
 	ehServer := producer.NewEventsServer(ehConfig)
-
-	ehpb.RegisterEventsServer(grpcServer, ehServer)
+	pb.RegisterEventsServer(grpcServer, ehServer)
 
 	go grpcServer.Serve(lis)
 
-	time.Sleep(2 * time.Second)
 	os.Exit(m.Run())
 }
