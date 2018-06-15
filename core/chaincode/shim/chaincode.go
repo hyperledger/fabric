@@ -504,7 +504,11 @@ func (stub *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, stub.ChannelId, response, 0}}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{
+		handler:   stub.handler,
+		channelId: stub.ChannelId,
+		txid:      stub.TxID,
+		response:  response}}, nil
 }
 
 // CommonIterator documentation can be found in interfaces.go
