@@ -26,16 +26,16 @@ import (
 )
 
 func TestGetVersionInfo(t *testing.T) {
-	testVersions := []string{"", "TestVersion"}
+	testSHAs := []string{"", "abcdefg"}
 
-	for _, version := range testVersions {
-		metadata.Version = version
-		if version == "" {
-			version = "development build"
+	for _, sha := range testSHAs {
+		metadata.CommitSHA = sha
+		if sha == "" {
+			sha = "development build"
 		}
 
-		expected := fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s",
-			metadata.ProgramName, version, runtime.Version(),
+		expected := fmt.Sprintf("%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
+			metadata.ProgramName, metadata.Version, sha, runtime.Version(),
 			fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
 		assert.Equal(t, expected, metadata.GetVersionInfo())
 	}
