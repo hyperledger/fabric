@@ -553,13 +553,20 @@ func initializeEventsServerConfig(mutualTLS bool) *producer.EventsServerConfig {
 	ehConfig := &producer.EventsServerConfig{
 		BufferSize:       uint(viper.GetInt("peer.events.buffersize")),
 		Timeout:          viper.GetDuration("peer.events.timeout"),
+		SendTimeout:      viper.GetDuration("peer.events.sendTimeout"),
 		TimeWindow:       viper.GetDuration("peer.events.timewindow"),
 		BindingInspector: comm.NewBindingInspector(mutualTLS, extract)}
 
 	if ehConfig.TimeWindow == 0*time.Minute {
 		defaultTimeWindow := 15 * time.Minute
-		logger.Warningf("`peer.events.timewindow` not set; defaulting to %s", defaultTimeWindow)
+		logger.Warningf("'peer.events.timewindow' not set; defaulting to %s", defaultTimeWindow)
 		ehConfig.TimeWindow = defaultTimeWindow
+	}
+
+	if ehConfig.SendTimeout <= 0 {
+		defaultSendTimeout := 60 * time.Second
+		logger.Debugf("'peer.events.sendTimeout' <= 0. defaulting to %s", defaultSendTimeout)
+		ehConfig.SendTimeout = defaultSendTimeout
 	}
 
 	return ehConfig
