@@ -288,7 +288,7 @@ $(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
 		| sed -e 's|_BASE_TAG_|$(BASE_DOCKER_TAG)|g' \
 		| sed -e 's|_TAG_|$(DOCKER_TAG)|g' \
 		> $@
-	@echo LABEL $(BASE_DOCKER_LABEL).version=$(PROJECT_VERSION) \\>>$@
+	@echo LABEL $(BASE_DOCKER_LABEL).version=$(BASE_VERSION) \\>>$@
 	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
 
 $(BUILD_DIR)/image/tools/$(DUMMY): $(BUILD_DIR)/image/tools/Dockerfile
