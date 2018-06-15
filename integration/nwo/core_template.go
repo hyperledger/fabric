@@ -6,9 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-// CoreTemplate is a basic core configuration. It serves as the template
-// for all core.yaml documents.
-const CoreTemplate = `---
+const DefaultCoreTemplate = `---
 logging:
   level:      info
   cauthdsl:   warning

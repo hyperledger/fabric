@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-const CryptoTemplate = `---
+const DefaultCryptoTemplate = `---
 {{ with $w := . -}}
 OrdererOrgs:{{ range .OrdererOrgs }}
 - Name: {{ .Name }}

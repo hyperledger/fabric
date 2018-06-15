@@ -143,6 +143,7 @@ type Network struct {
 	Peers            []*Peer
 	Profiles         []*Profile
 	Consortiums      []*Consortium
+	Templates        *Templates
 
 	colorIndex uint
 }
@@ -170,6 +171,11 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		Channels:      c.Channels,
 		Profiles:      c.Profiles,
 		Consortiums:   c.Consortiums,
+		Templates:     c.Templates,
+	}
+
+	if network.Templates == nil {
+		network.Templates = &Templates{}
 	}
 
 	for i := 0; i < network.Consensus.Brokers; i++ {
@@ -1009,7 +1015,7 @@ func (n *Network) GenerateCryptoConfig() {
 	Expect(err).NotTo(HaveOccurred())
 	defer crypto.Close()
 
-	t, err := template.New("crypto").Parse(CryptoTemplate)
+	t, err := template.New("crypto").Parse(n.Templates.CryptoTemplate())
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter("[crypto-config.yaml] ", ginkgo.GinkgoWriter)
@@ -1022,7 +1028,7 @@ func (n *Network) GenerateConfigTxConfig() {
 	Expect(err).NotTo(HaveOccurred())
 	defer config.Close()
 
-	t, err := template.New("configtx").Parse(ConfigTxTemplate)
+	t, err := template.New("configtx").Parse(n.Templates.ConfigTxTemplate())
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter("[configtx.yaml] ", ginkgo.GinkgoWriter)
@@ -1040,7 +1046,7 @@ func (n *Network) GenerateOrdererConfig(o *Orderer) {
 
 	t, err := template.New("orderer").Funcs(template.FuncMap{
 		"Orderer": func() *Orderer { return o },
-	}).Parse(OrdererTemplate)
+	}).Parse(n.Templates.OrdererTemplate())
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[%s#orderer.yaml] ", o.ID()), ginkgo.GinkgoWriter)
@@ -1058,7 +1064,7 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 
 	t, err := template.New("orderer").Funcs(template.FuncMap{
 		"Peer": func() *Peer { return p },
-	}).Parse(CoreTemplate)
+	}).Parse(n.Templates.CoreTemplate())
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[%s#core.yaml] ", p.ID()), ginkgo.GinkgoWriter)
