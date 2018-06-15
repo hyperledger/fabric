@@ -26,33 +26,31 @@ import (
 
 // SendProducerBlockEvent sends block event to clients
 func SendProducerBlockEvent(block *common.Block) error {
-	logger.Debugf("Entry")
-	defer logger.Debugf("Exit")
 	bevent := &common.Block{}
 	bevent.Header = block.Header
 	bevent.Metadata = block.Metadata
 	bevent.Data = &common.BlockData{}
-	var channelId string
+	var channelID string
 	for _, d := range block.Data.Data {
 		ebytes := d
 		if ebytes != nil {
 			if env, err := utils.GetEnvelopeFromBlock(ebytes); err != nil {
-				logger.Errorf("error getting tx from block(%s)\n", err)
+				logger.Errorf("error getting tx from block: %s", err)
 			} else if env != nil {
 				// get the payload from the envelope
 				payload, err := utils.GetPayload(env)
 				if err != nil {
-					return fmt.Errorf("could not extract payload from envelope, err %s", err)
+					return fmt.Errorf("could not extract payload from envelope: %s", err)
 				}
 
 				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
 					return err
 				}
-				channelId = chdr.ChannelId
+				channelID = chdr.ChannelId
 
 				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
-					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelId, block.Header.Number, chdr.TxId)
+					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelID, block.Header.Number, chdr.TxId)
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
 						return fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
@@ -94,7 +92,7 @@ func SendProducerBlockEvent(block *common.Block) error {
 					}
 					ebytes, err = utils.GetBytesEnvelope(env)
 					if err != nil {
-						return fmt.Errorf("cannot marshal transaction %s", err)
+						return fmt.Errorf("cannot marshal transaction: %s", err)
 					}
 				}
 			}
@@ -102,7 +100,7 @@ func SendProducerBlockEvent(block *common.Block) error {
 		bevent.Data.Data = append(bevent.Data.Data, ebytes)
 	}
 
-	logger.Infof("Channel [%s]: Sending event for block number [%d]", channelId, block.Header.Number)
+	logger.Infof("Channel [%s]: Sending event for block number [%d]", channelID, block.Header.Number)
 
 	return Send(CreateBlockEvent(bevent))
 }

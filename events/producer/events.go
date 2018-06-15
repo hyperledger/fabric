@@ -262,7 +262,7 @@ func AddEventType(eventType pb.EventType) error {
 	logger.Debugf("Registering %s", pb.EventType_name[int32(eventType)])
 	if _, ok := gEventProcessor.eventConsumers[eventType]; ok {
 		gEventProcessor.Unlock()
-		return fmt.Errorf("event type exists %s", pb.EventType_name[int32(eventType)])
+		return fmt.Errorf("event type %s already exists", pb.EventType_name[int32(eventType)])
 	}
 
 	switch eventType {
@@ -279,7 +279,7 @@ func AddEventType(eventType pb.EventType) error {
 }
 
 func registerHandler(ie *pb.Interest, h *handler) error {
-	logger.Debugf("registering event type: %s", ie.EventType)
+	logger.Debugf("Registering event type: %s", ie.EventType)
 	gEventProcessor.Lock()
 	defer gEventProcessor.Unlock()
 	if hl, ok := gEventProcessor.eventConsumers[ie.EventType]; !ok {
@@ -292,7 +292,7 @@ func registerHandler(ie *pb.Interest, h *handler) error {
 }
 
 func deRegisterHandler(ie *pb.Interest, h *handler) error {
-	logger.Debugf("deregistering event type: %s", ie.EventType)
+	logger.Debugf("Deregistering event type: %s", ie.EventType)
 
 	gEventProcessor.Lock()
 	defer gEventProcessor.Unlock()
@@ -309,8 +309,6 @@ func deRegisterHandler(ie *pb.Interest, h *handler) error {
 
 //Send sends the event to interested consumers
 func Send(e *pb.Event) error {
-	logger.Debugf("Entry")
-	defer logger.Debugf("Exit")
 	if e.Event == nil {
 		logger.Error("event not set")
 		return fmt.Errorf("event not set")
@@ -322,24 +320,21 @@ func Send(e *pb.Event) error {
 	}
 
 	if gEventProcessor.timeout < 0 {
-		logger.Debugf("Event processor timeout < 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
 		default:
-			return fmt.Errorf("could not send the blocking event")
+			return fmt.Errorf("could not add block event to event processor queue")
 		}
 	} else if gEventProcessor.timeout == 0 {
-		logger.Debugf("Event processor timeout = 0")
 		gEventProcessor.eventChannel <- e
 	} else {
-		logger.Debugf("Event processor timeout > 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
 		case <-time.After(gEventProcessor.timeout):
-			return fmt.Errorf("could not send the blocking event")
+			return fmt.Errorf("could not add block event to event processor queue")
 		}
 	}
 
-	logger.Debugf("Event sent successfully")
+	logger.Debugf("Event added to event processor queue")
 	return nil
 }
