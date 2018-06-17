@@ -105,6 +105,7 @@ type peer struct {
 	LedgerHeight uint64
 	Endpoint     string
 	Identity     string
+	Chaincodes   []string
 }
 
 type peerLister interface {
@@ -113,8 +114,16 @@ type peerLister interface {
 
 func rawPeerToPeer(p *discovery.Peer) peer {
 	var ledgerHeight uint64
+	var ccs []string
 	if p.StateInfoMessage != nil && p.StateInfoMessage.GetStateInfo() != nil && p.StateInfoMessage.GetStateInfo().Properties != nil {
-		ledgerHeight = p.StateInfoMessage.GetStateInfo().Properties.LedgerHeight
+		properties := p.StateInfoMessage.GetStateInfo().Properties
+		ledgerHeight = properties.LedgerHeight
+		for _, cc := range properties.Chaincodes {
+			if cc == nil {
+				continue
+			}
+			ccs = append(ccs, cc.Name)
+		}
 	}
 	var endpoint string
 	if p.AliveMessage != nil && p.AliveMessage.GetAliveMsg() != nil && p.AliveMessage.GetAliveMsg().Membership != nil {
@@ -127,5 +136,6 @@ func rawPeerToPeer(p *discovery.Peer) peer {
 		Endpoint:     endpoint,
 		LedgerHeight: ledgerHeight,
 		Identity:     string(sID.IdBytes),
+		Chaincodes:   ccs,
 	}
 }

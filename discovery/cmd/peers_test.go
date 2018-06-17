@@ -95,7 +95,7 @@ func TestParsePeers(t *testing.T) {
 		buff.Reset()
 		err := parser.ParseResponse(channel, res)
 		assert.NoError(t, err)
-		expected := "[\n\t{\n\t\t\"MSPID\": \"Org1MSP\",\n\t\t\"LedgerHeight\": 100,\n\t\t\"Endpoint\": \"p0\",\n\t\t\"Identity\": \"identity\"\n\t},\n\t{\n\t\t\"MSPID\": \"Org2MSP\",\n\t\t\"LedgerHeight\": 0,\n\t\t\"Endpoint\": \"\",\n\t\t\"Identity\": \"\"\n\t}\n]"
+		expected := "[\n\t{\n\t\t\"MSPID\": \"Org1MSP\",\n\t\t\"LedgerHeight\": 100,\n\t\t\"Endpoint\": \"p0\",\n\t\t\"Identity\": \"identity\",\n\t\t\"Chaincodes\": [\n\t\t\t\"mycc\",\n\t\t\t\"mycc2\"\n\t\t]\n\t},\n\t{\n\t\t\"MSPID\": \"Org2MSP\",\n\t\t\"LedgerHeight\": 0,\n\t\t\"Endpoint\": \"\",\n\t\t\"Identity\": \"\",\n\t\t\"Chaincodes\": null\n\t}\n]"
 		assert.Equal(t, fmt.Sprintf("%s\n", expected), buff.String())
 	}
 }
@@ -128,6 +128,10 @@ func stateInfoMessage(height uint64) *gossip.SignedGossipMessage {
 				},
 				Properties: &gossip.Properties{
 					LedgerHeight: height,
+					Chaincodes: []*gossip.Chaincode{
+						{Name: "mycc"},
+						{Name: "mycc2"},
+					},
 				},
 			},
 		},
