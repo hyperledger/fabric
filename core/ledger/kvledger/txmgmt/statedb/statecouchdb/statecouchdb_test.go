@@ -200,13 +200,26 @@ func TestUtilityFunctions(t *testing.T) {
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
 	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
 
+	reservedFields := []string{"~version", "~metadata", "_id", "_test"}
+
 	// ValidateKey should return an error for a json value that already contains one of the reserved fields
+	// at the top level
 	for _, reservedField := range reservedFields {
 		testVal := fmt.Sprintf(`{"%s":"dummyVal"}`, reservedField)
 		err = db.ValidateKeyValue("testKey", []byte(testVal))
 		testutil.AssertError(t, err, fmt.Sprintf(
 			"ValidateKey should have thrown an error for a json value %s, as contains one of the rserved fields", testVal))
 	}
+
+	// ValidateKey should not return an error for a json value that already contains one of the reserved fields
+	// if not at the top level
+	for _, reservedField := range reservedFields {
+		testVal := fmt.Sprintf(`{"data.%s":"dummyVal"}`, reservedField)
+		err = db.ValidateKeyValue("testKey", []byte(testVal))
+		testutil.AssertNoError(t, err, fmt.Sprintf(
+			"ValidateKey should not have thrown an error the json value %s since the reserved field was not at the top level", testVal))
+	}
+
 }
 
 // TestInvalidJSONFields tests for invalid JSON fields

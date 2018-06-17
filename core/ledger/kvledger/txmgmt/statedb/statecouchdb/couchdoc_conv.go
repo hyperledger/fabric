@@ -23,9 +23,8 @@ const (
 	revField      = "_rev"
 	versionField  = "~version"
 	deletedField  = "_deleted"
+	metadataField = "~metadata"
 )
-
-var reservedFields = [4]string{idField, revField, versionField, deletedField}
 
 type keyValue struct {
 	key string
@@ -47,9 +46,9 @@ func castToJSON(b []byte) (jsonValue, error) {
 }
 
 func (v jsonValue) checkReservedFieldsNotPresent() error {
-	for _, fieldName := range reservedFields {
-		if _, fieldFound := v[fieldName]; fieldFound {
-			return fmt.Errorf("The field %s is present", fieldName)
+	for fieldName := range v {
+		if fieldName == versionField || fieldName == metadataField || strings.HasPrefix(fieldName, "_") {
+			return fmt.Errorf("The field [%s] is not valid for the CouchDB state database", fieldName)
 		}
 	}
 	return nil
