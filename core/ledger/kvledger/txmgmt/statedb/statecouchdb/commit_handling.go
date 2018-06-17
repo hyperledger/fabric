@@ -175,12 +175,13 @@ func addRevisionsForMissingKeys(revisions map[string]string, db *couchdb.CouchDa
 			missingKeys = append(missingKeys, key)
 		}
 	}
+	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.DBName)
 	retrievedMetadata, err := retrieveNsMetadata(db, missingKeys)
 	if err != nil {
 		return err
 	}
 	for _, metadata := range retrievedMetadata {
-		revisions[metadata.ID] = revisions[metadata.Rev]
+		revisions[metadata.ID] = metadata.Rev
 	}
 	return nil
 }

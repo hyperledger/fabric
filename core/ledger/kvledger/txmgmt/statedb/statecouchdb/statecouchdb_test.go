@@ -25,6 +25,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	flogging.SetModuleLevel("statecouchdb", "debug")
+	flogging.SetModuleLevel("couchdb", "debug")
 	os.Exit(testMain(m))
 }
 
