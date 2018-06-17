@@ -108,5 +108,11 @@ The discovery service can respond to the following queries:
   peer that responds to the query. By default the client needs to be an administrator
   for the peer to respond to this query.
 
+Special requirements
+~~~~~~~~~~~~~~~~~~~~~~
+When the peer is running with TLS enabled the client must provide a TLS certificate when connecting
+to the peer. If the peer isn't configured to verify client certificates (clientAuthRequired is false), this TLS certificate
+can be self-signed.
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
