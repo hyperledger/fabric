@@ -418,8 +418,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 		block, pvtData, err := s.ledger.GetPvtDataAndBlockByNum(seqNum, peerAuthInfo)
 
 		if err != nil {
-			logger.Errorf("Wasn't able to read block with sequence number %d from ledger, "+
-				"due to %+v skipping....", seqNum, errors.WithStack(err))
+			logger.Errorf("cannot read block number %d from ledger, because %+v, skipping...", seqNum, err)
 			continue
 		}
 

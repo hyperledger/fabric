@@ -539,7 +539,7 @@ type txns []string
 type blockData [][]byte
 type blockConsumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement)
 
-func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockConsumer) (txns, error) {
+func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockConsumer) txns {
 	var txList []string
 	for seqInBlock, envBytes := range data {
 		env, err := utils.GetEnvelopeFromBlock(envBytes)
@@ -601,7 +601,7 @@ func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockCons
 		}
 		consumer(uint64(seqInBlock), chdr, txRWSet, ccActionPayload.Action.Endorsements)
 	}
-	return txList, nil
+	return txList
 }
 
 func endorsersFromOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs []string) []*peer.Endorsement {
@@ -650,10 +650,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		privateRWsetsInBlock: privateRWsetsInBlock,
 		coordinator:          c,
 	}
-	txList, err := data.forEachTxn(txsFilter, bi.inspectTransaction)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+	txList := data.forEachTxn(txsFilter, bi.inspectTransaction)
 
 	privateInfo := &privateDataInfo{
 		sources:            sources,
@@ -809,12 +806,12 @@ func (ac aggregatedCollections) asPrivateData() []*ledger.TxPvtData {
 func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*common.Block, util.PvtDataCollections, error) {
 	blockAndPvtData, err := c.Committer.GetPvtDataAndBlockByNum(seqNum)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot retrieve block number %d, due to %s", seqNum, err)
+		return nil, nil, err
 	}
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
-	_, err = data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) {
+	data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) {
 		item, exists := blockAndPvtData.BlockPvtData[seqInBlock]
 		if !exists {
 			return
@@ -846,9 +843,6 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 			}
 		}
 	})
-	if err != nil {
-		return nil, nil, errors.WithStack(err)
-	}
 
 	return blockAndPvtData.Block, seqs2Namespaces.asPrivateData(), nil
 }
