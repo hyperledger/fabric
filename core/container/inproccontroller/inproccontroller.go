@@ -130,6 +130,8 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		inprocLogger.Debugf("chaincode ended for %s with err: %s", id, err)
 	}()
 
+	// shadow function to avoid data race
+	inprocLoggerErrorf := _inprocLoggerErrorf
 	go func() {
 		defer close(ccsupportchan)
 		inprocStream := newInProcStream(peerRcvCCSend, ccRcvPeerSend)
@@ -137,7 +139,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		err := ccSupport.HandleChaincodeStream(ctxt, inprocStream)
 		if err != nil {
 			err = fmt.Errorf("chaincode ended with err: %s", err)
-			_inprocLoggerErrorf("%s", err)
+			inprocLoggerErrorf("%s", err)
 		}
 		inprocLogger.Debugf("chaincode-support ended for %s with err: %s", id, err)
 	}()
