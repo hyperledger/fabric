@@ -57,9 +57,9 @@ The default logging level for each individual ``peer`` subcommand can
 also be set in the
 `core.yaml <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`__
 file. For example the key ``logging.node`` sets the default level for
-the ``node`` subcommmand. Comments in the file also explain how the
+the ``node`` subcommand. Comments in the file also explain how the
 logging level can be overridden in various ways by using environment
-varaibles.
+variables.
 
 Logging severity levels are specified using case-insensitive strings
 chosen from
