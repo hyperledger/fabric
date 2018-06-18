@@ -199,7 +199,7 @@ var _ = Describe("Peer", func() {
 		instantiateCC := components.Peer()
 		instantiateCC.ConfigDir = tempDir
 		instantiateCC.MSPConfigPath = filepath.Join(cryptoDir, "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
-		instantiateCC.InstantiateChaincode("mytest", "1.0", "127.0.0.1:8050", "mychan", `{"Args":["init","a","100","b","200"]}`, "")
+		instantiateCC.InstantiateChaincode("mytest", "1.0", "127.0.0.1:8050", "mychan", `{"Args":["init","a","100","b","200"]}`, "", "")
 
 		By("list instantiated chaincode")
 		listInstan := components.Peer()
