@@ -20,9 +20,9 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const ZookeeperDefaultImage = "hyperledger/fabric-zookeeper:latest"
+const ZooKeeperDefaultImage = "hyperledger/fabric-zookeeper:latest"
 
-type Zookeeper struct {
+type ZooKeeper struct {
 	Client         *docker.Client
 	Image          string
 	HostIP         string
@@ -31,7 +31,6 @@ type Zookeeper struct {
 	Name           string
 	StartTimeout   time.Duration
 
-	NetworkID   string
 	NetworkName string
 	ClientPort  docker.Port
 	LeaderPort  docker.Port
@@ -51,9 +50,9 @@ type Zookeeper struct {
 	stopped bool
 }
 
-func (z *Zookeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
+func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	if z.Image == "" {
-		z.Image = ZookeeperDefaultImage
+		z.Image = ZooKeeperDefaultImage
 	}
 
 	if z.Name == "" {
@@ -98,20 +97,18 @@ func (z *Zookeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		z.Client = client
 	}
 
-	config := &docker.Config{
-		Image: z.Image,
-		Env: []string{
-			fmt.Sprintf("ZOO_MY_ID=%d", z.ZooMyID),
-			fmt.Sprintf("ZOO_SERVERS=%s", z.ZooServers),
-		},
-	}
-
 	containerOptions := docker.CreateContainerOptions{
 		Name: z.Name,
 		HostConfig: &docker.HostConfig{
 			AutoRemove: true,
 		},
-		Config: config,
+		Config: &docker.Config{
+			Image: z.Image,
+			Env: []string{
+				fmt.Sprintf("ZOO_MY_ID=%d", z.ZooMyID),
+				fmt.Sprintf("ZOO_SERVERS=%s", z.ZooServers),
+			},
+		},
 	}
 
 	if z.NetworkName != "" {
@@ -119,19 +116,14 @@ func (z *Zookeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		if err != nil {
 			return err
 		}
-		if z.NetworkID == "" {
-			z.NetworkID = nw.ID
-		}
 
-		networkingConfig := &docker.NetworkingConfig{
+		containerOptions.NetworkingConfig = &docker.NetworkingConfig{
 			EndpointsConfig: map[string]*docker.EndpointConfig{
 				z.NetworkName: &docker.EndpointConfig{
-					NetworkID: z.NetworkID,
+					NetworkID: nw.ID,
 				},
 			},
 		}
-
-		containerOptions.NetworkingConfig = networkingConfig
 	}
 
 	container, err := z.Client.CreateContainer(containerOptions)
@@ -187,7 +179,7 @@ func (z *Zookeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 }
 
-func (z *Zookeeper) wait() <-chan error {
+func (z *ZooKeeper) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
 		exitCode, err := z.Client.WaitContainer(z.containerID)
@@ -200,7 +192,7 @@ func (z *Zookeeper) wait() <-chan error {
 	return exitCh
 }
 
-func (z *Zookeeper) streamLogs(ctx context.Context) error {
+func (z *ZooKeeper) streamLogs(ctx context.Context) error {
 	if z.ErrorStream == nil && z.OutputStream == nil {
 		return nil
 	}
@@ -217,15 +209,15 @@ func (z *Zookeeper) streamLogs(ctx context.Context) error {
 	return z.Client.Logs(logOptions)
 }
 
-func (z *Zookeeper) ContainerID() string {
+func (z *ZooKeeper) ContainerID() string {
 	return z.containerID
 }
 
-func (z *Zookeeper) ContainerAddress() string {
+func (z *ZooKeeper) ContainerAddress() string {
 	return z.containerAddress
 }
 
-func (z *Zookeeper) Start() error {
+func (z *ZooKeeper) Start() error {
 	p := ifrit.Invoke(z)
 
 	select {
@@ -236,7 +228,7 @@ func (z *Zookeeper) Start() error {
 	}
 }
 
-func (z *Zookeeper) Stop() error {
+func (z *ZooKeeper) Stop() error {
 	z.mutex.Lock()
 	if z.stopped {
 		z.mutex.Unlock()

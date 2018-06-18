@@ -83,7 +83,7 @@ type Orderer struct {
 
 // ID provides a unique identifier for an orderer instance.
 func (o Orderer) ID() string {
-	return fmt.Sprintf("%s.%s", o.Name, o.Organization)
+	return fmt.Sprintf("%s.%s", o.Organization, o.Name)
 }
 
 // Peer defines a peer instance, it's owning organization, and the list of
@@ -103,7 +103,7 @@ type PeerChannel struct {
 
 // ID provides a unique identifier for a peer instance.
 func (p *Peer) ID() string {
-	return fmt.Sprintf("%s.%s", p.Name, p.Organization)
+	return fmt.Sprintf("%s.%s", p.Organization, p.Name)
 }
 
 // Anchor returns true if this peer is an anchor for any channel it has joined.
@@ -570,14 +570,13 @@ func (n *Network) ConfigTxGen(command Command) (*gexec.Session, error) {
 	return n.StartSession(cmd, command.SessionName())
 }
 
-// ZooKeeperRunner returns a runner for a zookeeper instance.
-func (n *Network) ZooKeeperRunner(id int) *runner.Zookeeper {
-	id++ // TODO: revisit
+// ZooKeeperRunner returns a runner for a ZooKeeper instance.
+func (n *Network) ZooKeeperRunner(idx int) *runner.ZooKeeper {
 	colorCode := n.nextColor()
-	name := fmt.Sprintf("zookeeper-%d", id)
+	name := fmt.Sprintf("zookeeper-%d-%s", idx, n.NetworkID)
 
-	return &runner.Zookeeper{
-		ZooMyID:     id,
+	return &runner.ZooKeeper{
+		ZooMyID:     idx + 1, //  IDs must be between 1 and 255
 		Client:      n.DockerClient,
 		Name:        name,
 		NetworkName: n.NetworkID,
@@ -609,7 +608,7 @@ func (n *Network) defaultBrokerReplication() int {
 // BrokerRunner returns a runner for an kafka broker instance.
 func (n *Network) BrokerRunner(id int, zookeepers []string) *runner.Kafka {
 	colorCode := n.nextColor()
-	name := fmt.Sprintf("kafka-%d", id+1) // TODO: revisit
+	name := fmt.Sprintf("kafka-%d-%s", id, n.NetworkID)
 
 	return &runner.Kafka{
 		BrokerID:                 id + 1,
@@ -620,7 +619,7 @@ func (n *Network) BrokerRunner(id int, zookeepers []string) *runner.Kafka {
 		NetworkName:              n.NetworkID,
 		MinInsyncReplicas:        n.minBrokersInSync(),
 		DefaultReplicationFactor: n.defaultBrokerReplication(),
-		ZookeeperConnect:         strings.Join(zookeepers, ","),
+		ZooKeeperConnect:         strings.Join(zookeepers, ","),
 		OutputStream: gexec.NewPrefixedWriter(
 			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
 			ginkgo.GinkgoWriter,

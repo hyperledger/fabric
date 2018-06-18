@@ -39,7 +39,7 @@ type OrdererConfig struct {
 	Domain                        string
 	OrdererNames                  []string
 	BrokerCount                   int // 0 is solo
-	ZookeeperCount                int
+	ZooKeeperCount                int
 	KafkaMinInsyncReplicas        int
 	KafkaDefaultReplicationFactor int
 }
@@ -134,7 +134,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 		Domain:           "example.com",
 		OrdererNames:     []string{"orderer"},
 		BrokerCount:      brokerCount,
-		ZookeeperCount:   zookeeperCount,
+		ZooKeeperCount:   zookeeperCount,
 	}}
 
 	oOrg := []*localconfig.Organization{{
@@ -323,7 +323,7 @@ func (w *World) BuildNetwork() {
 func (w *World) ordererNetwork() {
 	var (
 		zookeepers []string
-		z          *runner.Zookeeper
+		z          *runner.ZooKeeper
 		kafkas     []*runner.Kafka
 		o          *runner.Orderer
 	)
@@ -334,9 +334,9 @@ func (w *World) ordererNetwork() {
 	o.LogLevel = "debug"
 	for _, orderer := range w.OrdererOrgs {
 		if orderer.BrokerCount != 0 {
-			for id := 1; id <= orderer.ZookeeperCount; id++ {
+			for id := 1; id <= orderer.ZooKeeperCount; id++ {
 				// Start zookeeper
-				z = w.Components.Zookeeper(id, w.Network)
+				z = w.Components.ZooKeeper(id, w.Network)
 				outBuffer := gbytes.NewBuffer()
 				z.OutputStream = io.MultiWriter(outBuffer, GinkgoWriter)
 				err := z.Start()
@@ -356,7 +356,7 @@ func (w *World) ordererNetwork() {
 				k.MinInsyncReplicas = orderer.KafkaMinInsyncReplicas
 				k.DefaultReplicationFactor = orderer.KafkaDefaultReplicationFactor
 				k.AdvertisedListeners = localKafkaAddress
-				k.ZookeeperConnect = strings.Join(zookeepers, ",")
+				k.ZooKeeperConnect = strings.Join(zookeepers, ",")
 				k.LogLevel = "debug"
 				err = k.Start()
 				ExpectWithOffset(2, err).NotTo(HaveOccurred())

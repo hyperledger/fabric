@@ -23,7 +23,7 @@ var RequiredImages = []string{
 	"hyperledger/fabric-ccenv:latest",
 	runner.CouchDBDefaultImage,
 	runner.KafkaDefaultImage,
-	runner.ZookeeperDefaultImage,
+	runner.ZooKeeperDefaultImage,
 }
 
 func (c *Components) Build(args ...string) {
