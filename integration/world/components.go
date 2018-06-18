@@ -57,6 +57,10 @@ func (c *Components) Build(args ...string) {
 	peer, err := gexec.Build("github.com/hyperledger/fabric/peer", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["peer"] = peer
+
+	discoveryService, err := gexec.Build("github.com/hyperledger/fabric/cmd/discover", args...)
+	Expect(err).NotTo(HaveOccurred())
+	c.Paths["discover"] = discoveryService
 }
 
 func (c *Components) Cleanup() {
@@ -93,6 +97,12 @@ func (c *Components) Orderer() *runner.Orderer {
 func (c *Components) Peer() *runner.Peer {
 	return &runner.Peer{
 		Path: c.Paths["peer"],
+	}
+}
+
+func (c *Components) DiscoveryService() *runner.DiscoveryService {
+	return &runner.DiscoveryService{
+		Path: c.Paths["discover"],
 	}
 }
 
