@@ -31,6 +31,7 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    build_network
    channel_update_tutorial
    upgrading_your_network_tutorial
+   private_data_tutorial
    chaincode
    chaincode4ade
    chaincode4noah
