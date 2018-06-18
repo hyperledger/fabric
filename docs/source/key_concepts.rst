@@ -11,5 +11,6 @@ Key Concepts
    identity/identity.md
    membership/membership.md
    peers/peers.md
+   private-data/private-data.md
    ledger/ledger.md
    usecases
