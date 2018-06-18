@@ -51,7 +51,7 @@ func mockCrypto() crypto.LocalSigner {
 }
 
 func NewRAMLedgerAndFactory(maxSize int) (blockledger.Factory, blockledger.ReadWriter) {
-	rlf := ramledger.New(10)
+	rlf := ramledger.New(maxSize)
 	rl, err := rlf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
@@ -346,4 +346,15 @@ func TestResourcesCheck(t *testing.T) {
 			})
 		})
 	})
+}
+
+// The registrar's BroadcastChannelSupport implementation should reject message types which should not be processed directly.
+func TestBroadcastChannelSupportRejection(t *testing.T) {
+	ledgerFactory, _ := NewRAMLedgerAndFactory(10)
+	mockConsenters := map[string]consensus.Consenter{conf.Orderer.OrdererType: &mockConsenter{}}
+	registrar := NewRegistrar(ledgerFactory, mockConsenters, mockCrypto())
+	randomValue := 1
+	configTx := makeConfigTx(genesisconfig.TestChainID, randomValue)
+	_, _, _, err := registrar.BroadcastChannelSupport(configTx)
+	assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
 }
