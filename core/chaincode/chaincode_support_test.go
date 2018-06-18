@@ -335,6 +335,9 @@ func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *Ch
 		done <- err
 	}
 
+	ccDone := make(chan struct{})
+	defer close(ccDone)
+
 	//start the mock peer
 	go func() {
 		respSet := &mockpeer.MockResponseSet{
@@ -346,7 +349,7 @@ func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *Ch
 			},
 		}
 		ccSide.SetResponses(respSet)
-		ccSide.Run()
+		ccSide.Run(ccDone)
 	}()
 
 	ccSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: putils.MarshalOrPanic(&pb.ChaincodeID{Name: ccname + ":0"}), Txid: "0", ChannelId: channelID})

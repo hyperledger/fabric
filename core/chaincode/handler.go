@@ -364,7 +364,7 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 		msg *pb.ChaincodeMessage
 		err error
 	}
-	msgAvail := make(chan *recvMsg)
+	msgAvail := make(chan *recvMsg, 1)
 
 	receiveMessage := func() {
 		in, err := h.chatStream.Recv()
@@ -374,31 +374,30 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 	go receiveMessage()
 	for {
 		select {
-		case rMsg := <-msgAvail:
+		case rmsg := <-msgAvail:
+			switch {
 			// Defer the deregistering of the this handler.
-			if rMsg.err == io.EOF {
-				chaincodeLogger.Debugf("received EOF, ending chaincode support stream: %s", rMsg.err)
-				return rMsg.err
-			} else if rMsg.err != nil {
-				err := errors.Wrap(rMsg.err, "receive failed")
+			case rmsg.err == io.EOF:
+				chaincodeLogger.Debugf("received EOF, ending chaincode support stream: %s", rmsg.err)
+				return rmsg.err
+			case rmsg.err != nil:
+				err := errors.Wrap(rmsg.err, "receive failed")
 				chaincodeLogger.Errorf("handling chaincode support stream: %+v", err)
 				return err
-			} else if rMsg.msg == nil {
+			case rmsg.msg == nil:
 				err := errors.New("received nil message, ending chaincode support stream")
 				chaincodeLogger.Debugf("%+v", err)
 				return err
+			default:
+				err := h.handleMessage(rmsg.msg)
+				if err != nil {
+					err = errors.WithMessage(err, "error handling message, ending stream")
+					chaincodeLogger.Errorf("[%s] %+v", shorttxid(rmsg.msg.Txid), err)
+					return err
+				}
+
+				go receiveMessage()
 			}
-
-			in := rMsg.msg
-
-			err := h.handleMessage(in)
-			if err != nil {
-				err = errors.WithMessage(err, "error handling message, ending stream")
-				chaincodeLogger.Errorf("[%s] %+v", shorttxid(in.Txid), err)
-				return err
-			}
-
-			go receiveMessage()
 
 		case sendErr := <-h.errChan:
 			err := errors.Wrapf(sendErr, "received error while sending message, ending chaincode support stream")

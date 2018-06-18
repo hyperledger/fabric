@@ -728,7 +728,8 @@ func (handler *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error)
 // handleMessage message handles loop for shim side of chaincode/peer stream.
 func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
-		// Received a keep alive message, we don't do anything with it for now
+		chaincodeLogger.Debug("Sending KEEPALIVE response")
+		handler.serialSendAsync(msg, nil) // ignore errors, maybe next KEEPALIVE will work
 		return nil
 	}
 	chaincodeLogger.Debugf("[%s] Handling ChaincodeMessage of type: %s(state:%s)", shorttxid(msg.Txid), msg.Type, handler.state)

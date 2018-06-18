@@ -262,83 +262,71 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 }
 
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
-
 	// Create the shim handler responsible for all control logic
 	handler := newChaincodeHandler(stream, cc)
-
 	defer stream.CloseSend()
+
 	// Send the ChaincodeID during register.
 	chaincodeID := &pb.ChaincodeID{Name: chaincodename}
 	payload, err := proto.Marshal(chaincodeID)
 	if err != nil {
 		return errors.Wrap(err, "error marshalling chaincodeID during chaincode registration")
 	}
+
 	// Register on the stream
 	chaincodeLogger.Debugf("Registering.. sending %s", pb.ChaincodeMessage_REGISTER)
 	if err = handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload}); err != nil {
 		return errors.WithMessage(err, "error sending chaincode REGISTER")
 	}
-	waitc := make(chan struct{})
+
+	// holds return values from gRPC Recv below
+	type recvMsg struct {
+		msg *pb.ChaincodeMessage
+		err error
+	}
+	msgAvail := make(chan *recvMsg, 1)
 	errc := make(chan error)
-	go func() {
-		defer close(waitc)
-		msgAvail := make(chan *pb.ChaincodeMessage)
-		var in *pb.ChaincodeMessage
-		recv := true
-		for {
-			in = nil
-			err = nil
-			if recv {
-				recv = false
-				go func() {
-					var in2 *pb.ChaincodeMessage
-					in2, err = stream.Recv()
-					errc <- err
-					msgAvail <- in2
-				}()
-			}
-			select {
-			case sendErr := <-errc:
-				//serialSendAsync successful?
-				if sendErr == nil {
-					continue
+
+	receiveMessage := func() {
+		in, err := stream.Recv()
+		msgAvail <- &recvMsg{in, err}
+	}
+
+	go receiveMessage()
+	for {
+		select {
+		case rmsg := <-msgAvail:
+			switch {
+			case rmsg.err == io.EOF:
+				err = errors.Wrapf(rmsg.err, "received EOF, ending chaincode stream")
+				chaincodeLogger.Debugf("%+v", err)
+				return err
+			case rmsg.err != nil:
+				err := errors.Wrap(rmsg.err, "receive failed")
+				chaincodeLogger.Errorf("Received error from server, ending chaincode stream: %+v", err)
+				return err
+			case rmsg.msg == nil:
+				err := errors.New("received nil message, ending chaincode stream")
+				chaincodeLogger.Debugf("%+v", err)
+				return err
+			default:
+				chaincodeLogger.Debugf("[%s]Received message %s from peer", shorttxid(rmsg.msg.Txid), rmsg.msg.Type)
+				err := handler.handleMessage(rmsg.msg, errc)
+				if err != nil {
+					err = errors.WithMessage(err, "error handling message")
+					return err
 				}
-				//no, bail
-				err = errors.Wrap(sendErr, "error sending")
-				return
-			case in = <-msgAvail:
-				if err == io.EOF {
-					err = errors.Wrapf(err, "received EOF, ending chaincode stream")
-					chaincodeLogger.Debugf("%+v", err)
-					return
-				} else if err != nil {
-					chaincodeLogger.Errorf("Received error from server, ending chaincode stream: %+v", err)
-					return
-				} else if in == nil {
-					err = errors.New("received nil message, ending chaincode stream")
-					chaincodeLogger.Debugf("%+v", err)
-					return
-				}
-				chaincodeLogger.Debugf("[%s]Received message %s from peer", shorttxid(in.Txid), in.Type)
-				recv = true
+
+				go receiveMessage()
 			}
 
-			err = handler.handleMessage(in, errc)
-			if err != nil {
-				err = errors.WithMessage(err, "error handling message")
-				return
-			}
-
-			//keepalive messages are PONGs to the fabric's PINGs
-			if in.Type == pb.ChaincodeMessage_KEEPALIVE {
-				chaincodeLogger.Debug("Sending KEEPALIVE response")
-				//ignore any errors, maybe next KEEPALIVE will work
-				handler.serialSendAsync(in, nil)
+		case sendErr := <-errc:
+			if sendErr != nil {
+				err := errors.Wrap(sendErr, "error sending")
+				return err
 			}
 		}
-	}()
-	<-waitc
-	return err
+	}
 }
 
 // -- init stub ---
