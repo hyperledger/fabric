@@ -1710,7 +1710,7 @@ func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 //IsJSON tests a string to determine if a valid JSON
 func IsJSON(s string) bool {
 	var js map[string]interface{}
-	return json.Unmarshal([]byte(s), &js) == nil
+	return json.Unmarshal([]byte(s), &js) == nil && js != nil
 }
 
 // encodePathElement uses Golang for url path encoding, additionally:
