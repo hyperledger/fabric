@@ -1281,10 +1281,42 @@ func TestRichQuery(t *testing.T) {
 	testutil.AssertEquals(t, len(*queryResult), 2)
 
 	//Test query with invalid index  -------------------------------------------------------------------
-	queryString = `{"selector":{"owner":"tom"}, "use_index":["_design/indexOwnerDoc","indexOwner"]}`
+	queryString = `{"selector":{"owner":"tom"}, "use_index":["indexOwnerDoc","indexOwner"]}`
 
 	_, err = db.QueryDocuments(queryString)
 	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid index"))
+
+	//Create an index definition
+	indexDefSize := `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortDoc", "name":"indexSizeSortName","type":"json"}`
+
+	//Create the index
+	_, err = db.CreateIndex(indexDefSize)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error thrown while creating an index"))
+
+	//Delay for 100ms since CouchDB index list is updated async after index create/drop
+	time.Sleep(100 * time.Millisecond)
+
+	//Test query with valid index  -------------------------------------------------------------------
+	queryString = `{"selector":{"size":{"$gt":0}}, "use_index":["indexSizeSortDoc","indexSizeSortName"]}`
+
+	_, err = db.QueryDocuments(queryString)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting to execute a query with a valid index"))
+
+	//Test query with wrong fields for a valid index  -------------------------------------------------------------------
+	queryString = `{"selector":{"owner":{"$eq":"tom"}}, "use_index":"indexSizeSortName"}`
+
+	// no design doc specified, this should return a 400 error, indicating index not found
+	_, err = db.QueryDocuments(queryString)
+	testutil.AssertError(t, err, fmt.Sprintf("400 error should have been thrown for a missing index"))
+	testutil.AssertEquals(t, strings.Contains(err.Error(), "Status Code:400"), true)
+
+	//Test query with wrong fields for a valid index  -------------------------------------------------------------------
+	queryString = `{"selector":{"owner":{"$eq":"tom"}}, "use_index":["indexSizeSortDoc","indexSizeSortName"]}`
+
+	// design doc specified, this should return a 500 error, indicating a bad match
+	_, err = db.QueryDocuments(queryString)
+	testutil.AssertError(t, err, fmt.Sprintf("500 error should have been thrown for a missing index with design doc specified"))
+	testutil.AssertEquals(t, strings.Contains(err.Error(), "Status Code:500"), true)
 
 }
 

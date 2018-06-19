@@ -1738,6 +1738,23 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 
 		//if there is no golang http error and no CouchDB 500 error, then drop out of the retry
 		if errResp == nil && resp != nil && resp.StatusCode < 500 {
+			// if this is an error, then populate the couchDBReturn
+			if resp.StatusCode >= 400 {
+				//Read the response body and close it for next attempt
+				jsonError, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return nil, nil, err
+				}
+				defer closeResponseBody(resp)
+
+				errorBytes := []byte(jsonError)
+				//Unmarshal the response
+				err = json.Unmarshal(errorBytes, &couchDBReturn)
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+
 			break
 		}
 
@@ -1755,7 +1772,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 			} else {
 				//Read the response body and close it for next attempt
 				jsonError, err := ioutil.ReadAll(resp.Body)
-				closeResponseBody(resp)
+				defer closeResponseBody(resp)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1784,7 +1801,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 
 	//if a golang http error is still present after retries are exhausted, return the error
 	if errResp != nil {
-		return nil, nil, errResp
+		return nil, couchDBReturn, errResp
 	}
 
 	//This situation should not occur according to the golang spec.
@@ -1798,27 +1815,12 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	//set the return code for the couchDB request
 	couchDBReturn.StatusCode = resp.StatusCode
 
-	//check to see if the status code from couchdb is 400 or higher
-	//response codes 4XX and 500 will be treated as errors -
-	//golang error will be created from the couchDBReturn contents and both will be returned
+	// check to see if the status code from couchdb is 400 or higher
+	// response codes 4XX and 500 will be treated as errors -
+	// golang error will be created from the couchDBReturn contents and both will be returned
 	if resp.StatusCode >= 400 {
-		// close the response before returning error
-		defer closeResponseBody(resp)
 
-		//Read the response body
-		jsonError, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		errorBytes := []byte(jsonError)
-
-		//marshal the response
-		err = json.Unmarshal(errorBytes, &couchDBReturn)
-		if err != nil {
-			return nil, nil, err
-		}
-
+		// if the status code is 400 or greater, log and return an error
 		logger.Debugf("Couch DB Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
 
