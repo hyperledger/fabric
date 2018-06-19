@@ -39,7 +39,7 @@ var _ = Describe("Config", func() {
 	})
 
 	AfterEach(func() {
-		w.Close()
+		w.Close(deployment)
 		os.RemoveAll(tempDir)
 	})
 

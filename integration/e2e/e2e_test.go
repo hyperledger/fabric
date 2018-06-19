@@ -88,7 +88,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic kaka network with 2 orgs", func() {
+	Describe("basic kafka network with 2 orgs", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicKafka(), testDir, client, 31000, components)
 			network.GenerateConfigTree()
