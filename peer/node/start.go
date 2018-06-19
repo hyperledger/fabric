@@ -134,6 +134,11 @@ func serve(args []string) error {
 		}
 	}
 
+	// Trace RPCs with the golang.org/x/net/trace package. This was moved out of
+	// the deliver service connection factory as it has process wide implications
+	// and was racy with respect to initialization of gRPC clients and servers.
+	grpc.EnableTracing = true
+
 	flogging.SetPeerStartupModulesMap()
 
 	logger.Infof("Starting %s", version.GetInfo())

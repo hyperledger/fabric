@@ -262,7 +262,6 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
-		grpc.EnableTracing = true
 		ctx := context.Background()
 		ctx, _ = context.WithTimeout(ctx, getConnectionTimeout())
 		return grpc.DialContext(ctx, endpoint, dialOpts...)
