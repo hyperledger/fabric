@@ -11,7 +11,7 @@ the endorsing peer process. Chaincode initializes and manages the ledger state
 through transactions submitted by applications.
 
 A chaincode typically handles business logic agreed to by members of the
-network, so it similar to a "smart contract". Ledger state created by
+network, so it is similar to a "smart contract". Ledger state created by
 a chaincode is scoped exclusively to that chaincode and can't be accessed
 directly by another chaincode. Given the appropriate permission, a chaincode may
 invoke another chaincode to access its state within the same network.
