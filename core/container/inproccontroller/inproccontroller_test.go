@@ -8,6 +8,7 @@ package inproccontroller
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -243,13 +244,14 @@ func TestLaunchprocShimStartInProcErr(t *testing.T) {
 		return errors.New("error")
 	}
 
+	done := make(chan struct{})
 	_inprocLoggerErrorfCounter := 0
 	_inprocLoggerErrorf = func(format string, args ...interface{}) {
-		_inprocLoggerErrorfCounter = _inprocLoggerErrorfCounter + 1
-
-		if _inprocLoggerErrorfCounter == 2 {
+		_inprocLoggerErrorfCounter++
+		if _inprocLoggerErrorfCounter == 1 {
 			assert.Equal(t, format, "%s", "Format is correct")
-			assert.Equal(t, args[0], "chaincode-support ended with err: error", "content is correct")
+			assert.Equal(t, fmt.Sprintf("%s", args[0]), "chaincode-support ended with err: error", "content is correct")
+			close(done)
 		}
 	}
 	mockContext := MockContext{}
@@ -265,6 +267,7 @@ func TestLaunchprocShimStartInProcErr(t *testing.T) {
 
 	err := mockInprocContainer.launchInProc(mockContext, "ID", args, env, MockCCSupport{})
 	assert.Nil(t, err, "err should be nil")
+	<-done
 }
 
 type MockCCSupportErr struct {
