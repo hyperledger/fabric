@@ -4,7 +4,7 @@ Operations Guides
 .. toctree::
    :maxdepth: 1
 
-   upgrade_to_one_point_one
+   upgrade_to_newest_version
    config_update
    msp
    configtx
