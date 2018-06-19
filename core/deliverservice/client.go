@@ -133,7 +133,9 @@ func (bc *broadcastClient) sleep(duration time.Duration) {
 }
 
 func (bc *broadcastClient) connect() error {
+	bc.Lock()
 	bc.endpoint = ""
+	bc.Unlock()
 	conn, endpoint, err := bc.prod.NewConnection()
 	logger.Debug("Connected to", endpoint)
 	if err != nil {
