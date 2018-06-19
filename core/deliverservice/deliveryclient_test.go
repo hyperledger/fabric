@@ -166,7 +166,7 @@ func TestDeliverServiceRestart(t *testing.T) {
 	os.Shutdown()
 	time.Sleep(time.Second * 3)
 	os = mocks.NewOrderer(5611, t)
-	li.Height = 103
+	atomic.StoreUint64(&li.Height, uint64(103))
 	os.SetNextExpectedSeek(uint64(103))
 	go os.SendBlock(uint64(103))
 	assertBlockDissemination(103, gossipServiceAdapter.GossipBlockDisseminations, t)
