@@ -208,7 +208,7 @@ completion, it should report the following in your terminal window:
 
     Query Result: 90
     2017-05-16 17:08:15.158 UTC [main] main -> INFO 008 Exiting.....
-    ===================== Query successful on peer1.org2 on channel 'mychannel' ===================== 
+    ===================== Query successful on peer1.org2 on channel 'mychannel' =====================
 
     ===================== All GOOD, BYFN execution completed =====================
 
@@ -516,9 +516,10 @@ For the following CLI commands against ``peer0.org1.example.com`` to work, we ne
 to preface our commands with the four environment variables given below.  These
 variables for ``peer0.org1.example.com`` are baked into the CLI container,
 therefore we can operate without passing them.  **HOWEVER**, if you want to send
-calls to other peers or the orderer, then you will need to provide these
-values accordingly.  Inspect the ``docker-compose-base.yaml`` for the specific
-paths:
+calls to other peers or the orderer, then you can provide these
+values accordingly by editing the  ``docker-compose-base.yaml`` before starting the
+container. Modify the following four environment variables to use a different
+peer and org.
 
 .. code:: bash
 
@@ -553,6 +554,19 @@ If successful you should see the following:
 
         root@0d78bb69300d:/opt/gopath/src/github.com/hyperledger/fabric/peer#
 
+If you do not want to run the CLI commands against the default peer
+``peer0.org1.example.com``, replace the values of ``peer0`` or ``org1`` in the
+four environment variables and run the commands:
+
+.. code:: bash
+
+    # Environment variables for PEER0
+
+    export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    export CORE_PEER_LOCALMSPID="Org1MSP"
+    export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
 Next, we are going to pass in the generated channel configuration transaction
 artifact that we created in the :ref:`createchanneltx` section (we called
 it ``channel.tx``) to the orderer as part of the create channel request.
@@ -561,7 +575,10 @@ We specify our channel name with the ``-c`` flag and our channel configuration
 transaction with the ``-f`` flag. In this case it is ``channel.tx``, however
 you can mount your own configuration transaction with a different name.  Once again
 we will set the ``CHANNEL_NAME`` environment variable within our CLI container so that
-we don't have to explicitly pass this argument:
+we don't have to explicitly pass this argument. Channel names must be all lower
+case, less than 250 characters long and match the regular expression
+``[a-z][a-z0-9.-]*``.
+
 
 .. code:: bash
 
@@ -869,7 +886,7 @@ You should see the following output:
       2017-05-16 17:08:01.367 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: E61DB37F4E8B0D32C9FE10E3936BA9B8CD278FAA1F3320B08712164248285C54
       Query Result: 90
       2017-05-16 17:08:15.158 UTC [main] main -> INFO 008 Exiting.....
-      ===================== Query successful on peer1.org2 on channel 'mychannel' ===================== 
+      ===================== Query successful on peer1.org2 on channel 'mychannel' =====================
 
       ===================== All GOOD, BYFN execution completed =====================
 
