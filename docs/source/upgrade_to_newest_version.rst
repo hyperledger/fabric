@@ -1,17 +1,19 @@
-Upgrading from v1.0.x
-=====================
+Upgrading to the Newest Version of Fabric
+=========================================
 
-At a high level, upgrading a Fabric network to v1.1 can be performed by following these
+At a high level, upgrading a Fabric network to v1.2 can be performed by following these
 steps:
 
- * Upgrade binaries for orderers, peers, and fabric-ca. These upgrades may be done in parallel.
+ * Upgrade the binaries for the ordering service, the Fabric CA, and the peers.
+   These upgrades may be done in parallel.
  * Upgrade client SDKs.
- * Enable v1.1 channel capability requirements.
+ * Enable the v1.2 capability.
  * (Optional) Upgrade the Kafka cluster.
 
 To help understand this process, we've created the :doc:`upgrading_your_network_tutorial`
 tutorial that will take you through most of the major upgrade steps, including
-upgrading peers, orderers, as well as enabling capability requirements.
+upgrading peers, orderers, as well as the capability. We've included both a
+script as well as the individual steps to achieve these upgrades.
 
 Because our tutorial leverages the :doc:`build_network` (BYFN) sample, it has
 certain limitations (it does not use Fabric CA, for example). Therefore we have
