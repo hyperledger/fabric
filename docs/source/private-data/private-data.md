@@ -19,7 +19,7 @@ create a separate channel.
 
 A collection is the combination of two elements:
 
-1. **The actual private data**, sent peer-to-peer [via gossip protocol](./gossip.html)
+1. **The actual private data**, sent peer-to-peer [via gossip protocol](../gossip.html)
    to only the organization(s) authorized to see it. This data is stored in a
    private database on the peer (sometimes called a "side" database, or
    "SideDB"). The ordering service is not involved here and does not see the
@@ -60,11 +60,11 @@ is slightly different in order to protect the confidentiality of the private
 data as transactions are proposed, endorsed, and committed to the ledger.
 
 For details on transaction flows that don't use private data refer to our
-documentation on [transaction flow](./txflow.html).
+documentation on [transaction flow](../txflow.html).
 
 1. The client application submits a proposal request to invoke a chaincode
    function (reading or writing private data) to endorsing peers which are
-   part of authorized organizations of the collection. The The private data, or
+   part of authorized organizations of the collection. The private data, or
    data used to generate private data in chaincode, is sent in a `transient`
    field of the proposal.
 
@@ -76,7 +76,7 @@ documentation on [transaction flow](./txflow.html).
 3. The endorsing peer sends the proposal response back to the client with public
    data, including a hash of the private data key and value. *No private data is
    sent back to the client*. For more information on how endorsement works with
-   private data, check out :doc:`private-data-arch#endorsement`.
+   private data, click [here](../private-data-arch.html#endorsement).
 
 4. The client application submits the transaction to the ordering service (with
    hashes of the private data) which gets distributed into blocks as normal.
@@ -137,7 +137,7 @@ sometimes referred to as "SideDB".
 ## How a private data collection is defined
 
 For more details on collection definitions, and other low level information about
-private data and collections, refer to the [private data reference topic](./private-data-arch.html).
+private data and collections, refer to the [private data reference topic](../private-data-arch.html).
 
 ## Purging data
 
