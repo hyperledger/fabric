@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/spf13/viper"
@@ -504,9 +503,7 @@ func TestDeliverServiceShutdownRespawn(t *testing.T) {
 	// Then, wait a few seconds, and don't send any blocks.
 	// Afterwards - start a new instance and shut down the old instance.
 	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second)
-	defer func() {
-		viper.Reset()
-	}()
+	defer viper.Reset()
 	defer ensureNoGoroutineLeak(t)()
 
 	osn1 := mocks.NewOrderer(5614, t)
@@ -558,11 +555,8 @@ func TestDeliverServiceDisconnectReconnect(t *testing.T) {
 	// (0.5s + 1s + 2s + 4s) > 2s.
 	// Send new block and check that delivery client got it.
 	// So, we can see that waiting on recv in empty channel do reset total time spend in reconnection.
-	orgReconnectTotalTimeThreshold := util.GetDurationOrDefault("peer.deliveryclient.reconnectTotalTimeThreshold", defaultReConnectTotalTimeThreshold)
 	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second*2)
-	defer func() {
-		viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", orgReconnectTotalTimeThreshold)
-	}()
+	defer viper.Reset()
 	defer ensureNoGoroutineLeak(t)()
 
 	osn := mocks.NewOrderer(5614, t)
