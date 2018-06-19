@@ -124,7 +124,8 @@ func TestNewDeliverService(t *testing.T) {
 	// Make sure to stop all blocks providers
 	service.Stop()
 	time.Sleep(time.Duration(500) * time.Millisecond)
-	assert.Equal(t, 0, connNumber)
+	connWG.Wait()
+
 	assertBlockDissemination(0, gossipServiceAdapter.GossipBlockDisseminations, t)
 	assert.Equal(t, atomic.LoadInt32(&blocksDeliverer.RecvCnt), atomic.LoadInt32(&gossipServiceAdapter.AddPayloadsCnt))
 	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}), "Delivery service is stopping")
