@@ -204,7 +204,7 @@ func TestUtilityFunctions(t *testing.T) {
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
 	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
 
-	reservedFields := []string{"~version", "~metadata", "_id", "_test"}
+	reservedFields := []string{"~version", "_id", "_test"}
 	// ValidateKey should return an error for a json value that already contains one of the reserved fields
 	// at the top level
 	for _, reservedField := range reservedFields {
@@ -222,6 +222,11 @@ func TestUtilityFunctions(t *testing.T) {
 		testutil.AssertNoError(t, err, fmt.Sprintf(
 			"ValidateKey should not have thrown an error the json value %s since the reserved field was not at the top level", testVal))
 	}
+
+	// ValidateKeyValue should return an error for a key that begins with an underscore
+	err = db.ValidateKeyValue("_testKey", []byte("testValue"))
+	testutil.AssertError(t, err, "ValidateKey should have thrown an error for a key that begins with an underscore")
+
 }
 
 // TestInvalidJSONFields tests for invalid JSON fields
