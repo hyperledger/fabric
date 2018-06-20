@@ -25,7 +25,7 @@ Throughout this tutorial we will use the `Marbles sample <https://github.com/hyp
 as our use case to demonstrate how to use CouchDB with Fabric and will deploy
 Marbles to the :doc:`build_network` (BYFN) tutorial network. You should have
 completed the task :doc:`install`. However, running the BYFN tutorial is not
-a prerequiste for this tutorial, instead the necessary commands are provided
+a prerequisite for this tutorial, instead the necessary commands are provided
 throughout this tutorial to use the network.
 
 Why CouchDB?
@@ -184,7 +184,7 @@ and includes the ``ddoc`` attribute:
 In the example above, if the design document ``indexOwnerDoc`` does not already
 exist, it is automatically created when the index is deployed. An index can be
 constructed with one or more attributes specified in the list of fields and
-any combination of attributes can be specified. An atrribute can exist in
+any combination of attributes can be specified. An attribute can exist in
 multiple indexes for the same docType. In the following example, ``index1``
 only includes the attribute ``owner``, ``index2`` includes the attributes
 ``owner and color`` and ``index3`` includes the attributes ``owner, color and
@@ -502,7 +502,7 @@ Update an Index
 
 It may be necessary to update an index over time. The same index may exist in
 subsequent versions of the chaincode that gets installed. In order for an index
-to be updated, the original index defintion must have included the design
+to be updated, the original index definition must have included the design
 document ``ddoc`` attribute and an index name. To update an index definition,
 use the same index name but alter the index definition. Simply edit the index
 JSON file and add or remove fields from the index. Fabric only supports the
