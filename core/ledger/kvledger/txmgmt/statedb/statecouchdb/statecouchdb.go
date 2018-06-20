@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -200,8 +199,9 @@ func (vdb *VersionedDB) GetCachedVersion(namespace string, key string) (*version
 
 // ValidateKeyValue implements method in VersionedDB interface
 func (vdb *VersionedDB) ValidateKeyValue(key string, value []byte) error {
-	if !utf8.ValidString(key) {
-		return fmt.Errorf("Key should be a valid utf8 string: [%x]", key)
+	err := validateKey(key)
+	if err != nil {
+		return err
 	}
 	return validateValue(value)
 }

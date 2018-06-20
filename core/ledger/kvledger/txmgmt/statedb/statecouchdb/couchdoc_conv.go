@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -23,7 +24,6 @@ const (
 	revField      = "_rev"
 	versionField  = "~version"
 	deletedField  = "_deleted"
-	metadataField = "~metadata"
 )
 
 type keyValue struct {
@@ -47,7 +47,7 @@ func castToJSON(b []byte) (jsonValue, error) {
 
 func (v jsonValue) checkReservedFieldsNotPresent() error {
 	for fieldName := range v {
-		if fieldName == versionField || fieldName == metadataField || strings.HasPrefix(fieldName, "_") {
+		if fieldName == versionField || strings.HasPrefix(fieldName, "_") {
 			return fmt.Errorf("The field [%s] is not valid for the CouchDB state database", fieldName)
 		}
 	}
@@ -200,6 +200,16 @@ func validateValue(value []byte) error {
 		return nil
 	}
 	return jsonVal.checkReservedFieldsNotPresent()
+}
+
+func validateKey(key string) error {
+	if !utf8.ValidString(key) {
+		return fmt.Errorf("Key should be a valid utf8 string: [%x]", key)
+	}
+	if strings.HasPrefix(key, "_") {
+		return fmt.Errorf("The key [%s] is not valid for the CouchDB state database.  The key must not begin with \"_\"", key)
+	}
+	return nil
 }
 
 // removeJSONRevision removes the "_rev" if this is a JSON
