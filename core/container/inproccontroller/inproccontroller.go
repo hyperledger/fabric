@@ -112,6 +112,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 	var err error
 	ccchan := make(chan struct{}, 1)
 	ccsupportchan := make(chan struct{}, 1)
+	shimStartInProc := _shimStartInProc // shadow to avoid race in test
 	go func() {
 		defer close(ccchan)
 		inprocLogger.Debugf("chaincode started for %s", id)
@@ -121,12 +122,12 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		if env == nil {
 			env = ipc.env
 		}
-		err := shim.StartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
+		err := shimStartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
 		if err != nil {
 			err = fmt.Errorf("chaincode-support ended with err: %s", err)
 			_inprocLoggerErrorf("%s", err)
 		}
-		inprocLogger.Debugf("chaincode ended with for  %s with err: %s", id, err)
+		inprocLogger.Debugf("chaincode ended for %s with err: %s", id, err)
 	}()
 
 	go func() {
@@ -138,7 +139,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 			err = fmt.Errorf("chaincode ended with err: %s", err)
 			_inprocLoggerErrorf("%s", err)
 		}
-		inprocLogger.Debugf("chaincode-support ended with for  %s with err: %s", id, err)
+		inprocLogger.Debugf("chaincode-support ended for %s with err: %s", id, err)
 	}()
 
 	select {
