@@ -30,6 +30,7 @@ It has these top-level messages:
 	ChaincodeDeploymentSpec
 	ChaincodeInvocationSpec
 	LifecycleEvent
+	ChaincodeInstallPackage
 	ChaincodeEvent
 	ChaincodeMessage
 	GetState
