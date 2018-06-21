@@ -502,6 +502,7 @@ func (w *World) Close(deployments ...Deployment) {
 func (w *World) cleanupDeployment(d Deployment) {
 	// cleanup containers
 	containers, err := w.DockerClient.ListContainers(docker.ListContainersOptions{
+		All: true,
 		Filters: map[string][]string{
 			"name": []string{fmt.Sprintf("%s-%s", d.Chaincode.Name, d.Chaincode.Version)},
 		},
@@ -513,6 +514,7 @@ func (w *World) cleanupDeployment(d Deployment) {
 
 	// cleanup images
 	images, err := w.DockerClient.ListImages(docker.ListImagesOptions{
+		All: true,
 		Filters: map[string][]string{
 			"label": []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", d.Chaincode.Name)},
 		},
