@@ -465,6 +465,33 @@ var _ = Describe("Deliver", func() {
 			})
 		})
 
+		Context("when the client disconnects before reading from the chain", func() {
+			var (
+				ctx    context.Context
+				cancel func()
+				done   chan struct{}
+			)
+
+			BeforeEach(func() {
+				done = make(chan struct{})
+				ctx, cancel = context.WithCancel(context.Background())
+				cancel()
+				fakeBlockIterator.NextStub = func() (*cb.Block, cb.Status) {
+					<-done
+					return nil, cb.Status_BAD_REQUEST
+				}
+			})
+
+			AfterEach(func() {
+				close(done)
+			})
+
+			It("aborts the deliver stream", func() {
+				err := handler.Handle(ctx, server)
+				Expect(err).To(MatchError("context finished before block retrieved: context canceled"))
+			})
+		})
+
 		Context("when the chain errors before reading from the chain", func() {
 			BeforeEach(func() {
 				close(errCh)
