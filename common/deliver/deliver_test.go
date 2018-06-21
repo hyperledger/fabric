@@ -69,9 +69,14 @@ func init() {
 
 type mockStream struct {
 	grpc.ServerStream
+	StreamContext context.Context
+	CancelContext func()
 }
 
-func (mockStream) Context() context.Context {
+func (m mockStream) Context() context.Context {
+	if m.StreamContext != nil {
+		return m.StreamContext
+	}
 	p := &peer.Peer{}
 	p.AuthInfo = credentials.TLSInfo{
 		State: tls.ConnectionState{
@@ -102,7 +107,22 @@ func (m *mockD) CreateBlockReply(block *cb.Block) proto.Message {
 }
 
 func newMockD() *mockD {
+	p := &peer.Peer{}
+	p.AuthInfo = credentials.TLSInfo{
+		State: tls.ConnectionState{
+			PeerCertificates: []*x509.Certificate{
+				testCert,
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	peer.NewContext(ctx, p)
+
 	return &mockD{
+		mockStream: mockStream{
+			StreamContext: ctx,
+			CancelContext: cancel,
+		},
 		recvChan: make(chan *cb.Envelope),
 		sendChan: make(chan *ab.DeliverResponse),
 	}
@@ -574,6 +594,45 @@ func TestErroredSeek(t *testing.T) {
 	}
 }
 
+func TestCanceledContext(t *testing.T) {
+	mm := newMockMultichainManager()
+	ms := mm.chains[systemChainID]
+	l := ms.ledger
+	for i := 1; i < ledgerSize; i++ {
+		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
+	ds := initializeDeliverHandler(mm, !mutualTLS, false)
+
+	errCh := make(chan error, 1)
+
+	go func() {
+		err := ds.Handle(NewDeliverServer(mockSrv, mm.PolicyChecker, sendDeliverResponseProducer(mockSrv)))
+		errCh <- err
+	}()
+
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+
+	select {
+	case deliverReply := <-mockSrv.sendChan:
+		assert.NotNil(t, deliverReply.GetBlock(), "Expected first block")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get first block")
+	}
+
+	mockSrv.CancelContext()
+
+	select {
+	case err := <-errCh:
+		assert.Error(t, err)
+		assert.Regexp(t, "context canceled", err.Error())
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for error response")
+	}
+}
+
 func TestErroredBlockingSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	ms := mm.chains[systemChainID]
@@ -858,6 +917,7 @@ func TestTimestampOutOfTimeWindow(t *testing.T) {
 
 func TestSeekWithMutualTLS(t *testing.T) {
 	mockSrv := newMockD()
+	mockSrv.StreamContext = nil
 	defer close(mockSrv.recvChan)
 	mm := newMockMultichainManager()
 	ds := initializeDeliverHandler(mm, mutualTLS, true)

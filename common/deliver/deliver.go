@@ -239,9 +239,27 @@ func (ds *deliverHandler) deliverBlocks(srv *DeliverServer, envelope *cb.Envelop
 			}
 		}
 
-		block, status := nextBlock(cursor, erroredChan)
+		var block *cb.Block
+		var status cb.Status
+
+		iterCh := make(chan struct{})
+		go func() {
+			block, status = cursor.Next()
+			close(iterCh)
+		}()
+
+		select {
+		case <-srv.Context().Done():
+			logger.Debugf("Context canceled, aborting wait for next block")
+			return errors.Wrapf(srv.Context().Err(), "context finished before block retrieved")
+		case <-erroredChan:
+			logger.Warningf("Aborting deliver for request because of background error")
+			return sendStatusReply(srv, cb.Status_SERVICE_UNAVAILABLE)
+		case <-iterCh:
+			// Iterator has set the block and status vars
+		}
+
 		if status != cb.Status_SUCCESS {
-			cursor.Close()
 			logger.Errorf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
 			return sendStatusReply(srv, status)
 		}
@@ -297,22 +315,6 @@ func (ds *deliverHandler) validateChannelHeader(srv *DeliverServer, chdr *cb.Cha
 	}
 
 	return nil
-}
-
-func nextBlock(cursor blockledger.Iterator, cancel <-chan struct{}) (block *cb.Block, status cb.Status) {
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		block, status = cursor.Next()
-	}()
-
-	select {
-	case <-done:
-		return
-	case <-cancel:
-		logger.Warningf("Aborting deliver for request because of background error")
-		return nil, cb.Status_SERVICE_UNAVAILABLE
-	}
 }
 
 func sendStatusReply(srv *DeliverServer, status cb.Status) error {
