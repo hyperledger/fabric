@@ -186,8 +186,8 @@ download the missing package at the following address:
 http://www.microsoft.com/en-us/download/details.aspx?id=8328
 
 **NOTE:** The inclusion of the miekg/pkcs11 package introduces
-an external dependency on the libtdl.h header file during
-a build of fabric. Please ensure your libtool and libtdhl-dev packages
+an external dependency on the ltdl.h header file during
+a build of fabric. Please ensure your libtool and libltdl-dev packages
 are installed. Otherwise, you may get a ltdl.h header missing error.
 You can download the missing package by command:
 ``sudo apt-get install -y build-essential git make curl unzip g++ libtool``.
