@@ -600,7 +600,7 @@ information, such as the pricing data in our example, that the transacting
 parties don't want disclosed to other organizations on the channel. Thus, it
 has a limited lifespan, and can be purged after existing unchanged on the
 blockchain for a designated number of blocks using the ``blockToLive`` property
-in the collection defintion.
+in the collection definition.
 
 Our ``collectionMarblePrivateDetails`` definition has a ``blockToLive``
 property value of three meaning this data will live on the side database for
