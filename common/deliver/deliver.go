@@ -247,9 +247,27 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			}
 		}
 
-		block, status := nextBlock(cursor, erroredChan)
+		var block *cb.Block
+		var status cb.Status
+
+		iterCh := make(chan struct{})
+		go func() {
+			block, status = cursor.Next()
+			close(iterCh)
+		}()
+
+		select {
+		case <-ctx.Done():
+			logger.Debugf("Context canceled, aborting wait for next block")
+			return errors.Wrapf(ctx.Err(), "context finished before block retrieved")
+		case <-erroredChan:
+			logger.Warningf("Aborting deliver for request because of background error")
+			return srv.SendStatusResponse(cb.Status_SERVICE_UNAVAILABLE)
+		case <-iterCh:
+			// Iterator has set the block and status vars
+		}
+
 		if status != cb.Status_SUCCESS {
-			cursor.Close()
 			logger.Errorf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
 			return srv.SendStatusResponse(status)
 		}
@@ -304,25 +322,4 @@ func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHea
 	}
 
 	return nil
-}
-
-func nextBlock(cursor blockledger.Iterator, cancel <-chan struct{}) (*cb.Block, cb.Status) {
-	type result struct {
-		block  *cb.Block
-		status cb.Status
-	}
-
-	resultCh := make(chan *result, 1)
-	go func() {
-		block, status := cursor.Next()
-		resultCh <- &result{block, status}
-	}()
-
-	select {
-	case r := <-resultCh:
-		return r.block, r.status
-	case <-cancel:
-		logger.Warningf("Aborting deliver for request because of background error")
-		return nil, cb.Status_SERVICE_UNAVAILABLE
-	}
 }
