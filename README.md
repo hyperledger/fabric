@@ -52,9 +52,8 @@ Please visit the [Hyperledger Fabric wiki](https://wiki.hyperledger.org/projects
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
-- [v1.1.0-alpha](http://hyperledger-fabric.readthedocs.io/en/v1.1.0-alpha/)
-- [v1.0.5](http://hyperledger-fabric.readthedocs.io/en/v1.0.5/)
-- [release branch (typically the latest patch for the current release)](http://hyperledger-fabric.readthedocs.io/en/release/)
+- [v1.1](http://hyperledger-fabric.readthedocs.io/en/release-1.1/)
+- [v1.0](http://hyperledger-fabric.readthedocs.io/en/release-1.0/)
 - [master branch (development)](http://hyperledger-fabric.readthedocs.io/en/master/)
 
 It's recommended for first-time users to begin by going through the Getting Started section of the documentation in order to gain familiarity with the Hyperledger Fabric components and the basic transaction flow.
