@@ -28,9 +28,9 @@ func newVersionCache() *versionsCache {
 }
 
 func (c *versionsCache) getVersion(ns, key string) (*version.Height, bool) {
-	nsVers, ok := c.vers[ns]
+	ver, ok := c.vers[ns][key]
 	if ok {
-		return nsVers[key], true
+		return ver, true
 	}
 	return nil, false
 }
