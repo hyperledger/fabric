@@ -12,302 +12,228 @@ import (
 	"time"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 )
 
-//---- event hub framework ----
-
-//handlerListi uses map to implement a set of handlers. use mutex to access
-//the map. Note that we don't have lock/unlock wrapper methods as the lock
-//of handler list has to be done under the eventProcessor lock. See
-//registerHandler, deRegisterHandler. register/deRegister methods
-//will be called only when a new consumer chat starts/ends respectively
-//and the big lock should have no performance impact
-//
-type handlerList interface {
-	add(ie *pb.Interest, h *handler) (bool, error)
-	del(ie *pb.Interest, h *handler) (bool, error)
-	foreach(ie *pb.Event, action func(h *handler))
+type handlerList struct {
+	sync.Mutex
+	handlers Set
 }
 
-type genericHandlerList struct {
-	sync.RWMutex
-	handlers map[*handler]bool
-}
+// Set is a set of handlers
+type Set map[*handler]struct{}
 
-type chaincodeHandlerList struct {
-	sync.RWMutex
-	handlers map[string]map[string]map[*handler]bool
-}
-
-func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
+func (hl *handlerList) add(h *handler) (bool, error) {
 	if h == nil {
-		return false, fmt.Errorf("cannot add nil chaincode handler")
+		return false, fmt.Errorf("cannot add nil handler")
 	}
-
 	hl.Lock()
 	defer hl.Unlock()
-
-	//chaincode registration info must be non-nil
-	if ie.GetChaincodeRegInfo() == nil {
-		return false, fmt.Errorf("chaincode information not provided for registering")
+	handlers := hl.copyHandlers()
+	if _, ok := handlers[h]; ok {
+		logger.Warningf("handler already exists for event type")
+		return true, nil
 	}
-	//chaincode registration info must be for a non-empty chaincode ID (even if the chaincode does not exist)
-	if ie.GetChaincodeRegInfo().ChaincodeId == "" {
-		return false, fmt.Errorf("chaincode ID not provided for registering")
-	}
-	//is there a event type map for the chaincode
-	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeId]
-	if !ok {
-		emap = make(map[string]map[*handler]bool)
-		hl.handlers[ie.GetChaincodeRegInfo().ChaincodeId] = emap
-	}
-
-	//create handler map if this is the first handler for the type
-	var handlerMap map[*handler]bool
-	if handlerMap, _ = emap[ie.GetChaincodeRegInfo().EventName]; handlerMap == nil {
-		handlerMap = make(map[*handler]bool)
-		emap[ie.GetChaincodeRegInfo().EventName] = handlerMap
-	} else if _, ok = handlerMap[h]; ok {
-		return false, fmt.Errorf("handler exists for event type")
-	}
-
-	//the handler is added to the map
-	handlerMap[h] = true
-
+	handlers[h] = struct{}{}
+	hl.handlers = handlers
 	return true, nil
 }
-func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
+
+func (hl *handlerList) remove(h *handler) (bool, error) {
 	hl.Lock()
 	defer hl.Unlock()
-
-	//chaincode registration info must be non-nil
-	if ie.GetChaincodeRegInfo() == nil {
-		return false, fmt.Errorf("chaincode information not provided for de-registering")
+	handlers := hl.copyHandlers()
+	if _, ok := handlers[h]; !ok {
+		logger.Warningf("handler does not exist for event type")
+		return true, nil
 	}
-
-	//chaincode registration info must be for a non-empty chaincode ID (even if the chaincode does not exist)
-	if ie.GetChaincodeRegInfo().ChaincodeId == "" {
-		return false, fmt.Errorf("chaincode ID not provided for de-registering")
-	}
-
-	//if there's no event type map, nothing to do
-	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeId]
-	if !ok {
-		return false, fmt.Errorf("chaincode ID not registered")
-	}
-
-	//if there are no handlers for the event type, nothing to do
-	var handlerMap map[*handler]bool
-	if handlerMap, _ = emap[ie.GetChaincodeRegInfo().EventName]; handlerMap == nil {
-		return false, fmt.Errorf("event name %s not registered for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeId)
-	} else if _, ok = handlerMap[h]; !ok {
-		//the handler is not registered for the event type
-		return false, fmt.Errorf("handler not registered for event name %s for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeId)
-	}
-	//remove the handler from the map
-	delete(handlerMap, h)
-
-	//if the last handler has been removed from handler map for a chaincode's event,
-	//remove the event map.
-	//if the last map of events have been removed for the chaincode UUID
-	//remove the chaincode UUID map
-	if len(handlerMap) == 0 {
-		delete(emap, ie.GetChaincodeRegInfo().EventName)
-		if len(emap) == 0 {
-			delete(hl.handlers, ie.GetChaincodeRegInfo().ChaincodeId)
-		}
-	}
-
+	delete(handlers, h)
+	hl.handlers = handlers
 	return true, nil
 }
 
-func (hl *chaincodeHandlerList) foreach(e *pb.Event, action func(h *handler)) {
+func (hl *handlerList) copyHandlers() Set {
+	handlerCopy := Set{}
+	for k, v := range hl.handlers {
+		handlerCopy[k] = v
+	}
+	return handlerCopy
+}
+
+func (hl *handlerList) getHandlers() Set {
 	hl.Lock()
 	defer hl.Unlock()
-
-	//if there's no chaincode event in the event... nothing to do (why was this event sent ?)
-	if e.GetChaincodeEvent() == nil || e.GetChaincodeEvent().ChaincodeId == "" {
-		return
-	}
-
-	//get the event map for the chaincode
-	if emap := hl.handlers[e.GetChaincodeEvent().ChaincodeId]; emap != nil {
-		//get the handler map for the event
-		if handlerMap := emap[e.GetChaincodeEvent().EventName]; handlerMap != nil {
-			for h := range handlerMap {
-				action(h)
-			}
-		}
-		//send to handlers who want all events from the chaincode, but only if
-		//EventName is not already "" (chaincode should NOT send nameless events though)
-		if e.GetChaincodeEvent().EventName != "" {
-			if handlerMap := emap[""]; handlerMap != nil {
-				for h := range handlerMap {
-					action(h)
-				}
-			}
-		}
-	}
+	return hl.handlers
 }
 
-func (hl *genericHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
-	if h == nil {
-		return false, fmt.Errorf("cannot add nil generic handler")
-	}
-	hl.Lock()
-	if _, ok := hl.handlers[h]; ok {
-		hl.Unlock()
-		return false, fmt.Errorf("handler exists for event type")
-	}
-	hl.handlers[h] = true
-	hl.Unlock()
-	return true, nil
-}
-
-func (hl *genericHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
-	hl.Lock()
-	if _, ok := hl.handlers[h]; !ok {
-		hl.Unlock()
-		return false, fmt.Errorf("handler does not exist for event type")
-	}
-	delete(hl.handlers, h)
-	hl.Unlock()
-	return true, nil
-}
-
-func (hl *genericHandlerList) foreach(e *pb.Event, action func(h *handler)) {
-	hl.Lock()
-	for h := range hl.handlers {
-		action(h)
-	}
-	hl.Unlock()
-}
-
-//eventProcessor has a map of event type to handlers interested in that
-//event type. start() kicks of the event processor where it waits for Events
-//from producers. We could easily generalize the one event handling loop to one
-//per handlerMap if necessary.
+// eventProcessor has a map of event type to handlers interested in that
+// event type. start() kicks off the event processor where it waits for Events
+// from producers. We could easily generalize the one event handling loop to one
+// per handlerMap if necessary.
 //
 type eventProcessor struct {
 	sync.RWMutex
-	eventConsumers map[pb.EventType]handlerList
+	eventConsumers map[pb.EventType]*handlerList
 
-	//we could generalize this with mutiple channels each with its own size
+	// we could generalize this with mutiple channels each with its own size
 	eventChannel chan *pb.Event
 
 	*EventsServerConfig
 }
 
-//global eventProcessor singleton created by initializeEvents. Openchain producers
-//send events simply over a reentrant static method
+// global eventProcessor singleton created by initializeEvents. Openchain producers
+// send events simply over a reentrant static method
 var gEventProcessor *eventProcessor
 
 func (ep *eventProcessor) start() {
+	defer ep.cleanup()
 	logger.Info("Event processor started")
-	for {
-		//wait for event
-		e := <-ep.eventChannel
-		var hl handlerList
-		eType := getMessageType(e)
-		ep.Lock()
-		if hl, _ = ep.eventConsumers[eType]; hl == nil {
-			logger.Errorf("Event of type %s does not exist", eType)
-			ep.Unlock()
+	for e := range ep.eventChannel {
+		hl, err := ep.getHandlerList(e)
+		if err != nil {
+			logger.Error(err.Error())
 			continue
 		}
-		//lock the handler map lock
-		ep.Unlock()
 
-		now := time.Now()
-		hl.foreach(e, func(h *handler) {
-			if hasSessionExpired(now, h.sessionEndTime) {
-				logger.Warning("Client identity has expired for", h.RemoteAddr)
-				// We have to call Stop asynchronously because hl.foreach() holds a lock on hl
-				go h.Stop()
-				return
+		failedHandlers := []*handler{}
+		for h := range hl.getHandlers() {
+			if h.hasSessionExpired() {
+				failedHandlers = append(failedHandlers, h)
+				continue
 			}
 			if e.Event != nil {
-				h.SendMessage(e)
+				err := h.SendMessageWithTimeout(e, ep.SendTimeout)
+				if err != nil {
+					failedHandlers = append(failedHandlers, h)
+				}
 			}
-		})
+		}
 
+		for _, h := range failedHandlers {
+			ep.cleanupHandler(h)
+		}
 	}
 }
 
-func hasSessionExpired(now, sessionEndTime time.Time) bool {
-	return !sessionEndTime.IsZero() && now.After(sessionEndTime)
+func (ep *eventProcessor) getHandlerList(e *pb.Event) (*handlerList, error) {
+	eType := getMessageType(e)
+	ep.Lock()
+	defer ep.Unlock()
+	hl := ep.eventConsumers[eType]
+	if hl == nil {
+		return nil, errors.Errorf("event type %T not supported", e.Event)
+	}
+	return hl, nil
 }
 
-//initialize and start
-func initializeEvents(config *EventsServerConfig) {
+func (ep *eventProcessor) cleanupHandler(h *handler) {
+	// deregister handler from all handler lists
+	ep.deregisterAll(h)
+	logger.Debug("handler cleanup complete for", h.RemoteAddr)
+}
+
+func getMessageType(e *pb.Event) pb.EventType {
+	switch e.Event.(type) {
+	case *pb.Event_Block:
+		return pb.EventType_BLOCK
+	case *pb.Event_FilteredBlock:
+		return pb.EventType_FILTEREDBLOCK
+	default:
+		return -1
+	}
+}
+
+// initialize and start
+func initializeEvents(config *EventsServerConfig) *eventProcessor {
 	if gEventProcessor != nil {
 		panic("should not be called twice")
 	}
 
-	gEventProcessor = &eventProcessor{eventConsumers: make(map[pb.EventType]handlerList), eventChannel: make(chan *pb.Event, config.BufferSize), EventsServerConfig: config}
-	addInternalEventTypes()
+	gEventProcessor = &eventProcessor{
+		eventConsumers:     map[pb.EventType]*handlerList{},
+		eventChannel:       make(chan *pb.Event, config.BufferSize),
+		EventsServerConfig: config,
+	}
 
-	//start the event processor
+	gEventProcessor.addSupportedEventTypes()
+
+	// start the event processor
 	go gEventProcessor.start()
+
+	return gEventProcessor
 }
 
-//AddEventType supported event
-func AddEventType(eventType pb.EventType) error {
-	gEventProcessor.Lock()
+func (ep *eventProcessor) cleanup() {
+	close(ep.eventChannel)
+}
+
+func (ep *eventProcessor) addSupportedEventTypes() {
+	gEventProcessor.addEventType(pb.EventType_BLOCK)
+	gEventProcessor.addEventType(pb.EventType_FILTEREDBLOCK)
+}
+
+// addEventType supported event
+func (ep *eventProcessor) addEventType(eventType pb.EventType) error {
+	ep.Lock()
+	defer ep.Unlock()
 	logger.Debugf("Registering %s", pb.EventType_name[int32(eventType)])
-	if _, ok := gEventProcessor.eventConsumers[eventType]; ok {
-		gEventProcessor.Unlock()
+	if _, ok := ep.eventConsumers[eventType]; ok {
 		return fmt.Errorf("event type %s already exists", pb.EventType_name[int32(eventType)])
 	}
 
 	switch eventType {
-	case pb.EventType_BLOCK:
-		gEventProcessor.eventConsumers[eventType] = &genericHandlerList{handlers: make(map[*handler]bool)}
-	case pb.EventType_FILTEREDBLOCK:
-		gEventProcessor.eventConsumers[eventType] = &genericHandlerList{handlers: make(map[*handler]bool)}
-	case pb.EventType_CHAINCODE:
-		gEventProcessor.eventConsumers[eventType] = &chaincodeHandlerList{handlers: make(map[string]map[string]map[*handler]bool)}
-	case pb.EventType_REJECTION:
-		gEventProcessor.eventConsumers[eventType] = &genericHandlerList{handlers: make(map[*handler]bool)}
+	case pb.EventType_BLOCK, pb.EventType_FILTEREDBLOCK:
+		ep.eventConsumers[eventType] = &handlerList{handlers: Set{}}
+	default:
+		return fmt.Errorf("event type %T not supported", eventType)
 	}
-	gEventProcessor.Unlock()
 
 	return nil
 }
 
-func registerHandler(ie *pb.Interest, h *handler) error {
+func (ep *eventProcessor) registerHandler(ie *pb.Interest, h *handler) error {
 	logger.Debugf("Registering event type: %s", ie.EventType)
-	gEventProcessor.Lock()
-	defer gEventProcessor.Unlock()
-	if hl, ok := gEventProcessor.eventConsumers[ie.EventType]; !ok {
+	ep.Lock()
+	defer ep.Unlock()
+	if hl, ok := ep.eventConsumers[ie.EventType]; !ok {
 		return fmt.Errorf("event type %s does not exist", ie.EventType)
-	} else if _, err := hl.add(ie, h); err != nil {
+	} else if _, err := hl.add(h); err != nil {
 		return fmt.Errorf("error registering handler for  %s: %s", ie.EventType, err)
 	}
 
 	return nil
 }
 
-func deRegisterHandler(ie *pb.Interest, h *handler) error {
-	logger.Debugf("Deregistering event type: %s", ie.EventType)
+func (ep *eventProcessor) deregisterHandler(ie *pb.Interest, h *handler) error {
+	logger.Debugf("Deregistering event type %s", ie.EventType)
 
-	gEventProcessor.Lock()
-	defer gEventProcessor.Unlock()
-	if hl, ok := gEventProcessor.eventConsumers[ie.EventType]; !ok {
+	ep.Lock()
+	defer ep.Unlock()
+	if hl, ok := ep.eventConsumers[ie.EventType]; !ok {
 		return fmt.Errorf("event type %s does not exist", ie.EventType)
-	} else if _, err := hl.del(ie, h); err != nil {
+	} else if _, err := hl.remove(h); err != nil {
 		return fmt.Errorf("error deregistering handler for %s: %s", ie.EventType, err)
 	}
 
 	return nil
 }
 
-//------------- producer API's -------------------------------
+func (ep *eventProcessor) deregisterAll(h *handler) {
+	for k, v := range h.interestedEvents {
+		if err := ep.deregisterHandler(v, h); err != nil {
+			logger.Errorf("failed deregistering event type %s for %s", v, h.RemoteAddr)
+			continue
+		}
+		delete(h.interestedEvents, k)
+	}
+}
 
-//Send sends the event to interested consumers
+// ------------- producer API's -------------------------------
+
+// Send sends the event to the global event processor's buffered channel
 func Send(e *pb.Event) error {
 	if e.Event == nil {
-		logger.Error("event not set")
+		logger.Error("Event not set")
 		return fmt.Errorf("event not set")
 	}
 
@@ -316,15 +242,16 @@ func Send(e *pb.Event) error {
 		return nil
 	}
 
-	if gEventProcessor.Timeout < 0 {
+	switch {
+	case gEventProcessor.Timeout < 0:
 		select {
 		case gEventProcessor.eventChannel <- e:
 		default:
 			return fmt.Errorf("could not add block event to event processor queue")
 		}
-	} else if gEventProcessor.Timeout == 0 {
+	case gEventProcessor.Timeout == 0:
 		gEventProcessor.eventChannel <- e
-	} else {
+	default:
 		select {
 		case gEventProcessor.eventChannel <- e:
 		case <-time.After(gEventProcessor.Timeout):

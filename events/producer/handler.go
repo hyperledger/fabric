@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/util"
@@ -25,24 +26,18 @@ type handler struct {
 	interestedEvents map[string]*pb.Interest
 	sessionEndTime   time.Time
 	RemoteAddr       string
+	eventProcessor   *eventProcessor
 }
 
-func newEventHandler(stream pb.Events_ChatServer) *handler {
+func newHandler(stream pb.Events_ChatServer, ep *eventProcessor) *handler {
 	h := &handler{
 		ChatStream:       stream,
-		interestedEvents: make(map[string]*pb.Interest),
+		interestedEvents: map[string]*pb.Interest{},
 		RemoteAddr:       util.ExtractRemoteAddress(stream.Context()),
+		eventProcessor:   ep,
 	}
 	logger.Debug("event handler created for", h.RemoteAddr)
 	return h
-}
-
-// Stop stops this handler
-func (h *handler) Stop() error {
-	h.deregisterAll()
-	h.interestedEvents = nil
-	logger.Debug("handler stopped for", h.RemoteAddr)
-	return nil
 }
 
 func getInterestKey(interest pb.Interest) string {
@@ -52,10 +47,6 @@ func getInterestKey(interest pb.Interest) string {
 		key = "/" + strconv.Itoa(int(pb.EventType_BLOCK))
 	case pb.EventType_FILTEREDBLOCK:
 		key = "/" + strconv.Itoa(int(pb.EventType_FILTEREDBLOCK))
-	case pb.EventType_REJECTION:
-		key = "/" + strconv.Itoa(int(pb.EventType_REJECTION))
-	case pb.EventType_CHAINCODE:
-		key = "/" + strconv.Itoa(int(pb.EventType_CHAINCODE)) + "/" + interest.GetChaincodeRegInfo().ChaincodeId + "/" + interest.GetChaincodeRegInfo().EventName
 	default:
 		logger.Errorf("unsupported interest type: %s", interest.EventType)
 	}
@@ -67,7 +58,7 @@ func (h *handler) register(iMsg []*pb.Interest) error {
 	// Could consider passing interest array to registerHandler
 	// and only lock once for entire array here
 	for _, v := range iMsg {
-		if err := registerHandler(v, h); err != nil {
+		if err := h.eventProcessor.registerHandler(v, h); err != nil {
 			logger.Errorf("could not register %s for %s: %s", v, h.RemoteAddr, err)
 			continue
 		}
@@ -79,23 +70,13 @@ func (h *handler) register(iMsg []*pb.Interest) error {
 
 func (h *handler) deregister(iMsg []*pb.Interest) error {
 	for _, v := range iMsg {
-		if err := deRegisterHandler(v, h); err != nil {
+		if err := h.eventProcessor.deregisterHandler(v, h); err != nil {
 			logger.Errorf("could not deregister %s for %s: %s", v, h.RemoteAddr, err)
 			continue
 		}
 		delete(h.interestedEvents, getInterestKey(*v))
 	}
 	return nil
-}
-
-func (h *handler) deregisterAll() {
-	for k, v := range h.interestedEvents {
-		if err := deRegisterHandler(v, h); err != nil {
-			logger.Errorf("could not deregister %s", v)
-			continue
-		}
-		delete(h.interestedEvents, k)
-	}
 }
 
 // HandleMessage handles the Openchain messages for the Peer.
@@ -118,18 +99,36 @@ func (h *handler) HandleMessage(msg *pb.SignedEvent) error {
 		}
 	case nil:
 	default:
-		return fmt.Errorf("invalid event type received from %s: %T", h.RemoteAddr, evt.Event)
+		return fmt.Errorf("invalid type from received from %s: %T", h.RemoteAddr, evt.Event)
 	}
-	//TODO return supported events.. for now just return the received msg
-	if err := h.ChatStream.Send(evt); err != nil {
+	// just return the received msg to confirm registration/deregistration
+	if err := h.SendMessageWithTimeout(evt, h.eventProcessor.SendTimeout); err != nil {
 		return fmt.Errorf("error sending response to %s: %s", h.RemoteAddr, err)
 	}
 
 	return nil
 }
 
-// SendMessage sends a message to the remote PEER through the stream
-func (h *handler) SendMessage(msg *pb.Event) error {
+// SendMessageWithTimeout sends a message to a remote peer but will time out
+// if it takes longer than the timeout
+func (h *handler) SendMessageWithTimeout(msg *pb.Event, timeout time.Duration) error {
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- h.sendMessage(msg)
+	}()
+	t := time.NewTimer(timeout)
+	select {
+	case <-t.C:
+		logger.Warningf("timed out sending event to %s", h.RemoteAddr)
+		return fmt.Errorf("timed out sending event")
+	case err := <-errChan:
+		t.Stop()
+		return err
+	}
+}
+
+// sendMessage sends a message to the remote PEER through the stream
+func (h *handler) sendMessage(msg *pb.Event) error {
 	logger.Debug("sending event to", h.RemoteAddr)
 	err := h.ChatStream.Send(msg)
 	if err != nil {
@@ -138,6 +137,16 @@ func (h *handler) SendMessage(msg *pb.Event) error {
 	}
 	logger.Debug("event sent successfully to", h.RemoteAddr)
 	return nil
+}
+
+func (h *handler) hasSessionExpired() bool {
+	now := time.Now()
+	if !h.sessionEndTime.IsZero() && now.After(h.sessionEndTime) {
+		err := errors.Errorf("Client identity has expired for %s", h.RemoteAddr)
+		logger.Warning(err.Error())
+		return true
+	}
+	return false
 }
 
 // Validates event messages by validating the Creator and verifying
@@ -172,13 +181,13 @@ func (h *handler) validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, er
 		evtTime := time.Unix(evt.GetTimestamp().Seconds, int64(evt.GetTimestamp().Nanos)).UTC()
 		peerTime := time.Now()
 
-		if math.Abs(float64(peerTime.UnixNano()-evtTime.UnixNano())) > float64(gEventProcessor.TimeWindow.Nanoseconds()) {
-			logger.Warningf("Message timestamp %s more than %s apart from current server time %s", evtTime, gEventProcessor.TimeWindow, peerTime)
-			return nil, fmt.Errorf("message timestamp out of acceptable range. must be within %s of current server time", gEventProcessor.TimeWindow)
+		if math.Abs(float64(peerTime.UnixNano()-evtTime.UnixNano())) > float64(h.eventProcessor.TimeWindow.Nanoseconds()) {
+			logger.Warningf("Message timestamp %s more than %s apart from current server time %s", evtTime, h.eventProcessor.TimeWindow, peerTime)
+			return nil, fmt.Errorf("message timestamp out of acceptable range. must be within %s of current server time", h.eventProcessor.TimeWindow)
 		}
 	}
 
-	err = gEventProcessor.BindingInspector(h.ChatStream.Context(), evt)
+	err = h.eventProcessor.BindingInspector(h.ChatStream.Context(), evt)
 	if err != nil {
 		return nil, err
 	}
