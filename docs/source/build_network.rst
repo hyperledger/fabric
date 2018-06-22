@@ -672,7 +672,7 @@ argument. This is our policy where we specify the required level of endorsement
 for a transaction against this chaincode to be validated.
 
 In the command below you’ll notice that we specify our policy as
-``-P "OR ('Org0MSP.peer','Org1MSP.peer')"``. This means that we need
+``-P "OR ('Org1MSP.peer','Org2MSP.peer')"``. This means that we need
 “endorsement” from a peer belonging to Org1 **OR** Org2 (i.e. only one endorsement).
 If we changed the syntax to ``AND`` then we would need two endorsements.
 
@@ -974,7 +974,7 @@ channel, use the following steps to interact with the **marbles02** chaincode:
        # be sure to modify the $CHANNEL_NAME variable accordingly for the instantiate command
 
        peer chaincode install -n marbles -v 1.0 -p github.com/chaincode/marbles02/go
-       peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -c '{"Args":["init"]}' -P "OR ('Org0MSP.peer','Org1MSP.peer')"
+       peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -c '{"Args":["init"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')"
 
 -  Create some marbles and move them around:
 
