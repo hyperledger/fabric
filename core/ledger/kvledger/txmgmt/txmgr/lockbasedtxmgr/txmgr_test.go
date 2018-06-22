@@ -111,26 +111,11 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	simulator.GetState("ns2", "key2")
 	simulator.GetPrivateData("ns2", "coll2", "key2")
 	simulator.SetState("ns2", "key2", []byte("value2"))
-	// get simulation results and verify that this contains rwset for both the namespaces "ns1" and "ns2"
-	simulationResults2, err := simulator.GetTxSimulationResults()
-	assert.Equal(t, 3, len(simulationResults2.PubSimulationResults.NsRwset))
-	// clone freeze simulationResults2
-	buff2 := new(bytes.Buffer)
-	assert.NoError(t, gob.NewEncoder(buff2).Encode(simulationResults2))
-	frozenSimulationResults2 := &ledger.TxSimulationResults{}
-	assert.NoError(t, gob.NewDecoder(buff2).Decode(&frozenSimulationResults2))
-
-	// use the same simulator further to operate on different keys in the namespcace "ns1"
-	simulator.GetState("ns1", "key3")
-	simulator.GetPrivateData("ns1", "coll3", "key3")
-	simulator.SetState("ns1", "key3", []byte("value3"))
-	// get simulation results and verify that this contains rwset for both the namespaces "ns1" and "ns2"
-	simulationResults3, err := simulator.GetTxSimulationResults()
-	assert.Equal(t, 3, len(simulationResults3.PubSimulationResults.NsRwset))
-
+	// get simulation results and verify that an error is raised when obtaining the simulation results more than once
+	_, err = simulator.GetTxSimulationResults()
+	assert.Error(t, err) // calling 'GetTxSimulationResults()' more than once should raise error
 	// Now, verify that the simulator operations did not have an effect on privously obtained results
 	assert.Equal(t, frozenSimulationResults1, simulationResults1)
-	assert.Equal(t, frozenSimulationResults2, simulationResults2)
 
 	// Call 'Done' and all the data get/set operations after calling 'Done' should fail.
 	simulator.Done()
@@ -305,9 +290,9 @@ func testTxPhantomValidation(t *testing.T, env testEnv) {
 	s1.SetState("ns", "key4", []byte("value4"))
 	s1.SetState("ns", "key5", []byte("value5"))
 	s1.SetState("ns", "key6", []byte("value6"))
-	s1.Done()
 	// validate and commit RWset
 	txRWSet1, _ := s1.GetTxSimulationResults()
+	s1.Done() // explicitly calling done after obtaining the results to verify FAB-10788
 	txMgrHelper.validateAndCommitRWSet(txRWSet1.PubSimulationResults)
 
 	// simulate tx2
@@ -319,8 +304,8 @@ func testTxPhantomValidation(t *testing.T, env testEnv) {
 		}
 	}
 	s2.DeleteState("ns", "key3")
-	s2.Done()
 	txRWSet2, _ := s2.GetTxSimulationResults()
+	s2.Done()
 
 	// simulate tx3
 	s3, _ := txMgr.NewTxSimulator("test_tx3")
@@ -331,9 +316,8 @@ func testTxPhantomValidation(t *testing.T, env testEnv) {
 		}
 	}
 	s3.SetState("ns", "key3", []byte("value3_new"))
-	s3.Done()
 	txRWSet3, _ := s3.GetTxSimulationResults()
-
+	s3.Done()
 	// simulate tx4
 	s4, _ := txMgr.NewTxSimulator("test_tx4")
 	itr4, _ := s4.GetStateRangeScanIterator("ns", "key4", "key6")
@@ -343,8 +327,8 @@ func testTxPhantomValidation(t *testing.T, env testEnv) {
 		}
 	}
 	s4.SetState("ns", "key3", []byte("value3_new"))
-	s4.Done()
 	txRWSet4, _ := s4.GetTxSimulationResults()
+	s4.Done()
 
 	// txRWSet2 should be valid
 	txMgrHelper.validateAndCommitRWSet(txRWSet2.PubSimulationResults)

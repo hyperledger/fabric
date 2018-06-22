@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package lockbasedtxmgr
@@ -29,16 +18,17 @@ import (
 // LockBasedTxSimulator is a transaction simulator used in `LockBasedTxMgr`
 type lockBasedTxSimulator struct {
 	lockBasedQueryExecutor
-	rwsetBuilder            *rwsetutil.RWSetBuilder
-	writePerformed          bool
-	pvtdataQueriesPerformed bool
+	rwsetBuilder              *rwsetutil.RWSetBuilder
+	writePerformed            bool
+	pvtdataQueriesPerformed   bool
+	simulationResultsComputed bool
 }
 
 func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string) (*lockBasedTxSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	helper := newQueryHelper(txmgr, rwsetBuilder)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
-	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false}, nil
+	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false, false}, nil
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
@@ -143,10 +133,15 @@ func (s *lockBasedTxSimulator) ExecuteQueryOnPrivateData(namespace, collection, 
 
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
+	if s.simulationResultsComputed {
+		return nil, errors.New("the function GetTxSimulationResults() should only be called once on a transaction simulator instance")
+	}
+	defer func() { s.simulationResultsComputed = true }()
 	logger.Debugf("Simulation completed, getting simulation results")
 	if s.helper.err != nil {
 		return nil, s.helper.err
 	}
+	s.helper.addRangeQueryInfo()
 	return s.rwsetBuilder.GetTxSimulationResults()
 }
 
