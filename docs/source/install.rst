@@ -26,11 +26,11 @@ Hyperledger Fabric.
           documentation for `shared drives <https://docs.docker.com/docker-for-windows/#shared-drives>`__
           and use a location under one of the shared drives.
 
-Determine a location on your machine where you want to place the Hyperledger
-Fabric Samples repository and enter that directory in a terminal window. The
+Determine a location on your machine where you want to place the `fabric-samples`
+repository and enter that directory in a terminal window. The
 command that follows will perform the following steps:
 
-#. If needed, clone the hyperledger/fabric-samples repository
+#. If needed, clone the `hyperledger/fabric-samples` repository
 #. Checkout the appropriate version tag
 #. Install the Hyperledger Fabric platform-specific binaries and config files
    for the version specified into the root of the fabric-samples repository
@@ -43,6 +43,14 @@ Fabric Samples and binaries, go ahead and execute the following command:
 
   curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.0-rc1
 
+.. note:: If you want to download Fabric, Fabric-ca and thirdparty Docker images
+          you must pass the version identifier to the script.
+
+.. code:: bash
+
+  curl -sSL http://bit.ly/2ysbOFE | bash -s <fabric> <fabric-ca> <thirdparty>
+  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.0-rc1 1.2.0-rc1 0.4.8
+
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
           redirects or an unsupported environment.
@@ -54,19 +62,20 @@ Fabric Samples and binaries, go ahead and execute the following command:
 	  https://github.com/hyperledger/fabric/blob/master/scripts/bootstrap.sh
 
 .. note:: You can use the command above for any published version of Hyperledger
-          Fabric. Simply replace '1.2.0-rc1' with the version identifier
+          Fabric. Simply replace `1.2.0-rc1` with the version identifier
           of the version you wish to install.
 
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you
 will need to set up your network and place them into the cloned repo you
-created above. It retrieves six platform-specific binaries:
+created above. It retrieves the following platform-specific binaries:
 
   * ``cryptogen``,
   * ``configtxgen``,
   * ``configtxlator``,
   * ``peer``,
-  * ``orderer``, and
+  * ``orderer``,
+  * ``idemixgen``, and
   * ``fabric-ca-client``
 
 and places them in the ``bin`` sub-directory of the current working
@@ -87,10 +96,11 @@ The script lists out the Docker images installed upon conclusion.
 
 Look at the names for each image; these are the components that will ultimately
 comprise our Hyperledger Fabric network.  You will also notice that you have
-two instances of the same image ID - one tagged as "x86_64-1.x.x" and
-one tagged as "latest".
+two instances of the same image ID - one tagged as "amd64-1.x.x" and
+one tagged as "latest". Prior to 1.2.0, the image being downloaded was determined
+by ``uname -m`` and showed as "x86_64-1.x.x".
 
-.. note:: On different architectures, the x86_64 would be replaced
+.. note:: On different architectures, the x86_64/amd64 would be replaced
           with the string identifying your architecture.
 
 .. note:: If you have questions not addressed by this documentation, or run into
