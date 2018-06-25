@@ -35,11 +35,23 @@ const (
 	btlPullMarginDefault        = 10
 )
 
+// DigKey
+type DigKey struct {
+	TxId       string
+	Namespace  string
+	Collection string
+	BlockSeq   uint64
+	SeqInBlock uint64
+}
+
+// Dig2PvtRWSetWithConfig
+type Dig2PvtRWSetWithConfig map[DigKey]*util.PrivateRWSetWithConfig
+
 // PrivateDataRetriever interfacce which defines API capable
 // of retrieving required private data
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
-	CollectionRWSet(dig *proto.PvtDataDigest) (*util.PrivateRWSetWithConfig, error)
+	CollectionRWSet(dig []*proto.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error)
 }
 
 // gossip defines capabilities that the gossip module gives the Coordinator
@@ -135,54 +147,41 @@ func (p *puller) handleRequest(message proto.ReceivedMessage) {
 func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataElement {
 	authInfo := message.GetConnectionInfo().Auth
 	var returned []*proto.PvtDataElement
+	connectionEndpoint := message.GetConnectionInfo().Endpoint
+
 	defer func() {
-		logger.Debug("Returning", message.GetConnectionInfo().Endpoint, len(returned), "elements")
+		logger.Debug("Returning", connectionEndpoint, len(returned), "elements")
 	}()
+
 	msg := message.GetGossipMessage()
-	for _, dig := range msg.GetPrivateReq().Digests {
-		rwSets, err := p.CollectionRWSet(dig)
+
+	// group all digest by block number
+	block2dig := groupDigestsByBlockNum(msg.GetPrivateReq().Digests)
+
+	for blockNum, digests := range block2dig {
+		dig2rwSets, err := p.CollectionRWSet(digests, blockNum)
 		if err != nil {
-			logger.Errorf("Wasn't able to get private rwset for [%s] channel, chaincode [%s], collection [%s], txID = [%s], due to [%s]",
-				p.channel, dig.Namespace, dig.Collection, dig.TxId, err)
-			continue
-		}
-		if rwSets == nil {
-			logger.Errorf("No private rwset for [%s] channel, chaincode [%s], collection [%s], txID = [%s] is available, skipping...",
-				p.channel, dig.Namespace, dig.Collection, dig.TxId)
-			continue
-		}
-		logger.Debug("Found", len(rwSets.RWSet), "for TxID", dig.TxId, ", collection", dig.Collection, "for", message.GetConnectionInfo().Endpoint)
-		if len(rwSets.RWSet) == 0 {
+			logger.Warningf("could not obtain private collection rwset for block %d, because of %s, continue...", blockNum, err)
 			continue
 		}
 
-		colAP, err := p.AccessPolicy(rwSets.CollectionConfig, p.channel)
-		if err != nil {
-			logger.Debug("No policy found for channel", p.channel, ", collection", dig.Collection, "txID", dig.TxId, ":", err, "skipping...")
-			continue
-		}
-		colFilter := colAP.AccessFilter()
-		if colFilter == nil {
-			logger.Debug("Collection ", dig.Collection, " has no access filter, txID", dig.TxId, "skipping...")
-			continue
-		}
-		eligibleForCollection := colFilter(fcommon.SignedData{
+		returned = append(returned, p.filterNotEligible(dig2rwSets, fcommon.SignedData{
 			Identity:  message.GetConnectionInfo().Identity,
 			Data:      authInfo.SignedData,
 			Signature: authInfo.Signature,
-		})
-
-		if !eligibleForCollection {
-			logger.Debug("Peer", message.GetConnectionInfo().Endpoint, "isn't eligible for txID", dig.TxId, "at collection", dig.Collection)
-			continue
-		}
-
-		returned = append(returned, &proto.PvtDataElement{
-			Digest:  dig,
-			Payload: util.PrivateRWSets(rwSets.RWSet...),
-		})
+		}, connectionEndpoint)...)
 	}
+
 	return returned
+}
+
+// groupDigestsByBlockNum group all digest by block sequence number
+func groupDigestsByBlockNum(digests []*proto.PvtDataDigest) map[uint64][]*proto.PvtDataDigest {
+	results := make(map[uint64][]*proto.PvtDataDigest)
+	for _, dig := range digests {
+		results[dig.BlockSeq] = append(results[dig.BlockSeq], dig)
+	}
+	return results
 }
 
 func (p *puller) handleResponse(message proto.ReceivedMessage) {
@@ -520,6 +519,50 @@ func (p *puller) purgedFilter(dig proto.PvtDataDigest, blockSeq uint64) (filter.
 		}
 		return isPurged
 	}, nil
+}
+
+func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, signedData fcommon.SignedData, endpoint string) []*proto.PvtDataElement {
+	var returned []*proto.PvtDataElement
+	for d, rwSets := range dig2rwSets {
+		if rwSets == nil {
+			logger.Errorf("No private rwset for [%s] channel, chaincode [%s], collection [%s], txID = [%s] is available, skipping...",
+				p.channel, d.Namespace, d.Collection, d.TxId)
+			continue
+		}
+		logger.Debug("Found", len(rwSets.RWSet), "for TxID", d.TxId, ", collection", d.Collection, "for", endpoint)
+		if len(rwSets.RWSet) == 0 {
+			continue
+		}
+
+		colAP, err := p.AccessPolicy(rwSets.CollectionConfig, p.channel)
+		if err != nil {
+			logger.Debug("No policy found for channel", p.channel, ", collection", d.Collection, "txID", d.TxId, ":", err, "skipping...")
+			continue
+		}
+		colFilter := colAP.AccessFilter()
+		if colFilter == nil {
+			logger.Debug("Collection ", d.Collection, " has no access filter, txID", d.TxId, "skipping...")
+			continue
+		}
+		eligibleForCollection := colFilter(signedData)
+
+		if !eligibleForCollection {
+			logger.Debug("Peer", endpoint, "isn't eligible for txID", d.TxId, "at collection", d.Collection)
+			continue
+		}
+
+		returned = append(returned, &proto.PvtDataElement{
+			Digest: &proto.PvtDataDigest{
+				TxId:       d.TxId,
+				BlockSeq:   d.BlockSeq,
+				Collection: d.Collection,
+				Namespace:  d.Namespace,
+				SeqInBlock: d.SeqInBlock,
+			},
+			Payload: util.PrivateRWSets(rwSets.RWSet...),
+		})
+	}
+	return returned
 }
 
 func randomizeMemberList(members []discovery.NetworkMember) []discovery.NetworkMember {
