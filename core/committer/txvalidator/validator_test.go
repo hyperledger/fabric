@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/testdata"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -946,6 +947,66 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	// Restore default callback
 	assert.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+}
+
+func createMockLedger(t *testing.T, ccID string) *mockLedger {
+	l := new(mockLedger)
+	l.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, ledger.NotFoundInIndexErr(""))
+	cd := &ccp.ChaincodeData{
+		Name:    ccID,
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"SampleOrg"}),
+	}
+
+	cdbytes := utils.MarshalOrPanic(cd)
+	queryExecutor := new(mockQueryExecutor)
+	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
+	l.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+	return l
+}
+
+func TestValidationPluginExecutionError(t *testing.T) {
+	plugin := &mocks.Plugin{}
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
+	defer ledgermgmt.CleanupTestEnv()
+	defer l.Close()
+
+	ccID := "mycc"
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&validation.ExecutionFailureError{
+		Reason: "I/O error",
+	})
+
+	err := v.Validate(b)
+	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
+	assert.Contains(t, executionErr.Error(), "I/O error")
+}
+
+func TestValidationPluginNotFound(t *testing.T) {
+	ccID := "mycc"
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
+	l := createMockLedger(t, ccID)
+	vcs := struct {
+		*mocktxvalidator.Support
+		*semaphore.Weighted
+	}{&mocktxvalidator.Support{LedgerVal: l, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	pm := &mocks.PluginMapper{}
+	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(nil)
+	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
+	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+	err := validator.Validate(b)
+	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
+	assert.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }
 
 var signer msp.SigningIdentity

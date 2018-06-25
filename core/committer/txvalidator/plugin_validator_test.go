@@ -49,7 +49,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	factory.On("New").Return(plugin)
 	pm["vscc"] = factory
 	err = v.ValidateWithPlugin(ctx)
-	assert.Contains(t, err.Error(), "failed initializing plugin: foo")
+	assert.Contains(t, err.(*validation.ExecutionFailureError).Error(), "failed initializing plugin: foo")
 
 	// Scenario III: The plugin initialization succeeds but an execution error occurs.
 	// The plugin should pass the error as is.

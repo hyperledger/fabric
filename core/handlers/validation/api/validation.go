@@ -46,6 +46,6 @@ type ExecutionFailureError struct {
 
 // Error conveys this is an error, and also contains
 // the reason for the error
-func (e ExecutionFailureError) Error() string {
+func (e *ExecutionFailureError) Error() string {
 	return e.Reason
 }
