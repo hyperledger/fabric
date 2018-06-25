@@ -264,7 +264,7 @@ func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 		return nil
 	}
 	// If the error is a pluggable validation execution error, cast it to the common errors ExecutionFailureError.
-	if e, isExecutionError := err.(validation.ExecutionFailureError); isExecutionError {
+	if e, isExecutionError := err.(*validation.ExecutionFailureError); isExecutionError {
 		return &commonerrors.VSCCExecutionFailureError{Err: e}
 	}
 	// Else, treat it as an endorsement error.
