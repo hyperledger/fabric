@@ -259,7 +259,7 @@ Let's describe these folders in a little more detail and see why they are import
   `ORG1-DISTRIBUTION` administrators have no such rights.
 
   Even though an X.509 certificate has a `ROLE` attribute (specifying, for example, that a
-  actor is an `admin`), this refers to a actor's role within its organization
+  actor is an `admin`), this refers to an actor's role within its organization
   rather than on the blockchain network. This is similar to the purpose of
   the `OU` attribute, which --- if it has been defined --- refers to a actor's place in
   the organization.
