@@ -275,10 +275,10 @@ network overlay. Thus, only those nodes that participate in a channel have
 access to the smart contract (chaincode) and data transacted, preserving the
 privacy and confidentiality of both.
 
-Fabric is also working on two sets of features that are intended to improve
-upon its privacy and confidentiality capabilities, specifically: private data –
-a feature we call SideDB, and zero knowledge proofs (ZKP). More on those as they
-become available.
+To improve upon its privacy and confidentiality capabilities, Fabric has
+added support for [private data](./private-data/private-data.html) and is working
+on zero knowledge proofs (ZKP) available in the future. More on this as it
+becomes available.
 
 ## Pluggable Consensus
 
