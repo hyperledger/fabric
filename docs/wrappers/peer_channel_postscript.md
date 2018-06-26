@@ -28,7 +28,7 @@ Here's an example of the `peer channel create` command option.
   Wait 30 seconds for the channel to be created.
 
   ```
-    peer channel create -c mychannel --orderer orderer.example.com:7050 -f ./createchannel.txn -t 30
+    peer channel create -c mychannel --orderer orderer.example.com:7050 -f ./createchannel.txn -t 30s
 
     2018-02-23 06:31:58.568 UTC [channelCmd] InitCmdFactory -> INFO 003 Endorser and orderer connections initialized
     2018-02-23 06:31:58.669 UTC [channelCmd] InitCmdFactory -> INFO 019 Endorser and orderer connections initialized
