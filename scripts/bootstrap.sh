@@ -174,11 +174,11 @@ BINARIES=true
 
 # Parse commandline args pull out
 # version and/or ca-version strings first
-if echo $1 | grep -q '\d'; then
+if [ ! -z $1 ]; then
   VERSION=$1;shift
-  if echo $1 | grep -q '\d'; then
+  if [ ! -z $1 ]; then
     CA_VERSION=$1;shift
-    if echo $1 | grep -q '\d'; then
+    if [ ! -z $1 ]; then
       THIRDPARTY_IMAGE_VERSION=$1;shift
     fi
   fi
