@@ -7,10 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package testutil
 
 import (
-	"errors"
-
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/pkg/errors"
 )
 
 type MockCollectionStore struct {
@@ -22,15 +21,15 @@ func NewMockCollectionStore() *MockCollectionStore {
 }
 
 func (m *MockCollectionStore) RetrieveCollection(common.CollectionCriteria) (privdata.Collection, error) {
-	return nil, errors.New("Not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (m *MockCollectionStore) RetrieveCollectionAccessPolicy(common.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
-	return nil, errors.New("Not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (m *MockCollectionStore) RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
-	return nil, errors.New("Not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (m *MockCollectionStore) RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {

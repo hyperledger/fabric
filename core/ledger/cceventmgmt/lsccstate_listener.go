@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package cceventmgmt
 
 import (
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -46,7 +45,7 @@ func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(channelName string
 		logger.Infof("Channel [%s]: Handling LSCC state update for chaincode [%s]", channelName, kvWrite.Key)
 		chaincodeData := &ccprovider.ChaincodeData{}
 		if err := proto.Unmarshal(kvWrite.Value, chaincodeData); err != nil {
-			return fmt.Errorf("Unmarshalling ChaincodeQueryResponse failed, error %s", err)
+			return errors.Wrap(err, "error unmarshalling chaincode state data")
 		}
 		chaincodeDefs = append(chaincodeDefs, &ChaincodeDefinition{Name: chaincodeData.CCName(), Version: chaincodeData.CCVersion(), Hash: chaincodeData.Hash()})
 	}

@@ -9,10 +9,10 @@ package confighistory
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"math"
 
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -68,7 +68,7 @@ func (d *db) writeBatch(batch *batch, sync bool) error {
 func (d *db) mostRecentEntryBelow(blockNum uint64, ns, key string) (*compositeKV, error) {
 	logger.Debugf("mostRecentEntryBelow() - {%s, %s, %d}", ns, key, blockNum)
 	if blockNum == 0 {
-		return nil, fmt.Errorf("blockNum should be greater than 0")
+		return nil, errors.New("blockNum should be greater than 0")
 	}
 	startKey := encodeCompositeKey(ns, key, blockNum-1)
 	itr := d.GetIterator(startKey, nil)
