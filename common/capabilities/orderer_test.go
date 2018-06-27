@@ -18,6 +18,8 @@ func TestOrdererV10(t *testing.T) {
 	op := NewOrdererProvider(map[string]*cb.Capability{})
 	assert.NoError(t, op.Supported())
 	assert.False(t, op.PredictableChannelTemplate())
+	assert.False(t, op.Resubmission())
+	assert.False(t, op.ExpirationCheck())
 }
 
 func TestOrdererV11(t *testing.T) {
@@ -26,4 +28,6 @@ func TestOrdererV11(t *testing.T) {
 	})
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.PredictableChannelTemplate())
+	assert.True(t, op.Resubmission())
+	assert.True(t, op.ExpirationCheck())
 }

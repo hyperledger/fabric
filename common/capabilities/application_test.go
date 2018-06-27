@@ -72,3 +72,13 @@ func TestChaincodeLifecycleExperimental(t *testing.T) {
 	})
 	assert.True(t, op.MetadataLifecycle())
 }
+
+func TestHasCapability(t *testing.T) {
+	op := NewApplicationProvider(map[string]*cb.Capability{})
+	assert.True(t, op.HasCapability(ApplicationV1_1))
+	assert.True(t, op.HasCapability(ApplicationV1_2))
+	assert.True(t, op.HasCapability(ApplicationPvtDataExperimental))
+	assert.True(t, op.HasCapability(ApplicationResourcesTreeExperimental))
+	assert.True(t, op.HasCapability(ApplicationChaincodeLifecycleExperimental))
+	assert.False(t, op.HasCapability("default"))
+}
