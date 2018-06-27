@@ -1,24 +1,12 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package historyleveldb
 
 import (
-	"errors"
-
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
@@ -28,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
@@ -41,7 +30,7 @@ type LevelHistoryDBQueryExecutor struct {
 func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == false {
-		return nil, errors.New("History tracking not enabled - historyDatabase is false")
+		return nil, errors.New("history database not enabled")
 	}
 
 	var compositeStartKey []byte
@@ -147,9 +136,9 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 						Timestamp: timestamp, IsDelete: kvWrite.IsDelete}, nil
 				}
 			} // end keys loop
-			return nil, errors.New("Key not found in namespace's writeset")
+			return nil, errors.New("key not found in namespace's writeset")
 		} // end if
 	} //end namespaces loop
-	return nil, errors.New("Namespace not found in transaction's ReadWriteSets")
+	return nil, errors.New("namespace not found in transaction's ReadWriteSets")
 
 }

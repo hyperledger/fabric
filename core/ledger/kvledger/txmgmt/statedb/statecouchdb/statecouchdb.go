@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("statecouchdb")
@@ -128,8 +129,8 @@ func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, fileE
 		filename := fileEntry.FileHeader.Name
 		_, err = db.CreateIndex(string(indexData))
 		if err != nil {
-			return fmt.Errorf("error during creation of index from file=[%s] for chain=[%s]. Error=%s",
-				filename, namespace, err)
+			return errors.WithMessage(err, fmt.Sprintf(
+				"error creating index from file [%s] for channel [%s]", filename, namespace))
 		}
 	}
 
@@ -257,7 +258,7 @@ func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey str
 	}
 	queryResult, err := db.ReadDocRange(startKey, endKey, queryLimit, querySkip)
 	if err != nil {
-		logger.Debugf("Error calling ReadDocRange(): %s\n", err.Error())
+		logger.Errorf("Error calling ReadDocRange(): %s", err.Error())
 		return nil, err
 	}
 	logger.Debugf("Exiting GetStateRangeScanIterator")
@@ -272,7 +273,7 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	// Use queryLimit from config and 0 skip.
 	queryString, err := applyAdditionalQueryOptions(query, queryLimit, 0)
 	if err != nil {
-		logger.Debugf("Error calling applyAdditionalQueryOptions(): %s\n", err.Error())
+		logger.Errorf("Error calling applyAdditionalQueryOptions(): %s", err.Error())
 		return nil, err
 	}
 	db, err := vdb.getNamespaceDBHandle(namespace)
@@ -281,7 +282,7 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	}
 	queryResult, err := db.QueryDocuments(queryString)
 	if err != nil {
-		logger.Debugf("Error calling QueryDocuments(): %s\n", err.Error())
+		logger.Errorf("Error calling QueryDocuments(): %s", err.Error())
 		return nil, err
 	}
 	logger.Debugf("Exiting ExecuteQuery")
@@ -310,7 +311,7 @@ func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *versi
 	namespaces := updates.GetUpdatedNamespaces()
 	// Record a savepoint at a given height
 	if err = vdb.ensureFullCommitAndRecordSavepoint(height, namespaces); err != nil {
-		logger.Errorf("Error during recordSavepoint: %s\n", err.Error())
+		logger.Errorf("Error during recordSavepoint: %s", err.Error())
 		return err
 	}
 	return nil
@@ -365,7 +366,7 @@ func (vdb *VersionedDB) ensureFullCommitAndRecordSavepoint(height *version.Heigh
 	}
 	_, err = vdb.metadataDB.SaveDoc(savepointDocID, "", savepointCouchDoc)
 	if err != nil {
-		logger.Errorf("Failed to save the savepoint to DB %s\n", err.Error())
+		logger.Errorf("Failed to save the savepoint to DB %s", err.Error())
 		return err
 	}
 	// Note: Ensure full commit on metadataDB after storing the savepoint is not necessary
@@ -380,7 +381,7 @@ func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 	var err error
 	couchDoc, _, err := vdb.metadataDB.ReadDoc(savepointDocID)
 	if err != nil {
-		logger.Errorf("Failed to read savepoint data %s\n", err.Error())
+		logger.Errorf("Failed to read savepoint data %s", err.Error())
 		return nil, err
 	}
 	// ReadDoc() not found (404) will result in nil response, in these cases return height nil
@@ -411,7 +412,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit, querySkip int) 
 			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray.([]interface{}),
 				idField, versionField)
 		default:
-			return "", fmt.Errorf("fields definition must be an array")
+			return "", errors.New("fields definition must be an array")
 		}
 	}
 	// Add limit

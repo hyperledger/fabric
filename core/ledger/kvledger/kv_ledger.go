@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -28,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("kvledger")
@@ -74,7 +73,7 @@ func newKVLedger(
 	l.initBlockStore(btlPolicy)
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
-		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
+		panic(errors.WithMessage(err, "error during state DB recovery"))
 	}
 	l.configHistoryRetriever = configHistoryMgr.GetRetriever(ledgerID, l)
 	return l, nil
@@ -224,7 +223,7 @@ func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode
 
 //Prune prunes the blocks/transactions that satisfy the given policy
 func (l *kvLedger) Prune(policy commonledger.PrunePolicy) error {
-	return errors.New("Not yet implemented")
+	return errors.New("not yet implemented")
 }
 
 // NewTxSimulator returns new `ledger.TxSimulator`
@@ -270,14 +269,14 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 
 	logger.Debugf("Channel [%s]: Committing block [%d] transactions to state database", l.ledgerID, blockNo)
 	if err = l.txtmgmt.Commit(); err != nil {
-		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
+		panic(errors.WithMessage(err, "error during commit to txmgr"))
 	}
 
 	// History database could be written in parallel with state and/or async as a future optimization
 	if ledgerconfig.IsHistoryDBEnabled() {
 		logger.Debugf("Channel [%s]: Committing block [%d] transactions to history database", l.ledgerID, blockNo)
 		if err := l.historyDB.Commit(block); err != nil {
-			panic(fmt.Errorf(`Error during commit to history db:%s`, err))
+			panic(errors.WithMessage(err, "Error during commit to history db"))
 		}
 	}
 	return nil
@@ -305,12 +304,12 @@ func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilte
 // a given maxBlockNumToRetain. In other words, Purge only retains private read-write sets
 // that were generated at block height of maxBlockNumToRetain or higher.
 func (l *kvLedger) PurgePrivateData(maxBlockNumToRetain uint64) error {
-	return fmt.Errorf("not yet implemented")
+	return errors.New("not yet implemented")
 }
 
 // PrivateDataMinBlockNum returns the lowest retained endorsement block height
 func (l *kvLedger) PrivateDataMinBlockNum() (uint64, error) {
-	return 0, fmt.Errorf("not yet implemented")
+	return 0, errors.New("not yet implemented")
 }
 
 func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {

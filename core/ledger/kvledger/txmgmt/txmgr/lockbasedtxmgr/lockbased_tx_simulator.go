@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package lockbasedtxmgr
 
 import (
-	"errors"
 	"fmt"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
+	"github.com/pkg/errors"
 )
 
 // LockBasedTxSimulator is a transaction simulator used in `LockBasedTxMgr`
@@ -134,7 +134,7 @@ func (s *lockBasedTxSimulator) ExecuteQueryOnPrivateData(namespace, collection, 
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
 	if s.simulationResultsComputed {
-		return nil, errors.New("the function GetTxSimulationResults() should only be called once on a transaction simulator instance")
+		return nil, errors.New("this function should only be called once on a transaction simulator instance")
 	}
 	defer func() { s.simulationResultsComputed = true }()
 	logger.Debugf("Simulation completed, getting simulation results")
@@ -147,13 +147,13 @@ func (s *lockBasedTxSimulator) GetTxSimulationResults() (*ledger.TxSimulationRes
 
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) ExecuteUpdate(query string) error {
-	return errors.New("Not supported")
+	return errors.New("not supported")
 }
 
 func (s *lockBasedTxSimulator) checkBeforeWrite() error {
 	if s.pvtdataQueriesPerformed {
 		return &txmgr.ErrUnsupportedTransaction{
-			Msg: fmt.Sprintf("Tx [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
+			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
 		}
 	}
 	s.writePerformed = true
@@ -163,7 +163,7 @@ func (s *lockBasedTxSimulator) checkBeforeWrite() error {
 func (s *lockBasedTxSimulator) checkBeforePvtdataQueries() error {
 	if s.writePerformed {
 		return &txmgr.ErrUnsupportedTransaction{
-			Msg: fmt.Sprintf("Tx [%s]: Queries on pvt data is supported only in a read-only transaction", s.txid),
+			Msg: fmt.Sprintf("txid [%s]: Queries on pvt data is supported only in a read-only transaction", s.txid),
 		}
 	}
 	s.pvtdataQueriesPerformed = true

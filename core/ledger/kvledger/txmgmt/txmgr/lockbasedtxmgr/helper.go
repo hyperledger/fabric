@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package lockbasedtxmgr
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -19,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/pkg/errors"
 )
 
 type queryHelper struct {
@@ -119,7 +119,7 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	}
 	if !version.AreSame(hashVersion, ver) {
 		return nil, &txmgr.ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
-			"Private data matching public hash version is not available. Public hash version = %#v, Private data version = %#v",
+			"private data matching public hash version is not available. Public hash version = %#v, Private data version = %#v",
 			hashVersion, ver)}
 	}
 	if h.rwsetBuilder != nil {
@@ -213,7 +213,7 @@ func (h *queryHelper) addRangeQueryInfo() {
 
 func (h *queryHelper) checkDone() error {
 	if h.doneInvoked {
-		return errors.New("This instance should not be used after calling Done()")
+		return errors.New("this instance should not be used after calling Done()")
 	}
 	return nil
 }
