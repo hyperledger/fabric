@@ -316,10 +316,11 @@ func (e *Endorser) SimulateProposal(ctx context.Context, chainID string, txid st
 			}
 			// Add ledger height at which transaction was endorsed,
 			// `endorsedAt` is obtained from the block storage and at times this could be 'endorsement Height + 1'.
-			// However, since we use this height only to select the configuration, this works for now.
+			// However, since we use this height only to select the configuration (3rd parameter in distributePrivateData) and
+			// manage transient store purge for orphaned private writesets (4th parameter in distributePrivateData), this works for now.
 			// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
 			pvtDataWithConfig.EndorsedAt = endorsedAt
-			if err := e.distributePrivateData(chainID, txid, pvtDataWithConfig, simResult.SimulationBlkHt); err != nil {
+			if err := e.distributePrivateData(chainID, txid, pvtDataWithConfig, endorsedAt); err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}

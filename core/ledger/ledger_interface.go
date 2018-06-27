@@ -245,12 +245,9 @@ func (filter PvtNsCollFilter) Has(ns string, coll string) bool {
 }
 
 // TxSimulationResults captures the details of the simulation results
-// the field 'SimulationBlkHt' captures the approximate height of the blockchain on which
-// the transaction is simulated - this is used to decide when to expire the 'PvtDataSimulationResults' from transient storage
 type TxSimulationResults struct {
 	PubSimulationResults *rwset.TxReadWriteSet
 	PvtSimulationResults *rwset.TxPvtReadWriteSet
-	SimulationBlkHt      uint64
 }
 
 // GetPubSimulationBytes returns the serialized bytes of public readwrite set
