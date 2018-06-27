@@ -258,12 +258,14 @@ func (p *puller) fetch(dig2src dig2sources, blockSeq uint64) (*FetchedPvtDataCon
 
 		peer2digests, members = p.assignDigestsToPeers(members, dig2Filter)
 		if len(peer2digests) == 0 {
-			logger.Debug("No available peers for digests request")
+			logger.Warning("No available peers for digests request, "+
+				"cannot pull missing private data for following digests [%+v], peer membership: [%+v]",
+				dig2Filter.digests(), members)
 			return res, nil
 		}
 
 		logger.Debug("Matched", len(dig2Filter), "digests to", len(peer2digests), "peer(s)")
-		subscriptions := p.scatterRequests(members, peer2digests)
+		subscriptions := p.scatterRequests(peer2digests)
 		responses := p.gatherResponses(subscriptions)
 		for _, resp := range responses {
 			if len(resp.Payload) == 0 {
@@ -305,7 +307,7 @@ func (p *puller) gatherResponses(subscriptions []util.Subscription) []*proto.Pvt
 	return res
 }
 
-func (p *puller) scatterRequests(members []discovery.NetworkMember, peersDigestMapping peer2Digests) []util.Subscription {
+func (p *puller) scatterRequests(peersDigestMapping peer2Digests) []util.Subscription {
 	var subscriptions []util.Subscription
 	for peer, digests := range peersDigestMapping {
 		msg := &proto.GossipMessage{
@@ -387,6 +389,14 @@ func (dig2f digestToFilterMapping) flattenFilterValues() []filter.RoutingFilter 
 		filters = append(filters, f.anyPeer)
 	}
 	return filters
+}
+
+func (dig2f digestToFilterMapping) digests() []proto.PvtDataDigest {
+	var digs []proto.PvtDataDigest
+	for d := range dig2f {
+		digs = append(digs, d)
+	}
+	return digs
 }
 
 // String returns a string representation of t he digestToFilterMapping
