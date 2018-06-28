@@ -142,7 +142,7 @@ func (provider *storeProvider) Close() {
 func (s *store) Persist(txid string, blockHeight uint64,
 	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 
-	logger.Debugf("Persisting private data to transient store for txid = %s", txid)
+	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
@@ -190,7 +190,7 @@ func (s *store) Persist(txid string, blockHeight uint64,
 func (s *store) PersistWithConfig(txid string, blockHeight uint64,
 	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error {
 
-	logger.Debugf("Persisting private data to transient store for txid = %s", txid)
+	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
@@ -320,6 +320,8 @@ func (s *store) PurgeByHeight(maxBlockNumToRetain uint64) error {
 		// Remove private write set
 		compositeKeyPurgeIndexByHeight := iter.Key()
 		txid, uuid, blockHeight := splitCompositeKeyOfPurgeIndexByHeight(compositeKeyPurgeIndexByHeight)
+		logger.Debugf("Purging from transient store private data simulated at block [%d]: txid [%s] uuid [%s]", blockHeight, txid, uuid)
+
 		compositeKeyPvtRWSet := createCompositeKeyForPvtRWSet(txid, uuid, blockHeight)
 		dbBatch.Delete(compositeKeyPvtRWSet)
 
