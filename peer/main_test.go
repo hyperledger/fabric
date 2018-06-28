@@ -8,22 +8,29 @@ package main_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPluginLoadingFailure(t *testing.T) {
-	peer, err := gexec.Build(filepath.Join("github.com", "hyperledger", "fabric", "peer"))
-	assert.NoError(t, err)
-	defer os.Remove(peer)
+	gt := NewGomegaWithT(t)
+	peer, err := gexec.Build("github.com/hyperledger/fabric/peer")
+	gt.Expect(err).NotTo(HaveOccurred())
+	defer gexec.CleanupBuildArtifacts()
 
 	parentDir, err := filepath.Abs("..")
-	assert.NoError(t, err)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	tempDir, err := ioutil.TempDir("", "plugin-failure")
+	gt.Expect(err).NotTo(HaveOccurred())
+	defer os.RemoveAll(tempDir)
 
 	for _, plugin := range []string{
 		"ENDORSERS_ESCC",
@@ -32,18 +39,19 @@ func TestPluginLoadingFailure(t *testing.T) {
 		plugin := plugin
 		t.Run(plugin, func(t *testing.T) {
 			cmd := exec.Command(peer, "node", "start")
-			for _, env := range []string{
-				fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(parentDir, "sampleconfig")),
-				fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "msp"),
+			cmd.Env = []string{
+				fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", tempDir),
 				fmt.Sprintf("CORE_PEER_HANDLERS_%s_LIBRARY=testdata/invalid_plugins/invalidplugin.so", plugin),
-			} {
-				cmd.Env = append(cmd.Env, env)
+				fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "msp"),
+				fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(parentDir, "sampleconfig")),
 			}
 
-			rawOut, _ := cmd.CombinedOutput()
-			out := string(rawOut)
-			assert.Contains(t, out, "panic: Error opening plugin at path testdata/invalid_plugins/invalidplugin.so")
-			assert.Contains(t, out, "plugin.Open")
+			sess, err := gexec.Start(cmd, nil, nil)
+			gt.Expect(err).NotTo(HaveOccurred())
+			gt.Eventually(sess).Should(gexec.Exit(2))
+
+			gt.Expect(sess.Err).To(gbytes.Say("panic: Error opening plugin at path testdata/invalid_plugins/invalidplugin.so"))
+			gt.Expect(sess.Err).To(gbytes.Say("plugin.Open"))
 		})
 	}
 }
