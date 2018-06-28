@@ -514,12 +514,13 @@ func resetEventProcessor(useMutualTLS bool) {
 		}
 		return evt.TlsCertHash
 	}
+
+	gEventProcessor.Lock()
 	gEventProcessor.BindingInspector = comm.NewBindingInspector(useMutualTLS, extract)
-
-	// reset the event consumers
 	gEventProcessor.eventConsumers = make(map[pb.EventType]*handlerList)
+	gEventProcessor.Unlock()
 
-	// re-register the event types
+	// re-register the event types (this acquires the ep lock)
 	gEventProcessor.addSupportedEventTypes()
 }
 

@@ -168,8 +168,8 @@ func (ep *eventProcessor) cleanup() {
 }
 
 func (ep *eventProcessor) addSupportedEventTypes() {
-	gEventProcessor.addEventType(pb.EventType_BLOCK)
-	gEventProcessor.addEventType(pb.EventType_FILTEREDBLOCK)
+	ep.addEventType(pb.EventType_BLOCK)
+	ep.addEventType(pb.EventType_FILTEREDBLOCK)
 }
 
 // addEventType supported event
