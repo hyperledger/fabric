@@ -8,6 +8,7 @@ package peer
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"testing"
 
@@ -90,7 +91,8 @@ func TestCreateChainFromBlock(t *testing.T) {
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 
-	testChainID := "mytestchainid"
+	Initialize(nil, &ccprovider.MockCcProviderImpl{}, (&mscc.MocksccProviderFactory{}).NewSystemChaincodeProvider(), txvalidator.MapBasedPluginMapper(map[string]validation.PluginFactory{}))
+	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
 	block, err := configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
 		fmt.Printf("Failed to create a config block, err %s\n", err)
@@ -187,6 +189,11 @@ func TestCreateChainFromBlock(t *testing.T) {
 	if len(channels) != 1 {
 		t.Fatalf("incorrect number of channels")
 	}
+
+	// cleanup the chain referenes to enable execution with -count n
+	chains.Lock()
+	chains.list = map[string]*chain{}
+	chains.Unlock()
 }
 
 func TestGetLocalIP(t *testing.T) {
