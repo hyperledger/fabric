@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package leveldbhelper
@@ -22,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -81,11 +72,11 @@ func (dbInst *DB) Open() {
 	var err error
 	var dirEmpty bool
 	if dirEmpty, err = util.CreateDirIfMissing(dbPath); err != nil {
-		panic(fmt.Sprintf("Error while trying to create dir if missing: %s", err))
+		panic(fmt.Sprintf("Error creating dir if missing: %s", err))
 	}
 	dbOpts.ErrorIfMissing = !dirEmpty
 	if dbInst.db, err = leveldb.OpenFile(dbPath, dbOpts); err != nil {
-		panic(fmt.Sprintf("Error while trying to open DB: %s", err))
+		panic(fmt.Sprintf("Error opening leveldb: %s", err))
 	}
 	dbInst.dbState = opened
 }
@@ -98,7 +89,7 @@ func (dbInst *DB) Close() {
 		return
 	}
 	if err := dbInst.db.Close(); err != nil {
-		logger.Errorf("Error while closing DB: %s", err)
+		logger.Errorf("Error closing leveldb: %s", err)
 	}
 	dbInst.dbState = closed
 }
@@ -111,8 +102,8 @@ func (dbInst *DB) Get(key []byte) ([]byte, error) {
 		err = nil
 	}
 	if err != nil {
-		logger.Errorf("Error while trying to retrieve key [%#v]: %s", key, err)
-		return nil, err
+		logger.Errorf("Error retrieving leveldb key [%#v]: %s", key, err)
+		return nil, errors.Wrapf(err, "error retrieving leveldb key [%#v]", key)
 	}
 	return value, nil
 }
@@ -125,8 +116,8 @@ func (dbInst *DB) Put(key []byte, value []byte, sync bool) error {
 	}
 	err := dbInst.db.Put(key, value, wo)
 	if err != nil {
-		logger.Errorf("Error while trying to write key [%#v]", key)
-		return err
+		logger.Errorf("Error writing leveldb key [%#v]", key)
+		return errors.Wrapf(err, "error writing leveldb key [%#v]", key)
 	}
 	return nil
 }
@@ -139,8 +130,8 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 	}
 	err := dbInst.db.Delete(key, wo)
 	if err != nil {
-		logger.Errorf("Error while trying to delete key [%#v]", key)
-		return err
+		logger.Errorf("Error deleting leveldb key [%#v]", key)
+		return errors.Wrapf(err, "error deleting leveldb key [%#v]", key)
 	}
 	return nil
 }
@@ -159,7 +150,7 @@ func (dbInst *DB) WriteBatch(batch *leveldb.Batch, sync bool) error {
 		wo = dbInst.writeOptsSync
 	}
 	if err := dbInst.db.Write(batch, wo); err != nil {
-		return err
+		return errors.Wrap(err, "error writing batch to leveldb")
 	}
 	return nil
 }
