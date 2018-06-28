@@ -19,6 +19,7 @@ package ramledger
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -46,6 +47,7 @@ type simpleList struct {
 }
 
 type ramLedger struct {
+	lock    sync.RWMutex
 	maxSize int
 	size    int
 	oldest  *simpleList
@@ -76,6 +78,9 @@ func (cu *cursor) Close() {}
 // Iterator returns an Iterator, as specified by a ab.SeekInfo message, and its
 // starting block number
 func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Iterator, uint64) {
+	rl.lock.RLock()
+	defer rl.lock.RUnlock()
+
 	var list *simpleList
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -138,11 +143,16 @@ func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Itera
 
 // Height returns the number of blocks on the ledger
 func (rl *ramLedger) Height() uint64 {
+	rl.lock.RLock()
+	defer rl.lock.RUnlock()
 	return rl.newest.block.Header.Number + 1
 }
 
 // Append appends a new block to the ledger
 func (rl *ramLedger) Append(block *cb.Block) error {
+	rl.lock.Lock()
+	defer rl.lock.Unlock()
+
 	if block.Header.Number != rl.newest.block.Header.Number+1 {
 		return fmt.Errorf("Block number should have been %d but was %d",
 			rl.newest.block.Header.Number+1, block.Header.Number)
