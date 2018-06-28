@@ -279,7 +279,7 @@ Start the network
  .. code:: bash
 
   cd fabric-samples/first-network
-  ./byfn.sh -m down
+  ./byfn.sh down
 
 
  Now start up the BYFN network with CouchDB by running the following command:
