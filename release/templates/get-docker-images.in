@@ -12,7 +12,7 @@ VERSION=_VERSION_
 BASE_DOCKER_TAG=_BASE_DOCKER_TAG_
 
 # set of Hyperledger Fabric images
-FABRIC_IMAGES=(fabric-peer fabric-orderer fabric-ccenv fabric-javaenv fabric-tools)
+FABRIC_IMAGES=(fabric-peer fabric-orderer fabric-ccenv fabric-tools)
 
 for image in ${FABRIC_IMAGES[@]}; do
   echo "Pulling ${DOCKER_NS}/$image:${ARCH}-${VERSION}"
