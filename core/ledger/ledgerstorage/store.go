@@ -20,15 +20,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protos/common"
 )
+
+var logger = flogging.MustGetLogger("ledgerstorage")
 
 // Provider encapusaltes two providers 1) block store provider and 2) and pvt data store provider
 type Provider struct {
@@ -95,20 +97,41 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
 func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error {
+	blockNum := blockAndPvtdata.Block.Header.Number
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
-	var pvtdata []*ledger.TxPvtData
-	for _, v := range blockAndPvtdata.BlockPvtData {
-		pvtdata = append(pvtdata, v)
-	}
-	if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata); err != nil {
+
+	pvtBlkStoreHt, err := s.pvtdataStore.LastCommittedBlockHeight()
+	if err != nil {
 		return err
 	}
+
+	writtenToPvtStore := false
+	if pvtBlkStoreHt < blockNum+1 { // The pvt data store sanity check does not allow rewriting the pvt data.
+		// when re-processing blocks (rejoin the channel or re-fetching last few block),
+		// skip the pvt data commit to the pvtdata blockstore
+		logger.Debugf("Writing block [%d] to pvt block store", blockNum)
+		var pvtdata []*ledger.TxPvtData
+		for _, v := range blockAndPvtdata.BlockPvtData {
+			pvtdata = append(pvtdata, v)
+		}
+		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata); err != nil {
+			return err
+		}
+		writtenToPvtStore = true
+	} else {
+		logger.Debugf("Skipping writing block [%d] to pvt block store as the store height is [%d]", blockNum, pvtBlkStoreHt)
+	}
+
 	if err := s.AddBlock(blockAndPvtdata.Block); err != nil {
 		s.pvtdataStore.Rollback()
 		return err
 	}
-	return s.pvtdataStore.Commit()
+
+	if writtenToPvtStore {
+		return s.pvtdataStore.Commit()
+	}
+	return nil
 }
 
 // GetPvtDataAndBlockByNum returns the block and the corresponding pvt data.
