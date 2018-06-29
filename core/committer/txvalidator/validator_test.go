@@ -800,8 +800,8 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	assert.NoError(t, err)
 	assertValid(b, t)
 	// Record the number of times the capabilities and the MSP Manager were invoked
-	capabilityInvokeCount := support.CapabilitiesInvokeCount
-	mspManagerInvokeCount := support.MSPManagerInvokeCount
+	capabilityInvokeCount := support.CapabilitiesInvokeCount()
+	mspManagerInvokeCount := support.MSPManagerInvokeCount()
 
 	// Perform another validation pass, and ensure it is valid
 	err = v.Validate(b)
@@ -810,10 +810,10 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 
 	// Ensure that the capabilities were retrieved from the support twice,
 	// which proves that the capabilities are dynamically retrieved from the support each time
-	assert.Equal(t, 2*capabilityInvokeCount, support.CapabilitiesInvokeCount)
+	assert.Equal(t, 2*capabilityInvokeCount, support.CapabilitiesInvokeCount())
 	// Ensure that the MSP Manager was retrieved from the support twice,
 	// which proves that the MSP Manager is dynamically retrieved from the support each time
-	assert.Equal(t, 2*mspManagerInvokeCount, support.MSPManagerInvokeCount)
+	assert.Equal(t, 2*mspManagerInvokeCount, support.MSPManagerInvokeCount())
 }
 
 // TestLedgerIsNoAvailable simulates and provides a test for following scenario,
