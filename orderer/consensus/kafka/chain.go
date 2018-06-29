@@ -9,6 +9,7 @@ package kafka
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -93,6 +94,8 @@ type chainImpl struct {
 	parentConsumer  sarama.Consumer
 	channelConsumer sarama.PartitionConsumer
 
+	// mutex used when changing the doneReprocessingMsgInFlight
+	doneReprocessingMutex sync.Mutex
 	// notification that there are in-flight messages need to wait for
 	doneReprocessingMsgInFlight chan struct{}
 
@@ -161,13 +164,30 @@ func (chain *chainImpl) WaitReady() error {
 		select {
 		case <-chain.haltChan: // The chain has been halted, stop here
 			return fmt.Errorf("consenter for this channel has been halted")
-			// Block waiting for all re-submitted messages to be reprocessed
-		case <-chain.doneReprocessingMsgInFlight:
+		case <-chain.doneReprocessing(): // Block waiting for all re-submitted messages to be reprocessed
 			return nil
 		}
 	default: // Not ready yet
 		return fmt.Errorf("will not enqueue, consenter for this channel hasn't started yet")
 	}
+}
+
+func (chain *chainImpl) doneReprocessing() <-chan struct{} {
+	chain.doneReprocessingMutex.Lock()
+	defer chain.doneReprocessingMutex.Unlock()
+	return chain.doneReprocessingMsgInFlight
+}
+
+func (chain *chainImpl) reprocessConfigComplete() {
+	chain.doneReprocessingMutex.Lock()
+	defer chain.doneReprocessingMutex.Unlock()
+	close(chain.doneReprocessingMsgInFlight)
+}
+
+func (chain *chainImpl) reprocessConfigPending() {
+	chain.doneReprocessingMutex.Lock()
+	defer chain.doneReprocessingMutex.Unlock()
+	chain.doneReprocessingMsgInFlight = make(chan struct{})
 }
 
 // Implements the consensus.Chain interface. Called by Broadcast().
@@ -771,7 +791,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 				regularMessage.ConfigSeq == seq { // AND we don't need to resubmit it again
 				logger.Debugf("[channel: %s] Config message with original offset %d is the last in-flight resubmitted message"+
 					"and it does not require revalidation, unblock ingress messages now", chain.ChainID(), regularMessage.OriginalOffset)
-				close(chain.doneReprocessingMsgInFlight) // Therefore, we could finally close the channel to unblock broadcast
+				chain.reprocessConfigComplete() // Therefore, we could finally unblock broadcast
 			}
 
 			// Somebody resubmitted message at offset X, whereas we didn't. This is due to non-determinism where
@@ -798,8 +818,8 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			}
 
 			logger.Debugf("[channel: %s] Resubmitted config message with offset %d, block ingress messages", chain.ChainID(), receivedOffset)
-			chain.lastResubmittedConfigOffset = receivedOffset      // Keep track of last resubmitted message offset
-			chain.doneReprocessingMsgInFlight = make(chan struct{}) // Create the channel to block ingress messages
+			chain.lastResubmittedConfigOffset = receivedOffset // Keep track of last resubmitted message offset
+			chain.reprocessConfigPending()                     // Begin blocking ingress messages
 
 			return nil
 		}
