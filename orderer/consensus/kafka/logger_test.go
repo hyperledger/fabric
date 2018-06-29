@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/onsi/gomega/gbytes"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -145,14 +145,14 @@ func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
 	topic := channelNameForTest(t)
 	partition := int32(0)
 
-	var buffer bytes.Buffer
+	buffer := gbytes.NewBuffer() // implementaiton supports concurrency
 	logger.SetBackend(logging.AddModuleLevel(
 		logging.MultiLogger(
 			logging.NewBackendFormatter(
 				logging.NewLogBackend(os.Stderr, "", 0),
 				logging.MustStringFormatter("%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"),
 			),
-			logging.NewLogBackend(&buffer, "", 0),
+			logging.NewLogBackend(buffer, "", 0),
 		),
 	))
 	defer logging.Reset()
@@ -194,6 +194,6 @@ func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
 	case <-partitionConsumer.Messages():
 		t.Fatalf("did not expect to receive message")
 	case <-time.After(shortTimeout):
-		assert.Regexp(t, "Kafka.Version specified in the orderer configuration is incorrectly set", buffer.String())
+		assert.Regexp(t, "Kafka.Version specified in the orderer configuration is incorrectly set", string(buffer.Contents()))
 	}
 }
