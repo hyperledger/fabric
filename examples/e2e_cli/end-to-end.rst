@@ -150,7 +150,7 @@ Configuration Transaction Generator
 -----------------------------------
 
 The `configtxgen
-tool <https://github.com/hyperledger/fabric/blob/master/docs/source/configtxgen.rst>`__
+tool <https://github.com/hyperledger/fabric/blob/release-1.2/docs/source/configtx.rst>`__
 is used to create four artifacts: orderer **bootstrap block**, fabric
 **channel configuration transaction**, and two **anchor peer transactions** - one
 for each Peer Org.
