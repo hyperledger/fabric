@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-const ConfigTxTemplate = `---
+const DefaultConfigTxTemplate = `---
 {{ with $w := . -}}
 Organizations:{{ range .PeerOrgs }}
 - &{{ .MSPID }}

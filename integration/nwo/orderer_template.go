@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-const OrdererTemplate = `---
+const DefaultOrdererTemplate = `---
 {{ with $w := . -}}
 General:
   LedgerType: file

@@ -34,7 +34,7 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 		return
 	}
 
-	// insstall on all peers
+	// install on all peers
 	n.InstallChaincode(peers, commands.ChaincodeInstall{
 		Name:    chaincode.Name,
 		Version: chaincode.Version,
