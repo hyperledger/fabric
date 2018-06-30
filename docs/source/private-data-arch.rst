@@ -182,16 +182,21 @@ shim API:
 
 Limitations:
 
-* Clients that call chaincode that executes queries should be aware that they
-  may receive a subset of the result set, if the peer they query has missing
+* Clients that call chaincode that executes range or rich JSON queries should be aware
+  that they may receive a subset of the result set, if the peer they query has missing
   private data, based on the explanation in Private Data Dissemination section
   above.  Clients can query multiple peers and compare the results to
   determine if a peer may be missing some of the result set.
-* Chaincode that executes queries and updates data in a single transaction
-  is not supported, as the query results cannot be validated on the peers
+* Chaincode that executes range or rich JSON queries and updates data in a single
+  transaction is not supported, as the query results cannot be validated on the peers
   that don’t have access to the private data, or on peers that are missing the
   private data that they have access to. If a chaincode invocation both queries
-  and updates private data, the proposal request will return an error.
+  and updates private data, the proposal request will return an error. If your application
+  can tolerate result set changes between chaincode execution and validation/commit time,
+  then you could call one chaincode function to perform the query, and then call a second
+  chaincode function to make the updates. Note that calls to GetPrivateData() to retrieve
+  individual keys can be made in the same transaction as PutPrivateData() calls, since
+  all peers can validate key reads based on the hashed key version.
 * Note that private data collections only define which organization’s peers
   are authorized to receive and store private data, and consequently implies
   which peers can be used to query private data. Private data collections do not
