@@ -7,96 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package acl_test
 
 import (
-	"math"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/discovery/support/acl"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
 	gmocks "github.com/hyperledger/fabric/peer/gossip/mocks"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestMSPOfPrincipal(t *testing.T) {
-	corruptPrincipalBytes := func(b []byte) []byte {
-		return append(b, 1, 2, 3)
-	}
-	sup := acl.NewDiscoverySupport(nil, nil, nil)
-	tests := []struct {
-		name           string
-		principal      proto.Message
-		classification msp.MSPPrincipal_Classification
-		expectedMSPID  string
-	}{
-		{
-			name: "role",
-			principal: &msp.MSPRole{
-				MspIdentifier: "Org1MSP",
-			},
-			classification: msp.MSPPrincipal_ROLE,
-			expectedMSPID:  "Org1MSP",
-		},
-		{
-			name: "identity",
-			principal: &msp.SerializedIdentity{
-				Mspid: "Org2MSP",
-			},
-			classification: msp.MSPPrincipal_IDENTITY,
-			expectedMSPID:  "Org2MSP",
-		},
-		{
-			name: "OU",
-			principal: &msp.OrganizationUnit{
-				MspIdentifier: "Org3MSP",
-			},
-			classification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-			expectedMSPID:  "Org3MSP",
-		},
-		{
-			name:           "unknown",
-			principal:      nil,
-			classification: msp.MSPPrincipal_Classification(math.MaxInt16),
-			expectedMSPID:  "",
-		},
-		{
-			name:           "nil message",
-			principal:      nil,
-			classification: msp.MSPPrincipal_IDENTITY,
-			expectedMSPID:  "",
-		},
-	}
-
-	// First check for nil input
-	assert.Equal(t, "", sup.MSPOfPrincipal(nil))
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			principalBytes, _ := proto.Marshal(test.principal)
-			principal := &msp.MSPPrincipal{
-				PrincipalClassification: test.classification,
-				Principal:               principalBytes,
-			}
-			mspID := sup.MSPOfPrincipal(principal)
-			assert.Equal(t, test.expectedMSPID, mspID)
-
-			// Now, corrupt the principal bytes and check that the MSP ID is empty
-			principalBytes = corruptPrincipalBytes(principalBytes)
-			principal = &msp.MSPPrincipal{
-				PrincipalClassification: test.classification,
-				Principal:               principalBytes,
-			}
-			mspID = sup.MSPOfPrincipal(principal)
-			assert.Empty(t, mspID)
-		})
-	}
-
-}
 
 func TestGetChannelConfigFunc(t *testing.T) {
 	r := &mocks.Resources{}

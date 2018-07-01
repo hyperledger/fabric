@@ -671,12 +671,6 @@ func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ bool) *chain
 type principalEvaluator struct {
 }
 
-func (pe *principalEvaluator) MSPOfPrincipal(principal *msp.MSPPrincipal) string {
-	sID := &msp.SerializedIdentity{}
-	proto.Unmarshal(principal.Principal, sID)
-	return sID.Mspid
-}
-
 func (pe *principalEvaluator) SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error {
 	sID := &msp.SerializedIdentity{}
 	proto.Unmarshal(identity, sID)

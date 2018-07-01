@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package acl
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
@@ -103,42 +102,6 @@ func (s *DiscoverySupport) SatisfiesPrincipal(channel string, rawIdentity []byte
 		return errors.Wrap(err, "failed deserializing identity")
 	}
 	return identity.SatisfiesPrincipal(principal)
-}
-
-// MSPOfPrincipal returns the MSP ID of the given principal
-func (s *DiscoverySupport) MSPOfPrincipal(principal *msp.MSPPrincipal) string {
-	if principal == nil {
-		return ""
-	}
-	switch principal.PrincipalClassification {
-	case msp.MSPPrincipal_ROLE:
-		// Principal contains the msp role
-		mspRole := &msp.MSPRole{}
-		err := proto.Unmarshal(principal.Principal, mspRole)
-		if err != nil {
-			logger.Warning("Failed unmarshaling principal:", err)
-			return ""
-		}
-		return mspRole.MspIdentifier
-	case msp.MSPPrincipal_IDENTITY:
-		sId := &msp.SerializedIdentity{}
-		err := proto.Unmarshal(principal.Principal, sId)
-		if err != nil {
-			logger.Warning("Failed unmarshaling principal:", err)
-			return ""
-		}
-		return sId.Mspid
-	case msp.MSPPrincipal_ORGANIZATION_UNIT:
-		ouRole := &msp.OrganizationUnit{}
-		err := proto.Unmarshal(principal.Principal, ouRole)
-		if err != nil {
-			logger.Warning("Failed unmarshaling principal:", err)
-			return ""
-		}
-		return ouRole.MspIdentifier
-	}
-	logger.Warning("Received principal of unknown classification:", principal)
-	return ""
 }
 
 //go:generate mockery -name ChannelPolicyManagerGetter -case underscore  -output ../mocks/
