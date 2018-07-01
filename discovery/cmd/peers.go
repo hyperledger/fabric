@@ -83,7 +83,7 @@ func (parser *PeerResponseParser) ParseResponse(channel string, res ServiceRespo
 	if channel == "" {
 		listPeers = res.ForLocal()
 	} else {
-		listPeers = res.ForChannel(channel)
+		listPeers = &simpleChannelResponse{res.ForChannel(channel)}
 	}
 	peers, err := listPeers.Peers()
 	if err != nil {
@@ -110,6 +110,14 @@ type peer struct {
 
 type peerLister interface {
 	Peers() ([]*discovery.Peer, error)
+}
+
+type simpleChannelResponse struct {
+	discovery.ChannelResponse
+}
+
+func (scr *simpleChannelResponse) Peers() ([]*discovery.Peer, error) {
+	return scr.ChannelResponse.Peers()
 }
 
 func rawPeerToPeer(p *discovery.Peer) peer {
