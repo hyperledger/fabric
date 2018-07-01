@@ -135,19 +135,19 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 
 		confHistoryRetriever, err := dr.store.GetConfigHistoryRetriever()
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("cannot obtain configuration history retriever, for collection,", dig.Collection,
-				"txID", dig.TxId, "block sequence number", dig.BlockSeq, "due to", err))
+			return nil, errors.New(fmt.Sprint("cannot obtain configuration history retriever, for collection, ", dig.Collection,
+				" txID ", dig.TxId, " block sequence number ", dig.BlockSeq, " due to", err))
 		}
 
 		configInfo, err := confHistoryRetriever.MostRecentCollectionConfigBelow(dig.BlockSeq, dig.Namespace)
 		if err != nil {
 			return nil, errors.New(fmt.Sprint("cannot find recent collection config update below block sequence = ", dig.BlockSeq,
-				"collection name =", dig.Collection, "for chaincode", dig.Namespace))
+				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace))
 		}
 
 		if configInfo == nil {
 			return nil, errors.New(fmt.Sprint("no collection config update below block sequence = ", dig.BlockSeq,
-				"collection name =", dig.Collection, "for chaincode", dig.Namespace, "is available"))
+				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace, " is available "))
 		}
 		configs := dr.extractCollectionConfigs(configInfo.CollectionConfig, dig)
 		if configs == nil {
