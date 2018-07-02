@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -24,9 +25,10 @@ import (
 type handler struct {
 	ChatStream       pb.Events_ChatServer
 	interestedEvents map[string]*pb.Interest
-	sessionEndTime   time.Time
 	RemoteAddr       string
 	eventProcessor   *eventProcessor
+	sessionEndLock   *sync.Mutex
+	sessionEndTime   time.Time
 }
 
 func newHandler(stream pb.Events_ChatServer, ep *eventProcessor) *handler {
@@ -35,6 +37,7 @@ func newHandler(stream pb.Events_ChatServer, ep *eventProcessor) *handler {
 		interestedEvents: map[string]*pb.Interest{},
 		RemoteAddr:       util.ExtractRemoteAddress(stream.Context()),
 		eventProcessor:   ep,
+		sessionEndLock:   &sync.Mutex{},
 	}
 	logger.Debug("event handler created for", h.RemoteAddr)
 	return h
@@ -139,7 +142,16 @@ func (h *handler) sendMessage(msg *pb.Event) error {
 	return nil
 }
 
+func (h *handler) setSessionEndTime(expiry time.Time) {
+	h.sessionEndLock.Lock()
+	h.sessionEndTime = expiry
+	h.sessionEndLock.Unlock()
+}
+
 func (h *handler) hasSessionExpired() bool {
+	h.sessionEndLock.Lock()
+	defer h.sessionEndLock.Unlock()
+
 	now := time.Now()
 	if !h.sessionEndTime.IsZero() && now.After(h.sessionEndTime) {
 		err := errors.Errorf("Client identity has expired for %s", h.RemoteAddr)
@@ -175,7 +187,7 @@ func (h *handler) validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, er
 	if !expirationTime.IsZero() && time.Now().After(expirationTime) {
 		return nil, fmt.Errorf("identity expired")
 	}
-	h.sessionEndTime = expirationTime
+	h.setSessionEndTime(expirationTime)
 
 	if evt.GetTimestamp() != nil {
 		evtTime := time.Unix(evt.GetTimestamp().Seconds, int64(evt.GetTimestamp().Nanos)).UTC()

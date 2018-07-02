@@ -163,7 +163,7 @@ func TestSignedEvent(t *testing.T) {
 	recvChan := make(chan *streamEvent)
 	sendChan := make(chan *pb.Event)
 	stream := &mockEventStream{recvChan: recvChan, sendChan: sendChan}
-	mockHandler := &handler{ChatStream: stream, eventProcessor: gEventProcessor}
+	mockHandler := newHandler(stream, gEventProcessor)
 	backupSerializedIdentity := signerSerialized
 	signerSerialized = createExpiredIdentity(t)
 	// get a test event
@@ -446,7 +446,7 @@ func TestRegister_ExpiredIdentity(t *testing.T) {
 		handlerList.Lock()
 		for k := range handlerList.handlers {
 			// Artificially move the session end time a minute into the past
-			k.sessionEndTime = time.Now().Add(-1 * time.Minute)
+			k.setSessionEndTime(time.Now().Add(-1 * time.Minute))
 		}
 		handlerList.Unlock()
 		gEventProcessor.RUnlock()
