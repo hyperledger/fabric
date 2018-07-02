@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -75,11 +74,12 @@ type World struct {
 }
 
 type Chaincode struct {
-	Name     string
-	Path     string
-	Version  string
-	GoPath   string
-	ExecPath string
+	Name                  string
+	Path                  string
+	Version               string
+	GoPath                string
+	ExecPath              string
+	CollectionsConfigPath string
 }
 
 type Deployment struct {
@@ -428,19 +428,11 @@ func (w *World) SetupChannel(d Deployment, peers []string) {
 	}
 
 	p = setupPeerRunner(peers[0])
-	p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy)
+	p.InstantiateChaincode(d.Chaincode.Name, d.Chaincode.Version, d.Orderer, d.Channel, d.InitArgs, d.Policy, d.Chaincode.CollectionsConfigPath)
 
 	for _, peer := range peers[1:] {
 		p = setupPeerRunner(peer)
-		listInstantiated := func() *gbytes.Buffer {
-			adminRunner = p.ChaincodeListInstantiated(d.Channel)
-
-			sess, err := helpers.StartSession(adminRunner.Command, "list instantiated", "4;34m")
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			EventuallyWithOffset(1, sess, 10*time.Second).Should(gexec.Exit(0))
-			return sess.Buffer()
-		}
-		EventuallyWithOffset(1, listInstantiated, time.Minute).Should(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", d.Chaincode.Name, d.Chaincode.Version)))
+		p.VerifyChaincodeIsInstantiated(d.Chaincode.Name, d.Chaincode.Version, d.Channel, time.Minute)
 	}
 }
 

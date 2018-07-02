@@ -189,14 +189,29 @@ func (p *Peer) InstallChaincode(name, version, path string) {
 	Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)))
 }
 
-func (p *Peer) InstantiateChaincode(name, version, orderer, channel, args, policy string) {
-	cmd := exec.Command(p.Path, "chaincode", "instantiate", "-n", name, "-v", version, "-o", orderer, "-C", channel, "-c", args, "-P", policy)
+func (p *Peer) InstantiateChaincode(name, version, orderer, channel, args, policy string, collectionsConfigPath string) {
+	cmd := exec.Command(p.Path, "chaincode", "instantiate", "-n", name, "-v", version, "-o", orderer, "-C", channel, "-c", args, "-P", policy, "--collections-config", collectionsConfigPath)
 	p.setupEnvironment(cmd)
 
 	sess, err := helpers.StartSession(cmd, "instantiate", "4;35m")
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	EventuallyWithOffset(1, sess, time.Minute).Should(gexec.Exit(0))
 
+	p.VerifyChaincodeIsInstantiated(name, version, channel, time.Minute)
+}
+
+func (p *Peer) UpgradeChaincode(name string, version string, orderer string, channel string, args string, policy string, collectionsConfigPath string) {
+	cmd := exec.Command(p.Path, "chaincode", "upgrade", "-n", name, "-v", version, "-o", orderer, "-C", channel, "-c", args, "-P", policy, "--collections-config", collectionsConfigPath)
+	p.setupEnvironment(cmd)
+
+	sess, err := helpers.StartSession(cmd, "upgrade", "4;35m")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, time.Minute).Should(gexec.Exit(0))
+
+	p.VerifyChaincodeIsInstantiated(name, version, channel, time.Minute)
+}
+
+func (p *Peer) VerifyChaincodeIsInstantiated(chaincodeName string, version string, channel string, timeout time.Duration) {
 	listInstantiated := func() *gbytes.Buffer {
 		cmd := exec.Command(p.Path, "chaincode", "list", "--instantiated", "-C", channel)
 		p.setupEnvironment(cmd)
@@ -206,7 +221,7 @@ func (p *Peer) InstantiateChaincode(name, version, orderer, channel, args, polic
 		EventuallyWithOffset(1, sess, 10*time.Second).Should(gexec.Exit(0))
 		return sess.Buffer()
 	}
-	EventuallyWithOffset(1, listInstantiated, time.Minute).Should(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)))
+	EventuallyWithOffset(1, listInstantiated, timeout).Should(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", chaincodeName, version)))
 }
 
 func (p *Peer) QueryChaincode(name string, channel string, args string) *ginkgomon.Runner {
