@@ -324,8 +324,8 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 		assert.Contains(t, err.Error(), "timeout waiting for channel creation")
 	}
 
-	// failure - times out connecting to orderer
-	args = []string{"create", "-c", mockchain, "-o", "localhost:9999", "--connTimeout", "10ms"}
+	// failure - point to bad port and time out connecting to orderer
+	args = []string{"create", "-c", mockchain, "-o", "localhost:0", "--connTimeout", "10ms"}
 	channelCmd.SetArgs(args)
 
 	if err := channelCmd.Execute(); err == nil {
