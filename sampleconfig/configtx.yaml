@@ -106,29 +106,6 @@ Capabilities:
         # features and fixes of fabric v1.1 (note, this need not be set if
         # V1_2 is set).
         V1_1: false
-        # V1_1_PVTDATA_EXPERIMENTAL is an Application capability to enable the
-        # private data capability.  It is only supported when using peers built
-        # with experimental build tag.  When set to true, private data
-        # collections can be configured upon chaincode instantiation and
-        # utilized within chaincode Invokes.
-        # NOTE: Use of this feature with non "experimental" binaries on the
-        # network may cause a fork.
-        V1_1_PVTDATA_EXPERIMENTAL: false
-        # V1_1_RESOURCETREE_EXPERIMENTAL is an Application capability to enable
-        # the resources capability. Currently this is needed for defining
-        # resource-based access control (RBAC). RBAC helps set fine-grained
-        # access control on system resources such as the endorser and various
-        # system chaincodes. Default is v1.0-based access control based on
-        # CHANNEL_READERS and CHANNEL_WRITERS.
-        # NOTE: Use of this feature with non "experimental" binaries on
-        # the network may cause a fork.
-        V1_1_RESOURCETREE_EXPERIMENTAL: false
-        # V1_2_CHAINCODE_LIFECYCLE_EXPERIMENTAL is an Application capability
-        # to enable the new lifecycle semantics of "Install Code, Install
-        # Metadata to a Channel, Define Chaincode, Init Chaincode"
-        # This is an in development feature and is useful only for developer
-        # testing at this time.
-        V1_2_CHAINCODE_LIFECYCLE_EXPERIMENTAL: false
 
 ################################################################################
 #
