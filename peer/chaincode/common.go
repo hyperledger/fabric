@@ -44,12 +44,7 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 		return errors.New("expected chaincode specification, nil received")
 	}
 
-	platform, err := platforms.Find(spec.Type)
-	if err != nil {
-		return errors.WithMessage(err, "failed to determine platform type")
-	}
-
-	return platform.ValidateSpec(spec)
+	return platforms.NewRegistry().ValidateSpec(spec)
 }
 
 // getChaincodeDeploymentSpec get chaincode deployment spec given the chaincode spec

@@ -119,13 +119,13 @@ func Test_Start(t *testing.T) {
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")},
 	}
-	codePackage, err := platforms.GetDeploymentPayload(spec)
+	codePackage, err := platforms.NewRegistry().GetDeploymentPayload(spec)
 	if err != nil {
 		t.Fatal()
 	}
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
 	bldr := &mockBuilder{
-		buildFunc: func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) },
+		buildFunc: func() (io.Reader, error) { return platforms.NewRegistry().GenerateDockerBuild(cds) },
 	}
 
 	// case 4: start called with builder and dockerClient.CreateContainer returns

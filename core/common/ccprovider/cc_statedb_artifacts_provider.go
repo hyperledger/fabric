@@ -50,12 +50,11 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bo
 // This function is called during chaincode instantiate/upgrade (from above), and from install, so that statedb artifacts can be created.
 func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifactsTar []byte, err error) {
 	cds := ccpackage.GetDepSpec()
-	pform, err := platforms.Find(cds.ChaincodeSpec.Type)
+	metaprov, err := platforms.NewRegistry().GetMetadataProvider(cds)
 	if err != nil {
-		ccproviderLogger.Infof("invalid deployment spec (bad platform type:%s)", cds.ChaincodeSpec.Type)
+		ccproviderLogger.Infof("invalid deployment spec: %s", err)
 		return nil, fmt.Errorf("invalid deployment spec")
 	}
-	metaprov := pform.GetMetadataProvider(cds)
 	return metaprov.GetMetadataAsTarEntries()
 }
 
