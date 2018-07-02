@@ -291,18 +291,19 @@ func TestRecoverFromError(t *testing.T) {
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
-	_ = goWithWait(bs.main)
+	go bs.main()
 	defer bs.Halt()
 
+	support.BlockCutterVal.SkipAppendCurBatch = true
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
-	support.BlockCutterVal.CurBatch = nil
 
 	select {
 	case <-support.Blocks:
 		t.Fatalf("Expected no invocations of Append")
-	case <-time.After(2 * time.Millisecond):
+	case <-time.After(100 * time.Millisecond):
 	}
 
+	support.BlockCutterVal.SkipAppendCurBatch = false
 	support.BlockCutterVal.CutNext = true
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	select {

@@ -100,7 +100,6 @@ func TestUpdateEndpoints(t *testing.T) {
 }
 
 func TestDisableEndpoint(t *testing.T) {
-	t.Parallel()
 	orgEndpointDisableInterval := EndpointDisableInterval
 	EndpointDisableInterval = time.Millisecond * 100
 	defer func() { EndpointDisableInterval = orgEndpointDisableInterval }()
