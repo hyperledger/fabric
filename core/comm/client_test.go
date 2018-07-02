@@ -25,8 +25,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var testClientCert, testServerCert tls.Certificate
-var testTimeout = 1 * time.Second // conservative
+const testTimeout = 1 * time.Second // conservative
 
 type echoServer struct{}
 
@@ -37,7 +36,7 @@ func (es *echoServer) EchoCall(ctx context.Context,
 
 func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	t.Parallel()
-	caPEM, certPEM, keyPEM, _, _ := loadCerts(t)
+	testCerts := loadCerts(t)
 
 	config := comm.ClientConfig{}
 	client, err := comm.NewGRPCClient(config)
@@ -47,7 +46,8 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.False(t, client.MutualTLSRequired())
 
 	secOpts := &comm.SecureOptions{
-		UseTLS: false}
+		UseTLS: false,
+	}
 	config.SecOpts = secOpts
 	client, err = comm.NewGRPCClient(config)
 	assert.NoError(t, err)
@@ -57,8 +57,9 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 
 	secOpts = &comm.SecureOptions{
 		UseTLS:            true,
-		ServerRootCAs:     [][]byte{caPEM},
-		RequireClientCert: false}
+		ServerRootCAs:     [][]byte{testCerts.caPEM},
+		RequireClientCert: false,
+	}
 	config.SecOpts = secOpts
 	client, err = comm.NewGRPCClient(config)
 	assert.NoError(t, err)
@@ -66,38 +67,41 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.False(t, client.MutualTLSRequired())
 
 	secOpts = &comm.SecureOptions{
-		Certificate:       certPEM,
-		Key:               keyPEM,
+		Certificate:       testCerts.certPEM,
+		Key:               testCerts.keyPEM,
 		UseTLS:            true,
-		ServerRootCAs:     [][]byte{caPEM},
-		RequireClientCert: true}
+		ServerRootCAs:     [][]byte{testCerts.caPEM},
+		RequireClientCert: true,
+	}
 	config.SecOpts = secOpts
 	client, err = comm.NewGRPCClient(config)
 	assert.NoError(t, err)
 	assert.True(t, client.TLSEnabled())
 	assert.True(t, client.MutualTLSRequired())
-	assert.Equal(t, testClientCert, client.Certificate())
-
+	assert.Equal(t, testCerts.clientCert, client.Certificate())
 }
 
 func TestNewGRPCClient_BadConfig(t *testing.T) {
 	t.Parallel()
-	_, certPEM, keyPEM, _, _ := loadCerts(t)
+	testCerts := loadCerts(t)
+
 	// bad root cert
 	config := comm.ClientConfig{
 		SecOpts: &comm.SecureOptions{
 			UseTLS:        true,
-			ServerRootCAs: [][]byte{[]byte(badPEM)}}}
+			ServerRootCAs: [][]byte{[]byte(badPEM)},
+		},
+	}
 	_, err := comm.NewGRPCClient(config)
 	assert.Contains(t, err.Error(), "error adding root certificate")
 
 	// missing key
-	missing := "both Key and Certificate " +
-		"are required when using mutual TLS"
+	missing := "both Key and Certificate are required when using mutual TLS"
 	config.SecOpts = &comm.SecureOptions{
 		Certificate:       []byte("cert"),
 		UseTLS:            true,
-		RequireClientCert: true}
+		RequireClientCert: true,
+	}
 	_, err = comm.NewGRPCClient(config)
 	assert.Equal(t, missing, err.Error())
 
@@ -105,26 +109,29 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	config.SecOpts = &comm.SecureOptions{
 		Key:               []byte("key"),
 		UseTLS:            true,
-		RequireClientCert: true}
+		RequireClientCert: true,
+	}
 	_, err = comm.NewGRPCClient(config)
 	assert.Equal(t, missing, err.Error())
 
 	// bad key
 	failed := "failed to load client certificate"
 	config.SecOpts = &comm.SecureOptions{
-		Certificate:       certPEM,
+		Certificate:       testCerts.certPEM,
 		Key:               []byte(badPEM),
 		UseTLS:            true,
-		RequireClientCert: true}
+		RequireClientCert: true,
+	}
 	_, err = comm.NewGRPCClient(config)
 	assert.Contains(t, err.Error(), failed)
 
 	// bad cert
 	config.SecOpts = &comm.SecureOptions{
 		Certificate:       []byte(badPEM),
-		Key:               keyPEM,
+		Key:               testCerts.keyPEM,
 		UseTLS:            true,
-		RequireClientCert: true}
+		RequireClientCert: true,
+	}
 	_, err = comm.NewGRPCClient(config)
 	assert.Contains(t, err.Error(), failed)
 }
@@ -133,7 +140,8 @@ func TestNewConnection_Timeout(t *testing.T) {
 	t.Parallel()
 	testAddress := "localhost:11111"
 	config := comm.ClientConfig{
-		Timeout: 1 * time.Second}
+		Timeout: 1 * time.Second,
+	}
 	client, err := comm.NewGRPCClient(config)
 	conn, err := client.NewConnection(testAddress, "")
 	assert.Contains(t, err.Error(), "context deadline exceeded")
@@ -143,9 +151,10 @@ func TestNewConnection_Timeout(t *testing.T) {
 
 func TestNewConnection(t *testing.T) {
 	t.Parallel()
-	caPEM, certPEM, keyPEM, _, _ := loadCerts(t)
+	testCerts := loadCerts(t)
+
 	certPool := x509.NewCertPool()
-	ok := certPool.AppendCertsFromPEM(caPEM)
+	ok := certPool.AppendCertsFromPEM(testCerts.caPEM)
 	if !ok {
 		t.Fatal("failed to create test root cert pool")
 	}
@@ -164,7 +173,8 @@ func TestNewConnection(t *testing.T) {
 			serverPort: 8351,
 			clientPort: 8351,
 			config: comm.ClientConfig{
-				Timeout: testTimeout},
+				Timeout: testTimeout,
+			},
 			success: true,
 		},
 		{
@@ -172,7 +182,8 @@ func TestNewConnection(t *testing.T) {
 			serverPort: 8352,
 			clientPort: 7352,
 			config: comm.ClientConfig{
-				Timeout: time.Second},
+				Timeout: time.Second,
+			},
 			success:  false,
 			errorMsg: "context deadline exceeded",
 		},
@@ -182,12 +193,14 @@ func TestNewConnection(t *testing.T) {
 			clientPort: 8353,
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
-					Certificate:       certPEM,
-					Key:               keyPEM,
+					Certificate:       testCerts.certPEM,
+					Key:               testCerts.keyPEM,
 					UseTLS:            true,
-					ServerRootCAs:     [][]byte{caPEM},
-					RequireClientCert: true},
-				Timeout: time.Second},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+					RequireClientCert: true,
+				},
+				Timeout: time.Second,
+			},
 			success:  false,
 			errorMsg: "context deadline exceeded",
 		},
@@ -197,13 +210,16 @@ func TestNewConnection(t *testing.T) {
 			clientPort: 8354,
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
-					Certificate:   certPEM,
-					Key:           keyPEM,
+					Certificate:   testCerts.certPEM,
+					Key:           testCerts.keyPEM,
 					UseTLS:        true,
-					ServerRootCAs: [][]byte{caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs: [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testServerCert}},
+				Certificates: []tls.Certificate{testCerts.serverCert},
+			},
 			success: true,
 		},
 		{
@@ -212,13 +228,16 @@ func TestNewConnection(t *testing.T) {
 			clientPort: 8355,
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
-					Certificate:   certPEM,
-					Key:           keyPEM,
+					Certificate:   testCerts.certPEM,
+					Key:           testCerts.keyPEM,
 					UseTLS:        true,
-					ServerRootCAs: [][]byte{}},
-				Timeout: testTimeout},
+					ServerRootCAs: [][]byte{},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testServerCert}},
+				Certificates: []tls.Certificate{testCerts.serverCert},
+			},
 			success:  false,
 			errorMsg: "context deadline exceeded",
 		},
@@ -228,14 +247,17 @@ func TestNewConnection(t *testing.T) {
 			clientPort: 8356,
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
-					Certificate:   certPEM,
-					Key:           keyPEM,
+					Certificate:   testCerts.certPEM,
+					Key:           testCerts.keyPEM,
 					UseTLS:        true,
-					ServerRootCAs: [][]byte{caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs: [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testServerCert},
-				ClientAuth:   tls.RequireAndVerifyClientCert},
+				Certificates: []tls.Certificate{testCerts.serverCert},
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+			},
 			success:  false,
 			errorMsg: "context deadline exceeded",
 		},
@@ -245,16 +267,17 @@ func TestNewConnection(t *testing.T) {
 			clientPort: 8357,
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
-					Certificate:       certPEM,
-					Key:               keyPEM,
+					Certificate:       testCerts.certPEM,
+					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{caPEM}},
+					ServerRootCAs:     [][]byte{testCerts.caPEM}},
 				Timeout: testTimeout},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testServerCert},
+				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
-				ClientCAs:    certPool},
+				ClientCAs:    certPool,
+			},
 			success: true,
 		},
 	}
@@ -263,17 +286,14 @@ func TestNewConnection(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			lis, err := net.Listen("tcp",
-				fmt.Sprintf("localhost:%d", test.serverPort))
+			lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", test.serverPort))
 			if err != nil {
 				t.Fatalf("error creating server for test: %v", err)
 			}
 			defer lis.Close()
 			serverOpts := []grpc.ServerOption{}
 			if test.serverTLS != nil {
-				serverOpts = append(
-					serverOpts,
-					grpc.Creds(credentials.NewTLS(test.serverTLS)))
+				serverOpts = append(serverOpts, grpc.Creds(credentials.NewTLS(test.serverTLS)))
 			}
 			srv := grpc.NewServer(serverOpts...)
 			defer srv.Stop()
@@ -282,8 +302,7 @@ func TestNewConnection(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error creating client for test: %v", err)
 			}
-			conn, err := client.NewConnection(fmt.Sprintf("localhost:%d",
-				test.clientPort), "")
+			conn, err := client.NewConnection(fmt.Sprintf("localhost:%d", test.clientPort), "")
 			if test.success {
 				assert.NoError(t, err)
 				assert.NotNil(t, conn)
@@ -297,13 +316,15 @@ func TestNewConnection(t *testing.T) {
 
 func TestSetServerRootCAs(t *testing.T) {
 	t.Parallel()
-	caPEM, _, _, _, _ := loadCerts(t)
+	testCerts := loadCerts(t)
 
 	config := comm.ClientConfig{
 		SecOpts: &comm.SecureOptions{
 			UseTLS:        true,
-			ServerRootCAs: [][]byte{caPEM}},
-		Timeout: testTimeout}
+			ServerRootCAs: [][]byte{testCerts.caPEM},
+		},
+		Timeout: testTimeout,
+	}
 	client, err := comm.NewGRPCClient(config)
 	if err != nil {
 		t.Fatalf("error creating base client: %v", err)
@@ -316,8 +337,9 @@ func TestSetServerRootCAs(t *testing.T) {
 		t.Fatalf("failed to create listener for test server: %v", err)
 	}
 	defer lis.Close()
-	srv := grpc.NewServer(grpc.Creds(credentials.NewTLS(
-		&tls.Config{Certificates: []tls.Certificate{testServerCert}})))
+	srv := grpc.NewServer(grpc.Creds(credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{testCerts.serverCert},
+	})))
 	defer srv.Stop()
 	go srv.Serve(lis)
 
@@ -330,7 +352,7 @@ func TestSetServerRootCAs(t *testing.T) {
 		conn.Close()
 	}
 
-	// no root certs
+	// no root testCerts
 	t.Log("running bad config")
 	err = client.SetServerRootCAs([][]byte{})
 	assert.NoError(t, err)
@@ -340,7 +362,7 @@ func TestSetServerRootCAs(t *testing.T) {
 
 	// good root cert
 	t.Log("running good config")
-	err = client.SetServerRootCAs([][]byte{[]byte(caPEM)})
+	err = client.SetServerRootCAs([][]byte{[]byte(testCerts.caPEM)})
 	assert.NoError(t, err)
 	// now connection should succeed again
 	conn, err = client.NewConnection(address, "")
@@ -404,7 +426,8 @@ func TestSetMessageSize(t *testing.T) {
 
 	// set up test client
 	client, err := comm.NewGRPCClient(comm.ClientConfig{
-		Timeout: testTimeout})
+		Timeout: testTimeout,
+	})
 	if err != nil {
 		t.Fatalf("error creating test client: %v", err)
 	}
@@ -429,7 +452,8 @@ func TestSetMessageSize(t *testing.T) {
 			defer cancel()
 			//invoke service
 			echo := &testpb.Echo{
-				Payload: []byte{0, 0, 0, 0, 0}}
+				Payload: []byte{0, 0, 0, 0, 0},
+			}
 			resp, err := svcClient.EchoCall(callCtx, echo)
 			if !test.failRecv && !test.failSend {
 				assert.NoError(t, err)
@@ -437,49 +461,51 @@ func TestSetMessageSize(t *testing.T) {
 			}
 			if test.failSend {
 				t.Logf("send error: %v", err)
-				assert.Contains(t, err.Error(),
-					"trying to send message larger than max")
+				assert.Contains(t, err.Error(), "trying to send message larger than max")
 			}
 			if test.failRecv {
 				t.Logf("recv error: %v", err)
-				assert.Contains(t, err.Error(),
-					"received message larger than max")
+				assert.Contains(t, err.Error(), "received message larger than max")
 			}
 		})
 	}
 }
 
-func loadCerts(t *testing.T) (
-	caPEM,
-	certPEM,
-	keyPEM,
-	serverKey,
-	serverPEM []byte) {
+type testCerts struct {
+	caPEM      []byte
+	certPEM    []byte
+	keyPEM     []byte
+	serverKey  []byte
+	serverPEM  []byte
+	clientCert tls.Certificate
+	serverCert tls.Certificate
+}
 
+func loadCerts(t *testing.T) testCerts {
 	t.Helper()
+
+	var certs testCerts
 	var err error
-	caPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs",
-		"Org1-cert.pem"))
+	certs.caPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
 	if err != nil {
 		t.Fatalf("unexpected error reading root cert for test: %v", err)
 	}
-	certPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs",
-		"Org1-client1-cert.pem"))
+	certs.certPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-cert.pem"))
 	if err != nil {
 		t.Fatalf("unexpected error reading cert for test: %v", err)
 	}
-	keyPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs",
-		"Org1-client1-key.pem"))
+	certs.keyPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-key.pem"))
 	if err != nil {
 		t.Fatalf("unexpected error reading key for test: %v", err)
 	}
-	testClientCert, err = tls.X509KeyPair(certPEM, keyPEM)
+	certs.clientCert, err = tls.X509KeyPair(certs.certPEM, certs.keyPEM)
 	if err != nil {
 		t.Fatalf("unexpected error loading certificate for test: %v", err)
 	}
-	testServerCert, err = tls.LoadX509KeyPair(filepath.Join("testdata", "certs",
-		"Org1-server1-cert.pem"), filepath.Join("testdata", "certs",
-		"Org1-server1-key.pem"))
+	certs.serverCert, err = tls.LoadX509KeyPair(
+		filepath.Join("testdata", "certs", "Org1-server1-cert.pem"),
+		filepath.Join("testdata", "certs", "Org1-server1-key.pem"),
+	)
 
-	return caPEM, certPEM, keyPEM, serverKey, serverPEM
+	return certs
 }
