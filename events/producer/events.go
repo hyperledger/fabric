@@ -219,12 +219,11 @@ func (ep *eventProcessor) deregisterHandler(ie *pb.Interest, h *handler) error {
 }
 
 func (ep *eventProcessor) deregisterAll(h *handler) {
-	for k, v := range h.interestedEvents {
+	for _, v := range h.interestedEvents {
 		if err := ep.deregisterHandler(v, h); err != nil {
 			logger.Errorf("failed deregistering event type %s for %s", v, h.RemoteAddr)
 			continue
 		}
-		delete(h.interestedEvents, k)
 	}
 }
 
