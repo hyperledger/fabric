@@ -16,6 +16,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/cmd/common/signer"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,6 +31,7 @@ func TestCLI(t *testing.T) {
 	testBuff := &bytes.Buffer{}
 	outWriter = testBuff
 
+	var returnValue error
 	cli := NewCLI("cli", "cli help")
 	testCommand := func(conf Config) error {
 		// If we exited, the command wasn't executed
@@ -46,7 +48,7 @@ func TestCLI(t *testing.T) {
 			},
 		}, conf)
 		testCmdInvoked = true
-		return nil
+		return returnValue
 	}
 	cli.Command("test", "test help", testCommand)
 
@@ -60,7 +62,7 @@ func TestCLI(t *testing.T) {
 		assert.True(t, exited)
 	})
 
-	t.Run("Loading a valid config", func(t *testing.T) {
+	t.Run("Loading a valid config and the command succeeds", func(t *testing.T) {
 		defer testBuff.Reset()
 		testCmdInvoked = false
 		exited = false
@@ -69,6 +71,24 @@ func TestCLI(t *testing.T) {
 		// Ensure that a valid config results in running our command
 		cli.Run([]string{"test", "--configFile", filepath.Join(dir, "config.yaml")})
 		assert.True(t, testCmdInvoked)
+		assert.False(t, exited)
+	})
+
+	t.Run("Loading a valid config but the command fails", func(t *testing.T) {
+		returnValue = errors.New("something went wrong")
+		defer func() {
+			returnValue = nil
+		}()
+		defer testBuff.Reset()
+		testCmdInvoked = false
+		exited = false
+		// Overwrite user home directory with testdata
+		dir := filepath.Join("testdata", "valid_config")
+		// Ensure that a valid config results in running our command
+		cli.Run([]string{"test", "--configFile", filepath.Join(dir, "config.yaml")})
+		assert.True(t, testCmdInvoked)
+		assert.True(t, exited)
+		assert.Contains(t, testBuff.String(), "something went wrong")
 	})
 
 	t.Run("Saving a config", func(t *testing.T) {
