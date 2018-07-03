@@ -56,7 +56,7 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-EXPERIMENTAL ?= true
+EXPERIMENTAL ?= false
 
 BUILD_DIR ?= .build
 
