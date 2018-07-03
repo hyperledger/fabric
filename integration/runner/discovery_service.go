@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/protos/discovery"
@@ -142,13 +141,13 @@ func VerifyConfigDiscovered(sd *DiscoveryService, expectedConfig discovery.Confi
 
 func VerifyEndorsersDiscovered(sd *DiscoveryService, expectedEndorsementDescriptor helpers.EndorsementDescriptor, channel string, server string, chaincodeName string, collectionName string) bool {
 	sdRunner := sd.DiscoverEndorsers(channel, server, chaincodeName, collectionName)
-	err := helpers.Execute(sdRunner)
-	Expect(err).NotTo(HaveOccurred())
-	if strings.Contains(string(sdRunner.Buffer().Contents()[:]), fmt.Sprintf(`failed constructing descriptor for chaincodes:<name:"%s"`, chaincodeName)) {
+	if err := helpers.Execute(sdRunner); err != nil {
 		return false
 	}
 	var endorsers []helpers.EndorsementDescriptor
-	json.Unmarshal(sdRunner.Buffer().Contents(), &endorsers)
+	if err := json.Unmarshal(sdRunner.Buffer().Contents(), &endorsers); err != nil {
+		return false
+	}
 
 	return helpers.CheckEndorsementContainsExpectedEndorsement(expectedEndorsementDescriptor, endorsers[0]) &&
 		helpers.CheckEndorsementContainsExpectedEndorsement(endorsers[0], expectedEndorsementDescriptor)

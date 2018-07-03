@@ -190,8 +190,8 @@ var _ = Describe("DiscoveryService EndToEnd", func() {
 		By("discover endorsers, shouldn't get a valid result since cc was not installed yet")
 		sdRunner := sd.DiscoverEndorsers(d.Channel, "127.0.0.1:7051", "mycc", "")
 		err := helpers.Execute(sdRunner)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(sdRunner.Buffer()).Should(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
+		Expect(err).To(HaveOccurred())
+		Expect(sdRunner.Err()).Should(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
 
 		By("install and instantiate chaincode on p0.org1")
 		adminPeer := getPeer(0, 1, testDir)
@@ -209,8 +209,8 @@ var _ = Describe("DiscoveryService EndToEnd", func() {
 		By("discover endorsers, shouldn't get a valid result since cc was not installed on sufficient number of orgs yet")
 		sdRunner = sd.DiscoverEndorsers(d.Channel, "127.0.0.1:7051", "mycc", "")
 		err = helpers.Execute(sdRunner)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(sdRunner.Buffer()).Should(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
+		Expect(err).To(HaveOccurred())
+		Expect(sdRunner.Err()).Should(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
 
 		By("install chaincode on p0.org2")
 		adminPeer = getPeer(0, 2, testDir)
@@ -254,14 +254,13 @@ var _ = Describe("DiscoveryService EndToEnd", func() {
 		EventuallyWithOffset(1, func() bool {
 			return runner.VerifyEndorsersDiscovered(sd, expectedChaincodeEndrorsers3, d.Channel, "127.0.0.1:7051", "mycc", "collectionMarbles")
 		}, time.Minute).Should(BeTrue())
-		Expect(err).NotTo(HaveOccurred())
 		By("remove org3 members (except admin) from channel writers")
 		sendChannelConfigUpdate(0, 3, d.Channel, d.Orderer, testDir)
 		By("try to discover peers using org3, should get access denied")
 		sdRunner = sd.DiscoverPeers(d.Channel, "127.0.0.1:9051")
 		err = helpers.Execute(sdRunner)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(sdRunner.Buffer()).Should(gbytes.Say("access denied"))
+		Expect(err).To(HaveOccurred())
+		Expect(sdRunner.Err()).Should(gbytes.Say("access denied"))
 	})
 })
 
