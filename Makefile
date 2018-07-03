@@ -43,8 +43,8 @@
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - help-docs - generate the command reference docs
 
-BASE_VERSION = 1.2.0
-PREV_VERSION = 1.2.0-rc1
+BASE_VERSION = 1.2.1
+PREV_VERSION = 1.2.0
 CHAINTOOL_RELEASE=1.1.1
 BASEIMAGE_RELEASE=0.4.10
 
@@ -56,7 +56,7 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-EXPERIMENTAL ?= false
+EXPERIMENTAL ?= true
 
 BUILD_DIR ?= .build
 
