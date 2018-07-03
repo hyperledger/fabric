@@ -14,8 +14,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
-	common2 "github.com/hyperledger/fabric/gossip/common"
-	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
+	gcommon "github.com/hyperledger/fabric/gossip/common"
+	gdisc "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/gossip"
@@ -57,8 +57,10 @@ func TestService(t *testing.T) {
 	mockSup.On("ChannelExists", "noneExistentChannel").Return(false)
 	mockSup.On("ChannelExists", "channelWithAccessDenied").Return(true)
 	mockSup.On("ChannelExists", "channelWithAccessGranted").Return(true)
+	mockSup.On("ChannelExists", "channelWithSomeProblem").Return(true)
 	mockSup.On("EligibleForService", "channelWithAccessDenied", mock.Anything).Return(errors.New("foo"))
 	mockSup.On("EligibleForService", "channelWithAccessGranted", mock.Anything).Return(nil)
+	mockSup.On("EligibleForService", "channelWithSomeProblem", mock.Anything).Return(nil)
 	ed1 := &discovery.EndorsementDescriptor{
 		Chaincode: "cc1",
 	}
@@ -207,15 +209,16 @@ func TestService(t *testing.T) {
 	// So that means that the returned peers for the channel should be the intersection
 	// which is: {p1, p2}, but the returned peers for the local query should be
 	// simply the membership view.
-	peersInMembershipView := discovery2.Members{
+	peersInMembershipView := gdisc.Members{
 		aliveMsg(0), aliveMsg(1), aliveMsg(2), aliveMsg(3),
 	}
-	peersInChannelView := discovery2.Members{
+	peersInChannelView := gdisc.Members{
 		stateInfoMsg(1), stateInfoMsg(2), stateInfoMsg(4),
 	}
 	// EligibleForService for an "empty" channel
 	mockSup.On("EligibleForService", "", mock.Anything).Return(nil).Once()
-	mockSup.On("PeersOfChannel", common2.ChainID("channelWithAccessGranted")).Return(peersInChannelView).Once()
+	mockSup.On("PeersAuthorizedByCriteria", gcommon.ChainID("channelWithAccessGranted")).Return(peersInChannelView, nil).Once()
+	mockSup.On("PeersAuthorizedByCriteria", gcommon.ChainID("channelWithSomeProblem")).Return(nil, errors.New("an error occurred")).Once()
 	mockSup.On("Peers").Return(peersInMembershipView).Twice()
 	mockSup.On("IdentityInfo").Return(api.PeerIdentitySet{
 		idInfo(0, "O2"), idInfo(1, "O2"), idInfo(2, "O3"),
@@ -232,6 +235,14 @@ func TestService(t *testing.T) {
 		{
 			Query: &discovery.Query_LocalPeers{
 				LocalPeers: &discovery.LocalPeerQuery{},
+			},
+		},
+		{
+			Channel: "channelWithSomeProblem",
+			Query: &discovery.Query_PeerQuery{
+				PeerQuery: &discovery.PeerMembershipQuery{
+					Filter: &discovery.ChaincodeInterest{},
+				},
 			},
 		},
 	}
@@ -287,9 +298,10 @@ func TestService(t *testing.T) {
 		},
 	}
 
-	assert.Len(t, resp.Results, 2)
+	assert.Len(t, resp.Results, 3)
 	assert.Len(t, resp.Results[0].GetMembers().PeersByOrg, 2)
 	assert.Len(t, resp.Results[1].GetMembers().PeersByOrg, 2)
+	assert.Equal(t, "an error occurred", resp.Results[2].GetError().Content)
 
 	for org, responsePeers := range resp.Results[0].GetMembers().PeersByOrg {
 		err := peers(expectedChannelResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
@@ -484,15 +496,15 @@ func (ms *mockSupport) ChannelExists(channel string) bool {
 	return ms.Called(channel).Get(0).(bool)
 }
 
-func (ms *mockSupport) PeersOfChannel(channel common2.ChainID) discovery2.Members {
-	return ms.Called(channel).Get(0).(discovery2.Members)
+func (ms *mockSupport) PeersOfChannel(channel gcommon.ChainID) gdisc.Members {
+	panic("not implemented")
 }
 
-func (ms *mockSupport) Peers() discovery2.Members {
-	return ms.Called().Get(0).(discovery2.Members)
+func (ms *mockSupport) Peers() gdisc.Members {
+	return ms.Called().Get(0).(gdisc.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(channel common2.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	cc := interest.Chaincodes[0].Name
 	args := ms.Called(cc)
 	if args.Get(0) == nil {
@@ -501,7 +513,15 @@ func (ms *mockSupport) PeersForEndorsement(channel common2.ChainID, interest *di
 	return args.Get(0).(*discovery.EndorsementDescriptor), args.Error(1)
 }
 
-func (*mockSupport) Chaincodes(id common2.ChainID) []*gossip.Chaincode {
+func (ms *mockSupport) PeersAuthorizedByCriteria(chainID gcommon.ChainID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
+	args := ms.Called(chainID)
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(gdisc.Members), args.Error(1)
+}
+
+func (*mockSupport) Chaincodes(id gcommon.ChainID) []*gossip.Chaincode {
 	panic("implement me")
 }
 
@@ -520,15 +540,15 @@ func (ms *mockSupport) Config(channel string) (*discovery.ConfigResult, error) {
 func idInfo(id int, org string) api.PeerIdentityInfo {
 	endpoint := fmt.Sprintf("p%d", id)
 	return api.PeerIdentityInfo{
-		PKIId:        common2.PKIidType(endpoint),
+		PKIId:        gcommon.PKIidType(endpoint),
 		Organization: api.OrgIdentityType(org),
 		Identity:     api.PeerIdentityType(endpoint),
 	}
 }
 
-func stateInfoMsg(id int) discovery2.NetworkMember {
+func stateInfoMsg(id int) gdisc.NetworkMember {
 	endpoint := fmt.Sprintf("p%d", id)
-	pkiID := common2.PKIidType(endpoint)
+	pkiID := gcommon.PKIidType(endpoint)
 	si := &gossip.StateInfo{
 		PkiId: pkiID,
 	}
@@ -538,15 +558,15 @@ func stateInfoMsg(id int) discovery2.NetworkMember {
 		},
 	}
 	sm, _ := gm.NoopSign()
-	return discovery2.NetworkMember{
+	return gdisc.NetworkMember{
 		PKIid:    pkiID,
 		Envelope: sm.Envelope,
 	}
 }
 
-func aliveMsg(id int) discovery2.NetworkMember {
+func aliveMsg(id int) gdisc.NetworkMember {
 	endpoint := fmt.Sprintf("p%d", id)
-	pkiID := common2.PKIidType(endpoint)
+	pkiID := gcommon.PKIidType(endpoint)
 	am := &gossip.AliveMessage{
 		Membership: &gossip.Member{
 			PkiId:    pkiID,
@@ -559,7 +579,7 @@ func aliveMsg(id int) discovery2.NetworkMember {
 		},
 	}
 	sm, _ := gm.NoopSign()
-	return discovery2.NetworkMember{
+	return gdisc.NetworkMember{
 		PKIid:    pkiID,
 		Endpoint: endpoint,
 		Envelope: sm.Envelope,

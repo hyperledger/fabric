@@ -40,7 +40,7 @@ type ChannelResponse interface {
 	Config() (*discovery.ConfigResult, error)
 
 	// Peers returns a response for a peer membership query, or error if something went wrong
-	Peers() ([]*Peer, error)
+	Peers(invocationChain ...*discovery.ChaincodeCall) ([]*Peer, error)
 
 	// Endorsers returns the response for an endorser query for a given
 	// chaincode in a given channel context, or error if something went wrong.

@@ -127,7 +127,10 @@ func TestGreenPath(t *testing.T) {
 
 	// Send all queries
 	req := disc.NewRequest().AddLocalPeersQuery().OfChannel("mychannel")
-	req, err := req.AddPeersQuery().AddConfigQuery().AddEndorsersQuery(cc2cc, ccWithCollection)
+	col1 := &ChaincodeCall{Name: "cc2", CollectionNames: []string{"col1"}}
+	nonExistentCollection := &ChaincodeCall{Name: "cc2", CollectionNames: []string{"col3"}}
+	_ = nonExistentCollection
+	req, err := req.AddPeersQuery().AddPeersQuery(col1).AddPeersQuery(nonExistentCollection).AddConfigQuery().AddEndorsersQuery(cc2cc, ccWithCollection)
 	assert.NoError(t, err)
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
 	assert.NoError(t, err)
@@ -138,10 +141,22 @@ func TestGreenPath(t *testing.T) {
 		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers.withoutStateInfo()))
 	})
 
-	t.Run("Channel peer query", func(t *testing.T) {
+	t.Run("Channel peer queries", func(t *testing.T) {
 		returnedPeers, err := res.ForChannel("mychannel").Peers()
 		assert.NoError(t, err)
 		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers))
+
+		returnedPeers, err = res.ForChannel("mychannel").Peers(col1)
+		assert.NoError(t, err)
+		// Ensure only peers from Org1 are returned
+		for _, p := range returnedPeers {
+			assert.Equal(t, "Org1MSP", p.MSPID)
+		}
+
+		// Ensure that the client handles correctly errors returned from the server
+		// in case of a bad request
+		returnedPeers, err = res.ForChannel("mychannel").Peers(nonExistentCollection)
+		assert.Equal(t, "collection col3 doesn't exist in collection config for chaincode cc2", err.Error())
 	})
 
 	t.Run("Endorser chaincode to chaincode", func(t *testing.T) {

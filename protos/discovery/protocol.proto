@@ -122,9 +122,13 @@ message ConfigResult {
     map<string, Endpoints> orderers = 2;
 }
 
-// PeerMembershipQuery requests PeerMembershipResult
+// PeerMembershipQuery requests PeerMembershipResult.
+// The filter field may be optionally populated in order
+// for the peer membership to be filtered according to
+// chaincodes that are installed on peers and collection
+// access control policies.
 message PeerMembershipQuery {
-
+    ChaincodeInterest filter = 1;
 }
 
 // PeerMembershipResult contains peers mapped by their organizations (MSP_ID)
