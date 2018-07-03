@@ -43,10 +43,10 @@
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - help-docs - generate the command reference docs
 
-BASE_VERSION = 1.2.0
-PREV_VERSION = 1.2.0-rc1
+BASE_VERSION = 1.3.0
+PREV_VERSION = 1.2.0
 CHAINTOOL_RELEASE=1.1.1
-BASEIMAGE_RELEASE=0.4.8
+BASEIMAGE_RELEASE=0.4.10
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
