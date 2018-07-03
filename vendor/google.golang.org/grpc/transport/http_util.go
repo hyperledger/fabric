@@ -23,12 +23,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/http2"
@@ -132,6 +132,7 @@ func isReservedHeader(hdr string) bool {
 	}
 	switch hdr {
 	case "content-type",
+		"user-agent",
 		"grpc-message-type",
 		"grpc-encoding",
 		"grpc-message",
@@ -145,11 +146,11 @@ func isReservedHeader(hdr string) bool {
 	}
 }
 
-// isWhitelistedPseudoHeader checks whether hdr belongs to HTTP2 pseudoheaders
-// that should be propagated into metadata visible to users.
-func isWhitelistedPseudoHeader(hdr string) bool {
+// isWhitelistedHeader checks whether hdr should be propagated
+// into metadata visible to users.
+func isWhitelistedHeader(hdr string) bool {
 	switch hdr {
-	case ":authority":
+	case ":authority", "user-agent":
 		return true
 	default:
 		return false
@@ -262,9 +263,9 @@ func (d *decodeState) decodeResponseHeader(frame *http2.MetaHeadersFrame) error 
 	// gRPC status doesn't exist and http status is OK.
 	// Set rawStatusCode to be unknown and return nil error.
 	// So that, if the stream has ended this Unknown status
-	// will be propogated to the user.
+	// will be propagated to the user.
 	// Otherwise, it will be ignored. In which case, status from
-	// a later trailer, that has StreamEnded flag set, is propogated.
+	// a later trailer, that has StreamEnded flag set, is propagated.
 	code := int(codes.Unknown)
 	d.rawStatusCode = &code
 	return nil
@@ -340,7 +341,7 @@ func (d *decodeState) processHeaderField(f hpack.HeaderField) error {
 		d.statsTrace = v
 		d.addMetadata(f.Name, string(v))
 	default:
-		if isReservedHeader(f.Name) && !isWhitelistedPseudoHeader(f.Name) {
+		if isReservedHeader(f.Name) && !isWhitelistedHeader(f.Name) {
 			break
 		}
 		v, err := decodeMetadataHeader(f.Name, f.Value)
@@ -348,7 +349,7 @@ func (d *decodeState) processHeaderField(f hpack.HeaderField) error {
 			errorf("Failed to decode metadata header (%q, %q): %v", f.Name, f.Value, err)
 			return nil
 		}
-		d.addMetadata(f.Name, string(v))
+		d.addMetadata(f.Name, v)
 	}
 	return nil
 }
@@ -437,16 +438,17 @@ func decodeTimeout(s string) (time.Duration, error) {
 
 const (
 	spaceByte   = ' '
-	tildaByte   = '~'
+	tildeByte   = '~'
 	percentByte = '%'
 )
 
 // encodeGrpcMessage is used to encode status code in header field
-// "grpc-message".
-// It checks to see if each individual byte in msg is an
-// allowable byte, and then either percent encoding or passing it through.
-// When percent encoding, the byte is converted into hexadecimal notation
-// with a '%' prepended.
+// "grpc-message". It does percent encoding and also replaces invalid utf-8
+// characters with Unicode replacement character.
+//
+// It checks to see if each individual byte in msg is an allowable byte, and
+// then either percent encoding or passing it through. When percent encoding,
+// the byte is converted into hexadecimal notation with a '%' prepended.
 func encodeGrpcMessage(msg string) string {
 	if msg == "" {
 		return ""
@@ -454,7 +456,7 @@ func encodeGrpcMessage(msg string) string {
 	lenMsg := len(msg)
 	for i := 0; i < lenMsg; i++ {
 		c := msg[i]
-		if !(c >= spaceByte && c < tildaByte && c != percentByte) {
+		if !(c >= spaceByte && c <= tildeByte && c != percentByte) {
 			return encodeGrpcMessageUnchecked(msg)
 		}
 	}
@@ -463,14 +465,26 @@ func encodeGrpcMessage(msg string) string {
 
 func encodeGrpcMessageUnchecked(msg string) string {
 	var buf bytes.Buffer
-	lenMsg := len(msg)
-	for i := 0; i < lenMsg; i++ {
-		c := msg[i]
-		if c >= spaceByte && c < tildaByte && c != percentByte {
-			buf.WriteByte(c)
-		} else {
-			buf.WriteString(fmt.Sprintf("%%%02X", c))
+	for len(msg) > 0 {
+		r, size := utf8.DecodeRuneInString(msg)
+		for _, b := range []byte(string(r)) {
+			if size > 1 {
+				// If size > 1, r is not ascii. Always do percent encoding.
+				buf.WriteString(fmt.Sprintf("%%%02X", b))
+				continue
+			}
+
+			// The for loop is necessary even if size == 1. r could be
+			// utf8.RuneError.
+			//
+			// fmt.Sprintf("%%%02X", utf8.RuneError) gives "%FFFD".
+			if b >= spaceByte && b <= tildeByte && b != percentByte {
+				buf.WriteByte(b)
+			} else {
+				buf.WriteString(fmt.Sprintf("%%%02X", b))
+			}
 		}
+		msg = msg[size:]
 	}
 	return buf.String()
 }
@@ -509,19 +523,67 @@ func decodeGrpcMessageUnchecked(msg string) string {
 	return buf.String()
 }
 
+type bufWriter struct {
+	buf       []byte
+	offset    int
+	batchSize int
+	conn      net.Conn
+	err       error
+
+	onFlush func()
+}
+
+func newBufWriter(conn net.Conn, batchSize int) *bufWriter {
+	return &bufWriter{
+		buf:       make([]byte, batchSize*2),
+		batchSize: batchSize,
+		conn:      conn,
+	}
+}
+
+func (w *bufWriter) Write(b []byte) (n int, err error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	for len(b) > 0 {
+		nn := copy(w.buf[w.offset:], b)
+		b = b[nn:]
+		w.offset += nn
+		n += nn
+		if w.offset >= w.batchSize {
+			err = w.Flush()
+		}
+	}
+	return n, err
+}
+
+func (w *bufWriter) Flush() error {
+	if w.err != nil {
+		return w.err
+	}
+	if w.offset == 0 {
+		return nil
+	}
+	if w.onFlush != nil {
+		w.onFlush()
+	}
+	_, w.err = w.conn.Write(w.buf[:w.offset])
+	w.offset = 0
+	return w.err
+}
+
 type framer struct {
-	numWriters int32
-	reader     io.Reader
-	writer     *bufio.Writer
-	fr         *http2.Framer
+	writer *bufWriter
+	fr     *http2.Framer
 }
 
 func newFramer(conn net.Conn, writeBufferSize, readBufferSize int) *framer {
+	r := bufio.NewReaderSize(conn, readBufferSize)
+	w := newBufWriter(conn, writeBufferSize)
 	f := &framer{
-		reader: bufio.NewReaderSize(conn, readBufferSize),
-		writer: bufio.NewWriterSize(conn, writeBufferSize),
+		writer: w,
+		fr:     http2.NewFramer(w, r),
 	}
-	f.fr = http2.NewFramer(f.writer, f.reader)
 	// Opt-in to Frame reuse API on framer to reduce garbage.
 	// Frames aren't safe to read from after a subsequent call to ReadFrame.
 	f.fr.SetReuseFrames()
