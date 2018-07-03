@@ -1,3 +1,22 @@
+## v1.2.0
+Tue Jul  3 06:33:45 EDT 2018
+
+* [7803660fc](https://github.com/hyperledger/fabric/commit/7803660fc) Prepare release-1.2 branch for release
+* [c8e992a50](https://github.com/hyperledger/fabric/commit/c8e992a50) [FAB-10960](https://jira.hyperledger.org/browse/FAB-10960) Clarify doc for private data limitations
+* [79e15a055](https://github.com/hyperledger/fabric/commit/79e15a055) [FAB-10933](https://jira.hyperledger.org/browse/FAB-10933) Update Baseimage version 0.4.10
+* [891e96593](https://github.com/hyperledger/fabric/commit/891e96593) [FAB-10747](https://jira.hyperledger.org/browse/FAB-10747) Fix endorsedAt block in transientstore
+* [ef12bf641](https://github.com/hyperledger/fabric/commit/ef12bf641) [FAB-10888](https://jira.hyperledger.org/browse/FAB-10888) Turn skipped pvt due BTL log to WARN
+* [11bba2158](https://github.com/hyperledger/fabric/commit/11bba2158) [FAB-10617](https://jira.hyperledger.org/browse/FAB-10617) Add writeset validation check during commit
+* [1b9581a38](https://github.com/hyperledger/fabric/commit/1b9581a38) [FAB-10854](https://jira.hyperledger.org/browse/FAB-10854) Update bootstrap script
+* [7d12c1fa0](https://github.com/hyperledger/fabric/commit/7d12c1fa0) [FAB-10847](https://jira.hyperledger.org/browse/FAB-10847) Update peer channel docs
+* [24e84744c](https://github.com/hyperledger/fabric/commit/24e84744c) [FAB-10836](https://jira.hyperledger.org/browse/FAB-10836) Fix releases in README
+* [82a6056bf](https://github.com/hyperledger/fabric/commit/82a6056bf) [FAB-10788](https://jira.hyperledger.org/browse/FAB-10788) Fix range query info in simulation results
+* [61a129021](https://github.com/hyperledger/fabric/commit/61a129021) [FAB-10843](https://jira.hyperledger.org/browse/FAB-10843) Properly detect validation execution errors
+* [2f3512167](https://github.com/hyperledger/fabric/commit/2f3512167) [FAB-10837](https://jira.hyperledger.org/browse/FAB-10837) Fix links on releases
+* [4c9a8e17c](https://github.com/hyperledger/fabric/commit/4c9a8e17c) [FAB-10818](https://jira.hyperledger.org/browse/FAB-10818) Minor edit to Intro
+* [d789a2596](https://github.com/hyperledger/fabric/commit/d789a2596) [FAB-10815](https://jira.hyperledger.org/browse/FAB-10815) remove javaenv from get-images.sh
+* [2f8d10a06](https://github.com/hyperledger/fabric/commit/2f8d10a06) [FAB-10751](https://jira.hyperledger.org/browse/FAB-10751) prepare for next release
+
 ## v1.2.0-rc1
 Thu Jun 21 17:17:37 EDT 2018
 
