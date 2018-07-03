@@ -226,14 +226,14 @@ func (n *Network) CryptoConfigPath() string {
 
 // OutputBlockPath returns the path to the genesis block for the named system
 // channel.
-func (n *Network) OutputBlockPath(name string) string {
-	return filepath.Join(n.RootDir, fmt.Sprintf("%s_block.pb", name))
+func (n *Network) OutputBlockPath(channelName string) string {
+	return filepath.Join(n.RootDir, fmt.Sprintf("%s_block.pb", channelName))
 }
 
 // CreateChannelTxPath returns the path to the create channel transaction for
 // the named channel.
-func (n *Network) CreateChannelTxPath(name string) string {
-	return filepath.Join(n.RootDir, fmt.Sprintf("%s_tx.pb", name))
+func (n *Network) CreateChannelTxPath(channelName string) string {
+	return filepath.Join(n.RootDir, fmt.Sprintf("%s_tx.pb", channelName))
 }
 
 // OrdererDir returns the path to the configuration directory for the specified
@@ -377,6 +377,17 @@ func (n *Network) OrdererLocalMSPDir(o *Orderer) string {
 		fmt.Sprintf("%s.%s", o.Name, org.Domain),
 		"msp",
 	)
+}
+
+// ProfileForChannel gets the configtxgen profile name associated with the
+// specified channel.
+func (n *Network) ProfileForChannel(channelName string) string {
+	for _, ch := range n.Channels {
+		if ch.Name == channelName {
+			return ch.Profile
+		}
+	}
+	return ""
 }
 
 // GenerateConfigTree generates the configuration documents required to
@@ -531,6 +542,42 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
 			BlockPath: tempFile.Name(),
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess).Should(gexec.Exit(0))
+	}
+}
+
+// UpdateChannelAnchors determines the anchor peers for the specified channel,
+// creates an anchor peer update transaction for each organization, and submits
+// the update transactions to the orderer.
+func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
+	tempFile, err := ioutil.TempFile("", "update-anchors")
+	Expect(err).NotTo(HaveOccurred())
+	tempFile.Close()
+	defer os.Remove(tempFile.Name())
+
+	peersByOrg := map[string]*Peer{}
+	for _, p := range n.AnchorsForChannel(channelName) {
+		peersByOrg[p.Organization] = p
+	}
+
+	for orgName, p := range peersByOrg {
+		anchorUpdate := commands.OutputAnchorPeersUpdate{
+			ChannelID:  channelName,
+			Profile:    n.ProfileForChannel(channelName),
+			ConfigPath: n.RootDir,
+			AsOrg:      orgName,
+			OutputAnchorPeersUpdate: tempFile.Name(),
+		}
+		sess, err := n.ConfigTxGen(anchorUpdate)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess).Should(gexec.Exit(0))
+
+		sess, err = n.PeerAdminSession(p, commands.ChannelUpdate{
+			ChannelID: channelName,
+			Orderer:   n.OrdererAddress(o, ListenPort),
+			File:      tempFile.Name(),
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess).Should(gexec.Exit(0))
@@ -874,7 +921,7 @@ func (n *Network) AnchorsForChannel(chanName string) []*Peer {
 	anchors := []*Peer{}
 	for _, p := range n.Peers {
 		for _, pc := range p.Channels {
-			if pc.Name == chanName {
+			if pc.Name == chanName && pc.Anchor {
 				anchors = append(anchors, p)
 			}
 		}
