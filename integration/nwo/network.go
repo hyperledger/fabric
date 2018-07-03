@@ -22,6 +22,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -30,6 +31,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Organization models information about an Organization. It includes
@@ -246,6 +248,29 @@ func (n *Network) OrdererConfigPath(o *Orderer) string {
 	return filepath.Join(n.OrdererDir(o), "orderer.yaml")
 }
 
+// ReadOrdererConfig  unmarshals an orderer's orderer.yaml and returns an
+// object approximating its contents.
+func (n *Network) ReadOrdererConfig(o *Orderer) *fabricconfig.Orderer {
+	var orderer fabricconfig.Orderer
+	ordererBytes, err := ioutil.ReadFile(n.OrdererConfigPath(o))
+	Expect(err).NotTo(HaveOccurred())
+
+	err = yaml.Unmarshal(ordererBytes, &orderer)
+	Expect(err).NotTo(HaveOccurred())
+
+	return &orderer
+}
+
+// WriteOrdererConfig serializes the provided configuration as the specified
+// orderer's orderer.yaml document.
+func (n *Network) WriteOrdererConfig(o *Orderer, config *fabricconfig.Orderer) {
+	ordererBytes, err := yaml.Marshal(config)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0644)
+	Expect(err).NotTo(HaveOccurred())
+}
+
 // PeerDir returns the path to the configuration directory for the specified
 // Peer.
 func (n *Network) PeerDir(p *Peer) string {
@@ -256,6 +281,29 @@ func (n *Network) PeerDir(p *Peer) string {
 // specified peer.
 func (n *Network) PeerConfigPath(p *Peer) string {
 	return filepath.Join(n.PeerDir(p), "core.yaml")
+}
+
+// ReadPeerConfig unmarshals a peer's core.yaml and returns an object
+// approximating its contents.
+func (n *Network) ReadPeerConfig(p *Peer) *fabricconfig.Core {
+	var core fabricconfig.Core
+	coreBytes, err := ioutil.ReadFile(n.PeerConfigPath(p))
+	Expect(err).NotTo(HaveOccurred())
+
+	err = yaml.Unmarshal(coreBytes, &core)
+	Expect(err).NotTo(HaveOccurred())
+
+	return &core
+}
+
+// WritePeerConfig serializes the provided configuration as the specified
+// peer's core.yaml document.
+func (n *Network) WritePeerConfig(p *Peer, config *fabricconfig.Core) {
+	coreBytes, err := yaml.Marshal(config)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0644)
+	Expect(err).NotTo(HaveOccurred())
 }
 
 // PeerUserMSPDir returns the path to the MSP directory containing the
