@@ -643,6 +643,12 @@ func (n *Network) ConfigTxGen(command Command) (*gexec.Session, error) {
 	return n.StartSession(cmd, command.SessionName())
 }
 
+// Discover starts a gexec.Session for the provided discover command.
+func (n *Network) Discover(command Command) (*gexec.Session, error) {
+	cmd := NewCommand(n.Components.Discover(), command)
+	return n.StartSession(cmd, command.SessionName())
+}
+
 // ZooKeeperRunner returns a runner for a ZooKeeper instance.
 func (n *Network) ZooKeeperRunner(idx int) *runner.ZooKeeper {
 	colorCode := n.nextColor()

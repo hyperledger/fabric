@@ -50,6 +50,7 @@ type Peer struct {
 	AdminService           *Service        `yaml:"adminService,omitempty"`
 	Handlers               *Handlers       `yaml:"handlers,omitempty"`
 	ValidatorPoolSize      int             `yaml:"validatorPoolSize,omitempty"`
+	Discovery              *Discovery      `yaml:"discovery,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -173,6 +174,14 @@ type Handler struct {
 }
 
 type HandlerMap map[string]Handler
+
+type Discovery struct {
+	Enabled                      bool    `yaml:"enabled"`
+	AuthCacheEnabled             bool    `yaml:"authCacheEnabled"`
+	AuthCacheMaxSize             int     `yaml:"authCacheMaxSize,omitempty"`
+	AuthCachePurgeRetentionRatio float64 `yaml:"authCachePurgeRetentionRatio"`
+	OrgMembersAllowedAccess      bool    `yaml:"orgMembersAllowedAccess"`
+}
 
 type VM struct {
 	Endpoint string  `yaml:"endpoint,omitempty"`

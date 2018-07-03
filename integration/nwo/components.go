@@ -51,6 +51,10 @@ func (c *Components) Build(args ...string) {
 	peer, err := gexec.Build("github.com/hyperledger/fabric/peer", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["peer"] = peer
+
+	discover, err := gexec.Build("github.com/hyperledger/fabric/cmd/discover", args...)
+	Expect(err).NotTo(HaveOccurred())
+	c.Paths["discover"] = discover
 }
 
 func (c *Components) Cleanup() {
@@ -66,3 +70,4 @@ func (c *Components) Idemixgen() string   { return c.Paths["idemixgen"] }
 func (c *Components) ConfigTxGen() string { return c.Paths["configtxgen"] }
 func (c *Components) Orderer() string     { return c.Paths["orderer"] }
 func (c *Components) Peer() string        { return c.Paths["peer"] }
+func (c *Components) Discover() string    { return c.Paths["discover"] }
