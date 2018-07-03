@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -630,33 +629,6 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess).Should(gexec.Exit(0))
 	}
-}
-
-// InstallChaincode installs chaincode to the listed peers and verifies that
-// the install has completed.
-func (n *Network) InstallChaincode(peers []*Peer, install commands.ChaincodeInstall) {
-	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, install)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
-
-		sess, err = n.PeerAdminSession(p, commands.ChaincodeListInstalled{})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", install.Name, install.Version)))
-	}
-}
-
-// InstantiateChaincode instantiates chaincode at the specified peer and verifies that
-// the instantiation is complete before returning.
-func (n *Network) InstantiateChaincode(peer *Peer, instantiate commands.ChaincodeInstantiate) {
-	sess, err := n.PeerAdminSession(peer, instantiate)
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-
-	Eventually(listInstantiated(n, peer, instantiate.ChannelID), time.Minute).Should(
-		gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", instantiate.Name, instantiate.Version)),
-	)
 }
 
 // Cryptogen starts a gexec.Session for the provided cryptogen command.

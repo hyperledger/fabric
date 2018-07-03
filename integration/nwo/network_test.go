@@ -165,26 +165,16 @@ var _ = Describe("Network", func() {
 			network.CreateChannel("testchannel", orderer, testPeers[0])
 			network.JoinChannel("testchannel", orderer, testPeers...)
 
-			network.InstallChaincode(
-				testPeers,
-				commands.ChaincodeInstall{
-					Name:    "mycc",
-					Version: "0.0",
-					Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				},
-			)
-
-			network.InstantiateChaincode(
-				testPeers[0],
-				commands.ChaincodeInstantiate{
-					ChannelID: "testchannel",
-					Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
-					Name:      "mycc",
-					Version:   "0.0",
-					Ctor:      `{"Args":["init","a","100","b","200"]}`,
-					Policy:    `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
-				},
-			)
+			chaincode := nwo.Chaincode{
+				Name:    "mycc",
+				Version: "0.0",
+				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Ctor:    `{"Args":["init","a","100","b","200"]}`,
+				Policy:  `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+			}
+			nwo.InstallChaincode(network, chaincode, testPeers...)
+			nwo.InstantiateChaincode(network, "testchannel", orderer, chaincode, testPeers[0])
+			nwo.EnsureInstantiated(network, "testchannel", "mycc", "0.0", testPeers...)
 
 			RunQueryInvokeQuery(network, orderer, testPeers[0])
 		})

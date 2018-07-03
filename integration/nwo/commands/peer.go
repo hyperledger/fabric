@@ -108,12 +108,13 @@ func (c ChaincodeInstall) Args() []string {
 }
 
 type ChaincodeInstantiate struct {
-	ChannelID string
-	Orderer   string
-	Name      string
-	Version   string
-	Ctor      string
-	Policy    string
+	ChannelID         string
+	Orderer           string
+	Name              string
+	Version           string
+	Ctor              string
+	Policy            string
+	CollectionsConfig string
 }
 
 func (c ChaincodeInstantiate) SessionName() string {
@@ -121,7 +122,7 @@ func (c ChaincodeInstantiate) SessionName() string {
 }
 
 func (c ChaincodeInstantiate) Args() []string {
-	return []string{
+	args := []string{
 		"chaincode", "instantiate",
 		"--channelID", c.ChannelID,
 		"--orderer", c.Orderer,
@@ -130,6 +131,10 @@ func (c ChaincodeInstantiate) Args() []string {
 		"--ctor", c.Ctor,
 		"--policy", c.Policy,
 	}
+	if c.CollectionsConfig != "" {
+		args = append(args, "--collections-config", c.CollectionsConfig)
+	}
+	return args
 }
 
 type ChaincodeListInstalled struct{}
@@ -204,6 +209,40 @@ func (c ChaincodeInvoke) Args() []string {
 	}
 	if c.WaitForEvent {
 		args = append(args, "--waitForEvent")
+	}
+	return args
+}
+
+type ChaincodeUpgrade struct {
+	Name              string
+	Version           string
+	Path              string // optional
+	ChannelID         string
+	Orderer           string
+	Ctor              string
+	Policy            string
+	CollectionsConfig string // optional
+}
+
+func (c ChaincodeUpgrade) SessionName() string {
+	return "peer-chaincode-upgrade"
+}
+
+func (c ChaincodeUpgrade) Args() []string {
+	args := []string{
+		"chaincode", "upgrade",
+		"--name", c.Name,
+		"--version", c.Version,
+		"--channelID", c.ChannelID,
+		"--orderer", c.Orderer,
+		"--ctor", c.Ctor,
+		"--policy", c.Policy,
+	}
+	if c.Path != "" {
+		args = append(args, "--path", c.Path)
+	}
+	if c.CollectionsConfig != "" {
+		args = append(args, "--collections-config", c.CollectionsConfig)
 	}
 	return args
 }
