@@ -30,9 +30,6 @@ type principalEvaluator interface {
 	// SatisfiesPrincipal returns whether a given peer identity satisfies a certain principal
 	// on a given channel
 	SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error
-
-	// MSPOfPrincipal returns the MSP ID of the given principal
-	MSPOfPrincipal(principal *msp.MSPPrincipal) string
 }
 
 type chaincodeMetadataFetcher interface {
@@ -80,6 +77,37 @@ type peerPrincipalEvaluator func(member NetworkMember, principal *msp.MSPPrincip
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
 func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+	chanMembership, err := ea.PeersAuthorizedByCriteria(chainID, interest)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	channelMembersById := chanMembership.ByID()
+	// Choose only the alive messages of those that have joined the channel
+	aliveMembership := ea.Peers().Intersect(chanMembership)
+	membersById := aliveMembership.ByID()
+	// Compute a mapping between the PKI-IDs of members to their identities
+	identitiesOfMembers := computeIdentitiesOfMembers(ea.IdentityInfo(), membersById)
+	principalsSets, err := ea.computePrincipalSets(chainID, interest)
+	if err != nil {
+		logger.Warningf("Principal set computation failed: %v", err)
+		return nil, errors.WithStack(err)
+	}
+
+	return ea.computeEndorsementResponse(&context{
+		chaincode:           interest.Chaincodes[0].Name,
+		channel:             string(chainID),
+		principalsSets:      principalsSets,
+		channelMembersById:  channelMembersById,
+		aliveMembership:     aliveMembership,
+		identitiesOfMembers: identitiesOfMembers,
+	})
+}
+
+func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(chainID common.ChainID, interest *discovery.ChaincodeInterest) (Members, error) {
+	peersOfChannel := ea.PeersOfChannel(chainID)
+	if interest == nil || len(interest.Chaincodes) == 0 {
+		return peersOfChannel, nil
+	}
 	identities := ea.IdentityInfo()
 	identitiesByID := identities.ByID()
 	metadataAndCollectionFilters, err := loadMetadataAndFilters(metadataAndFilterContext{
@@ -94,31 +122,9 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	}
 	metadata := metadataAndCollectionFilters.md
 	// Filter out peers that don't have the chaincode installed on them
-	chanMembership := ea.PeersOfChannel(chainID).Filter(peersWithChaincode(metadata...))
+	chanMembership := peersOfChannel.Filter(peersWithChaincode(metadata...))
 	// Filter out peers that aren't authorized by the collection configs of the chaincode invocation chain
-	chanMembership = chanMembership.Filter(metadataAndCollectionFilters.isMemberAuthorized)
-	channelMembersById := chanMembership.ByID()
-	// Choose only the alive messages of those that have joined the channel
-	aliveMembership := ea.Peers().Intersect(chanMembership)
-	membersById := aliveMembership.ByID()
-	// Compute a mapping between the PKI-IDs of members to their identities
-
-	identitiesOfMembers := computeIdentitiesOfMembers(identities, membersById)
-	filter := ea.excludeIfCCNotInstalled(membersById, identitiesByID)
-	principalsSets, err := ea.computePrincipalSets(chainID, interest, filter)
-	if err != nil {
-		logger.Warningf("Principal set computation failed: %v", err)
-		return nil, errors.WithStack(err)
-	}
-
-	return ea.computeEndorsementResponse(&context{
-		chaincode:           interest.Chaincodes[0].Name,
-		channel:             string(chainID),
-		principalsSets:      principalsSets,
-		channelMembersById:  channelMembersById,
-		aliveMembership:     aliveMembership,
-		identitiesOfMembers: identitiesOfMembers,
-	})
+	return chanMembership.Filter(metadataAndCollectionFilters.isMemberAuthorized), nil
 }
 
 type context struct {
@@ -161,23 +167,7 @@ func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discov
 	}, nil
 }
 
-type principalFilter func(policies.PrincipalSet) bool
-
-func (ea *endorsementAnalyzer) excludeIfCCNotInstalled(membersById map[string]NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) principalFilter {
-	// Obtain the MSP IDs of the members of the channel that are alive
-	mspIDsOfChannelPeers := mspIDsOfMembers(membersById, identitiesByID)
-	// Create an exclusion filter for MSP Principals which their peers don't have the chaincode installed
-	excludeMSPsWithoutChaincodeInstalled := func(principal *msp.MSPPrincipal) bool {
-		mspID := ea.MSPOfPrincipal(principal)
-		_, exists := mspIDsOfChannelPeers[mspID]
-		return mspID != "" && exists
-	}
-	return func(principalsSet policies.PrincipalSet) bool {
-		return principalsSet.ContainingOnly(excludeMSPsWithoutChaincodeInstalled)
-	}
-}
-
-func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, interest *discovery.ChaincodeInterest, filter principalFilter) (policies.PrincipalSets, error) {
+func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
 	var inquireablePolicies []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
 		pol := ea.PolicyByChaincode(string(chainID), chaincode.Name)
@@ -193,10 +183,6 @@ func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, inte
 	for _, policy := range inquireablePolicies {
 		var cmpsets inquire.ComparablePrincipalSets
 		for _, ps := range policy.SatisfiedBy() {
-			if !filter(ps) {
-				logger.Debug(ps, "filtered out due to chaincodes not being installed on the corresponding organizations")
-				continue
-			}
 			cps := inquire.NewComparablePrincipalSet(ps)
 			if cps == nil {
 				return nil, errors.New("failed creating a comparable principal set")
@@ -547,16 +533,6 @@ func peersWithChaincode(metadata ...*chaincode.Metadata) func(member NetworkMemb
 		}
 		return true
 	}
-}
-
-func mspIDsOfMembers(membersById map[string]NetworkMember, identitiesByID map[string]api.PeerIdentityInfo) map[string]struct{} {
-	res := make(map[string]struct{})
-	for pkiID := range membersById {
-		if identity, exists := identitiesByID[string(pkiID)]; exists {
-			res[string(identity.Organization)] = struct{}{}
-		}
-	}
-	return res
 }
 
 func mergePrincipalSets(cpss []inquire.ComparablePrincipalSets) (inquire.ComparablePrincipalSets, error) {
