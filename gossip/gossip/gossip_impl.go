@@ -64,7 +64,7 @@ type gossipServiceImpl struct {
 }
 
 // NewGossipService creates a gossip instance attached to a gRPC server
-func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvisor,
+func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType,
 	secureDialOpts api.PeerSecureDialOpts) Gossip {
 	var err error
@@ -72,8 +72,8 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	lgr := util.GetLogger(util.LoggingGossipModule, conf.ID)
 
 	g := &gossipServiceImpl{
-		selfOrg:               secAdvisor.OrgByPeerIdentity(selfIdentity),
-		secAdvisor:            secAdvisor,
+		selfOrg:               sa.OrgByPeerIdentity(selfIdentity),
+		secAdvisor:            sa,
 		selfIdentity:          selfIdentity,
 		presumedDead:          make(chan common.PKIidType, presumedDeadChanSize),
 		disc:                  nil,
@@ -91,12 +91,12 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	g.idMapper = identity.NewIdentityMapper(mcs, selfIdentity, func(pkiID common.PKIidType, identity api.PeerIdentityType) {
 		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
 		g.certPuller.Remove(string(pkiID))
-	}, secAdvisor)
+	}, sa)
 
 	if s == nil {
-		g.comm, err = createCommWithServer(conf.BindPort, g.idMapper, selfIdentity, secureDialOpts)
+		g.comm, err = createCommWithServer(conf.BindPort, g.idMapper, selfIdentity, secureDialOpts, sa)
 	} else {
-		g.comm, err = createCommWithoutServer(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts)
+		g.comm, err = createCommWithoutServer(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa)
 	}
 
 	if err != nil {
@@ -159,8 +159,8 @@ func newChannelState(g *gossipServiceImpl) *channelState {
 }
 
 func createCommWithoutServer(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
-	identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts) (comm.Comm, error) {
-	return comm.NewCommInstance(s, certs, idStore, identity, secureDialOpts)
+	identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor) (comm.Comm, error) {
+	return comm.NewCommInstance(s, certs, idStore, identity, secureDialOpts, sa)
 }
 
 // NewGossipServiceWithServer creates a new gossip instance with a gRPC server
@@ -170,8 +170,8 @@ func NewGossipServiceWithServer(conf *Config, secAdvisor api.SecurityAdvisor, mc
 }
 
 func createCommWithServer(port int, idStore identity.Mapper, identity api.PeerIdentityType,
-	secureDialOpts api.PeerSecureDialOpts) (comm.Comm, error) {
-	return comm.NewCommInstanceWithServer(port, idStore, identity, secureDialOpts)
+	secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor) (comm.Comm, error) {
+	return comm.NewCommInstanceWithServer(port, idStore, identity, secureDialOpts, sa)
 }
 
 func (g *gossipServiceImpl) toDie() bool {

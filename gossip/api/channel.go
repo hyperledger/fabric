@@ -18,6 +18,8 @@ func init() {
 	}
 }
 
+//go:generate mockery -dir . -name SecurityAdvisor -case underscore -output ../mocks/
+
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
 type SecurityAdvisor interface {
