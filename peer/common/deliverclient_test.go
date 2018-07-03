@@ -100,7 +100,7 @@ func TestNewOrdererDeliverClient(t *testing.T) {
 	oc, err := NewDeliverClientForOrderer("ukelele")
 	assert.Nil(t, oc)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create deliver client: failed to load config for OrdererClient")
+	assert.Contains(t, err.Error(), "failed to create deliver client for orderer: failed to load config for OrdererClient")
 }
 
 func TestNewDeliverClientForPeer(t *testing.T) {
@@ -115,5 +115,5 @@ func TestNewDeliverClientForPeer(t *testing.T) {
 	pc, err := NewDeliverClientForPeer("ukelele")
 	assert.Nil(t, pc)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create deliver client: failed to load config for PeerClient")
+	assert.Contains(t, err.Error(), "failed to create deliver client for peer: failed to load config for PeerClient")
 }

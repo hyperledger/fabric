@@ -150,12 +150,12 @@ func NewDeliverClientForOrderer(channelID string) (*DeliverClient, error) {
 	var tlsCertHash []byte
 	oc, err := NewOrdererClientFromEnv()
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create deliver client")
+		return nil, errors.WithMessage(err, "failed to create deliver client for orderer")
 	}
 
 	dc, err := oc.Deliver()
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create deliver client")
+		return nil, errors.WithMessage(err, "failed to create deliver client for orderer")
 	}
 	// check for client certificate and create hash if present
 	if len(oc.Certificate().Certificate) > 0 {
@@ -179,12 +179,12 @@ func NewDeliverClientForPeer(channelID string) (*DeliverClient, error) {
 	var tlsCertHash []byte
 	pc, err := NewPeerClientFromEnv()
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create deliver client")
+		return nil, errors.WithMessage(err, "failed to create deliver client for peer")
 	}
 
 	d, err := pc.Deliver()
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create deliver client")
+		return nil, errors.WithMessage(err, "failed to create deliver client for peer")
 	}
 
 	// check for client certificate and create hash if present
