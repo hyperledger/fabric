@@ -25,8 +25,8 @@ const (
 var (
 	// Function used to terminate the CLI
 	terminate = os.Exit
-	// Function used to obtain the stdout
-	outWriter io.Writer = os.Stdout
+	// Function used to redirect output to
+	outWriter io.Writer = os.Stderr
 
 	// CLI arguments
 	mspID                                     *string
@@ -91,6 +91,8 @@ func (cli *CLI) Run(args []string) {
 	err := f(conf)
 	if err != nil {
 		out(err)
+		terminate(1)
+		return
 	}
 }
 
@@ -153,5 +155,5 @@ func evaluateFileFlag(f **os.File) string {
 	return path
 }
 func out(a ...interface{}) {
-	fmt.Fprintln(outWriter, a)
+	fmt.Fprintln(outWriter, a...)
 }
