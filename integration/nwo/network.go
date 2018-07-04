@@ -322,6 +322,38 @@ func (n *Network) PeerUserMSPDir(p *Peer, user string) string {
 	)
 }
 
+// PeerUserCert returns the path to the certificate for the specified user in
+// the peer organization.
+func (n *Network) PeerUserCert(p *Peer, user string) string {
+	org := n.Organization(p.Organization)
+	Expect(org).NotTo(BeNil())
+
+	return filepath.Join(
+		n.PeerUserMSPDir(p, user),
+		"signcerts",
+		fmt.Sprintf("%s@%s-cert.pem", user, org.Domain),
+	)
+}
+
+// PeerUserKey returns the path to the private key for the specified user in
+// the peer organization.
+func (n *Network) PeerUserKey(p *Peer, user string) string {
+	org := n.Organization(p.Organization)
+	Expect(org).NotTo(BeNil())
+
+	keystore := filepath.Join(
+		n.PeerUserMSPDir(p, user),
+		"keystore",
+	)
+
+	// file names are the SKI and non-deterministic
+	keys, err := ioutil.ReadDir(keystore)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(keys).To(HaveLen(1))
+
+	return filepath.Join(keystore, keys[0].Name())
+}
+
 // PeerLocalMSPDir returns the path to the local MSP directory for the peer.
 func (n *Network) PeerLocalMSPDir(p *Peer) string {
 	org := n.Organization(p.Organization)
@@ -335,6 +367,18 @@ func (n *Network) PeerLocalMSPDir(p *Peer) string {
 		"peers",
 		fmt.Sprintf("%s.%s", p.Name, org.Domain),
 		"msp",
+	)
+}
+
+// PeerCert returns the path to the peer's certificate.
+func (n *Network) PeerCert(p *Peer) string {
+	org := n.Organization(p.Organization)
+	Expect(org).NotTo(BeNil())
+
+	return filepath.Join(
+		n.PeerLocalMSPDir(p),
+		"signcerts",
+		fmt.Sprintf("%s.%s-cert.pem", p.Name, org.Domain),
 	)
 }
 
