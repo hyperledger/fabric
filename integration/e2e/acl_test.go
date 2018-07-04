@@ -16,8 +16,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/gogo/protobuf/proto"
-	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -245,156 +244,30 @@ var _ = Describe("EndToEndACL", func() {
 // configuration with Org2's signer, and then submits the config update using
 // Org1.
 func SetACLPolicy(network *nwo.Network, channel, policyName, policy string) {
-	tempDir, err := ioutil.TempDir("", "aclconfig")
-	Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
-
 	orderer := network.Orderer("orderer")
-	org1AdminPeer := network.Peer("Org1", "peer0")
-	org2AdminPeer := network.Peer("Org2", "peer0")
+	submitter := network.Peer("Org1", "peer0")
+	signer := network.Peer("Org2", "peer0")
 
-	outputFile := filepath.Join(tempDir, "updated_config.pb")
-	GenerateACLConfigUpdate(network, orderer, channel, policyName, policy, outputFile)
-
-	sess, err := network.PeerAdminSession(org2AdminPeer, commands.SignConfigTx{File: outputFile})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-
-	SendConfigUpdate(network, org1AdminPeer, channel, outputFile)
-}
-
-func GenerateACLConfigUpdate(network *nwo.Network, orderer *nwo.Orderer, channel, policyName, policy, outputFile string) {
-	tempDir, err := ioutil.TempDir("", "aclconfig")
-	Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
-
-	// fetch the config block
-	output := filepath.Join(tempDir, "config_block.pb")
-	channelFetch := commands.ChannelFetch{
-		ChannelID:  channel,
-		Block:      "config",
-		Orderer:    network.OrdererAddress(orderer, nwo.ListenPort),
-		OutputFile: output,
-	}
-
-	peer := network.Peer("Org1", "peer0")
-	sess, err := network.PeerAdminSession(peer, channelFetch)
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Received block: "))
-
-	// read the config block file
-	fileBytes, err := ioutil.ReadFile(output)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(fileBytes).NotTo(BeNil())
-
-	// unmarshal the config block bytes
-	configBlock := &common.Block{}
-	err = proto.Unmarshal(fileBytes, configBlock)
-	Expect(err).NotTo(HaveOccurred())
-
-	// unmarshal the envelope bytes
-	env := &common.Envelope{}
-	err = proto.Unmarshal(configBlock.Data.Data[0], env)
-	Expect(err).NotTo(HaveOccurred())
-
-	// unmarshal the payload bytes
-	payload := &common.Payload{}
-	err = proto.Unmarshal(env.Payload, payload)
-	Expect(err).NotTo(HaveOccurred())
-
-	// unmarshal the config envelope bytes
-	configEnv := &common.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnv)
-	Expect(err).NotTo(HaveOccurred())
-
-	// clone the config
-	config := configEnv.Config
+	config := nwo.GetConfigBlock(network, submitter, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	acls := &pb.ACLs{
-		Acls: make(map[string]*pb.APIResource),
-	}
-
 	// set the policy
-	apiResource := &pb.APIResource{}
-	apiResource.PolicyRef = policy
-	acls.Acls[policyName] = apiResource
-	cv := &common.ConfigValue{
-		Value:     utils.MarshalOrPanic(acls),
+	updatedConfig.ChannelGroup.Groups["Application"].Values["ACLs"] = &common.ConfigValue{
 		ModPolicy: "Admins",
-	}
-	updatedConfig.ChannelGroup.Groups["Application"].Values["ACLs"] = cv
-
-	// compute the config update and package it into an envelope
-	configUpdate, err := update.Compute(config, updatedConfig)
-	Expect(err).NotTo(HaveOccurred())
-	configUpdate.ChannelId = channel
-	configUpdateEnvelope := &common.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(configUpdate),
-	}
-	signedEnv, err := utils.CreateSignedEnvelope(
-		common.HeaderType_CONFIG_UPDATE,
-		channel,
-		nil,
-		configUpdateEnvelope,
-		0,
-		0,
-	)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(signedEnv).NotTo(BeNil())
-
-	// write the config update envelope to the file system
-	signedEnvelopeBytes := utils.MarshalOrPanic(signedEnv)
-	err = ioutil.WriteFile(outputFile, signedEnvelopeBytes, 0660)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func SendConfigUpdate(network *nwo.Network, peer *nwo.Peer, channel, updateFile string) {
-	tempDir, err := ioutil.TempDir("", "cfgupdate")
-	Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
-
-	orderer := network.Orderer("orderer")
-	outputBlock := filepath.Join(tempDir, "config_block.pb")
-	channelFetch := commands.ChannelFetch{
-		ChannelID:  channel,
-		Block:      "config",
-		Orderer:    network.OrdererAddress(orderer, nwo.ListenPort),
-		OutputFile: outputBlock,
+		Value: utils.MarshalOrPanic(&pb.ACLs{
+			Acls: map[string]*pb.APIResource{
+				policyName: &pb.APIResource{PolicyRef: policy},
+			},
+		}),
 	}
 
-	sess, err := network.PeerAdminSession(peer, channelFetch)
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Received block: "))
-
-	prevConfigBlockNumber := GetNumberFromBlockFile(outputBlock)
-
-	sess, err = network.PeerAdminSession(peer, commands.ChannelUpdate{
-		ChannelID: channel,
-		Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
-		File:      updateFile,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
-
-	getConfigBlockNumber := func() uint64 {
-		sess, err := network.PeerAdminSession(peer, channelFetch)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
-		Expect(sess.Err).To(gbytes.Say("Received block: "))
-		blockNumber := GetNumberFromBlockFile(outputBlock)
-		return blockNumber
-	}
-	Eventually(getConfigBlockNumber, time.Minute).Should(BeNumerically(">", prevConfigBlockNumber))
+	nwo.UpdateConfig(network, signer, submitter, orderer, channel, config, updatedConfig)
 }
 
 // GetTxIDFromBlock gets a transaction id from a block that has been
 // marshaled and stored on the filesystem
 func GetTxIDFromBlockFile(blockFile string) string {
-	block := UnmarshalBlockFromFile(blockFile)
+	block := nwo.UnmarshalBlockFromFile(blockFile)
 
 	envelope, err := utils.GetEnvelopeFromBlock(block.Data.Data[0])
 	Expect(err).NotTo(HaveOccurred())
@@ -406,25 +279,6 @@ func GetTxIDFromBlockFile(blockFile string) string {
 	Expect(err).NotTo(HaveOccurred())
 
 	return chdr.TxId
-}
-
-// GetNumberFromBlockFile gets the number of the block that has been
-// marshaled and stored on the filesystem
-func GetNumberFromBlockFile(blockFile string) uint64 {
-	block := UnmarshalBlockFromFile(blockFile)
-	return block.Header.Number
-}
-
-// UnmarshalBlockFromFile unmarshals a block on the filesystem into
-// a *common.Block
-func UnmarshalBlockFromFile(blockFile string) *common.Block {
-	blockBytes, err := ioutil.ReadFile(blockFile)
-	Expect(err).NotTo(HaveOccurred())
-
-	block, err := utils.UnmarshalBlock(blockBytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	return block
 }
 
 // ToCLIChaincodeArgs converts string args to args for use with chaincode calls
