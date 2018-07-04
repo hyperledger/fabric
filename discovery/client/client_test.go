@@ -41,6 +41,10 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+const (
+	signerCacheSize = 1
+)
+
 var (
 	ctx = context.Background()
 
@@ -328,7 +332,7 @@ func TestClient(t *testing.T) {
 		ClientIdentity:    []byte{1, 2, 3},
 		ClientTlsCertHash: util.ComputeSHA256(clientTLSCert.Certificate[0]),
 	}
-	cl := NewClient(connect, signer)
+	cl := NewClient(connect, signer, signerCacheSize)
 
 	sup.On("PeersOfChannel").Return(channelPeersWithoutChaincodes).Times(2)
 	req := NewRequest()
@@ -450,7 +454,7 @@ func TestUnableToSign(t *testing.T) {
 	authInfo := &discovery.AuthInfo{
 		ClientIdentity: []byte{1, 2, 3},
 	}
-	cl := NewClient(failToConnect, signer)
+	cl := NewClient(failToConnect, signer, signerCacheSize)
 	req := NewRequest()
 	req = req.OfChannel("mychannel")
 	resp, err := cl.Send(ctx, req, authInfo)
@@ -468,7 +472,7 @@ func TestUnableToConnect(t *testing.T) {
 	auth := &discovery.AuthInfo{
 		ClientIdentity: []byte{1, 2, 3},
 	}
-	cl := NewClient(failToConnect, signer)
+	cl := NewClient(failToConnect, signer, signerCacheSize)
 	req := NewRequest()
 	req = req.OfChannel("mychannel")
 	resp, err := cl.Send(ctx, req, auth)
@@ -491,7 +495,7 @@ func TestBadResponses(t *testing.T) {
 	auth := &discovery.AuthInfo{
 		ClientIdentity: []byte{1, 2, 3},
 	}
-	cl := NewClient(connect, signer)
+	cl := NewClient(connect, signer, signerCacheSize)
 
 	// Scenario I: discovery service sends back an error
 	svc.On("Discover").Return(nil, errors.New("foo")).Once()

@@ -61,7 +61,7 @@ func (stub *ClientStub) Send(server string, conf common.Config, req *discovery.R
 	timeout, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	disc := discovery.NewClient(comm.NewDialer(server), signer.Sign)
+	disc := discovery.NewClient(comm.NewDialer(server), signer.Sign, 10)
 
 	resp, err := disc.Send(timeout, req, &AuthInfo{
 		ClientIdentity:    signer.Creator,

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,8 +26,6 @@ var (
 
 // Client interacts with the discovery server
 type Client struct {
-	lastRequest      []byte
-	lastSignature    []byte
 	createConnection Dialer
 	signRequest      Signer
 }
@@ -161,23 +158,11 @@ func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInf
 	if err != nil {
 		return nil, errors.Wrap(err, "failed marshaling Request to bytes")
 	}
-	sig := c.lastSignature
-	// Only sign the Request if it is different than the previous Request sent.
-	// Otherwise, use the last signature from the previous send.
-	// This is not only to save CPU cycles in the Client-side,
-	// but also for the server side to be able to memoize the signature verification.
-	// We have the use the previous signature, because many signature schemes are not deterministic.
-	if !bytes.Equal(c.lastRequest, payload) {
-		sig, err = c.signRequest(payload)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed signing Request")
-		}
-	}
 
-	// Remember this Request and the corresponding signature, in order to skip signing next time
-	// and reuse the signature
-	c.lastRequest = payload
-	c.lastSignature = sig
+	sig, err := c.signRequest(payload)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed signing Request")
+	}
 
 	conn, err := c.createConnection()
 	if err != nil {
@@ -550,10 +535,10 @@ type endorsementDescriptor struct {
 }
 
 // NewClient creates a new Client instance
-func NewClient(createConnection Dialer, s Signer) *Client {
+func NewClient(createConnection Dialer, s Signer, signerCacheSize int) *Client {
 	return &Client{
 		createConnection: createConnection,
-		signRequest:      s,
+		signRequest:      NewMemoizeSigner(s, signerCacheSize).Sign,
 	}
 }
 
