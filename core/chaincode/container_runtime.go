@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -37,11 +38,12 @@ type CertGenerator interface {
 
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
-	CertGenerator CertGenerator
-	Processor     Processor
-	CACert        []byte
-	CommonEnv     []string
-	PeerAddress   string
+	CertGenerator    CertGenerator
+	Processor        Processor
+	CACert           []byte
+	CommonEnv        []string
+	PeerAddress      string
+	PlatformRegistry *platforms.Registry
 }
 
 // Start launches chaincode in a runtime environment.
@@ -59,7 +61,8 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 
 	scr := container.StartContainerReq{
 		Builder: &container.PlatformBuilder{
-			DeploymentSpec: cds,
+			DeploymentSpec:   cds,
+			PlatformRegistry: c.PlatformRegistry,
 		},
 		Args:          lc.Args,
 		Env:           lc.Envs,

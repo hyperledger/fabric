@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 )
 
@@ -18,8 +19,8 @@ var logger = flogging.MustGetLogger("cceventmgmt")
 var mgr *Mgr
 
 // Initialize initializes event mgmt
-func Initialize() {
-	initialize(&chaincodeInfoProviderImpl{})
+func Initialize(pr *platforms.Registry) {
+	initialize(&chaincodeInfoProviderImpl{PlatformRegistry: pr})
 }
 
 func initialize(ccInfoProvider ChaincodeInfoProvider) {

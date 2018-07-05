@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -129,16 +130,19 @@ type lifeCycleSysCC struct {
 	// support provides the implementation of several
 	// static functions
 	support FilesystemSupport
+
+	PlatformRegistry *platforms.Registry
 }
 
 // New creates a new instance of the LSCC
 // Typically there is only one of these per peer
-func New(sccp sysccprovider.SystemChaincodeProvider, aclProvider aclmgmt.ACLProvider) *lifeCycleSysCC {
+func New(sccp sysccprovider.SystemChaincodeProvider, aclProvider aclmgmt.ACLProvider, platformRegistry *platforms.Registry) *lifeCycleSysCC {
 	return &lifeCycleSysCC{
-		support:       &supportImpl{},
-		policyChecker: policyprovider.GetPolicyChecker(),
-		sccprovider:   sccp,
-		aclProvider:   aclProvider,
+		support:          &supportImpl{},
+		policyChecker:    policyprovider.GetPolicyChecker(),
+		sccprovider:      sccp,
+		aclProvider:      aclProvider,
+		PlatformRegistry: platformRegistry,
 	}
 }
 
@@ -499,7 +503,7 @@ func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 	}
 
 	// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
-	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
+	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack, lscc.PlatformRegistry)
 	if err != nil {
 		return err
 	}
@@ -779,7 +783,7 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		depSpec := args[2]
-		cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
+		cds, err := utils.GetChaincodeDeploymentSpec(depSpec, lscc.PlatformRegistry)
 		if err != nil {
 			return shim.Error(err.Error())
 		}

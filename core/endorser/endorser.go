@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
@@ -96,6 +97,7 @@ type Support interface {
 type Endorser struct {
 	distributePrivateData privateDataDistributor
 	s                     Support
+	PlatformRegistry      *platforms.Registry
 	PvtRWSetAssembler
 }
 
@@ -109,10 +111,11 @@ type validateResult struct {
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer(privDist privateDataDistributor, s Support) *Endorser {
+func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms.Registry) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
 		s:                 s,
+		PlatformRegistry:  pr,
 		PvtRWSetAssembler: &rwSetAssembler{},
 	}
 	return e
@@ -154,7 +157,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
 	if cid.Name == "lscc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
-		userCDS, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
+		userCDS, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2], e.PlatformRegistry)
 		if err != nil {
 			return nil, nil, err
 		}

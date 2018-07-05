@@ -43,6 +43,11 @@ func pathExists(path string) (bool, error) {
 	return true, err
 }
 
+// Name returns the name of this platform
+func (nodePlatform *Platform) Name() string {
+	return pb.ChaincodeSpec_NODE.String()
+}
+
 // ValidateSpec validates Go chaincodes
 func (nodePlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	path, err := url.Parse(spec.ChaincodeId.Path)

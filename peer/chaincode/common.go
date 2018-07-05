@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
@@ -44,7 +43,7 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 		return errors.New("expected chaincode specification, nil received")
 	}
 
-	return platforms.NewRegistry().ValidateSpec(spec)
+	return platformRegistry.ValidateSpec(spec)
 }
 
 // getChaincodeDeploymentSpec get chaincode deployment spec given the chaincode spec
@@ -56,7 +55,7 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 			return nil, err
 		}
 
-		codePackageBytes, err = container.GetChaincodePackageBytes(spec)
+		codePackageBytes, err = container.GetChaincodePackageBytes(platformRegistry, spec)
 		if err != nil {
 			err = errors.WithMessage(err, "error getting chaincode package bytes")
 			return nil, err

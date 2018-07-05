@@ -24,6 +24,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/spf13/viper"
 )
@@ -85,7 +87,7 @@ func TestLedgerMgmt(t *testing.T) {
 	Close()
 
 	// Restart ledger mgmt with existing ledgers
-	Initialize(nil)
+	Initialize(nil, platforms.NewRegistry(&golang.Platform{}))
 	l, err = OpenLedger(ledgerID)
 	testutil.AssertNoError(t, err, "")
 	Close()

@@ -10,10 +10,11 @@ package scc
 
 import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 // CreateSysCCs creates all of the system chaincodes which are compiled into fabric
-func CreateSysCCs(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider) []*SystemChaincode {
-	return builtInSystemChaincodes(ccp, p, aclProvider)
+func CreateSysCCs(ccp ccprovider.ChaincodeProvider, p *Provider, aclProvider aclmgmt.ACLProvider, pr *platforms.Registry) []*SystemChaincode {
+	return builtInSystemChaincodes(ccp, p, aclProvider, pr)
 }

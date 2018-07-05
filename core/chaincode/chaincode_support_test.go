@@ -31,6 +31,8 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
@@ -170,6 +172,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	config := GlobalConfig()
 	config.StartupTimeout = 10 * time.Second
 	config.ExecuteTimeout = 1 * time.Second
+	pr := platforms.NewRegistry(&golang.Platform{})
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		"0.0.0.0:7052",
@@ -185,13 +188,14 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 			},
 		),
 		sccp,
+		pr,
 	)
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
-	for _, cc := range scc.CreateSysCCs(ccp, sccp, mockAclProvider) {
+	for _, cc := range scc.CreateSysCCs(ccp, sccp, mockAclProvider, pr) {
 		sccp.RegisterSysCC(cc)
 	}
 

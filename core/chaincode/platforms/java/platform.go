@@ -23,6 +23,11 @@ import (
 type Platform struct {
 }
 
+// Name returns the name of this platform
+func (javaPlatform *Platform) Name() string {
+	return pb.ChaincodeSpec_JAVA.String()
+}
+
 //ValidateSpec validates the java chaincode specs
 func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	path, err := url.Parse(spec.ChaincodeId.Path)
