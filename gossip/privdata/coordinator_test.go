@@ -16,6 +16,7 @@ import (
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -35,6 +36,7 @@ import (
 
 func init() {
 	viper.Set("peer.gossip.pvtData.pullRetryThreshold", time.Second*3)
+	factory.InitFactories(nil)
 }
 
 type persistCall struct {
