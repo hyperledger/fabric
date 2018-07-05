@@ -1,4 +1,55 @@
-## v1.2.0-rc1
+## v1.1.1
+Thu Jul  5 06:54:12 EDT 2018
+
+* [ff5e861de](https://github.com/hyperledger/fabric/commit/ff5e861de) [FAB-10799](https://jira.hyperledger.org/browse/FAB-10799) Cancel iterator with context
+* [17a5432a1](https://github.com/hyperledger/fabric/commit/17a5432a1) [FAB-10537](https://jira.hyperledger.org/browse/FAB-10537) Reject CONFIG/ORDERER_TRANSACTION messages
+* [b748871eb](https://github.com/hyperledger/fabric/commit/b748871eb) [FAB-10540](https://jira.hyperledger.org/browse/FAB-10540) stop getting tx sim for qscc/cscc
+* [3f827d95c](https://github.com/hyperledger/fabric/commit/3f827d95c) [FAB-10546](https://jira.hyperledger.org/browse/FAB-10546) fix broken image links
+* [361241a30](https://github.com/hyperledger/fabric/commit/361241a30) [FAB-10577](https://jira.hyperledger.org/browse/FAB-10577) User supplied code-package has priority
+* [035feef3b](https://github.com/hyperledger/fabric/commit/035feef3b) [FAB-10521](https://jira.hyperledger.org/browse/FAB-10521) Block-cutter should refetch config
+* [feed00ad6](https://github.com/hyperledger/fabric/commit/feed00ad6) [FAB-10285](https://jira.hyperledger.org/browse/FAB-10285) MSP topic
+* [8d5391da8](https://github.com/hyperledger/fabric/commit/8d5391da8) [FAB-10194](https://jira.hyperledger.org/browse/FAB-10194) Identity and membership docs for 1.1
+* [6238d584c](https://github.com/hyperledger/fabric/commit/6238d584c) [FAB-9548](https://jira.hyperledger.org/browse/FAB-9548) Fix image links on layout.html
+* [2357657c2](https://github.com/hyperledger/fabric/commit/2357657c2) [FAB-9660](https://jira.hyperledger.org/browse/FAB-9660) add manifest-tool to gotools v1.1
+* [0ff7107d7](https://github.com/hyperledger/fabric/commit/0ff7107d7) [FAB-9634](https://jira.hyperledger.org/browse/FAB-9634) Upgrade to chaintool v1.1.1
+* [2f5cf5741](https://github.com/hyperledger/fabric/commit/2f5cf5741) [FAB-9630](https://jira.hyperledger.org/browse/FAB-9630) create gen-manifests.sh script
+* [849e304db](https://github.com/hyperledger/fabric/commit/849e304db) [FAB-9562](https://jira.hyperledger.org/browse/FAB-9562) Typo in msp-identity-validity-rules.rst
+* [1483382f2](https://github.com/hyperledger/fabric/commit/1483382f2) [FAB-9536](https://jira.hyperledger.org/browse/FAB-9536) Fix potential panic in broadcast
+* [cb8499f88](https://github.com/hyperledger/fabric/commit/cb8499f88) Reflect review
+* [eb90cbfe8](https://github.com/hyperledger/fabric/commit/eb90cbfe8) [FAB-9414](https://jira.hyperledger.org/browse/FAB-9414) Fix broken link in README.md
+* [301c302da](https://github.com/hyperledger/fabric/commit/301c302da) [FAB-9477](https://jira.hyperledger.org/browse/FAB-9477) Correct Mary/John/Joe mismatch
+* [d00dce59a](https://github.com/hyperledger/fabric/commit/d00dce59a) [FAB-9356](https://jira.hyperledger.org/browse/FAB-9356) add CODE_OF_CONDUCT.md
+* [967b2fbe8](https://github.com/hyperledger/fabric/commit/967b2fbe8) [FAB-9389](https://jira.hyperledger.org/browse/FAB-9389) Fix deliver client crash at abrupt restart
+* [ff5fcbf3c](https://github.com/hyperledger/fabric/commit/ff5fcbf3c) [FAB-9115](https://jira.hyperledger.org/browse/FAB-9115) Standardize on "chaincode", not "chain code"
+* [b76f8c259](https://github.com/hyperledger/fabric/commit/b76f8c259) [FAB-9260](https://jira.hyperledger.org/browse/FAB-9260) Remove trailing whitespace in docs rst files
+* [ef9ca284c](https://github.com/hyperledger/fabric/commit/ef9ca284c) [FAB-9208](https://jira.hyperledger.org/browse/FAB-9208) Explain proper setting of GOPATH, PATH vars
+* [4a0fc01b2](https://github.com/hyperledger/fabric/commit/4a0fc01b2) [FAB-9250](https://jira.hyperledger.org/browse/FAB-9250) add logos to RTD
+* [390a91244](https://github.com/hyperledger/fabric/commit/390a91244) [FAB-9201](https://jira.hyperledger.org/browse/FAB-9201) Add 'make docker-list'
+* [2c188858f](https://github.com/hyperledger/fabric/commit/2c188858f) [FAB-8419](https://jira.hyperledger.org/browse/FAB-8419) Add teardown to WYFA
+* [629136384](https://github.com/hyperledger/fabric/commit/629136384) [FAB-7025](https://jira.hyperledger.org/browse/FAB-7025) Platform specific Centos 7 native builds.
+* [d4238fa81](https://github.com/hyperledger/fabric/commit/d4238fa81) [FAB-9206](https://jira.hyperledger.org/browse/FAB-9206) Remove "html_add_permalinks" config setting
+* [57a1ea68b](https://github.com/hyperledger/fabric/commit/57a1ea68b) [FAB-9177](https://jira.hyperledger.org/browse/FAB-9177) Remove self-referential line from index.rst
+* [a13270fbb](https://github.com/hyperledger/fabric/commit/a13270fbb) Correct single misspelling of "Hyperledgr"
+* [0fef04dad](https://github.com/hyperledger/fabric/commit/0fef04dad) [FAB-9113](https://jira.hyperledger.org/browse/FAB-9113) Edit lf-account.rst for clarity, grammar
+* [05ecae504](https://github.com/hyperledger/fabric/commit/05ecae504) [FAB-9178](https://jira.hyperledger.org/browse/FAB-9178) Fix erroneous indentation in three lists
+* [7ac312c47](https://github.com/hyperledger/fabric/commit/7ac312c47) [FAB-9178](https://jira.hyperledger.org/browse/FAB-9178) Fix lack of indentation in two notes
+* [33a9c39df](https://github.com/hyperledger/fabric/commit/33a9c39df) [FAB-9183](https://jira.hyperledger.org/browse/FAB-9183) Replace named links with anonymous links
+* [5f52018bd](https://github.com/hyperledger/fabric/commit/5f52018bd) [FAB-9114](https://jira.hyperledger.org/browse/FAB-9114) Add references/links for all 5 Fabric SDKs
+* [024e9509a](https://github.com/hyperledger/fabric/commit/024e9509a) [FAB-8254](https://jira.hyperledger.org/browse/FAB-8254) Doc consensus type cannot be changed
+* [dc07aab69](https://github.com/hyperledger/fabric/commit/dc07aab69) [FAB-9193](https://jira.hyperledger.org/browse/FAB-9193) Do not download thirdparty images by default
+* [04069bc02](https://github.com/hyperledger/fabric/commit/04069bc02) [FAB-9192](https://jira.hyperledger.org/browse/FAB-9192) Use BASE_DOCKER_NS for thirdparty images
+* [19abff965](https://github.com/hyperledger/fabric/commit/19abff965) [FAB-9120](https://jira.hyperledger.org/browse/FAB-9120) "key/value" -> "key-value" in some doc files
+* [518f0fd30](https://github.com/hyperledger/fabric/commit/518f0fd30) [FAB-9119](https://jira.hyperledger.org/browse/FAB-9119) Tidy up blockchain.rst: grammar, punctuation
+* [c9fb03e48](https://github.com/hyperledger/fabric/commit/c9fb03e48) [FAB-9073](https://jira.hyperledger.org/browse/FAB-9073) Upgrade to chaintool v1.1.0
+* [75afbbc2d](https://github.com/hyperledger/fabric/commit/75afbbc2d) [FAB-9063](https://jira.hyperledger.org/browse/FAB-9063) Specify release managers
+* [2b112a63d](https://github.com/hyperledger/fabric/commit/2b112a63d) [FAB-9026](https://jira.hyperledger.org/browse/FAB-9026) - Update maven binary source in javaenv
+* [b2e278473](https://github.com/hyperledger/fabric/commit/b2e278473) [FAB-8908](https://jira.hyperledger.org/browse/FAB-8908) fix broken links
+* [9d0b49158](https://github.com/hyperledger/fabric/commit/9d0b49158) [FAB-8959](https://jira.hyperledger.org/browse/FAB-8959) Default version in bootstrap.sh
+* [13447bf5e](https://github.com/hyperledger/fabric/commit/13447bf5e) [FAB-8638](https://jira.hyperledger.org/browse/FAB-8638) exterminate vestigial 1.0.x references
+* [427b221e2](https://github.com/hyperledger/fabric/commit/427b221e2) [FAB-8884](https://jira.hyperledger.org/browse/FAB-8884) Prepare Fabric for next release (v1.1.1)
+* [83d88e0ab](https://github.com/hyperledger/fabric/commit/83d88e0ab) [FAB-8757](https://jira.hyperledger.org/browse/FAB-8757) add Issuer/Subject field to peer.cert
+
+## v1.2.0
 Thu Jun 21 17:17:37 EDT 2018
 
 * [7aff3f7a6](https://github.com/hyperledger/fabric/commit/7aff3f7a6) [FAB-10799](https://jira.hyperledger.org/browse/FAB-10799) Cancel iterator with context
@@ -712,6 +763,29 @@ Thu Jun 21 17:17:37 EDT 2018
 * [bc06d6b43](https://github.com/hyperledger/fabric/commit/bc06d6b43) [FAB-8240](https://jira.hyperledger.org/browse/FAB-8240) Document Orderer.Addresses config setting
 * [d414824d7](https://github.com/hyperledger/fabric/commit/d414824d7) [FAB-8654](https://jira.hyperledger.org/browse/FAB-8654) Upgrade Gradle to version 4.4.1
 * [81f4c5373](https://github.com/hyperledger/fabric/commit/81f4c5373) [FAB-8313](https://jira.hyperledger.org/browse/FAB-8313) Optimize gossip filter selection
+
+## v1.1.0
+Thu Mar 15 13:49:03 EDT 2018
+
+* [2112633](https://github.com/hyperledger/fabric/commit/2112633) [FAB-8883](https://jira.hyperledger.org/browse/FAB-8883) Prepare for Fabric v1.1.0 release
+* [a495a88](https://github.com/hyperledger/fabric/commit/a495a88) [FAB-7895](https://jira.hyperledger.org/browse/FAB-7895): New topic (Concept) : Peers
+* [27fd3e5](https://github.com/hyperledger/fabric/commit/27fd3e5) [FAB-8854](https://jira.hyperledger.org/browse/FAB-8854) Fix link in fabric ca commands page
+* [d16ce12](https://github.com/hyperledger/fabric/commit/d16ce12) [FAB-8844](https://jira.hyperledger.org/browse/FAB-8844) correct handling of launch errors
+* [bf53291](https://github.com/hyperledger/fabric/commit/bf53291) [FAB-8728](https://jira.hyperledger.org/browse/FAB-8728) Typo in peerchannel.md
+* [e7ed520](https://github.com/hyperledger/fabric/commit/e7ed520) [FAB-8748](https://jira.hyperledger.org/browse/FAB-8748) Get fabric-ca-client binary from bootstrap.sh
+* [4bf4f24](https://github.com/hyperledger/fabric/commit/4bf4f24) [FAB-8763](https://jira.hyperledger.org/browse/FAB-8763) Clarify CLI cc package doc for node cc
+* [15ec7d1](https://github.com/hyperledger/fabric/commit/15ec7d1) [FAB-8666](https://jira.hyperledger.org/browse/FAB-8666) refactor fabric docs TOC
+* [08d817c](https://github.com/hyperledger/fabric/commit/08d817c) [FAB-8731](https://jira.hyperledger.org/browse/FAB-8731) Clarify CLI cc install doc for node cc
+* [5533049](https://github.com/hyperledger/fabric/commit/5533049) [FAB-8738](https://jira.hyperledger.org/browse/FAB-8738) Document Reserved Field Names in CouchDB
+* [fdff463](https://github.com/hyperledger/fabric/commit/fdff463) [FAB-8700](https://jira.hyperledger.org/browse/FAB-8700) Clarify channel update tutorial leader elec
+* [9105134](https://github.com/hyperledger/fabric/commit/9105134) [FAB-8698](https://jira.hyperledger.org/browse/FAB-8698) - Fix broken link
+* [8292ed4](https://github.com/hyperledger/fabric/commit/8292ed4) [FAB-8688](https://jira.hyperledger.org/browse/FAB-8688) Gossip onConnect() references wrong field
+* [8793c73](https://github.com/hyperledger/fabric/commit/8793c73) [FAB-8240](https://jira.hyperledger.org/browse/FAB-8240) Document Orderer.Addresses config setting
+* [7a5a16e](https://github.com/hyperledger/fabric/commit/7a5a16e) [FAB-8647](https://jira.hyperledger.org/browse/FAB-8647): explain limitation of adding new org
+* [f78e0ab](https://github.com/hyperledger/fabric/commit/f78e0ab) [FAB-8416](https://jira.hyperledger.org/browse/FAB-8416) add leader election section
+* [7ba1ffe](https://github.com/hyperledger/fabric/commit/7ba1ffe) [FAB-8628](https://jira.hyperledger.org/browse/FAB-8628) fix code coverage report issue
+* [1334e63](https://github.com/hyperledger/fabric/commit/1334e63) [FAB-8636](https://jira.hyperledger.org/browse/FAB-8636) clarify release tag to use for tutorial
+* [5b0a846](https://github.com/hyperledger/fabric/commit/5b0a846) [FAB-8284](https://jira.hyperledger.org/browse/FAB-8284) Prepare Fabric for next release
 
 ## v1.1.0-rc1
 Thu Mar  1 12:37:41 EST 2018
