@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -39,7 +38,7 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 		OutputFile: output,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 	// unmarshal the config block bytes
@@ -91,7 +90,7 @@ func UpdateConfig(n *Network, signer, submitter *Peer, orderer *Orderer, channel
 
 	sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{File: updateFile})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	// get current configuration block number
 	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
@@ -102,11 +101,12 @@ func UpdateConfig(n *Network, signer, submitter *Peer, orderer *Orderer, channel
 		File:      updateFile,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
 
 	// wait for the block to be committed
-	Eventually(func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }).Should(BeNumerically(">", currentBlockNumber))
+	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
+	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 }
 
 // CurrentConfigBlockNumber retrieves the block number from the header of the
@@ -126,7 +126,7 @@ func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel 
 		OutputFile: output,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 	// unmarshal the config block bytes

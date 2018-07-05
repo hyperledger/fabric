@@ -8,7 +8,6 @@ package nwo
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -52,11 +51,11 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 			Path:    chaincode.Path,
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 		sess, err = n.PeerAdminSession(p, commands.ChaincodeListInstalled{})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", chaincode.Name, chaincode.Version)))
 	}
 }
@@ -72,14 +71,14 @@ func InstantiateChaincode(n *Network, channel string, orderer *Orderer, chaincod
 		CollectionsConfig: chaincode.CollectionsConfig,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	EnsureInstantiated(n, channel, chaincode.Name, chaincode.Version, checkPeers...)
 }
 
 func EnsureInstantiated(n *Network, channel, name, version string, peers ...*Peer) {
 	for _, p := range peers {
-		Eventually(listInstantiated(n, p, channel), time.Minute).Should(
+		Eventually(listInstantiated(n, p, channel), n.EventuallyTimeout).Should(
 			gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)),
 		)
 	}
@@ -107,7 +106,7 @@ func UpgradeChaincode(n *Network, channel string, orderer *Orderer, chaincode Ch
 		CollectionsConfig: chaincode.CollectionsConfig,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	EnsureInstantiated(n, channel, chaincode.Name, chaincode.Version, peers...)
 }
@@ -118,7 +117,7 @@ func listInstantiated(n *Network, peer *Peer, channel string) func() *gbytes.Buf
 			ChannelID: channel,
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, 10*time.Second).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		return sess.Buffer()
 	}
 }

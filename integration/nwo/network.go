@@ -127,11 +127,12 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
-	RootDir      string
-	StartPort    uint16
-	NetworkID    string
-	Components   *Components
-	DockerClient *docker.Client
+	RootDir           string
+	StartPort         uint16
+	Components        *Components
+	DockerClient      *docker.Client
+	NetworkID         string
+	EventuallyTimeout time.Duration
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -159,10 +160,11 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		Components:   components,
 		DockerClient: client,
 
-		NetworkID:        helpers.UniqueName(),
-		PortsByBrokerID:  map[string]Ports{},
-		PortsByOrdererID: map[string]Ports{},
-		PortsByPeerID:    map[string]Ports{},
+		NetworkID:         helpers.UniqueName(),
+		EventuallyTimeout: time.Minute,
+		PortsByBrokerID:   map[string]Ports{},
+		PortsByOrdererID:  map[string]Ports{},
+		PortsByPeerID:     map[string]Ports{},
 
 		Organizations: c.Organizations,
 		Consensus:     c.Consensus,
@@ -489,7 +491,7 @@ func (n *Network) Bootstrap() {
 		Output: n.CryptoPath(),
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	sess, err = n.ConfigTxGen(commands.OutputBlock{
 		ChannelID:   n.SystemChannel.Name,
@@ -498,7 +500,7 @@ func (n *Network) Bootstrap() {
 		OutputBlock: n.OutputBlockPath(n.SystemChannel.Name),
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	for _, c := range n.Channels {
 		sess, err := n.ConfigTxGen(commands.CreateChannelTx{
@@ -508,7 +510,7 @@ func (n *Network) Bootstrap() {
 			OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 }
 
@@ -580,14 +582,14 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 		OutputBlock: tempFile.Name(),
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
 			BlockPath: tempFile.Name(),
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 }
 
@@ -615,7 +617,7 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 		}
 		sess, err := n.ConfigTxGen(anchorUpdate)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 		sess, err = n.PeerAdminSession(p, commands.ChannelUpdate{
 			ChannelID: channelName,
@@ -623,7 +625,7 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 			File:      tempFile.Name(),
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 }
 
@@ -640,7 +642,7 @@ func (n *Network) CreateChannel(name string, o *Orderer, p *Peer) {
 		OutputBlock: "/dev/null",
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 }
 
 // JoinChannel will join peers to the specified channel. The orderer is used to
@@ -664,14 +666,14 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 		OutputFile: tempFile.Name(),
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
 			BlockPath: tempFile.Name(),
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess).Should(gexec.Exit(0))
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 }
 
