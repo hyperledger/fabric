@@ -38,6 +38,13 @@ const (
 	defSendBuffSize = 20
 )
 
+// SecurityAdvisor defines an external auxiliary object
+// that provides security and identity related capabilities
+type SecurityAdvisor interface {
+	// OrgByPeerIdentity returns the organization identity of the given PeerIdentityType
+	OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType
+}
+
 // SetDialTimeout sets the dial timeout
 func SetDialTimeout(timeout time.Duration) {
 	viper.Set("peer.gossip.dialTimeout", timeout)
@@ -53,7 +60,7 @@ func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
 
 // NewCommInstanceWithServer creates a comm instance that creates an underlying gRPC server
 func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity api.PeerIdentityType,
-	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption) (Comm, error) {
+	secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor, dialOpts ...grpc.DialOption) (Comm, error) {
 
 	var ll net.Listener
 	var s *grpc.Server
@@ -64,6 +71,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	}
 
 	commInst := &commImpl{
+		sa:             sa,
 		pubSub:         util.NewPubSub(),
 		PKIID:          idMapper.GetPKIidOfCert(peerIdentity),
 		idMapper:       idMapper,
@@ -99,10 +107,10 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
 func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
-	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts,
+	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
 	dialOpts ...grpc.DialOption) (Comm, error) {
 
-	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, secureDialOpts, dialOpts...)
+	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, secureDialOpts, sa, dialOpts...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -115,6 +123,7 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 }
 
 type commImpl struct {
+	sa             api.SecurityAdvisor
 	tlsCerts       *common.TLSCertificates
 	pubSub         *util.PubSub
 	peerIdentity   api.PeerIdentityType
@@ -175,11 +184,18 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 		connInfo, err = c.authenticateRemotePeer(stream, true)
 		if err == nil {
 			pkiID = connInfo.ID
+			// PKIID is nil when we don't know the remote PKI id's
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
-				// PKIID is nil when we don't know the remote PKI id's
-				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
-				cc.Close()
-				return nil, errors.New("Authentication failure")
+				actualOrg := c.sa.OrgByPeerIdentity(connInfo.Identity)
+				// If the identity isn't present, it's nil - therefore OrgByPeerIdentity would
+				// return nil too and thus would be different than the actual organization
+				identity, _ := c.idMapper.Get(expectedPKIID)
+				oldOrg := c.sa.OrgByPeerIdentity(identity)
+				if !bytes.Equal(actualOrg, oldOrg) {
+					c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
+					cc.Close()
+					return nil, errors.New("authentication failure")
+				}
 			}
 			conn := newConnection(cl, cc, stream, nil)
 			conn.pkiID = pkiID
