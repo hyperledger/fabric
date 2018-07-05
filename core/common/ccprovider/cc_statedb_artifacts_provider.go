@@ -37,7 +37,7 @@ func ExtractStatedbArtifactsForChaincode(ccname, ccversion string, pr *platforms
 		// TODO for now, we assume that an error indicates that the chaincode is not installed on the peer.
 		// However, we need a way to differentiate between the 'not installed' and a general error so that on general error,
 		// we can abort the chaincode instantiate/upgrade/install operation.
-		ccproviderLogger.Info("Error while loading installation package for ccname=%s, ccversion=%s. Err=%s", ccname, ccversion, err)
+		ccproviderLogger.Infof("Error while loading installation package for ccname=%s, ccversion=%s. Err=%s", ccname, ccversion, err)
 		return false, nil, nil
 	}
 
