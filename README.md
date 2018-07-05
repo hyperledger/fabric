@@ -28,6 +28,7 @@ open source architecture; Hyperledger Fabric is your starting point.
 
 ## Releases
 
+- [v1.2.0 - July 3, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.2.0)
 - [v1.2.0-rc1 - June 22, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.2.0-rc1)
 - [v1.1.0 - March 15, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.1.0)
 - [v1.1.0-rc1 - March 1, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.1.0-rc1)
