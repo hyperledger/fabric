@@ -257,10 +257,11 @@ var _ = Describe("DiscoveryService EndToEnd", func() {
 		By("remove org3 members (except admin) from channel writers")
 		sendChannelConfigUpdate(0, 3, d.Channel, d.Orderer, testDir)
 		By("try to discover peers using org3, should get access denied")
-		sdRunner = sd.DiscoverPeers(d.Channel, "127.0.0.1:9051")
-		err = helpers.Execute(sdRunner)
-		Expect(err).To(HaveOccurred())
-		Expect(sdRunner.Err()).Should(gbytes.Say("access denied"))
+		EventuallyWithOffset(1, func() *gbytes.Buffer {
+			sdRunner = sd.DiscoverPeers(d.Channel, "127.0.0.1:9051")
+			helpers.Execute(sdRunner)
+			return sdRunner.Err()
+		}, time.Minute).Should(gbytes.Say("access denied"))
 	})
 })
 
