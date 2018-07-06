@@ -94,10 +94,10 @@ type Coordinator interface {
 	Close()
 }
 
-type dig2sources map[*gossip2.PvtDataDigest][]*peer.Endorsement
+type dig2sources map[DigKey][]*peer.Endorsement
 
-func (d2s dig2sources) keys() []*gossip2.PvtDataDigest {
-	var res []*gossip2.PvtDataDigest
+func (d2s dig2sources) keys() []DigKey {
+	var res []DigKey
 	for dig := range d2s {
 		res = append(res, dig)
 	}
@@ -257,10 +257,10 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 }
 
 func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][]byte, privateInfo *privateDataInfo) {
-	dig2src := make(map[*gossip2.PvtDataDigest][]*peer.Endorsement)
+	dig2src := make(map[DigKey][]*peer.Endorsement)
 	privateInfo.missingKeys.foreach(func(k rwSetKey) {
 		logger.Debug("Fetching", k, "from peers")
-		dig := &gossip2.PvtDataDigest{
+		dig := DigKey{
 			TxId:       k.txID,
 			SeqInBlock: k.seqInBlock,
 			Collection: k.collection,

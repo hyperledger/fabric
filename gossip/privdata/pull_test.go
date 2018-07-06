@@ -311,7 +311,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 
 	dasf := &digestsAndSourceFactory{}
 
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create(), uint64(1))
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create(), uint64(1))
 	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
@@ -356,7 +356,7 @@ func TestPullerDataNotAvailable(t *testing.T) {
 	})
 
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create(), uint64(1))
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create(), uint64(1))
 	assert.Empty(t, fetchedMessages.AvailableElemenets)
 	assert.NoError(t, err)
 }
@@ -371,7 +371,7 @@ func TestPullerNoPeersKnown(t *testing.T) {
 
 	p1 := gn.newPuller("p1", policyStore, factoryMock)
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.Empty(t, fetchedMessages)
 	assert.Error(t, err)
@@ -389,7 +389,7 @@ func TestPullPeerFilterError(t *testing.T) {
 	p1 := gn.newPuller("p1", policyStore, factoryMock)
 	gn.peers[0].On("PeerFilter", mock.Anything, mock.Anything).Return(nil, errors.New("Failed obtaining filter"))
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed obtaining filter")
@@ -457,7 +457,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	p3 := gn.newPuller("p3", policyStore, factoryMock3)
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, mock.Anything).Return(store, nil)
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.Empty(t, fetchedMessages.AvailableElemenets)
 	assert.NoError(t, err)
@@ -550,7 +550,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig2}, mock.Anything).Return(store2, nil)
 
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig1).toSources().mapDigest(dig2).toSources().create(), uint64(1))
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig1)).toSources().mapDigest(toDigKey(dig2)).toSources().create(), uint64(1))
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
@@ -659,7 +659,7 @@ func TestPullerRetries(t *testing.T) {
 
 	// Fetch from someone
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create(), uint64(1))
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create(), uint64(1))
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
@@ -751,7 +751,7 @@ func TestPullerPreferEndorsers(t *testing.T) {
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig1}, uint64(0)).Return(store, nil)
 
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(dig1).toSources("p3").mapDigest(dig2).toSources().create()
+	d2s := dasf.mapDigest(toDigKey(dig1)).toSources("p3").mapDigest(toDigKey(dig2)).toSources().create()
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
@@ -854,7 +854,7 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 		)
 
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(dig1).toSources("p3", "p2").mapDigest(dig2).toSources("p3").create()
+	d2s := dasf.mapDigest(toDigKey(dig1)).toSources("p3", "p2").mapDigest(toDigKey(dig2)).toSources("p3").create()
 	// trying to fetch missing pvt data for block seq 1
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
 
@@ -934,7 +934,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	dataRetreiver := &counterDataRetreiver{PrivateDataRetriever: NewDataRetriever(dataStore), numberOfCalls: 0}
 	p2.PrivateDataRetriever = dataRetreiver
 
-	dig1 := &proto.PvtDataDigest{
+	dig1 := &DigKey{
 		TxId:       "txID1",
 		Collection: col1,
 		Namespace:  ns1,
@@ -942,7 +942,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 		SeqInBlock: 1,
 	}
 
-	dig2 := &proto.PvtDataDigest{
+	dig2 := &DigKey{
 		TxId:       "txID1",
 		Collection: col2,
 		Namespace:  ns2,
@@ -958,4 +958,14 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	assert.Equal(t, 1, dataRetreiver.getNumberOfCalls())
 	assert.Equal(t, 2, len(fetchedMessages.AvailableElemenets[0].Payload))
 	assert.Equal(t, 2, len(fetchedMessages.AvailableElemenets[1].Payload))
+}
+
+func toDigKey(dig *proto.PvtDataDigest) *DigKey {
+	return &DigKey{
+		TxId:       dig.TxId,
+		BlockSeq:   dig.BlockSeq,
+		SeqInBlock: dig.SeqInBlock,
+		Namespace:  dig.Namespace,
+		Collection: dig.Collection,
+	}
 }

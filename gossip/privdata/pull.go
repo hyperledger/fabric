@@ -35,7 +35,8 @@ const (
 	btlPullMarginDefault        = 10
 )
 
-// DigKey
+// DigKey defines a digest that
+// specifies a specific hashed RWSet
 type DigKey struct {
 	TxId       string
 	Namespace  string
@@ -244,9 +245,15 @@ func (p *puller) fetch(dig2src dig2sources, blockSeq uint64) (*FetchedPvtDataCon
 		purgedPvt := p.getPurgedCollections(members, dig2Filter, blockSeq)
 		// Need to remove purged digest from mapping
 		for _, dig := range purgedPvt {
-			res.PurgedElements = append(res.PurgedElements, dig)
+			res.PurgedElements = append(res.PurgedElements, &proto.PvtDataDigest{
+				TxId:       dig.TxId,
+				BlockSeq:   dig.BlockSeq,
+				SeqInBlock: dig.SeqInBlock,
+				Namespace:  dig.Namespace,
+				Collection: dig.Collection,
+			})
 			// remove digest so we won't even try to pull purged data
-			delete(dig2Filter, *dig)
+			delete(dig2Filter, dig)
 			itemsLeftToCollect--
 		}
 
@@ -271,7 +278,13 @@ func (p *puller) fetch(dig2src dig2sources, blockSeq uint64) (*FetchedPvtDataCon
 				logger.Debug("Got empty response for", resp.Digest)
 				continue
 			}
-			delete(dig2Filter, *resp.Digest)
+			delete(dig2Filter, DigKey{
+				TxId:       resp.Digest.TxId,
+				BlockSeq:   resp.Digest.BlockSeq,
+				SeqInBlock: resp.Digest.SeqInBlock,
+				Namespace:  resp.Digest.Namespace,
+				Collection: resp.Digest.Collection,
+			})
 			itemsLeftToCollect--
 		}
 		res.AvailableElemenets = append(res.AvailableElemenets, responses...)
@@ -360,7 +373,13 @@ func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Fil
 		}
 		// Add the peer to the mapping from peer to digest slice
 		peer := remotePeer{pkiID: string(selectedPeer.PKIID), endpoint: selectedPeer.Endpoint}
-		res[peer] = append(res[peer], dig)
+		res[peer] = append(res[peer], proto.PvtDataDigest{
+			TxId:       dig.TxId,
+			BlockSeq:   dig.BlockSeq,
+			SeqInBlock: dig.SeqInBlock,
+			Namespace:  dig.Namespace,
+			Collection: dig.Collection,
+		})
 	}
 
 	var noneSelectedPeers []discovery.NetworkMember
@@ -379,7 +398,7 @@ type collectionRoutingFilter struct {
 	endorser filter.RoutingFilter
 }
 
-type digestToFilterMapping map[proto.PvtDataDigest]collectionRoutingFilter
+type digestToFilterMapping map[DigKey]collectionRoutingFilter
 
 func (dig2f digestToFilterMapping) flattenFilterValues() []filter.RoutingFilter {
 	var filters []filter.RoutingFilter
@@ -393,7 +412,13 @@ func (dig2f digestToFilterMapping) flattenFilterValues() []filter.RoutingFilter 
 func (dig2f digestToFilterMapping) digests() []proto.PvtDataDigest {
 	var digs []proto.PvtDataDigest
 	for d := range dig2f {
-		digs = append(digs, d)
+		digs = append(digs, proto.PvtDataDigest{
+			TxId:       d.TxId,
+			BlockSeq:   d.BlockSeq,
+			SeqInBlock: d.SeqInBlock,
+			Namespace:  d.Namespace,
+			Collection: d.Collection,
+		})
 	}
 	return digs
 }
@@ -412,8 +437,15 @@ func (dig2f digestToFilterMapping) String() string {
 }
 
 func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, error) {
-	filters := make(map[proto.PvtDataDigest]collectionRoutingFilter)
+	filters := make(map[DigKey]collectionRoutingFilter)
 	for digest, sources := range dig2src {
+		digKey := DigKey{
+			TxId:       digest.TxId,
+			BlockSeq:   digest.BlockSeq,
+			SeqInBlock: digest.SeqInBlock,
+			Namespace:  digest.Namespace,
+			Collection: digest.Collection,
+		}
 		cc := fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			TxId:       digest.TxId,
@@ -453,7 +485,7 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 			return nil, errors.WithStack(err)
 		}
 
-		filters[*digest] = collectionRoutingFilter{
+		filters[digKey] = collectionRoutingFilter{
 			anyPeer:  anyPeerInCollection,
 			endorser: endorserPeer,
 		}
@@ -462,9 +494,9 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 }
 
 func (p *puller) getPurgedCollections(members []discovery.NetworkMember,
-	dig2Filter digestToFilterMapping, blockSeq uint64) []*proto.PvtDataDigest {
+	dig2Filter digestToFilterMapping, blockSeq uint64) []DigKey {
 
-	var res []*proto.PvtDataDigest
+	var res []DigKey
 	for dig := range dig2Filter {
 		dig := dig
 
@@ -480,13 +512,13 @@ func (p *puller) getPurgedCollections(members []discovery.NetworkMember,
 			logger.Debugf("Private data on channel [%s], chaincode [%s], collection name [%s] for txID = [%s],"+
 				"has been purged at peers [%v]", p.channel, dig.Namespace,
 				dig.Collection, dig.TxId, membersWithPurgedData)
-			res = append(res, &dig)
+			res = append(res, dig)
 		}
 	}
 	return res
 }
 
-func (p *puller) purgedFilter(dig proto.PvtDataDigest, blockSeq uint64) (filter.RoutingFilter, error) {
+func (p *puller) purgedFilter(dig DigKey, blockSeq uint64) (filter.RoutingFilter, error) {
 	cc := fcommon.CollectionCriteria{
 		Channel:    p.channel,
 		TxId:       dig.TxId,
