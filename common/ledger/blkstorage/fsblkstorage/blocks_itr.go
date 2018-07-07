@@ -92,11 +92,11 @@ func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 
 // Close releases any resources held by the iterator
 func (itr *blocksItr) Close() {
+	itr.mgr.cpInfoCond.L.Lock()
+	defer itr.mgr.cpInfoCond.L.Unlock()
 	itr.closeMarkerLock.Lock()
 	defer itr.closeMarkerLock.Unlock()
 	itr.closeMarker = true
-	itr.mgr.cpInfoCond.L.Lock()
-	defer itr.mgr.cpInfoCond.L.Unlock()
 	itr.mgr.cpInfoCond.Broadcast()
 	if itr.stream != nil {
 		itr.stream.close()
