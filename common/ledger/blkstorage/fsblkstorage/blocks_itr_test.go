@@ -75,6 +75,39 @@ func TestBlockItrClose(t *testing.T) {
 	testutil.AssertNil(t, bh)
 }
 
+func TestRaceToDeadlock(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blkfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	blocks := testutil.ConstructTestBlocks(t, 5)
+	blkfileMgrWrapper.addBlocks(blocks)
+
+	for i := 0; i < 1000; i++ {
+		itr, err := blkfileMgr.retrieveBlocks(5)
+		if err != nil {
+			panic(err)
+		}
+		go func() {
+			itr.Next()
+		}()
+		itr.Close()
+	}
+
+	for i := 0; i < 1000; i++ {
+		itr, err := blkfileMgr.retrieveBlocks(5)
+		if err != nil {
+			panic(err)
+		}
+		go func() {
+			itr.Close()
+		}()
+		itr.Next()
+	}
+}
+
 func TestBlockItrCloseWithoutRetrieve(t *testing.T) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
