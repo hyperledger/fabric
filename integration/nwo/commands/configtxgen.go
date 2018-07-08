@@ -45,3 +45,25 @@ func (c CreateChannelTx) Args() []string {
 		"-outputCreateChannelTx", c.OutputCreateChannelTx,
 	}
 }
+
+type OutputAnchorPeersUpdate struct {
+	ChannelID               string
+	Profile                 string
+	ConfigPath              string
+	AsOrg                   string
+	OutputAnchorPeersUpdate string
+}
+
+func (o OutputAnchorPeersUpdate) SessionName() string {
+	return "configtxgen-output-anchor-peers-update"
+}
+
+func (o OutputAnchorPeersUpdate) Args() []string {
+	return []string{
+		"-channelID", o.ChannelID,
+		"-profile", o.Profile,
+		"-configPath", o.ConfigPath,
+		"-asOrg", o.AsOrg,
+		"-outputAnchorPeersUpdate", o.OutputAnchorPeersUpdate,
+	}
+}
