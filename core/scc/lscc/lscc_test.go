@@ -1040,6 +1040,34 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCheckChaincodeName(t *testing.T) {
+	/*allowed naming*/
+	result := isValidCCNameOrVersion("a-b", allowedChaincodeName)
+	assert.True(t, result)
+	result = isValidCCNameOrVersion("a_b", allowedChaincodeName)
+	assert.True(t, result)
+	result = isValidCCNameOrVersion("a_b-c", allowedChaincodeName)
+	assert.True(t, result)
+	result = isValidCCNameOrVersion("a-b_c", allowedChaincodeName)
+	assert.True(t, result)
+
+	/*invalid naming*/
+	result = isValidCCNameOrVersion("-ab", allowedChaincodeName)
+	assert.False(t, result)
+	result = isValidCCNameOrVersion("_ab", allowedChaincodeName)
+	assert.False(t, result)
+	result = isValidCCNameOrVersion("ab-", allowedChaincodeName)
+	assert.False(t, result)
+	result = isValidCCNameOrVersion("ab_", allowedChaincodeName)
+	assert.False(t, result)
+	result = isValidCCNameOrVersion("a__b", allowedChaincodeName)
+	assert.False(t, result)
+	result = isValidCCNameOrVersion("a--b", allowedChaincodeName)
+	assert.False(t, result)
+	result = isValidCCNameOrVersion("a-_b", allowedChaincodeName)
+	assert.False(t, result)
+}
+
 var id msp.SigningIdentity
 var chainid = util.GetTestChainID()
 var mockAclProvider *mocks.MockACLProvider
