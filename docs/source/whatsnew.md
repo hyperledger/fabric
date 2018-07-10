@@ -48,6 +48,7 @@ Hyperledger Fabric:
 ### Other new documentation
 
 * **[Service Discovery CLI](https://hyperledger-fabric.readthedocs.io/en/release-1.2/discovery-cli.html)**:
+  Configuring the discovery service using the CLI.
 
 ## Release notes
 
