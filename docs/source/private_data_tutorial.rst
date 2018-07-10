@@ -20,6 +20,7 @@ configuring and using private data with Fabric:
 #. :ref:`pd-query-unauthorized`
 #. :ref:`pd-purge`
 #. :ref:`pd-indexes`
+#. :ref:`pd-ref-material`
 
 This tutorial will use the `marbles private data sample <https://github.com/hyperledger/fabric-samples/tree/master/chaincode/marbles02_private>`__
 --- running on the Building Your First Network (BYFN) tutorial network --- to
@@ -792,6 +793,20 @@ installed on a peer and instantiated on a channel. The associated indexes are
 automatically deployed upon chaincode instantiation on the channel when
 the  ``--collections-config`` flag is specified pointing to the location of
 the collection JSON file.
+
+
+.. _pd-ref-material:
+
+Additional resources
+--------------------
+
+For additional private data education, a video tutorial has been created.
+
+.. raw:: html
+
+   <br/><br/>
+   <iframe width="560" height="315" src="https://www.youtube.com/embed/qyjDi93URJE" frameborder="0" allowfullscreen></iframe>
+   <br/><br/>
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
