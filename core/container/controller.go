@@ -161,37 +161,14 @@ func (si StopContainerReq) GetCCID() ccintf.CCID {
 	return si.CCID
 }
 
-//Process should be used as follows
-//   . construct a context
-//   . construct req of the right type (e.g., CreateImageReq)
-//   . call it in a go routine
-//   . process response in the go routing
-//context can be cancelled. VMCProcess will try to cancel calling functions if it can
-//For instance docker clients api's such as BuildImage are not cancelable.
-//In all cases VMCProcess will wait for the called go routine to return
 func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq) error {
 	v := vmc.newVM(vmtype)
+	ccid := req.GetCCID()
+	id := ccid.GetName()
 
-	c := make(chan error)
-	go func() {
-		ccid := req.GetCCID()
-		id := ccid.GetName()
-		vmc.lockContainer(id)
-		err := req.Do(ctxt, v)
-		vmc.unlockContainer(id)
-		c <- err
-	}()
-
-	select {
-	case err := <-c:
-		return err
-	case <-ctxt.Done():
-		//TODO cancel req.do ... (needed) ?
-		// XXX This logic doesn't make much sense, why return the context error if it's canceled,
-		// but still wait for the request to complete, and ignore its error
-		<-c
-		return ctxt.Err()
-	}
+	vmc.lockContainer(id)
+	defer vmc.unlockContainer(id)
+	return req.Do(ctxt, v)
 }
 
 // GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification
