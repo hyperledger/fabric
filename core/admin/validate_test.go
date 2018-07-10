@@ -63,7 +63,7 @@ func TestValidateStructureRequestBadInput(t *testing.T) {
 	op, sd, err = validateStructure(ctx, &common.Envelope{})
 	assert.Nil(t, op)
 	assert.Nil(t, sd)
-	assert.Contains(t, err.Error(), "Envelope must have a Header")
+	assert.Contains(t, err.Error(), "envelope must have a Header")
 
 	pl := &common.Payload{}
 	pl.Header = &common.Header{
@@ -73,7 +73,7 @@ func TestValidateStructureRequestBadInput(t *testing.T) {
 	op, sd, err = validateStructure(ctx, &common.Envelope{Payload: plBytes})
 	assert.Nil(t, op)
 	assert.Nil(t, sd)
-	assert.Contains(t, err.Error(), "Invalid ChannelHeader")
+	assert.Contains(t, err.Error(), "error unmarshaling ChannelHeader")
 
 	ch := &common.ChannelHeader{
 		Type: int32(common.HeaderType_PEER_ADMIN_OPERATION),
@@ -122,7 +122,7 @@ func TestValidateStructureRequestBadInput(t *testing.T) {
 	op, sd, err = validateStructure(ctx, &common.Envelope{Payload: plBytes})
 	assert.Nil(t, op)
 	assert.Nil(t, sd)
-	assert.Contains(t, err.Error(), "Error unmarshaling message")
+	assert.Contains(t, err.Error(), "error unmarshaling message")
 }
 
 func TestValidateStructureRequestGoodInput(t *testing.T) {

@@ -54,7 +54,7 @@ func TestBadProposalHeaders(t *testing.T) {
 	// in multiple functions which should be refactored in the future.
 	// For now, simply consolidating the test cases
 
-	// emty header
+	// empty header
 	prop := &pb.Proposal{
 		Header: []byte{},
 	}
@@ -62,6 +62,13 @@ func TestBadProposalHeaders(t *testing.T) {
 	assert.Error(t, err, "Expected error with empty proposal header")
 	_, err = utils.ComputeProposalBinding(prop)
 	assert.Error(t, err, "Expected error with empty proposal header")
+
+	// empty payload
+	prop = &pb.Proposal{
+		Header: []byte("header"),
+	}
+	_, _, err = utils.GetChaincodeProposalContext(prop)
+	assert.Error(t, err, "Expected error with empty proposal payload")
 
 	// malformed proposal header
 	prop = &pb.Proposal{
@@ -109,6 +116,7 @@ func TestBadProposalHeaders(t *testing.T) {
 	prop.Header = hdrBytes
 	_, _, err = utils.GetChaincodeProposalContext(prop)
 	assert.Error(t, err, "Expected error with wrong header type")
+	assert.Contains(t, err.Error(), "invalid proposal: invalid channel header type")
 	_, err = utils.GetNonce(prop)
 	assert.Error(t, err, "Expected error with wrong header type")
 
