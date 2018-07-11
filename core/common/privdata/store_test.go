@@ -34,7 +34,7 @@ func (c *mockStoreSupport) GetIdentityDeserializer(chainID string) msp.IdentityD
 
 func TestCollectionStore(t *testing.T) {
 	wState := make(map[string]map[string][]byte)
-	support := &mockStoreSupport{Qe: &lm.MockQueryExecutor{wState}}
+	support := &mockStoreSupport{Qe: &lm.MockQueryExecutor{State: wState}}
 	cs := NewSimpleCollectionStore(support)
 	assert.NotNil(t, cs)
 
@@ -55,7 +55,9 @@ func TestCollectionStore(t *testing.T) {
 	_, err = cs.RetrieveCollection(ccr)
 	assert.Error(t, err)
 
-	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
+	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{
+		StaticCollectionConfig: &common.StaticCollectionConfig{Name: "mycollection"}},
+	}
 	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{cc}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
@@ -70,8 +72,10 @@ func TestCollectionStore(t *testing.T) {
 	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
-	cc = &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection", MemberOrgsPolicy: accessPolicy}}}
-	ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
+	cc = &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{
+		StaticCollectionConfig: &common.StaticCollectionConfig{Name: "mycollection", MemberOrgsPolicy: accessPolicy},
+	}}
+	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{cc}}
 	ccpBytes, err = proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)

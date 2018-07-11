@@ -119,7 +119,7 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 
 		containerOptions.NetworkingConfig = &docker.NetworkingConfig{
 			EndpointsConfig: map[string]*docker.EndpointConfig{
-				z.NetworkName: &docker.EndpointConfig{
+				z.NetworkName: {
 					NetworkID: nw.ID,
 				},
 			},

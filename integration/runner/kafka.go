@@ -125,7 +125,7 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		HostConfig: &docker.HostConfig{
 			AutoRemove: true,
 			PortBindings: map[docker.Port][]docker.PortBinding{
-				k.ContainerPort: []docker.PortBinding{{
+				k.ContainerPort: {{
 					HostIP:   k.HostIP,
 					HostPort: strconv.Itoa(k.HostPort),
 				}},
@@ -141,7 +141,7 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 
 		containerOptions.NetworkingConfig = &docker.NetworkingConfig{
 			EndpointsConfig: map[string]*docker.EndpointConfig{
-				k.NetworkName: &docker.EndpointConfig{
+				k.NetworkName: {
 					NetworkID: nw.ID,
 				},
 			},

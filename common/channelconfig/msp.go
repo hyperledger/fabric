@@ -54,7 +54,9 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		}
 	case int32(msp.IDEMIX):
 		// create the idemix msp instance
-		theMsp, err = msp.New(&msp.IdemixNewOpts{msp.NewBaseOpts{Version: bh.version}})
+		theMsp, err = msp.New(&msp.IdemixNewOpts{
+			NewBaseOpts: msp.NewBaseOpts{Version: bh.version},
+		})
 		if err != nil {
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")
 		}

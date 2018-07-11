@@ -285,7 +285,9 @@ func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (ccprovider.Chainco
 
 	bytes, err := qe.GetState("lscc", ccid)
 	if err != nil {
-		return nil, &commonerrors.VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
+		return nil, &commonerrors.VSCCInfoLookupFailureError{
+			Reason: fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err),
+		}
 	}
 
 	if bytes == nil {

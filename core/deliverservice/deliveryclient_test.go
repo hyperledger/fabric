@@ -91,7 +91,9 @@ func TestNewDeliverService(t *testing.T) {
 		return blocksDeliverer, nil
 	}
 	abcf := func(*grpc.ClientConn) orderer.AtomicBroadcastClient {
-		return &mocks.MockAtomicBroadcastClient{blocksDeliverer}
+		return &mocks.MockAtomicBroadcastClient{
+			BD: blocksDeliverer,
+		}
 	}
 
 	connFactory := func(_ string) func(string) (*grpc.ClientConn, error) {
@@ -109,10 +111,10 @@ func TestNewDeliverService(t *testing.T) {
 		ConnFactory: connFactory,
 	})
 	assert.NoError(t, err)
-	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}))
+	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}))
 
 	// Lets start deliver twice
-	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}), "can't start delivery")
+	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}), "can't start delivery")
 	// Lets stop deliver that not started
 	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID2"), "can't stop delivery")
 
@@ -127,7 +129,7 @@ func TestNewDeliverService(t *testing.T) {
 
 	assertBlockDissemination(0, gossipServiceAdapter.GossipBlockDisseminations, t)
 	assert.Equal(t, atomic.LoadInt32(&blocksDeliverer.RecvCnt), atomic.LoadInt32(&gossipServiceAdapter.AddPayloadsCnt))
-	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}), "Delivery service is stopping")
+	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}), "Delivery service is stopping")
 	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID"), "Delivery service is stopping")
 }
 

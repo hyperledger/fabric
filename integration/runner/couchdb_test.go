@@ -95,7 +95,7 @@ var _ = Describe("CouchDB Runner", func() {
 			ID: "container-id",
 			NetworkSettings: &docker.NetworkSettings{
 				Ports: map[docker.Port][]docker.PortBinding{
-					docker.Port("5984/tcp"): []docker.PortBinding{{
+					docker.Port("5984/tcp"): {{
 						HostIP:   couchHost,
 						HostPort: couchPort,
 					}},
@@ -235,7 +235,7 @@ var _ = Describe("CouchDB Runner", func() {
 				HostConfig: &docker.HostConfig{
 					AutoRemove: true,
 					PortBindings: map[docker.Port][]docker.PortBinding{
-						docker.Port("5984/tcp"): []docker.PortBinding{{
+						docker.Port("5984/tcp"): {{
 							HostIP:   "127.0.0.1",
 							HostPort: "33333",
 						}},

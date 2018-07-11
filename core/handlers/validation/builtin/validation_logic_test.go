@@ -915,7 +915,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
 	// Test 1: Deploy chaincode with a valid collection configs --> success
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -946,7 +946,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 
 	// Test 2: Deploy the chaincode with duplicate collection configs --> no error as the
 	// peer is not in V1_2Validation mode
-	ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2, coll1}}
+	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2, coll1}}
 	ccpBytes, err = proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -1308,7 +1308,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 	// V1_2Validation enabled: success
 	// V1_2Validation disable: fail (as no collection updates are allowed)
 	// Note: We might change V1_2Validation with CollectionUpdate capability
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -1351,7 +1351,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 
 		// Test 2: some existing collections are missing in the updated config and peer in
 		// V1_2Validation mode --> error
-		ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll3}}
+		ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		assert.NoError(t, err)
 		assert.NotNil(t, ccpBytes)
@@ -1376,7 +1376,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 
 		// Test 3: some existing collections are missing in the updated config and peer in
 		// V1_2Validation mode --> error
-		ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll3}}
+		ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		assert.NoError(t, err)
 		assert.NotNil(t, ccpBytes)
@@ -1401,7 +1401,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 		ccver = "3"
 
 		// Test 4: valid collection config config and peer in V1_2Validation mode --> success
-		ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2, coll3}}
+		ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		assert.NoError(t, err)
 		assert.NotNil(t, ccpBytes)
@@ -1707,7 +1707,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 
 	return &common.CollectionConfig{
 		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			&common.StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  accessPolicy,
 				RequiredPeerCount: requiredPeerCount,
@@ -1721,7 +1721,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 func testValidateCollection(t *testing.T, v *ValidatorOneValidSignature, collectionConfigs []*common.CollectionConfig, cdRWSet *ccprovider.ChaincodeData,
 	lsccFunc string, ac channelconfig.ApplicationCapabilities, chid string,
 ) error {
-	ccp := &common.CollectionConfigPackage{collectionConfigs}
+	ccp := &common.CollectionConfigPackage{Config: collectionConfigs}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -1849,7 +1849,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	assert.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
 
 	// Test 13: deploy with existing collection config on the ledger -> error
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	state["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
@@ -1888,7 +1888,7 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1, coll2}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 

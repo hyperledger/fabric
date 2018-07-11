@@ -64,9 +64,9 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 
 			By("verify membership was built using discovery service")
 			expectedDiscoveredPeers = []helpers.DiscoveredPeer{
-				{"Org1MSP", 0, "0.0.0.0:7051", "", []string{}},
-				{"Org2MSP", 0, "0.0.0.0:8051", "", []string{}},
-				{"Org3MSP", 0, "0.0.0.0:9051", "", []string{}},
+				{MSPID: "Org1MSP", Endpoint: "0.0.0.0:7051"},
+				{MSPID: "Org2MSP", Endpoint: "0.0.0.0:8051"},
+				{MSPID: "Org3MSP", Endpoint: "0.0.0.0:9051"},
 			}
 			verifyMembership(w, d, expectedDiscoveredPeers)
 

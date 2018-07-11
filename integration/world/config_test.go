@@ -164,7 +164,7 @@ var _ = Describe("Config", func() {
 				Capabilities:  map[string]bool{"V1_2": true}},
 			Orderer: orderer,
 			Consortiums: map[string]*localconfig.Consortium{
-				"MyConsortium": &localconfig.Consortium{Organizations: pOrg},
+				"MyConsortium": {Organizations: pOrg},
 			},
 			Capabilities: map[string]bool{"V1_1": true},
 		}
@@ -308,7 +308,7 @@ var _ = Describe("Config", func() {
 					Capabilities:  map[string]bool{"V1_2": true}},
 				Orderer: orderer,
 				Consortiums: map[string]*localconfig.Consortium{
-					"MyConsortium": &localconfig.Consortium{
+					"MyConsortium": {
 						Organizations: append(oOrg, pOrg...),
 					},
 				},

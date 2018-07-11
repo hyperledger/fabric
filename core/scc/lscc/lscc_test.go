@@ -137,7 +137,10 @@ func TestInstall(t *testing.T) {
 }
 
 func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *LifeCycleSysCC, stub *shim.MockStub) {
-	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &policymocks.MockIdentityDeserializer{
+		Identity: []byte("Alice"),
+		Msg:      []byte("msg1"),
+	}
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
 			"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
@@ -263,7 +266,7 @@ func TestDeploy(t *testing.T) {
 	maximumPeerCount = 2
 	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
 
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -311,7 +314,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 
 	return &common.CollectionConfig{
 		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			&common.StaticCollectionConfig{
+			StaticCollectionConfig: &common.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  accessPolicy,
 				RequiredPeerCount: requiredPeerCount,
@@ -331,7 +334,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	}
 	stub.ChannelID = chainid
 
-	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
 			"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
@@ -502,7 +505,7 @@ func TestUpgrade(t *testing.T) {
 	maximumPeerCount = 2
 	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
 
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -626,7 +629,7 @@ func TestFunctionsWithAliases(t *testing.T) {
 	res := stub.MockInit("1", nil)
 	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 
-	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
 			"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
@@ -713,7 +716,7 @@ func TestGetInstalledChaincodes(t *testing.T) {
 			assert.NotEqual(t, int32(shim.OK), res.Status)
 			assert.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
 
-			identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+			identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
 			policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 				Managers: map[string]policies.Manager{
 					"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
@@ -829,7 +832,7 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	collName1 := "mycollection1"
 	policyEnvelope := &common.SignaturePolicyEnvelope{}
 	coll1 := createCollectionConfig(collName1, policyEnvelope, 1, 2)
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{coll1}}
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)

@@ -47,14 +47,14 @@ var _ bool = Describe("DiscoveryService", func() {
 
 	BeforeEach(func() {
 		expectedDiscoverdPeers = []helpers.DiscoveredPeer{
-			{"Org1MSP", 0, "127.0.0.1:12051", "", []string{}},
+			{MSPID: "Org1MSP", Endpoint: "127.0.0.1:12051"},
 		}
-		ordererEndpoint := Endpoint{"127.0.0.1", 8050}
+		ordererEndpoint := Endpoint{Host: "127.0.0.1", Port: 8050}
 		expectedConfig = ConfigResult{
 			Msps: map[string]*msp.FabricMSPConfig{
-				"OrdererMSP": {"OrdererMSP", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
-				"Org1MSP":    {"Org1MSP", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
-				"Org2MSP":    {"Org2MSP", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+				"OrdererMSP": {Name: "OrdererMSP"},
+				"Org1MSP":    {Name: "Org1MSP"},
+				"Org2MSP":    {Name: "Org2MSP"},
 			},
 			Orderers: map[string]*Endpoints{
 				"OrdererMSP": {[]*Endpoint{&ordererEndpoint}},
@@ -63,7 +63,7 @@ var _ bool = Describe("DiscoveryService", func() {
 		expectedEndrorsementDescriptor = helpers.EndorsementDescriptor{
 			Chaincode: "mytest",
 			EndorsersByGroups: map[string][]helpers.DiscoveredPeer{
-				"A": {{"Org1MSP", 0, "127.0.0.1:12051", "", []string{}}},
+				"A": {{MSPID: "Org1MSP", Endpoint: "127.0.0.1:12051"}},
 			},
 			Layouts: []*Layout{
 				{QuantitiesByGroup: map[string]uint32{

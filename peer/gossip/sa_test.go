@@ -27,9 +27,9 @@ import (
 
 func TestMspSecurityAdvisor_OrgByPeerIdentity(t *testing.T) {
 	dm := &mocks.DeserializersManager{
-		LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1"), mock.Mock{}},
+		LocalDeserializer: &mocks.IdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1"), Mock: mock.Mock{}},
 		ChannelDeserializers: map[string]msp.IdentityDeserializer{
-			"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2"), mock.Mock{}},
+			"A": &mocks.IdentityDeserializer{Identity: []byte("Bob"), Msg: []byte("msg2"), Mock: mock.Mock{}},
 		},
 	}
 

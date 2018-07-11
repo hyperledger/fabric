@@ -179,7 +179,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 		},
 		Orderer: orderer,
 		Consortiums: map[string]*localconfig.Consortium{
-			"SampleConsortium": &localconfig.Consortium{
+			"SampleConsortium": {
 				Organizations: append(oOrg, pOrg...),
 			},
 		},
@@ -496,7 +496,7 @@ func (w *World) cleanupDeployment(d Deployment) {
 	containers, err := w.DockerClient.ListContainers(docker.ListContainersOptions{
 		All: true,
 		Filters: map[string][]string{
-			"name": []string{fmt.Sprintf("%s-%s", d.Chaincode.Name, d.Chaincode.Version)},
+			"name": {fmt.Sprintf("%s-%s", d.Chaincode.Name, d.Chaincode.Version)},
 		},
 	})
 	ExpectWithOffset(2, err).NotTo(HaveOccurred())
@@ -508,7 +508,7 @@ func (w *World) cleanupDeployment(d Deployment) {
 	images, err := w.DockerClient.ListImages(docker.ListImagesOptions{
 		All: true,
 		Filters: map[string][]string{
-			"label": []string{fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", d.Chaincode.Name)},
+			"label": {fmt.Sprintf("org.hyperledger.fabric.chaincode.id.name=%s", d.Chaincode.Name)},
 		},
 	})
 	ExpectWithOffset(2, err).NotTo(HaveOccurred())
