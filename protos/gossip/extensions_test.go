@@ -386,7 +386,7 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 		DataReq: &DataRequest{
 			MsgType: PullMsgType_UNDEFINED,
 			Nonce:   0,
-			Digests: []string{"msg1", "msg2", "msg3"},
+			Digests: [][]byte{[]byte("msg1"), []byte("msg2"), []byte("msg3")},
 		},
 	})
 	assert.True(t, msg.IsDataReq())
@@ -397,7 +397,7 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 		DataDig: &DataDigest{
 			MsgType: PullMsgType_UNDEFINED,
 			Nonce:   0,
-			Digests: []string{"msg1", "msg2", "msg3"},
+			Digests: [][]byte{[]byte("msg1"), []byte("msg2"), []byte("msg3")},
 		},
 	})
 	assert.True(t, msg.IsDigestMsg())
@@ -466,7 +466,7 @@ func TestGossipPullMessageType(t *testing.T) {
 		DataDig: &DataDigest{
 			MsgType: PullMsgType_IDENTITY_MSG,
 			Nonce:   0,
-			Digests: []string{"msg1", "msg2", "msg3"},
+			Digests: [][]byte{[]byte("msg1"), []byte("msg2"), []byte("msg3")},
 		},
 	})
 	assert.True(t, msg.IsDigestMsg())
@@ -478,7 +478,7 @@ func TestGossipPullMessageType(t *testing.T) {
 		DataReq: &DataRequest{
 			MsgType: PullMsgType_BLOCK_MSG,
 			Nonce:   0,
-			Digests: []string{"msg1", "msg2", "msg3"},
+			Digests: [][]byte{[]byte("msg1"), []byte("msg2"), []byte("msg3")},
 		},
 	})
 	assert.True(t, msg.IsDataReq())

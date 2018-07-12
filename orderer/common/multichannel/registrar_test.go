@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -84,7 +83,7 @@ func TestGetConfigTx(t *testing.T) {
 	rl.Append(block)
 
 	pctx := getConfigTx(rl)
-	assert.Equal(t, pctx, ctx, "Did not select most recent config transaction")
+	assert.True(t, proto.Equal(pctx, ctx), "Did not select most recent config transaction")
 }
 
 // Tests a chain which contains blocks with multi-transactions mixed with config txs, and a single tx which is not a config tx, none count as config blocks so nil should return
@@ -163,7 +162,7 @@ func TestManagerImpl(t *testing.T) {
 		block, status := it.Next()
 		assert.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
 		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-			assert.Equal(t, messages[i], utils.ExtractEnvelopeOrPanic(block, i), "Block contents wrong at index %d", i)
+			assert.True(t, proto.Equal(messages[i], utils.ExtractEnvelopeOrPanic(block, i)), "Block contents wrong at index %d", i)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout")
@@ -216,7 +215,7 @@ func TestNewChain(t *testing.T) {
 				t.Fatalf("Should have had only one message in the orderer transaction block")
 			}
 
-			assert.Equal(t, wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]), "Orderer config block contains wrong transaction")
+			assert.True(t, proto.Equal(wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
 		case <-time.After(time.Second):
 			t.Fatalf("Block 1 not produced after timeout in system chain")
 		}
@@ -250,7 +249,7 @@ func TestNewChain(t *testing.T) {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
 
-		assert.Equal(t, ingressTx, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]), "Genesis block contains wrong transaction")
+		assert.True(t, proto.Equal(ingressTx, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout in system chain")
 	}
@@ -263,7 +262,7 @@ func TestNewChain(t *testing.T) {
 		}
 		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
 		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-			if !reflect.DeepEqual(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
+			if !proto.Equal(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d in new chain", i)
 			}
 		}

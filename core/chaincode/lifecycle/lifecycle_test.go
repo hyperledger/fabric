@@ -57,7 +57,7 @@ var _ = Describe("Lifecycle", func() {
 		It("invokes lscc getdepspec with the correct args", func() {
 			cds, err := lifecycle.GetChaincodeDeploymentSpec(context.Background(), "tx-id", signedProp, proposal, "chain-id", "chaincode-id")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cds).To(Equal(deploymentSpec))
+			Expect(proto.Equal(cds, deploymentSpec)).To(BeTrue())
 
 			Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
 			ctx, cccid, cis := fakeExecutor.ExecuteArgsForCall(0)

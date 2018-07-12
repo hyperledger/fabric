@@ -57,7 +57,7 @@ var _ bool = Describe("DiscoveryService", func() {
 				"Org2MSP":    {Name: "Org2MSP"},
 			},
 			Orderers: map[string]*Endpoints{
-				"OrdererMSP": {[]*Endpoint{&ordererEndpoint}},
+				"OrdererMSP": {Endpoint: []*Endpoint{&ordererEndpoint}},
 			},
 		}
 		expectedEndrorsementDescriptor = helpers.EndorsementDescriptor{

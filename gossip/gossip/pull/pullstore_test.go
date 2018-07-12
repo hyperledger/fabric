@@ -203,7 +203,7 @@ func TestFilter(t *testing.T) {
 		if msg.GetGossipMessage().IsDataReq() {
 			req := msg.GetGossipMessage().GetDataReq()
 			return func(item string) bool {
-				return util.IndexInSlice(req.Digests, item, eq) != -1
+				return util.IndexInSlice(util.BytesToStrings(req.Digests), item, eq) != -1
 			}
 		}
 		return func(digestItem string) bool {
@@ -400,7 +400,7 @@ func reqMsg(digest ...string) *proto.GossipMessage {
 			DataReq: &proto.DataRequest{
 				MsgType: proto.PullMsgType_BLOCK_MSG,
 				Nonce:   0,
-				Digests: digest,
+				Digests: util.StringsToBytes(digest),
 			},
 		},
 	}
@@ -413,7 +413,7 @@ func createDigestsFilter(level uint64) IngressDigestFilter {
 			Nonce:   digestMsg.Nonce,
 		}
 		for i := range digestMsg.Digests {
-			seqNum, err := strconv.ParseUint(digestMsg.Digests[i], 10, 64)
+			seqNum, err := strconv.ParseUint(string(digestMsg.Digests[i]), 10, 64)
 			if err != nil || seqNum < level {
 				continue
 			}

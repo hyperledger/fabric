@@ -95,19 +95,13 @@ func TestService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
 
-	// Scenario IV: Request with a hollow sub-query
-	for _, subQuery := range []interface{}{
-		&discovery.Query_PeerQuery{},
-		&discovery.Query_CcQuery{},
-		&discovery.Query_ConfigQuery{},
-	} {
-		// The Query field is un-exported, so lets use reflection to set it manually.
-		field := reflect.ValueOf(req.Queries[0]).Elem().FieldByName("Query")
-		field.Set(reflect.ValueOf(subQuery))
-		resp, err = service.Discover(ctx, toSignedRequest(req))
-		assert.Nil(t, resp)
-		assert.Contains(t, err.Error(), "failed parsing request")
-	}
+	// Scenario IV: Request payload is invalid
+	signedRequest := toSignedRequest(req)
+	// Corrupt the payload by appending a zero byte at its end
+	signedRequest.Payload = append(signedRequest.Payload, 0)
+	resp, err = service.Discover(ctx, signedRequest)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "failed parsing request")
 
 	// Scenario V: Request a CC query with no chaincodes at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -374,7 +368,7 @@ func TestValidateStructure(t *testing.T) {
 	}, "", false, extractHash)
 	assert.NoError(t, err)
 	// Ensure returned request is as before serialization to bytes
-	assert.Equal(t, req, res)
+	assert.True(t, proto.Equal(req, res))
 
 	// Scenario VI: request with a client identity but with TLS enabled but client doesn't send a TLS cert
 	req = &discovery.Request{

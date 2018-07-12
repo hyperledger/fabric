@@ -212,3 +212,19 @@ func RandomUInt64() uint64 {
 	rand.Seed(rand.Int63())
 	return uint64(rand.Int63())
 }
+
+func BytesToStrings(bytes [][]byte) []string {
+	strings := make([]string, len(bytes))
+	for i, b := range bytes {
+		strings[i] = string(b)
+	}
+	return strings
+}
+
+func StringsToBytes(strings []string) [][]byte {
+	bytes := make([][]byte, len(strings))
+	for i, str := range strings {
+		bytes[i] = []byte(str)
+	}
+	return bytes
+}

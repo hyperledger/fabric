@@ -8,6 +8,7 @@ package protolator_test
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
@@ -72,4 +73,22 @@ func TestGenesisBlock(t *testing.T) {
 	gb := p.GenesisBlockForChannel("foo")
 
 	bidirectionalMarshal(t, gb)
+}
+
+func TestEmitDefaultsBug(t *testing.T) {
+	block := &cb.Block{
+		Header: &cb.BlockHeader{
+			PreviousHash: []byte("foo"),
+		},
+		Data: &cb.BlockData{
+			Data: [][]byte{
+				utils.MarshalOrPanic(&cb.Envelope{
+					Signature: []byte("bar"),
+				}),
+			},
+		},
+	}
+
+	err := DeepMarshalJSON(os.Stdout, block)
+	assert.NoError(t, err)
 }

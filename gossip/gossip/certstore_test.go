@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
+	"bytes"
 	"sync"
 	"testing"
 	"time"
@@ -160,7 +161,7 @@ func TestCertRevocation(t *testing.T) {
 					DataDig: &proto.DataDigest{
 						Nonce:   hello.Nonce,
 						MsgType: proto.PullMsgType_IDENTITY_MSG,
-						Digests: []string{"B"},
+						Digests: [][]byte{[]byte("B")},
 					},
 				},
 			}
@@ -240,7 +241,7 @@ func TestCertExpiration(t *testing.T) {
 		m := o.(proto.ReceivedMessage).GetGossipMessage()
 		if m.IsPullMsg() && m.IsDigestMsg() {
 			for _, dig := range m.GetDataDig().Digests {
-				if dig == "localhost:4321" {
+				if bytes.Equal(dig, []byte("localhost:4321")) {
 					identitiesGotViaPull <- struct{}{}
 				}
 			}
@@ -395,7 +396,7 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 			DataDig: &proto.DataDigest{
 				Nonce:   nonce,
 				MsgType: proto.PullMsgType_IDENTITY_MSG,
-				Digests: []string{"A", "C"},
+				Digests: [][]byte{[]byte("A"), []byte("C")},
 			},
 		},
 	}

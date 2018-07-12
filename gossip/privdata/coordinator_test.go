@@ -566,7 +566,9 @@ func TestPvtDataCollections_Unmarshal(t *testing.T) {
 
 	err = newCol.Unmarshal(bytes)
 	assertion.NoError(err)
-	assertion.Equal(newCol, collection)
+	assertion.Equal(1, len(newCol))
+	assertion.Equal(newCol[0].SeqInBlock, collection[0].SeqInBlock)
+	assertion.True(pb.Equal(newCol[0].WriteSet, collection[0].WriteSet))
 }
 
 type rwsTriplet struct {

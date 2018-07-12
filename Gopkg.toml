@@ -37,7 +37,7 @@ ignored = [
 
 [[constraint]]
   name = "github.com/golang/protobuf"
-  revision = "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4"
+  version = "1.1.0"
 
 [[constraint]]
   name = "github.com/gorilla/mux"

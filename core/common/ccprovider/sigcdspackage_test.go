@@ -305,17 +305,14 @@ func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
 	b := utils.MarshalOrPanic(cds)
-
 	ccpack, err := GetCCPackage(b)
 	if err != nil {
 		t.Fatalf("failed to get CCPackage %s", err)
-		return
 	}
 
 	ccsignedcdspack, ok := ccpack.(*SignedCDSPackage)
 	if ok || ccsignedcdspack != nil {
 		t.Fatalf("expected failure to get Signed CDS CCPackage but succeeded")
-		return
 	}
 }
 

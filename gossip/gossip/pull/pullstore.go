@@ -174,14 +174,14 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 	}
 	if digest := msg.GetDataDig(); digest != nil {
 		d := p.PullAdapter.IngressDigFilter(digest)
-		itemIDs = d.Digests
+		itemIDs = util.BytesToStrings(d.Digests)
 		pullMsgType = DigestMsgType
-		p.engine.OnDigest(d.Digests, d.Nonce, m)
+		p.engine.OnDigest(itemIDs, d.Nonce, m)
 	}
 	if req := msg.GetDataReq(); req != nil {
-		itemIDs = req.Digests
+		itemIDs = util.BytesToStrings(req.Digests)
 		pullMsgType = RequestMsgType
-		p.engine.OnReq(req.Digests, req.Nonce, m)
+		p.engine.OnReq(itemIDs, req.Nonce, m)
 	}
 	if res := msg.GetDataUpdate(); res != nil {
 		itemIDs = make([]string, len(res.Data))
@@ -285,7 +285,7 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 			DataDig: &proto.DataDigest{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
-				Digests: digest,
+				Digests: util.StringsToBytes(digest),
 			},
 		},
 	}
@@ -308,7 +308,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 			DataReq: &proto.DataRequest{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
-				Digests: items,
+				Digests: util.StringsToBytes(items),
 			},
 		},
 	}

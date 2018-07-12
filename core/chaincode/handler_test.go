@@ -357,7 +357,7 @@ var _ = Describe("Handler", func() {
 						msg := fakeChatStream.SendArgsForCall(0)
 						Expect(msg.Type).To(Equal(pb.ChaincodeMessage_ERROR))
 						Expect(msg.Txid).To(Equal("tx-id"))
-						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id: unmarshal failed: proto: peer.ChaincodeSpec: "))
+						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id: unmarshal failed: proto: "))
 					})
 				})
 			})
@@ -420,7 +420,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandlePutState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.PutState: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -517,7 +517,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleDelState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.DelState: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -611,7 +611,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.GetState: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -833,7 +833,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetStateByRange(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.GetStateByRange: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -943,7 +943,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleQueryStateNext(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.QueryStateNext: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -1050,7 +1050,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleQueryStateClose(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.QueryStateClose: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -1201,7 +1201,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetQueryResult(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.GetQueryResult: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -1295,7 +1295,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.GetHistoryForKey: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 
@@ -1676,7 +1676,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: peer.ChaincodeSpec: wiretype end group for non-group"))
+				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
 			})
 		})
 

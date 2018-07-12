@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/pkg/errors"
@@ -457,7 +458,7 @@ func TestSetMessageSize(t *testing.T) {
 			resp, err := svcClient.EchoCall(callCtx, echo)
 			if !test.failRecv && !test.failSend {
 				assert.NoError(t, err)
-				assert.Equal(t, echo, resp)
+				assert.True(t, proto.Equal(echo, resp))
 			}
 			if test.failSend {
 				t.Logf("send error: %v", err)
