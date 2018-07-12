@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/viper"
@@ -116,6 +117,7 @@ func TestPeerClient(t *testing.T) {
 func TestPeerClientTimeout(t *testing.T) {
 	t.Run("PeerClient.GetEndorser() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
+		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
@@ -126,12 +128,14 @@ func TestPeerClientTimeout(t *testing.T) {
 	})
 	t.Run("GetEndorserClient() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
+		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		_, err := common.GetEndorserClient("", "")
 		assert.Contains(t, err.Error(), "endorser client failed to connect")
 	})
 	t.Run("PeerClient.GetAdmin() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
+		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
@@ -142,12 +146,14 @@ func TestPeerClientTimeout(t *testing.T) {
 	})
 	t.Run("GetAdminClient() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
+		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		_, err := common.GetAdminClient()
 		assert.Contains(t, err.Error(), "admin client failed to connect")
 	})
 	t.Run("PeerClient.Deliver() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
+		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		pClient, err := common.NewPeerClientFromEnv()
 		if err != nil {
@@ -158,6 +164,7 @@ func TestPeerClientTimeout(t *testing.T) {
 	})
 	t.Run("GetDeliverClient() timeout", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
+		viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		_, err := common.GetDeliverClient("", "")
 		assert.Contains(t, err.Error(), "deliver client failed to connect")

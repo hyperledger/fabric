@@ -11,7 +11,7 @@ peer:
     clientCert:
       file: "certs/client.crt"
   client:
-    connTimeout: 10ms
+    connTimeout: 1s
 
 orderer:
   tls:
@@ -22,4 +22,4 @@ orderer:
     clientCert:
       file: "certs/client.crt"
   client:
-    connTimeout: 10ms
+    connTimeout: 1s
