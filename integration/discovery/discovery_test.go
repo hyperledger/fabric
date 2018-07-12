@@ -183,7 +183,7 @@ var _ = Describe("DiscoveryService", func() {
 		currentConfig := nwo.GetConfigBlock(network, network.Peer("org3", "peer0"), orderer, "testchannel")
 		updatedConfig := proto.Clone(currentConfig).(*common.Config)
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["org3"].Policies["Writers"].Policy.Value = utils.MarshalOrPanic(cauthdsl.SignedByMspAdmin("Org3MSP"))
-		nwo.UpdateConfig(network, network.Peer("org3", "peer0"), network.Peer("org3", "peer0"), orderer, "testchannel", currentConfig, updatedConfig)
+		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, network.Peer("org3", "peer0"))
 
 		By("trying to discover peers as an org 3 member")
 		endorsers = commands.Endorsers{

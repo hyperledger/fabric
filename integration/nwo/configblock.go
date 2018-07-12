@@ -63,7 +63,7 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 
 // UpdateConfig computes, signs, and submits a configuration update and waits
 // for the update to complete.
-func UpdateConfig(n *Network, signer, submitter *Peer, orderer *Orderer, channel string, current, updated *common.Config) {
+func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Peer) {
 	tempDir, err := ioutil.TempDir("", "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
@@ -88,14 +88,16 @@ func UpdateConfig(n *Network, signer, submitter *Peer, orderer *Orderer, channel
 	err = ioutil.WriteFile(updateFile, utils.MarshalOrPanic(signedEnvelope), 0600)
 	Expect(err).NotTo(HaveOccurred())
 
-	sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{File: updateFile})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	for _, signer := range additionalSigners {
+		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{File: updateFile})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	}
 
 	// get current configuration block number
 	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
 
-	sess, err = n.PeerAdminSession(submitter, commands.ChannelUpdate{
+	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, ListenPort),
 		File:      updateFile,
