@@ -112,7 +112,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 		CodePackage: []byte{}}
 	tw := tar.NewWriter(gzip.NewWriter(bytes.NewBuffer(nil)))
 
-	err := platform.GenerateDockerBuild(cds, tw)
+	err := platform.GenerateDockerBuild(cds.Path(), cds.Bytes(), tw)
 	assert.NoError(t, err)
 }
 

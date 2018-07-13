@@ -15,6 +15,15 @@ func (cs *ChaincodeSpec) Path() string {
 	return cs.ChaincodeId.Path
 }
 
+// Path implements the platforms.PathDescriber interface
+func (cds *ChaincodeDeploymentSpec) Path() string {
+	if cds.ChaincodeSpec == nil {
+		return ""
+	}
+
+	return cds.ChaincodeSpec.Path()
+}
+
 // Bytes implements the platforms.CodePackage interface
 func (cds *ChaincodeDeploymentSpec) Bytes() []byte {
 	return cds.CodePackage

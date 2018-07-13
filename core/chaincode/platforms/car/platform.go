@@ -60,14 +60,14 @@ func (carPlatform *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
+func (carPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
 
 	// Bundle the .car file into a tar stream so it may be transferred to the builder container
 	codepackage, output := io.Pipe()
 	go func() {
 		tw := tar.NewWriter(output)
 
-		err := cutil.WriteBytesToPackage("codepackage.car", cds.CodePackage, tw)
+		err := cutil.WriteBytesToPackage("codepackage.car", code, tw)
 
 		tw.Close()
 		output.CloseWithError(err)

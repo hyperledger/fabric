@@ -77,8 +77,8 @@ func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (javaPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
-	return cutil.WriteBytesToPackage("codepackage.tgz", cds.CodePackage, tw)
+func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+	return cutil.WriteBytesToPackage("codepackage.tgz", code, tw)
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec

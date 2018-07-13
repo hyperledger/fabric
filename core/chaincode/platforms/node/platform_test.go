@@ -185,7 +185,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	err = platform.GenerateDockerBuild(cds, tw)
+	err = platform.GenerateDockerBuild(cds.Path(), cds.Bytes(), tw)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,7 +29,7 @@ type Platform interface {
 	ValidateCodePackage(code []byte) error
 	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile() (string, error)
-	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error
+	GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error
 	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider
 }
 
@@ -161,7 +161,7 @@ func (r *Registry) StreamDockerBuild(cds *pb.ChaincodeDeploymentSpec, inputFiles
 	// ----------------------------------------------------------------------------------------------------
 	// Now give the platform an opportunity to contribute its own context to the build
 	// ----------------------------------------------------------------------------------------------------
-	err = platform.GenerateDockerBuild(cds, tw)
+	err = platform.GenerateDockerBuild(cds.Path(), cds.Bytes(), tw)
 	if err != nil {
 		return fmt.Errorf("Failed to generate platform-specific docker build: %s", err)
 	}
