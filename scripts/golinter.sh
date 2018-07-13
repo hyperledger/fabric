@@ -6,6 +6,7 @@
 
 declare -a arr=(
 "./bccsp"
+"./cmd"
 "./common"
 "./core"
 "./discovery"
