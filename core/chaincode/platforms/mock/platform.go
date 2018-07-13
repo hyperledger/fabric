@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	platforms_test "github.com/hyperledger/fabric/core/chaincode/platforms"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type Platform struct {
@@ -78,10 +77,10 @@ type Platform struct {
 	generateDockerBuildReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetMetadataProviderStub        func(spec *pb.ChaincodeDeploymentSpec) platforms_test.MetadataProvider
+	GetMetadataProviderStub        func(code []byte) platforms_test.MetadataProvider
 	getMetadataProviderMutex       sync.RWMutex
 	getMetadataProviderArgsForCall []struct {
-		spec *pb.ChaincodeDeploymentSpec
+		code []byte
 	}
 	getMetadataProviderReturns struct {
 		result1 platforms_test.MetadataProvider
@@ -383,16 +382,21 @@ func (fake *Platform) GenerateDockerBuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Platform) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) platforms_test.MetadataProvider {
+func (fake *Platform) GetMetadataProvider(code []byte) platforms_test.MetadataProvider {
+	var codeCopy []byte
+	if code != nil {
+		codeCopy = make([]byte, len(code))
+		copy(codeCopy, code)
+	}
 	fake.getMetadataProviderMutex.Lock()
 	ret, specificReturn := fake.getMetadataProviderReturnsOnCall[len(fake.getMetadataProviderArgsForCall)]
 	fake.getMetadataProviderArgsForCall = append(fake.getMetadataProviderArgsForCall, struct {
-		spec *pb.ChaincodeDeploymentSpec
-	}{spec})
-	fake.recordInvocation("GetMetadataProvider", []interface{}{spec})
+		code []byte
+	}{codeCopy})
+	fake.recordInvocation("GetMetadataProvider", []interface{}{codeCopy})
 	fake.getMetadataProviderMutex.Unlock()
 	if fake.GetMetadataProviderStub != nil {
-		return fake.GetMetadataProviderStub(spec)
+		return fake.GetMetadataProviderStub(code)
 	}
 	if specificReturn {
 		return ret.result1
@@ -406,10 +410,10 @@ func (fake *Platform) GetMetadataProviderCallCount() int {
 	return len(fake.getMetadataProviderArgsForCall)
 }
 
-func (fake *Platform) GetMetadataProviderArgsForCall(i int) *pb.ChaincodeDeploymentSpec {
+func (fake *Platform) GetMetadataProviderArgsForCall(i int) []byte {
 	fake.getMetadataProviderMutex.RLock()
 	defer fake.getMetadataProviderMutex.RUnlock()
-	return fake.getMetadataProviderArgsForCall[i].spec
+	return fake.getMetadataProviderArgsForCall[i].code
 }
 
 func (fake *Platform) GetMetadataProviderReturns(result1 platforms_test.MetadataProvider) {

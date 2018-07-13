@@ -38,7 +38,7 @@ type Platform interface {
 	GetDeploymentPayload(path string) ([]byte, error)
 	GenerateDockerfile() (string, error)
 	GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error
-	GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) MetadataProvider
+	GetMetadataProvider(code []byte) MetadataProvider
 }
 
 type PackageWriter interface {
@@ -93,7 +93,7 @@ func (r *Registry) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) (Metada
 	if !ok {
 		return nil, fmt.Errorf("Unknown chaincodeType: %s", spec.ChaincodeSpec.Type)
 	}
-	return platform.GetMetadataProvider(spec), nil
+	return platform.GetMetadataProvider(spec.Bytes()), nil
 }
 
 func (r *Registry) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {

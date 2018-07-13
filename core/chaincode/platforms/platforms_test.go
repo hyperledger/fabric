@@ -82,12 +82,15 @@ var _ = Describe("Platforms", func() {
 
 		Describe("GetMetadataProvider", func() {
 			It("returns the result of the underlying platform", func() {
-				spec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG}}
+				spec := &pb.ChaincodeDeploymentSpec{
+					ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG},
+					CodePackage:   []byte("code-package"),
+				}
 				md, err := registry.GetMetadataProvider(spec)
 				Expect(md).To(BeNil())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakePlatform.GetMetadataProviderCallCount()).To(Equal(1))
-				Expect(fakePlatform.GetMetadataProviderArgsForCall(0)).To(Equal(spec))
+				Expect(fakePlatform.GetMetadataProviderArgsForCall(0)).To(Equal([]byte("code-package")))
 			})
 
 			Context("when the platform is unknown", func() {
