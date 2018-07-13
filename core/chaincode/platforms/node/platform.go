@@ -173,7 +173,7 @@ func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) 
 	return payload.Bytes(), nil
 }
 
-func (nodePlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
+func (nodePlatform *Platform) GenerateDockerfile() (string, error) {
 
 	var buf []string
 

@@ -358,7 +358,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 			cds, err = generateFakeCDS(tst.CCName, tst.Path, tst.File, tst.Mode)
 		}
 
-		if _, err = platform.GenerateDockerfile(cds); err != nil {
+		if _, err = platform.GenerateDockerfile(); err != nil {
 			t.Errorf("could not generate docker file for a valid spec: %s, %s", cds.ChaincodeSpec.ChaincodeId.Path, err)
 		}
 		err = platform.GenerateDockerBuild(cds, tw)

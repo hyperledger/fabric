@@ -109,14 +109,7 @@ func TestGetDeploymentPayload(t *testing.T) {
 }
 
 func TestGenerateDockerfile(t *testing.T) {
-	cds := &peer.ChaincodeDeploymentSpec{
-		ChaincodeSpec: &peer.ChaincodeSpec{
-			Type:        peer.ChaincodeSpec_NODE,
-			ChaincodeId: &peer.ChaincodeID{Path: "there/is/no/way/this/path/exists"},
-			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("invoke")}}},
-		CodePackage: []byte("dummy CodePackage content")}
-
-	str, _ := platform.GenerateDockerfile(cds)
+	str, _ := platform.GenerateDockerfile()
 	if !strings.Contains(str, "/fabric-baseimage:") {
 		t.Fatalf("should have generated a docker file using the fabric-baseimage, but got %s", str)
 	}

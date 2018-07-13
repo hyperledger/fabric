@@ -54,12 +54,10 @@ type Platform struct {
 		result1 []byte
 		result2 error
 	}
-	GenerateDockerfileStub        func(spec *pb.ChaincodeDeploymentSpec) (string, error)
+	GenerateDockerfileStub        func() (string, error)
 	generateDockerfileMutex       sync.RWMutex
-	generateDockerfileArgsForCall []struct {
-		spec *pb.ChaincodeDeploymentSpec
-	}
-	generateDockerfileReturns struct {
+	generateDockerfileArgsForCall []struct{}
+	generateDockerfileReturns     struct {
 		result1 string
 		result2 error
 	}
@@ -286,16 +284,14 @@ func (fake *Platform) GetDeploymentPayloadReturnsOnCall(i int, result1 []byte, r
 	}{result1, result2}
 }
 
-func (fake *Platform) GenerateDockerfile(spec *pb.ChaincodeDeploymentSpec) (string, error) {
+func (fake *Platform) GenerateDockerfile() (string, error) {
 	fake.generateDockerfileMutex.Lock()
 	ret, specificReturn := fake.generateDockerfileReturnsOnCall[len(fake.generateDockerfileArgsForCall)]
-	fake.generateDockerfileArgsForCall = append(fake.generateDockerfileArgsForCall, struct {
-		spec *pb.ChaincodeDeploymentSpec
-	}{spec})
-	fake.recordInvocation("GenerateDockerfile", []interface{}{spec})
+	fake.generateDockerfileArgsForCall = append(fake.generateDockerfileArgsForCall, struct{}{})
+	fake.recordInvocation("GenerateDockerfile", []interface{}{})
 	fake.generateDockerfileMutex.Unlock()
 	if fake.GenerateDockerfileStub != nil {
-		return fake.GenerateDockerfileStub(spec)
+		return fake.GenerateDockerfileStub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -307,12 +303,6 @@ func (fake *Platform) GenerateDockerfileCallCount() int {
 	fake.generateDockerfileMutex.RLock()
 	defer fake.generateDockerfileMutex.RUnlock()
 	return len(fake.generateDockerfileArgsForCall)
-}
-
-func (fake *Platform) GenerateDockerfileArgsForCall(i int) *pb.ChaincodeDeploymentSpec {
-	fake.generateDockerfileMutex.RLock()
-	defer fake.generateDockerfileMutex.RUnlock()
-	return fake.generateDockerfileArgsForCall[i].spec
 }
 
 func (fake *Platform) GenerateDockerfileReturns(result1 string, result2 error) {

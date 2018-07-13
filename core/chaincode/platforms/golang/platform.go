@@ -476,7 +476,7 @@ func (goPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	return payload.Bytes(), nil
 }
 
-func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
+func (goPlatform *Platform) GenerateDockerfile() (string, error) {
 
 	var buf []string
 
