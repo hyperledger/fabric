@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -529,6 +530,6 @@ func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *ta
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
-func (goPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider {
+func (goPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) platforms.MetadataProvider {
 	return &ccmetadata.TargzMetadataProvider{cds}
 }

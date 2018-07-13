@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -202,6 +203,6 @@ func (nodePlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
-func (nodePlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider {
+func (nodePlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) platforms.MetadataProvider {
 	return &ccmetadata.TargzMetadataProvider{cds}
 }

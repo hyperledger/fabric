@@ -5,7 +5,7 @@ import (
 	"archive/tar"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
+	platforms_test "github.com/hyperledger/fabric/core/chaincode/platforms"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -78,16 +78,16 @@ type Platform struct {
 	generateDockerBuildReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetMetadataProviderStub        func(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider
+	GetMetadataProviderStub        func(spec *pb.ChaincodeDeploymentSpec) platforms_test.MetadataProvider
 	getMetadataProviderMutex       sync.RWMutex
 	getMetadataProviderArgsForCall []struct {
 		spec *pb.ChaincodeDeploymentSpec
 	}
 	getMetadataProviderReturns struct {
-		result1 ccmetadata.MetadataProvider
+		result1 platforms_test.MetadataProvider
 	}
 	getMetadataProviderReturnsOnCall map[int]struct {
-		result1 ccmetadata.MetadataProvider
+		result1 platforms_test.MetadataProvider
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -383,7 +383,7 @@ func (fake *Platform) GenerateDockerBuildReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Platform) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider {
+func (fake *Platform) GetMetadataProvider(spec *pb.ChaincodeDeploymentSpec) platforms_test.MetadataProvider {
 	fake.getMetadataProviderMutex.Lock()
 	ret, specificReturn := fake.getMetadataProviderReturnsOnCall[len(fake.getMetadataProviderArgsForCall)]
 	fake.getMetadataProviderArgsForCall = append(fake.getMetadataProviderArgsForCall, struct {
@@ -412,22 +412,22 @@ func (fake *Platform) GetMetadataProviderArgsForCall(i int) *pb.ChaincodeDeploym
 	return fake.getMetadataProviderArgsForCall[i].spec
 }
 
-func (fake *Platform) GetMetadataProviderReturns(result1 ccmetadata.MetadataProvider) {
+func (fake *Platform) GetMetadataProviderReturns(result1 platforms_test.MetadataProvider) {
 	fake.GetMetadataProviderStub = nil
 	fake.getMetadataProviderReturns = struct {
-		result1 ccmetadata.MetadataProvider
+		result1 platforms_test.MetadataProvider
 	}{result1}
 }
 
-func (fake *Platform) GetMetadataProviderReturnsOnCall(i int, result1 ccmetadata.MetadataProvider) {
+func (fake *Platform) GetMetadataProviderReturnsOnCall(i int, result1 platforms_test.MetadataProvider) {
 	fake.GetMetadataProviderStub = nil
 	if fake.getMetadataProviderReturnsOnCall == nil {
 		fake.getMetadataProviderReturnsOnCall = make(map[int]struct {
-			result1 ccmetadata.MetadataProvider
+			result1 platforms_test.MetadataProvider
 		})
 	}
 	fake.getMetadataProviderReturnsOnCall[i] = struct {
-		result1 ccmetadata.MetadataProvider
+		result1 platforms_test.MetadataProvider
 	}{result1}
 }
 

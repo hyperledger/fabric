@@ -9,11 +9,9 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"strings"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 
@@ -24,27 +22,26 @@ const (
 	ccPackageStatedbDir = "META-INF/statedb/"
 )
 
+type CodePackage interface {
+	Bytes() []byte
+}
+
 //TargzMetadataProvider provides Metadata from chaincode packaged in Targz format
 //(go, java and node platforms)
 type TargzMetadataProvider struct {
-	DepSpec *pb.ChaincodeDeploymentSpec
+	DepSpec CodePackage
 }
 
 func (tgzProv *TargzMetadataProvider) getCode() ([]byte, error) {
 	if tgzProv.DepSpec == nil {
-		logger.Errorf("nil chaincode deployment spec")
 		return nil, errors.New("nil chaincode deployment spec")
 	}
 
-	if tgzProv.DepSpec.ChaincodeSpec == nil || tgzProv.DepSpec.ChaincodeSpec.ChaincodeId == nil {
-		return nil, errors.New("invalid chaincode deployment spec")
+	if tgzProv.DepSpec.Bytes() == nil {
+		return nil, errors.New("nil code package")
 	}
 
-	if tgzProv.DepSpec.CodePackage == nil {
-		return nil, errors.New(fmt.Sprintf("nil code package for %v", tgzProv.DepSpec.ChaincodeSpec.ChaincodeId))
-	}
-
-	return tgzProv.DepSpec.CodePackage, nil
+	return tgzProv.DepSpec.Bytes(), nil
 }
 
 // GetMetadataAsTarEntries extracts metata data from ChaincodeDeploymentSpec
