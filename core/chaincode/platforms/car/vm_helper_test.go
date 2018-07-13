@@ -41,7 +41,13 @@ func (vm *VM) BuildChaincodeContainer(spec *pb.ChaincodeSpec) error {
 	}
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
-	dockerSpec, err := platforms.NewRegistry(&car.Platform{}).GenerateDockerBuild(cds)
+	dockerSpec, err := platforms.NewRegistry(&car.Platform{}).GenerateDockerBuild(
+		cds.CCType(),
+		cds.Path(),
+		cds.Name(),
+		cds.Version(),
+		cds.Bytes(),
+	)
 	if err != nil {
 		return fmt.Errorf("Error getting chaincode docker image: %s", err)
 	}

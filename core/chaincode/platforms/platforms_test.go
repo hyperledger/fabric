@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/mock"
-	pb "github.com/hyperledger/fabric/protos/peer"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,7 +32,7 @@ var _ = Describe("Platforms", func() {
 		fakePlatform = &mock.Platform{}
 		registry = &platforms.Registry{
 			Platforms: map[string]platforms.Platform{
-				pb.ChaincodeSpec_GOLANG.String(): fakePlatform,
+				"fakeType": fakePlatform,
 			},
 		}
 	})
@@ -42,18 +41,16 @@ var _ = Describe("Platforms", func() {
 		Describe("ValidateSpec", func() {
 			It("returns the result of the underlying platform", func() {
 				fakePlatform.ValidatePathReturns(errors.New("fake-error"))
-				spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG}
-				err := registry.ValidateSpec(spec)
+				err := registry.ValidateSpec("fakeType", "cc-path")
 				Expect(err).To(MatchError(errors.New("fake-error")))
 				Expect(fakePlatform.ValidatePathCallCount()).To(Equal(1))
-				Expect(fakePlatform.ValidatePathArgsForCall(0)).To(Equal(spec.Path()))
+				Expect(fakePlatform.ValidatePathArgsForCall(0)).To(Equal("cc-path"))
 			})
 
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_NODE}
-					err := registry.ValidateSpec(spec)
-					Expect(err).To(MatchError("Unknown chaincodeType: NODE"))
+					err := registry.ValidateSpec("badType", "")
+					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 				})
 			})
 		})
@@ -61,11 +58,7 @@ var _ = Describe("Platforms", func() {
 		Describe("ValidateDeploymentSpec", func() {
 			It("returns the result of the underlying platform", func() {
 				fakePlatform.ValidateCodePackageReturns(errors.New("fake-error"))
-				spec := &pb.ChaincodeDeploymentSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG},
-					CodePackage:   []byte("code-package"),
-				}
-				err := registry.ValidateDeploymentSpec(spec)
+				err := registry.ValidateDeploymentSpec("fakeType", []byte("code-package"))
 				Expect(err).To(MatchError(errors.New("fake-error")))
 				Expect(fakePlatform.ValidateCodePackageCallCount()).To(Equal(1))
 				Expect(fakePlatform.ValidateCodePackageArgsForCall(0)).To(Equal([]byte("code-package")))
@@ -73,20 +66,15 @@ var _ = Describe("Platforms", func() {
 
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_NODE}}
-					err := registry.ValidateDeploymentSpec(spec)
-					Expect(err).To(MatchError("Unknown chaincodeType: NODE"))
+					err := registry.ValidateDeploymentSpec("badType", nil)
+					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 				})
 			})
 		})
 
 		Describe("GetMetadataProvider", func() {
 			It("returns the result of the underlying platform", func() {
-				spec := &pb.ChaincodeDeploymentSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG},
-					CodePackage:   []byte("code-package"),
-				}
-				md, err := registry.GetMetadataProvider(spec)
+				md, err := registry.GetMetadataProvider("fakeType", []byte("code-package"))
 				Expect(md).To(BeNil())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakePlatform.GetMetadataProviderCallCount()).To(Equal(1))
@@ -95,10 +83,9 @@ var _ = Describe("Platforms", func() {
 
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_NODE}}
-					md, err := registry.GetMetadataProvider(spec)
+					md, err := registry.GetMetadataProvider("badType", nil)
 					Expect(md).To(BeNil())
-					Expect(err).To(MatchError("Unknown chaincodeType: NODE"))
+					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 				})
 			})
 		})
@@ -106,13 +93,7 @@ var _ = Describe("Platforms", func() {
 		Describe("GetDeploymentPayload", func() {
 			It("returns the result of the underlying platform", func() {
 				fakePlatform.GetDeploymentPayloadReturns([]byte("payload"), errors.New("fake-error"))
-				spec := &pb.ChaincodeSpec{
-					Type: pb.ChaincodeSpec_GOLANG,
-					ChaincodeId: &pb.ChaincodeID{
-						Path: "cc-path",
-					},
-				}
-				payload, err := registry.GetDeploymentPayload(spec)
+				payload, err := registry.GetDeploymentPayload("fakeType", "cc-path")
 				Expect(payload).To(Equal([]byte("payload")))
 				Expect(err).To(MatchError(errors.New("fake-error")))
 				Expect(fakePlatform.GetDeploymentPayloadCallCount()).To(Equal(1))
@@ -121,10 +102,9 @@ var _ = Describe("Platforms", func() {
 
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_NODE}
-					payload, err := registry.GetDeploymentPayload(spec)
+					payload, err := registry.GetDeploymentPayload("badType", "")
 					Expect(payload).To(BeNil())
-					Expect(err).To(MatchError("Unknown chaincodeType: NODE"))
+					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 				})
 			})
 		})
@@ -133,21 +113,12 @@ var _ = Describe("Platforms", func() {
 	Describe("GenerateDockerfile", func() {
 		It("calls the underlying platform, then appends some boilerplate", func() {
 			fakePlatform.GenerateDockerfileReturns("docker-header", nil)
-			spec := &pb.ChaincodeDeploymentSpec{
-				ChaincodeSpec: &pb.ChaincodeSpec{
-					ChaincodeId: &pb.ChaincodeID{
-						Name:    "cc-name",
-						Version: "cc-version",
-					},
-					Type: pb.ChaincodeSpec_GOLANG,
-				},
-			}
-			df, err := registry.GenerateDockerfile(spec)
+			df, err := registry.GenerateDockerfile("fakeType", "cc-name", "cc-version")
 			Expect(err).NotTo(HaveOccurred())
 			expectedDockerfile := fmt.Sprintf(`docker-header
 LABEL org.hyperledger.fabric.chaincode.id.name="cc-name" \
       org.hyperledger.fabric.chaincode.id.version="cc-version" \
-      org.hyperledger.fabric.chaincode.type="GOLANG" \
+      org.hyperledger.fabric.chaincode.type="fakeType" \
       org.hyperledger.fabric.version="%s" \
       org.hyperledger.fabric.base.version="%s"
 ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metadata.Version)
@@ -157,26 +128,16 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 		Context("when the underlying platform returns an error", func() {
 			It("returns the error", func() {
 				fakePlatform.GenerateDockerfileReturns("docker-header", errors.New("fake-error"))
-				spec := &pb.ChaincodeDeploymentSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{
-						Type: pb.ChaincodeSpec_GOLANG,
-					},
-				}
-				_, err := registry.GenerateDockerfile(spec)
+				_, err := registry.GenerateDockerfile("fakeType", "", "")
 				Expect(err).To(MatchError("Failed to generate platform-specific Dockerfile: fake-error"))
 			})
 		})
 
 		Context("when the platform is unknown", func() {
 			It("returns an error", func() {
-				spec := &pb.ChaincodeDeploymentSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{
-						Type: pb.ChaincodeSpec_NODE,
-					},
-				}
-				df, err := registry.GenerateDockerfile(spec)
+				df, err := registry.GenerateDockerfile("badType", "", "")
 				Expect(df).To(BeEmpty())
-				Expect(err).To(MatchError("Unknown chaincodeType: NODE"))
+				Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 			})
 		})
 	})
@@ -201,16 +162,10 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 			})
 
 			It("adds the specified files to the tar, then has the underlying platform add its files", func() {
-				spec := &pb.ChaincodeDeploymentSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{
-						Type: pb.ChaincodeSpec_GOLANG,
-					},
-				}
-
 				fileMap := map[string][]byte{
 					"foo": []byte("foo-bytes"),
 				}
-				err := registry.StreamDockerBuild(spec, fileMap, tw)
+				err := registry.StreamDockerBuild("fakeType", "", nil, fileMap, tw)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pw.WriteCallCount()).To(Equal(1))
 				name, data, writer := pw.WriteArgsForCall(0)
@@ -222,26 +177,19 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_NODE}}
-					err := registry.StreamDockerBuild(spec, nil, tw)
-					Expect(err).To(MatchError("could not find platform of type: NODE"))
+					err := registry.StreamDockerBuild("badType", "", nil, nil, tw)
+					Expect(err).To(MatchError("could not find platform of type: badType"))
 				})
 			})
 
 			Context("when the writer fails", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeDeploymentSpec{
-						ChaincodeSpec: &pb.ChaincodeSpec{
-							Type: pb.ChaincodeSpec_GOLANG,
-						},
-					}
-
 					fileMap := map[string][]byte{
 						"foo": []byte("foo-bytes"),
 					}
 
 					pw.WriteReturns(errors.New("fake-error"))
-					err := registry.StreamDockerBuild(spec, fileMap, tw)
+					err := registry.StreamDockerBuild("fakeType", "", nil, fileMap, tw)
 					Expect(err).To(MatchError("Failed to inject \"foo\": fake-error"))
 					Expect(pw.WriteCallCount()).To(Equal(1))
 				})
@@ -249,34 +197,16 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 
 			Context("when the underlying platform fails", func() {
 				It("returns an error", func() {
-					spec := &pb.ChaincodeDeploymentSpec{
-						ChaincodeSpec: &pb.ChaincodeSpec{
-							Type: pb.ChaincodeSpec_GOLANG,
-						},
-					}
-
 					fakePlatform.GenerateDockerBuildReturns(errors.New("fake-error"))
-					err := registry.StreamDockerBuild(spec, nil, tw)
+					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw)
 					Expect(err).To(MatchError("Failed to generate platform-specific docker build: fake-error"))
 				})
 			})
 		})
 
 		Describe("GenerateDockerBuild", func() {
-			var (
-				spec = &pb.ChaincodeDeploymentSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{
-						ChaincodeId: &pb.ChaincodeID{
-							Name:    "cc-name",
-							Version: "cc-version",
-						},
-						Type: pb.ChaincodeSpec_GOLANG,
-					},
-				}
-			)
-
 			It("creates a stream for the package", func() {
-				reader, err := registry.GenerateDockerBuild(spec)
+				reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = ioutil.ReadAll(reader)
 				Expect(err).NotTo(HaveOccurred())
@@ -285,7 +215,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 			Context("when there is a problem generating the dockerfile", func() {
 				It("returns an error", func() {
 					fakePlatform.GenerateDockerfileReturns("docker-header", errors.New("fake-error"))
-					_, err := registry.GenerateDockerBuild(spec)
+					_, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil)
 					Expect(err).To(MatchError("Failed to generate a Dockerfile: Failed to generate platform-specific Dockerfile: fake-error"))
 				})
 			})
@@ -293,7 +223,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metad
 			Context("when there is a problem streaming the dockerbuild", func() {
 				It("closes the reader with an error", func() {
 					pw.WriteReturns(errors.New("fake-error"))
-					reader, err := registry.GenerateDockerBuild(spec)
+					reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil)
 					Expect(err).NotTo(HaveOccurred())
 					_, err = ioutil.ReadAll(reader)
 					Expect(err).To(MatchError("Failed to inject \"Dockerfile\": fake-error"))
