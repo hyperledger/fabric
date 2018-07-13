@@ -28,9 +28,9 @@ func (javaPlatform *Platform) Name() string {
 	return pb.ChaincodeSpec_JAVA.String()
 }
 
-//ValidateSpec validates the java chaincode specs
-func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
+//ValidatePath validates the java chaincode paths
+func (javaPlatform *Platform) ValidatePath(rawPath string) error {
+	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
@@ -38,13 +38,13 @@ func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	return nil
 }
 
-func (javaPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 	// FIXME: Java platform needs to implement its own validation similar to GOLANG
 	return nil
 }
 
 // WritePackage writes the java chaincode package
-func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -52,15 +52,7 @@ func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 	gw := gzip.NewWriter(inputbuf)
 	tw := tar.NewWriter(gw)
 
-	//ignore the generated hash. Just use the tw
-	//The hash could be used in a future enhancement
-	//to check, warn of duplicate installs etc.
-	_, err = collectChaincodeFiles(spec, tw)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writeChaincodePackage(spec, tw)
+	err = writeChaincodePackage(path, tw)
 
 	tw.Close()
 	gw.Close()

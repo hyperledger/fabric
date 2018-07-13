@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package golang
@@ -104,8 +94,8 @@ func (goPlatform *Platform) Name() string {
 }
 
 // ValidateSpec validates Go chaincodes
-func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
+func (goPlatform *Platform) ValidatePath(rawPath string) error {
+	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
@@ -118,7 +108,7 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 		if err != nil {
 			return err
 		}
-		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeId.Path)
+		pathToCheck := filepath.Join(gopath, "src", rawPath)
 		exists, err := pathExists(pathToCheck)
 		if err != nil {
 			return fmt.Errorf("error validating chaincode path: %s", err)
@@ -130,9 +120,9 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	return nil
 }
 
-func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (goPlatform *Platform) ValidateCodePackage(code []byte) error {
 
-	if cds.CodePackage == nil || len(cds.CodePackage) == 0 {
+	if len(code) == 0 {
 		// Nothing to validate if no CodePackage was included
 		return nil
 	}
@@ -148,7 +138,7 @@ func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSp
 	// resilient in enforcing constraints. However, we should still do our best to keep as much
 	// garbage out of the system as possible.
 	re := regexp.MustCompile(`(/)?src/.*`)
-	is := bytes.NewReader(cds.CodePackage)
+	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
 		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
@@ -255,14 +245,14 @@ func vendorDependencies(pkg string, files Sources) {
 }
 
 // Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
-func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (goPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
 	// --------------------------------------------------------------------------------------
 	// retrieve a CodeDescriptor from either HTTP or the filesystem
 	// --------------------------------------------------------------------------------------
-	code, err := getCode(spec)
+	code, err := getCode(path)
 	if err != nil {
 		return nil, err
 	}
@@ -480,10 +470,7 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 		err = gw.Close()
 	}
 	if err != nil {
-		return nil, errors.Wrapf(
-			err,
-			"failed to create tar for chaincode: %s",
-			spec.GetChaincodeId().GetName())
+		return nil, errors.Wrapf(err, "failed to create tar for chaincode")
 	}
 
 	return payload.Bytes(), nil

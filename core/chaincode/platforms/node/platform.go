@@ -49,15 +49,15 @@ func (nodePlatform *Platform) Name() string {
 }
 
 // ValidateSpec validates Go chaincodes
-func (nodePlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
+func (nodePlatform *Platform) ValidatePath(rawPath string) error {
+	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
 
 	//Treat empty scheme as a local filesystem path
 	if path.Scheme == "" {
-		pathToCheck, err := filepath.Abs(spec.ChaincodeId.Path)
+		pathToCheck, err := filepath.Abs(rawPath)
 		if err != nil {
 			return fmt.Errorf("error obtaining absolute path of the chaincode: %s", err)
 		}
@@ -67,15 +67,15 @@ func (nodePlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 			return fmt.Errorf("error validating chaincode path: %s", err)
 		}
 		if !exists {
-			return fmt.Errorf("path to chaincode does not exist: %s", spec.ChaincodeId.Path)
+			return fmt.Errorf("path to chaincode does not exist: %s", rawPath)
 		}
 	}
 	return nil
 }
 
-func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
 
-	if cds.CodePackage == nil || len(cds.CodePackage) == 0 {
+	if len(code) == 0 {
 		// Nothing to validate if no CodePackage was included
 		return nil
 	}
@@ -88,7 +88,7 @@ func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeployment
 	// resilient in enforcing constraints. However, we should still do our best to keep as much
 	// garbage out of the system as possible.
 	re := regexp.MustCompile(`(/)?src/.*`)
-	is := bytes.NewReader(cds.CodePackage)
+	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
 		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
@@ -133,7 +133,7 @@ func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeployment
 }
 
 // Generates a deployment payload by putting source files in src/$file entries in .tar.gz format
-func (nodePlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -144,7 +144,7 @@ func (nodePlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	folder := spec.ChaincodeId.Path
+	folder := path
 	if folder == "" {
 		return nil, errors.New("ChaincodeSpec's path cannot be empty")
 	}

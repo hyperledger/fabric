@@ -8,39 +8,34 @@ package node
 
 import (
 	"archive/tar"
-	"bufio"
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )
 
+var _ = platforms.Platform(&Platform{})
+
 var platform = &Platform{}
 
-func TestValidateSpec(t *testing.T) {
-	ccSpec := &peer.ChaincodeSpec{
-		Type:        peer.ChaincodeSpec_NODE,
-		ChaincodeId: &peer.ChaincodeID{Path: "there/is/no/way/this/path/exists"},
-		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("invoke")}}}
-
-	err := platform.ValidateSpec(ccSpec)
+func TestValidatePath(t *testing.T) {
+	err := platform.ValidatePath("there/is/no/way/this/path/exists")
 	if err == nil {
 		t.Fatalf("should have returned an error on non-existent chaincode path")
 	} else if !strings.HasPrefix(err.Error(), "path to chaincode does not exist") {
 		t.Fatalf("should have returned an error about chaincode path not existent, but got '%v'", err)
 	}
 
-	ccSpec.ChaincodeId.Path = "http://something bad/because/it/has/the/space"
-	err = platform.ValidateSpec(ccSpec)
+	err = platform.ValidatePath("http://something bad/because/it/has/the/space")
 	if err == nil {
 		t.Fatalf("should have returned an error on an empty chaincode path")
 	} else if !strings.HasPrefix(err.Error(), "invalid path") {
@@ -49,94 +44,63 @@ func TestValidateSpec(t *testing.T) {
 
 }
 
-func TestValidateDeploymentSpec(t *testing.T) {
-	cds := &peer.ChaincodeDeploymentSpec{
-		ChaincodeSpec: &peer.ChaincodeSpec{
-			Type:        peer.ChaincodeSpec_NODE,
-			ChaincodeId: &peer.ChaincodeID{Path: "there/is/no/way/this/path/exists"},
-			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("invoke")}}},
-		CodePackage: []byte("dummy CodePackage content")}
-
-	err := platform.ValidateDeploymentSpec(cds)
+func TestValidateCodePackage(t *testing.T) {
+	err := platform.ValidateCodePackage([]byte("dummy CodePackage content"))
 	if err == nil {
 		t.Fatalf("should have returned an error on an invalid chaincode package")
 	} else if !strings.HasPrefix(err.Error(), "failure opening codepackage gzip stream") {
 		t.Fatalf("should have returned an error about opening the invalid archive, but got '%v'", err)
 	}
 
-	content := []byte("temporary file's content")
-	tmpfile, err := ioutil.TempFile("", "nodejs-chaincode-test")
+	cp, err := makeCodePackage("filename.txt", 0100744)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer os.Remove(tmpfile.Name()) // clean up
-
-	if _, err := tmpfile.Write(content); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	cp, err := writeCodePackage(tmpfile.Name(), "filename.txt", 0100744)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cds.CodePackage = cp
-	err = platform.ValidateDeploymentSpec(cds)
+	err = platform.ValidateCodePackage(cp)
 	if err == nil {
 		t.Fatal("should have failed to validate because file in the archive is in the root folder instead of 'src'")
 	} else if !strings.HasPrefix(err.Error(), "illegal file detected in payload") {
 		t.Fatalf("should have returned error about illegal file detected, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt", 0100744)
+	cp, err = makeCodePackage("src/filename.txt", 0100744)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cds.CodePackage = cp
-	err = platform.ValidateDeploymentSpec(cds)
+	err = platform.ValidateCodePackage(cp)
 	if err == nil {
 		t.Fatal("should have failed to validate because file in the archive is executable")
 	} else if !strings.HasPrefix(err.Error(), "illegal file mode detected for file") {
 		t.Fatalf("should have returned error about illegal file mode detected, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt", 0100666)
+	cp, err = makeCodePackage("src/filename.txt", 0100666)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cds.CodePackage = cp
-	err = platform.ValidateDeploymentSpec(cds)
+	err = platform.ValidateCodePackage(cp)
 	if err == nil {
 		t.Fatal("should have failed to validate because no 'package.json' found")
 	} else if !strings.HasPrefix(err.Error(), "no package.json found at the root of the chaincode package") {
 		t.Fatalf("should have returned error about no package.json found, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/package.json", 0100666)
+	cp, err = makeCodePackage("src/package.json", 0100666)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cds.CodePackage = cp
-	err = platform.ValidateDeploymentSpec(cds)
+	err = platform.ValidateCodePackage(cp)
 	if err != nil {
 		t.Fatalf("should have returned no errors, but got '%s'", err)
 	}
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
-	ccSpec := &peer.ChaincodeSpec{
-		Type:        peer.ChaincodeSpec_NODE,
-		ChaincodeId: &peer.ChaincodeID{Path: ""},
-		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("invoke")}}}
-
-	_, err := platform.GetDeploymentPayload(ccSpec)
+	_, err := platform.GetDeploymentPayload("")
 	if err == nil {
 		t.Fatal("should have failed to product deployment payload due to empty chaincode path")
 	} else if !strings.HasPrefix(err.Error(), "ChaincodeSpec's path cannot be empty") {
@@ -218,7 +182,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 		ChaincodeId: &peer.ChaincodeID{Path: dir},
 		Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("init")}}}
 
-	cp, _ := platform.GetDeploymentPayload(ccSpec)
+	cp, _ := platform.GetDeploymentPayload(ccSpec.Path())
 
 	cds := &peer.ChaincodeDeploymentSpec{
 		ChaincodeSpec: ccSpec,
@@ -234,13 +198,23 @@ func TestGenerateDockerBuild(t *testing.T) {
 	}
 }
 
-func writeCodePackage(file string, packagePath string, mode int64) ([]byte, error) {
+func makeCodePackage(packagePath string, mode int64) ([]byte, error) {
+	contents := []byte("fake file's content")
+
 	payload := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	if err := writeFileToPackage(file, packagePath, tw, mode); err != nil {
-		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+	if err := tw.WriteHeader(&tar.Header{
+		Name: packagePath,
+		Mode: mode,
+		Size: int64(len(contents)),
+	}); err != nil {
+		return nil, fmt.Errorf("Error write header: %s", err)
+	}
+
+	if _, err := tw.Write(contents); err != nil {
+		return nil, fmt.Errorf("Error writing contents: %s", err)
 	}
 
 	// Write the tar file out
@@ -248,43 +222,9 @@ func writeCodePackage(file string, packagePath string, mode int64) ([]byte, erro
 		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
 	}
 
-	tw.Close()
 	gw.Close()
 
 	return payload.Bytes(), nil
-}
-
-func writeFileToPackage(localpath string, packagepath string, tw *tar.Writer, mode int64) error {
-	fd, err := os.Open(localpath)
-	if err != nil {
-		return fmt.Errorf("%s: %s", localpath, err)
-	}
-	defer fd.Close()
-
-	is := bufio.NewReader(fd)
-	info, err := os.Stat(localpath)
-	if err != nil {
-		return fmt.Errorf("%s: %s", localpath, err)
-	}
-	header, err := tar.FileInfoHeader(info, localpath)
-	if err != nil {
-		return fmt.Errorf("Error getting FileInfoHeader: %s", err)
-	}
-
-	//Let's take the variance out of the tar, make headers identical by using zero time
-	oldname := header.Name
-	header.Name = packagepath
-	header.Mode = mode
-	//header.Mode = 0100744
-
-	if err = tw.WriteHeader(header); err != nil {
-		return fmt.Errorf("Error write header for (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
-	}
-	if _, err := io.Copy(tw, is); err != nil {
-		return fmt.Errorf("Error copy (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
-	}
-
-	return nil
 }
 
 func TestMain(m *testing.M) {

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package car
@@ -40,21 +30,21 @@ func (carPlatform *Platform) Name() string {
 	return pb.ChaincodeSpec_CAR.String()
 }
 
-// ValidateSpec validates the chaincode specification for CAR types to satisfy
+// ValidatePath validates the chaincode path for CAR types to satisfy
 // the platform interface.  This chaincode type currently doesn't
 // require anything specific so we just implicitly approve any spec
-func (carPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
+func (carPlatform *Platform) ValidatePath(path string) error {
 	return nil
 }
 
-func (carPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+func (carPlatform *Platform) ValidateCodePackage(codePackage []byte) error {
 	// CAR platform will validate the code package within chaintool
 	return nil
 }
 
-func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+func (carPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
-	return ioutil.ReadFile(spec.ChaincodeId.Path)
+	return ioutil.ReadFile(path)
 }
 
 func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
