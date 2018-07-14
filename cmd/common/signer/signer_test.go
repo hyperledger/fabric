@@ -53,4 +53,14 @@ func TestSignerBadConfig(t *testing.T) {
 	signer, err = NewSigner(conf)
 	assert.Contains(t, err.Error(), "open testdata/signer/non_existent_cert: no such file or directory")
 	assert.Nil(t, signer)
+
+	conf = Config{
+		MSPID:        "SampleOrg",
+		IdentityPath: filepath.Join("testdata", "signer", "cert.pem"),
+		KeyPath:      filepath.Join("testdata", "signer", "broken_private_key"),
+	}
+
+	signer, err = NewSigner(conf)
+	assert.Contains(t, err.Error(), "testdata/signer/broken_private_key: wrong PEM encoding")
+	assert.Nil(t, signer)
 }

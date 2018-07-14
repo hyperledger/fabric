@@ -78,6 +78,9 @@ func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
 		return nil, errors.WithStack(err)
 	}
 	bl, _ := pem.Decode(b)
+	if bl == nil {
+		return nil, errors.Errorf("%s: wrong PEM encoding", file)
+	}
 	key, err := x509.ParsePKCS8PrivateKey(bl.Bytes)
 	if err != nil {
 		return nil, errors.WithStack(err)
