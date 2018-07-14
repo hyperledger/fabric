@@ -18,7 +18,7 @@ import (
 
 // Executor is used to invoke chaincode.
 type Executor interface {
-	Execute(ctxt context.Context, cccid *ccprovider.CCContext, cis ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error)
+	Execute(ctxt context.Context, cccid *ccprovider.CCContext, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
 }
 
 // Lifecycle provides methods to invoke the lifecycle system chaincode.

@@ -10,12 +10,12 @@ import (
 )
 
 type Invoker struct {
-	InvokeStub        func(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error)
+	InvokeStub        func(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error)
 	invokeMutex       sync.RWMutex
 	invokeArgsForCall []struct {
 		ctxt  context.Context
 		cccid *ccprovider.CCContext
-		spec  ccprovider.ChaincodeSpecGetter
+		spec  *pb.ChaincodeInvocationSpec
 	}
 	invokeReturns struct {
 		result1 *pb.ChaincodeMessage
@@ -29,13 +29,13 @@ type Invoker struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Invoker) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error) {
+func (fake *Invoker) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
 	fake.invokeMutex.Lock()
 	ret, specificReturn := fake.invokeReturnsOnCall[len(fake.invokeArgsForCall)]
 	fake.invokeArgsForCall = append(fake.invokeArgsForCall, struct {
 		ctxt  context.Context
 		cccid *ccprovider.CCContext
-		spec  ccprovider.ChaincodeSpecGetter
+		spec  *pb.ChaincodeInvocationSpec
 	}{ctxt, cccid, spec})
 	fake.recordInvocation("Invoke", []interface{}{ctxt, cccid, spec})
 	fake.invokeMutex.Unlock()
@@ -54,7 +54,7 @@ func (fake *Invoker) InvokeCallCount() int {
 	return len(fake.invokeArgsForCall)
 }
 
-func (fake *Invoker) InvokeArgsForCall(i int) (context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) {
+func (fake *Invoker) InvokeArgsForCall(i int) (context.Context, *ccprovider.CCContext, *pb.ChaincodeInvocationSpec) {
 	fake.invokeMutex.RLock()
 	defer fake.invokeMutex.RUnlock()
 	return fake.invokeArgsForCall[i].ctxt, fake.invokeArgsForCall[i].cccid, fake.invokeArgsForCall[i].spec

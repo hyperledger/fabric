@@ -459,7 +459,7 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 	}
 
 	var resp *pb.Response
-	if resp, _, err = chaincodeSupport.Execute(ctx, cccid, chaincodeDeploymentSpec); err != nil {
+	if resp, _, err = chaincodeSupport.ExecuteInit(ctx, cccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
 
@@ -742,6 +742,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 		nextBlockNumber2,
 		chaincodeSupport,
 	)
+
 	if err != nil {
 		stopChaincode(ctxt, cccid1, chaincodeSupport)
 		stopChaincode(ctxt, cccid2, chaincodeSupport)

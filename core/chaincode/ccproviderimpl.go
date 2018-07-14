@@ -57,8 +57,13 @@ func (c *CCProviderImpl) ExecuteChaincode(ctxt context.Context, cccid *ccprovide
 }
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
-func (c *CCProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (c *CCProviderImpl) Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return c.cs.Execute(ctxt, cccid, spec)
+}
+
+// ExecuteInit executes the chaincode given context and spec (invocation or deploy)
+func (c *CCProviderImpl) ExecuteInit(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return c.cs.ExecuteInit(ctxt, cccid, spec)
 }
 
 // Stop stops the chaincode given context and spec

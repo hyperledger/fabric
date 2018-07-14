@@ -1506,7 +1506,7 @@ var _ = Describe("Handler", func() {
 			})
 
 			It("marks the new transaction simulator as done after execute", func() {
-				fakeInvoker.InvokeStub = func(context.Context, *ccprovider.CCContext, ccprovider.ChaincodeSpecGetter) (*pb.ChaincodeMessage, error) {
+				fakeInvoker.InvokeStub = func(context.Context, *ccprovider.CCContext, *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
 					Expect(newTxSimulator.DoneCallCount()).To(Equal(0))
 					return responseMessage, nil
 				}

@@ -35,27 +35,29 @@ type RuntimeLauncher struct {
 	StartupTimeout  time.Duration
 }
 
+// LaunchInit launches a container which is not yet defined in the LSCC table
+// This is only necessary for the pre v1.3 lifecycle
+func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
+	err := r.start(ctx, cccid, spec)
+	if err != nil {
+		chaincodeLogger.Errorf("start failed: %+v", err)
+		return err
+	}
+
+	chaincodeLogger.Debug("launch complete")
+
+	return nil
+}
+
 // Launch chaincode with the appropriate runtime.
-func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec ccprovider.ChaincodeSpecGetter) error {
+func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
 	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
-	cds, _ := spec.(*pb.ChaincodeDeploymentSpec)
-	if cds == nil {
-		var err error
-		cds, err = r.getDeploymentSpec(ctx, cccid, chaincodeID)
-		if err != nil {
-			return err
-		}
+	cds, err := r.getDeploymentSpec(ctx, cccid, chaincodeID)
+	if err != nil {
+		return err
 	}
 
-	if cds.CodePackage == nil && cds.ExecEnv != pb.ChaincodeDeploymentSpec_SYSTEM {
-		ccpack, err := r.PackageProvider.GetChaincode(chaincodeID.Name, chaincodeID.Version)
-		if err != nil {
-			return errors.Wrap(err, "failed to get chaincode package")
-		}
-		cds = ccpack.GetDepSpec()
-	}
-
-	err := r.start(ctx, cccid, cds)
+	err = r.start(ctx, cccid, cds)
 	if err != nil {
 		chaincodeLogger.Errorf("start failed: %+v", err)
 		return err
@@ -81,6 +83,16 @@ func (r *RuntimeLauncher) getDeploymentSpec(ctx context.Context, cccid *ccprovid
 }
 
 func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+	// Note, it is not actually possible for cds.CodePackage to be non-nil in the real world
+	// But some of the tests rely on the idea that it might be set.
+	if cds.CodePackage == nil && cds.ExecEnv != pb.ChaincodeDeploymentSpec_SYSTEM {
+		ccpack, err := r.PackageProvider.GetChaincode(cds.Name(), cds.Version())
+		if err != nil {
+			return errors.Wrap(err, "failed to get chaincode package")
+		}
+		cds = ccpack.GetDepSpec()
+	}
+
 	cname := cccid.GetCanonicalName()
 	launchState, err := r.Registry.Launching(cname)
 	if err != nil {
