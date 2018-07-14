@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
+	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
@@ -148,7 +149,7 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 	if txsim != nil {
 		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
 	}
-	lifecycle := &chaincode.Lifecycle{
+	lifecycle := &lc.Lifecycle{
 		Executor: s.ChaincodeSupport,
 	}
 	return lifecycle.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)

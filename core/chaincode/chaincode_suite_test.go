@@ -9,6 +9,7 @@ package chaincode_test
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -55,7 +56,7 @@ type processor interface {
 
 //go:generate counterfeiter -o mock/executor.go --fake-name Executor . executor
 type executor interface {
-	chaincode.Executor
+	lifecycle.Executor
 }
 
 //go:generate counterfeiter -o mock/invoker.go --fake-name Invoker . invoker

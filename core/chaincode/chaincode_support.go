@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -90,7 +91,7 @@ func NewChaincodeSupport(
 		Runtime:         cs.Runtime,
 		Registry:        cs.HandlerRegistry,
 		PackageProvider: packageProvider,
-		Lifecycle:       &Lifecycle{Executor: cs},
+		Lifecycle:       &lifecycle.Lifecycle{Executor: cs},
 		StartupTimeout:  config.StartupTimeout,
 	}
 
@@ -155,7 +156,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream c
 
 	handler := &Handler{
 		Invoker:                    cs,
-		DefinitionGetter:           &Lifecycle{Executor: cs},
+		DefinitionGetter:           &lifecycle.Lifecycle{Executor: cs},
 		Keepalive:                  cs.Keepalive,
 		Registry:                   cs.HandlerRegistry,
 		ACLProvider:                cs.ACLProvider,
