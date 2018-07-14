@@ -34,7 +34,6 @@ import (
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	config "github.com/hyperledger/fabric/orderer/localconfig"
 	logging "github.com/op/go-logging"
-	// logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
 
