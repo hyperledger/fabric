@@ -25,8 +25,8 @@ import (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
-	Stop(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error
+	Start(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo, codePackage []byte) error
+	Stop(ctxt context.Context, ccci *lifecycle.ChaincodeContainerInfo) error
 }
 
 // Launcher is used to launch chaincode runtimes.
@@ -164,7 +164,13 @@ func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContex
 	cname := cccid.GetCanonicalName()
 	defer cs.HandlerRegistry.Deregister(cname)
 
-	err := cs.Runtime.Stop(ctx, cccid, cds)
+	err := cs.Runtime.Stop(ctx, &lifecycle.ChaincodeContainerInfo{
+		Name:          cds.Name(),
+		Version:       cccid.Version,
+		Path:          cds.Path(),
+		Type:          cds.CCType(),
+		ContainerType: getVMType(cds),
+	})
 	if err != nil {
 		return err
 	}

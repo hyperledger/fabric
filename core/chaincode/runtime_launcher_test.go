@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
+	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -53,7 +54,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry.LaunchingReturns(launchState, nil)
 
 		fakeRuntime = &mock.Runtime{}
-		fakeRuntime.StartStub = func(context.Context, *ccprovider.CCContext, *pb.ChaincodeDeploymentSpec) error {
+		fakeRuntime.StartStub = func(context.Context, *lc.ChaincodeContainerInfo, []byte) error {
 			launchState.Notify(nil)
 			return nil
 		}
@@ -103,10 +104,16 @@ var _ = Describe("RuntimeLauncher", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeRuntime.StartCallCount()).To(Equal(1))
-			ctx, ccCtx, cds := fakeRuntime.StartArgsForCall(0)
+			ctx, ccci, codePackage := fakeRuntime.StartArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(ccCtx).To(Equal(cccid))
-			Expect(cds).To(Equal(deploymentSpec))
+			Expect(ccci).To(Equal(&lc.ChaincodeContainerInfo{
+				Name:          deploymentSpec.Name(),
+				Path:          deploymentSpec.Path(),
+				Type:          deploymentSpec.CCType(),
+				Version:       cccid.Version,
+				ContainerType: "DOCKER",
+			}))
+			Expect(codePackage).To(Equal([]byte("code-package")))
 		})
 
 		Context("when getting the deployment spec fails", func() {
@@ -187,10 +194,16 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRuntime.StartCallCount()).To(Equal(1))
-		ctx, ccCtx, cds := fakeRuntime.StartArgsForCall(0)
+		ctx, ccci, codePackage := fakeRuntime.StartArgsForCall(0)
 		Expect(ctx).To(Equal(context.Background()))
-		Expect(ccCtx).To(Equal(cccid))
-		Expect(cds).To(Equal(deploymentSpec))
+		Expect(ccci).To(Equal(&lc.ChaincodeContainerInfo{
+			Name:          deploymentSpec.Name(),
+			Path:          deploymentSpec.Path(),
+			Type:          deploymentSpec.CCType(),
+			Version:       cccid.Version,
+			ContainerType: "DOCKER",
+		}))
+		Expect(codePackage).To(Equal([]byte("code-package")))
 	})
 
 	It("waits for the launch to complete", func() {
@@ -236,10 +249,15 @@ var _ = Describe("RuntimeLauncher", func() {
 			runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
-			ctx, ccContext, cds := fakeRuntime.StopArgsForCall(0)
+			ctx, ccci := fakeRuntime.StopArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(ccContext).To(Equal(cccid))
-			Expect(cds).To(Equal(deploymentSpec))
+			Expect(ccci).To(Equal(&lc.ChaincodeContainerInfo{
+				Name:          deploymentSpec.Name(),
+				Path:          deploymentSpec.Path(),
+				Type:          deploymentSpec.CCType(),
+				Version:       cccid.Version,
+				ContainerType: "DOCKER",
+			}))
 		})
 
 		It("deregisters the chaincode", func() {
@@ -253,7 +271,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 	Context("when handler registration fails", func() {
 		BeforeEach(func() {
-			fakeRuntime.StartStub = func(context.Context, *ccprovider.CCContext, *pb.ChaincodeDeploymentSpec) error {
+			fakeRuntime.StartStub = func(context.Context, *lc.ChaincodeContainerInfo, []byte) error {
 				launchState.Notify(errors.New("papaya"))
 				return nil
 			}
@@ -268,10 +286,15 @@ var _ = Describe("RuntimeLauncher", func() {
 			runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
-			ctx, ccContext, cds := fakeRuntime.StopArgsForCall(0)
+			ctx, ccci := fakeRuntime.StopArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(ccContext).To(Equal(cccid))
-			Expect(cds).To(Equal(deploymentSpec))
+			Expect(ccci).To(Equal(&lc.ChaincodeContainerInfo{
+				Name:          deploymentSpec.Name(),
+				Path:          deploymentSpec.Path(),
+				Type:          deploymentSpec.CCType(),
+				Version:       cccid.Version,
+				ContainerType: "DOCKER",
+			}))
 		})
 
 		It("deregisters the chaincode", func() {
@@ -298,10 +321,15 @@ var _ = Describe("RuntimeLauncher", func() {
 			runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
 
 			Expect(fakeRuntime.StopCallCount()).To(Equal(1))
-			ctx, ccContext, cds := fakeRuntime.StopArgsForCall(0)
+			ctx, ccci := fakeRuntime.StopArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(ccContext).To(Equal(cccid))
-			Expect(cds).To(Equal(deploymentSpec))
+			Expect(ccci).To(Equal(&lc.ChaincodeContainerInfo{
+				Name:          deploymentSpec.Name(),
+				Path:          deploymentSpec.Path(),
+				Type:          deploymentSpec.CCType(),
+				Version:       cccid.Version,
+				ContainerType: "DOCKER",
+			}))
 		})
 
 		It("deregisters the chaincode", func() {
