@@ -32,11 +32,13 @@ import (
 	"github.com/hyperledger/fabric/core/mocks/scc/lscc"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
+	"github.com/hyperledger/fabric/core/scc/lscc/mock"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	mspmocks "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	mb "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -44,6 +46,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mock/chaincode_stub.go --fake-name ChaincodeStub . chaincodeStub
+type chaincodeStub interface {
+	shim.ChaincodeStubInterface
+}
+
+//go:generate counterfeiter -o mock/state_query_iterator.go --fake-name StateQueryIterator . stateQueryIterator
+type stateQueryIterator interface {
+	shim.StateQueryIteratorInterface
+}
 
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createInvalidIndex bool, createFS bool, scc *LifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
@@ -701,6 +713,37 @@ func TestGetChaincodes(t *testing.T) {
 			assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 		})
 	}
+}
+
+func TestGetChaincodesFilter(t *testing.T) {
+	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	scc.Support = &lscc.MockSupport{GetChaincodeFromLocalStorageErr: errors.New("banana")}
+
+	sqi := &mock.StateQueryIterator{}
+	results := []*queryresult.KV{
+		{Key: "one", Value: utils.MarshalOrPanic(&ccprovider.ChaincodeData{Name: "name-one", Version: "1.0", Escc: "escc", Vscc: "vscc"})},
+		{Key: "something~collections", Value: []byte("completely-ignored")},
+		{Key: "two", Value: utils.MarshalOrPanic(&ccprovider.ChaincodeData{Name: "name-two", Version: "2.0", Escc: "escc-2", Vscc: "vscc-2"})},
+	}
+	for i, r := range results {
+		sqi.NextReturnsOnCall(i, r, nil)
+		sqi.HasNextReturnsOnCall(i, true)
+	}
+
+	stub := &mock.ChaincodeStub{}
+	stub.GetStateByRangeReturns(sqi, nil)
+
+	resp := scc.getChaincodes(stub)
+	assert.Equal(t, resp.Status, int32(shim.OK))
+
+	cqr := &pb.ChaincodeQueryResponse{}
+	err := proto.Unmarshal(resp.GetPayload(), cqr)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cqr.Chaincodes, []*pb.ChaincodeInfo{
+		{Name: "name-one", Version: "1.0", Escc: "escc", Vscc: "vscc"},
+		{Name: "name-two", Version: "2.0", Escc: "escc-2", Vscc: "vscc-2"},
+	})
 }
 
 func TestGetInstalledChaincodes(t *testing.T) {

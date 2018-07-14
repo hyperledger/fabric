@@ -379,6 +379,7 @@ func (lscc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 			return shim.Error(err.Error())
 		}
 
+		// CollectionConfig isn't ChaincodeData
 		if privdata.IsCollectionConfigKey(response.Key) {
 			continue
 		}
@@ -391,8 +392,8 @@ func (lscc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 		var path string
 		var input string
 
-		//if chaincode is not installed on the system we won't have
-		//data beyond name and version
+		// if chaincode is not installed on the system we won't have
+		// data beyond name and version
 		ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccdata.Name, ccdata.Version)
 		if err == nil {
 			path = ccpack.GetDepSpec().GetChaincodeSpec().ChaincodeId.Path
