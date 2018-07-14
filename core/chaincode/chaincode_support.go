@@ -35,6 +35,29 @@ type Launcher interface {
 	LaunchInit(context context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error
 }
 
+// Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
+type Lifecycle interface {
+	// GetChaincodeDefinition returns the details for a chaincode by name
+	GetChaincodeDefinition(
+		ctx context.Context,
+		txid string,
+		signedProp *pb.SignedProposal,
+		prop *pb.Proposal,
+		chainID string,
+		chaincodeID string,
+	) (ccprovider.ChaincodeDefinition, error)
+
+	// GetChaincodeDeploymentSpec returns the package necessary to launch a chaincode
+	GetChaincodeDeploymentSpec(
+		ctx context.Context,
+		txid string,
+		signedProp *pb.SignedProposal,
+		prop *pb.Proposal,
+		chainID string,
+		chaincodeID string,
+	) (*pb.ChaincodeDeploymentSpec, error)
+}
+
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
 	Keepalive       time.Duration

@@ -9,13 +9,9 @@ package chaincode_test
 import (
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
-	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
@@ -28,7 +24,7 @@ var _ = Describe("RuntimeLauncher", func() {
 	var (
 		fakeRuntime         *mock.Runtime
 		fakeRegistry        *fake.LaunchRegistry
-		fakeExecutor        *mock.Executor
+		fakeLifecycle       *mock.Lifecycle
 		fakePackageProvider *mock.PackageProvider
 		fakePackage         *mock.CCPackage
 		launchState         *chaincode.LaunchState
@@ -51,8 +47,6 @@ var _ = Describe("RuntimeLauncher", func() {
 			CodePackage:   []byte("code-package"),
 			ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID},
 		}
-		deploymentSpecPayload, err := proto.Marshal(deploymentSpec)
-		Expect(err).NotTo(HaveOccurred())
 
 		launchState = chaincode.NewLaunchState()
 		fakeRegistry = &fake.LaunchRegistry{}
@@ -69,21 +63,14 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakePackageProvider = &mock.PackageProvider{}
 		fakePackageProvider.GetChaincodeReturns(fakePackage, nil)
 
-		cdsResponse := &pb.Response{
-			Status:  shim.OK,
-			Payload: deploymentSpecPayload,
-		}
-		fakeExecutor = &mock.Executor{}
-		fakeExecutor.ExecuteReturns(cdsResponse, nil, nil)
-		lifecycle := &lc.Lifecycle{
-			Executor: fakeExecutor,
-		}
+		fakeLifecycle = &mock.Lifecycle{}
+		fakeLifecycle.GetChaincodeDeploymentSpecReturns(deploymentSpec, nil)
 
 		runtimeLauncher = &chaincode.RuntimeLauncher{
 			Runtime:         fakeRuntime,
 			PackageProvider: fakePackageProvider,
 			Registry:        fakeRegistry,
-			Lifecycle:       lifecycle,
+			Lifecycle:       fakeLifecycle,
 			StartupTimeout:  5 * time.Second,
 		}
 	})
@@ -101,19 +88,14 @@ var _ = Describe("RuntimeLauncher", func() {
 			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
-			ctx, cccid, cis := fakeExecutor.ExecuteArgsForCall(0)
+			Expect(fakeLifecycle.GetChaincodeDeploymentSpecCallCount()).To(Equal(1))
+			ctx, txid, signedProp, prop, chainID, chaincodeID := fakeLifecycle.GetChaincodeDeploymentSpecArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(cccid).To(Equal(ccprovider.NewCCContext("chain-id", "lscc", "latest", "tx-id", true, signedProp, proposal)))
-			Expect(cis).To(Equal(&pb.ChaincodeInvocationSpec{
-				ChaincodeSpec: &pb.ChaincodeSpec{
-					Type:        pb.ChaincodeSpec_GOLANG,
-					ChaincodeId: &pb.ChaincodeID{Name: "lscc"},
-					Input: &pb.ChaincodeInput{
-						Args: util.ToChaincodeArgs("getdepspec", "chain-id", "chaincode-name"),
-					},
-				},
-			}))
+			Expect(txid).To(Equal("tx-id"))
+			Expect(signedProp).To(Equal(cccid.SignedProposal))
+			Expect(prop).To(Equal(cccid.Proposal))
+			Expect(chainID).To(Equal("chain-id"))
+			Expect(chaincodeID).To(Equal("chaincode-name"))
 		})
 
 		It("uses the deployment spec when starting the runtime", func() {
@@ -129,26 +111,19 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		Context("when getting the deployment spec fails", func() {
 			BeforeEach(func() {
-				fakeExecutor.ExecuteReturns(nil, nil, errors.New("king-kong"))
+				fakeLifecycle.GetChaincodeDeploymentSpecReturns(nil, errors.New("king-kong"))
 			})
 
 			It("returns a wrapped error", func() {
 				err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
-				Expect(err).To(MatchError(MatchRegexp("failed to get deployment spec for context-name:context-version:.*king-kong")))
+				Expect(err).To(MatchError(MatchRegexp("failed to get deployment spec for context-name:context-version: king-kong")))
 			})
 		})
 
 		Context("when the returned deployment spec has a nil chaincode package", func() {
 			BeforeEach(func() {
 				deploymentSpec.CodePackage = nil
-				deploymentSpecPayload, err := proto.Marshal(deploymentSpec)
-				Expect(err).NotTo(HaveOccurred())
-
-				cdsResponse := &pb.Response{
-					Status:  shim.OK,
-					Payload: deploymentSpecPayload,
-				}
-				fakeExecutor.ExecuteReturns(cdsResponse, nil, nil)
+				fakeLifecycle.GetChaincodeDeploymentSpecReturns(deploymentSpec, nil)
 			})
 
 			It("gets the package from the package provider", func() {
@@ -194,7 +169,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		It("does not get the deployment spec from lifecycle", func() {
 			err := runtimeLauncher.LaunchInit(context.Background(), cccid, deploymentSpec)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fakeExecutor.ExecuteCallCount()).To(Equal(0))
+			Expect(fakeLifecycle.GetChaincodeDeploymentSpecCallCount()).To(Equal(0))
 		})
 	})
 

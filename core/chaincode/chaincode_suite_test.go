@@ -9,7 +9,6 @@ package chaincode_test
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -54,11 +53,6 @@ type processor interface {
 	chaincode.Processor
 }
 
-//go:generate counterfeiter -o mock/executor.go --fake-name Executor . executor
-type executor interface {
-	lifecycle.Executor
-}
-
 //go:generate counterfeiter -o mock/invoker.go --fake-name Invoker . invoker
 type invoker interface {
 	chaincode.Invoker
@@ -67,6 +61,11 @@ type invoker interface {
 //go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . packageProvider
 type packageProvider interface {
 	chaincode.PackageProvider
+}
+
+//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle
+type lifecycle interface {
+	chaincode.Lifecycle
 }
 
 //go:generate counterfeiter -o mock/cc_package.go --fake-name CCPackage . ccpackage
