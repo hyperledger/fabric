@@ -61,7 +61,11 @@ func (c *ContainerRuntime) Start(ctxt context.Context, cccid *ccprovider.CCConte
 
 	scr := container.StartContainerReq{
 		Builder: &container.PlatformBuilder{
-			DeploymentSpec:   cds,
+			Type:             cds.CCType(),
+			Name:             cds.Name(),
+			Version:          cds.Version(),
+			Path:             cds.Path(),
+			CodePackage:      cds.Bytes(),
 			PlatformRegistry: c.PlatformRegistry,
 		},
 		Args:          lc.Args,

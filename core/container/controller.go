@@ -127,18 +127,22 @@ type StartContainerReq struct {
 // the dockercontroller package with the CDS, which is also
 // undesirable.
 type PlatformBuilder struct {
-	DeploymentSpec   *pb.ChaincodeDeploymentSpec
+	Type             string
+	Path             string
+	Name             string
+	Version          string
+	CodePackage      []byte
 	PlatformRegistry *platforms.Registry
 }
 
 // Build a tar stream based on the CDS
 func (b *PlatformBuilder) Build() (io.Reader, error) {
 	return b.PlatformRegistry.GenerateDockerBuild(
-		b.DeploymentSpec.CCType(),
-		b.DeploymentSpec.Path(),
-		b.DeploymentSpec.Name(),
-		b.DeploymentSpec.Version(),
-		b.DeploymentSpec.Bytes(),
+		b.Type,
+		b.Path,
+		b.Name,
+		b.Version,
+		b.CodePackage,
 	)
 }
 
