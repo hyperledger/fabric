@@ -9,8 +9,10 @@ package common
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -29,12 +31,14 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
 const UndefinedParamValue = ""
+const CmdRoot = "core"
 
 var (
 	defaultConnTimeout = 3 * time.Second
@@ -71,6 +75,9 @@ var (
 
 	// GetCertificateFnc is a function that returns the client TLS certificate
 	GetCertificateFnc func() (tls.Certificate, error)
+
+	mainLogger *logging.Logger
+	logOutput  io.Writer
 )
 
 type commonClient struct {
@@ -87,10 +94,13 @@ func init() {
 	GetDeliverClientFnc = GetDeliverClient
 	GetPeerDeliverClientFnc = GetPeerDeliverClient
 	GetCertificateFnc = GetCertificate
+	mainLogger = flogging.MustGetLogger("main")
+	logOutput = os.Stderr
 }
 
 // InitConfig initializes viper config
 func InitConfig(cmdRoot string) error {
+
 	err := config.InitViper(nil, cmdRoot)
 	if err != nil {
 		return err
@@ -98,7 +108,15 @@ func InitConfig(cmdRoot string) error {
 
 	err = viper.ReadInConfig() // Find and read the config file
 	if err != nil {            // Handle errors reading the config file
-		return errors.WithMessage(err, fmt.Sprintf("error when reading %s config file", cmdRoot))
+		// The version of Viper we use claims the config type isn't supported when in fact the file hasn't been found
+		// Display a more helpful message to avoid confusing the user.
+		if strings.Contains(fmt.Sprint(err), "Unsupported Config Type") {
+			return errors.New(fmt.Sprintf("Could not find config file. "+
+				"Please make sure that FABRIC_CFG_PATH or --configPath is set to a path "+
+				"which contains %s.yaml", cmdRoot))
+		} else {
+			return errors.WithMessage(err, fmt.Sprintf("error when reading %s config file", cmdRoot))
+		}
 	}
 
 	return nil
@@ -111,7 +129,7 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	fi, err := os.Stat(mspMgrConfigDir)
 	if os.IsNotExist(err) || !fi.IsDir() {
 		// No need to try to load MSP from folder which is not available
-		return errors.Errorf("cannot init crypto, missing %s folder", mspMgrConfigDir)
+		return errors.Errorf("cannot init crypto, folder \"%s\" does not exist", mspMgrConfigDir)
 	}
 	// Check whether localMSPID exists
 	if localMSPID == "" {
@@ -276,4 +294,43 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 	}
 	clientConfig.SecOpts = secOpts
 	return
+}
+
+func InitCmd(cmd *cobra.Command, args []string) {
+
+	err := InitConfig(CmdRoot)
+	if err != nil { // Handle errors reading the config file
+		mainLogger.Errorf("Fatal error when initializing %s config : %s", CmdRoot, err)
+		os.Exit(1)
+	}
+
+	// setup system-wide logging backend based on settings from core.yaml
+	flogging.InitBackend(flogging.SetFormat(viper.GetString("logging.format")), logOutput)
+
+	// check for --logging-level pflag first, which should override all other
+	// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
+	// (environment variable takes priority; otherwise, the value set in
+	// core.yaml)
+	var loggingSpec string
+	if viper.GetString("logging_level") != "" {
+		loggingSpec = viper.GetString("logging_level")
+	} else {
+		loggingSpec = viper.GetString("logging.level")
+	}
+	flogging.InitFromSpec(loggingSpec)
+
+	// Init the MSP
+	var mspMgrConfigDir = config.GetPath("peer.mspConfigPath")
+	var mspID = viper.GetString("peer.localMspId")
+	var mspType = viper.GetString("peer.localMspType")
+	if mspType == "" {
+		mspType = msp.ProviderTypeToString(msp.FABRIC)
+	}
+	err = InitCrypto(mspMgrConfigDir, mspID, mspType)
+	if err != nil { // Handle errors reading the config file
+		mainLogger.Errorf("Cannot run peer because %s", err.Error())
+		os.Exit(1)
+	}
+
+	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 }

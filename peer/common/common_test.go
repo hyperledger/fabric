@@ -61,7 +61,7 @@ func TestInitCryptoMissingDir(t *testing.T) {
 	dir := os.TempDir() + "/" + util.GenerateUUID()
 	err := common.InitCrypto(dir, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
 	assert.Error(t, err, "Should be able to initialize crypto with non-existing directory")
-	assert.Contains(t, err.Error(), fmt.Sprintf("missing %s folder", dir))
+	assert.Contains(t, err.Error(), fmt.Sprintf("folder \"%s\" does not exist", dir))
 }
 
 func TestInitCrypto(t *testing.T) {
