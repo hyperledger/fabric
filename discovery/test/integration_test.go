@@ -98,6 +98,14 @@ func TestMain(m *testing.M) {
 		return
 	}
 
+	peerDirPrefix := filepath.Join(testdir, "crypto-config", "peerOrganizations")
+	testPeers = testPeerSet{
+		newPeer(peerDirPrefix, "Org1MSP", 1, 0),
+		newPeer(peerDirPrefix, "Org1MSP", 1, 1),
+		newPeer(peerDirPrefix, "Org2MSP", 2, 0),
+		newPeer(peerDirPrefix, "Org2MSP", 2, 1),
+	}
+
 	rc := m.Run()
 	os.RemoveAll(testdir)
 	gexec.CleanupBuildArtifacts()
@@ -404,14 +412,6 @@ func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
 	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(utils.MarshalOrPanic(org1Admin))
 	assert.NoError(t, err)
 	acl := discacl.NewDiscoverySupport(channelVerifier, org1AdminPolicy, chConfig)
-
-	peerDirPrefix := filepath.Join(dir, "crypto-config", "peerOrganizations")
-	testPeers = testPeerSet{
-		newPeer(peerDirPrefix, "Org1MSP", 1, 0),
-		newPeer(peerDirPrefix, "Org1MSP", 1, 1),
-		newPeer(peerDirPrefix, "Org2MSP", 2, 0),
-		newPeer(peerDirPrefix, "Org2MSP", 2, 1),
-	}
 
 	gSup := &mocks.GossipSupport{}
 	gSup.On("ChannelExists", "mychannel").Return(true)
