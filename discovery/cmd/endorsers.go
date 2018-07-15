@@ -172,7 +172,7 @@ func (ec *chaincodesAndCollections) parseInput() (map[string][]string, error) {
 func parseEndorsementDescriptors(descriptors []*EndorsementDescriptor) []endorsermentDescriptor {
 	var res []endorsermentDescriptor
 	for _, desc := range descriptors {
-		endorsersByGroups := make(map[string][]peer)
+		endorsersByGroups := make(map[string][]endorser)
 		for grp, endorsers := range desc.EndorsersByGroups {
 			for _, p := range endorsers.Peers {
 				endorsersByGroups[grp] = append(endorsersByGroups[grp], endorserFromRaw(p))
@@ -187,16 +187,23 @@ func parseEndorsementDescriptors(descriptors []*EndorsementDescriptor) []endorse
 	return res
 }
 
+type endorser struct {
+	MSPID        string
+	LedgerHeight uint64
+	Endpoint     string
+	Identity     string
+}
+
 type endorsermentDescriptor struct {
 	Chaincode         string
-	EndorsersByGroups map[string][]peer
+	EndorsersByGroups map[string][]endorser
 	Layouts           []*Layout
 }
 
-func endorserFromRaw(p *Peer) peer {
+func endorserFromRaw(p *Peer) endorser {
 	sId := &msp.SerializedIdentity{}
 	proto.Unmarshal(p.Identity, sId)
-	return peer{
+	return endorser{
 		MSPID:        sId.Mspid,
 		Endpoint:     endpointFromEnvelope(p.MembershipInfo),
 		LedgerHeight: ledgerHeightFromEnvelope(p.StateInfo),

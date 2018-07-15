@@ -15,6 +15,8 @@ import (
 	"github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -148,12 +150,14 @@ func TestParseEndorsementResponse(t *testing.T) {
 	res := &mocks.ServiceResponse{}
 
 	t.Run("Server returns empty response", func(t *testing.T) {
+		defer buff.Reset()
 		res.On("Raw").Return(&discprotos.Response{}).Once()
 		err := parser.ParseResponse("mychannel", res)
 		assert.Contains(t, err.Error(), "empty results")
 	})
 
 	t.Run("Server returns an error", func(t *testing.T) {
+		defer buff.Reset()
 		res.On("Raw").Return(&discprotos.Response{
 			Results: []*discprotos.QueryResult{
 				{
@@ -170,6 +174,7 @@ func TestParseEndorsementResponse(t *testing.T) {
 	})
 
 	t.Run("Server returns a response with the wrong type", func(t *testing.T) {
+		defer buff.Reset()
 		res.On("Raw").Return(&discprotos.Response{
 			Results: []*discprotos.QueryResult{
 				{
@@ -186,6 +191,7 @@ func TestParseEndorsementResponse(t *testing.T) {
 	})
 
 	t.Run("Server returns a proper response", func(t *testing.T) {
+		defer buff.Reset()
 		res.On("Raw").Return(&discprotos.Response{
 			Results: []*discprotos.QueryResult{
 				{
@@ -195,6 +201,7 @@ func TestParseEndorsementResponse(t *testing.T) {
 		}).Once()
 		err := parser.ParseResponse("mychannel", res)
 		assert.NoError(t, err)
+		assert.Equal(t, expectedEndorsersOutput, buff.String())
 	})
 }
 
@@ -202,11 +209,15 @@ var endorsersResponse = &discprotos.QueryResult_CcQueryRes{
 	CcQueryRes: &discprotos.ChaincodeQueryResult{
 		Content: []*discprotos.EndorsementDescriptor{
 			{
+				Chaincode: "mycc",
 				EndorsersByGroups: map[string]*discprotos.Peers{
 					"Org1MSP": {
 						Peers: []*discprotos.Peer{
 							{
-								Identity:       []byte("identity"),
+								Identity: utils.MarshalOrPanic(&msp.SerializedIdentity{
+									Mspid:   "Org1MSP",
+									IdBytes: []byte("identity"),
+								}),
 								StateInfo:      stateInfoMessage(100).Envelope,
 								MembershipInfo: aliveMessage(0).Envelope,
 							},
@@ -224,3 +235,27 @@ var endorsersResponse = &discprotos.QueryResult_CcQueryRes{
 		},
 	},
 }
+
+const expectedEndorsersOutput = `[
+	{
+		"Chaincode": "mycc",
+		"EndorsersByGroups": {
+			"Org1MSP": [
+				{
+					"MSPID": "Org1MSP",
+					"LedgerHeight": 100,
+					"Endpoint": "p0",
+					"Identity": "identity"
+				}
+			]
+		},
+		"Layouts": [
+			{
+				"quantities_by_group": {
+					"Org1MSP": 2
+				}
+			}
+		]
+	}
+]
+`
