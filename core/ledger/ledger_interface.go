@@ -75,6 +75,13 @@ type PeerLedger interface {
 	Prune(policy commonledger.PrunePolicy) error
 	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
 	GetConfigHistoryRetriever() (ConfigHistoryRetriever, error)
+	// CommitPvtData commits the private data corresponding to already committed block
+	// If hashes for some of the private data supplied in this function does not match
+	// the corresponding hash present in the block, the unmatched private data is not
+	// committed and instead the mismatch inforation is returned back
+	CommitPvtData(blockPvtData []*BlockPvtData) ([]*PvtdataHashMismatch, error)
+	// GetMissingPvtDataTracker return the MissingPvtDataTracker
+	GetMissingPvtDataTracker() (MissingPvtDataTracker, error)
 }
 
 // ValidatedLedger represents the 'final ledger' after filtering out invalid transactions from PeerLedger.
@@ -197,6 +204,12 @@ type BlockAndPvtData struct {
 	Missing      []MissingPrivateData
 }
 
+// BlockPvtData contains the private data for a block
+type BlockPvtData struct {
+	BlockNum  uint64
+	WriteSets map[uint64]*TxPvtData
+}
+
 // PvtCollFilter represents the set of the collection names (as keys of the map with value 'true')
 type PvtCollFilter map[string]bool
 
@@ -296,6 +309,22 @@ type ConfigHistoryRetriever interface {
 	MostRecentCollectionConfigBelow(blockNum uint64, chaincodeName string) (*CollectionConfigInfo, error)
 }
 
+// MissingPvtDataTracker allows getting information about the private data that is not missing on the peer
+type MissingPvtDataTracker interface {
+	GetMissingPvtDataInfoForMostRecentBlocks(maxBlocks int) (MissingPvtDataInfo, error)
+}
+
+// MissingPvtDataInfo is a map of block number to MissingBlockPvtdataInfo
+type MissingPvtDataInfo map[uint64]MissingBlockPvtdataInfo
+
+// MissingBlockPvtdataInfo is a map of transaction number (within the block) to MissingCollectionPvtDataInfo
+type MissingBlockPvtdataInfo map[uint64][]*MissingCollectionPvtDataInfo
+
+// MissingCollectionPvtDataInfo includes the name of the chaincode and collection for which private data is missing
+type MissingCollectionPvtDataInfo struct {
+	ChaincodeName, CollectionName string
+}
+
 // CollectionConfigInfo encapsulates a collection config for a chaincode and its committing block number
 type CollectionConfigInfo struct {
 	CollectionConfig   *common.CollectionConfigPackage
@@ -319,4 +348,13 @@ type NotFoundInIndexErr string
 
 func (NotFoundInIndexErr) Error() string {
 	return "Entry not found in index"
+}
+
+// PvtdataHashMismatch is used when the hash of private write-set
+// does not match the corresponding hash present in the block
+// See function `PeerLedger.CommitPvtData` for the usages
+type PvtdataHashMismatch struct {
+	BlockNum, TxNum               uint64
+	ChaincodeName, CollectionName string
+	ExpectedHash                  []byte
 }

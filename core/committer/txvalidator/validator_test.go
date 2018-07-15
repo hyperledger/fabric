@@ -690,6 +690,15 @@ func (m *mockLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever,
 	return args.Get(0).(ledger.ConfigHistoryRetriever), nil
 }
 
+func (m *mockLedger) CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+	return nil, nil
+}
+
+func (m *mockLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
+	args := m.Called()
+	return args.Get(0).(ledger.MissingPvtDataTracker), nil
+}
+
 // mockQueryExecutor mock of the query executor,
 // needed to simulate inability to access state db, e.g.
 // the case where due to db failure it's not possible to
