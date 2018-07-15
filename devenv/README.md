@@ -1,7 +1,7 @@
 ## Development Environment
 
 If you're looking for instructions on how to setup the Hyperledger Fabric development environment, see
-the [development environment setup readme](https://github.com/hyperledger/fabric/blob/master/docs/dev-setup/devenv.md).
+the [development environment setup readme](https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/devenv.rst).
 
 This folder contains the files which are used for bootstrapping the Hyperledger Fabric development environment.
 
