@@ -256,7 +256,7 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string) {
 		ModPolicy: "Admins",
 		Value: utils.MarshalOrPanic(&pb.ACLs{
 			Acls: map[string]*pb.APIResource{
-				policyName: &pb.APIResource{PolicyRef: policy},
+				policyName: {PolicyRef: policy},
 			},
 		}),
 	}
