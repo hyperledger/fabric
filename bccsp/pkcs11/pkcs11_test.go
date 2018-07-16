@@ -94,7 +94,7 @@ func TestOIDFromNamedCurve(t *testing.T) {
 	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P521")
 
 	var testCurve elliptic.Curve
-	testOID, boolValue = oidFromNamedCurve(testCurve)
+	testOID, _ = oidFromNamedCurve(testCurve)
 	if testOID != nil {
 		t.Fatal("Expected nil to be returned.")
 	}
@@ -168,7 +168,7 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Skip("Skipping TestPKCS11ECKeySignVerify")
 	}
 
-	if currentBCCSP.(*impl).noPrivImport {
+	if !currentBCCSP.(*impl).privImport {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
@@ -232,7 +232,7 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 		t.Skip("Skipping TestPKCS11ECKeyImportSignVerify")
 	}
 
-	if currentBCCSP.(*impl).noPrivImport {
+	if !currentBCCSP.(*impl).privImport {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
@@ -240,6 +240,9 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 	msg2 := []byte("This is my very unauthentic message")
 	hash1, _ := currentBCCSP.Hash(msg1, &bccsp.SHAOpts{})
 	hash2, err := currentBCCSP.Hash(msg2, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed generating Hash [%s]", err)
+	}
 
 	var oid asn1.ObjectIdentifier
 	var key *ecdsa.PrivateKey
@@ -292,87 +295,6 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 	}
 
 	pass = ecdsa.Verify(&key.PublicKey, hash2, R, S)
-	if pass != false {
-		t.Fatal("Signature should not match with software verification!")
-	}
-}
-
-func TestPKCS11ECKeyExport(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestPKCS11ECKeyExport")
-	}
-
-	if currentBCCSP.(*impl).noPrivImport {
-		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
-	}
-
-	msg1 := []byte("This is my very authentic message")
-	msg2 := []byte("This is my very unauthentic message")
-	hash1, _ := currentBCCSP.Hash(msg1, &bccsp.SHAOpts{})
-	hash2, err := currentBCCSP.Hash(msg2, &bccsp.SHAOpts{})
-
-	var oid asn1.ObjectIdentifier
-	if currentTestConfig.securityLevel == 256 {
-		oid = oidNamedCurveP256
-	} else if currentTestConfig.securityLevel == 384 {
-		oid = oidNamedCurveP384
-	}
-
-	key, pubKey, err := currentBCCSP.(*impl).generateECKey(oid, false)
-	if err != nil {
-		t.Fatalf("Failed generating Key [%s]", err)
-	}
-
-	secret := currentBCCSP.(*impl).getSecretValue(key)
-	x, y := pubKey.ScalarBaseMult(secret)
-
-	if 0 != x.Cmp(pubKey.X) {
-		t.Fatal("X does not match")
-	}
-
-	if 0 != y.Cmp(pubKey.Y) {
-		t.Fatal("Y does not match")
-	}
-
-	ecPt := elliptic.Marshal(pubKey.Curve, x, y)
-	key2, err := currentBCCSP.(*impl).importECKey(oid, secret, ecPt, false, privateKeyFlag)
-
-	R, S, err := currentBCCSP.(*impl).signP11ECDSA(key2, hash1)
-	if err != nil {
-		t.Fatalf("Failed signing message [%s]", err)
-	}
-
-	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(key2, hash1, R, S, currentTestConfig.securityLevel/8)
-	if err != nil {
-		t.Fatalf("Error verifying message 1 [%s]", err)
-	}
-	if pass == false {
-		t.Fatal("Signature should match! [1]")
-	}
-
-	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
-	if err != nil {
-		t.Fatalf("Error verifying message 2 [%s]", err)
-	}
-	if pass == false {
-		t.Fatal("Signature should match! [2]")
-	}
-
-	pass = ecdsa.Verify(pubKey, hash1, R, S)
-	if pass == false {
-		t.Fatal("Signature should match with software verification!")
-	}
-
-	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
-	if err != nil {
-		t.Fatalf("Error verifying message 3 [%s]", err)
-	}
-
-	if pass != false {
-		t.Fatal("Signature should not match! [3]")
-	}
-
-	pass = ecdsa.Verify(pubKey, hash2, R, S)
 	if pass != false {
 		t.Fatal("Signature should not match with software verification!")
 	}

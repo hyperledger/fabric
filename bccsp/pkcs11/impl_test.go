@@ -83,6 +83,7 @@ func TestMain(m *testing.M) {
 	if strings.Contains(lib, "softhsm") {
 		tests = append(tests, []testConfig{
 			{256, "SHA2", true, false},
+			{256, "SHA2", true, true},
 		}...)
 	}
 
@@ -599,7 +600,12 @@ func TestECDSAKeyReRand(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping TestECDSAKeyReRand")
 	}
-	if currentBCCSP.(*impl).noPrivImport {
+
+	var skipTest bool
+	if len(currentBCCSP.(*impl).lib) > 0 {
+		skipTest = true
+	}
+	if !currentBCCSP.(*impl).privImport || skipTest {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
@@ -612,6 +618,7 @@ func TestECDSAKeyReRand(t *testing.T) {
 	}
 
 	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
 	}
@@ -764,7 +771,12 @@ func TestECDSAKeyDeriv(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping TestECDSAKeyDeriv")
 	}
-	if currentBCCSP.(*impl).noPrivImport {
+
+	var skipTest bool
+	if len(currentBCCSP.(*impl).lib) > 0 {
+		skipTest = true
+	}
+	if !currentBCCSP.(*impl).privImport || skipTest {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
@@ -774,6 +786,7 @@ func TestECDSAKeyDeriv(t *testing.T) {
 	}
 
 	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
 	}
@@ -920,7 +933,7 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping TestECDSAKeyImportFromECDSAPrivateKey")
 	}
-	if currentBCCSP.(*impl).noPrivImport {
+	if !currentBCCSP.(*impl).privImport {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
