@@ -63,7 +63,12 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	txRwSet1 := &TxRwSet{}
 	testutil.AssertNoError(t, txRwSet1.FromProtoBytes(protoBytes), "")
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
-	testutil.AssertEquals(t, txRwSet, txRwSet1)
+	testutil.AssertEquals(t, len(txRwSet.NsRwSets), len(txRwSet1.NsRwSets))
+	for i, rwset := range txRwSet.NsRwSets {
+		testutil.AssertEquals(t, rwset.NameSpace, txRwSet1.NsRwSets[i].NameSpace)
+		testutil.AssertEquals(t, rwset.KvRwSet, txRwSet1.NsRwSets[i].KvRwSet)
+		testutil.AssertEquals(t, rwset.CollHashedRwSets, txRwSet1.NsRwSets[i].CollHashedRwSets)
+	}
 }
 
 func TestTxRwSetConversion(t *testing.T) {
@@ -73,7 +78,16 @@ func TestTxRwSetConversion(t *testing.T) {
 	txRwSet1, err := TxRwSetFromProtoMsg(protoMsg)
 	testutil.AssertNoError(t, err, "")
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
-	testutil.AssertEquals(t, txRwSet1, txRwSet)
+	testutil.AssertEquals(t, len(txRwSet.NsRwSets), len(txRwSet1.NsRwSets))
+	for i, rwset := range txRwSet.NsRwSets {
+		testutil.AssertEquals(t, rwset.NameSpace, txRwSet1.NsRwSets[i].NameSpace)
+		testutil.AssertEquals(t, rwset.KvRwSet, txRwSet1.NsRwSets[i].KvRwSet)
+		for j, hashedRwSet := range rwset.CollHashedRwSets {
+			testutil.AssertEquals(t, hashedRwSet.CollectionName, txRwSet1.NsRwSets[i].CollHashedRwSets[j].CollectionName)
+			testutil.AssertEquals(t, hashedRwSet.HashedRwSet, txRwSet1.NsRwSets[i].CollHashedRwSets[j].HashedRwSet)
+			testutil.AssertEquals(t, hashedRwSet.PvtRwSetHash, txRwSet1.NsRwSets[i].CollHashedRwSets[j].PvtRwSetHash)
+		}
+	}
 }
 
 func TestNsRwSetConversion(t *testing.T) {
@@ -83,7 +97,13 @@ func TestNsRwSetConversion(t *testing.T) {
 	nsRwSet1, err := nsRwSetFromProtoMsg(protoMsg)
 	testutil.AssertNoError(t, err, "")
 	t.Logf("nsRwSet=%s, nsRwSet1=%s", spew.Sdump(nsRwSet), spew.Sdump(nsRwSet1))
-	testutil.AssertEquals(t, nsRwSet1, nsRwSet)
+	testutil.AssertEquals(t, nsRwSet.NameSpace, nsRwSet1.NameSpace)
+	testutil.AssertEquals(t, nsRwSet.KvRwSet, nsRwSet1.KvRwSet)
+	for j, hashedRwSet := range nsRwSet.CollHashedRwSets {
+		testutil.AssertEquals(t, hashedRwSet.CollectionName, nsRwSet1.CollHashedRwSets[j].CollectionName)
+		testutil.AssertEquals(t, hashedRwSet.HashedRwSet, nsRwSet1.CollHashedRwSets[j].HashedRwSet)
+		testutil.AssertEquals(t, hashedRwSet.PvtRwSetHash, nsRwSet1.CollHashedRwSets[j].PvtRwSetHash)
+	}
 }
 
 func TestNsRWSetConversionNoCollHashedRWs(t *testing.T) {
@@ -99,7 +119,9 @@ func TestCollHashedRwSetConversion(t *testing.T) {
 	testutil.AssertNoError(t, err, "")
 	collHashedRwSet1, err := collHashedRwSetFromProtoMsg(protoMsg)
 	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, collHashedRwSet1, collHashedRwSet)
+	testutil.AssertEquals(t, collHashedRwSet1.CollectionName, collHashedRwSet.CollectionName)
+	testutil.AssertEquals(t, collHashedRwSet1.HashedRwSet, collHashedRwSet.HashedRwSet)
+	testutil.AssertEquals(t, collHashedRwSet1.PvtRwSetHash, collHashedRwSet.PvtRwSetHash)
 }
 
 func sampleTxRwSet() *TxRwSet {
@@ -166,7 +188,14 @@ func TestTxPvtRwSetConversion(t *testing.T) {
 	txPvtRwSet1, err := TxPvtRwSetFromProtoMsg(protoMsg)
 	testutil.AssertNoError(t, err, "")
 	t.Logf("txPvtRwSet=%s, txPvtRwSet1=%s, Diff:%s", spew.Sdump(txPvtRwSet), spew.Sdump(txPvtRwSet1), pretty.Diff(txPvtRwSet, txPvtRwSet1))
-	testutil.AssertEquals(t, txPvtRwSet1, txPvtRwSet)
+	testutil.AssertEquals(t, len(txPvtRwSet.NsPvtRwSet), len(txPvtRwSet1.NsPvtRwSet))
+	for i, rwset := range txPvtRwSet.NsPvtRwSet {
+		testutil.AssertEquals(t, rwset.NameSpace, txPvtRwSet1.NsPvtRwSet[i].NameSpace)
+		for j, hashedRwSet := range rwset.CollPvtRwSets {
+			testutil.AssertEquals(t, hashedRwSet.CollectionName, txPvtRwSet1.NsPvtRwSet[i].CollPvtRwSets[j].CollectionName)
+			testutil.AssertEquals(t, hashedRwSet.KvRwSet, txPvtRwSet1.NsPvtRwSet[i].CollPvtRwSets[j].KvRwSet)
+		}
+	}
 }
 
 func sampleTxPvtRwSet() *TxPvtRwSet {

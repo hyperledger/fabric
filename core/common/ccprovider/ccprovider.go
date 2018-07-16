@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 )
 
 var ccproviderLogger = flogging.MustGetLogger("ccprovider")
@@ -252,16 +253,43 @@ func CheckInstantiationPolicy(name, version string, cdLedger *ChaincodeData) err
 // till the right package is found
 func GetCCPackage(buf []byte) (CCPackage, error) {
 	// try raw CDS
-	cccdspack := &CDSPackage{}
-	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
-		// try signed CDS
-		ccscdspack := &SignedCDSPackage{}
-		if _, err := ccscdspack.InitFromBuffer(buf); err != nil {
-			return nil, err
+	cds := &CDSPackage{}
+	if ccdata, err := cds.InitFromBuffer(buf); err != nil {
+		cds = nil
+	} else {
+		err = cds.ValidateCC(ccdata)
+		if err != nil {
+			cds = nil
 		}
-		return ccscdspack, nil
 	}
-	return cccdspack, nil
+
+	// try signed CDS
+	scds := &SignedCDSPackage{}
+	if ccdata, err := scds.InitFromBuffer(buf); err != nil {
+		scds = nil
+	} else {
+		err = scds.ValidateCC(ccdata)
+		if err != nil {
+			scds = nil
+		}
+	}
+
+	if cds != nil && scds != nil {
+		// Both were unmarshaled successfully, this is exactly why the approach of
+		// hoping proto fails for bad inputs is fatally flawed.
+		ccproviderLogger.Errorf("Could not determine chaincode package type, guessing SignedCDS")
+		return scds, nil
+	}
+
+	if cds != nil {
+		return cds, nil
+	}
+
+	if scds != nil {
+		return scds, nil
+	}
+
+	return nil, errors.New("could not unmarshaled chaincode package to CDS or SignedCDS")
 }
 
 // GetInstalledChaincodes returns a map whose key is the chaincode id and

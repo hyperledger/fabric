@@ -549,14 +549,15 @@ func (dd *DataRequest) FormattedDigests() []string {
 	if dd.MsgType == PullMsgType_IDENTITY_MSG {
 		return digestsToHex(dd.Digests)
 	}
-	return dd.Digests
+
+	return digestsAsStrings(dd.Digests)
 }
 
 func (dd *DataDigest) FormattedDigests() []string {
 	if dd.MsgType == PullMsgType_IDENTITY_MSG {
 		return digestsToHex(dd.Digests)
 	}
-	return dd.Digests
+	return digestsAsStrings(dd.Digests)
 }
 
 // Hash returns the SHA256 representation of the PvtDataDigest's bytes
@@ -577,10 +578,18 @@ func (res *RemotePvtDataResponse) ToString() string {
 	return fmt.Sprintf("%v", a)
 }
 
-func digestsToHex(digests []string) []string {
+func digestsAsStrings(digests [][]byte) []string {
 	a := make([]string, len(digests))
 	for i, dig := range digests {
-		a[i] = hex.EncodeToString([]byte(dig))
+		a[i] = string(dig)
+	}
+	return a
+}
+
+func digestsToHex(digests [][]byte) []string {
+	a := make([]string, len(digests))
+	for i, dig := range digests {
+		a[i] = hex.EncodeToString(dig)
 	}
 	return a
 }

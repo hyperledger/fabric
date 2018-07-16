@@ -260,6 +260,7 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 	if err != nil {
 		return nil, err
 	}
+
 	if cHdr.Type != int32(common.HeaderType_CHAINCODE_PACKAGE) {
 		return nil, fmt.Errorf("invalid type of envelope for chaincode package")
 	}

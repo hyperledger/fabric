@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -18,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -653,6 +653,28 @@ type testPeer struct {
 	aliveMsg     gdisc.NetworkMember
 }
 
+func (tp testPeer) Equal(other testPeer) bool {
+	if tp.mspID != other.mspID || !bytes.Equal(tp.identity, other.identity) {
+		return false
+	}
+	if tp.aliveMsg.Endpoint != other.aliveMsg.Endpoint || !bytes.Equal(tp.aliveMsg.PKIid, other.aliveMsg.PKIid) {
+		return false
+	}
+	if !proto.Equal(tp.aliveMsg.Envelope, other.aliveMsg.Envelope) {
+		return false
+	}
+	if !bytes.Equal(tp.stateInfoMsg.PKIid, other.stateInfoMsg.PKIid) {
+		return false
+	}
+	if !proto.Equal(tp.stateInfoMsg.Envelope, other.stateInfoMsg.Envelope) {
+		return false
+	}
+	if !proto.Equal(tp.stateInfoMsg.Properties, other.stateInfoMsg.Properties) {
+		return false
+	}
+	return true
+}
+
 type testPeerSet []*testPeer
 
 func (ps testPeerSet) withoutStateInfo() testPeerSet {
@@ -710,7 +732,7 @@ func (ps testPeerSet) SubsetEqual(that testPeerSet) bool {
 
 func (ps testPeerSet) Contains(peer *testPeer) bool {
 	for _, p := range ps {
-		if reflect.DeepEqual(p, peer) {
+		if peer.Equal(*p) {
 			return true
 		}
 	}
@@ -859,12 +881,6 @@ func policyFromString(s string) *common.SignaturePolicyEnvelope {
 		panic(err)
 	}
 	return p
-}
-
-func randString() string {
-	buff := make([]byte, 10)
-	rand.Read(buff)
-	return hex.EncodeToString(buff)
 }
 
 type signer struct {

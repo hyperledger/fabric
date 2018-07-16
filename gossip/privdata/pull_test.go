@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -33,6 +34,24 @@ import (
 func init() {
 	logging.SetLevel(logging.DEBUG, util.LoggingPrivModule)
 	policy2Filter = make(map[privdata.CollectionAccessPolicy]privdata.Filter)
+}
+
+// protoMatcher is used to test that a slice of protos equals another slice of protos.
+// This is needed because in general reflect.Equal(proto1, proto1) may not be true.
+func protoMatcher(pvds ...*proto.PvtDataDigest) func([]*proto.PvtDataDigest) bool {
+	return func(ipvds []*proto.PvtDataDigest) bool {
+		if len(pvds) != len(ipvds) {
+			return false
+		}
+
+		for i, pvd := range pvds {
+			if !pb.Equal(pvd, ipvds[i]) {
+				return false
+			}
+		}
+
+		return true
+	}
 }
 
 var policyLock sync.Mutex
@@ -295,7 +314,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 		}: p2TransientStore,
 	}
 
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, uint64(0)).Return(store, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), uint64(0)).Return(store, nil)
 
 	factoryMock3 := &collectionAccessFactoryMock{}
 	policyMock3 := &collectionAccessPolicyMock{}
@@ -305,7 +324,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(policyMock3, nil)
 
 	p3 := gn.newPuller("p3", newCollectionStore(), factoryMock3)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, uint64(0)).Run(func(_ mock.Arguments) {
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), uint64(0)).Run(func(_ mock.Arguments) {
 		t.Fatal("p3 shouldn't have been selected for pull")
 	})
 
@@ -348,10 +367,10 @@ func TestPullerDataNotAvailable(t *testing.T) {
 		},
 	}
 
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, mock.Anything).Return(store, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), mock.Anything).Return(store, nil)
 
 	p3 := gn.newPuller("p3", newCollectionStore(), factoryMock)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, mock.Anything).Run(func(_ mock.Arguments) {
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), mock.Anything).Run(func(_ mock.Arguments) {
 		t.Fatal("p3 shouldn't have been selected for pull")
 	})
 
@@ -444,7 +463,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 		},
 	}
 
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, mock.Anything).Return(store, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), mock.Anything).Return(store, nil)
 
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p3")
 	factoryMock3 := &collectionAccessFactoryMock{}
@@ -455,7 +474,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock1, nil)
 
 	p3 := gn.newPuller("p3", policyStore, factoryMock3)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, mock.Anything).Return(store, nil)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), mock.Anything).Return(store, nil)
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
 	fetchedMessages, err := p1.fetch(d2s, uint64(1))
@@ -512,7 +531,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 		}: p2TransientStore,
 	}
 
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig1}, mock.Anything).Return(store1, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig1)), mock.Anything).Return(store1, nil)
 
 	p3TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
@@ -547,7 +566,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 		Namespace:  "ns1",
 	}
 
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig2}, mock.Anything).Return(store2, nil)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig2)), mock.Anything).Return(store2, nil)
 
 	dasf := &digestsAndSourceFactory{}
 	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig1)).toSources().mapDigest(toDigKey(dig2)).toSources().create(), uint64(1))
@@ -619,7 +638,7 @@ func TestPullerRetries(t *testing.T) {
 	factoryMock2.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
 
 	p2 := gn.newPuller("p2", policyStore, factoryMock2)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, uint64(0)).Return(store, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), uint64(0)).Return(store, nil)
 
 	// p3
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p1")
@@ -631,7 +650,7 @@ func TestPullerRetries(t *testing.T) {
 	factoryMock3.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock3, nil)
 
 	p3 := gn.newPuller("p3", policyStore, factoryMock3)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, uint64(0)).Return(store, nil)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), uint64(0)).Return(store, nil)
 
 	// p4
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p4")
@@ -643,7 +662,7 @@ func TestPullerRetries(t *testing.T) {
 	factoryMock4.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock4, nil)
 
 	p4 := gn.newPuller("p4", policyStore, factoryMock4)
-	p4.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, uint64(0)).Return(store, nil)
+	p4.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), uint64(0)).Return(store, nil)
 
 	// p5
 	policyStore = newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p5")
@@ -655,7 +674,7 @@ func TestPullerRetries(t *testing.T) {
 	factoryMock5.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock5, nil)
 
 	p5 := gn.newPuller("p5", policyStore, factoryMock5)
-	p5.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig}, uint64(0)).Return(store, nil)
+	p5.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), uint64(0)).Return(store, nil)
 
 	// Fetch from someone
 	dasf := &digestsAndSourceFactory{}
@@ -744,11 +763,11 @@ func TestPullerPreferEndorsers(t *testing.T) {
 
 	// We only define an action for dig2 on p2, and the test would fail with panic if any other peer is asked for
 	// a private RWSet on dig2
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig2}, uint64(0)).Return(store, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig2)), uint64(0)).Return(store, nil)
 
 	// We only define an action for dig1 on p3, and the test would fail with panic if any other peer is asked for
 	// a private RWSet on dig1
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig1}, uint64(0)).Return(store, nil)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig1)), uint64(0)).Return(store, nil)
 
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(toDigKey(dig1)).toSources("p3").mapDigest(toDigKey(dig2)).toSources().create()
@@ -836,16 +855,16 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 		}: privateData2,
 	}
 
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig1}, 0).Return(store, nil)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig1}, 0).Return(store, nil).
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig1)), 0).Return(store, nil)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig1)), 0).Return(store, nil).
 		Run(
 			func(arg mock.Arguments) {
 				assert.Fail(t, "we should not fetch private data from peers where it was purged")
 			},
 		)
 
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig2}, uint64(0)).Return(store, nil)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", []*proto.PvtDataDigest{dig2}, uint64(0)).Return(store, nil).
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig2)), uint64(0)).Return(store, nil)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig2)), uint64(0)).Return(store, nil).
 		Run(
 			func(mock.Arguments) {
 				assert.Fail(t, "we should not fetch private data of collection2 from peer 2")

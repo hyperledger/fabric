@@ -1455,7 +1455,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 			pvtRWSet := &rwset.TxPvtReadWriteSet{}
 			err = pb.Unmarshal(pvtDataPayload.Payload, pvtRWSet)
 			assertion.NoError(err)
-			assertion.Equal(p.WriteSet, pvtRWSet)
+			assertion.True(pb.Equal(p.WriteSet, pvtRWSet))
 		}
 	}
 }

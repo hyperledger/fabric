@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -263,7 +262,7 @@ func TestProposal(t *testing.T) {
 		t.Fatalf("Could not deserialize the chaincode proposal, err %s\n", err)
 		return
 	}
-	if !reflect.DeepEqual(prop, propBack) {
+	if !proto.Equal(prop, propBack) {
 		t.Fatalf("Proposal and deserialized proposals don't match\n")
 		return
 	}

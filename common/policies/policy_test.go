@@ -212,7 +212,10 @@ func TestPrincipalUniqueSet(t *testing.T) {
 	v := reflect.Indirect(reflect.ValueOf(msp.MSPPrincipal{}))
 	// Ensure msp.MSPPrincipal has only 2 fields.
 	// This is essential for 'UniqueSet' to work properly
-	assert.Equal(t, 2, v.NumField())
+	// XXX This is a rather brittle check and brittle way to fix the test
+	// There seems to be an assumption that the number of fields in the proto
+	// struct matches the number of fields in the proto message
+	assert.Equal(t, 5, v.NumField())
 }
 
 func TestPrincipalSetContainingOnly(t *testing.T) {

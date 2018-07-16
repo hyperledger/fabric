@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // AssertNil varifies that the value is nil
@@ -62,6 +64,14 @@ func AssertEquals(t testing.TB, actual interface{}, expected interface{}) {
 	//convert JSONs to maps, this will allow comparison by DeepEqual
 	actual = convertJSONToMap(actual)
 	expected = convertJSONToMap(expected)
+
+	if pa, ok := actual.(proto.Message); ok {
+		if pe, ok := actual.(proto.Message); ok {
+			if proto.Equal(pa, pe) {
+				return
+			}
+		}
+	}
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Values are not equal.\n Actual=[%#v], \n Expected=[%#v]\n %s", actual, expected, getCallerInfo())

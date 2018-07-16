@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	gproto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -300,7 +301,7 @@ func TestSelf(t *testing.T) {
 	gMsg := gc.Self().GossipMessage
 	env := gc.Self().Envelope
 	sMsg, _ := env.ToGossipMessage()
-	assert.Equal(t, gMsg, sMsg.GossipMessage)
+	assert.True(t, gproto.Equal(gMsg, sMsg.GossipMessage))
 	assert.Equal(t, gMsg.GetStateInfo().Properties.LedgerHeight, uint64(1))
 	assert.Equal(t, gMsg.GetStateInfo().PkiId, []byte("1"))
 }
@@ -606,7 +607,7 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 	// Since we checked the length, it proves that the old blocks were discarded, since we had much more
 	// total blocks overall than our capacity
 	for seq := range lastPullPhase {
-		assert.Contains(t, msg.GetDataDig().Digests, fmt.Sprintf("%d", seq))
+		assert.Contains(t, msg.GetDataDig().Digests, []byte(fmt.Sprintf("%d", seq)))
 	}
 }
 
@@ -1792,7 +1793,7 @@ func TestChannelPullWithDigestsFilter(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	pullPhase := simulatePullPhaseWithVariableDigest(gc, t, &wg, func(envelope *proto.Envelope) {}, []string{"10", "11"}, []string{"11"}, 11)
+	pullPhase := simulatePullPhaseWithVariableDigest(gc, t, &wg, func(envelope *proto.Envelope) {}, [][]byte{[]byte("10"), []byte("11")}, []string{"11"}, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase)
 	wg.Wait()
 
@@ -1911,10 +1912,10 @@ func createDataMsg(seqnum uint64, channel common.ChainID) *proto.SignedGossipMes
 }
 
 func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator, seqs ...uint64) func(args mock.Arguments) {
-	return simulatePullPhaseWithVariableDigest(gc, t, wg, mutator, []string{"10", "11"}, []string{"10", "11"}, seqs...)
+	return simulatePullPhaseWithVariableDigest(gc, t, wg, mutator, [][]byte{[]byte("10"), []byte("11")}, []string{"10", "11"}, seqs...)
 }
 
-func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator, proposedDigestSeqs []string, resultDigestSeqs []string, seqs ...uint64) func(args mock.Arguments) {
+func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator, proposedDigestSeqs [][]byte, resultDigestSeqs []string, seqs ...uint64) func(args mock.Arguments) {
 	var l sync.Mutex
 	var sentHello bool
 	var sentReq bool
@@ -1945,7 +1946,7 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 		if msg.IsDataReq() && !sentReq {
 			sentReq = true
 			dataReq := msg.GetDataReq()
-			for _, expectedDigest := range resultDigestSeqs {
+			for _, expectedDigest := range util.StringsToBytes(resultDigestSeqs) {
 				assert.Contains(t, dataReq.Digests, expectedDigest)
 			}
 			assert.Equal(t, len(resultDigestSeqs), len(dataReq.Digests))

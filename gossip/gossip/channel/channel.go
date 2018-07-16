@@ -406,7 +406,7 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 		digests := digestMsg.Digests
 		digestMsg.Digests = nil
 		for i := range digests {
-			seqNum, err := strconv.ParseUint(digests[i], 10, 64)
+			seqNum, err := strconv.ParseUint(string(digests[i]), 10, 64)
 			if err != nil {
 				gc.logger.Warningf("Can't parse digest %s : %+v", digests[i], errors.WithStack(err))
 				continue

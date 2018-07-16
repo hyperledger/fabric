@@ -197,7 +197,7 @@ enum PullMsgType {
 // certain data blocks from a remote peer
 message DataRequest {
     uint64 nonce             = 1;
-    repeated string digests  = 2;
+    repeated bytes digests  = 2;
     PullMsgType msg_type     = 3;
 }
 
@@ -221,7 +221,7 @@ message DataUpdate {
 // to the initator peer and contains the data items it has
 message DataDigest {
     uint64 nonce             = 1;
-    repeated string digests  = 2; // Maybe change this to bitmap later on
+    repeated bytes digests  = 2; // Maybe change this to bitmap later on
     PullMsgType msg_type     = 3;
 }
 
