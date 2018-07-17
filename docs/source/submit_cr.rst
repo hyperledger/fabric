@@ -215,7 +215,7 @@ If you see nothing wrong with your CR it might be that the CI process
 simply failed for some reason unrelated to your change. In that case
 you may want to restart the CI process by posting a reply to your CR
 with the simple content "reverify".  Check the `CI management page
-<https://github.com/hyperledger/ci-management/blob/master/docs/fabric_ci_process.md>`__
+<https://github.com/hyperledger/ci-management/blob/master/docs/source/fabric_ci_process.rst>`__
 for additional information and options on this.
 
 Modifying your change request
