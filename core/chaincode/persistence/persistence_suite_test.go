@@ -14,9 +14,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-//go:generate counterfeiter -o mock/iowriter.go -fake-name IOWriter . ioWriter
-type ioWriter interface {
-	persistence.IOWriter
+//go:generate counterfeiter -o mock/ioreadwriter.go -fake-name IOReadWriter . ioReadWriter
+type ioReadWriter interface {
+	persistence.IOReadWriter
 }
 
 func TestPersistence(t *testing.T) {

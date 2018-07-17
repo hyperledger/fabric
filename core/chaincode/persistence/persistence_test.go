@@ -24,12 +24,12 @@ import (
 var _ = Describe("Persistence", func() {
 	Describe("FilesystemWriter", func() {
 		var (
-			filesystemWriter *persistence.FilesystemWriter
-			testDir          string
+			filesystemIO *persistence.FilesystemIO
+			testDir      string
 		)
 
 		BeforeEach(func() {
-			filesystemWriter = &persistence.FilesystemWriter{}
+			filesystemIO = &persistence.FilesystemIO{}
 
 			var err error
 			testDir, err = ioutil.TempDir("", "persistence-test")
@@ -42,7 +42,7 @@ var _ = Describe("Persistence", func() {
 
 		It("writes a file", func() {
 			path := filepath.Join(testDir, "write")
-			err := filesystemWriter.WriteFile(path, []byte("test"), 0600)
+			err := filesystemIO.WriteFile(path, []byte("test"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -54,7 +54,7 @@ var _ = Describe("Persistence", func() {
 			err := ioutil.WriteFile(path, []byte("test"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = filesystemWriter.Stat(path)
+			_, err = filesystemIO.Stat(path)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -66,27 +66,40 @@ var _ = Describe("Persistence", func() {
 			_, err = os.Stat(path)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = filesystemWriter.Remove(path)
+			err = filesystemIO.Remove(path)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("reads a file", func() {
+			path := filepath.Join(testDir, "read")
+			err := ioutil.WriteFile(path, []byte("test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = os.Stat(path)
+			Expect(err).NotTo(HaveOccurred())
+
+			fileBytes, err := filesystemIO.ReadFile(path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fileBytes).To(Equal([]byte("test")))
+		})
 	})
 
 	Describe("Save", func() {
 		var (
-			mockWriter *mock.IOWriter
-			store      *persistence.Store
-			pkgBytes   []byte
-			hashString string
+			mockReadWriter *mock.IOReadWriter
+			store          *persistence.Store
+			pkgBytes       []byte
+			hashString     string
 		)
 
 		BeforeEach(func() {
-			mockWriter = &mock.IOWriter{}
-			mockWriter.StatReturns(nil, errors.New("gameball"))
+			mockReadWriter = &mock.IOReadWriter{}
+			mockReadWriter.StatReturns(nil, errors.New("gameball"))
 			store = &persistence.Store{
-				Writer: mockWriter,
+				ReadWriter: mockReadWriter,
 			}
 
 			pkgBytes = []byte("testpkg")
@@ -100,7 +113,7 @@ var _ = Describe("Persistence", func() {
 
 		Context("when the metadata file already exists", func() {
 			BeforeEach(func() {
-				mockWriter.StatReturnsOnCall(0, nil, nil)
+				mockReadWriter.StatReturnsOnCall(0, nil, nil)
 			})
 
 			It("returns an error", func() {
@@ -112,8 +125,8 @@ var _ = Describe("Persistence", func() {
 
 		Context("when the chaincode install package already exists", func() {
 			BeforeEach(func() {
-				mockWriter.StatReturnsOnCall(0, nil, errors.New("worldcup"))
-				mockWriter.StatReturnsOnCall(1, nil, nil)
+				mockReadWriter.StatReturnsOnCall(0, nil, errors.New("worldcup"))
+				mockReadWriter.StatReturnsOnCall(1, nil, nil)
 			})
 
 			It("returns an error", func() {
@@ -125,8 +138,8 @@ var _ = Describe("Persistence", func() {
 
 		Context("when writing the metadata file fails", func() {
 			BeforeEach(func() {
-				mockWriter.StatReturns(nil, errors.New("futbol"))
-				mockWriter.WriteFileReturns(errors.New("soccer"))
+				mockReadWriter.StatReturns(nil, errors.New("futbol"))
+				mockReadWriter.WriteFileReturns(errors.New("soccer"))
 			})
 
 			It("returns an error", func() {
@@ -138,8 +151,8 @@ var _ = Describe("Persistence", func() {
 
 		Context("when writing chaincode install package file fails and the metadata file is removed successfully", func() {
 			BeforeEach(func() {
-				mockWriter.StatReturns(nil, errors.New("futbol1"))
-				mockWriter.WriteFileReturnsOnCall(1, errors.New("soccer1"))
+				mockReadWriter.StatReturns(nil, errors.New("futbol1"))
+				mockReadWriter.WriteFileReturnsOnCall(1, errors.New("soccer1"))
 			})
 
 			It("returns an error", func() {
@@ -151,15 +164,84 @@ var _ = Describe("Persistence", func() {
 
 		Context("when writing the chaincode install package file fails with the metadata remove also fails", func() {
 			BeforeEach(func() {
-				mockWriter.StatReturns(nil, errors.New("futbol2"))
-				mockWriter.WriteFileReturnsOnCall(1, errors.New("soccer2"))
-				mockWriter.RemoveReturns(errors.New("gooooool2"))
+				mockReadWriter.StatReturns(nil, errors.New("futbol2"))
+				mockReadWriter.WriteFileReturnsOnCall(1, errors.New("soccer2"))
+				mockReadWriter.RemoveReturns(errors.New("gooooool2"))
 			})
 
 			It("returns an error", func() {
 				err := store.Save("testcc", "1.0", pkgBytes)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package"))
+			})
+		})
+	})
+
+	Describe("Load", func() {
+		var (
+			mockReadWriter *mock.IOReadWriter
+			store          *persistence.Store
+		)
+
+		BeforeEach(func() {
+			mockReadWriter = &mock.IOReadWriter{}
+			mockReadWriter.ReadFileReturnsOnCall(0, []byte("cornerkick"), nil)
+			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`{"Name":"vuvuzela","Version":"2.0"}`), nil)
+			store = &persistence.Store{
+				ReadWriter: mockReadWriter,
+			}
+		})
+
+		It("loads successfully", func() {
+			ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ccInstallPkgBytes).To(Equal([]byte("cornerkick")))
+			Expect(name).To(Equal("vuvuzela"))
+			Expect(version).To(Equal("2.0"))
+		})
+
+		Context("when reading the chaincode install package fails", func() {
+			BeforeEach(func() {
+				mockReadWriter.ReadFileReturnsOnCall(0, nil, errors.New("redcard"))
+			})
+
+			It("returns an error", func() {
+				ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error reading chaincode install package"))
+				Expect(len(ccInstallPkgBytes)).To(Equal(0))
+				Expect(name).To(Equal(""))
+				Expect(version).To(Equal(""))
+			})
+		})
+
+		Context("when reading the metadata fails", func() {
+			BeforeEach(func() {
+				mockReadWriter.ReadFileReturnsOnCall(1, nil, errors.New("yellowcard"))
+			})
+
+			It("returns an error", func() {
+				ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error reading metadata"))
+				Expect(len(ccInstallPkgBytes)).To(Equal(0))
+				Expect(name).To(Equal(""))
+				Expect(version).To(Equal(""))
+			})
+		})
+
+		Context("when unmarshaling the metadata fails", func() {
+			BeforeEach(func() {
+				mockReadWriter.ReadFileReturnsOnCall(1, nil, nil)
+			})
+
+			It("returns an error", func() {
+				ccInstallPkgBytes, name, version, err := store.Load([]byte("hash"))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error unmarshaling metadata"))
+				Expect(len(ccInstallPkgBytes)).To(Equal(0))
+				Expect(name).To(Equal(""))
+				Expect(version).To(Equal(""))
 			})
 		})
 	})
