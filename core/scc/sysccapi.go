@@ -46,7 +46,7 @@ type SystemChaincode struct {
 	//InitArgs initialization arguments to startup the system chaincode
 	InitArgs [][]byte
 
-	// Chaincode can be invoked to create the actual chaincode instance
+	// Chaincode holds the actual chaincode instance
 	Chaincode shim.Chaincode
 
 	// InvokableExternal keeps track of whether
@@ -65,10 +65,51 @@ type SystemChaincode struct {
 	Enabled bool
 }
 
+type SysCCWrapper struct {
+	SCC *SystemChaincode
+}
+
+func (sccw *SysCCWrapper) Name() string              { return sccw.SCC.Name }
+func (sccw *SysCCWrapper) Path() string              { return sccw.SCC.Path }
+func (sccw *SysCCWrapper) InitArgs() [][]byte        { return sccw.SCC.InitArgs }
+func (sccw *SysCCWrapper) Chaincode() shim.Chaincode { return sccw.SCC.Chaincode }
+func (sccw *SysCCWrapper) InvokableExternal() bool   { return sccw.SCC.InvokableExternal }
+func (sccw *SysCCWrapper) InvokableCC2CC() bool      { return sccw.SCC.InvokableCC2CC }
+func (sccw *SysCCWrapper) Enabled() bool             { return sccw.SCC.Enabled }
+
+type SelfDescribingSysCC interface {
+	//Unique name of the system chaincode
+	Name() string
+
+	//Path to the system chaincode; currently not used
+	Path() string
+
+	//InitArgs initialization arguments to startup the system chaincode
+	InitArgs() [][]byte
+
+	// Chaincode returns the underlying chaincode
+	Chaincode() shim.Chaincode
+
+	// InvokableExternal keeps track of whether
+	// this system chaincode can be invoked
+	// through a proposal sent to this peer
+	InvokableExternal() bool
+
+	// InvokableCC2CC keeps track of whether
+	// this system chaincode can be invoked
+	// by way of a chaincode-to-chaincode
+	// invocation
+	InvokableCC2CC() bool
+
+	// Enabled a convenient switch to enable/disable system chaincode without
+	// having to remove entry from importsysccs.go
+	Enabled() bool
+}
+
 // registerSysCC registers the given system chaincode with the peer
-func (p *Provider) registerSysCC(syscc *SystemChaincode) (bool, error) {
-	if !syscc.Enabled || !syscc.isWhitelisted() {
-		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name, syscc.Path, syscc.Enabled))
+func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
+	if !syscc.Enabled() || !isWhitelisted(syscc) {
+		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name(), syscc.Path(), syscc.Enabled()))
 		return false, nil
 	}
 
@@ -76,14 +117,14 @@ func (p *Provider) registerSysCC(syscc *SystemChaincode) (bool, error) {
 	version := util.GetSysCCVersion()
 
 	ccid := &ccintf.CCID{
-		Name:    syscc.Name,
+		Name:    syscc.Name(),
 		Version: version,
 	}
-	err := p.Registrar.Register(ccid, syscc.Chaincode)
+	err := p.Registrar.Register(ccid, syscc.Chaincode())
 	if err != nil {
 		//if the type is registered, the instance may not be... keep going
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {
-			errStr := fmt.Sprintf("could not register (%s,%v): %s", syscc.Path, syscc, err)
+			errStr := fmt.Sprintf("could not register (%s,%v): %s", syscc.Path(), syscc, err)
 			sysccLogger.Error(errStr)
 			return false, fmt.Errorf(errStr)
 		}
@@ -94,9 +135,9 @@ func (p *Provider) registerSysCC(syscc *SystemChaincode) (bool, error) {
 }
 
 // deploySysCC deploys the given system chaincode on a chain
-func (syscc *SystemChaincode) deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider) error {
-	if !syscc.Enabled || !syscc.isWhitelisted() {
-		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
+func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
+	if !syscc.Enabled() || !isWhitelisted(syscc) {
+		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name(), syscc.Path()))
 		return nil
 	}
 
@@ -106,7 +147,7 @@ func (syscc *SystemChaincode) deploySysCC(chainID string, ccprov ccprovider.Chai
 	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
-			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
+			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name(), chainID))
 		}
 
 		//init can do GetState (and other Get's) even if Puts cannot be
@@ -121,8 +162,8 @@ func (syscc *SystemChaincode) deploySysCC(chainID string, ccprov ccprovider.Chai
 		defer txsim.Done()
 	}
 
-	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
 
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
 
@@ -136,15 +177,15 @@ func (syscc *SystemChaincode) deploySysCC(chainID string, ccprov ccprovider.Chai
 		err = errors.New(resp.Message)
 	}
 
-	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name, chainID, syscc.Path)
+	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name(), chainID, syscc.Path())
 
 	return err
 }
 
 // deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
-func (syscc *SystemChaincode) deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider) error {
-	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
+	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
 
 	ctx := context.Background()
 	// First build and get the deployment spec
@@ -153,16 +194,16 @@ func (syscc *SystemChaincode) deDeploySysCC(chainID string, ccprov ccprovider.Ch
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprovider.NewCCContext(chainID, syscc.Name, version, "", true, nil, nil)
+	cccid := ccprovider.NewCCContext(chainID, syscc.Name(), version, "", true, nil, nil)
 
 	err := ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
 
 	return err
 }
 
-func (syscc *SystemChaincode) isWhitelisted() bool {
+func isWhitelisted(syscc SelfDescribingSysCC) bool {
 	chaincodes := viper.GetStringMapString("chaincode.system")
-	val, ok := chaincodes[syscc.Name]
+	val, ok := chaincodes[syscc.Name()]
 	enabled := val == "enable" || val == "true" || val == "yes"
 	return ok && enabled
 }

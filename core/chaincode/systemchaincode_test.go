@@ -150,12 +150,14 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, *ChaincodeSupport, error) {
 	go grpcServer.Serve(lis)
 
 	//set systemChaincodes to sample
-	syscc := &scc.SystemChaincode{
-		Enabled:   true,
-		Name:      "sample_syscc",
-		Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
-		InitArgs:  [][]byte{},
-		Chaincode: &SampleSysCC{},
+	syscc := &scc.SysCCWrapper{
+		SCC: &scc.SystemChaincode{
+			Enabled:   true,
+			Name:      "sample_syscc",
+			Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
+			InitArgs:  [][]byte{},
+			Chaincode: &SampleSysCC{},
+		},
 	}
 
 	sysccinfo := &oldSysCCInfo{origSysCCWhitelist: viper.GetStringMapString("chaincode.system")}

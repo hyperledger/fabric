@@ -28,6 +28,14 @@ func New(aclProvider aclmgmt.ACLProvider) *LedgerQuerier {
 	}
 }
 
+func (e *LedgerQuerier) Name() string              { return "qscc" }
+func (e *LedgerQuerier) Path() string              { return "github.com/hyperledger/fabric/core/scc/qscc" }
+func (e *LedgerQuerier) InitArgs() [][]byte        { return nil }
+func (e *LedgerQuerier) Chaincode() shim.Chaincode { return e }
+func (e *LedgerQuerier) InvokableExternal() bool   { return true }
+func (e *LedgerQuerier) InvokableCC2CC() bool      { return true }
+func (e *LedgerQuerier) Enabled() bool             { return true }
+
 // LedgerQuerier implements the ledger query functions, including:
 // - GetChainInfo returns BlockchainInfo
 // - GetBlockByNumber returns a block

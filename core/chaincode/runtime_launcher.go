@@ -39,7 +39,15 @@ type RuntimeLauncher struct {
 // LaunchInit launches a container which is not yet defined in the LSCC table
 // This is only necessary for the pre v1.3 lifecycle
 func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error {
-	err := r.start(ctx, cccid, spec)
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Name:          spec.Name(),
+		Version:       cccid.Version,
+		Path:          spec.Path(),
+		Type:          spec.CCType(),
+		ContainerType: getVMType(spec),
+	}
+
+	err := r.start(ctx, ccci)
 	if err != nil {
 		chaincodeLogger.Errorf("start failed: %+v", err)
 		return err
@@ -53,12 +61,20 @@ func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCCo
 // Launch chaincode with the appropriate runtime.
 func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
 	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
-	cds, err := r.getDeploymentSpec(ctx, cccid, chaincodeID)
+	cds, err := r.Lifecycle.GetChaincodeDeploymentSpec(ctx, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, chaincodeID.Name)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to get deployment spec for %s", cccid.GetCanonicalName())
 	}
 
-	err = r.start(ctx, cccid, cds)
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Name:          cds.Name(),
+		Version:       cds.Version(),
+		Path:          cds.Path(),
+		Type:          cds.CCType(),
+		ContainerType: getVMType(cds),
+	}
+
+	err = r.start(ctx, ccci)
 	if err != nil {
 		chaincodeLogger.Errorf("start failed: %+v", err)
 		return err
@@ -69,44 +85,22 @@ func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContex
 	return nil
 }
 
-func (r *RuntimeLauncher) getDeploymentSpec(ctx context.Context, cccid *ccprovider.CCContext, chaincodeID *pb.ChaincodeID) (*pb.ChaincodeDeploymentSpec, error) {
-	cname := cccid.GetCanonicalName()
-	if cccid.Syscc {
-		return nil, errors.Errorf("a syscc should be running (it cannot be launched) %s", cname)
-	}
-
-	cds, err := r.Lifecycle.GetChaincodeDeploymentSpec(ctx, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, chaincodeID.Name)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get deployment spec for %s", cname)
-	}
-
-	return cds, nil
-}
-
-func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
-	codePackage := cds.CodePackage
+func (r *RuntimeLauncher) start(ctx context.Context, ccci *lifecycle.ChaincodeContainerInfo) error {
+	var codePackage []byte
 	// Note, it is not actually possible for cds.CodePackage to be non-nil in the real world
 	// But some of the tests rely on the idea that it might be set.
-	if codePackage == nil && cds.ExecEnv != pb.ChaincodeDeploymentSpec_SYSTEM {
+	if ccci.ContainerType != pb.ChaincodeDeploymentSpec_SYSTEM.String() {
 		var err error
-		codePackage, err = r.PackageProvider.GetChaincodeCodePackage(cds.Name(), cccid.Version)
+		codePackage, err = r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
 		if err != nil {
 			return errors.Wrap(err, "failed to get chaincode package")
 		}
 	}
 
-	cname := cccid.GetCanonicalName()
+	cname := ccci.Name + ":" + ccci.Version
 	launchState, err := r.Registry.Launching(cname)
 	if err != nil {
 		return errors.Wrapf(err, "failed to register %s as launching", cname)
-	}
-
-	ccci := &lifecycle.ChaincodeContainerInfo{
-		Name:          cds.Name(),
-		Version:       cccid.Version,
-		Path:          cds.Path(),
-		Type:          cds.CCType(),
-		ContainerType: getVMType(cds),
 	}
 
 	startFail := make(chan error, 1)
@@ -125,7 +119,7 @@ func (r *RuntimeLauncher) start(ctx context.Context, cccid *ccprovider.CCContext
 		}
 	case err = <-startFail:
 	case <-time.After(r.StartupTimeout):
-		err = errors.Errorf("timeout expired while starting chaincode %s for transaction %s", cname, cccid.TxID)
+		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", cname)
 	}
 
 	if err != nil {

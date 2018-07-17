@@ -46,6 +46,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/scc/lscc"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	plgr "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -196,9 +197,8 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
-	for _, cc := range scc.CreateSysCCs(ccp, sccp, mockAclProvider, pr) {
-		sccp.RegisterSysCC(cc)
-	}
+
+	sccp.RegisterSysCC(lscc.New(sccp, mockAclProvider, pr))
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
@@ -1026,18 +1026,26 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		return nil
 	}
 
-	launcher := &RuntimeLauncher{
-		Runtime:        fakeRuntime,
-		Registry:       handlerRegistry,
-		StartupTimeout: 10 * time.Second,
-	}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
-	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+	fakePackageProvider := &mock.PackageProvider{}
+	fakePackageProvider.GetChaincodeCodePackageReturns(code, nil)
+
+	launcher := &RuntimeLauncher{
+		Runtime:         fakeRuntime,
+		Registry:        handlerRegistry,
+		StartupTimeout:  10 * time.Second,
+		PackageProvider: fakePackageProvider,
+	}
+
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Type:          "GOLANG",
+		Name:          "testcc",
+		Version:       "0",
+		ContainerType: "DOCKER",
+	}
 
 	//actual test - everythings good
-	err := launcher.start(context.Background(), cccid, cds)
+	err := launcher.start(context.Background(), ccci)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -1051,18 +1059,26 @@ func TestStartAndWaitTimeout(t *testing.T) {
 		return nil
 	}
 
-	launcher := &RuntimeLauncher{
-		Runtime:        fakeRuntime,
-		Registry:       NewHandlerRegistry(false),
-		StartupTimeout: 500 * time.Millisecond,
-	}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
-	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+	fakePackageProvider := &mock.PackageProvider{}
+	fakePackageProvider.GetChaincodeCodePackageReturns(code, nil)
+
+	launcher := &RuntimeLauncher{
+		Runtime:         fakeRuntime,
+		Registry:        NewHandlerRegistry(false),
+		StartupTimeout:  500 * time.Millisecond,
+		PackageProvider: fakePackageProvider,
+	}
+
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Type:          "GOLANG",
+		Name:          "testcc",
+		Version:       "0",
+		ContainerType: "DOCKER",
+	}
 
 	//the actual test - timeout 1000 > 500
-	err := launcher.start(context.Background(), cccid, cds)
+	err := launcher.start(context.Background(), ccci)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -1075,18 +1091,26 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
-	launcher := &RuntimeLauncher{
-		Runtime:        fakeRuntime,
-		Registry:       NewHandlerRegistry(false),
-		StartupTimeout: 10 * time.Second,
-	}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
-	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+	fakePackageProvider := &mock.PackageProvider{}
+	fakePackageProvider.GetChaincodeCodePackageReturns(code, nil)
+
+	launcher := &RuntimeLauncher{
+		Runtime:         fakeRuntime,
+		Registry:        NewHandlerRegistry(false),
+		StartupTimeout:  10 * time.Second,
+		PackageProvider: fakePackageProvider,
+	}
+
+	ccci := &lifecycle.ChaincodeContainerInfo{
+		Type:          "GOLANG",
+		Name:          "testcc",
+		Version:       "0",
+		ContainerType: "DOCKER",
+	}
 
 	//actual test - container launch gives error
-	err := launcher.start(context.Background(), cccid, cds)
+	err := launcher.start(context.Background(), ccci)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
