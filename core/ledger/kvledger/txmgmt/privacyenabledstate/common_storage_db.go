@@ -8,7 +8,6 @@ package privacyenabledstate
 
 import (
 	"encoding/base64"
-	"fmt"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -20,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("privacyenabledstate")
@@ -185,7 +185,7 @@ func (s CommonStorageDB) ExecuteQueryOnPrivateData(namespace, collection, query 
 // ApplyUpdates overrides the funciton in statedb.VersionedDB and throws appropriate error message
 // Otherwise, somewhere in the code, usage of this function could lead to updating only public data.
 func (s *CommonStorageDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
-	return fmt.Errorf("This function should not be invoked on this type. Please invoke function 'ApplyPrivacyAwareUpdates'")
+	return errors.New("this function should not be invoked on this type. Please invoke function ApplyPrivacyAwareUpdates")
 }
 
 // ApplyPrivacyAwareUpdates implements corresponding function in interface DB
@@ -210,13 +210,12 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 	}
 
 	if chaincodeDefinition == nil {
-		return fmt.Errorf("chaincode definition not found while creating couchdb index on chain")
+		return errors.New("chaincode definition not found while creating couchdb index")
 	}
 
 	dbArtifacts, err := ccprovider.ExtractFileEntries(dbArtifactsTar, indexCapable.GetDBType())
 	if err != nil {
-		logger.Errorf("error during extracting db artifacts from tar for chaincode=[%s] on chain=[%s]. error=%s",
-			chaincodeDefinition, chaincodeDefinition.Name, err)
+		logger.Errorf("Error extracting db artifacts from tar for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 		return nil
 	}
 	for directoryPath, archiveDirectoryEntries := range dbArtifacts {
@@ -226,7 +225,7 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 		if directoryPathArray[3] == "indexes" {
 			err := indexCapable.ProcessIndexesForChaincodeDeploy(chaincodeDefinition.Name, archiveDirectoryEntries)
 			if err != nil {
-				logger.Errorf(err.Error())
+				logger.Errorf("Error processing index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 			}
 			continue
 		}
@@ -236,7 +235,7 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
 				archiveDirectoryEntries)
 			if err != nil {
-				logger.Errorf(err.Error())
+				logger.Errorf("Error processing collection index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 			}
 		}
 	}

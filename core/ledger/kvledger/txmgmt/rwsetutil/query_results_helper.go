@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package rwsetutil
@@ -23,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	bccspfactory "github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/pkg/errors"
 )
 
 // MerkleTreeLevel used for representing a level of the merkle tree
@@ -157,7 +148,7 @@ type merkleTree struct {
 
 func newMerkleTree(maxDegree uint32) (*merkleTree, error) {
 	if maxDegree < 2 {
-		return nil, fmt.Errorf("maxDegree [is %d] should not be less than 2 in the merkle tree", maxDegree)
+		return nil, errors.Errorf("maxDegree [%d] should not be less than 2 in the merkle tree", maxDegree)
 	}
 	return &merkleTree{make(map[MerkleTreeLevel][]Hash), 1, maxDegree}, nil
 }

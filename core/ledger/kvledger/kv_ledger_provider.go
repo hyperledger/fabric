@@ -8,7 +8,6 @@ package kvledger
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
@@ -24,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -33,7 +33,7 @@ var (
 	// ErrNonExistingLedgerID is thrown by a OpenLedger call if a ledger with the given id does not exist
 	ErrNonExistingLedgerID = errors.New("LedgerID does not exist")
 	// ErrLedgerNotOpened is thrown by a CloseLedger call if a ledger with the given id has not been opened
-	ErrLedgerNotOpened = errors.New("Ledger is not opened yet")
+	ErrLedgerNotOpened = errors.New("ledger is not opened yet")
 
 	underConstructionLedgerKey = []byte("underConstructionLedgerKey")
 	ledgerKeyPrefix            = []byte("l")
@@ -105,8 +105,8 @@ func (provider *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger,
 	}
 	lgr, err := provider.openInternal(ledgerID)
 	if err != nil {
-		logger.Errorf("Error in opening a new empty ledger. Unsetting under construction flag. Err: %s", err)
-		panicOnErr(provider.runCleanup(ledgerID), "Error while running cleanup for ledger id [%s]", ledgerID)
+		logger.Errorf("Error opening a new empty ledger. Unsetting under construction flag. Error: %+v", err)
+		panicOnErr(provider.runCleanup(ledgerID), "Error running cleanup for ledger id [%s]", ledgerID)
 		panicOnErr(provider.idStore.unsetUnderConstructionFlag(), "Error while unsetting under construction flag")
 		return nil, err
 	}
@@ -212,8 +212,8 @@ func (provider *Provider) recoverUnderConstructionLedger() {
 		panicOnErr(err, "Error while retrieving genesis block from blockchain for ledger [%s]", ledgerID)
 		panicOnErr(provider.idStore.createLedgerID(ledgerID, genesisBlock), "Error while adding ledgerID [%s] to created list", ledgerID)
 	default:
-		panic(fmt.Errorf(
-			"Data inconsistency: under construction flag is set for ledger [%s] while the height of the blockchain is [%d]",
+		panic(errors.Errorf(
+			"data inconsistency: under construction flag is set for ledger [%s] while the height of the blockchain is [%d]",
 			ledgerID, bcInfo.Height))
 	}
 	return
@@ -235,7 +235,7 @@ func panicOnErr(err error, mgsFormat string, args ...interface{}) {
 		return
 	}
 	args = append(args, err)
-	panic(fmt.Sprintf(mgsFormat+" Err:%s ", args...))
+	panic(fmt.Sprintf(mgsFormat+" Error: %s", args...))
 }
 
 //////////////////////////////////////////////////////////////////////
