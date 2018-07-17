@@ -20,7 +20,8 @@ import (
 	"github.com/alecthomas/template"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/integration/helpers"
+	"github.com/hyperledger/fabric/integration/pvtdata/helpers"
+	pvtdatarunner "github.com/hyperledger/fabric/integration/pvtdata/runner"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,8 +65,7 @@ type World struct {
 	OrdererOrgs        []OrdererConfig
 	PeerOrgs           []PeerOrgConfig
 	Profiles           map[string]localconfig.Profile
-	Cryptogen          runner.Cryptogen
-	Idemixgen          runner.Idemixgen
+	Cryptogen          pvtdatarunner.Cryptogen
 	SystemChannel      string
 
 	DockerClient  *docker.Client
@@ -201,7 +201,7 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 	)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	crypto := runner.Cryptogen{
+	crypto := pvtdatarunner.Cryptogen{
 		Config: filepath.Join(testDir, "crypto.yaml"),
 		Output: filepath.Join(testDir, "crypto"),
 	}
@@ -281,7 +281,7 @@ func (w *World) BootstrapNetwork(channel string) {
 	r := w.Cryptogen.Generate()
 	execute(r)
 
-	configtxgen := runner.Configtxgen{
+	configtxgen := pvtdatarunner.Configtxgen{
 		Path:      w.Components.Paths["configtxgen"],
 		ChannelID: w.SystemChannel,
 		Profile:   w.OrdererProfileName,
@@ -291,7 +291,7 @@ func (w *World) BootstrapNetwork(channel string) {
 	r = configtxgen.OutputBlock()
 	execute(r)
 
-	configtxgen = runner.Configtxgen{
+	configtxgen = pvtdatarunner.Configtxgen{
 		Path:      w.Components.Paths["configtxgen"],
 		ChannelID: channel,
 		Profile:   w.ChannelProfileName,
@@ -302,7 +302,7 @@ func (w *World) BootstrapNetwork(channel string) {
 	execute(r)
 
 	for _, peer := range w.PeerOrgs {
-		configtxgen = runner.Configtxgen{
+		configtxgen = pvtdatarunner.Configtxgen{
 			Path:      w.Components.Paths["configtxgen"],
 			ChannelID: channel,
 			AsOrg:     peer.OrganizationName,
@@ -325,7 +325,7 @@ func (w *World) ordererNetwork() {
 		zookeepers []string
 		z          *runner.ZooKeeper
 		kafkas     []*runner.Kafka
-		o          *runner.Orderer
+		o          *pvtdatarunner.Orderer
 	)
 
 	o = w.Components.Orderer()
@@ -379,7 +379,7 @@ func (w *World) ordererNetwork() {
 }
 
 func (w *World) peerNetwork() {
-	var p *runner.Peer
+	var p *pvtdatarunner.Peer
 
 	for _, peerOrg := range w.PeerOrgs {
 		for peer := 0; peer < peerOrg.PeerCount; peer++ {
@@ -394,13 +394,13 @@ func (w *World) peerNetwork() {
 }
 
 func (w *World) SetupChannel(d Deployment, peers []string) {
-	var p *runner.Peer
+	var p *pvtdatarunner.Peer
 
 	if len(peers) == 0 {
 		return
 	}
 
-	setupPeerRunner := func(peerID string) *runner.Peer {
+	setupPeerRunner := func(peerID string) *pvtdatarunner.Peer {
 		p = w.Components.Peer()
 		peerOrg := strings.SplitN(peerID, ".", 2)[1]
 		p.ConfigDir = filepath.Join(w.Rootpath, peerID)

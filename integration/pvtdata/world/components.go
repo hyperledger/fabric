@@ -13,7 +13,8 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/helpers"
+	"github.com/hyperledger/fabric/integration/pvtdata/helpers"
+	pvtdatarunner "github.com/hyperledger/fabric/integration/pvtdata/runner"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -42,10 +43,6 @@ func (c *Components) Build(args ...string) {
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["cryptogen"] = cryptogen
 
-	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/idemixgen", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["idemixgen"] = idemixgen
-
 	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/configtxgen", args...)
 	Expect(err).NotTo(HaveOccurred())
 	c.Paths["configtxgen"] = configtxgen
@@ -70,38 +67,32 @@ func (c *Components) Cleanup() {
 	}
 }
 
-func (c *Components) Cryptogen() *runner.Cryptogen {
-	return &runner.Cryptogen{
+func (c *Components) Cryptogen() *pvtdatarunner.Cryptogen {
+	return &pvtdatarunner.Cryptogen{
 		Path: c.Paths["cryptogen"],
 	}
 }
 
-func (c *Components) Idemixgen() *runner.Idemixgen {
-	return &runner.Idemixgen{
-		Path: c.Paths["idemixgen"],
-	}
-}
-
-func (c *Components) Configtxgen() *runner.Configtxgen {
-	return &runner.Configtxgen{
+func (c *Components) Configtxgen() *pvtdatarunner.Configtxgen {
+	return &pvtdatarunner.Configtxgen{
 		Path: c.Paths["configtxgen"],
 	}
 }
 
-func (c *Components) Orderer() *runner.Orderer {
-	return &runner.Orderer{
+func (c *Components) Orderer() *pvtdatarunner.Orderer {
+	return &pvtdatarunner.Orderer{
 		Path: c.Paths["orderer"],
 	}
 }
 
-func (c *Components) Peer() *runner.Peer {
-	return &runner.Peer{
+func (c *Components) Peer() *pvtdatarunner.Peer {
+	return &pvtdatarunner.Peer{
 		Path: c.Paths["peer"],
 	}
 }
 
-func (c *Components) DiscoveryService() *runner.DiscoveryService {
-	return &runner.DiscoveryService{
+func (c *Components) DiscoveryService() *pvtdatarunner.DiscoveryService {
+	return &pvtdatarunner.DiscoveryService{
 		Path: c.Paths["discover"],
 	}
 }

@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/hyperledger/fabric/integration/helpers"
-	"github.com/hyperledger/fabric/integration/runner"
-	"github.com/hyperledger/fabric/integration/world"
+	"github.com/hyperledger/fabric/integration/pvtdata/helpers"
+	"github.com/hyperledger/fabric/integration/pvtdata/runner"
+	"github.com/hyperledger/fabric/integration/pvtdata/world"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"

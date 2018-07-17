@@ -14,7 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/integration/helpers"
+	"github.com/hyperledger/fabric/integration/pvtdata/helpers"
 	"github.com/hyperledger/fabric/protos/discovery"
 	. "github.com/onsi/gomega"
 
