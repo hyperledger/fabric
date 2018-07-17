@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("couchdb")
@@ -242,8 +243,8 @@ func CreateConnectionDefinition(couchDBAddress, username, password string, maxRe
 	//parse the constructed URL to verify no errors
 	finalURL, err := url.Parse(connectURL.String())
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing connect URL: %s", connectURL)
 	}
 
 	logger.Debugf("Created database configuration  URL=[%s]", finalURL.String())
@@ -287,8 +288,8 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return err
+		logger.Errorf("URL parse error: %s", err)
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	connectURL.Path = dbclient.DBName
 
@@ -363,8 +364,8 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	connectURL.Path = dbclient.DBName
 
@@ -380,7 +381,7 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 	dbResponse := &DBInfo{}
 	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
 	if decodeErr != nil {
-		return nil, nil, decodeErr
+		return nil, nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
 
 	// trace the database info response
@@ -403,8 +404,8 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 
 	connectURL, err := url.Parse(couchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, nil, errors.Wrapf(err, "error parsing couch instance URL: %s", couchInstance.conf.URL)
 	}
 	connectURL.Path = "/"
 
@@ -415,14 +416,14 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 		couchInstance.conf.Username, couchInstance.conf.Password, maxRetriesOnStartup, true)
 
 	if err != nil {
-		return nil, couchDBReturn, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", err.Error())
+		return nil, couchDBReturn, errors.WithMessage(err, "unable to connect to CouchDB, check the hostname and port")
 	}
 	defer closeResponseBody(resp)
 
 	dbResponse := &ConnectionInfo{}
 	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
 	if decodeErr != nil {
-		return nil, nil, decodeErr
+		return nil, nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
 
 	// trace the database info response
@@ -438,8 +439,8 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	//2.  Verifies the username password provided in the CouchDB config are valid for system admin
 	err = CreateSystemDatabasesIfNotExist(couchInstance)
 	if err != nil {
-		logger.Errorf("Unable to connect to CouchDB,  error: %s   Check the admin username and password.\n", err.Error())
-		return nil, nil, fmt.Errorf("Unable to connect to CouchDB,  error: %s   Check the admin username and password.\n", err.Error())
+		logger.Errorf("Unable to connect to CouchDB, error: %s. Check the admin username and password.", err)
+		return nil, nil, errors.WithMessage(err, "unable to connect to CouchDB. Check the admin username and password")
 	}
 
 	return dbResponse, couchDBReturn, nil
@@ -452,8 +453,8 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	connectURL.Path = dbclient.DBName
 
@@ -469,7 +470,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	dbResponse := &DBOperationResponse{}
 	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
 	if decodeErr != nil {
-		return nil, decodeErr
+		return nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
 
 	if dbResponse.Ok == true {
@@ -484,7 +485,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 
 	}
 
-	return dbResponse, fmt.Errorf("Error dropping database")
+	return dbResponse, errors.New("error dropping database")
 
 }
 
@@ -495,8 +496,8 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	connectURL.Path = dbclient.DBName + "/_ensure_full_commit"
 
@@ -505,7 +506,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
-		logger.Errorf("Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
+		logger.Errorf("Failed to invoke couchdb _ensure_full_commit. Error: %+v", err)
 		return nil, err
 	}
 	defer closeResponseBody(resp)
@@ -513,7 +514,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	dbResponse := &DBOperationResponse{}
 	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
 	if decodeErr != nil {
-		return nil, decodeErr
+		return nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
 
 	if dbResponse.Ok == true {
@@ -543,7 +544,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	}
 
-	return dbResponse, fmt.Errorf("Error syncing database")
+	return dbResponse, errors.New("error syncing database")
 }
 
 //SaveDoc method provides a function to save a document, id and byte array
@@ -552,13 +553,13 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	logger.Debugf("Entering SaveDoc()  id=[%s]", id)
 
 	if !utf8.ValidString(id) {
-		return "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
+		return "", errors.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
 
 	saveURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return "", err
+		logger.Errorf("URL parse error: %s", err)
+		return "", errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	saveURL.Path = dbclient.DBName
@@ -581,7 +582,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 
 		//Test to see if this is a valid JSON
 		if IsJSON(string(couchDoc.JSONValue)) != true {
-			return "", fmt.Errorf("JSON format is not valid")
+			return "", errors.New("JSON format is not valid")
 		}
 
 		// if there are no attachments, then use the bytes passed in as the JSON
@@ -679,7 +680,7 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 		decoder.UseNumber()
 		decodeErr := decoder.Decode(&genericMap)
 		if decodeErr != nil {
-			return *writeBuffer, "", decodeErr
+			return *writeBuffer, "", errors.Wrap(decodeErr, "error decoding json data")
 		}
 
 		//add all key/values to the attachmentJSONMap
@@ -691,7 +692,7 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 
 	filesForUpload, err := json.Marshal(attachmentJSONMap)
 	if err != nil {
-		return *writeBuffer, "", err
+		return *writeBuffer, "", errors.Wrap(err, "error marshalling json data")
 	}
 
 	logger.Debugf(string(filesForUpload))
@@ -702,7 +703,7 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 
 	part, err := writer.CreatePart(header)
 	if err != nil {
-		return *writeBuffer, defaultBoundary, err
+		return *writeBuffer, defaultBoundary, errors.Wrap(err, "error creating multipart")
 	}
 
 	part.Write(filesForUpload)
@@ -712,7 +713,7 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 		header := make(textproto.MIMEHeader)
 		part, err2 := writer.CreatePart(header)
 		if err2 != nil {
-			return *writeBuffer, defaultBoundary, err2
+			return *writeBuffer, defaultBoundary, errors.Wrap(err2, "error creating multipart")
 		}
 		part.Write(attachment.AttachmentBytes)
 
@@ -720,7 +721,7 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 
 	err = writer.Close()
 	if err != nil {
-		return *writeBuffer, defaultBoundary, err
+		return *writeBuffer, defaultBoundary, errors.Wrap(err, "error closing multipart writer")
 	}
 
 	return *writeBuffer, defaultBoundary, nil
@@ -730,13 +731,13 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 func getRevisionHeader(resp *http.Response) (string, error) {
 
 	if resp == nil {
-		return "", fmt.Errorf("No response was received from CouchDB")
+		return "", errors.New("no response received from CouchDB")
 	}
 
 	revision := resp.Header.Get("Etag")
 
 	if revision == "" {
-		return "", fmt.Errorf("No revision tag detected")
+		return "", errors.New("no revision tag detected")
 	}
 
 	reg := regexp.MustCompile(`"([^"]*)"`)
@@ -753,13 +754,13 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 	logger.Debugf("Entering ReadDoc()  id=[%s]", id)
 	if !utf8.ValidString(id) {
-		return nil, "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
+		return nil, "", errors.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
 
 	readURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, "", err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, "", errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	readURL.Path = dbclient.DBName
 	// id can contain a '/', so encode separately
@@ -808,7 +809,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 				break // processed all parts
 			}
 			if err != nil {
-				return nil, "", err
+				return nil, "", errors.Wrap(err, "error reading next multipart")
 			}
 
 			defer p.Close()
@@ -818,7 +819,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 			case "application/json":
 				partdata, err := ioutil.ReadAll(p)
 				if err != nil {
-					return nil, "", err
+					return nil, "", errors.Wrap(err, "error reading multipart data")
 				}
 				couchDoc.JSONValue = partdata
 			default:
@@ -835,11 +836,11 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 						gr, err := gzip.NewReader(p)
 						if err != nil {
-							return nil, "", err
+							return nil, "", errors.Wrap(err, "error creating gzip reader")
 						}
 						respBody, err = ioutil.ReadAll(gr)
 						if err != nil {
-							return nil, "", err
+							return nil, "", errors.Wrap(err, "error reading gzip data")
 						}
 
 						logger.Debugf("Retrieved attachment data")
@@ -852,7 +853,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 						//retrieve the data,  this is not gzip
 						partdata, err := ioutil.ReadAll(p)
 						if err != nil {
-							return nil, "", err
+							return nil, "", errors.Wrap(err, "error reading multipart data")
 						}
 						logger.Debugf("Retrieved attachment data")
 						attachment.AttachmentBytes = partdata
@@ -872,7 +873,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	//handle as JSON document
 	couchDoc.JSONValue, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.Wrap(err, "error reading response body")
 	}
 
 	logger.Debugf("Exiting ReadDoc()")
@@ -891,8 +892,8 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	rangeURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	rangeURL.Path = dbclient.DBName + "/_all_docs"
 
@@ -942,13 +943,13 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &RangeQueryResponse{}
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
-		return nil, err2
+		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	logger.Debugf("Total Rows: %d", jsonResponse.TotalRows)
@@ -958,7 +959,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 		var docMetadata = &DocMetadata{}
 		err3 := json.Unmarshal(row.Doc, &docMetadata)
 		if err3 != nil {
-			return nil, err3
+			return nil, errors.Wrap(err3, "error unmarshalling json data")
 		}
 
 		if docMetadata.AttachmentsInfo != nil {
@@ -997,8 +998,8 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
 	deleteURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return err
+		logger.Errorf("URL parse error: %s", err)
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	deleteURL.Path = dbclient.DBName
@@ -1038,8 +1039,8 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 	queryURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	queryURL.Path = dbclient.DBName + "/_find"
@@ -1064,14 +1065,14 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &QueryResponse{}
 
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
-		return nil, err2
+		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	for _, row := range jsonResponse.Docs {
@@ -1079,7 +1080,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 		var docMetadata = &DocMetadata{}
 		err3 := json.Unmarshal(row, &docMetadata)
 		if err3 != nil {
-			return nil, err3
+			return nil, errors.Wrap(err3, "error unmarshalling json data")
 		}
 
 		if docMetadata.AttachmentsInfo != nil {
@@ -1128,8 +1129,8 @@ func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	indexURL.Path = dbclient.DBName + "/_index/"
@@ -1146,14 +1147,14 @@ func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &listIndexResponse{}
 
 	err2 := json.Unmarshal(jsonResponseRaw, jsonResponse)
 	if err2 != nil {
-		return nil, err2
+		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	var results []*IndexResult
@@ -1187,13 +1188,13 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndex
 
 	//Test to see if this is a valid JSON
 	if IsJSON(indexdefinition) != true {
-		return nil, fmt.Errorf("JSON format is not valid")
+		return nil, errors.New("JSON format is not valid")
 	}
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	indexURL.Path = dbclient.DBName + "/_index"
@@ -1208,13 +1209,13 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndex
 	defer closeResponseBody(resp)
 
 	if resp == nil {
-		return nil, fmt.Errorf("An invalid response was received from CouchDB")
+		return nil, errors.New("invalid response received from CouchDB")
 	}
 
 	//Read the response body
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	couchDBReturn := &CreateIndexResponse{}
@@ -1224,7 +1225,7 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndex
 	//unmarshal the response
 	err = json.Unmarshal(jsonBytes, &couchDBReturn)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error unmarshalling json data")
 	}
 
 	if couchDBReturn.Result == "created" {
@@ -1247,8 +1248,8 @@ func (dbclient *CouchDatabase) DeleteIndex(designdoc, indexname string) error {
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return err
+		logger.Errorf("URL parse error: %s", err)
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	indexURL.Path = dbclient.DBName + "/_index/" + designdoc + "/json/" + indexname
@@ -1273,8 +1274,8 @@ func (dbclient *CouchDatabase) WarmIndex(designdoc, indexname string) error {
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return err
+		logger.Errorf("URL parse error: %s", err)
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	//URL to execute the view function associated with the index
@@ -1304,7 +1305,7 @@ func (dbclient *CouchDatabase) runWarmIndexAllIndexes() {
 
 	err := dbclient.WarmIndexAllIndexes()
 	if err != nil {
-		logger.Errorf("Error detected during WarmIndexAllIndexes(): %s", err.Error())
+		logger.Errorf("Error detected during WarmIndexAllIndexes(): %+v", err)
 	}
 
 }
@@ -1343,8 +1344,8 @@ func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) 
 
 	securityURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	securityURL.Path = dbclient.DBName + "/_security"
@@ -1363,14 +1364,14 @@ func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) 
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &DatabaseSecurity{}
 
 	err2 := json.Unmarshal(jsonResponseRaw, jsonResponse)
 	if err2 != nil {
-		return nil, err2
+		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	logger.Debugf("Exiting GetDatabaseSecurity()")
@@ -1386,8 +1387,8 @@ func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseS
 
 	securityURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return err
+		logger.Errorf("URL parse error: %s", err)
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
 	securityURL.Path = dbclient.DBName + "/_security"
@@ -1411,7 +1412,7 @@ func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseS
 
 	databaseSecurityJSON, err := json.Marshal(databaseSecurity)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error unmarshalling json data")
 	}
 
 	logger.Debugf("Applying security to database [%s]: %s", dbclient.DBName, string(databaseSecurityJSON))
@@ -1437,8 +1438,8 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 
 	batchRetrieveURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	batchRetrieveURL.Path = dbclient.DBName + "/_all_docs"
 
@@ -1459,7 +1460,7 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 
 	jsonKeys, err := json.Marshal(keymap)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error marshalling json data")
 	}
 
 	//get the number of retries
@@ -1480,14 +1481,14 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &BatchRetrieveDocMetadataResponse{}
 
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
-		return nil, err2
+		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	docMetadataArray := []*DocMetadata{}
@@ -1511,14 +1512,14 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		if err == nil {
 			logger.Debugf("Entering BatchUpdateDocuments()  document ids=[%s]", documentIdsString)
 		} else {
-			logger.Debugf("Entering BatchUpdateDocuments()  Could not print document ids due to error:" + err.Error())
+			logger.Debugf("Entering BatchUpdateDocuments()  Could not print document ids due to error: %+v", err)
 		}
 	}
 
 	batchUpdateURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
-		logger.Errorf("URL parse error: %s", err.Error())
-		return nil, err
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	batchUpdateURL.Path = dbclient.DBName + "/_bulk_docs"
 
@@ -1534,7 +1535,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		//unmarshal the JSON component of the CouchDoc into the document
 		err = json.Unmarshal(jsonDocument.JSONValue, &document)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error unmarshalling json data")
 		}
 
 		//iterate through any attachments
@@ -1565,7 +1566,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 
 	bulkDocsJSON, err := json.Marshal(documentMap)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error marshalling json data")
 	}
 
 	//get the number of retries
@@ -1586,13 +1587,13 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = []*BatchUpdateResponse{}
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
-		return nil, err2
+		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	logger.Debugf("Exiting BatchUpdateDocuments() _bulk_docs response=[%s]", string(jsonResponseRaw))
@@ -1661,7 +1662,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	waitDuration := retryWaitTime * time.Millisecond
 
 	if maxRetries < 0 {
-		return nil, nil, fmt.Errorf("Number of retries must be zero or greater.")
+		return nil, nil, errors.New("number of retries must be zero or greater")
 	}
 
 	//attempt the http request for the max number of retries
@@ -1679,7 +1680,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		//Create request based on URL for couchdb operation
 		req, err := http.NewRequest(method, connectURL, payloadData)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "error creating http request")
 		}
 
 		//set the request to close on completion if shared connections are not allowSharedConnection
@@ -1743,7 +1744,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 				//Read the response body and close it for next attempt
 				jsonError, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
 				defer closeResponseBody(resp)
 
@@ -1751,7 +1752,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 				//Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, errors.Wrap(err, "error unmarshalling json data")
 				}
 			}
 
@@ -1774,14 +1775,14 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 				jsonError, err := ioutil.ReadAll(resp.Body)
 				defer closeResponseBody(resp)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
 
 				errorBytes := []byte(jsonError)
 				//Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, errors.Wrap(err, "error unmarshalling json data")
 				}
 
 				//Log the 500 error with the retry count and continue
@@ -1809,7 +1810,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	//this is a structure and StatusCode is an int
 	//This is meant to provide a more graceful error if this should occur
 	if invalidCouchDBReturn(resp, errResp) {
-		return nil, nil, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port.")
+		return nil, nil, errors.New("unable to connect to CouchDB, check the hostname and port.")
 	}
 
 	//set the return code for the couchDB request
@@ -1821,10 +1822,10 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	if resp.StatusCode >= 400 {
 
 		// if the status code is 400 or greater, log and return an error
-		logger.Debugf("Couch DB Error:%s,  Status Code:%v,  Reason:%s",
+		logger.Debugf("Error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
 
-		return nil, couchDBReturn, fmt.Errorf("Couch DB Error:%s,  Status Code:%v,  Reason:%s",
+		return nil, couchDBReturn, errors.Errorf("error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
 
 	}
@@ -1872,7 +1873,7 @@ func encodeForJSON(str string) (string, error) {
 	buf := &bytes.Buffer{}
 	encoder := json.NewEncoder(buf)
 	if err := encoder.Encode(str); err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error encoding json data")
 	}
 	// Encode adds double quotes to string and terminates with \n - stripping them as bytes as they are all ascii(0-127)
 	buffer := buf.Bytes()
@@ -1889,7 +1890,7 @@ func printDocumentIds(documentPointers []*CouchDoc) (string, error) {
 		docMetadata := &DocMetadata{}
 		err := json.Unmarshal(documentPointer.JSONValue, &docMetadata)
 		if err != nil {
-			return "", err
+			return "", errors.Wrap(err, "error unmarshalling json data")
 		}
 		documentIds = append(documentIds, docMetadata.ID)
 	}

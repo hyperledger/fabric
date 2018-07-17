@@ -17,7 +17,6 @@ limitations under the License.
 package ledgerstorage
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -28,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("ledgerstorage")
@@ -248,7 +248,7 @@ func (s *Store) syncPvtdataStoreWithBlockStore() error {
 		return s.pvtdataStore.Commit()
 	}
 
-	return fmt.Errorf("This is not expected. blockStoreHeight=%d, pvtdataStoreHeight=%d", bcInfo.Height, pvtdataStoreHt)
+	return errors.Errorf("This is not expected. blockStoreHeight=%d, pvtdataStoreHeight=%d", bcInfo.Height, pvtdataStoreHt)
 }
 
 func constructPvtdataMap(pvtdata []*ledger.TxPvtData) map[uint64]*ledger.TxPvtData {

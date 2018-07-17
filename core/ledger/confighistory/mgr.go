@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("confighistory")
@@ -122,7 +123,7 @@ func prepareDBBatch(stateUpdates ledger.StateUpdates, committingBlock uint64) *b
 func compositeKVToCollectionConfig(compositeKV *compositeKV) (*ledger.CollectionConfigInfo, error) {
 	conf := &common.CollectionConfigPackage{}
 	if err := proto.Unmarshal(compositeKV.value, conf); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error unmarshalling compositeKV to collection config")
 	}
 	return &ledger.CollectionConfigInfo{CollectionConfig: conf, CommittingBlockNum: compositeKV.blockNum}, nil
 }
