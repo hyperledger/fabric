@@ -85,7 +85,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 
 			By("querying collectionMarblePrivateDetails by peer0.org1, shouldn't have access")
 			adminPeer = getPeer(0, 1, w.Rootpath)
-			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, adminPeer, "Private data matching public hash version is not available")
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, adminPeer, "private data matching public hash version is not available")
 
 			By("querying collectionMarbles by peer0.org3, shouldn't have access")
 			adminPeer = getPeer(0, 3, w.Rootpath)
@@ -143,7 +143,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 
 			By("querying collectionMarblePrivateDetails by peer0.org1, shouldn't have access")
 			adminPeer = getPeer(0, 1, testDir)
-			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble2"]}`, adminPeer, "Private data matching public hash version is not available")
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble2"]}`, adminPeer, "private data matching public hash version is not available")
 
 			By("querying collectionMarbles by peer0.org3, make sure it doesn't have access to marble1 that was created before adding peer0.org3 to the config")
 			adminPeer = getPeer(0, 3, testDir)
@@ -173,7 +173,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 
 			By("querying collectionMarblePrivateDetails by peer0.org1, shouldn't have access")
 			adminPeer = getPeer(0, 1, testDir)
-			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble2"]}`, adminPeer, "Private data matching public hash version is not available")
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble2"]}`, adminPeer, "private data matching public hash version is not available")
 
 			By("querying collectionMarbles by peer0.org2, shouldn't have access")
 			adminPeer = getPeer(0, 2, testDir)
@@ -207,7 +207,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 
 			By("querying collectionMarblePrivateDetails by peer0.org1, shouldn't have access")
 			adminPeer = getPeer(0, 1, testDir)
-			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble3"]}`, adminPeer, "Private data matching public hash version is not available")
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble3"]}`, adminPeer, "private data matching public hash version is not available")
 
 			By("querying collectionMarbles by peer0.org3, shouldn't have access")
 			adminPeer = getPeer(0, 3, testDir)
