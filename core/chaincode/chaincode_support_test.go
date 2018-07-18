@@ -1047,7 +1047,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	}
 
 	//actual test - everythings good
-	err := launcher.start(context.Background(), ccci)
+	err := launcher.Launch(context.Background(), ccci)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -1080,7 +1080,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 	}
 
 	//the actual test - timeout 1000 > 500
-	err := launcher.start(context.Background(), ccci)
+	err := launcher.Launch(context.Background(), ccci)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -1112,7 +1112,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 	}
 
 	//actual test - container launch gives error
-	err := launcher.start(context.Background(), ccci)
+	err := launcher.Launch(context.Background(), ccci)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}

@@ -31,8 +31,7 @@ type Runtime interface {
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(context context.Context, channelID, chaincodeName string) error
-	LaunchInit(context context.Context, ccci *lifecycle.ChaincodeContainerInfo) error
+	Launch(context context.Context, ccci *lifecycle.ChaincodeContainerInfo) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -61,6 +60,7 @@ type ChaincodeSupport struct {
 	HandlerRegistry *HandlerRegistry
 	Launcher        Launcher
 	sccp            sysccprovider.SystemChaincodeProvider
+	Lifecycle       Lifecycle
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance.
@@ -91,6 +91,11 @@ func NewChaincodeSupport(
 		certGenerator = nil
 	}
 
+	cs.Lifecycle = &lifecycle.Lifecycle{
+		Executor:                   cs,
+		InstantiatedChaincodeStore: chaincodeStore,
+	}
+
 	cs.Runtime = &ContainerRuntime{
 		CertGenerator:    certGenerator,
 		Processor:        processor,
@@ -108,11 +113,7 @@ func NewChaincodeSupport(
 		Runtime:         cs.Runtime,
 		Registry:        cs.HandlerRegistry,
 		PackageProvider: packageProvider,
-		Lifecycle: &lifecycle.Lifecycle{
-			Executor:                   cs,
-			InstantiatedChaincodeStore: chaincodeStore,
-		},
-		StartupTimeout: config.StartupTimeout,
+		StartupTimeout:  config.StartupTimeout,
 	}
 
 	return cs
@@ -132,7 +133,7 @@ func (cs *ChaincodeSupport) LaunchInit(ctx context.Context, cccid *ccprovider.CC
 	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(spec)
 	ccci.Version = cccid.Version
 
-	return cs.Launcher.LaunchInit(ctx, ccci)
+	return cs.Launcher.Launch(ctx, ccci)
 }
 
 // Launch starts executing chaincode if it is not already running. This method
@@ -155,8 +156,14 @@ func (cs *ChaincodeSupport) Launch(ctx context.Context, cccid *ccprovider.CCCont
 	// used to support system chaincode. It should really be instantiated with the
 	// appropriate reference to ChaincodeSupport.
 	ctx = context.WithValue(ctx, ccintf.GetCCHandlerKey(), cs)
+	chaincodeName := spec.GetChaincodeSpec().Name()
 
-	return cs.Launcher.Launch(ctx, cccid.ChainID, spec.ChaincodeSpec.ChaincodeId.Name)
+	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(cccid.ChainID, chaincodeName)
+	if err != nil {
+		return errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", cccid.ChainID, chaincodeName)
+	}
+
+	return cs.Launcher.Launch(ctx, ccci)
 }
 
 // Stop stops a chaincode if running.

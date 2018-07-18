@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -170,12 +171,34 @@ func (lscc *LifeCycleSysCC) ChaincodeDeploymentSpec(channelID, ccName string) (*
 		return nil, errors.Errorf("chaincode %s not found on channel %s", ccName, channelID)
 	}
 
+	// Note, although it looks very tempting to replace the bulk of this function with
+	// the below 'ChaincodeDefinition' call, the 'getCCCode' call provides us security
+	// by side-effect, so we must leave it as is for now.
 	cds, _, err := lscc.getCCCode(ccName, chaincodeDataBytes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get chaincode code")
 	}
 
 	return cds, nil
+}
+
+func (lscc *LifeCycleSysCC) ChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	chaincodeDataBytes, err := txsim.GetState("lscc", chaincodeName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s", chaincodeName)
+	}
+
+	if chaincodeDataBytes == nil {
+		return nil, errors.Errorf("chaincode %s not found", chaincodeName)
+	}
+
+	chaincodeData := &ccprovider.ChaincodeData{}
+	err = proto.Unmarshal(chaincodeDataBytes, chaincodeData)
+	if err != nil {
+		return nil, errors.Wrapf(err, "chaincode %s has bad definition", chaincodeName)
+	}
+
+	return chaincodeData, nil
 }
 
 //create the chaincode on the given chain
