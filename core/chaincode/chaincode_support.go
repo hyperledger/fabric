@@ -32,7 +32,7 @@ type Runtime interface {
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
 	Launch(context context.Context, channelID, chaincodeName string) error
-	LaunchInit(context context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) error
+	LaunchInit(context context.Context, ccci *lifecycle.ChaincodeContainerInfo) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -129,7 +129,10 @@ func (cs *ChaincodeSupport) LaunchInit(ctx context.Context, cccid *ccprovider.CC
 
 	ctx = context.WithValue(ctx, ccintf.GetCCHandlerKey(), cs)
 
-	return cs.Launcher.LaunchInit(ctx, cccid, spec)
+	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(spec)
+	ccci.Version = cccid.Version
+
+	return cs.Launcher.LaunchInit(ctx, ccci)
 }
 
 // Launch starts executing chaincode if it is not already running. This method
