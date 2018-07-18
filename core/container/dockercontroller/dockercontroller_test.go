@@ -10,7 +10,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -35,22 +34,21 @@ import (
 // This test used to be part of an integration style test in core/container, moved to here
 func TestIntegrationPath(t *testing.T) {
 	coreutil.SetupTestConfig()
-	ctxt := context.Background()
 	dc := NewDockerVM("", util.GenerateUUID())
 	ccid := ccintf.CCID{Name: "simple"}
 
-	err := dc.Start(ctxt, ccid, nil, nil, nil, InMemBuilder{})
+	err := dc.Start(ccid, nil, nil, nil, InMemBuilder{})
 	require.NoError(t, err)
 
 	// Stop, killing, and deleting
-	err = dc.Stop(ctxt, ccid, 0, true, true)
+	err = dc.Stop(ccid, 0, true, true)
 	require.NoError(t, err)
 
-	err = dc.Start(ctxt, ccid, nil, nil, nil, nil)
+	err = dc.Start(ccid, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Stop, killing, but not deleting
-	_ = dc.Stop(ctxt, ccid, 0, false, true)
+	_ = dc.Stop(ccid, 0, false, true)
 }
 
 func TestHostConfig(t *testing.T) {
@@ -87,31 +85,30 @@ func Test_Start(t *testing.T) {
 	files := map[string][]byte{
 		"hello": []byte("world"),
 	}
-	ctx := context.Background()
 
 	// Failure cases
 	// case 1: getMockClient returns error
 	dvm.getClientFnc = getMockClient
 	getClientErr = true
-	err := dvm.Start(ctx, ccid, args, env, files, nil)
+	err := dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, false)
 	getClientErr = false
 
 	// case 2: dockerClient.CreateContainer returns error
 	createErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, false)
 	createErr = false
 
 	// case 3: dockerClient.UploadToContainer returns error
 	uploadErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, false)
 	uploadErr = false
 
 	// case 4: dockerClient.StartContainer returns docker.noSuchImgErr
 	noSuchImgErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, false)
 
 	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/example01/cmd"
@@ -141,51 +138,50 @@ func Test_Start(t *testing.T) {
 	// docker.noSuchImgErr and dockerClient.Start returns error
 	viper.Set("vm.docker.attachStdout", true)
 	startErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, bldr)
+	err = dvm.Start(ccid, args, env, files, bldr)
 	testerr(t, err, false)
 	startErr = false
 
 	// Success cases
-	err = dvm.Start(ctx, ccid, args, env, files, bldr)
+	err = dvm.Start(ccid, args, env, files, bldr)
 	testerr(t, err, true)
 	noSuchImgErr = false
 
 	// dockerClient.StopContainer returns error
 	stopErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, true)
 	stopErr = false
 
 	// dockerClient.KillContainer returns error
 	killErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, true)
 	killErr = false
 
 	// dockerClient.RemoveContainer returns error
 	removeErr = true
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, true)
 	removeErr = false
 
-	err = dvm.Start(ctx, ccid, args, env, files, nil)
+	err = dvm.Start(ccid, args, env, files, nil)
 	testerr(t, err, true)
 }
 
 func Test_Stop(t *testing.T) {
 	dvm := DockerVM{}
 	ccid := ccintf.CCID{Name: "simple"}
-	ctx := context.Background()
 
 	// Failure case: getMockClient returns error
 	getClientErr = true
 	dvm.getClientFnc = getMockClient
-	err := dvm.Stop(ctx, ccid, 10, true, true)
+	err := dvm.Stop(ccid, 10, true, true)
 	testerr(t, err, false)
 	getClientErr = false
 
 	// Success case
-	err = dvm.Stop(ctx, ccid, 10, true, true)
+	err = dvm.Stop(ccid, 10, true, true)
 	testerr(t, err, true)
 }
 

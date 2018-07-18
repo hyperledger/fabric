@@ -8,7 +8,6 @@ package ccprovider
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -164,36 +163,12 @@ func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackag
 	return cccdspack, nil
 }
 
-// The following lines create the cache of CCPackage data that sits
-// on top of the file system and avoids a trip to the file system
-// every time. The cache is disabled by default and only enabled
-// if EnableCCInfoCache is called. This is an unfortunate hack
-// required by some legacy tests that remove chaincode packages
-// from the file system as a means of simulating particular test
-// conditions. This way of testing is incompatible with the
-// immutable nature of chaincode packages that is assumed by hlf v1
-// and implemented by this cache. For this reason, tests are for now
-// allowed to run with the cache disabled (unless they enable it)
-// until a later time in which they are fixed. The peer process on
-// the other hand requires the benefits of this cache and therefore
-// enables it.
-// TODO: (post v1) enable cache by default as soon as https://jira.hyperledger.org/browse/FAB-3785 is completed
-
 // ccInfoFSStorageMgr is the storage manager used either by the cache or if the
 // cache is bypassed
 var ccInfoFSProvider = &CCInfoFSImpl{}
 
 // ccInfoCache is the cache instance itself
 var ccInfoCache = NewCCInfoCache(ccInfoFSProvider)
-
-// ccInfoCacheEnabled keeps track of whether the cache is enable
-// (it is disabled by default)
-var ccInfoCacheEnabled bool
-
-// EnableCCInfoCache can be called to enable the cache
-func EnableCCInfoCache() {
-	ccInfoCacheEnabled = true
-}
 
 // GetChaincodeFromFS retrieves chaincode information from the file system
 func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
@@ -210,16 +185,8 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 
 // GetChaincodeData gets chaincode data from cache if there's one
 func GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
-	if ccInfoCacheEnabled {
-		ccproviderLogger.Debugf("Getting chaincode data for <%s, %s> from cache", ccname, ccversion)
-		return ccInfoCache.GetChaincodeData(ccname, ccversion)
-	}
-	if ccpack, err := ccInfoFSProvider.GetChaincode(ccname, ccversion); err != nil {
-		return nil, err
-	} else {
-		ccproviderLogger.Infof("Putting chaincode data for <%s, %s> into cache", ccname, ccversion)
-		return ccpack.GetChaincodeData(), nil
-	}
+	ccproviderLogger.Debugf("Getting chaincode data for <%s, %s> from cache", ccname, ccversion)
+	return ccInfoCache.GetChaincodeData(ccname, ccversion)
 }
 
 func CheckInstantiationPolicy(name, version string, cdLedger *ChaincodeData) error {
@@ -352,72 +319,16 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 
 // CCContext pass this around instead of string of args
 type CCContext struct {
-	// ChainID chain id
-	ChainID string
-
 	// Name chaincode name
 	Name string
 
 	// Version used to construct the chaincode image and register
 	Version string
-
-	// TxID is the transaction id for the proposal (if any)
-	TxID string
-
-	// Syscc is this a system chaincode
-	Syscc bool
-
-	// SignedProposal for this invoke (if any) this is kept here for access
-	// control and in case we need to pass something from this to the chaincode
-	SignedProposal *pb.SignedProposal
-
-	// Proposal for this invoke (if any) this is kept here just in case we need to
-	// pass something from this to the chaincode
-	Proposal *pb.Proposal
-
-	// canonicalName is not set but computed
-	canonicalName string
-
-	// this is additional data passed to the chaincode
-	ProposalDecorations map[string][]byte
-}
-
-// NewCCContext just construct a new struct with whatever args
-func NewCCContext(cname, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) *CCContext {
-	cccid := &CCContext{
-		ChainID:             cname,
-		Name:                name,
-		Version:             version,
-		TxID:                txid,
-		Syscc:               syscc,
-		SignedProposal:      signedProp,
-		Proposal:            prop,
-		canonicalName:       name + ":" + version,
-		ProposalDecorations: nil,
-	}
-
-	// The version CANNOT be empty. The chaincode namespace has to use version and chain name.
-	// Note that neither channel name nor version are stored on the ledger.
-	if version == "" {
-		panic(fmt.Sprintf("---empty version---(%s)", cccid))
-	}
-
-	ccproviderLogger.Debugf("NewCCCC(%s)", cccid)
-	return cccid
-}
-
-func (cccid *CCContext) String() string {
-	return fmt.Sprintf("chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s",
-		cccid.ChainID, cccid.Name, cccid.Version, cccid.TxID, cccid.Syscc, cccid.Proposal, cccid.canonicalName)
 }
 
 // GetCanonicalName returns the canonical name associated with the proposal context
 func (cccid *CCContext) GetCanonicalName() string {
-	if cccid.canonicalName == "" {
-		panic(fmt.Sprintf("missing canonical name: %s", cccid))
-	}
-
-	return cccid.canonicalName
+	return cccid.Name + ":" + cccid.Version
 }
 
 //-------- ChaincodeDefinition - interface for ChaincodeData ------
@@ -516,21 +427,52 @@ func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
 // ProtoMessage just exists to make proto happy
 func (*ChaincodeData) ProtoMessage() {}
 
+// ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
+type ChaincodeContainerInfo struct {
+	Name        string
+	Version     string
+	Path        string
+	Type        string
+	CodePackage []byte
+
+	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
+	ContainerType string
+}
+
+// TransactionParams are parameters which are tied to a particular transaction
+// and which are required for invoking chaincode.
+type TransactionParams struct {
+	TxID                 string
+	ChannelID            string
+	SignedProp           *pb.SignedProposal
+	Proposal             *pb.Proposal
+	TXSimulator          ledger.TxSimulator
+	HistoryQueryExecutor ledger.HistoryQueryExecutor
+
+	// this is additional data passed to the chaincode
+	ProposalDecorations map[string][]byte
+}
+
 // ChaincodeProvider provides an abstraction layer that is
 // used for different packages to interact with code in the
 // chaincode package without importing it; more methods
 // should be added below if necessary
 type ChaincodeProvider interface {
-	// GetContext returns a ledger context and a tx simulator; it's the
-	// caller's responsability to release the simulator by calling its
-	// done method once it is no longer useful
-	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error)
-	// ExecuteChaincode executes the chaincode given context and args
-	ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
-	// Execute executes the chaincode given context and spec (invocation or deploy)
-	Execute(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error)
-	// ExecuteInit is a special case for executing chaincode deployment specs, needed for old lifecycle
-	ExecuteInit(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
-	// Stop stops the chaincode given context and deployment spec
-	Stop(ctxt context.Context, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) error
+	// Execute executes a standard chaincode invocation for a chaincode and an input
+	Execute(txParams *TransactionParams, cccid *CCContext, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
+	// ExecuteLegacyInit is a special case for executing chaincode deployment specs,
+	// which are not already in the LSCC, needed for old lifecycle
+	ExecuteLegacyInit(txParams *TransactionParams, cccid *CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	// Stop stops the chaincode give
+	Stop(ccci *ChaincodeContainerInfo) error
+}
+
+func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec) *ChaincodeContainerInfo {
+	return &ChaincodeContainerInfo{
+		Name:          cds.Name(),
+		Version:       cds.Version(),
+		Path:          cds.Path(),
+		Type:          cds.CCType(),
+		ContainerType: cds.ExecEnv.String(),
+	}
 }

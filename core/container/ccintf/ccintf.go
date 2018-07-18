@@ -14,7 +14,6 @@ import (
 	"fmt"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"golang.org/x/net/context"
 )
 
 // ChaincodeStream interface for stream between Peer and chaincode instance.
@@ -26,7 +25,7 @@ type ChaincodeStream interface {
 // CCSupport must be implemented by the chaincode support side in peer
 // (such as chaincode_support)
 type CCSupport interface {
-	HandleChaincodeStream(context.Context, ChaincodeStream) error
+	HandleChaincodeStream(ChaincodeStream) error
 }
 
 // GetCCHandlerKey is used to pass CCSupport via context

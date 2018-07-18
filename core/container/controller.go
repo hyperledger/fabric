@@ -11,8 +11,6 @@ import (
 	"io"
 	"sync"
 
-	"golang.org/x/net/context"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -29,8 +27,8 @@ type Builder interface {
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
-	Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
+	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
+	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
 }
 
 type refCountedLock struct {
@@ -106,7 +104,7 @@ func (vmc *VMController) unlockContainer(id string) {
 //note that we'd stop on the first method on the stack that does not
 //take context
 type VMCReq interface {
-	Do(ctxt context.Context, v VM) error
+	Do(v VM) error
 	GetCCID() ccintf.CCID
 }
 
@@ -146,8 +144,8 @@ func (b *PlatformBuilder) Build() (io.Reader, error) {
 	)
 }
 
-func (si StartContainerReq) Do(ctxt context.Context, v VM) error {
-	return v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
+func (si StartContainerReq) Do(v VM) error {
+	return v.Start(si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder)
 }
 
 func (si StartContainerReq) GetCCID() ccintf.CCID {
@@ -164,22 +162,22 @@ type StopContainerReq struct {
 	Dontremove bool
 }
 
-func (si StopContainerReq) Do(ctxt context.Context, v VM) error {
-	return v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove)
+func (si StopContainerReq) Do(v VM) error {
+	return v.Stop(si.CCID, si.Timeout, si.Dontkill, si.Dontremove)
 }
 
 func (si StopContainerReq) GetCCID() ccintf.CCID {
 	return si.CCID
 }
 
-func (vmc *VMController) Process(ctxt context.Context, vmtype string, req VMCReq) error {
+func (vmc *VMController) Process(vmtype string, req VMCReq) error {
 	v := vmc.newVM(vmtype)
 	ccid := req.GetCCID()
 	id := ccid.GetName()
 
 	vmc.lockContainer(id)
 	defer vmc.unlockContainer(id)
-	return req.Do(ctxt, v)
+	return req.Do(v)
 }
 
 // GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification

@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -164,19 +163,18 @@ func TestContainerRuntimeStart(t *testing.T) {
 		PeerAddress: "peer.example.com",
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          pb.ChaincodeSpec_GOLANG.String(),
 		Name:          "chaincode-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
 	}
 
-	err := cr.Start(context.Background(), ccci, nil)
+	err := cr.Start(ccci, nil)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
-	ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
-	assert.Equal(t, context.Background(), ctx)
+	vmType, req := fakeProcessor.ProcessArgsForCall(0)
 	assert.Equal(t, vmType, "container-type")
 	startReq, ok := req.(container.StartContainerReq)
 	assert.True(t, ok)
@@ -210,13 +208,13 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			PeerAddress: "peer.example.com",
 		}
 
-		ccci := &lifecycle.ChaincodeContainerInfo{
+		ccci := &ccprovider.ChaincodeContainerInfo{
 			Type:    tc.chaincodeType,
 			Name:    "chaincode-id-name",
 			Version: "chaincode-version",
 		}
 
-		err := cr.Start(context.Background(), ccci, nil)
+		err := cr.Start(ccci, nil)
 		assert.EqualError(t, err, tc.errValue)
 	}
 }
@@ -227,19 +225,18 @@ func TestContainerRuntimeStop(t *testing.T) {
 		Processor: fakeProcessor,
 	}
 
-	ccci := &lifecycle.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Type:          pb.ChaincodeSpec_GOLANG.String(),
 		Name:          "chaincode-id-name",
 		Version:       "chaincode-version",
 		ContainerType: "container-type",
 	}
 
-	err := cr.Stop(context.Background(), ccci)
+	err := cr.Stop(ccci)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, fakeProcessor.ProcessCallCount())
-	ctx, vmType, req := fakeProcessor.ProcessArgsForCall(0)
-	assert.Equal(t, context.Background(), ctx)
+	vmType, req := fakeProcessor.ProcessArgsForCall(0)
 	assert.Equal(t, vmType, "container-type")
 	stopReq, ok := req.(container.StopContainerReq)
 	assert.True(t, ok)
@@ -268,14 +265,14 @@ func TestContainerRuntimeStopErrors(t *testing.T) {
 			Processor: fakeProcessor,
 		}
 
-		ccci := &lifecycle.ChaincodeContainerInfo{
+		ccci := &ccprovider.ChaincodeContainerInfo{
 			Type:          pb.ChaincodeSpec_GOLANG.String(),
 			Name:          "chaincode-id-name",
 			Version:       "chaincode-version",
 			ContainerType: "container-type",
 		}
 
-		err := cr.Stop(context.Background(), ccci)
+		err := cr.Stop(ccci)
 		if err != nil || tc.errValue != "" {
 			assert.EqualError(t, err, tc.errValue)
 			continue

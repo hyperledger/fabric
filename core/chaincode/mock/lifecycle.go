@@ -4,106 +4,96 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"golang.org/x/net/context"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type Lifecycle struct {
-	GetChaincodeDefinitionStub        func(ctx context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error)
-	getChaincodeDefinitionMutex       sync.RWMutex
-	getChaincodeDefinitionArgsForCall []struct {
-		ctx         context.Context
-		txid        string
-		signedProp  *pb.SignedProposal
-		prop        *pb.Proposal
-		chainID     string
-		chaincodeID string
+	ChaincodeDefinitionStub        func(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	chaincodeDefinitionMutex       sync.RWMutex
+	chaincodeDefinitionArgsForCall []struct {
+		chaincodeName string
+		txSim         ledger.QueryExecutor
 	}
-	getChaincodeDefinitionReturns struct {
+	chaincodeDefinitionReturns struct {
 		result1 ccprovider.ChaincodeDefinition
 		result2 error
 	}
-	getChaincodeDefinitionReturnsOnCall map[int]struct {
+	chaincodeDefinitionReturnsOnCall map[int]struct {
 		result1 ccprovider.ChaincodeDefinition
 		result2 error
 	}
-	ChaincodeContainerInfoStub        func(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error)
+	ChaincodeContainerInfoStub        func(chainID string, chaincodeID string) (*ccprovider.ChaincodeContainerInfo, error)
 	chaincodeContainerInfoMutex       sync.RWMutex
 	chaincodeContainerInfoArgsForCall []struct {
 		chainID     string
 		chaincodeID string
 	}
 	chaincodeContainerInfoReturns struct {
-		result1 *lifecycle.ChaincodeContainerInfo
+		result1 *ccprovider.ChaincodeContainerInfo
 		result2 error
 	}
 	chaincodeContainerInfoReturnsOnCall map[int]struct {
-		result1 *lifecycle.ChaincodeContainerInfo
+		result1 *ccprovider.ChaincodeContainerInfo
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Lifecycle) GetChaincodeDefinition(ctx context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (ccprovider.ChaincodeDefinition, error) {
-	fake.getChaincodeDefinitionMutex.Lock()
-	ret, specificReturn := fake.getChaincodeDefinitionReturnsOnCall[len(fake.getChaincodeDefinitionArgsForCall)]
-	fake.getChaincodeDefinitionArgsForCall = append(fake.getChaincodeDefinitionArgsForCall, struct {
-		ctx         context.Context
-		txid        string
-		signedProp  *pb.SignedProposal
-		prop        *pb.Proposal
-		chainID     string
-		chaincodeID string
-	}{ctx, txid, signedProp, prop, chainID, chaincodeID})
-	fake.recordInvocation("GetChaincodeDefinition", []interface{}{ctx, txid, signedProp, prop, chainID, chaincodeID})
-	fake.getChaincodeDefinitionMutex.Unlock()
-	if fake.GetChaincodeDefinitionStub != nil {
-		return fake.GetChaincodeDefinitionStub(ctx, txid, signedProp, prop, chainID, chaincodeID)
+func (fake *Lifecycle) ChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	fake.chaincodeDefinitionMutex.Lock()
+	ret, specificReturn := fake.chaincodeDefinitionReturnsOnCall[len(fake.chaincodeDefinitionArgsForCall)]
+	fake.chaincodeDefinitionArgsForCall = append(fake.chaincodeDefinitionArgsForCall, struct {
+		chaincodeName string
+		txSim         ledger.QueryExecutor
+	}{chaincodeName, txSim})
+	fake.recordInvocation("ChaincodeDefinition", []interface{}{chaincodeName, txSim})
+	fake.chaincodeDefinitionMutex.Unlock()
+	if fake.ChaincodeDefinitionStub != nil {
+		return fake.ChaincodeDefinitionStub(chaincodeName, txSim)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getChaincodeDefinitionReturns.result1, fake.getChaincodeDefinitionReturns.result2
+	return fake.chaincodeDefinitionReturns.result1, fake.chaincodeDefinitionReturns.result2
 }
 
-func (fake *Lifecycle) GetChaincodeDefinitionCallCount() int {
-	fake.getChaincodeDefinitionMutex.RLock()
-	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	return len(fake.getChaincodeDefinitionArgsForCall)
+func (fake *Lifecycle) ChaincodeDefinitionCallCount() int {
+	fake.chaincodeDefinitionMutex.RLock()
+	defer fake.chaincodeDefinitionMutex.RUnlock()
+	return len(fake.chaincodeDefinitionArgsForCall)
 }
 
-func (fake *Lifecycle) GetChaincodeDefinitionArgsForCall(i int) (context.Context, string, *pb.SignedProposal, *pb.Proposal, string, string) {
-	fake.getChaincodeDefinitionMutex.RLock()
-	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	return fake.getChaincodeDefinitionArgsForCall[i].ctx, fake.getChaincodeDefinitionArgsForCall[i].txid, fake.getChaincodeDefinitionArgsForCall[i].signedProp, fake.getChaincodeDefinitionArgsForCall[i].prop, fake.getChaincodeDefinitionArgsForCall[i].chainID, fake.getChaincodeDefinitionArgsForCall[i].chaincodeID
+func (fake *Lifecycle) ChaincodeDefinitionArgsForCall(i int) (string, ledger.QueryExecutor) {
+	fake.chaincodeDefinitionMutex.RLock()
+	defer fake.chaincodeDefinitionMutex.RUnlock()
+	return fake.chaincodeDefinitionArgsForCall[i].chaincodeName, fake.chaincodeDefinitionArgsForCall[i].txSim
 }
 
-func (fake *Lifecycle) GetChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
-	fake.GetChaincodeDefinitionStub = nil
-	fake.getChaincodeDefinitionReturns = struct {
+func (fake *Lifecycle) ChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
+	fake.ChaincodeDefinitionStub = nil
+	fake.chaincodeDefinitionReturns = struct {
 		result1 ccprovider.ChaincodeDefinition
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Lifecycle) GetChaincodeDefinitionReturnsOnCall(i int, result1 ccprovider.ChaincodeDefinition, result2 error) {
-	fake.GetChaincodeDefinitionStub = nil
-	if fake.getChaincodeDefinitionReturnsOnCall == nil {
-		fake.getChaincodeDefinitionReturnsOnCall = make(map[int]struct {
+func (fake *Lifecycle) ChaincodeDefinitionReturnsOnCall(i int, result1 ccprovider.ChaincodeDefinition, result2 error) {
+	fake.ChaincodeDefinitionStub = nil
+	if fake.chaincodeDefinitionReturnsOnCall == nil {
+		fake.chaincodeDefinitionReturnsOnCall = make(map[int]struct {
 			result1 ccprovider.ChaincodeDefinition
 			result2 error
 		})
 	}
-	fake.getChaincodeDefinitionReturnsOnCall[i] = struct {
+	fake.chaincodeDefinitionReturnsOnCall[i] = struct {
 		result1 ccprovider.ChaincodeDefinition
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Lifecycle) ChaincodeContainerInfo(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error) {
+func (fake *Lifecycle) ChaincodeContainerInfo(chainID string, chaincodeID string) (*ccprovider.ChaincodeContainerInfo, error) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	ret, specificReturn := fake.chaincodeContainerInfoReturnsOnCall[len(fake.chaincodeContainerInfoArgsForCall)]
 	fake.chaincodeContainerInfoArgsForCall = append(fake.chaincodeContainerInfoArgsForCall, struct {
@@ -133,24 +123,24 @@ func (fake *Lifecycle) ChaincodeContainerInfoArgsForCall(i int) (string, string)
 	return fake.chaincodeContainerInfoArgsForCall[i].chainID, fake.chaincodeContainerInfoArgsForCall[i].chaincodeID
 }
 
-func (fake *Lifecycle) ChaincodeContainerInfoReturns(result1 *lifecycle.ChaincodeContainerInfo, result2 error) {
+func (fake *Lifecycle) ChaincodeContainerInfoReturns(result1 *ccprovider.ChaincodeContainerInfo, result2 error) {
 	fake.ChaincodeContainerInfoStub = nil
 	fake.chaincodeContainerInfoReturns = struct {
-		result1 *lifecycle.ChaincodeContainerInfo
+		result1 *ccprovider.ChaincodeContainerInfo
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Lifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 *lifecycle.ChaincodeContainerInfo, result2 error) {
+func (fake *Lifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 *ccprovider.ChaincodeContainerInfo, result2 error) {
 	fake.ChaincodeContainerInfoStub = nil
 	if fake.chaincodeContainerInfoReturnsOnCall == nil {
 		fake.chaincodeContainerInfoReturnsOnCall = make(map[int]struct {
-			result1 *lifecycle.ChaincodeContainerInfo
+			result1 *ccprovider.ChaincodeContainerInfo
 			result2 error
 		})
 	}
 	fake.chaincodeContainerInfoReturnsOnCall[i] = struct {
-		result1 *lifecycle.ChaincodeContainerInfo
+		result1 *ccprovider.ChaincodeContainerInfo
 		result2 error
 	}{result1, result2}
 }
@@ -158,8 +148,8 @@ func (fake *Lifecycle) ChaincodeContainerInfoReturnsOnCall(i int, result1 *lifec
 func (fake *Lifecycle) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getChaincodeDefinitionMutex.RLock()
-	defer fake.getChaincodeDefinitionMutex.RUnlock()
+	fake.chaincodeDefinitionMutex.RLock()
+	defer fake.chaincodeDefinitionMutex.RUnlock()
 	fake.chaincodeContainerInfoMutex.RLock()
 	defer fake.chaincodeContainerInfoMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

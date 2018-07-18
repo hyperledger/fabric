@@ -9,10 +9,10 @@ package chaincode_test
 import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"golang.org/x/net/context"
 )
 
 var _ = Describe("TransactionContexts", func() {
@@ -29,7 +29,7 @@ var _ = Describe("TransactionContexts", func() {
 			fakeTxSimulator          *mock.TxSimulator
 			fakeHistoryQueryExecutor *mock.HistoryQueryExecutor
 
-			ctx context.Context
+			txParams *ccprovider.TransactionParams
 		)
 
 		BeforeEach(func() {
@@ -38,13 +38,18 @@ var _ = Describe("TransactionContexts", func() {
 			fakeTxSimulator = &mock.TxSimulator{}
 			fakeHistoryQueryExecutor = &mock.HistoryQueryExecutor{}
 
-			ctx = context.Background()
-			ctx = context.WithValue(ctx, chaincode.TXSimulatorKey, fakeTxSimulator)
-			ctx = context.WithValue(ctx, chaincode.HistoryQueryExecutorKey, fakeHistoryQueryExecutor)
+			txParams = &ccprovider.TransactionParams{
+				ChannelID:            "chainID",
+				TxID:                 "transactionID",
+				SignedProp:           signedProp,
+				Proposal:             proposal,
+				TXSimulator:          fakeTxSimulator,
+				HistoryQueryExecutor: fakeHistoryQueryExecutor,
+			}
 		})
 
 		It("creates a new transaction context", func() {
-			txContext, err := txContexts.Create(ctx, "chainID", "transactionID", signedProp, proposal)
+			txContext, err := txContexts.Create(txParams)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(txContext.ChainID).To(Equal("chainID"))
@@ -57,7 +62,7 @@ var _ = Describe("TransactionContexts", func() {
 		})
 
 		It("keeps track of the created context", func() {
-			txContext, err := txContexts.Create(ctx, "chainID", "transactionID", signedProp, proposal)
+			txContext, err := txContexts.Create(txParams)
 			Expect(err).NotTo(HaveOccurred())
 
 			c := txContexts.Get("chainID", "transactionID")
@@ -66,12 +71,12 @@ var _ = Describe("TransactionContexts", func() {
 
 		Context("when the transaction context already exists", func() {
 			BeforeEach(func() {
-				_, err := txContexts.Create(ctx, "chainID", "transactionID", nil, nil)
+				_, err := txContexts.Create(txParams)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns a meaningful error", func() {
-				_, err := txContexts.Create(ctx, "chainID", "transactionID", nil, nil)
+				_, err := txContexts.Create(txParams)
 				Expect(err).To(MatchError("txid: transactionID(chainID) exists"))
 			})
 		})
@@ -82,10 +87,18 @@ var _ = Describe("TransactionContexts", func() {
 
 		BeforeEach(func() {
 			var err error
-			c1, err = txContexts.Create(context.Background(), "chainID1", "transactionID1", nil, nil)
+			txParams1 := &ccprovider.TransactionParams{
+				ChannelID: "chainID1",
+				TxID:      "transactionID1",
+			}
+			c1, err = txContexts.Create(txParams1)
 			Expect(err).NotTo(HaveOccurred())
 
-			c2, err = txContexts.Create(context.Background(), "chainID1", "transactionID2", nil, nil)
+			txParams2 := &ccprovider.TransactionParams{
+				ChannelID: "chainID1",
+				TxID:      "transactionID2",
+			}
+			c2, err = txContexts.Create(txParams2)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -103,7 +116,10 @@ var _ = Describe("TransactionContexts", func() {
 
 	Describe("Delete", func() {
 		BeforeEach(func() {
-			_, err := txContexts.Create(context.Background(), "chainID2", "transactionID1", nil, nil)
+			_, err := txContexts.Create(&ccprovider.TransactionParams{
+				ChannelID: "chainID2",
+				TxID:      "transactionID1",
+			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -133,13 +149,19 @@ var _ = Describe("TransactionContexts", func() {
 				fakeIterators[i] = &mock.ResultsIterator{}
 			}
 
-			txContext, err := txContexts.Create(context.Background(), "chainID", "transactionID", nil, nil)
+			txContext, err := txContexts.Create(&ccprovider.TransactionParams{
+				ChannelID: "chainID",
+				TxID:      "transactionID",
+			})
 			Expect(err).NotTo(HaveOccurred())
 			txContext.InitializeQueryContext("key1", fakeIterators[0])
 			txContext.InitializeQueryContext("key2", fakeIterators[1])
 			txContext.InitializeQueryContext("key3", fakeIterators[2])
 
-			txContext2, err := txContexts.Create(context.Background(), "chainID", "transactionID2", nil, nil)
+			txContext2, err := txContexts.Create(&ccprovider.TransactionParams{
+				ChannelID: "chainID",
+				TxID:      "transactionID2",
+			})
 			Expect(err).NotTo(HaveOccurred())
 			txContext2.InitializeQueryContext("key1", fakeIterators[3])
 			txContext2.InitializeQueryContext("key2", fakeIterators[4])
@@ -168,7 +190,10 @@ var _ = Describe("TransactionContexts", func() {
 
 		Context("when there is a context with no query iterators", func() {
 			BeforeEach(func() {
-				_, err := txContexts.Create(context.Background(), "chainID", "no-query-iterators", nil, nil)
+				_, err := txContexts.Create(&ccprovider.TransactionParams{
+					ChannelID: "chainID",
+					TxID:      "no-query-iterators",
+				})
 				Expect(err).NotTo(HaveOccurred())
 			})
 

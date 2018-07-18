@@ -606,7 +606,7 @@ func TestSimulateProposal(t *testing.T) {
 		},
 	}, platforms.NewRegistry(&golang.Platform{}))
 
-	_, _, _, _, err := es.SimulateProposal(nil, "", "", nil, nil, nil, nil)
+	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, nil)
 	assert.Error(t, err)
 }
 

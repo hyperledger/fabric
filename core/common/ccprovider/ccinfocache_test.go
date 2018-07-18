@@ -210,22 +210,6 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 		"Expected 0 chaincodes but GetInstalledChaincodes returned %s chaincodes", len(resp.Chaincodes))
 }
 
-func TestNewCCContext(t *testing.T) {
-	ccctx := NewCCContext("foo", "foo", "1.0", "", false, nil, nil)
-	assert.NotNil(t, ccctx)
-	canName := ccctx.GetCanonicalName()
-	assert.NotEmpty(t, canName)
-
-	assert.Panics(t, func() {
-		NewCCContext("foo", "foo", "", "", false, nil, nil)
-	}, "NewCCContext should have paniced if version is empty")
-
-	ccctx = &CCContext{"foo", "foo", "1.0", "", false, nil, nil, "", nil}
-	assert.Panics(t, func() {
-		ccctx.GetCanonicalName()
-	}, "GetConnonicalName should have paniced if cannonical name is empty")
-}
-
 func TestChaincodePackageExists(t *testing.T) {
 	_, err := ChaincodePackageExists("foo1", "1.0")
 	assert.Error(t, err)

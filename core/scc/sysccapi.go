@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/net/context"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -143,22 +141,26 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 
 	txid := util.GenerateUUID()
 
-	ctxt := context.Background()
+	// Note, this structure is barely initialized,
+	// we omit the history query executor, the proposal
+	// and the signed proposal
+	txParams := &ccprovider.TransactionParams{
+		TxID:      txid,
+		ChannelID: chainID,
+	}
+
 	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name(), chainID))
 		}
 
-		//init can do GetState (and other Get's) even if Puts cannot be
-		//be handled. Need ledger for this
-		ctxt2, txsim, err := ccprov.GetContext(lgr, txid)
+		txsim, err := lgr.NewTxSimulator(txid)
 		if err != nil {
 			return err
 		}
 
-		ctxt = ctxt2
-
+		txParams.TXSimulator = txsim
 		defer txsim.Done()
 	}
 
@@ -170,9 +172,12 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprovider.NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
+	cccid := &ccprovider.CCContext{
+		Name:    chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name,
+		Version: version,
+	}
 
-	resp, _, err := ccprov.ExecuteInit(ctxt, cccid, chaincodeDeploymentSpec)
+	resp, _, err := ccprov.ExecuteLegacyInit(txParams, cccid, chaincodeDeploymentSpec)
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}
@@ -184,19 +189,18 @@ func deploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc Self
 
 // deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
 func deDeploySysCC(chainID string, ccprov ccprovider.ChaincodeProvider, syscc SelfDescribingSysCC) error {
-	chaincodeID := &pb.ChaincodeID{Path: syscc.Path(), Name: syscc.Name()}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs()}}
-
-	ctx := context.Background()
-	// First build and get the deployment spec
-	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec}
-
 	// XXX This is an ugly hack, version should be tied to the chaincode instance, not he peer binary
 	version := util.GetSysCCVersion()
 
-	cccid := ccprovider.NewCCContext(chainID, syscc.Name(), version, "", true, nil, nil)
+	ccci := &ccprovider.ChaincodeContainerInfo{
+		Type:          "GOLANG",
+		Name:          syscc.Name(),
+		Path:          syscc.Path(),
+		Version:       version,
+		ContainerType: inproccontroller.ContainerType,
+	}
 
-	err := ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
+	err := ccprov.Stop(ccci)
 
 	return err
 }

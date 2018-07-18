@@ -155,7 +155,7 @@ func (lscc *LifeCycleSysCC) InvokableExternal() bool   { return true }
 func (lscc *LifeCycleSysCC) InvokableCC2CC() bool      { return true }
 func (lscc *LifeCycleSysCC) Enabled() bool             { return true }
 
-func (lscc *LifeCycleSysCC) ChaincodeDeploymentSpec(channelID, ccName string) (*pb.ChaincodeDeploymentSpec, error) {
+func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, ccName string) (*ccprovider.ChaincodeContainerInfo, error) {
 	qe, err := lscc.SCCProvider.GetQueryExecutorForLedger(channelID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not retrieve QueryExecutor for channel %s", channelID)
@@ -179,7 +179,7 @@ func (lscc *LifeCycleSysCC) ChaincodeDeploymentSpec(channelID, ccName string) (*
 		return nil, errors.Wrapf(err, "could not get chaincode code")
 	}
 
-	return cds, nil
+	return ccprovider.DeploymentSpecToChaincodeContainerInfo(cds), nil
 }
 
 func (lscc *LifeCycleSysCC) ChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {

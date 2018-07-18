@@ -5,14 +5,12 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/container"
-	"golang.org/x/net/context"
 )
 
 type Processor struct {
-	ProcessStub        func(ctxt context.Context, vmtype string, req container.VMCReq) error
+	ProcessStub        func(vmtype string, req container.VMCReq) error
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
-		ctxt   context.Context
 		vmtype string
 		req    container.VMCReq
 	}
@@ -26,18 +24,17 @@ type Processor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Processor) Process(ctxt context.Context, vmtype string, req container.VMCReq) error {
+func (fake *Processor) Process(vmtype string, req container.VMCReq) error {
 	fake.processMutex.Lock()
 	ret, specificReturn := fake.processReturnsOnCall[len(fake.processArgsForCall)]
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
-		ctxt   context.Context
 		vmtype string
 		req    container.VMCReq
-	}{ctxt, vmtype, req})
-	fake.recordInvocation("Process", []interface{}{ctxt, vmtype, req})
+	}{vmtype, req})
+	fake.recordInvocation("Process", []interface{}{vmtype, req})
 	fake.processMutex.Unlock()
 	if fake.ProcessStub != nil {
-		return fake.ProcessStub(ctxt, vmtype, req)
+		return fake.ProcessStub(vmtype, req)
 	}
 	if specificReturn {
 		return ret.result1
@@ -51,10 +48,10 @@ func (fake *Processor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
-func (fake *Processor) ProcessArgsForCall(i int) (context.Context, string, container.VMCReq) {
+func (fake *Processor) ProcessArgsForCall(i int) (string, container.VMCReq) {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
-	return fake.processArgsForCall[i].ctxt, fake.processArgsForCall[i].vmtype, fake.processArgsForCall[i].req
+	return fake.processArgsForCall[i].vmtype, fake.processArgsForCall[i].req
 }
 
 func (fake *Processor) ProcessReturns(result1 error) {

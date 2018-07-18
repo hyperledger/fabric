@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
-	lc "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
@@ -25,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // SupportImpl provides an implementation of the endorser.Support interface
@@ -124,35 +122,34 @@ func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 }
 
 // ExecuteInit a deployment proposal and return the chaincode response
-func (s *SupportImpl) ExecuteInit(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
+func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+	cccid := &ccprovider.CCContext{
+		Name:    name,
+		Version: version,
+	}
 
-	return s.ChaincodeSupport.ExecuteInit(ctxt, cccid, cds)
+	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, cccid, cds)
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	cccid := &ccprovider.CCContext{
+		Name:    name,
+		Version: version,
+	}
 
 	// decorate the chaincode input
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
-	cis.ChaincodeSpec.Input.Decorations = make(map[string][]byte)
-	cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
-	cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
+	input.Decorations = make(map[string][]byte)
+	input = decoration.Apply(prop, input, decorators...)
+	txParams.ProposalDecorations = input.Decorations
 
-	return s.ChaincodeSupport.Execute(ctxt, cccid, cis)
+	return s.ChaincodeSupport.Execute(txParams, cccid, input)
 }
 
 // GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
-func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (ccprovider.ChaincodeDefinition, error) {
-	ctxt := ctx
-	if txsim != nil {
-		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
-	}
-	lifecycle := &lc.Lifecycle{
-		Executor: s.ChaincodeSupport,
-	}
-	return lifecycle.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+func (s *SupportImpl) GetChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	return s.ChaincodeSupport.Lifecycle.ChaincodeDefinition(chaincodeName, txsim)
 }
 
 // CheckACL checks the ACL for the resource for the Channel using the

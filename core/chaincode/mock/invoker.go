@@ -6,16 +6,15 @@ import (
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"golang.org/x/net/context"
 )
 
 type Invoker struct {
-	InvokeStub        func(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error)
+	InvokeStub        func(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.ChaincodeMessage, error)
 	invokeMutex       sync.RWMutex
 	invokeArgsForCall []struct {
-		ctxt  context.Context
-		cccid *ccprovider.CCContext
-		spec  *pb.ChaincodeInvocationSpec
+		txParams *ccprovider.TransactionParams
+		cccid    *ccprovider.CCContext
+		spec     *pb.ChaincodeInput
 	}
 	invokeReturns struct {
 		result1 *pb.ChaincodeMessage
@@ -29,18 +28,18 @@ type Invoker struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Invoker) Invoke(ctxt context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) (*pb.ChaincodeMessage, error) {
+func (fake *Invoker) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 	fake.invokeMutex.Lock()
 	ret, specificReturn := fake.invokeReturnsOnCall[len(fake.invokeArgsForCall)]
 	fake.invokeArgsForCall = append(fake.invokeArgsForCall, struct {
-		ctxt  context.Context
-		cccid *ccprovider.CCContext
-		spec  *pb.ChaincodeInvocationSpec
-	}{ctxt, cccid, spec})
-	fake.recordInvocation("Invoke", []interface{}{ctxt, cccid, spec})
+		txParams *ccprovider.TransactionParams
+		cccid    *ccprovider.CCContext
+		spec     *pb.ChaincodeInput
+	}{txParams, cccid, spec})
+	fake.recordInvocation("Invoke", []interface{}{txParams, cccid, spec})
 	fake.invokeMutex.Unlock()
 	if fake.InvokeStub != nil {
-		return fake.InvokeStub(ctxt, cccid, spec)
+		return fake.InvokeStub(txParams, cccid, spec)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -54,10 +53,10 @@ func (fake *Invoker) InvokeCallCount() int {
 	return len(fake.invokeArgsForCall)
 }
 
-func (fake *Invoker) InvokeArgsForCall(i int) (context.Context, *ccprovider.CCContext, *pb.ChaincodeInvocationSpec) {
+func (fake *Invoker) InvokeArgsForCall(i int) (*ccprovider.TransactionParams, *ccprovider.CCContext, *pb.ChaincodeInput) {
 	fake.invokeMutex.RLock()
 	defer fake.invokeMutex.RUnlock()
-	return fake.invokeArgsForCall[i].ctxt, fake.invokeArgsForCall[i].cccid, fake.invokeArgsForCall[i].spec
+	return fake.invokeArgsForCall[i].txParams, fake.invokeArgsForCall[i].cccid, fake.invokeArgsForCall[i].spec
 }
 
 func (fake *Invoker) InvokeReturns(result1 *pb.ChaincodeMessage, result2 error) {

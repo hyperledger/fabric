@@ -236,9 +236,6 @@ func serve(args []string) error {
 	// Setup chaincode path
 	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 
-	// enable the cache of chaincode info
-	ccprovider.EnableCCInfoCache()
-
 	// Create a self-signed CA for chaincode service
 	ca, err := tlsgen.NewCA()
 	if err != nil {
@@ -647,6 +644,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		sccp,
 		pr,
 	)
+	ipRegistry.ChaincodeSupport = chaincodeSupport
 	ccp := chaincode.NewProvider(chaincodeSupport)
 
 	ccSrv := pb.ChaincodeSupportServer(chaincodeSupport)
