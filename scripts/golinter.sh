@@ -33,7 +33,8 @@ if [ -n "$OUTPUT" ]; then
 fi
 
 echo "Checking with go vet"
-OUTPUT="$(go vet ./...)"
+PRINTFUNCS="Print,Printf,Info,Infof,Warning,Warningf,Error,Errorf,Critical,Criticalf,Sprint,Sprintf,Log,Logf,Panic,Panicf,Fatal,Fatalf,Notice,Noticef,Wrap,Wrapf,WithMessage"
+OUTPUT="$(go vet -printfuncs $PRINTFUNCS ./...)"
 if [ -n "$OUTPUT" ]; then
     echo "The following files contain go vet errors"
     echo $OUTPUT

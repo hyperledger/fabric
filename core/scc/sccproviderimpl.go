@@ -37,7 +37,7 @@ func (p *Provider) RegisterSysCC(scc SelfDescribingSysCC) {
 	p.SysCCs = append(p.SysCCs, scc)
 	_, err := p.registerSysCC(scc)
 	if err != nil {
-		sysccLogger.Panic("Could not register system chaincode: %s", err)
+		sysccLogger.Panicf("Could not register system chaincode: %s", err)
 	}
 }
 

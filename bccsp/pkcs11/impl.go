@@ -114,7 +114,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	case *bccsp.ECDSAP384KeyGenOpts:
 		ski, pub, err := csp.generateECKey(oidNamedCurveP384, opts.Ephemeral())
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed generating ECDSA P384 key [%s]")
+			return nil, errors.Wrapf(err, "Failed generating ECDSA P384 key")
 		}
 
 		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
@@ -350,7 +350,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 
 		lowLevelKey, err := utils.DERToPrivateKey(der)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed converting PKIX to ECDSA public key [%s]")
+			return nil, errors.Wrapf(err, "Failed converting PKIX to ECDSA public key")
 		}
 
 		ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)

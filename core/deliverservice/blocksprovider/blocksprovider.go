@@ -195,7 +195,7 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 				b.gossip.Gossip(gossipMsg)
 			}
 		default:
-			logger.Warningf("[%s] Received unknown: ", b.chainID, t)
+			logger.Warningf("[%s] Received unknown: %v", b.chainID, t)
 			return
 		}
 	}

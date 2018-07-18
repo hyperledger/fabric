@@ -307,8 +307,8 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 				missingPvtRWKey.collection == dig.Collection &&
 				missingPvtRWKey.txID == dig.TxId {
 				delete(privateInfo.missingKeys, missingPvtRWKey)
-				logger.Warningf("Missing [%s] key because was purged or will soon be purged, "+
-					"continue block commit without [%s] in private rwset", missingPvtRWKey, missingPvtRWKey)
+				logger.Warningf("Missing key because was purged or will soon be purged, "+
+					"continue block commit without [%+v] in private rwset", missingPvtRWKey)
 			}
 		}
 	}

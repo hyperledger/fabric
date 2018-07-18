@@ -350,13 +350,13 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.S
 		}
 		if err != nil {
 			errChan <- err
-			conn.logger.Debugf("%v Got error, aborting: %v", err)
+			conn.logger.Debugf("Got error, aborting: %v", err)
 			return
 		}
 		msg, err := envelope.ToGossipMessage()
 		if err != nil {
 			errChan <- err
-			conn.logger.Warning("%v Got error, aborting: %v", err)
+			conn.logger.Warningf("Got error, aborting: %v", err)
 		}
 		msgChan <- msg
 	}

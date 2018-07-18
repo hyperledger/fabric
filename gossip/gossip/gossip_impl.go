@@ -411,7 +411,7 @@ func (g *gossipServiceImpl) forwardDiscoveryMsg(msg proto.ReceivedMessage) {
 // and also checks that the tag matches the message type
 func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 	if err := msg.GetGossipMessage().IsTagLegal(); err != nil {
-		g.logger.Warningf("Tag of %v isn't legal:", msg.GetGossipMessage(), errors.WithStack(err))
+		g.logger.Warningf("Tag of %v isn't legal: %v", msg.GetGossipMessage(), errors.WithStack(err))
 		return false
 	}
 

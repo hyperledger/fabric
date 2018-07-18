@@ -599,7 +599,7 @@ func (csp *impl) getSecretValue(ski []byte) []byte {
 		logger.Debugf("ListAttr: type %d/0x%x, length %d\n%s", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
 		return a.Value
 	}
-	logger.Warningf("No Key Value found!", err)
+	logger.Warningf("No Key Value found: %v", err)
 	return nil
 }
 

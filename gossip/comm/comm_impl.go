@@ -457,7 +457,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 	}
 
 	if receivedMsg.PkiId == nil {
-		c.logger.Warning("%s didn't send a pkiID", remoteAddress)
+		c.logger.Warningf("%s didn't send a pkiID", remoteAddress)
 		return nil, fmt.Errorf("No PKI-ID")
 	}
 

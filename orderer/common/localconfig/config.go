@@ -262,7 +262,7 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("General.ListenAddress unset, setting to %s", Defaults.General.ListenAddress)
 			c.General.ListenAddress = Defaults.General.ListenAddress
 		case c.General.ListenPort == 0:
-			logger.Infof("General.ListenPort unset, setting to %s", Defaults.General.ListenPort)
+			logger.Infof("General.ListenPort unset, setting to %v", Defaults.General.ListenPort)
 			c.General.ListenPort = Defaults.General.ListenPort
 
 		case c.General.LogLevel == "":

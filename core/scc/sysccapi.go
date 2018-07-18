@@ -128,7 +128,7 @@ func (p *Provider) registerSysCC(syscc SelfDescribingSysCC) (bool, error) {
 		}
 	}
 
-	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name, syscc.Path)
+	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name(), syscc.Path())
 	return true, err
 }
 
