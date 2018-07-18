@@ -28,13 +28,9 @@ type Lifecycle struct {
 		result1 ccprovider.ChaincodeDefinition
 		result2 error
 	}
-	GetChaincodeDeploymentSpecStub        func(ctx context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error)
+	GetChaincodeDeploymentSpecStub        func(chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error)
 	getChaincodeDeploymentSpecMutex       sync.RWMutex
 	getChaincodeDeploymentSpecArgsForCall []struct {
-		ctx         context.Context
-		txid        string
-		signedProp  *pb.SignedProposal
-		prop        *pb.Proposal
 		chainID     string
 		chaincodeID string
 	}
@@ -106,21 +102,17 @@ func (fake *Lifecycle) GetChaincodeDefinitionReturnsOnCall(i int, result1 ccprov
 	}{result1, result2}
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpec(ctx context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error) {
+func (fake *Lifecycle) GetChaincodeDeploymentSpec(chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error) {
 	fake.getChaincodeDeploymentSpecMutex.Lock()
 	ret, specificReturn := fake.getChaincodeDeploymentSpecReturnsOnCall[len(fake.getChaincodeDeploymentSpecArgsForCall)]
 	fake.getChaincodeDeploymentSpecArgsForCall = append(fake.getChaincodeDeploymentSpecArgsForCall, struct {
-		ctx         context.Context
-		txid        string
-		signedProp  *pb.SignedProposal
-		prop        *pb.Proposal
 		chainID     string
 		chaincodeID string
-	}{ctx, txid, signedProp, prop, chainID, chaincodeID})
-	fake.recordInvocation("GetChaincodeDeploymentSpec", []interface{}{ctx, txid, signedProp, prop, chainID, chaincodeID})
+	}{chainID, chaincodeID})
+	fake.recordInvocation("GetChaincodeDeploymentSpec", []interface{}{chainID, chaincodeID})
 	fake.getChaincodeDeploymentSpecMutex.Unlock()
 	if fake.GetChaincodeDeploymentSpecStub != nil {
-		return fake.GetChaincodeDeploymentSpecStub(ctx, txid, signedProp, prop, chainID, chaincodeID)
+		return fake.GetChaincodeDeploymentSpecStub(chainID, chaincodeID)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -134,10 +126,10 @@ func (fake *Lifecycle) GetChaincodeDeploymentSpecCallCount() int {
 	return len(fake.getChaincodeDeploymentSpecArgsForCall)
 }
 
-func (fake *Lifecycle) GetChaincodeDeploymentSpecArgsForCall(i int) (context.Context, string, *pb.SignedProposal, *pb.Proposal, string, string) {
+func (fake *Lifecycle) GetChaincodeDeploymentSpecArgsForCall(i int) (string, string) {
 	fake.getChaincodeDeploymentSpecMutex.RLock()
 	defer fake.getChaincodeDeploymentSpecMutex.RUnlock()
-	return fake.getChaincodeDeploymentSpecArgsForCall[i].ctx, fake.getChaincodeDeploymentSpecArgsForCall[i].txid, fake.getChaincodeDeploymentSpecArgsForCall[i].signedProp, fake.getChaincodeDeploymentSpecArgsForCall[i].prop, fake.getChaincodeDeploymentSpecArgsForCall[i].chainID, fake.getChaincodeDeploymentSpecArgsForCall[i].chaincodeID
+	return fake.getChaincodeDeploymentSpecArgsForCall[i].chainID, fake.getChaincodeDeploymentSpecArgsForCall[i].chaincodeID
 }
 
 func (fake *Lifecycle) GetChaincodeDeploymentSpecReturns(result1 *pb.ChaincodeDeploymentSpec, result2 error) {

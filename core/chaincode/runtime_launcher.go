@@ -61,7 +61,7 @@ func (r *RuntimeLauncher) LaunchInit(ctx context.Context, cccid *ccprovider.CCCo
 // Launch chaincode with the appropriate runtime.
 func (r *RuntimeLauncher) Launch(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.ChaincodeInvocationSpec) error {
 	chaincodeID := spec.GetChaincodeSpec().ChaincodeId
-	cds, err := r.Lifecycle.GetChaincodeDeploymentSpec(ctx, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, chaincodeID.Name)
+	cds, err := r.Lifecycle.GetChaincodeDeploymentSpec(cccid.ChainID, chaincodeID.Name)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get deployment spec for %s", cccid.GetCanonicalName())
 	}

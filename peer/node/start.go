@@ -624,7 +624,10 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 
 	authenticator := accesscontrol.NewAuthenticator(ca)
 	ipRegistry := inproccontroller.NewRegistry()
+
 	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
+	lsccInst := lscc.New(sccp, aclProvider, pr)
+
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
 		ccEndpoint,
@@ -632,6 +635,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		ca.CertBytes(),
 		authenticator,
 		&ccprovider.CCInfoFSImpl{},
+		lsccInst,
 		aclProvider,
 		container.NewVMController(map[string]container.VMProvider{
 			dockercontroller.ContainerType: dockercontroller.NewProvider(
@@ -650,11 +654,10 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		ccSrv = authenticator.Wrap(ccSrv)
 	}
 
-	lsccInst := lscc.New(sccp, aclProvider, pr)
 	csccInst := cscc.New(ccp, sccp, aclProvider)
 	qsccInst := qscc.New(aclProvider)
 
-	//Now that chaincode is initialized, register all plugin system chaincodes.
+	//Now that chaincode is initialized, register all system chaincodes.
 	sccs := scc.CreatePluginSysCCs(sccp)
 	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst}, sccs...) {
 		sccp.RegisterSysCC(cc)

@@ -20,6 +20,11 @@ type executor interface {
 	lifecycle.Executor
 }
 
+//go:generate counterfeiter -o mock/instantiated_cc_store.go --fake-name InstantiatedChaincodeStore . instantiatedChaincodeStore
+type instantiatedChaincodeStore interface {
+	lifecycle.InstantiatedChaincodeStore
+}
+
 func TestLifecycle(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Lifecycle Suite")

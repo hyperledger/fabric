@@ -175,6 +175,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 	config.StartupTimeout = 10 * time.Second
 	config.ExecuteTimeout = 1 * time.Second
 	pr := platforms.NewRegistry(&golang.Platform{})
+	lsccImpl := lscc.New(sccp, mockAclProvider, pr)
 	chaincodeSupport := NewChaincodeSupport(
 		config,
 		"0.0.0.0:7052",
@@ -182,6 +183,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		ca.CertBytes(),
 		certGenerator,
 		&ccprovider.CCInfoFSImpl{},
+		lsccImpl,
 		mockAclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
@@ -198,7 +200,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 
 	ccp := &CCProviderImpl{cs: chaincodeSupport}
 
-	sccp.RegisterSysCC(lscc.New(sccp, mockAclProvider, pr))
+	sccp.RegisterSysCC(lsccImpl)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {

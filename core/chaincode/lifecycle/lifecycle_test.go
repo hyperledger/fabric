@@ -22,24 +22,17 @@ import (
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		fakeExecutor *mock.Executor
-		signedProp   *pb.SignedProposal
-		proposal     *pb.Proposal
-
 		lifecycle *lc.Lifecycle
 	)
 
 	BeforeEach(func() {
-		fakeExecutor = &mock.Executor{}
-		signedProp = &pb.SignedProposal{ProposalBytes: []byte("some-proposal-bytes")}
-		proposal = &pb.Proposal{Payload: []byte("some-payload-bytes")}
-		lifecycle = &lc.Lifecycle{
-			Executor: fakeExecutor,
-		}
 	})
 
 	Describe("GetChaincodeDeploymentSpec", func() {
-		var deploymentSpec *pb.ChaincodeDeploymentSpec
+		var (
+			fakeInstantiatedCCStore *mock.InstantiatedChaincodeStore
+			deploymentSpec          *pb.ChaincodeDeploymentSpec
+		)
 
 		BeforeEach(func() {
 			chaincodeID := &pb.ChaincodeID{Name: "chaincode-name", Version: "chaincode-version"}
@@ -47,88 +40,56 @@ var _ = Describe("Lifecycle", func() {
 				CodePackage:   []byte("code-package"),
 				ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID},
 			}
-			deploymentSpecPayload, err := proto.Marshal(deploymentSpec)
-			Expect(err).NotTo(HaveOccurred())
 
-			response := &pb.Response{Status: shim.OK, Payload: deploymentSpecPayload}
-			fakeExecutor.ExecuteReturns(response, nil, nil)
+			fakeInstantiatedCCStore = &mock.InstantiatedChaincodeStore{}
+			fakeInstantiatedCCStore.ChaincodeDeploymentSpecReturns(deploymentSpec, nil)
+
+			lifecycle = &lc.Lifecycle{
+				InstantiatedChaincodeStore: fakeInstantiatedCCStore,
+			}
 		})
 
 		It("invokes lscc getdepspec with the correct args", func() {
-			cds, err := lifecycle.GetChaincodeDeploymentSpec(context.Background(), "tx-id", signedProp, proposal, "chain-id", "chaincode-id")
+			cds, err := lifecycle.GetChaincodeDeploymentSpec("chain-id", "chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proto.Equal(cds, deploymentSpec)).To(BeTrue())
 
-			Expect(fakeExecutor.ExecuteCallCount()).To(Equal(1))
-			ctx, cccid, cis := fakeExecutor.ExecuteArgsForCall(0)
-			Expect(ctx).To(Equal(context.Background()))
-			Expect(cccid).To(Equal(ccprovider.NewCCContext("chain-id", "lscc", "latest", "tx-id", true, signedProp, proposal)))
-			Expect(cis).To(Equal(&pb.ChaincodeInvocationSpec{
-				ChaincodeSpec: &pb.ChaincodeSpec{
-					Type:        pb.ChaincodeSpec_GOLANG,
-					ChaincodeId: &pb.ChaincodeID{Name: "lscc"},
-					Input: &pb.ChaincodeInput{
-						Args: util.ToChaincodeArgs("getdepspec", "chain-id", "chaincode-id"),
-					},
-				},
-			}))
+			Expect(fakeInstantiatedCCStore.ChaincodeDeploymentSpecCallCount()).To(Equal(1))
+			channelID, chaincodeName := fakeInstantiatedCCStore.ChaincodeDeploymentSpecArgsForCall(0)
+			Expect(channelID).To(Equal("chain-id"))
+			Expect(chaincodeName).To(Equal("chaincode-name"))
 		})
 
-		Context("when the executor fails", func() {
+		Context("when the instantiated chaincode store fails", func() {
 			BeforeEach(func() {
-				fakeExecutor.ExecuteReturns(nil, nil, errors.New("mango-tango"))
+				fakeInstantiatedCCStore.ChaincodeDeploymentSpecReturns(nil, errors.New("mango-tango"))
 			})
 
 			It("returns a wrapped error", func() {
-				_, err := lifecycle.GetChaincodeDeploymentSpec(context.Background(), "tx-id", signedProp, proposal, "chain-id", "chaincode-id")
-				Expect(err).To(MatchError("getdepspec chain-id/chaincode-id failed: mango-tango"))
-			})
-		})
-
-		Context("when the executor returns an error response", func() {
-			BeforeEach(func() {
-				response := &pb.Response{
-					Status:  shim.ERROR,
-					Message: "danger-danger",
-				}
-				fakeExecutor.ExecuteReturns(response, nil, nil)
-			})
-
-			It("returns a wrapped error", func() {
-				_, err := lifecycle.GetChaincodeDeploymentSpec(context.Background(), "tx-id", signedProp, proposal, "chain-id", "chaincode-id")
-				Expect(err).To(MatchError("getdepspec chain-id/chaincode-id responded with error: danger-danger"))
-			})
-		})
-
-		Context("when the response contains a nil payload", func() {
-			BeforeEach(func() {
-				response := &pb.Response{Status: shim.OK, Payload: nil}
-				fakeExecutor.ExecuteReturns(response, nil, nil)
-			})
-
-			It("returns a wrapped error", func() {
-				_, err := lifecycle.GetChaincodeDeploymentSpec(context.Background(), "tx-id", signedProp, proposal, "chain-id", "chaincode-id")
-				Expect(err).To(MatchError("getdepspec chain-id/chaincode-id failed: payload is nil"))
-			})
-		})
-
-		Context("when unmarshaling the payload fails", func() {
-			BeforeEach(func() {
-				response := &pb.Response{Status: shim.OK, Payload: []byte("bogus-payload")}
-				fakeExecutor.ExecuteReturns(response, nil, nil)
-			})
-
-			It("returns a wrapped error", func() {
-				_, err := lifecycle.GetChaincodeDeploymentSpec(context.Background(), "tx-id", signedProp, proposal, "chain-id", "chaincode-id")
-				Expect(err).To(MatchError(HavePrefix("failed to unmarshal deployment spec payload for chain-id/chaincode-id")))
+				_, err := lifecycle.GetChaincodeDeploymentSpec("chain-id", "chaincode-id")
+				Expect(err).To(MatchError("could not retrieve deployment spec for chain-id/chaincode-id: mango-tango"))
 			})
 		})
 	})
 
 	Describe("GetChaincodeDefinition", func() {
-		var chaincodeData *ccprovider.ChaincodeData
+		var (
+			chaincodeData *ccprovider.ChaincodeData
+
+			fakeExecutor *mock.Executor
+			signedProp   *pb.SignedProposal
+			proposal     *pb.Proposal
+		)
 
 		BeforeEach(func() {
+			fakeExecutor = &mock.Executor{}
+			signedProp = &pb.SignedProposal{ProposalBytes: []byte("some-proposal-bytes")}
+			proposal = &pb.Proposal{Payload: []byte("some-payload-bytes")}
+
+			lifecycle = &lc.Lifecycle{
+				Executor: fakeExecutor,
+			}
+
 			chaincodeData = &ccprovider.ChaincodeData{
 				Name:    "george",
 				Version: "old",
