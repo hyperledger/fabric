@@ -47,8 +47,8 @@ type Lifecycle interface {
 		chaincodeID string,
 	) (ccprovider.ChaincodeDefinition, error)
 
-	// GetChaincodeDeploymentSpec returns the package necessary to launch a chaincode
-	GetChaincodeDeploymentSpec(chainID string, chaincodeID string) (*pb.ChaincodeDeploymentSpec, error)
+	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
+	ChaincodeContainerInfo(chainID string, chaincodeID string) (*lifecycle.ChaincodeContainerInfo, error)
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
@@ -161,13 +161,9 @@ func (cs *ChaincodeSupport) Stop(ctx context.Context, cccid *ccprovider.CCContex
 	cname := cccid.GetCanonicalName()
 	defer cs.HandlerRegistry.Deregister(cname)
 
-	err := cs.Runtime.Stop(ctx, &lifecycle.ChaincodeContainerInfo{
-		Name:          cds.Name(),
-		Version:       cccid.Version,
-		Path:          cds.Path(),
-		Type:          cds.CCType(),
-		ContainerType: getVMType(cds),
-	})
+	ccci := lifecycle.DeploymentSpecToChaincodeContainerInfo(cds)
+	ccci.Version = cccid.Version
+	err := cs.Runtime.Stop(ctx, ccci)
 	if err != nil {
 		return err
 	}

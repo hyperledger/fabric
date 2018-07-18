@@ -36,6 +36,8 @@ var _ = Describe("RuntimeLauncher", func() {
 		deploymentSpec *pb.ChaincodeDeploymentSpec
 
 		runtimeLauncher *chaincode.RuntimeLauncher
+
+		ccciReturnValue *lc.ChaincodeContainerInfo
 	)
 
 	BeforeEach(func() {
@@ -61,8 +63,15 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakePackageProvider = &mock.PackageProvider{}
 		fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-package"), nil)
 
+		ccciReturnValue = &lc.ChaincodeContainerInfo{
+			Name:          "info-name",
+			Path:          "info-path",
+			Version:       "info-version",
+			ContainerType: "info-container-type",
+			Type:          "info-type",
+		}
 		fakeLifecycle = &mock.Lifecycle{}
-		fakeLifecycle.GetChaincodeDeploymentSpecReturns(deploymentSpec, nil)
+		fakeLifecycle.ChaincodeContainerInfoReturns(ccciReturnValue, nil)
 
 		runtimeLauncher = &chaincode.RuntimeLauncher{
 			Runtime:         fakeRuntime,
@@ -82,36 +91,30 @@ var _ = Describe("RuntimeLauncher", func() {
 			}
 		})
 
-		It("gets the deployment spec", func() {
+		It("gets the chaincode container info", func() {
 			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeLifecycle.GetChaincodeDeploymentSpecCallCount()).To(Equal(1))
-			chainID, chaincodeID := fakeLifecycle.GetChaincodeDeploymentSpecArgsForCall(0)
+			Expect(fakeLifecycle.ChaincodeContainerInfoCallCount()).To(Equal(1))
+			chainID, chaincodeID := fakeLifecycle.ChaincodeContainerInfoArgsForCall(0)
 			Expect(chainID).To(Equal("chain-id"))
 			Expect(chaincodeID).To(Equal("chaincode-name"))
 		})
 
-		It("uses the deployment spec when starting the runtime", func() {
+		It("uses the chaincode container info when starting the runtime", func() {
 			err := runtimeLauncher.Launch(context.Background(), cccid, invocationSpec)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeRuntime.StartCallCount()).To(Equal(1))
 			ctx, ccci, codePackage := fakeRuntime.StartArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(ccci).To(Equal(&lc.ChaincodeContainerInfo{
-				Name:          deploymentSpec.Name(),
-				Path:          deploymentSpec.Path(),
-				Type:          deploymentSpec.CCType(),
-				Version:       deploymentSpec.Version(),
-				ContainerType: "DOCKER",
-			}))
+			Expect(ccci).To(Equal(ccciReturnValue))
 			Expect(codePackage).To(Equal([]byte("code-package")))
 		})
 
 		Context("when getting the deployment spec fails", func() {
 			BeforeEach(func() {
-				fakeLifecycle.GetChaincodeDeploymentSpecReturns(nil, errors.New("king-kong"))
+				fakeLifecycle.ChaincodeContainerInfoReturns(nil, errors.New("king-kong"))
 			})
 
 			It("returns a wrapped error", func() {
@@ -122,8 +125,6 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		Context("when the returned deployment spec has a nil chaincode package", func() {
 			BeforeEach(func() {
-				deploymentSpec.CodePackage = nil
-				fakeLifecycle.GetChaincodeDeploymentSpecReturns(deploymentSpec, nil)
 			})
 
 			It("gets the package from the package provider", func() {
@@ -132,8 +133,8 @@ var _ = Describe("RuntimeLauncher", func() {
 
 				Expect(fakePackageProvider.GetChaincodeCodePackageCallCount()).To(Equal(1))
 				name, version := fakePackageProvider.GetChaincodeCodePackageArgsForCall(0)
-				Expect(name).To(Equal("chaincode-name"))
-				Expect(version).To(Equal("chaincode-version"))
+				Expect(name).To(Equal("info-name"))
+				Expect(version).To(Equal("info-version"))
 			})
 
 			Context("when getting the package fails", func() {
@@ -150,8 +151,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		Context("when launching a system chaincode", func() {
 			BeforeEach(func() {
-				cccid = ccprovider.NewCCContext("chain-id", "lscc", "latest", "tx-id", true, signedProp, proposal)
-				deploymentSpec.ExecEnv = pb.ChaincodeDeploymentSpec_SYSTEM
+				ccciReturnValue.ContainerType = "SYSTEM"
 			})
 
 			It("does not get the codepackage", func() {
