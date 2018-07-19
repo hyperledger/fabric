@@ -64,7 +64,7 @@ var _ = Describe("Network", func() {
 			// Start all of the fabric processes
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
 		AfterEach(func() {
@@ -136,28 +136,28 @@ var _ = Describe("Network", func() {
 
 				p := ifrit.Invoke(zk)
 				processes[zk.Name] = p
-				Eventually(p.Ready()).Should(BeClosed())
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			for i := 0; i < network.Consensus.Brokers; i++ {
 				b := network.BrokerRunner(i, zookeepers)
 				p := ifrit.Invoke(b)
 				processes[b.Name] = p
-				Eventually(p.Ready()).Should(BeClosed())
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			for _, o := range network.Orderers {
 				or := network.OrdererRunner(o)
 				p := ifrit.Invoke(or)
 				processes[o.ID()] = p
-				Eventually(p.Ready()).Should(BeClosed())
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			for _, peer := range network.Peers {
 				pr := network.PeerRunner(peer)
 				p := ifrit.Invoke(pr)
 				processes[peer.ID()] = p
-				Eventually(p.Ready()).Should(BeClosed())
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			orderer := network.Orderer("orderer0")
@@ -189,7 +189,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 		Ctor:      `{"Args":["query","a"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("100"))
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
@@ -204,7 +204,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -213,6 +213,6 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 		Ctor:      `{"Args":["query","a"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("90"))
 }
