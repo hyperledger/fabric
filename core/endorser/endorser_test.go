@@ -12,9 +12,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/endorser/mocks"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	em "github.com/hyperledger/fabric/core/mocks/endorser"
@@ -27,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func getSignedPropWithCHID(ccid, ccver, chid string, t *testing.T) *pb.SignedProposal {
@@ -506,6 +509,57 @@ func TestChaincodeError_Error(t *testing.T) {
 	assert.Equal(t, ce.Error(), "chaincode error (status: 1, message: foo)")
 }
 
+func TestEndorserAcquireTxSimulator(t *testing.T) {
+	tc := []struct {
+		name          string
+		chainID       string
+		chaincodeName string
+		simAcquired   bool
+	}{
+		{"empty channel", "", "ignored", false},
+		{"query scc", util.GetTestChainID(), "qscc", false},
+		{"config scc", util.GetTestChainID(), "cscc", false},
+		{"mainline", util.GetTestChainID(), "chaincode", true},
+	}
+
+	expectedResponse := &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})}
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mock.Mock{}
+			mockSim := &ccprovider.MockTxSim{
+				GetTxSimulationResultsRv: &ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}},
+			}
+			m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(mockSim, nil)
+			support := &em.MockSupport{
+				Mock: m,
+				GetApplicationConfigBoolRv: true,
+				GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+				GetTransactionByIDErr:      errors.New(""),
+				ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
+				ExecuteResp:                expectedResponse,
+			}
+			es := NewEndorserServer(
+				func(string, string, *rwset.TxPvtReadWriteSet) error { return nil },
+				support,
+			)
+			t.Parallel()
+			args := [][]byte{[]byte("args")}
+			signedProp := getSignedPropWithCHIdAndArgs(tt.chainID, tt.chaincodeName, "version", args, t)
+
+			resp, err := es.ProcessProposal(context.Background(), signedProp)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedResponse.Payload, resp.Response.Payload)
+
+			if tt.simAcquired {
+				m.AssertCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			} else {
+				m.AssertNotCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			}
+		})
+	}
+}
+
 var signer msp.SigningIdentity
 
 func TestMain(m *testing.M) {
@@ -525,4 +579,56 @@ func TestMain(m *testing.M) {
 
 	retVal := m.Run()
 	os.Exit(retVal)
+}
+
+//go:generate counterfeiter -o mocks/support.go --fake-name Support . support
+type support interface {
+	Support
+}
+
+func TestUserCDSSanitization(t *testing.T) {
+	fakeSupport := &mocks.Support{}
+	e := NewEndorserServer(nil, fakeSupport)
+
+	userCDS := &pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name:    "user-cc-name",
+				Version: "user-cc-version",
+				Path:    "user-cc-path",
+			},
+			Input: &pb.ChaincodeInput{
+				Args: [][]byte{[]byte("foo"), []byte("bar")},
+			},
+			Type: pb.ChaincodeSpec_GOLANG,
+		},
+		CodePackage: []byte("user-code"),
+	}
+
+	fsCDS := &pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{
+				Name:    "fs-cc-name",
+				Version: "fs-cc-version",
+				Path:    "fs-cc-path",
+			},
+			Type: pb.ChaincodeSpec_GOLANG,
+		},
+		CodePackage: []byte("fs-code"),
+	}
+
+	fakeSupport.GetChaincodeDeploymentSpecFSReturns(fsCDS, nil)
+
+	sanitizedCDS, err := e.(*Endorser).SanitizeUserCDS(userCDS)
+	assert.NoError(t, err)
+	assert.Nil(t, sanitizedCDS.CodePackage)
+	assert.True(t, proto.Equal(userCDS.ChaincodeSpec.Input, sanitizedCDS.ChaincodeSpec.Input))
+	assert.True(t, proto.Equal(fsCDS.ChaincodeSpec.ChaincodeId, sanitizedCDS.ChaincodeSpec.ChaincodeId))
+
+	t.Run("BadPath", func(t *testing.T) {
+		fakeSupport.GetChaincodeDeploymentSpecFSReturns(nil, fmt.Errorf("fake-error"))
+		_, err := e.(*Endorser).SanitizeUserCDS(userCDS)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "fake-error")
+	})
 }

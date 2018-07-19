@@ -13,10 +13,12 @@ import (
 	mc "github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
 )
 
 type MockSupport struct {
+	*mock.Mock
 	IsSysCCAndNotInvokableExternalRv bool
 	IsSysCCRv                        bool
 	ExecuteCDSResp                   *pb.Response
@@ -44,7 +46,12 @@ func (s *MockSupport) IsSysCCAndNotInvokableExternal(name string) bool {
 }
 
 func (s *MockSupport) GetTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
-	return s.GetTxSimulatorRv, s.GetTxSimulatorErr
+	if s.Mock == nil {
+		return s.GetTxSimulatorRv, s.GetTxSimulatorErr
+	}
+
+	args := s.Called(ledgername, txid)
+	return args.Get(0).(ledger.TxSimulator), args.Error(1)
 }
 
 func (s *MockSupport) GetHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {
@@ -75,6 +82,10 @@ func (s *MockSupport) Execute(ctxt context.Context, cid, name, version, txid str
 
 func (s *MockSupport) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (resourcesconfig.ChaincodeDefinition, error) {
 	return s.ChaincodeDefinitionRv, s.ChaincodeDefinitionError
+}
+
+func (s *MockSupport) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	return cds, nil
 }
 
 func (s *MockSupport) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {

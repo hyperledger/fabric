@@ -9,6 +9,7 @@ package endorser
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
@@ -85,6 +86,9 @@ type Support interface {
 	// ChaincodeDefinition differs from the instantiation policy stored on the ledger
 	CheckInstantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error
 
+	// GetChaincodeDeploymentSpecFS returns the deploymentspec for a chaincode from the fs
+	GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error)
+
 	// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 	// and whether the Application config exists
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
@@ -150,8 +154,13 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	//NOTE that if there's an error all simulation, including the chaincode
 	//table changes in lscc will be thrown away
 	if cid.Name == "lscc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
+		userCDS, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
+		if err != nil {
+			return nil, nil, err
+		}
+
 		var cds *pb.ChaincodeDeploymentSpec
-		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
+		cds, err = e.SanitizeUserCDS(userCDS)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -171,10 +180,23 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	return res, ccevent, err
 }
 
-//TO BE REMOVED WHEN JAVA CC IS ENABLED
-//disableJavaCCInst if trying to install, instantiate or upgrade Java CC
+func (e *Endorser) SanitizeUserCDS(userCDS *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	fsCDS, err := e.s.GetChaincodeDeploymentSpecFS(userCDS)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot deploy a chaincode which is not installed")
+	}
+
+	sanitizedCDS := proto.Clone(fsCDS).(*pb.ChaincodeDeploymentSpec)
+	sanitizedCDS.CodePackage = nil
+	sanitizedCDS.ChaincodeSpec.Input = userCDS.ChaincodeSpec.Input
+
+	return sanitizedCDS, nil
+}
+
+// TO BE REMOVED WHEN JAVA CC IS ENABLED
+// disableJavaCCInst if trying to install, instantiate or upgrade Java CC
 func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvocationSpec) error {
-	//if not lscc we don't care
+	// if not lscc we don't care
 	if cid.Name != "lscc" {
 		return nil
 	}
@@ -466,7 +488,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// Also obtain a history query executor for history queries, since tx simulator does not cover history
 	var txsim ledger.TxSimulator
 	var historyQueryExecutor ledger.HistoryQueryExecutor
-	if chainID != "" {
+	if acquireTxSimulator(chainID, vr.hdrExt.ChaincodeId) {
 		if txsim, err = e.s.GetTxSimulator(chainID, txid); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
@@ -537,4 +559,22 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	pResp.Response.Payload = res.Payload
 
 	return pResp, nil
+}
+
+// determine whether or not a transaction simulator should be
+// obtained for a proposal.
+func acquireTxSimulator(chainID string, ccid *pb.ChaincodeID) bool {
+	if chainID == "" {
+		return false
+	}
+
+	// ¯\_(ツ)_/¯ locking.
+	// Don't get a simulator for the query and config system chaincode.
+	// These don't need the simulator and its read lock results in deadlocks.
+	switch ccid.Name {
+	case "qscc", "cscc":
+		return false
+	default:
+		return true
+	}
 }
