@@ -77,6 +77,15 @@
   revision = "c6cef34830231743494fe2969284df7b82cc0ad0"
 
 [[projects]]
+  name = "github.com/coreos/etcd"
+  packages = [
+    "raft",
+    "raft/raftpb"
+  ]
+  revision = "33245c6b5b49130ca99280408fadfab01aac0e48"
+  version = "v3.3.8"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -158,7 +167,11 @@
 
 [[projects]]
   name = "github.com/gogo/protobuf"
-  packages = ["proto"]
+  packages = [
+    "gogoproto",
+    "proto",
+    "protoc-gen-gogo/descriptor"
+  ]
   revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
   version = "v1.0.0"
 
@@ -637,6 +650,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c20fcba8a0db19d3c1436b5b2796d7acd03a73a7336da0bff52847b93fdbc962"
+  inputs-digest = "cc30372def7f90e11439ee9a404ad2d0a62072f4199329d6654110f10c1a3549"
   solver-name = "gps-cdcl"
   solver-version = 1
