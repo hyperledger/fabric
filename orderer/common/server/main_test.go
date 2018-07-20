@@ -73,7 +73,7 @@ func TestInitializeProfilingService(t *testing.T) {
 		l.Close()
 		return l.Addr().String()
 	}()
-	initializeProfilingService(
+	go initializeProfilingService(
 		&localconfig.TopLevel{
 			General: localconfig.General{
 				Profile: localconfig.Profile{

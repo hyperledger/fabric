@@ -236,7 +236,9 @@ func Main() {
 		go clusterGRPCServer.Start()
 	}
 
-	initializeProfilingService(conf)
+	if conf.General.Profile.Enabled {
+		go initializeProfilingService(conf)
+	}
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
@@ -372,13 +374,9 @@ func initializeLogging() {
 
 // Start the profiling service if enabled.
 func initializeProfilingService(conf *localconfig.TopLevel) {
-	if conf.General.Profile.Enabled {
-		go func() {
-			logger.Info("Starting Go pprof profiling service on:", conf.General.Profile.Address)
-			// The ListenAndServe() call does not return unless an error occurs.
-			logger.Panic("Go pprof service failed:", http.ListenAndServe(conf.General.Profile.Address, nil))
-		}()
-	}
+	logger.Info("Starting Go pprof profiling service on:", conf.General.Profile.Address)
+	// The ListenAndServe() call does not return unless an error occurs.
+	logger.Panic("Go pprof service failed:", http.ListenAndServe(conf.General.Profile.Address, nil))
 }
 
 func handleSignals(handlers map[os.Signal]func()) {
