@@ -5,7 +5,8 @@
 required = [
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
-    "github.com/golang/protobuf/protoc-gen-go"
+    "github.com/golang/protobuf/protoc-gen-go",
+    "github.com/coreos/etcd/raft"
 ]
 
 ignored = [
@@ -135,6 +136,11 @@ ignored = [
   name = "github.com/onsi/ginkgo"
   revision = "a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee"
 
+[[constraint]]
+  name = "github.com/coreos/etcd"
+  version = "3.3.8"
+
+
 [prune]
   go-tests = true
   unused-packages = true
@@ -147,3 +153,8 @@ ignored = [
   [[prune.project]]
       name = "github.com/onsi/gomega"
       unused-packages = false
+
+  [[prune.project]]
+      name = "github.com/coreos/etcd"
+      non-go = false
+
