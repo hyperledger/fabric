@@ -13,6 +13,7 @@ tags
 .tags
 .vagrant/
 /.build
+build/
 /release/darwin-amd64
 /release/linux-amd64
 /release/linux-s390x
