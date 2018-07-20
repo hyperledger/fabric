@@ -41,7 +41,7 @@ func CleanupDB(dbName string) {
 	//create a new connection
 	couchDBDef := couchdb.GetCouchDBDefinition()
 	couchInstance, _ := couchdb.CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
 	db := couchdb.CouchDatabase{CouchInstance: couchInstance, DBName: strings.ToLower(dbName)}
 	//drop the test database
 	db.DropDatabase()
