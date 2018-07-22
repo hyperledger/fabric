@@ -16,7 +16,7 @@ import (
 // MemoizeSigner signs messages with the same signature
 // if the message was signed recently
 type MemoizeSigner struct {
-	maxMemorySize int
+	maxEntries uint
 	sync.RWMutex
 	memory map[string][]byte
 	sign   Signer
@@ -24,11 +24,11 @@ type MemoizeSigner struct {
 
 // NewMemoizeSigner creates a new MemoizeSigner that signs
 // message with the given sign function
-func NewMemoizeSigner(signFunc Signer, maxMemorySize int) *MemoizeSigner {
+func NewMemoizeSigner(signFunc Signer, maxEntries uint) *MemoizeSigner {
 	return &MemoizeSigner{
-		maxMemorySize: maxMemorySize,
-		memory:        make(map[string][]byte),
-		sign:          signFunc,
+		maxEntries: maxEntries,
+		memory:     make(map[string][]byte),
+		sign:       signFunc,
 	}
 }
 
@@ -57,25 +57,28 @@ func (ms *MemoizeSigner) lookup(msg []byte) ([]byte, bool) {
 }
 
 func (ms *MemoizeSigner) memorize(msg, signature []byte) {
+	if ms.maxEntries == 0 {
+		return
+	}
 	ms.RLock()
-	shouldShrink := len(ms.memory) >= ms.maxMemorySize
+	shouldShrink := len(ms.memory) >= (int)(ms.maxEntries)
 	ms.RUnlock()
 
 	if shouldShrink {
 		ms.shrinkMemory()
 	}
-
 	ms.Lock()
 	defer ms.Unlock()
 	ms.memory[msgDigest(msg)] = signature
+
 }
 
 // evict evicts random messages from memory
-// until its size is smaller than maxMemorySize
+// until its size is smaller than maxEntries
 func (ms *MemoizeSigner) shrinkMemory() {
 	ms.Lock()
 	defer ms.Unlock()
-	for len(ms.memory) > ms.maxMemorySize {
+	for len(ms.memory) > (int)(ms.maxEntries) {
 		ms.evictFromMemory()
 	}
 }

@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	signerCacheSize = 1
+	signerCacheSize uint = 1
 )
 
 var (

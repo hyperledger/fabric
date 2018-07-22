@@ -535,7 +535,7 @@ type endorsementDescriptor struct {
 }
 
 // NewClient creates a new Client instance
-func NewClient(createConnection Dialer, s Signer, signerCacheSize int) *Client {
+func NewClient(createConnection Dialer, s Signer, signerCacheSize uint) *Client {
 	return &Client{
 		createConnection: createConnection,
 		signRequest:      NewMemoizeSigner(s, signerCacheSize).Sign,
