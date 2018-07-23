@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
+	"crypto/rand"
+	"io"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -37,7 +39,7 @@ func TestSameMessage(t *testing.T) {
 }
 
 func TestDifferentMessages(t *testing.T) {
-	n := 5
+	var n uint = 5
 	var signedInvokedCount uint32
 	sign := func(msg []byte) ([]byte, error) {
 		atomic.AddUint32(&signedInvokedCount, 1)
@@ -45,9 +47,9 @@ func TestDifferentMessages(t *testing.T) {
 	}
 
 	ms := NewMemoizeSigner(sign, n)
-	parallelSignRange := func(start, end int) {
+	parallelSignRange := func(start, end uint) {
 		var wg sync.WaitGroup
-		wg.Add(end - start)
+		wg.Add((int)(end - start))
 		for i := start; i < end; i++ {
 			i := i
 			go func() {
@@ -85,4 +87,18 @@ func TestFailure(t *testing.T) {
 	ms := NewMemoizeSigner(sign, 1)
 	_, err := ms.Sign([]byte{1, 2, 3})
 	assert.Equal(t, "something went wrong", err.Error())
+}
+
+func TestNotSavingInMem(t *testing.T) {
+	sign := func(_ []byte) ([]byte, error) {
+		b := make([]byte, 30)
+		_, err := io.ReadFull(rand.Reader, b)
+		assert.NoError(t, err)
+		return b, nil
+	}
+	ms := NewMemoizeSigner(sign, 0)
+	sig1, _ := ms.sign(([]byte)("aa"))
+	sig2, _ := ms.sign(([]byte)("aa"))
+	assert.NotEqual(t, sig1, sig2)
+
 }

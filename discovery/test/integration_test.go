@@ -494,7 +494,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	assert.NoError(t, err)
 
 	wrapperClient := &client{AuthInfo: authInfo, conn: conn}
-	signerCacheSize := 10
+	var signerCacheSize uint = 10
 	c := disc.NewClient(wrapperClient.newConnection, signer.Sign, signerCacheSize)
 	wrapperClient.Client = c
 	service := &service{Server: gRPCServer.Server(), lc: lc, sup: sup}
