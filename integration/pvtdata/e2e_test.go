@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hyperledger/fabric/integration/pvtdata/helpers"
@@ -330,6 +331,121 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, adminPeer, "Marble private details does not exist: marble1")
 		})
 	})
+
+	Describe("network partition with respect of private data", func() {
+		BeforeEach(func() {
+			var err error
+			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
+			Expect(err).NotTo(HaveOccurred())
+			w = world.GenerateBasicConfig("solo", 1, 3, testDir, components)
+
+			// instantiate the chaincode with two collections such that only Org1 and Org2 have access to the collections
+			d = world.Deployment{
+				Channel: "testchannel",
+				Chaincode: world.Chaincode{
+					Name:                  "marblesp",
+					Version:               "1.0",
+					Path:                  "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+					ExecPath:              os.Getenv("PATH"),
+					CollectionsConfigPath: filepath.Join("testdata", "collection_configs", "collections_config4.json"),
+				},
+				InitArgs: `{"Args":["init"]}`,
+				Policy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				Orderer:  "127.0.0.1:7050",
+			}
+
+			w.SetupWorld(d)
+
+			stopPeer(w, 0, 3)
+
+			By("setting up all anchor peers")
+			setAnchorsPeerForAllOrgs(1, 2, d, w.Rootpath)
+
+			By("verify membership was built using discovery service")
+
+			expectedDiscoveredPeers = []helpers.DiscoveredPeer{
+				{MSPID: "Org1MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:7051", Identity: "", Chaincodes: []string{}},
+				{MSPID: "Org2MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:8051", Identity: "", Chaincodes: []string{}},
+			}
+			verifyMembership(w, d, expectedDiscoveredPeers)
+
+			By("invoking initMarble function of the chaincode")
+			adminPeer := getPeer(0, 1, w.Rootpath)
+			adminRunner := adminPeer.InvokeChaincode(d.Chaincode.Name, d.Channel, `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, d.Orderer)
+			err = helpers.Execute(adminRunner)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(adminRunner.Err()).To(gbytes.Say("Chaincode invoke successful."))
+
+			By("installing chaincode version 2.0 on all p0.org1 and p0.0rg2")
+			installChaincodeOnAllPeers(1, 2, d.Chaincode.Name, "2.0", "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd", testDir)
+		})
+
+		AfterEach(func() {
+			if w != nil {
+				w.Close(d)
+			}
+
+			// Stop the running chaincode containers
+			filters := map[string][]string{}
+			filters["name"] = []string{
+				fmt.Sprintf("%s-1.0", d.Chaincode.Name),
+				fmt.Sprintf("%s-2.0", d.Chaincode.Name),
+			}
+			allContainers, _ := w.DockerClient.ListContainers(docker.ListContainersOptions{
+				Filters: filters,
+			})
+			for _, container := range allContainers {
+				w.DockerClient.RemoveContainer(docker.RemoveContainerOptions{
+					ID:    container.ID,
+					Force: true,
+				})
+			}
+
+			os.RemoveAll(testDir)
+		})
+
+		It("verifies private data not distributed when there is network partition", func() {
+			// after the upgrade:
+			// 1. collectionMarbles - Org1 and Org2 are have access to this collection, using readMarble to read from it.
+			// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection - using readMarblePrivateDetails to read from it.
+			By("upgrading chaincode in order to update collections config, now org2 and org3 have access to private collection")
+			adminPeer := getPeer(0, 2, testDir)
+			adminPeer.UpgradeChaincode(d.Chaincode.Name, "2.0", d.Orderer, d.Channel, `{"Args":["init"]}`, `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`, filepath.Join("testdata", "collection_configs", "collections_config1.json"))
+
+			By("stop p0.org2 process")
+			stopPeer(w, 0, 2)
+
+			By("start p0.org3 process")
+			spawnNewPeer(w, 0, 3)
+
+			By("set p0.org3 as anchor peer of org3")
+			adminPeer = getPeer(0, 3, testDir)
+			adminRunner := adminPeer.UpdateChannel(filepath.Join(testDir, "Org3_anchors_update_tx.pb"), d.Channel, d.Orderer)
+			err := helpers.Execute(adminRunner)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(adminRunner.Err()).To(gbytes.Say("Successfully submitted channel update"))
+
+			By("verify membership was built using discovery service")
+			expectedDiscoveredPeers = []helpers.DiscoveredPeer{
+				{MSPID: "Org1MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:7051", Identity: "", Chaincodes: []string{}},
+				{MSPID: "Org3MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:9051", Identity: "", Chaincodes: []string{}},
+			}
+			verifyMembership(w, d, expectedDiscoveredPeers)
+
+			By("install the chaincode on p0.org3 in order to query it")
+			adminPeer.InstallChaincode("marblesp", "2.0", "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd")
+
+			By("fetch latest blocks to peer0.org3 to make sure it reached the same height as the other alive peer")
+			EventuallyWithOffset(1, func() (*gbytes.Buffer, error) {
+				adminRunner := adminPeer.FetchChannel(d.Channel, filepath.Join(w.Rootpath, "peer0.org3.example.com", fmt.Sprintf("%s_block.pb", d.Channel)), "newest", d.Orderer)
+				err := helpers.Execute(adminRunner)
+				return adminRunner.Err(), err
+			}).Should(gbytes.Say("Received block: 6"))
+
+			By("verify p0.org3 didn't get private data")
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, adminPeer, "Marble private details does not exist: marble1")
+		})
+	})
 })
 
 func getPeer(peer int, org int, testDir string) *runner.Peer {
@@ -412,6 +528,14 @@ func spawnNewPeer(w *world.World, peerIndex int, orgIndex int) {
 	EventuallyWithOffset(2, peerProcess.Ready()).Should(BeClosed())
 	ConsistentlyWithOffset(2, peerProcess.Wait()).ShouldNot(Receive())
 	w.LocalProcess = append(w.LocalProcess, peerProcess)
+	w.NameToProcessMapping[peerName] = peerProcess
+}
+
+func stopPeer(w *world.World, peer int, org int) {
+	peerName := fmt.Sprintf("peer%d.org%d.example.com", peer, org)
+	w.NameToProcessMapping[peerName].Signal(syscall.SIGTERM)
+	w.NameToProcessMapping[peerName].Signal(syscall.SIGKILL)
+	delete(w.NameToProcessMapping, peerName)
 }
 
 func verifyMembership(w *world.World, d world.Deployment, expectedDiscoveredPeers []helpers.DiscoveredPeer) {
