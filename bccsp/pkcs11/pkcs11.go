@@ -21,7 +21,7 @@ import (
 )
 
 func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, error) {
-	var slot uint = 0
+	var slot uint
 	logger.Debugf("Loading pkcs11 library [%s]\n", lib)
 	if lib == "" {
 		return nil, slot, nil, fmt.Errorf("No PKCS11 library default")
@@ -39,8 +39,8 @@ func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, 
 	}
 	found := false
 	for _, s := range slots {
-		info, err := ctx.GetTokenInfo(s)
-		if err != nil {
+		info, errToken := ctx.GetTokenInfo(s)
+		if errToken != nil {
 			continue
 		}
 		logger.Debugf("Looking for %s, found label %s\n", label, info.Label)
@@ -69,12 +69,12 @@ func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, 
 	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", session, slot)
 
 	if pin == "" {
-		return nil, slot, nil, fmt.Errorf("No PIN set\n")
+		return nil, slot, nil, fmt.Errorf("No PIN set")
 	}
 	err = ctx.Login(session, pkcs11.CKU_USER, pin)
 	if err != nil {
 		if err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
-			return nil, slot, nil, fmt.Errorf("Login failed [%s]\n", err)
+			return nil, slot, nil, fmt.Errorf("Login failed [%s]", err)
 		}
 	}
 
@@ -89,7 +89,7 @@ func (csp *impl) getSession() (session pkcs11.SessionHandle) {
 	default:
 		// cache is empty (or completely in use), create a new session
 		var s pkcs11.SessionHandle
-		var err error = nil
+		var err error
 		for i := 0; i < 10; i++ {
 			s, err = csp.ctx.OpenSession(csp.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 			if err != nil {
@@ -99,7 +99,7 @@ func (csp *impl) getSession() (session pkcs11.SessionHandle) {
 			}
 		}
 		if err != nil {
-			panic(fmt.Errorf("OpenSession failed [%s]\n", err))
+			panic(fmt.Errorf("OpenSession failed [%s]", err))
 		}
 		logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, csp.slot)
 		session = s
@@ -224,7 +224,7 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		return nil, nil, fmt.Errorf("Could not marshal OID [%s]", err.Error())
 	}
 
-	pubkey_t := []*pkcs11.Attribute{
+	pubkeyT := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ephemeral),
@@ -236,7 +236,7 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
 	}
 
-	prvkey_t := []*pkcs11.Attribute{
+	prvkeyT := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ephemeral),
@@ -246,15 +246,16 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		pkcs11.NewAttribute(pkcs11.CKA_ID, prvlabel),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
 
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, !csp.noPrivImport),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 	}
 
 	pub, prv, err := p11lib.GenerateKeyPair(session,
 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_EC_KEY_PAIR_GEN, nil)},
-		pubkey_t, prvkey_t)
+		pubkeyT, prvkeyT)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: keypair generate failed [%s]\n", err)
+		return nil, nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
 	}
 
 	ecpt, _, _ := ecPoint(p11lib, session, pub)
@@ -262,20 +263,20 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 	ski = hash[:]
 
 	// set CKA_ID of the both keys to SKI(public key) and CKA_LABEL to hex string of SKI
-	setski_t := []*pkcs11.Attribute{
+	setskiT := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, hex.EncodeToString(ski)),
 	}
 
 	logger.Infof("Generated new P11 key, SKI %x\n", ski)
-	err = p11lib.SetAttributeValue(session, pub, setski_t)
+	err = p11lib.SetAttributeValue(session, pub, setskiT)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]\n", err)
+		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]", err)
 	}
 
-	err = p11lib.SetAttributeValue(session, prv, setski_t)
+	err = p11lib.SetAttributeValue(session, prv, setskiT)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]\n", err)
+		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]", err)
 	}
 
 	nistCurve := namedCurveFromOID(curve)
@@ -304,19 +305,19 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 
 	privateKey, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyFlag)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Private key not found [%s]\n", err)
+		return nil, nil, fmt.Errorf("Private key not found [%s]", err)
 	}
 
 	err = p11lib.SignInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)}, *privateKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Sign-initialize  failed [%s]\n", err)
+		return nil, nil, fmt.Errorf("Sign-initialize  failed [%s]", err)
 	}
 
 	var sig []byte
 
 	sig, err = p11lib.Sign(session, msg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: sign failed [%s]\n", err)
+		return nil, nil, fmt.Errorf("P11: sign failed [%s]", err)
 	}
 
 	R = new(big.Int)
@@ -336,7 +337,7 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 
 	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyFlag)
 	if err != nil {
-		return false, fmt.Errorf("Public key not found [%s]\n", err)
+		return false, fmt.Errorf("Public key not found [%s]", err)
 	}
 
 	r := R.Bytes()
@@ -350,14 +351,14 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 	err = p11lib.VerifyInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)},
 		*publicKey)
 	if err != nil {
-		return false, fmt.Errorf("PKCS11: Verify-initialize [%s]\n", err)
+		return false, fmt.Errorf("PKCS11: Verify-initialize [%s]", err)
 	}
 	err = p11lib.Verify(session, msg, sig)
 	if err == pkcs11.Error(pkcs11.CKR_SIGNATURE_INVALID) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("PKCS11: Verify failed [%s]\n", err)
+		return false, fmt.Errorf("PKCS11: Verify failed [%s]", err)
 	}
 
 	return true, nil
@@ -400,7 +401,7 @@ func (csp *impl) importECKey(curve asn1.ObjectIdentifier, privKey, ecPt []byte, 
 	} else { // isPrivateKey
 		ski, err = csp.importECKey(curve, nil, ecPt, ephemeral, publicKeyFlag)
 		if err != nil {
-			return nil, fmt.Errorf("Failed importing private EC Key [%s]\n", err)
+			return nil, fmt.Errorf("Failed importing private EC Key [%s]", err)
 		}
 
 		logger.Debugf("Importing Private EC Key [%d]\n%s\n", len(privKey)*8, hex.Dump(privKey))
@@ -423,7 +424,7 @@ func (csp *impl) importECKey(curve asn1.ObjectIdentifier, privKey, ecPt []byte, 
 
 	keyHandle, err := p11lib.CreateObject(session, keyTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("P11: keypair generate failed [%s]\n", err)
+		return nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
 	}
 
 	if logger.IsEnabledFor(logging.DEBUG) {
@@ -517,7 +518,7 @@ func ecPoint(p11lib *pkcs11.Ctx, session pkcs11.SessionHandle, key pkcs11.Object
 
 	attr, err := p11lib.GetAttributeValue(session, key, template)
 	if err != nil {
-		return nil, nil, fmt.Errorf("PKCS11: get(EC point) [%s]\n", err)
+		return nil, nil, fmt.Errorf("PKCS11: get(EC point) [%s]", err)
 	}
 
 	for _, a := range attr {
@@ -582,7 +583,9 @@ func (csp *impl) getSecretValue(ski []byte) []byte {
 	defer csp.returnSession(session)
 
 	keyHandle, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyFlag)
-
+	if err != nil {
+		logger.Warningf("P11: findKeyPairFromSKI [%s]\n", err)
+	}
 	var privKey []byte
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, privKey),
@@ -604,14 +607,14 @@ func (csp *impl) getSecretValue(ski []byte) []byte {
 }
 
 var (
-	bigone   = new(big.Int).SetInt64(1)
-	id_ctr   = new(big.Int)
-	id_mutex sync.Mutex
+	bigone  = new(big.Int).SetInt64(1)
+	idCtr   = new(big.Int)
+	idMutex sync.Mutex
 )
 
 func nextIDCtr() *big.Int {
-	id_mutex.Lock()
-	id_ctr = new(big.Int).Add(id_ctr, bigone)
-	id_mutex.Unlock()
-	return id_ctr
+	idMutex.Lock()
+	idCtr = new(big.Int).Add(idCtr, bigone)
+	idMutex.Unlock()
+	return idCtr
 }
