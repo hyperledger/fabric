@@ -7,18 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hyperledger/fabric/integration/pvtdata/helpers"
 	"github.com/hyperledger/fabric/integration/pvtdata/runner"
 	"github.com/hyperledger/fabric/integration/pvtdata/world"
+	"github.com/hyperledger/fabric/protos/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/tedsuo/ifrit"
 
 	"github.com/fsouza/go-dockerclient"
 )
@@ -221,6 +225,111 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarble","marble2"]}`, adminPeer, "Failed to get state for marble2")
 		})
 	})
+
+	Describe("collection config BlockToLive is respected", func() {
+		BeforeEach(func() {
+			var err error
+			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
+			Expect(err).NotTo(HaveOccurred())
+			w = world.GenerateBasicConfig("solo", 1, 3, testDir, components)
+
+			// instantiate the chaincode with two collections:
+			// collectionMarbles - with blockToLive=1000000
+			// collectionMarblePrivateDetails - with blockToLive=3
+			// will use "readMarble" to read from the first one and "readMarblePrivateDetails" from the second one.
+			// need to make sure data is purged only on the second collection
+			d = world.Deployment{
+				Channel: "testchannel",
+				Chaincode: world.Chaincode{
+					Name:                  "marblesp",
+					Version:               "1.0",
+					Path:                  "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+					ExecPath:              os.Getenv("PATH"),
+					CollectionsConfigPath: filepath.Join("testdata", "collection_configs", "short_btl_config.json"),
+				},
+				InitArgs: `{"Args":["init"]}`,
+				Policy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				Orderer:  "127.0.0.1:7050",
+			}
+
+			w.SetupWorld(d)
+
+			By("setting up all anchor peers")
+			setAnchorsPeerForAllOrgs(1, 3, d, w.Rootpath)
+
+			By("verify membership was built using discovery service")
+			expectedDiscoveredPeers = []helpers.DiscoveredPeer{
+				{MSPID: "Org1MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:7051", Identity: "", Chaincodes: []string{}},
+				{MSPID: "Org2MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:8051", Identity: "", Chaincodes: []string{}},
+				{MSPID: "Org3MSP", LedgerHeight: 0, Endpoint: "0.0.0.0:9051", Identity: "", Chaincodes: []string{}},
+			}
+			verifyMembership(w, d, expectedDiscoveredPeers)
+
+			By("invoking initMarble function of the chaincode")
+			adminPeer := getPeer(0, 1, w.Rootpath)
+			adminRunner := adminPeer.InvokeChaincode(d.Chaincode.Name, d.Channel, `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, d.Orderer)
+			err = helpers.Execute(adminRunner)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(adminRunner.Err()).To(gbytes.Say("Chaincode invoke successful."))
+		})
+
+		AfterEach(func() {
+			if w != nil {
+				w.Close(d)
+			}
+			os.RemoveAll(testDir)
+		})
+
+		It("verifies private data is purged after BTL has passed and new peer doesn't pull private data that was purged", func() {
+			adminPeer := getPeer(0, 2, testDir)
+			By("create 4 blocks to reach BTL threshold and have marble1 private data purged")
+			initialLedgerHeight := getLedgerHeight(0, 2, d.Channel, testDir)
+			ledgerHeight := initialLedgerHeight
+			verifyAccess(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, []*runner.Peer{adminPeer}, `{"docType":"marblePrivateDetails","name":"marble1","price":99}`)
+			for i := 2; ledgerHeight < initialLedgerHeight+4; i++ {
+				By(fmt.Sprintf("created %d blocks, still haven't reached BTL, should have access to private data", ledgerHeight-initialLedgerHeight))
+				adminRunner := adminPeer.InvokeChaincode(d.Chaincode.Name, d.Channel, fmt.Sprintf(`{"Args":["initMarble","marble%d","blue%d","3%d","tom","9%d"]}`, i, i, i, i), d.Orderer)
+				err := helpers.Execute(adminRunner)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adminRunner.Err()).To(gbytes.Say("Chaincode invoke successful."))
+				ledgerHeight = getLedgerHeight(0, 2, d.Channel, testDir)
+			}
+			By("querying collectionMarbles by peer0.org2, marble1 should still be available")
+			verifyAccess(d.Chaincode.Name, d.Channel, `{"Args":["readMarble","marble1"]}`, []*runner.Peer{adminPeer}, `{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`)
+			By("querying collectionMarblePrivateDetails by peer0.org2, marble1 should have been purged")
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, adminPeer, "Marble private details does not exist: marble1")
+
+			By("spawn a new peer peer1.org2")
+			spawnNewPeer(w, 1, 2)
+			adminPeer = getPeer(1, 2, testDir)
+			EventuallyWithOffset(1, func() (*gbytes.Buffer, error) {
+				adminRunner := adminPeer.FetchChannel(d.Channel, filepath.Join(w.Rootpath, "peer1.org2.example.com", fmt.Sprintf("%s_block.pb", d.Channel)), "0", d.Orderer)
+				err := helpers.Execute(adminRunner)
+				return adminRunner.Err(), err
+			}).Should(gbytes.Say("Received block: 0"))
+
+			By("join peer1.org2 to the channel")
+			EventuallyWithOffset(1, func() (*gbytes.Buffer, error) {
+				adminRunner := adminPeer.JoinChannel(filepath.Join(w.Rootpath, "peer1.org2.example.com", fmt.Sprintf("%s_block.pb", d.Channel)))
+				err := helpers.Execute(adminRunner)
+				return adminRunner.Err(), err
+			}).Should(gbytes.Say("Successfully submitted proposal to join channel"))
+
+			By("fetch latest blocks to peer1.org2")
+			EventuallyWithOffset(1, func() (*gbytes.Buffer, error) {
+				adminRunner := adminPeer.FetchChannel(d.Channel, filepath.Join(w.Rootpath, "peer1.org2.example.com", fmt.Sprintf("%s_block.pb", d.Channel)), "newest", d.Orderer)
+				err := helpers.Execute(adminRunner)
+				return adminRunner.Err(), err
+			}).Should(gbytes.Say("Received block: 9"))
+
+			By("install the chaincode on peer1.org2 in order to query it")
+			adminPeer.InstallChaincode("marblesp", "1.0", "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd")
+
+			By("query peer1.org2, verify marble1 exist in collectionMarbles and private data doesn't exist")
+			verifyAccess(d.Chaincode.Name, d.Channel, `{"Args":["readMarble","marble1"]}`, []*runner.Peer{adminPeer}, `{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`)
+			verifyAccessFailed(d.Chaincode.Name, d.Channel, `{"Args":["readMarblePrivateDetails","marble1"]}`, adminPeer, "Marble private details does not exist: marble1")
+		})
+	})
 })
 
 func getPeer(peer int, org int, testDir string) *runner.Peer {
@@ -229,6 +338,18 @@ func getPeer(peer int, org int, testDir string) *runner.Peer {
 	adminPeer.ConfigDir = filepath.Join(testDir, fmt.Sprintf("peer%d.org%d.example.com", peer, org))
 	adminPeer.MSPConfigPath = filepath.Join(testDir, "crypto", "peerOrganizations", fmt.Sprintf("org%d.example.com", org), "users", fmt.Sprintf("Admin@org%d.example.com", org), "msp")
 	return adminPeer
+}
+
+func getLedgerHeight(peer int, org int, channel string, testDir string) int {
+	adminPeer := getPeer(peer, org, testDir)
+	adminRunner := adminPeer.GetChannelInfo(channel)
+	err := helpers.Execute(adminRunner)
+	Expect(err).NotTo(HaveOccurred())
+
+	channelInfoStr := strings.TrimPrefix(string(adminRunner.Buffer().Contents()[:]), "Blockchain info:")
+	var channelInfo = common.BlockchainInfo{}
+	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	return int(channelInfo.Height)
 }
 
 func setAnchorsPeerForAllOrgs(numPeers int, numOrgs int, d world.Deployment, testDir string) {
@@ -269,6 +390,28 @@ func verifyAccessFailed(ccname string, channel string, args string, peer *runner
 		Expect(err).To(HaveOccurred())
 		return adminRunner.Err()
 	}, time.Minute).Should(gbytes.Say(expectedFailureMessage))
+}
+
+func spawnNewPeer(w *world.World, peerIndex int, orgIndex int) {
+	peerName := fmt.Sprintf("peer%d.org%d.example.com", peerIndex, orgIndex)
+	if _, err := os.Stat(filepath.Join(w.Rootpath, peerName)); os.IsNotExist(err) {
+		err := os.Mkdir(filepath.Join(w.Rootpath, peerName), 0755)
+		ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	}
+
+	helpers.CopyFile(
+		filepath.Join("testdata", fmt.Sprintf("%s-core.yaml", peerName)),
+		filepath.Join(w.Rootpath, peerName, "core.yaml"),
+	)
+
+	peer := w.Components.Peer()
+	peer.ConfigDir = filepath.Join(w.Rootpath, fmt.Sprintf("peer%d.org%d.example.com", peerIndex, orgIndex))
+	peer.MSPConfigPath = filepath.Join(w.Rootpath, "crypto", "peerOrganizations", fmt.Sprintf("org%d.example.com", orgIndex),
+		"users", fmt.Sprintf("Admin@org%d.example.com", orgIndex), "msp")
+	peerProcess := ifrit.Invoke(peer.NodeStart(peerIndex))
+	EventuallyWithOffset(2, peerProcess.Ready()).Should(BeClosed())
+	ConsistentlyWithOffset(2, peerProcess.Wait()).ShouldNot(Receive())
+	w.LocalProcess = append(w.LocalProcess, peerProcess)
 }
 
 func verifyMembership(w *world.World, d world.Deployment, expectedDiscoveredPeers []helpers.DiscoveredPeer) {
