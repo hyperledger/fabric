@@ -46,12 +46,12 @@ func TestExtractCertificateHashFromContext(t *testing.T) {
 	p.AuthInfo = credentials.TLSInfo{
 		State: tls.ConnectionState{
 			PeerCertificates: []*x509.Certificate{
-				{},
+				{Raw: []byte{1, 2, 3}},
 			},
 		},
 	}
 	ctx = peer.NewContext(context.Background(), p)
-	assert.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
+	assert.Equal(t, util.ComputeSHA256([]byte{1, 2, 3}), comm.ExtractCertificateHashFromContext(ctx))
 }
 
 type nonTLSConnection struct {
