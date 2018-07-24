@@ -17,6 +17,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -918,4 +919,31 @@ func TestMain(m *testing.M) {
 
 	ret := m.Run()
 	os.Exit(ret)
+}
+
+func TestConcurrentCloseSend(t *testing.T) {
+	t.Parallel()
+	var stopping int32
+
+	comm1, _ := newCommInstance(1111, naiveSec)
+	comm2, _ := newCommInstance(2222, naiveSec)
+	m := comm2.Accept(acceptAll)
+	comm1.Send(createGossipMsg(), remotePeer(2222))
+	<-m
+	ready := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		comm1.Send(createGossipMsg(), remotePeer(2222))
+		close(ready)
+
+		for atomic.LoadInt32(&stopping) == int32(0) {
+			comm1.Send(createGossipMsg(), remotePeer(2222))
+		}
+	}()
+	<-ready
+	comm2.Stop()
+	atomic.StoreInt32(&stopping, int32(1))
+	<-done
 }

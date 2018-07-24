@@ -86,7 +86,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		lock:           &sync.Mutex{},
 		deadEndpoints:  make(chan common.PKIidType, 100),
 		stopping:       int32(0),
-		exitChan:       make(chan struct{}, 1),
+		exitChan:       make(chan struct{}),
 		subscriptions:  make([]chan proto.ReceivedMessage, 0),
 		dialTimeout:    util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout),
 		tlsCerts:       certs,
@@ -334,21 +334,24 @@ func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.Received
 	c.subscriptions = append(c.subscriptions, specificChan)
 	c.lock.Unlock()
 
+	c.stopWG.Add(1)
 	go func() {
 		defer c.logger.Debug("Exiting Accept() loop")
-		defer func() {
-			recover()
-		}()
 
-		c.stopWG.Add(1)
 		defer c.stopWG.Done()
 
 		for {
 			select {
 			case msg := <-genericChan:
-				specificChan <- msg.(*ReceivedMessageImpl)
-			case s := <-c.exitChan:
-				c.exitChan <- s
+				if msg == nil {
+					return
+				}
+				select {
+				case specificChan <- msg.(*ReceivedMessageImpl):
+				case <-c.exitChan:
+					return
+				}
+			case <-c.exitChan:
 				return
 			}
 		}
@@ -365,7 +368,7 @@ func (c *commImpl) CloseConn(peer *RemotePeer) {
 	c.connStore.closeConn(peer)
 }
 
-func (c *commImpl) emptySubscriptions() {
+func (c *commImpl) closeSubscriptions() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for _, ch := range c.subscriptions {
@@ -388,12 +391,10 @@ func (c *commImpl) Stop() {
 	}
 	c.connStore.shutdown()
 	c.logger.Debug("Shut down connection store, connection count:", c.connStore.connNum())
-	c.exitChan <- struct{}{}
 	c.msgPublisher.Close()
-	c.logger.Debug("Shut down publisher")
-	c.emptySubscriptions()
-	c.logger.Debug("Closed subscriptions, waiting for goroutines to stop...")
+	close(c.exitChan)
 	c.stopWG.Wait()
+	c.closeSubscriptions()
 }
 
 func (c *commImpl) GetPKIid() common.PKIidType {
