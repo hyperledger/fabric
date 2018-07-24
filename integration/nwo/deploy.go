@@ -22,6 +22,7 @@ type Chaincode struct {
 	Path              string
 	Ctor              string
 	Policy            string
+	Lang              string
 	CollectionsConfig string // optional
 }
 
@@ -49,6 +50,7 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 			Name:    chaincode.Name,
 			Version: chaincode.Version,
 			Path:    chaincode.Path,
+			Lang:    chaincode.Lang,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -68,6 +70,7 @@ func InstantiateChaincode(n *Network, channel string, orderer *Orderer, chaincod
 		Version:           chaincode.Version,
 		Ctor:              chaincode.Ctor,
 		Policy:            chaincode.Policy,
+		Lang:              chaincode.Lang,
 		CollectionsConfig: chaincode.CollectionsConfig,
 	})
 	Expect(err).NotTo(HaveOccurred())
