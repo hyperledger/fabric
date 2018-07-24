@@ -376,10 +376,9 @@ func (c *commImpl) closeSubscriptions() {
 }
 
 func (c *commImpl) Stop() {
-	if c.isStopping() {
+	if !atomic.CompareAndSwapInt32(&c.stopping, 0, int32(1)) {
 		return
 	}
-	atomic.StoreInt32(&c.stopping, int32(1))
 	c.logger.Info("Stopping")
 	defer c.logger.Info("Stopped")
 	if c.gSrv != nil {
