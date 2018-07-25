@@ -68,9 +68,10 @@ type World struct {
 	Cryptogen          pvtdatarunner.Cryptogen
 	SystemChannel      string
 
-	DockerClient  *docker.Client
-	LocalStoppers []Stopper
-	LocalProcess  []ifrit.Process
+	DockerClient         *docker.Client
+	LocalStoppers        []Stopper
+	LocalProcess         []ifrit.Process
+	NameToProcessMapping map[string]ifrit.Process
 }
 
 type Chaincode struct {
@@ -207,17 +208,18 @@ func GenerateBasicConfig(ordererType string, numPeers, numPeerOrgs int, testDir 
 	}
 
 	w = &World{
-		Rootpath:           testDir,
-		Components:         components,
-		Cryptogen:          crypto,
-		Network:            network,
-		SystemChannel:      "systestchannel",
-		OrdererOrgs:        ordererOrgs,
-		PeerOrgs:           peerOrgs,
-		OrdererProfileName: "TwoOrgsOrdererGenesis",
-		ChannelProfileName: "TwoOrgsChannel",
-		Profiles:           profiles,
-		DockerClient:       client,
+		Rootpath:             testDir,
+		Components:           components,
+		Cryptogen:            crypto,
+		Network:              network,
+		SystemChannel:        "systestchannel",
+		OrdererOrgs:          ordererOrgs,
+		PeerOrgs:             peerOrgs,
+		OrdererProfileName:   "TwoOrgsOrdererGenesis",
+		ChannelProfileName:   "TwoOrgsChannel",
+		Profiles:             profiles,
+		DockerClient:         client,
+		NameToProcessMapping: map[string]ifrit.Process{},
 	}
 	return w
 }
@@ -375,6 +377,7 @@ func (w *World) ordererNetwork() {
 			EventuallyWithOffset(2, ordererRunner.Err(), 90*time.Second).Should(gbytes.Say("Start phase completed successfully"))
 		}
 		w.LocalProcess = append(w.LocalProcess, ordererProcess)
+		w.NameToProcessMapping["orderer"] = ordererProcess
 	}
 }
 
@@ -389,6 +392,7 @@ func (w *World) peerNetwork() {
 			EventuallyWithOffset(2, peerProcess.Ready()).Should(BeClosed())
 			ConsistentlyWithOffset(2, peerProcess.Wait()).ShouldNot(Receive())
 			w.LocalProcess = append(w.LocalProcess, peerProcess)
+			w.NameToProcessMapping[fmt.Sprintf("peer%d.%s", peer, peerOrg.Domain)] = peerProcess
 		}
 	}
 }
