@@ -64,6 +64,7 @@ func (d *defaultACLProvider) initialize() {
 	d.cResourcePolicyMap[resources.Lscc_GetDeploymentSpec] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Lscc_GetChaincodeData] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetCollectionsConfig] = CHANNELREADERS
 
 	//-------------- QSCC --------------
 	//p resources (none)
