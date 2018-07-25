@@ -11,7 +11,7 @@ This document assumes that the reader generally knows how to set up a Kafka clus
 Big picture
 -----------
 
-Each channel maps to a separate single-partition topic in Kafka. When an OSN receives transactions via the ``Broadcast`` RPC, it checks to make sure that the broadcasting client has permissions to write on the channel, then relays (i.e. produces) those transactions to the appropriate partition in Kafka. This partition is also consumed by the OSN which groups the received transactions into blocks locally, persists them in its local ledger, and serves them to receiving clients via the ``Deliver`` RPC. For low-level details, refer to `the document that describes how we came to this design <https://docs.google.com/document/d/1vNMaM7XhOlu9tB_10dKnlrhy5d7b1u8lSY8a-kVjCO4/edit>`_ — Figure 8 is a schematic representation of the process described above.
+Each channel maps to a separate single-partition topic in Kafka. When an OSN receives transactions via the ``Broadcast`` RPC, it checks to make sure that the broadcasting client has permissions to write on the channel, then relays (i.e. produces) those transactions to the appropriate partition in Kafka. This partition is also consumed by the OSN which groups the received transactions into blocks locally, persists them in its local ledger, and serves them to receiving clients via the ``Deliver`` RPC. For low-level details, refer to `the document that describes how we came to this design <https://docs.google.com/document/d/19JihmW-8blTzN99lAubOfseLUZqdrB6sBR0HsRgCAnY/edit>`_ — Figure 8 is a schematic representation of the process described above.
 
 Steps
 -----
