@@ -12,15 +12,28 @@ to read the entire thing in one sitting if you like; it's pretty enlightening!
 Anchor Peer
 -----------
 
-Used to initiate gossip communication between peers from different
-organizations. The anchor peer serves as the entry point for another
-organization's peer on the same channel to communicate with each of the peers
-in the anchor peer's organization. Cross-organization gossip is scoped to
-channels. In order for cross-org gossip to work, peers from one organization
-need to know the address of at least one peer from another organization in the
-channel. Each organization added to a channel should identify at least one of
-its peers as an anchor peer (there can be more than one). The anchor peer
-address is stored in the configuration block of the channel.
+Used by gossip to make sure peers in different organizations know about each other.
+
+When a configuration block that contains an anchor peer(s) update is committed,
+peers reach out to the anchor peers and learn from them about all of the peers known
+to the anchor peer(s). Once at least one peer from each organization has contacted an
+anchor peer, the anchor peer learns about every peer in the channel. Since gossip
+communication is constant, and because peers always ask to be told about the existence
+of any peer they don't know about, a common view of membership can be established for
+a channel.
+
+For example, let's assume we have three organizations in the channel: `A`, `B`, `C`,
+and a single anchor peer defined for organization `C`: `peer0.orgC`. When `peer1.orgA`
+(from organization `A`) contacts `peer0.orgC`, it will tell it about `peer0.orgA`. And
+when at a later time `peer1.orgB` contacts `peer0.orgC`, the latter would tell the
+former about `peer0.orgA`. From that point forward, organizations `A` and `B` would
+start exchanging membership information directly without any assistance from
+`peer0.orgC`.
+
+As communication across organizations depends on gossip in order to work, there must
+be at least one anchor peer identified in the channel configuration. However, it is
+recommended that every organization provides its own set of anchor peers for high
+availability and redundancy.
 
 .. _glossary_ACL:
 
