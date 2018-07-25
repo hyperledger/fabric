@@ -723,6 +723,21 @@ func (stub *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, attr
 	}
 }
 
+func (stub *ChaincodeStub) GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	return nil, nil, nil
+}
+
+func (stub *ChaincodeStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
+	pageSize int32, bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	return nil, nil, nil
+}
+
+func (stub *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	return nil, nil, nil
+}
+
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
 	if result, err := iter.nextResult(STATE_QUERY_RESULT); err == nil {
 		return result.(*queryresult.KV), err
