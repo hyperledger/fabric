@@ -149,8 +149,6 @@ peers:
   peer0.org1.example.com:
     # this URL is used to send endorsement and query requests
     url: peer0.org1.example.com:7051
-    # eventUrl is only needed when using eventhub (default is delivery service)
-    eventUrl: peer0.org1.example.com:7053
 
     grpcOptions:
       ssl-target-name-override: peer0.org1.example.com
@@ -170,8 +168,6 @@ peers:
 
   # peer0.org2.example.com:
   #   url: peer0.org2.example.com:7051
-  #   # eventUrl is only needed when using eventhub (default is delivery service)
-  #   eventUrl: peer0.org2.example.com:7053
   #   grpcOptions:
   #     ssl-target-name-override: peer0.org2.example.com
   #     # These parameters should be set in coordination with the keepalive policy on the server,
@@ -184,5 +180,5 @@ peers:
   #     # allow-insecure will be taken into consideration if address has no protocol defined, if true then grpc or else grpcs
   #     allow-insecure: false
 
-#     tlsCACerts:
-#       path: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem
+  #     tlsCACerts:
+  #       path: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem

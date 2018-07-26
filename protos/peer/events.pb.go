@@ -6,7 +6,7 @@ package peer // import "github.com/hyperledger/fabric/protos/peer"
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import _ "github.com/golang/protobuf/ptypes/timestamp"
 import common "github.com/hyperledger/fabric/protos/common"
 
 import (
@@ -25,349 +25,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type EventType int32
-
-const (
-	EventType_REGISTER      EventType = 0
-	EventType_BLOCK         EventType = 1
-	EventType_CHAINCODE     EventType = 2
-	EventType_REJECTION     EventType = 3
-	EventType_FILTEREDBLOCK EventType = 4
-)
-
-var EventType_name = map[int32]string{
-	0: "REGISTER",
-	1: "BLOCK",
-	2: "CHAINCODE",
-	3: "REJECTION",
-	4: "FILTEREDBLOCK",
-}
-var EventType_value = map[string]int32{
-	"REGISTER":      0,
-	"BLOCK":         1,
-	"CHAINCODE":     2,
-	"REJECTION":     3,
-	"FILTEREDBLOCK": 4,
-}
-
-func (x EventType) String() string {
-	return proto.EnumName(EventType_name, int32(x))
-}
-func (EventType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{0}
-}
-
-// ChaincodeReg is used for registering chaincode Interests
-// when EventType is CHAINCODE
-type ChaincodeReg struct {
-	ChaincodeId          string   `protobuf:"bytes,1,opt,name=chaincode_id,json=chaincodeId" json:"chaincode_id,omitempty"`
-	EventName            string   `protobuf:"bytes,2,opt,name=event_name,json=eventName" json:"event_name,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ChaincodeReg) Reset()         { *m = ChaincodeReg{} }
-func (m *ChaincodeReg) String() string { return proto.CompactTextString(m) }
-func (*ChaincodeReg) ProtoMessage()    {}
-func (*ChaincodeReg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{0}
-}
-func (m *ChaincodeReg) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ChaincodeReg.Unmarshal(m, b)
-}
-func (m *ChaincodeReg) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ChaincodeReg.Marshal(b, m, deterministic)
-}
-func (dst *ChaincodeReg) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ChaincodeReg.Merge(dst, src)
-}
-func (m *ChaincodeReg) XXX_Size() int {
-	return xxx_messageInfo_ChaincodeReg.Size(m)
-}
-func (m *ChaincodeReg) XXX_DiscardUnknown() {
-	xxx_messageInfo_ChaincodeReg.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ChaincodeReg proto.InternalMessageInfo
-
-func (m *ChaincodeReg) GetChaincodeId() string {
-	if m != nil {
-		return m.ChaincodeId
-	}
-	return ""
-}
-
-func (m *ChaincodeReg) GetEventName() string {
-	if m != nil {
-		return m.EventName
-	}
-	return ""
-}
-
-type Interest struct {
-	EventType EventType `protobuf:"varint,1,opt,name=event_type,json=eventType,enum=protos.EventType" json:"event_type,omitempty"`
-	// Ideally we should just have the following oneof for different
-	// Reg types and get rid of EventType. But this is an API change
-	// Additional Reg types may add messages specific to their type
-	// to the oneof.
-	//
-	// Types that are valid to be assigned to RegInfo:
-	//	*Interest_ChaincodeRegInfo
-	RegInfo              isInterest_RegInfo `protobuf_oneof:"RegInfo"`
-	ChainID              string             `protobuf:"bytes,3,opt,name=chainID" json:"chainID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
-	XXX_unrecognized     []byte             `json:"-"`
-	XXX_sizecache        int32              `json:"-"`
-}
-
-func (m *Interest) Reset()         { *m = Interest{} }
-func (m *Interest) String() string { return proto.CompactTextString(m) }
-func (*Interest) ProtoMessage()    {}
-func (*Interest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{1}
-}
-func (m *Interest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Interest.Unmarshal(m, b)
-}
-func (m *Interest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Interest.Marshal(b, m, deterministic)
-}
-func (dst *Interest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Interest.Merge(dst, src)
-}
-func (m *Interest) XXX_Size() int {
-	return xxx_messageInfo_Interest.Size(m)
-}
-func (m *Interest) XXX_DiscardUnknown() {
-	xxx_messageInfo_Interest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Interest proto.InternalMessageInfo
-
-type isInterest_RegInfo interface {
-	isInterest_RegInfo()
-}
-
-type Interest_ChaincodeRegInfo struct {
-	ChaincodeRegInfo *ChaincodeReg `protobuf:"bytes,2,opt,name=chaincode_reg_info,json=chaincodeRegInfo,oneof"`
-}
-
-func (*Interest_ChaincodeRegInfo) isInterest_RegInfo() {}
-
-func (m *Interest) GetRegInfo() isInterest_RegInfo {
-	if m != nil {
-		return m.RegInfo
-	}
-	return nil
-}
-
-func (m *Interest) GetEventType() EventType {
-	if m != nil {
-		return m.EventType
-	}
-	return EventType_REGISTER
-}
-
-func (m *Interest) GetChaincodeRegInfo() *ChaincodeReg {
-	if x, ok := m.GetRegInfo().(*Interest_ChaincodeRegInfo); ok {
-		return x.ChaincodeRegInfo
-	}
-	return nil
-}
-
-func (m *Interest) GetChainID() string {
-	if m != nil {
-		return m.ChainID
-	}
-	return ""
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Interest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Interest_OneofMarshaler, _Interest_OneofUnmarshaler, _Interest_OneofSizer, []interface{}{
-		(*Interest_ChaincodeRegInfo)(nil),
-	}
-}
-
-func _Interest_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Interest)
-	// RegInfo
-	switch x := m.RegInfo.(type) {
-	case *Interest_ChaincodeRegInfo:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.ChaincodeRegInfo); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("Interest.RegInfo has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Interest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Interest)
-	switch tag {
-	case 2: // RegInfo.chaincode_reg_info
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(ChaincodeReg)
-		err := b.DecodeMessage(msg)
-		m.RegInfo = &Interest_ChaincodeRegInfo{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Interest_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Interest)
-	// RegInfo
-	switch x := m.RegInfo.(type) {
-	case *Interest_ChaincodeRegInfo:
-		s := proto.Size(x.ChaincodeRegInfo)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
-// ---------- consumer events ---------
-// Register is sent by consumers for registering events
-// string type - "register"
-type Register struct {
-	Events               []*Interest `protobuf:"bytes,1,rep,name=events" json:"events,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
-	XXX_unrecognized     []byte      `json:"-"`
-	XXX_sizecache        int32       `json:"-"`
-}
-
-func (m *Register) Reset()         { *m = Register{} }
-func (m *Register) String() string { return proto.CompactTextString(m) }
-func (*Register) ProtoMessage()    {}
-func (*Register) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{2}
-}
-func (m *Register) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Register.Unmarshal(m, b)
-}
-func (m *Register) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Register.Marshal(b, m, deterministic)
-}
-func (dst *Register) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Register.Merge(dst, src)
-}
-func (m *Register) XXX_Size() int {
-	return xxx_messageInfo_Register.Size(m)
-}
-func (m *Register) XXX_DiscardUnknown() {
-	xxx_messageInfo_Register.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Register proto.InternalMessageInfo
-
-func (m *Register) GetEvents() []*Interest {
-	if m != nil {
-		return m.Events
-	}
-	return nil
-}
-
-// Rejection is sent by consumers for erroneous transaction rejection events
-// string type - "rejection"
-type Rejection struct {
-	Tx                   *Transaction `protobuf:"bytes,1,opt,name=tx" json:"tx,omitempty"`
-	ErrorMsg             string       `protobuf:"bytes,2,opt,name=error_msg,json=errorMsg" json:"error_msg,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *Rejection) Reset()         { *m = Rejection{} }
-func (m *Rejection) String() string { return proto.CompactTextString(m) }
-func (*Rejection) ProtoMessage()    {}
-func (*Rejection) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{3}
-}
-func (m *Rejection) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Rejection.Unmarshal(m, b)
-}
-func (m *Rejection) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Rejection.Marshal(b, m, deterministic)
-}
-func (dst *Rejection) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rejection.Merge(dst, src)
-}
-func (m *Rejection) XXX_Size() int {
-	return xxx_messageInfo_Rejection.Size(m)
-}
-func (m *Rejection) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rejection.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Rejection proto.InternalMessageInfo
-
-func (m *Rejection) GetTx() *Transaction {
-	if m != nil {
-		return m.Tx
-	}
-	return nil
-}
-
-func (m *Rejection) GetErrorMsg() string {
-	if m != nil {
-		return m.ErrorMsg
-	}
-	return ""
-}
-
-// ---------- producer events ---------
-type Unregister struct {
-	Events               []*Interest `protobuf:"bytes,1,rep,name=events" json:"events,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
-	XXX_unrecognized     []byte      `json:"-"`
-	XXX_sizecache        int32       `json:"-"`
-}
-
-func (m *Unregister) Reset()         { *m = Unregister{} }
-func (m *Unregister) String() string { return proto.CompactTextString(m) }
-func (*Unregister) ProtoMessage()    {}
-func (*Unregister) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{4}
-}
-func (m *Unregister) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Unregister.Unmarshal(m, b)
-}
-func (m *Unregister) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Unregister.Marshal(b, m, deterministic)
-}
-func (dst *Unregister) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Unregister.Merge(dst, src)
-}
-func (m *Unregister) XXX_Size() int {
-	return xxx_messageInfo_Unregister.Size(m)
-}
-func (m *Unregister) XXX_DiscardUnknown() {
-	xxx_messageInfo_Unregister.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Unregister proto.InternalMessageInfo
-
-func (m *Unregister) GetEvents() []*Interest {
-	if m != nil {
-		return m.Events
-	}
-	return nil
-}
-
-// FilteredBlock is sent by producers and contains minimal information
-// about the block.
+// FilteredBlock is a minimal set of information about a block
 type FilteredBlock struct {
 	ChannelId            string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId" json:"channel_id,omitempty"`
 	Number               uint64                 `protobuf:"varint,2,opt,name=number" json:"number,omitempty"`
@@ -381,7 +39,7 @@ func (m *FilteredBlock) Reset()         { *m = FilteredBlock{} }
 func (m *FilteredBlock) String() string { return proto.CompactTextString(m) }
 func (*FilteredBlock) ProtoMessage()    {}
 func (*FilteredBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{5}
+	return fileDescriptor_events_ad64ee6e2a989da3, []int{0}
 }
 func (m *FilteredBlock) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredBlock.Unmarshal(m, b)
@@ -423,7 +81,7 @@ func (m *FilteredBlock) GetFilteredTransactions() []*FilteredTransaction {
 }
 
 // FilteredTransaction is a minimal set of information about a transaction
-// within a block.
+// within a block
 type FilteredTransaction struct {
 	Txid             string            `protobuf:"bytes,1,opt,name=txid" json:"txid,omitempty"`
 	Type             common.HeaderType `protobuf:"varint,2,opt,name=type,enum=common.HeaderType" json:"type,omitempty"`
@@ -440,7 +98,7 @@ func (m *FilteredTransaction) Reset()         { *m = FilteredTransaction{} }
 func (m *FilteredTransaction) String() string { return proto.CompactTextString(m) }
 func (*FilteredTransaction) ProtoMessage()    {}
 func (*FilteredTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{6}
+	return fileDescriptor_events_ad64ee6e2a989da3, []int{1}
 }
 func (m *FilteredTransaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredTransaction.Unmarshal(m, b)
@@ -573,7 +231,7 @@ func (m *FilteredTransactionActions) Reset()         { *m = FilteredTransactionA
 func (m *FilteredTransactionActions) String() string { return proto.CompactTextString(m) }
 func (*FilteredTransactionActions) ProtoMessage()    {}
 func (*FilteredTransactionActions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{7}
+	return fileDescriptor_events_ad64ee6e2a989da3, []int{2}
 }
 func (m *FilteredTransactionActions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredTransactionActions.Unmarshal(m, b)
@@ -600,8 +258,8 @@ func (m *FilteredTransactionActions) GetChaincodeActions() []*FilteredChaincodeA
 	return nil
 }
 
-// FilteredChaincodeAction is a minimal set of information about an action within a
-// transaction.
+// FilteredChaincodeAction is a minimal set of information about an action
+// within a transaction
 type FilteredChaincodeAction struct {
 	ChaincodeEvent       *ChaincodeEvent `protobuf:"bytes,1,opt,name=chaincode_event,json=chaincodeEvent" json:"chaincode_event,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
@@ -613,7 +271,7 @@ func (m *FilteredChaincodeAction) Reset()         { *m = FilteredChaincodeAction
 func (m *FilteredChaincodeAction) String() string { return proto.CompactTextString(m) }
 func (*FilteredChaincodeAction) ProtoMessage()    {}
 func (*FilteredChaincodeAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{8}
+	return fileDescriptor_events_ad64ee6e2a989da3, []int{3}
 }
 func (m *FilteredChaincodeAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FilteredChaincodeAction.Unmarshal(m, b)
@@ -640,353 +298,6 @@ func (m *FilteredChaincodeAction) GetChaincodeEvent() *ChaincodeEvent {
 	return nil
 }
 
-// SignedEvent is used for any communication between consumer and producer
-type SignedEvent struct {
-	// Signature over the event bytes
-	Signature []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	// Marshal of Event object
-	EventBytes           []byte   `protobuf:"bytes,2,opt,name=eventBytes,proto3" json:"eventBytes,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *SignedEvent) Reset()         { *m = SignedEvent{} }
-func (m *SignedEvent) String() string { return proto.CompactTextString(m) }
-func (*SignedEvent) ProtoMessage()    {}
-func (*SignedEvent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{9}
-}
-func (m *SignedEvent) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SignedEvent.Unmarshal(m, b)
-}
-func (m *SignedEvent) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SignedEvent.Marshal(b, m, deterministic)
-}
-func (dst *SignedEvent) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SignedEvent.Merge(dst, src)
-}
-func (m *SignedEvent) XXX_Size() int {
-	return xxx_messageInfo_SignedEvent.Size(m)
-}
-func (m *SignedEvent) XXX_DiscardUnknown() {
-	xxx_messageInfo_SignedEvent.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SignedEvent proto.InternalMessageInfo
-
-func (m *SignedEvent) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
-func (m *SignedEvent) GetEventBytes() []byte {
-	if m != nil {
-		return m.EventBytes
-	}
-	return nil
-}
-
-// Event is used by
-//  - consumers (adapters) to send Register
-//  - producer to advertise supported types and events
-type Event struct {
-	// Types that are valid to be assigned to Event:
-	//	*Event_Register
-	//	*Event_Block
-	//	*Event_ChaincodeEvent
-	//	*Event_Rejection
-	//	*Event_Unregister
-	//	*Event_FilteredBlock
-	Event isEvent_Event `protobuf_oneof:"Event"`
-	// Creator of the event, specified as a certificate chain
-	Creator []byte `protobuf:"bytes,6,opt,name=creator,proto3" json:"creator,omitempty"`
-	// Timestamp of the client - used to mitigate replay attacks
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,8,opt,name=timestamp" json:"timestamp,omitempty"`
-	// If mutual TLS is employed, this represents
-	// the hash of the client's TLS certificate
-	TlsCertHash          []byte   `protobuf:"bytes,9,opt,name=tls_cert_hash,json=tlsCertHash,proto3" json:"tls_cert_hash,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Event) Reset()         { *m = Event{} }
-func (m *Event) String() string { return proto.CompactTextString(m) }
-func (*Event) ProtoMessage()    {}
-func (*Event) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{10}
-}
-func (m *Event) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Event.Unmarshal(m, b)
-}
-func (m *Event) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Event.Marshal(b, m, deterministic)
-}
-func (dst *Event) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event.Merge(dst, src)
-}
-func (m *Event) XXX_Size() int {
-	return xxx_messageInfo_Event.Size(m)
-}
-func (m *Event) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Event proto.InternalMessageInfo
-
-type isEvent_Event interface {
-	isEvent_Event()
-}
-
-type Event_Register struct {
-	Register *Register `protobuf:"bytes,1,opt,name=register,oneof"`
-}
-type Event_Block struct {
-	Block *common.Block `protobuf:"bytes,2,opt,name=block,oneof"`
-}
-type Event_ChaincodeEvent struct {
-	ChaincodeEvent *ChaincodeEvent `protobuf:"bytes,3,opt,name=chaincode_event,json=chaincodeEvent,oneof"`
-}
-type Event_Rejection struct {
-	Rejection *Rejection `protobuf:"bytes,4,opt,name=rejection,oneof"`
-}
-type Event_Unregister struct {
-	Unregister *Unregister `protobuf:"bytes,5,opt,name=unregister,oneof"`
-}
-type Event_FilteredBlock struct {
-	FilteredBlock *FilteredBlock `protobuf:"bytes,7,opt,name=filtered_block,json=filteredBlock,oneof"`
-}
-
-func (*Event_Register) isEvent_Event()       {}
-func (*Event_Block) isEvent_Event()          {}
-func (*Event_ChaincodeEvent) isEvent_Event() {}
-func (*Event_Rejection) isEvent_Event()      {}
-func (*Event_Unregister) isEvent_Event()     {}
-func (*Event_FilteredBlock) isEvent_Event()  {}
-
-func (m *Event) GetEvent() isEvent_Event {
-	if m != nil {
-		return m.Event
-	}
-	return nil
-}
-
-func (m *Event) GetRegister() *Register {
-	if x, ok := m.GetEvent().(*Event_Register); ok {
-		return x.Register
-	}
-	return nil
-}
-
-func (m *Event) GetBlock() *common.Block {
-	if x, ok := m.GetEvent().(*Event_Block); ok {
-		return x.Block
-	}
-	return nil
-}
-
-func (m *Event) GetChaincodeEvent() *ChaincodeEvent {
-	if x, ok := m.GetEvent().(*Event_ChaincodeEvent); ok {
-		return x.ChaincodeEvent
-	}
-	return nil
-}
-
-func (m *Event) GetRejection() *Rejection {
-	if x, ok := m.GetEvent().(*Event_Rejection); ok {
-		return x.Rejection
-	}
-	return nil
-}
-
-func (m *Event) GetUnregister() *Unregister {
-	if x, ok := m.GetEvent().(*Event_Unregister); ok {
-		return x.Unregister
-	}
-	return nil
-}
-
-func (m *Event) GetFilteredBlock() *FilteredBlock {
-	if x, ok := m.GetEvent().(*Event_FilteredBlock); ok {
-		return x.FilteredBlock
-	}
-	return nil
-}
-
-func (m *Event) GetCreator() []byte {
-	if m != nil {
-		return m.Creator
-	}
-	return nil
-}
-
-func (m *Event) GetTimestamp() *timestamp.Timestamp {
-	if m != nil {
-		return m.Timestamp
-	}
-	return nil
-}
-
-func (m *Event) GetTlsCertHash() []byte {
-	if m != nil {
-		return m.TlsCertHash
-	}
-	return nil
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Event) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Event_OneofMarshaler, _Event_OneofUnmarshaler, _Event_OneofSizer, []interface{}{
-		(*Event_Register)(nil),
-		(*Event_Block)(nil),
-		(*Event_ChaincodeEvent)(nil),
-		(*Event_Rejection)(nil),
-		(*Event_Unregister)(nil),
-		(*Event_FilteredBlock)(nil),
-	}
-}
-
-func _Event_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Event)
-	// Event
-	switch x := m.Event.(type) {
-	case *Event_Register:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Register); err != nil {
-			return err
-		}
-	case *Event_Block:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Block); err != nil {
-			return err
-		}
-	case *Event_ChaincodeEvent:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.ChaincodeEvent); err != nil {
-			return err
-		}
-	case *Event_Rejection:
-		b.EncodeVarint(4<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Rejection); err != nil {
-			return err
-		}
-	case *Event_Unregister:
-		b.EncodeVarint(5<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Unregister); err != nil {
-			return err
-		}
-	case *Event_FilteredBlock:
-		b.EncodeVarint(7<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.FilteredBlock); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("Event.Event has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Event_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Event)
-	switch tag {
-	case 1: // Event.register
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Register)
-		err := b.DecodeMessage(msg)
-		m.Event = &Event_Register{msg}
-		return true, err
-	case 2: // Event.block
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(common.Block)
-		err := b.DecodeMessage(msg)
-		m.Event = &Event_Block{msg}
-		return true, err
-	case 3: // Event.chaincode_event
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(ChaincodeEvent)
-		err := b.DecodeMessage(msg)
-		m.Event = &Event_ChaincodeEvent{msg}
-		return true, err
-	case 4: // Event.rejection
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Rejection)
-		err := b.DecodeMessage(msg)
-		m.Event = &Event_Rejection{msg}
-		return true, err
-	case 5: // Event.unregister
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Unregister)
-		err := b.DecodeMessage(msg)
-		m.Event = &Event_Unregister{msg}
-		return true, err
-	case 7: // Event.filtered_block
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(FilteredBlock)
-		err := b.DecodeMessage(msg)
-		m.Event = &Event_FilteredBlock{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Event_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Event)
-	// Event
-	switch x := m.Event.(type) {
-	case *Event_Register:
-		s := proto.Size(x.Register)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Event_Block:
-		s := proto.Size(x.Block)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Event_ChaincodeEvent:
-		s := proto.Size(x.ChaincodeEvent)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Event_Rejection:
-		s := proto.Size(x.Rejection)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Event_Unregister:
-		s := proto.Size(x.Unregister)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Event_FilteredBlock:
-		s := proto.Size(x.FilteredBlock)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
 // DeliverResponse
 type DeliverResponse struct {
 	// Types that are valid to be assigned to Type:
@@ -1003,7 +314,7 @@ func (m *DeliverResponse) Reset()         { *m = DeliverResponse{} }
 func (m *DeliverResponse) String() string { return proto.CompactTextString(m) }
 func (*DeliverResponse) ProtoMessage()    {}
 func (*DeliverResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_events_288a7d6350978185, []int{11}
+	return fileDescriptor_events_ad64ee6e2a989da3, []int{4}
 }
 func (m *DeliverResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeliverResponse.Unmarshal(m, b)
@@ -1158,19 +469,11 @@ func _DeliverResponse_OneofSizer(msg proto.Message) (n int) {
 }
 
 func init() {
-	proto.RegisterType((*ChaincodeReg)(nil), "protos.ChaincodeReg")
-	proto.RegisterType((*Interest)(nil), "protos.Interest")
-	proto.RegisterType((*Register)(nil), "protos.Register")
-	proto.RegisterType((*Rejection)(nil), "protos.Rejection")
-	proto.RegisterType((*Unregister)(nil), "protos.Unregister")
 	proto.RegisterType((*FilteredBlock)(nil), "protos.FilteredBlock")
 	proto.RegisterType((*FilteredTransaction)(nil), "protos.FilteredTransaction")
 	proto.RegisterType((*FilteredTransactionActions)(nil), "protos.FilteredTransactionActions")
 	proto.RegisterType((*FilteredChaincodeAction)(nil), "protos.FilteredChaincodeAction")
-	proto.RegisterType((*SignedEvent)(nil), "protos.SignedEvent")
-	proto.RegisterType((*Event)(nil), "protos.Event")
 	proto.RegisterType((*DeliverResponse)(nil), "protos.DeliverResponse")
-	proto.RegisterEnum("protos.EventType", EventType_name, EventType_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1181,112 +484,16 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Events service
-
-type EventsClient interface {
-	// event chatting using Event
-	Chat(ctx context.Context, opts ...grpc.CallOption) (Events_ChatClient, error)
-}
-
-type eventsClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewEventsClient(cc *grpc.ClientConn) EventsClient {
-	return &eventsClient{cc}
-}
-
-func (c *eventsClient) Chat(ctx context.Context, opts ...grpc.CallOption) (Events_ChatClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Events_serviceDesc.Streams[0], c.cc, "/protos.Events/Chat", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &eventsChatClient{stream}
-	return x, nil
-}
-
-type Events_ChatClient interface {
-	Send(*SignedEvent) error
-	Recv() (*Event, error)
-	grpc.ClientStream
-}
-
-type eventsChatClient struct {
-	grpc.ClientStream
-}
-
-func (x *eventsChatClient) Send(m *SignedEvent) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *eventsChatClient) Recv() (*Event, error) {
-	m := new(Event)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// Server API for Events service
-
-type EventsServer interface {
-	// event chatting using Event
-	Chat(Events_ChatServer) error
-}
-
-func RegisterEventsServer(s *grpc.Server, srv EventsServer) {
-	s.RegisterService(&_Events_serviceDesc, srv)
-}
-
-func _Events_Chat_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(EventsServer).Chat(&eventsChatServer{stream})
-}
-
-type Events_ChatServer interface {
-	Send(*Event) error
-	Recv() (*SignedEvent, error)
-	grpc.ServerStream
-}
-
-type eventsChatServer struct {
-	grpc.ServerStream
-}
-
-func (x *eventsChatServer) Send(m *Event) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *eventsChatServer) Recv() (*SignedEvent, error) {
-	m := new(SignedEvent)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-var _Events_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "protos.Events",
-	HandlerType: (*EventsServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "Chat",
-			Handler:       _Events_Chat_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
-		},
-	},
-	Metadata: "peer/events.proto",
-}
-
 // Client API for Deliver service
 
 type DeliverClient interface {
-	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with Payload data as a marshaled orderer.SeekInfo message,
-	// then a stream of block replies is received.
+	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with
+	// Payload data as a marshaled orderer.SeekInfo message,
+	// then a stream of block replies is received
 	Deliver(ctx context.Context, opts ...grpc.CallOption) (Deliver_DeliverClient, error)
-	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with Payload data as a marshaled orderer.SeekInfo message,
-	// then a stream of **filtered** block replies is received.
+	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with
+	// Payload data as a marshaled orderer.SeekInfo message,
+	// then a stream of **filtered** block replies is received
 	DeliverFiltered(ctx context.Context, opts ...grpc.CallOption) (Deliver_DeliverFilteredClient, error)
 }
 
@@ -1363,11 +570,13 @@ func (x *deliverDeliverFilteredClient) Recv() (*DeliverResponse, error) {
 // Server API for Deliver service
 
 type DeliverServer interface {
-	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with Payload data as a marshaled orderer.SeekInfo message,
-	// then a stream of block replies is received.
+	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with
+	// Payload data as a marshaled orderer.SeekInfo message,
+	// then a stream of block replies is received
 	Deliver(Deliver_DeliverServer) error
-	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with Payload data as a marshaled orderer.SeekInfo message,
-	// then a stream of **filtered** block replies is received.
+	// deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with
+	// Payload data as a marshaled orderer.SeekInfo message,
+	// then a stream of **filtered** block replies is received
 	DeliverFiltered(Deliver_DeliverFilteredServer) error
 }
 
@@ -1448,72 +657,43 @@ var _Deliver_serviceDesc = grpc.ServiceDesc{
 	Metadata: "peer/events.proto",
 }
 
-func init() { proto.RegisterFile("peer/events.proto", fileDescriptor_events_288a7d6350978185) }
+func init() { proto.RegisterFile("peer/events.proto", fileDescriptor_events_ad64ee6e2a989da3) }
 
-var fileDescriptor_events_288a7d6350978185 = []byte{
-	// 1009 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xdd, 0x72, 0xdb, 0x44,
-	0x14, 0xb6, 0x62, 0xc7, 0xb1, 0x8e, 0xe3, 0xd4, 0xd9, 0xb4, 0xa9, 0xc6, 0x05, 0x5a, 0xc4, 0xc0,
-	0x04, 0x2e, 0xec, 0x60, 0x3a, 0x0c, 0xd3, 0x0b, 0x98, 0xf8, 0x27, 0xc8, 0x34, 0x4d, 0x32, 0x1b,
-	0x87, 0x8b, 0x5e, 0xa0, 0x59, 0xcb, 0x6b, 0x59, 0xad, 0x2c, 0x79, 0x76, 0xd7, 0x99, 0xe4, 0x11,
-	0x78, 0x03, 0xde, 0x80, 0x19, 0x5e, 0x85, 0x17, 0xe2, 0x92, 0xd1, 0x6a, 0x57, 0x52, 0x6c, 0xda,
-	0x21, 0x57, 0xf6, 0xf9, 0xfb, 0xf6, 0xfc, 0x7c, 0x67, 0x57, 0xb0, 0xbf, 0xa4, 0x94, 0x75, 0xe8,
-	0x0d, 0x8d, 0x04, 0x6f, 0x2f, 0x59, 0x2c, 0x62, 0x54, 0x95, 0x3f, 0xbc, 0x75, 0xe0, 0xc5, 0x8b,
-	0x45, 0x1c, 0x75, 0xd2, 0x9f, 0xd4, 0xd8, 0x7a, 0xee, 0xc7, 0xb1, 0x1f, 0xd2, 0x8e, 0x94, 0x26,
-	0xab, 0x59, 0x47, 0x04, 0x0b, 0xca, 0x05, 0x59, 0x2c, 0x95, 0x43, 0x4b, 0x02, 0x7a, 0x73, 0x12,
-	0x44, 0x5e, 0x3c, 0xa5, 0xae, 0x84, 0x56, 0xb6, 0x43, 0x69, 0x13, 0x8c, 0x44, 0x9c, 0x78, 0x22,
-	0xd0, 0xa0, 0xf6, 0x25, 0xec, 0xf6, 0x75, 0x00, 0xa6, 0x3e, 0xfa, 0x1c, 0x76, 0x73, 0x80, 0x60,
-	0x6a, 0x19, 0x2f, 0x8c, 0x23, 0x13, 0xd7, 0x33, 0xdd, 0x68, 0x8a, 0x3e, 0x05, 0x90, 0xc8, 0x6e,
-	0x44, 0x16, 0xd4, 0xda, 0x92, 0x0e, 0xa6, 0xd4, 0x9c, 0x93, 0x05, 0xb5, 0xff, 0x34, 0xa0, 0x36,
-	0x8a, 0x04, 0x65, 0x94, 0x0b, 0x74, 0xac, 0x7d, 0xc5, 0xdd, 0x92, 0x4a, 0xb0, 0xbd, 0xee, 0x7e,
-	0x7a, 0x34, 0x6f, 0x0f, 0x13, 0xcb, 0xf8, 0x6e, 0x49, 0x55, 0x78, 0xf2, 0x17, 0x0d, 0x00, 0xe5,
-	0x09, 0x30, 0xea, 0xbb, 0x41, 0x34, 0x8b, 0xe5, 0x29, 0xf5, 0xee, 0x63, 0x1d, 0x59, 0x4c, 0xd9,
-	0x29, 0xe1, 0xa6, 0x57, 0x90, 0x47, 0xd1, 0x2c, 0x46, 0x16, 0xec, 0x48, 0xdd, 0x68, 0x60, 0x95,
-	0x65, 0x82, 0x5a, 0xec, 0x99, 0xb0, 0xa3, 0x9c, 0xec, 0x97, 0x50, 0xc3, 0xd4, 0x0f, 0xb8, 0xa0,
-	0x0c, 0x1d, 0x41, 0x35, 0x9d, 0x84, 0x65, 0xbc, 0x28, 0x1f, 0xd5, 0xbb, 0x4d, 0x7d, 0x94, 0x2e,
-	0x05, 0x2b, 0xbb, 0xfd, 0x06, 0x4c, 0x4c, 0xdf, 0x51, 0xd9, 0x44, 0xf4, 0x05, 0x6c, 0x89, 0x5b,
-	0x59, 0x57, 0xbd, 0x7b, 0xa0, 0x43, 0xc6, 0x79, 0x97, 0xf1, 0x96, 0xb8, 0x45, 0xcf, 0xc0, 0xa4,
-	0x8c, 0xc5, 0xcc, 0x5d, 0x70, 0x5f, 0xf5, 0xab, 0x26, 0x15, 0x6f, 0xb8, 0x6f, 0x7f, 0x0f, 0x70,
-	0x1d, 0xb1, 0x87, 0xa7, 0xf1, 0x87, 0x01, 0x8d, 0xd3, 0x20, 0x4c, 0xb4, 0xd3, 0x5e, 0x18, 0x7b,
-	0xef, 0x93, 0xb9, 0x78, 0x73, 0x12, 0x45, 0x34, 0xcc, 0x07, 0x67, 0x2a, 0xcd, 0x68, 0x8a, 0x0e,
-	0xa1, 0x1a, 0xad, 0x16, 0x13, 0xca, 0x64, 0x0a, 0x15, 0xac, 0x24, 0x74, 0x09, 0x4f, 0x66, 0x0a,
-	0xc7, 0x2d, 0xf0, 0x83, 0x5b, 0x15, 0x99, 0xc1, 0x33, 0x9d, 0x81, 0x3e, 0xac, 0x58, 0xdd, 0xe3,
-	0xd9, 0xa6, 0x92, 0xdb, 0xff, 0x18, 0x70, 0xf0, 0x1f, 0xde, 0x08, 0x41, 0x45, 0xdc, 0x66, 0xa9,
-	0xc9, 0xff, 0xe8, 0x2b, 0xa8, 0x48, 0x6a, 0x6c, 0x49, 0x6a, 0xa0, 0xb6, 0x62, 0xbc, 0x43, 0xc9,
-	0x94, 0x32, 0xc9, 0x0d, 0x69, 0x47, 0xa7, 0x80, 0xc4, 0xad, 0x7b, 0x43, 0xc2, 0x60, 0x4a, 0x12,
-	0x30, 0x37, 0x99, 0xb6, 0x9c, 0xed, 0x5e, 0xd7, 0xca, 0x1a, 0x7f, 0xfb, 0x6b, 0xe6, 0xd0, 0x4f,
-	0xd8, 0xd0, 0x14, 0x6b, 0x1a, 0x74, 0x0d, 0x07, 0x85, 0x22, 0xdd, 0xbc, 0xd6, 0x64, 0x82, 0xf6,
-	0x47, 0x6a, 0x3d, 0x49, 0x3d, 0x9d, 0x12, 0x46, 0x62, 0x43, 0xdb, 0xab, 0x42, 0x65, 0x40, 0x04,
-	0xb1, 0xdf, 0x41, 0xeb, 0xc3, 0xb1, 0xe8, 0x0c, 0xf6, 0x73, 0x6e, 0xeb, 0xa3, 0xd3, 0x41, 0x3f,
-	0x5f, 0x3f, 0x3a, 0xa3, 0x78, 0x1a, 0x5c, 0xe0, 0xb8, 0x42, 0xb3, 0xdf, 0xc2, 0xd3, 0x0f, 0x38,
-	0xa3, 0x9f, 0xe0, 0xd1, 0xda, 0x35, 0xa0, 0x38, 0x7a, 0xb8, 0xb1, 0x41, 0x72, 0x09, 0xf1, 0x9e,
-	0x77, 0x4f, 0xb6, 0x5f, 0x43, 0xfd, 0x2a, 0xf0, 0x23, 0x3a, 0x95, 0x22, 0xfa, 0x04, 0x4c, 0x1e,
-	0xf8, 0x11, 0x11, 0x2b, 0x96, 0x6e, 0xf1, 0x2e, 0xce, 0x15, 0xe8, 0x33, 0xb5, 0xe4, 0xbd, 0x3b,
-	0x41, 0xb9, 0x9c, 0xe4, 0x2e, 0x2e, 0x68, 0xec, 0xbf, 0xcb, 0xb0, 0x9d, 0xe2, 0xb4, 0xa1, 0xa6,
-	0xa9, 0xae, 0x12, 0xca, 0x08, 0xae, 0x37, 0xd1, 0x29, 0xe1, 0xcc, 0x07, 0x7d, 0x09, 0xdb, 0x93,
-	0x84, 0xdb, 0x6a, 0xff, 0x1b, 0x9a, 0x1e, 0x92, 0xf0, 0x4e, 0x09, 0xa7, 0x56, 0x74, 0xb2, 0x59,
-	0x6e, 0xf9, 0x63, 0xe5, 0x3a, 0xa5, 0xf5, 0x82, 0xd1, 0xb7, 0x60, 0x32, 0xbd, 0xd5, 0x8a, 0x0d,
-	0xfb, 0x79, 0x6a, 0xca, 0xe0, 0x94, 0x70, 0xee, 0x85, 0x5e, 0x02, 0xac, 0xb2, 0xcd, 0xb5, 0xb6,
-	0x65, 0x0c, 0xd2, 0x31, 0xf9, 0x4e, 0x3b, 0x25, 0x5c, 0xf0, 0x43, 0x3f, 0xc2, 0x5e, 0xb6, 0x6e,
-	0x69, 0x6d, 0x3b, 0x32, 0xf2, 0xc9, 0x3a, 0x01, 0x74, 0x8d, 0x8d, 0xd9, 0xbd, 0x2d, 0x4f, 0x6e,
-	0x36, 0x46, 0x89, 0x88, 0x99, 0x55, 0x95, 0x9d, 0xd6, 0x22, 0xfa, 0x01, 0xcc, 0xec, 0x45, 0xb0,
-	0x6a, 0x12, 0xb4, 0xd5, 0x4e, 0xdf, 0x8c, 0xb6, 0x7e, 0x33, 0xda, 0x63, 0xed, 0x81, 0x73, 0x67,
-	0x64, 0x43, 0x43, 0x84, 0xdc, 0xf5, 0x28, 0x13, 0xee, 0x9c, 0xf0, 0xb9, 0x65, 0x4a, 0xe4, 0xba,
-	0x08, 0x79, 0x9f, 0x32, 0xe1, 0x10, 0x3e, 0xef, 0xed, 0xa8, 0x19, 0xda, 0x7f, 0x19, 0xf0, 0x68,
-	0x40, 0xc3, 0xe0, 0x86, 0x32, 0x4c, 0xf9, 0x32, 0x8e, 0x38, 0x4d, 0xae, 0x2d, 0x2e, 0x88, 0x58,
-	0x71, 0x75, 0xc5, 0xef, 0xe9, 0x41, 0x5d, 0x49, 0xad, 0x53, 0xc2, 0xca, 0xfe, 0x7f, 0x27, 0xba,
-	0xd9, 0xa5, 0xf2, 0x43, 0xba, 0x94, 0xec, 0x63, 0x72, 0x79, 0x7c, 0x73, 0x0d, 0x66, 0xf6, 0xca,
-	0xa0, 0x5d, 0xa8, 0xe1, 0xe1, 0xcf, 0xa3, 0xab, 0xf1, 0x10, 0x37, 0x4b, 0xc8, 0x84, 0xed, 0xde,
-	0xd9, 0x45, 0xff, 0x75, 0xd3, 0x40, 0x0d, 0x30, 0xfb, 0xce, 0xc9, 0xe8, 0xbc, 0x7f, 0x31, 0x18,
-	0x36, 0xb7, 0x12, 0x11, 0x0f, 0x7f, 0x19, 0xf6, 0xc7, 0xa3, 0x8b, 0xf3, 0x66, 0x19, 0xed, 0x43,
-	0xe3, 0x74, 0x74, 0x36, 0x1e, 0xe2, 0xe1, 0x20, 0x0d, 0xa8, 0x74, 0x5f, 0x41, 0x55, 0xc2, 0x72,
-	0x74, 0x0c, 0x95, 0xfe, 0x9c, 0x08, 0x94, 0x5d, 0xfe, 0x85, 0xb5, 0x69, 0x35, 0xee, 0xbd, 0x74,
-	0x76, 0xe9, 0xc8, 0x38, 0x36, 0xba, 0xbf, 0x1b, 0xb0, 0xa3, 0xfa, 0x87, 0x5e, 0xe5, 0x7f, 0x9b,
-	0xba, 0x13, 0xc3, 0xe8, 0x86, 0x86, 0xf1, 0x92, 0xb6, 0x9e, 0xea, 0xe8, 0xb5, 0x6e, 0xa7, 0x38,
-	0xa8, 0x97, 0x8d, 0x41, 0xf7, 0xe2, 0xc1, 0x18, 0xbd, 0xdf, 0xc0, 0x8e, 0x99, 0xdf, 0x9e, 0xdf,
-	0x2d, 0x29, 0x0b, 0xe9, 0xd4, 0xa7, 0xac, 0x3d, 0x23, 0x13, 0x16, 0x78, 0x3a, 0x2c, 0xf9, 0x6a,
-	0xe8, 0x35, 0xd2, 0x5a, 0x2f, 0x89, 0xf7, 0x9e, 0xf8, 0xf4, 0xed, 0xd7, 0x7e, 0x20, 0xe6, 0xab,
-	0x49, 0x72, 0x56, 0xa7, 0x10, 0xd9, 0x49, 0x23, 0xd3, 0xcf, 0x13, 0xde, 0x49, 0x22, 0x27, 0xe9,
-	0xf7, 0xcc, 0x77, 0xff, 0x06, 0x00, 0x00, 0xff, 0xff, 0x7f, 0xfc, 0x9e, 0x06, 0xeb, 0x08, 0x00,
-	0x00,
+var fileDescriptor_events_ad64ee6e2a989da3 = []byte{
+	// 560 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
+	0x10, 0x8e, 0x69, 0x08, 0xea, 0x44, 0x49, 0xdb, 0x2d, 0x4d, 0xa3, 0x20, 0xd4, 0xc8, 0x12, 0xc8,
+	0x5c, 0x62, 0x64, 0x6e, 0x1c, 0x40, 0xa4, 0x3f, 0x0a, 0x12, 0x87, 0x6a, 0x09, 0x1c, 0x7a, 0xc0,
+	0x5a, 0xdb, 0x13, 0xc7, 0xd4, 0xf1, 0x5a, 0xbb, 0x9b, 0x28, 0x79, 0x04, 0xde, 0x80, 0x67, 0xe0,
+	0x09, 0x39, 0x22, 0xaf, 0xbd, 0x49, 0x9a, 0x52, 0x24, 0x4e, 0xf6, 0xce, 0x7c, 0x3f, 0x33, 0xb3,
+	0x63, 0xc3, 0x51, 0x8e, 0x28, 0x5c, 0x5c, 0x60, 0xa6, 0xe4, 0x20, 0x17, 0x5c, 0x71, 0xd2, 0xd0,
+	0x0f, 0xd9, 0x3b, 0x0e, 0xf9, 0x6c, 0xc6, 0x33, 0xb7, 0x7c, 0x94, 0xc9, 0xde, 0x59, 0xcc, 0x79,
+	0x9c, 0xa2, 0xab, 0x4f, 0xc1, 0x7c, 0xe2, 0xaa, 0x64, 0x86, 0x52, 0xb1, 0x59, 0x5e, 0x01, 0x7a,
+	0x5a, 0x30, 0x9c, 0xb2, 0x24, 0x0b, 0x79, 0x84, 0xbe, 0x96, 0xae, 0x72, 0x1d, 0x9d, 0x53, 0x82,
+	0x65, 0x92, 0x85, 0x2a, 0x31, 0xa2, 0xf6, 0x4f, 0x0b, 0x5a, 0x57, 0x49, 0xaa, 0x50, 0x60, 0x34,
+	0x4c, 0x79, 0x78, 0x4b, 0x9e, 0x03, 0x84, 0x53, 0x96, 0x65, 0x98, 0xfa, 0x49, 0xd4, 0xb5, 0xfa,
+	0x96, 0xb3, 0x4f, 0xf7, 0xab, 0xc8, 0xc7, 0x88, 0x74, 0xa0, 0x91, 0xcd, 0x67, 0x01, 0x8a, 0xee,
+	0xa3, 0xbe, 0xe5, 0xd4, 0x69, 0x75, 0x22, 0xd7, 0x70, 0x32, 0xa9, 0x74, 0xfc, 0x2d, 0x1b, 0xd9,
+	0xad, 0xf7, 0xf7, 0x9c, 0xa6, 0xf7, 0xac, 0xf4, 0x93, 0x03, 0x63, 0x36, 0xde, 0x60, 0xe8, 0xd3,
+	0xc9, 0xfd, 0xa0, 0xb4, 0x7f, 0x5b, 0x70, 0xfc, 0x17, 0x34, 0x21, 0x50, 0x57, 0xcb, 0x75, 0x69,
+	0xfa, 0x9d, 0xbc, 0x84, 0xba, 0x5a, 0xe5, 0xa8, 0x6b, 0x6a, 0x7b, 0x64, 0x50, 0x0d, 0x6e, 0x84,
+	0x2c, 0x42, 0x31, 0x5e, 0xe5, 0x48, 0x75, 0x9e, 0x5c, 0x01, 0x51, 0x4b, 0x7f, 0xc1, 0xd2, 0x24,
+	0x62, 0x85, 0x98, 0x5f, 0x0c, 0xaa, 0xbb, 0xa7, 0x59, 0x5d, 0x53, 0xe2, 0x78, 0xf9, 0x75, 0x0d,
+	0x38, 0xe7, 0x11, 0xd2, 0x43, 0xb5, 0x13, 0x21, 0x5f, 0xe0, 0x78, 0xab, 0x49, 0x7f, 0xd3, 0xab,
+	0xe5, 0x34, 0x3d, 0xfb, 0x1f, 0xbd, 0x7e, 0x28, 0x91, 0xa3, 0x1a, 0x25, 0xea, 0x5e, 0x74, 0xd8,
+	0x80, 0xfa, 0x05, 0x53, 0xcc, 0xfe, 0x0e, 0xbd, 0x87, 0xb9, 0xe4, 0x13, 0x1c, 0x6d, 0x2e, 0xd9,
+	0x58, 0x5b, 0x7a, 0xcc, 0x67, 0xbb, 0xd6, 0xe7, 0x06, 0x58, 0x92, 0xe9, 0x61, 0x78, 0x37, 0x20,
+	0xed, 0x1b, 0x38, 0x7d, 0x00, 0x4c, 0xde, 0xc3, 0xc1, 0xce, 0x36, 0xe9, 0xa1, 0x37, 0xbd, 0x8e,
+	0xb1, 0x59, 0x33, 0x2e, 0x8b, 0x2c, 0x6d, 0x87, 0x77, 0xce, 0xf6, 0x2f, 0x0b, 0x0e, 0x2e, 0x30,
+	0x4d, 0x16, 0x28, 0x28, 0xca, 0x9c, 0x67, 0x12, 0x89, 0x03, 0x0d, 0xa9, 0x98, 0x9a, 0x4b, 0xad,
+	0xd5, 0xf6, 0xda, 0xe6, 0xb2, 0x3e, 0xeb, 0xe8, 0xa8, 0x46, 0xab, 0x3c, 0x79, 0x01, 0x8f, 0x83,
+	0x62, 0x25, 0xf5, 0xad, 0x36, 0xbd, 0x96, 0x01, 0xea, 0x3d, 0x1d, 0xd5, 0x68, 0x99, 0x25, 0xef,
+	0xa0, 0xbd, 0xde, 0xbc, 0x12, 0xbf, 0xa7, 0xf1, 0x27, 0xbb, 0xb3, 0x30, 0xbc, 0xd6, 0x64, 0x3b,
+	0x50, 0x0c, 0xbd, 0xd8, 0x10, 0xef, 0x87, 0x05, 0x4f, 0xaa, 0x62, 0xc9, 0xdb, 0xcd, 0xeb, 0xa1,
+	0xb1, 0xbd, 0xcc, 0x16, 0x98, 0xf2, 0x1c, 0x7b, 0xa7, 0x46, 0x78, 0xa7, 0x35, 0xbb, 0xe6, 0x58,
+	0xaf, 0x2d, 0x32, 0x5c, 0xf7, 0x6c, 0x8c, 0xff, 0x5b, 0x63, 0xf8, 0x0d, 0x6c, 0x2e, 0xe2, 0xc1,
+	0x74, 0x95, 0xa3, 0x48, 0x31, 0x8a, 0x51, 0x0c, 0x26, 0x2c, 0x10, 0x49, 0x68, 0x68, 0xc5, 0xe7,
+	0x3c, 0x6c, 0xe9, 0x29, 0xcb, 0x6b, 0x16, 0xde, 0xb2, 0x18, 0x6f, 0x5e, 0xc5, 0x89, 0x9a, 0xce,
+	0x83, 0xc2, 0xcb, 0xdd, 0x62, 0xba, 0x25, 0xb3, 0xfc, 0x6f, 0x48, 0xb7, 0x60, 0x06, 0xe5, 0x8f,
+	0xe6, 0xcd, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xd3, 0x19, 0xd1, 0xa9, 0x84, 0x04, 0x00, 0x00,
 }

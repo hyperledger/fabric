@@ -61,7 +61,6 @@ import (
 	ccsupport "github.com/hyperledger/fabric/discovery/support/chaincode"
 	"github.com/hyperledger/fabric/discovery/support/config"
 	"github.com/hyperledger/fabric/discovery/support/gossip"
-	"github.com/hyperledger/fabric/events/producer"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
@@ -78,7 +77,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
 )
 
 const (
@@ -215,12 +213,6 @@ func serve(args []string) error {
 			logger.Fatalf("Failed to set TLS client certificate (%s)", err)
 		}
 		comm.GetCredentialSupport().SetClientCertificate(clientCert)
-	}
-
-	//TODO - do we need different SSL material for events ?
-	ehubGrpcServer, err := createEventHubServer(serverConfig)
-	if err != nil {
-		grpclog.Fatalf("Failed to create ehub server: %v", err)
 	}
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
@@ -410,11 +402,6 @@ func serve(args []string) error {
 		}
 		serve <- grpcErr
 	}()
-
-	// Start the event hub server
-	if ehubGrpcServer != nil {
-		go ehubGrpcServer.Start()
-	}
 
 	// Start profiling http endpoint if enabled
 	if viper.GetBool("peer.profile.enabled") {
@@ -665,34 +652,6 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 	return chaincodeSupport, ccp, sccp
 }
 
-func createEventHubServer(serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
-	var lis net.Listener
-	var err error
-	lis, err = net.Listen("tcp", viper.GetString("peer.events.address"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen: %v", err)
-	}
-
-	// set the keepalive options
-	serverConfig.KaOpts = comm.DefaultKeepaliveOptions
-	if viper.IsSet("peer.events.keepalive.minInterval") {
-		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.events.keepalive.minInterval")
-	}
-
-	grpcServer, err := comm.NewGRPCServerFromListener(lis, serverConfig)
-	if err != nil {
-		logger.Errorf("Failed to return new GRPC server: %s", err)
-		return nil, err
-	}
-
-	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
-	ehConfig := initializeEventsServerConfig(mutualTLS)
-	ehServer := producer.NewEventsServer(ehConfig)
-	pb.RegisterEventsServer(grpcServer.Server(), ehServer)
-
-	return grpcServer, nil
-}
-
 func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) bool {
 	// By default, admin listens on the same port as the peer data service
 	if adminListenAddress == "" {
@@ -735,35 +694,4 @@ func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
 	}
 
 	pb.RegisterAdminServer(gRPCService, admin.NewAdminServer(adminPolicy))
-}
-
-func initializeEventsServerConfig(mutualTLS bool) *producer.EventsServerConfig {
-	extract := func(msg proto.Message) []byte {
-		evt, isEvent := msg.(*pb.Event)
-		if !isEvent || evt == nil {
-			return nil
-		}
-		return evt.TlsCertHash
-	}
-
-	ehConfig := &producer.EventsServerConfig{
-		BufferSize:       uint(viper.GetInt("peer.events.buffersize")),
-		Timeout:          viper.GetDuration("peer.events.timeout"),
-		SendTimeout:      viper.GetDuration("peer.events.sendTimeout"),
-		TimeWindow:       viper.GetDuration("peer.events.timewindow"),
-		BindingInspector: comm.NewBindingInspector(mutualTLS, extract)}
-
-	if ehConfig.TimeWindow == 0*time.Minute {
-		defaultTimeWindow := 15 * time.Minute
-		logger.Warningf("'peer.events.timewindow' not set; defaulting to %s", defaultTimeWindow)
-		ehConfig.TimeWindow = defaultTimeWindow
-	}
-
-	if ehConfig.SendTimeout <= 0 {
-		defaultSendTimeout := 60 * time.Second
-		logger.Debugf("'peer.events.sendTimeout' <= 0. defaulting to %s", defaultSendTimeout)
-		ehConfig.SendTimeout = defaultSendTimeout
-	}
-
-	return ehConfig
 }
