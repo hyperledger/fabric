@@ -41,6 +41,7 @@
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
+#   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
 BASE_VERSION = 1.3.0
@@ -428,6 +429,12 @@ docker-tag-latest: $(IMAGES:%=%-docker-tag-latest)
 %-docker-tag-latest:
 	$(eval TARGET = ${patsubst %-docker-tag-latest,%,${@}})
 	docker tag $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG) $(DOCKER_NS)/fabric-$(TARGET):latest
+
+docker-tag-stable: $(IMAGES:%=%-docker-tag-stable)
+
+%-docker-tag-stable:
+	$(eval TARGET = ${patsubst %-docker-tag-stable,%,${@}})
+	docker tag $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG) $(DOCKER_NS)/fabric-$(TARGET):stable
 
 .PHONY: clean
 clean: docker-clean unit-test-clean release-clean
