@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/viper"
@@ -101,6 +102,7 @@ func TestOrdererClient(t *testing.T) {
 func TestOrdererClientTimeout(t *testing.T) {
 	t.Run("OrdererClient.Broadcast() timeout", func(t *testing.T) {
 		cleanup := initOrdererTestEnv(t)
+		viper.Set("orderer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		oClient, err := common.NewOrdererClientFromEnv()
 		if err != nil {
@@ -111,6 +113,7 @@ func TestOrdererClientTimeout(t *testing.T) {
 	})
 	t.Run("OrdererClient.Deliver() timeout", func(t *testing.T) {
 		cleanup := initOrdererTestEnv(t)
+		viper.Set("orderer.client.connTimeout", 10*time.Millisecond)
 		defer cleanup()
 		oClient, err := common.NewOrdererClientFromEnv()
 		if err != nil {
