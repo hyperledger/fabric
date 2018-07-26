@@ -15,11 +15,13 @@ export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/wi
 export MARCH=$(uname -m)
 
 printHelp() {
-  echo "Usage: bootstrap.sh [<version>] [<ca_version>] [<thirdparty_version>][-d -s -b]"
+  echo "Usage: bootstrap.sh [version [ca_version [thirdparty_version]]] [options]"
   echo
-  echo "-d - bypass docker image download"
-  echo "-s - bypass fabric-samples repo clone"
-  echo "-b - bypass download of platform-specific binaries"
+  echo "options:"
+  echo "-h : this help"
+  echo "-d : bypass docker image download"
+  echo "-s : bypass fabric-samples repo clone"
+  echo "-b : bypass download of platform-specific binaries"
   echo
   echo "e.g. bootstrap.sh 1.2.0 -s"
   echo "would download docker images and binaries for version 1.2.0"
@@ -174,11 +176,11 @@ BINARIES=true
 
 # Parse commandline args pull out
 # version and/or ca-version strings first
-if [ ! -z $1 ]; then
+if [ ! -z $1 -a ${1:0:1} != "-" ]; then
   VERSION=$1;shift
-  if [ ! -z $1 ]; then
+  if [ ! -z $1  -a ${1:0:1} != "-" ]; then
     CA_VERSION=$1;shift
-    if [ ! -z $1 ]; then
+    if [ ! -z $1  -a ${1:0:1} != "-" ]; then
       THIRDPARTY_IMAGE_VERSION=$1;shift
     fi
   fi
