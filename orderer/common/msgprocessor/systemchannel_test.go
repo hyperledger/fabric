@@ -41,7 +41,7 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{}
 		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
-		assert.Regexp(t, "no header was set", err.Error())
+		assert.Regexp(t, "header not set", err.Error())
 	})
 	t.Run("Mismatched channel ID", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
@@ -83,7 +83,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
-		assert.Regexp(t, "no header was set", err.Error())
+		assert.Regexp(t, "header not set", err.Error())
 	})
 	t.Run("NormalUpdate", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
