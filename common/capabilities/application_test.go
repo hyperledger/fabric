@@ -15,70 +15,62 @@ import (
 )
 
 func TestApplicationV10(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{})
-	assert.NoError(t, op.Supported())
+	ap := NewApplicationProvider(map[string]*cb.Capability{})
+	assert.NoError(t, ap.Supported())
 }
 
 func TestApplicationV11(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{
+	ap := NewApplicationProvider(map[string]*cb.Capability{
 		ApplicationV1_1: {},
 	})
-	assert.NoError(t, op.Supported())
-	assert.True(t, op.ForbidDuplicateTXIdInBlock())
-	assert.True(t, op.V1_1Validation())
+	assert.NoError(t, ap.Supported())
+	assert.True(t, ap.ForbidDuplicateTXIdInBlock())
+	assert.True(t, ap.V1_1Validation())
 }
 
 func TestApplicationV12(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationV1_2: {},
-	})
-	assert.NoError(t, op.Supported())
-	assert.True(t, op.ForbidDuplicateTXIdInBlock())
-	assert.True(t, op.V1_1Validation())
-	assert.True(t, op.V1_2Validation())
-	assert.True(t, op.KeyLevelEndorsement())
-}
-
-func TestApplicationPvtDataExperimental(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationPvtDataExperimental: {},
-	})
-	assert.True(t, op.PrivateChannelData())
-
-	op = NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationV1_2: {},
-	})
-	assert.True(t, op.PrivateChannelData())
-
-}
-
-func TestApplicationACLs(t *testing.T) {
 	ap := NewApplicationProvider(map[string]*cb.Capability{
 		ApplicationV1_2: {},
 	})
+	assert.NoError(t, ap.Supported())
+	assert.True(t, ap.ForbidDuplicateTXIdInBlock())
+	assert.True(t, ap.V1_1Validation())
+	assert.True(t, ap.V1_2Validation())
+	assert.True(t, ap.KeyLevelEndorsement())
 	assert.True(t, ap.ACLs())
+	assert.True(t, ap.CollectionUpgrade())
+	assert.True(t, ap.PrivateChannelData())
 }
 
-func TestApplicationCollectionUpgrade(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationV1_2: {},
+func TestApplicationV13(t *testing.T) {
+	ap := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationV1_3: {},
 	})
-	assert.True(t, op.CollectionUpgrade())
+	assert.NoError(t, ap.Supported())
+	assert.True(t, ap.ForbidDuplicateTXIdInBlock())
+	assert.True(t, ap.V1_1Validation())
+	assert.True(t, ap.V1_2Validation())
+	assert.True(t, ap.V1_3Validation())
+	assert.True(t, ap.KeyLevelEndorsement())
+	assert.True(t, ap.MetadataLifecycle())
+	assert.True(t, ap.ACLs())
+	assert.True(t, ap.CollectionUpgrade())
+	assert.True(t, ap.PrivateChannelData())
 }
 
-func TestChaincodeLifecycleExperimental(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{
-		ApplicationChaincodeLifecycleExperimental: {},
+func TestApplicationPvtDataExperimental(t *testing.T) {
+	ap := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationPvtDataExperimental: {},
 	})
-	assert.True(t, op.MetadataLifecycle())
+	assert.True(t, ap.PrivateChannelData())
 }
 
 func TestHasCapability(t *testing.T) {
-	op := NewApplicationProvider(map[string]*cb.Capability{})
-	assert.True(t, op.HasCapability(ApplicationV1_1))
-	assert.True(t, op.HasCapability(ApplicationV1_2))
-	assert.True(t, op.HasCapability(ApplicationPvtDataExperimental))
-	assert.True(t, op.HasCapability(ApplicationResourcesTreeExperimental))
-	assert.True(t, op.HasCapability(ApplicationChaincodeLifecycleExperimental))
-	assert.False(t, op.HasCapability("default"))
+	ap := NewApplicationProvider(map[string]*cb.Capability{})
+	assert.True(t, ap.HasCapability(ApplicationV1_1))
+	assert.True(t, ap.HasCapability(ApplicationV1_2))
+	assert.True(t, ap.HasCapability(ApplicationV1_3))
+	assert.True(t, ap.HasCapability(ApplicationPvtDataExperimental))
+	assert.True(t, ap.HasCapability(ApplicationResourcesTreeExperimental))
+	assert.False(t, ap.HasCapability("default"))
 }
