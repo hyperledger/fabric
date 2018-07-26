@@ -89,8 +89,7 @@ func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.Version
 	if dbVal == nil {
 		return nil, nil
 	}
-	val, ver := DecodeValue(dbVal)
-	return &statedb.VersionedValue{Value: val, Version: ver}, nil
+	return decodeValue(dbVal)
 }
 
 // GetVersion implements method in VersionedDB interface
@@ -149,7 +148,11 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 			if vv.Value == nil {
 				dbBatch.Delete(compositeKey)
 			} else {
-				dbBatch.Put(compositeKey, EncodeValue(vv.Value, vv.Version))
+				encodedVal, err := encodeValue(vv)
+				if err != nil {
+					return err
+				}
+				dbBatch.Put(compositeKey, encodedVal)
 			}
 		}
 	}
@@ -201,10 +204,15 @@ func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 	dbValCopy := make([]byte, len(dbVal))
 	copy(dbValCopy, dbVal)
 	_, key := splitCompositeKey(dbKey)
-	value, version := DecodeValue(dbValCopy)
+	vv, err := decodeValue(dbValCopy)
+	if err != nil {
+		return nil, err
+	}
 	return &statedb.VersionedKV{
-		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
-		VersionedValue: statedb.VersionedValue{Value: value, Version: version}}, nil
+		CompositeKey: statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
+		// TODO remove dereferrencing below by changing the type of the field
+		// `VersionedValue` in `statedb.VersionedKV` to a pointer
+		VersionedValue: *vv}, nil
 }
 
 func (scanner *kvScanner) Close() {

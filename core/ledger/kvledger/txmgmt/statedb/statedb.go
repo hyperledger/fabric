@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -81,8 +82,9 @@ type CompositeKey struct {
 
 // VersionedValue encloses value and corresponding version
 type VersionedValue struct {
-	Value   []byte
-	Version *version.Height
+	Value    []byte
+	Metadata []byte
+	Version  *version.Height
 }
 
 // VersionedKV encloses key and corresponding VersionedValue
@@ -131,17 +133,17 @@ func (batch *UpdateBatch) Get(ns string, key string) *VersionedValue {
 	return vv
 }
 
-// Put adds a VersionedKV
+// Put adds a key with value only. The metadata is assumed to be nil
 func (batch *UpdateBatch) Put(ns string, key string, value []byte, version *version.Height) {
 	if value == nil {
-		panic("Nil value not allowed")
+		panic("Nil value not allowed. Instead call 'Delete' function")
 	}
-	batch.Update(ns, key, &VersionedValue{value, version})
+	batch.Update(ns, key, &VersionedValue{value, nil, version})
 }
 
 // Delete deletes a Key and associated value
 func (batch *UpdateBatch) Delete(ns string, key string, version *version.Height) {
-	batch.Update(ns, key, &VersionedValue{nil, version})
+	batch.Update(ns, key, &VersionedValue{nil, nil, version})
 }
 
 // Exists checks whether the given key exists in the batch
@@ -236,7 +238,7 @@ func (itr *nsIterator) Next() (QueryResult, error) {
 	key := itr.sortedKeys[itr.nextIndex]
 	vv := itr.nsUpdates.m[key]
 	itr.nextIndex++
-	return &VersionedKV{CompositeKey{itr.ns, key}, VersionedValue{vv.Value, vv.Version}}, nil
+	return &VersionedKV{CompositeKey{itr.ns, key}, VersionedValue{vv.Value, vv.Metadata, vv.Version}}, nil
 }
 
 // Close implements the method from QueryResult interface
