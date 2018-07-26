@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -280,6 +281,54 @@ func TestNewConnection(t *testing.T) {
 				ClientCAs:    certPool,
 			},
 			success: true,
+		},
+		{
+			name:       "server TLS pinning success",
+			serverPort: 8358,
+			clientPort: 8358,
+			config: comm.ClientConfig{
+				SecOpts: &comm.SecureOptions{
+					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+						if bytes.Equal(rawCerts[0], testCerts.serverCert.Certificate[0]) {
+							return nil
+						}
+						panic("mismatched certificate")
+					},
+					Certificate:       testCerts.certPEM,
+					Key:               testCerts.keyPEM,
+					UseTLS:            true,
+					RequireClientCert: true,
+					ServerRootCAs:     [][]byte{testCerts.caPEM}},
+				Timeout: testTimeout},
+			serverTLS: &tls.Config{
+				Certificates: []tls.Certificate{testCerts.serverCert},
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				ClientCAs:    certPool,
+			},
+			success: true,
+		},
+		{
+			name:       "server TLS pinning failure",
+			serverPort: 8359,
+			clientPort: 8359,
+			config: comm.ClientConfig{
+				SecOpts: &comm.SecureOptions{
+					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+						return errors.New("TLS certificate mismatch")
+					},
+					Certificate:       testCerts.certPEM,
+					Key:               testCerts.keyPEM,
+					UseTLS:            true,
+					RequireClientCert: true,
+					ServerRootCAs:     [][]byte{testCerts.caPEM}},
+				Timeout: testTimeout},
+			serverTLS: &tls.Config{
+				Certificates: []tls.Certificate{testCerts.serverCert},
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				ClientCAs:    certPool,
+			},
+			success:  false,
+			errorMsg: "context deadline exceeded",
 		},
 	}
 

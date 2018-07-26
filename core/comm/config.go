@@ -8,6 +8,7 @@ package comm
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"time"
 
 	"google.golang.org/grpc"
@@ -65,6 +66,10 @@ type ClientConfig struct {
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer or GRPCClient instance
 type SecureOptions struct {
+	// VerifyCertificate, if not nil, is called after normal
+	// certificate verification by either a TLS client or server.
+	// If it returns a non-nil error, the handshake is aborted and that error results.
+	VerifyCertificate func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 	// PEM-encoded X509 public key to be used for TLS communication
 	Certificate []byte
 	// PEM-encoded private key to be used for TLS communication

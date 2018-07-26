@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm_test
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -20,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/stretchr/testify/assert"
@@ -654,6 +656,68 @@ func TestNewSecureGRPCServer(t *testing.T) {
 			assert.Contains(t, err.Error(), "context deadline exceeded")
 		})
 	}
+}
+
+func TestVerifyCertificateCallback(t *testing.T) {
+	t.Parallel()
+
+	ca, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+
+	authorizedClientKeyPair, err := ca.NewClientCertKeyPair()
+	assert.NoError(t, err)
+
+	notAuthorizedClientKeyPair, err := ca.NewClientCertKeyPair()
+	assert.NoError(t, err)
+
+	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
+	assert.NoError(t, err)
+
+	verifyFunc := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		if bytes.Equal(rawCerts[0], authorizedClientKeyPair.TLSCert.Raw) {
+			return nil
+		}
+		return errors.New("certificate mismatch")
+	}
+
+	probeTLS := func(endpoint string, clientKeyPair *tlsgen.CertKeyPair) error {
+		cert, err := tls.X509KeyPair(clientKeyPair.Cert, clientKeyPair.Key)
+		tlsCfg := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      x509.NewCertPool(),
+		}
+		tlsCfg.RootCAs.AppendCertsFromPEM(ca.CertBytes())
+
+		conn, err := tls.Dial("tcp", endpoint, tlsCfg)
+		if err != nil {
+			return err
+		}
+		conn.Close()
+		return nil
+	}
+
+	gRPCServer, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
+		SecOpts: &comm.SecureOptions{
+			ClientRootCAs:     [][]byte{ca.CertBytes()},
+			Key:               serverKeyPair.Key,
+			Certificate:       serverKeyPair.Cert,
+			UseTLS:            true,
+			VerifyCertificate: verifyFunc,
+		},
+	})
+	go gRPCServer.Start()
+	defer gRPCServer.Stop()
+
+	t.Run("Success path", func(t *testing.T) {
+		err = probeTLS(gRPCServer.Address(), authorizedClientKeyPair)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Failure path", func(t *testing.T) {
+		err = probeTLS(gRPCServer.Address(), notAuthorizedClientKeyPair)
+		assert.EqualError(t, err, "remote error: tls: bad certificate")
+	})
+
 }
 
 func TestNewSecureGRPCServerFromListener(t *testing.T) {
