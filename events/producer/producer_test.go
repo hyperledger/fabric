@@ -385,7 +385,7 @@ func (*mockstream) SetTrailer(metadata.MD) {
 }
 
 func (*mockstream) Context() context.Context {
-	panic("not implemented")
+	return context.Background()
 }
 
 func (*mockstream) SendMsg(m interface{}) error {
