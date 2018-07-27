@@ -7,21 +7,33 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var _ = Describe("SCC", func() {
 	var (
-		scc *lifecycle.SCC
+		scc          *lifecycle.SCC
+		fakeProto    *mock.Protobuf
+		fakeSCCFuncs *mock.SCCFunctions
 	)
 
 	BeforeEach(func() {
-		scc = &lifecycle.SCC{}
+		fakeProto = &mock.Protobuf{}
+		fakeSCCFuncs = &mock.SCCFunctions{}
+		scc = &lifecycle.SCC{
+			Protobuf:  fakeProto,
+			Functions: fakeSCCFuncs,
+		}
 	})
 
 	Describe("Name", func() {
@@ -87,13 +99,100 @@ var _ = Describe("SCC", func() {
 			})
 		})
 
+		Context("when too many arguments are provided", func() {
+			BeforeEach(func() {
+				fakeStub.GetArgsReturns([][]byte{nil, nil, nil})
+			})
+
+			It("returns an error", func() {
+				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("lifecycle scc operations require exactly two arguments but received 3")))
+			})
+		})
+
 		Context("when an unknown function is provided as the first argument", func() {
 			BeforeEach(func() {
-				fakeStub.GetArgsReturns([][]byte{[]byte("bad-function")})
+				fakeStub.GetArgsReturns([][]byte{[]byte("bad-function"), nil})
 			})
 
 			It("returns an error", func() {
 				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("unknown lifecycle function: bad-function")))
+			})
+		})
+
+		Describe("InstallChaincode", func() {
+			var (
+				arg          *lb.InstallChaincodeArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.InstallChaincodeArgs{
+					Name:                    "name",
+					Version:                 "version",
+					ChaincodeInstallPackage: []byte("chaincode-package"),
+				}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("InstallChaincode"), marshaledArg})
+
+				fakeProto.UnmarshalStub = proto.Unmarshal
+				fakeProto.MarshalStub = proto.Marshal
+
+				fakeSCCFuncs.InstallChaincodeReturns([]byte("fake-hash"), nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.InstallChaincodeResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(payload.Hash).To(Equal([]byte("fake-hash")))
+
+				Expect(fakeSCCFuncs.InstallChaincodeCallCount()).To(Equal(1))
+				name, version, ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)
+				Expect(name).To(Equal("name"))
+				Expect(version).To(Equal("version"))
+				Expect(ccInstallPackage).To(Equal([]byte("chaincode-package")))
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.InstallChaincodeReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing InstallChaincode: underlying-error"))
+				})
+			})
+
+			Context("when unmarshaling the input fails", func() {
+				BeforeEach(func() {
+					fakeProto.UnmarshalReturns(fmt.Errorf("unmarshal-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to decode input arg to InstallChaincode: unmarshal-error"))
+				})
+			})
+
+			Context("when marshaling the output fails", func() {
+				BeforeEach(func() {
+					fakeProto.MarshalReturns(nil, fmt.Errorf("marshal-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to marshal result: marshal-error"))
+				})
 			})
 		})
 	})
