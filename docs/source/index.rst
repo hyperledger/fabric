@@ -16,8 +16,8 @@ modularity and versatility for a broad set of industry use cases.
    :maxdepth: 1
 
    whatis
-   getting_started
    key_concepts
+   getting_started
    tutorials
    ops_guide
    command_ref
