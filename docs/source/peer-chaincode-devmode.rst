@@ -61,7 +61,7 @@ now is tracking channels ch1 and ch2 for the default configuration.
     peer channel join -b ch1.block
     peer channel join -b ch2.block
 
-The peer has now joined channels cha1 and ch2.
+The peer has now joined channels ch1 and ch2.
 
 Start the chaincode
 -------------------
