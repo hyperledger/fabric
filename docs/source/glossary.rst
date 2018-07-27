@@ -14,7 +14,7 @@ Anchor Peer
 
 Used by gossip to make sure peers in different organizations know about each other.
 
-When a configuration block that contains an anchor peer(s) update is committed,
+When a configuration block that contains an update to the anchor peers is committed,
 peers reach out to the anchor peers and learn from them about all of the peers known
 to the anchor peer(s). Once at least one peer from each organization has contacted an
 anchor peer, the anchor peer learns about every peer in the channel. Since gossip
@@ -22,8 +22,8 @@ communication is constant, and because peers always ask to be told about the exi
 of any peer they don't know about, a common view of membership can be established for
 a channel.
 
-For example, let's assume we have three organizations in the channel: `A`, `B`, `C`,
-and a single anchor peer defined for organization `C`: `peer0.orgC`. When `peer1.orgA`
+For example, let's assume we have three organizations---`A`, `B`, `C`--- in the channel
+and a single anchor peer---`peer0.orgC`--- defined for organization `C`. When `peer1.orgA`
 (from organization `A`) contacts `peer0.orgC`, it will tell it about `peer0.orgA`. And
 when at a later time `peer1.orgB` contacts `peer0.orgC`, the latter would tell the
 former about `peer0.orgA`. From that point forward, organizations `A` and `B` would
@@ -31,7 +31,7 @@ start exchanging membership information directly without any assistance from
 `peer0.orgC`.
 
 As communication across organizations depends on gossip in order to work, there must
-be at least one anchor peer identified in the channel configuration. However, it is
+be at least one anchor peer defined in the channel configuration. It is strongly
 recommended that every organization provides its own set of anchor peers for high
 availability and redundancy.
 
