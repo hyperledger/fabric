@@ -50,6 +50,7 @@ enum HeaderType {
     DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
     CHAINCODE_PACKAGE = 6;         // Used for packaging chaincode artifacts for install
     PEER_ADMIN_OPERATION = 8;      // Used for invoking an administrative operation on a peer
+    TOKEN_TRANSACTION = 9;         // Used to denote transactions that invoke token management operations
 }
 
 // This enum enlists indexes of the block metadata array

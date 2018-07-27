@@ -31,7 +31,7 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_e5d86074f0d935a8, []int{0}
+	return fileDescriptor_configuration_d24fbe9bcd75d252, []int{0}
 }
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
@@ -73,7 +73,7 @@ func (m *Consenter) Reset()         { *m = Consenter{} }
 func (m *Consenter) String() string { return proto.CompactTextString(m) }
 func (*Consenter) ProtoMessage()    {}
 func (*Consenter) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_e5d86074f0d935a8, []int{1}
+	return fileDescriptor_configuration_d24fbe9bcd75d252, []int{1}
 }
 func (m *Consenter) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Consenter.Unmarshal(m, b)
@@ -127,10 +127,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("orderer/etcdraft/configuration.proto", fileDescriptor_configuration_e5d86074f0d935a8)
+	proto.RegisterFile("orderer/etcdraft/configuration.proto", fileDescriptor_configuration_d24fbe9bcd75d252)
 }
 
-var fileDescriptor_configuration_e5d86074f0d935a8 = []byte{
+var fileDescriptor_configuration_d24fbe9bcd75d252 = []byte{
 	// 246 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x90, 0xb1, 0x6b, 0xf3, 0x30,
 	0x10, 0xc5, 0xd1, 0x97, 0xf0, 0x91, 0xa8, 0x0d, 0x05, 0x75, 0xf1, 0x68, 0x42, 0x29, 0x9e, 0x24,

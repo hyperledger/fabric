@@ -1,0 +1,111 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/token";
+
+
+// ================ Existing Fabric Transaction structure ===============
+//
+//In Summary, Fabric supports the following transaction structure:
+//
+//  Envelope
+//  |\_ Signature                                    (signature on the common.Payload message
+//  |                                                 including the transaction by the creator
+//  |                                                 specified in the Payload.header)
+//   \_ Payload
+//      |\_ Header (1)                               (the header of the proposal that requested this
+//      |                                             action; containing channel header, and
+//      |                                             signature header)
+//       \_ Data (1)                                 (serialised Transaction message)
+//           \_ Transaction
+//                \_ TransactionAction (1...n)
+//                    |\_ Header (1)                 (the header of the proposal that
+//                    |                               requested this action)
+//                     \_ ChaincodeActionPayload (1)
+//
+//
+//
+//
+//  =============== Changes to Existing Fabric Transaction structure ===============
+//  For envelopes that carry FabToken transaction we still maintain the same structure
+//  such that the orderers functionality is not disturbed:
+//
+//  Envelope
+//  |\_ Signature                                    (signature on the Payload message including
+//  |                                                 the transaction by the creator
+//  |                                                 specified in the Payload.header)
+//   \_ Payload
+//      |\_ Header (1)                               (the header of the proposal that requested
+//      |                                             this action; containing
+//      |                                             channel header, and signature header)
+//       \_ Data (1)                                 (serialised Transaction message)
+//            \_ TokenTransaction (1)
+//                  \_ action (1)                    (a oneof for the different types of transactions)
+
+
+
+// TokenTransaction governs the structure of Payload.data, when
+// the transaction's envelope header indicates a transaction of type
+// "Token"
+message TokenTransaction {
+    // action carries the content of this transaction.
+    oneof action {
+        PlainTokenAction plain_action = 1;
+    }
+}
+
+// PlainTokenAction governs the structure of a token action that is
+// subjected to no privacy restrictions
+message PlainTokenAction {
+    oneof data {
+        // A plaintext token import transaction
+        PlainImport plain_import = 1;
+        // A plaintext token transfer transaction
+        PlainTransfer plain_transfer = 2;
+    }
+}
+
+// PlainImport specifies an import of one or more tokens in plaintext format
+message PlainImport {
+
+    // An import transaction may contain one or more outputs
+    repeated PlainOutput outputs = 1;
+}
+
+// PlainTransfer specifies a transfer or one or more plaintext tokens to one or more outputs
+message PlainTransfer {
+
+    // The inputs to the transfer transaction are specified by their ID
+    repeated InputId inputs = 1;
+
+    // A transfer transaction may contain one or more outputs
+    repeated PlainOutput outputs = 2;
+}
+
+// A PlainOutput is the result of import and transfer transactions using plaintext tokens
+message PlainOutput {
+
+    // The owner is the serialization of a SerializedIdentity struct
+    bytes owner = 1;
+
+    // The token type
+    string type = 2;
+
+    // The quantity of tokens
+    uint64 quantity = 3;
+}
+
+// An InputId specifies an output using the transaction ID and the index of the output in the transaction
+message InputId {
+
+    // The transaction ID
+    bytes tx_id = 1;
+
+    // The index of the output in the transaction
+    uint32 index = 2;
+}
