@@ -146,15 +146,30 @@ Alternatively these parameters could be configured and overridden with environme
 Anchor peers
 ------------
 
-Anchor peers are used to facilitate gossip communication between peers from
-**different** organizations. In order for cross-org gossip to work, peers from one
-org need to know at least one address of a peer from other orgs (from this peer,
-it can find out about all of the peers in that org). This address is the anchor
-peer, and it's defined in the channel configuration.
+Anchor peers are used by gossip to make sure peers in different organizations
+know about each other.
 
-Each organization that has a peer will have at least one of its peers (though it
-can be more than one) defined in the channel configuration as the anchor peer.
-Note that the anchor peer does not need to be the same peer as the leader peer.
+When a configuration block that contains an update to the anchor peers is committed,
+peers reach out to the anchor peers and learn from them about all of the peers known
+to the anchor peer(s). Once at least one peer from each organization has contacted an
+anchor peer, the anchor peer learns about every peer in the channel. Since gossip
+communication is constant, and because peers always ask to be told about the existence
+of any peer they don't know about, a common view of membership can be established for
+a channel.
+
+For example, let's assume we have three organizations---`A`, `B`, `C`--- in the channel
+and a single anchor peer---`peer0.orgC`--- defined for organization `C`. When `peer1.orgA`
+(from organization `A`) contacts `peer0.orgC`, it will tell it about `peer0.orgA`. And
+when at a later time `peer1.orgB` contacts `peer0.orgC`, the latter would tell the
+former about `peer0.orgA`. From that point forward, organizations `A` and `B` would
+start exchanging membership information directly without any assistance from
+`peer0.orgC`.
+
+As communication across organizations depends on gossip in order to work, there must
+be at least one anchor peer defined in the channel configuration. It is strongly
+recommended that every organization provides its own set of anchor peers for high
+availability and redundancy. Note that the anchor peer does not need to be the
+same peer as the leader peer.
 
 
 Gossip messaging
