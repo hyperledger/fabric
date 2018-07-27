@@ -120,8 +120,9 @@ var _ = Describe("Persistence", func() {
 		})
 
 		It("saves successfully", func() {
-			err := store.Save("testcc", "1.0", pkgBytes)
+			hash, err := store.Save("testcc", "1.0", pkgBytes)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(hash).To(Equal(util.ComputeSHA256([]byte("testpkg"))))
 		})
 
 		Context("when the metadata file already exists", func() {
@@ -130,8 +131,9 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				err := store.Save("testcc", "1.0", pkgBytes)
+				hash, err := store.Save("testcc", "1.0", pkgBytes)
 				Expect(err).To(HaveOccurred())
+				Expect(hash).To(BeNil())
 				Expect(err.Error()).To(Equal("chaincode metadata already exists at " + hashString + ".json"))
 			})
 		})
@@ -143,7 +145,8 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				err := store.Save("testcc", "1.0", pkgBytes)
+				hash, err := store.Save("testcc", "1.0", pkgBytes)
+				Expect(hash).To(BeNil())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("ChaincodeInstallPackage already exists at " + hashString + ".bin"))
 			})
@@ -156,7 +159,8 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				err := store.Save("testcc", "1.0", pkgBytes)
+				hash, err := store.Save("testcc", "1.0", pkgBytes)
+				Expect(hash).To(BeNil())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error writing metadata file"))
 			})
@@ -169,7 +173,8 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				err := store.Save("testcc", "1.0", pkgBytes)
+				hash, err := store.Save("testcc", "1.0", pkgBytes)
+				Expect(hash).To(BeNil())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package"))
 			})
@@ -183,7 +188,8 @@ var _ = Describe("Persistence", func() {
 			})
 
 			It("returns an error", func() {
-				err := store.Save("testcc", "1.0", pkgBytes)
+				hash, err := store.Save("testcc", "1.0", pkgBytes)
+				Expect(hash).To(BeNil())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package"))
 			})
