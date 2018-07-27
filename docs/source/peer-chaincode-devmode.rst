@@ -42,6 +42,7 @@ Create channels ch1 and ch2
 Generate the transactions for creating the channels using ``configtxgen`` tool.
 
 ::
+
    configtxgen -channelID ch1 -outputCreateChannelTx ch1.tx -profile SampleSingleMSPChannel
    configtxgen -channelID ch2 -outputCreateChannelTx ch2.tx -profile SampleSingleMSPChannel
 
