@@ -28,3 +28,12 @@ func TestChannelV11(t *testing.T) {
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.MSPVersion() == msp.MSPv1_1)
 }
+
+func TestChannelV13(t *testing.T) {
+	op := NewChannelProvider(map[string]*cb.Capability{
+		ChannelV1_1: {},
+		ChannelV1_3: {},
+	})
+	assert.NoError(t, op.Supported())
+	assert.True(t, op.MSPVersion() == msp.MSPv1_3)
+}

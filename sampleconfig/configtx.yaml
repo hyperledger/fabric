@@ -79,11 +79,11 @@ Capabilities:
     # Channel capabilities apply to both the orderers and the peers and must be
     # supported by both.  Set the value of the capability to true to require it.
     Channel: &ChannelCapabilities
-        # V1.1 for Channel is a catchall flag for behavior which has been
-        # determined to be desired for all orderers and peers running v1.0.x,
+        # V1.3 for Channel is a catchall flag for behavior which has been
+        # determined to be desired for all orderers and peers running < v1.3.0,
         # but the modification of which would cause incompatibilities.  Users
         # should leave this flag set to true.
-        V1_1: true
+        V1_3: true
 
     # Orderer capabilities apply only to the orderers, and may be safely
     # manipulated without concern for upgrading peers.  Set the value of the

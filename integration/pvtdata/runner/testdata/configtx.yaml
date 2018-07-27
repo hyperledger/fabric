@@ -24,7 +24,7 @@ Organizations:
 
 Capabilities:
   Global: &ChannelCapabilities
-    V1_1: true
+    V1_3: true
   Orderer: &OrdererCapabilities
     V1_1: true
   Application: &ApplicationCapabilities
