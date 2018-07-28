@@ -87,10 +87,13 @@ var (
 )
 
 var chaincodeCmd = &cobra.Command{
-	Use:              chainFuncName,
-	Short:            fmt.Sprint(chainCmdDes),
-	Long:             fmt.Sprint(chainCmdDes),
-	PersistentPreRun: common.SetOrdererEnv,
+	Use:   chainFuncName,
+	Short: fmt.Sprint(chainCmdDes),
+	Long:  fmt.Sprint(chainCmdDes),
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		common.InitCmd(cmd, args)
+		common.SetOrdererEnv(cmd, args)
+	},
 }
 
 var flags *pflag.FlagSet

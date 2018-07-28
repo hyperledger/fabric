@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,8 @@ func Cmd() *cobra.Command {
 }
 
 var nodeCmd = &cobra.Command{
-	Use:   nodeFuncName,
-	Short: fmt.Sprint(nodeCmdDes),
-	Long:  fmt.Sprint(nodeCmdDes),
+	Use:              nodeFuncName,
+	Short:            fmt.Sprint(nodeCmdDes),
+	Long:             fmt.Sprint(nodeCmdDes),
+	PersistentPreRun: common.InitCmd,
 }

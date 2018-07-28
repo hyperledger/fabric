@@ -9,12 +9,8 @@ package main
 import (
 	_ "net/http/pprof"
 	"os"
-	"runtime"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/channel"
 	"github.com/hyperledger/fabric/peer/clilogging"
@@ -25,20 +21,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-var logger = flogging.MustGetLogger("main")
-var logOutput = os.Stderr
-
-// Constants go here.
-const cmdRoot = "core"
-
 // The main command describes the service and
 // defaults to printing the help message.
 var mainCmd = &cobra.Command{
 	Use: "peer"}
 
 func main() {
+
 	// For environment variables.
-	viper.SetEnvPrefix(cmdRoot)
+	viper.SetEnvPrefix(common.CmdRoot)
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
@@ -55,42 +46,6 @@ func main() {
 	mainCmd.AddCommand(chaincode.Cmd(nil))
 	mainCmd.AddCommand(clilogging.Cmd(nil))
 	mainCmd.AddCommand(channel.Cmd(nil))
-
-	err := common.InitConfig(cmdRoot)
-	if err != nil { // Handle errors reading the config file
-		logger.Errorf("Fatal error when initializing %s config : %s", cmdRoot, err)
-		os.Exit(1)
-	}
-
-	// setup system-wide logging backend based on settings from core.yaml
-	flogging.InitBackend(flogging.SetFormat(viper.GetString("logging.format")), logOutput)
-
-	// check for --logging-level pflag first, which should override all other
-	// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
-	// (environment variable takes priority; otherwise, the value set in
-	// core.yaml)
-	var loggingSpec string
-	if viper.GetString("logging_level") != "" {
-		loggingSpec = viper.GetString("logging_level")
-	} else {
-		loggingSpec = viper.GetString("logging.level")
-	}
-	flogging.InitFromSpec(loggingSpec)
-
-	// Init the MSP
-	var mspMgrConfigDir = config.GetPath("peer.mspConfigPath")
-	var mspID = viper.GetString("peer.localMspId")
-	var mspType = viper.GetString("peer.localMspType")
-	if mspType == "" {
-		mspType = msp.ProviderTypeToString(msp.FABRIC)
-	}
-	err = common.InitCrypto(mspMgrConfigDir, mspID, mspType)
-	if err != nil { // Handle errors reading the config file
-		logger.Errorf("Cannot run peer because %s", err.Error())
-		os.Exit(1)
-	}
-
-	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status
