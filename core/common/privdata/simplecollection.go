@@ -81,13 +81,7 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 		return errors.New("Collection config access policy is nil")
 	}
 
-	// create access policy from the envelope
-	npp := cauthdsl.NewPolicyProvider(deserializer)
-	polBytes, err := proto.Marshal(accessPolicyEnvelope)
-	if err != nil {
-		return err
-	}
-	sc.accessPolicy, _, err = npp.NewPolicy(polBytes)
+	err := sc.setupAccessPolicy(collectionPolicyConfig, deserializer)
 	if err != nil {
 		return err
 	}
@@ -122,6 +116,27 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 	}
 
 	return nil
+}
+
+// Setup configures a simple collection object based on a given
+// StaticCollectionConfig proto that has all the necessary information
+func (sc *SimpleCollection) setupAccessPolicy(collectionPolicyConfig *common.CollectionPolicyConfig, deserializer msp.IdentityDeserializer) error {
+	if collectionPolicyConfig == nil {
+		return errors.New("Collection config policy is nil")
+	}
+	accessPolicyEnvelope := collectionPolicyConfig.GetSignaturePolicy()
+	if accessPolicyEnvelope == nil {
+		return errors.New("Collection config access policy is nil")
+	}
+
+	// create access policy from the envelope
+	npp := cauthdsl.NewPolicyProvider(deserializer)
+	polBytes, err := proto.Marshal(accessPolicyEnvelope)
+	if err != nil {
+		return err
+	}
+	sc.accessPolicy, _, err = npp.NewPolicy(polBytes)
+	return err
 }
 
 // BlockToLive return collection's block to live configuration
