@@ -9,15 +9,20 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+var logger = flogging.MustGetLogger("java-platform")
 
 // Platform for java chaincodes in java
 type Platform struct {
@@ -32,6 +37,7 @@ func (javaPlatform *Platform) Name() string {
 func (javaPlatform *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
+		logger.Errorf("invalid chaincode path %s %v", rawPath, err)
 		return fmt.Errorf("invalid path: %s", err)
 	}
 
@@ -46,31 +52,44 @@ func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
 // WritePackage writes the java chaincode package
 func (javaPlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
+	logger.Debugf("Packaging java project from path %s", path)
 	var err error
 
-	inputbuf := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(inputbuf)
+	// --------------------------------------------------------------------------------------
+	// Write out our tar package
+	// --------------------------------------------------------------------------------------
+	payload := bytes.NewBuffer(nil)
+	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	err = writeChaincodePackage(path, tw)
+	folder := path
+	if folder == "" {
+		logger.Error("ChaincodeSpec's path cannot be empty")
+		return nil, errors.New("ChaincodeSpec's path cannot be empty")
+	}
+
+	// trim trailing slash if it exists
+	if folder[len(folder)-1] == '/' {
+		folder = folder[:len(folder)-1]
+	}
+
+	if err = cutil.WriteJavaProjectToPackage(tw, folder); err != nil {
+
+		logger.Errorf("Error writing java project to tar package %s", err)
+		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+	}
 
 	tw.Close()
 	gw.Close()
 
-	if err != nil {
-		return nil, err
-	}
-
-	payload := inputbuf.Bytes()
-
-	return payload, nil
+	return payload.Bytes(), nil
 }
 
 func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
 
-	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))
-	buf = append(buf, "ADD codepackage.tgz /root/chaincode-java/chaincode")
+	buf = append(buf, "FROM "+cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))
+	buf = append(buf, "ADD binpackage.tar /root/chaincode-java/chaincode")
 
 	dockerFileContents := strings.Join(buf, "\n")
 
@@ -78,7 +97,23 @@ func (javaPlatform *Platform) GenerateDockerfile() (string, error) {
 }
 
 func (javaPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
-	return cutil.WriteBytesToPackage("codepackage.tgz", code, tw)
+	codepackage := bytes.NewReader(code)
+	binpackage := bytes.NewBuffer(nil)
+	buildOptions := util.DockerBuildOptions{
+		Image:        cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"),
+		Cmd:          "./build.sh",
+		InputStream:  codepackage,
+		OutputStream: binpackage,
+	}
+	logger.Debugf("Executing docker build %v, %v", buildOptions.Image, buildOptions.Cmd)
+	err := util.DockerBuild(buildOptions)
+	if err != nil {
+		logger.Errorf("Can't build java chaincode %v", err)
+		return err
+	}
+
+	resultBytes := binpackage.Bytes()
+	return cutil.WriteBytesToPackage("binpackage.tar", resultBytes, tw)
 }
 
 //GetMetadataProvider fetches metadata provider given deployment spec
