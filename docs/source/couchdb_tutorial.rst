@@ -483,7 +483,7 @@ Delving into the query command above, there are three arguments of interest:
   Specifies both the design doc name  ``indexOwnerDoc`` and index name
   ``indexOwner``. In this example the selector query explicitly includes the
   index name, specified by using the ``use_index`` keyword. Recalling the
-  index definition above :ref:`CreateAnIndex`, it contains a design doc,
+  index definition above :ref:`cdb-create-index`, it contains a design doc,
   ``"ddoc":"indexOwnerDoc"``. With CouchDB, if you plan to explicitly include
   the index name on the query, then the index definition must include the
   ``ddoc`` value, so it can be referenced with the ``use_index`` keyword.
