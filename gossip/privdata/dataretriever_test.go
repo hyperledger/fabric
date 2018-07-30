@@ -360,6 +360,287 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 	assertion.Equal([]byte{1, 2, 3, 4}, mergedRWSet)
 }
 
+func TestNewDataRetriever_EmptyWriteSet(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	ns1 := "testChaincodeName1"
+	col1 := "testCollectionName1"
+
+	result := []*ledger.TxPvtData{
+		{
+			SeqInBlock: 1,
+		},
+	}
+
+	dataStore.On("LedgerHeight").Return(uint64(10), nil)
+	dataStore.On("GetPvtDataByNum", uint64(5), mock.Anything).Return(result, nil)
+	historyRetreiver := &mocks.ConfigHistoryRetriever{}
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, ns1).Return(newCollectionConfig(col1), nil)
+	dataStore.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
+
+	retriever := NewDataRetriever(dataStore)
+
+	rwSets, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  ns1,
+		Collection: col1,
+		BlockSeq:   uint64(5),
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 5)
+
+	assertion := assert.New(t)
+	assertion.NoError(err)
+	assertion.NotEmpty(rwSets)
+
+	pvtRWSet := rwSets[DigKey{
+		Namespace:  ns1,
+		Collection: col1,
+		BlockSeq:   5,
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}]
+	assertion.NotEmpty(pvtRWSet)
+	assertion.Empty(pvtRWSet.RWSet)
+
+}
+
+func TestNewDataRetriever_FailedObtainConfigHistoryRetriever(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	ns1 := "testChaincodeName1"
+	col1 := "testCollectionName1"
+
+	result := []*ledger.TxPvtData{
+		{
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					pvtReadWriteSet(ns1, col1, []byte{1}),
+					pvtReadWriteSet(ns1, col1, []byte{2}),
+				},
+			},
+			SeqInBlock: 1,
+		},
+	}
+
+	dataStore.On("LedgerHeight").Return(uint64(10), nil)
+	dataStore.On("GetPvtDataByNum", uint64(5), mock.Anything).Return(result, nil)
+	dataStore.On("GetConfigHistoryRetriever").Return(nil, errors.New("failed to obtain ConfigHistoryRetriever"))
+
+	retriever := NewDataRetriever(dataStore)
+
+	_, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  ns1,
+		Collection: col1,
+		BlockSeq:   uint64(5),
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 5)
+
+	assertion := assert.New(t)
+	assertion.Contains(err.Error(), "failed to obtain ConfigHistoryRetriever")
+}
+
+func TestNewDataRetriever_NoCollectionConfig(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	ns1, ns2 := "testChaincodeName1", "testChaincodeName2"
+	col1, col2 := "testCollectionName1", "testCollectionName2"
+
+	result := []*ledger.TxPvtData{
+		{
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					pvtReadWriteSet(ns1, col1, []byte{1}),
+					pvtReadWriteSet(ns1, col1, []byte{2}),
+				},
+			},
+			SeqInBlock: 1,
+		},
+		{
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					pvtReadWriteSet(ns2, col2, []byte{3}),
+					pvtReadWriteSet(ns2, col2, []byte{4}),
+				},
+			},
+			SeqInBlock: 2,
+		},
+	}
+
+	dataStore.On("LedgerHeight").Return(uint64(10), nil)
+	dataStore.On("GetPvtDataByNum", uint64(5), mock.Anything).Return(result, nil)
+	historyRetreiver := &mocks.ConfigHistoryRetriever{}
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, ns1).
+		Return(newCollectionConfig(col1), errors.New("failed to obtain collection config"))
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, ns2).
+		Return(nil, nil)
+	dataStore.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
+
+	retriever := NewDataRetriever(dataStore)
+	assertion := assert.New(t)
+
+	_, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  ns1,
+		Collection: col1,
+		BlockSeq:   uint64(5),
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 5)
+	assertion.Error(err)
+	assertion.Contains(err.Error(), "cannot find recent collection config update below block sequence")
+
+	_, err = retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  ns2,
+		Collection: col2,
+		BlockSeq:   uint64(5),
+		TxId:       "testTxID",
+		SeqInBlock: 2,
+	}}, 5)
+	assertion.Error(err)
+	assertion.Contains(err.Error(), "no collection config update below block sequence")
+}
+
+func TestNewDataRetriever_FailedGetLedgerHeight(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	ns1 := "testChaincodeName1"
+	col1 := "testCollectionName1"
+
+	dataStore.On("LedgerHeight").Return(uint64(0), errors.New("failed to read ledger height"))
+	retriever := NewDataRetriever(dataStore)
+
+	_, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  ns1,
+		Collection: col1,
+		BlockSeq:   uint64(5),
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 5)
+
+	assertion := assert.New(t)
+	assertion.Error(err)
+	assertion.Contains(err.Error(), "failed to read ledger height")
+}
+
+func TestNewDataRetriever_FailToReadFromTransientStore(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+
+	dataStore.On("LedgerHeight").Return(uint64(1), nil)
+	dataStore.On("GetTxPvtRWSetByTxid", "testTxID", mock.Anything).
+		Return(nil, errors.New("fail to read form transient store"))
+
+	retriever := NewDataRetriever(dataStore)
+
+	rwset, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 2)
+
+	assertion := assert.New(t)
+	assertion.NoError(err)
+	assertion.Empty(rwset)
+}
+
+func TestNewDataRetriever_FailedToReadNext(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	rwSetScanner := &mocks.RWSetScanner{}
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+
+	rwSetScanner.On("Close")
+	rwSetScanner.On("NextWithConfig").Return(nil, errors.New("failed to read next"))
+
+	dataStore.On("LedgerHeight").Return(uint64(1), nil)
+	dataStore.On("GetTxPvtRWSetByTxid", "testTxID", mock.Anything).Return(rwSetScanner, nil)
+
+	retriever := NewDataRetriever(dataStore)
+
+	// Request digest for private data which is greater than current ledger height
+	// to make it query transient store for missed private data
+	rwSets, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 2)
+
+	assertion := assert.New(t)
+	assertion.NoError(err)
+	assertion.Empty(rwSets)
+}
+
+func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
+	t.Parallel()
+	dataStore := &mocks.DataStore{}
+
+	rwSetScanner := &mocks.RWSetScanner{}
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+
+	rwSetScanner.On("Close")
+	rwSetScanner.On("NextWithConfig").Return(&transientstore.EndorserPvtSimulationResultsWithConfig{
+		ReceivedAtBlockHeight: 2,
+		PvtSimulationResultsWithConfig: &transientstore2.TxPvtReadWriteSetWithConfigInfo{
+			CollectionConfigs: map[string]*common.CollectionConfigPackage{
+				namespace: {
+					Config: []*common.CollectionConfig{
+						{
+							Payload: &common.CollectionConfig_StaticCollectionConfig{
+								StaticCollectionConfig: &common.StaticCollectionConfig{
+									Name: collectionName,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, nil).
+		Once(). // return only once results, next call should return and empty result
+		On("NextWithConfig").Return(nil, nil)
+
+	dataStore.On("LedgerHeight").Return(uint64(1), nil)
+	dataStore.On("GetTxPvtRWSetByTxid", "testTxID", mock.Anything).Return(rwSetScanner, nil)
+
+	retriever := NewDataRetriever(dataStore)
+
+	rwSets, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}}, 2)
+
+	assertion := assert.New(t)
+	assertion.NoError(err)
+	assertion.NotEmpty(rwSets)
+	assertion.Empty(rwSets[DigKey{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       "testTxID",
+		SeqInBlock: 1,
+	}])
+}
+
 func newCollectionConfig(collectionName string) *ledger.CollectionConfigInfo {
 	return &ledger.CollectionConfigInfo{
 		CollectionConfig: &common.CollectionConfigPackage{
