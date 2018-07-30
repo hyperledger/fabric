@@ -305,3 +305,46 @@ func TestBadStringBeforeFAB11404_ThisCanDeleteAfterFAB11404HasMerged(t *testing.
 	assert.Nil(t, p3)
 	assert.EqualError(t, err3, `invalid policy string ''\'1\'''`)
 }
+
+func TestSecondPassBoundaryCheck(t *testing.T) {
+	// Check lower boundary
+	// Prohibit t<0
+	p0, err0 := FromString("OutOf(-1, 'A.member', 'B.member')")
+	assert.Nil(t, p0)
+	assert.EqualError(t, err0, "Invalid t-out-of-n predicate, t -1, n 2")
+
+	// Permit t==0 : always satisfied policy
+	// There is no clear usecase of t=0, but somebody may already use it, so we don't treat as an error.
+	p1, err1 := FromString("OutOf(0, 'A.member', 'B.member')")
+	assert.NoError(t, err1)
+	principals := make([]*msp.MSPPrincipal, 0)
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
+	expected1 := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       NOutOf(0, []*common.SignaturePolicy{SignedBy(0), SignedBy(1)}),
+		Identities: principals,
+	}
+	assert.Equal(t, expected1, p1)
+
+	// Check upper boundary
+	// Permit t==n+1 : never satisfied policy
+	// Usecase: To create immutable ledger key
+	p2, err2 := FromString("OutOf(3, 'A.member', 'B.member')")
+	assert.NoError(t, err2)
+	expected2 := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       NOutOf(3, []*common.SignaturePolicy{SignedBy(0), SignedBy(1)}),
+		Identities: principals,
+	}
+	assert.Equal(t, expected2, p2)
+
+	// Prohibit t>n + 1
+	p3, err3 := FromString("OutOf(4, 'A.member', 'B.member')")
+	assert.Nil(t, p3)
+	assert.EqualError(t, err3, "Invalid t-out-of-n predicate, t 4, n 2")
+}
