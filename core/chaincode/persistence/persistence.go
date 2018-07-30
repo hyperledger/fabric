@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
@@ -156,30 +157,14 @@ func (e *CodePackageNotFoundErr) Error() string {
 // RetrieveHash retrieves the hash of a chaincode install package given the
 // name and version of the chaincode
 func (s *Store) RetrieveHash(name string, version string) ([]byte, error) {
-	files, err := s.ReadWriter.ReadDir(s.Path)
+	installedChaincodes, err := s.ListInstalledChaincodes()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading chaincode directory at %s", s.Path)
+		return nil, errors.WithMessage(err, "error getting installed chaincodes")
 	}
 
-	var hash []byte
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".json") {
-			metadataPath := filepath.Join(s.Path, file.Name())
-			ccName, ccVersion, err := s.LoadMetadata(metadataPath)
-			if err != nil {
-				logger.Warning(err.Error())
-				continue
-			}
-
-			if ccName == name && ccVersion == version {
-				// split the file name and get just the hash
-				hashString := strings.Split(file.Name(), ".")[0]
-				hash, err = hex.DecodeString(hashString)
-				if err != nil {
-					return nil, errors.Wrapf(err, "error decoding hash from hex string: %s", hashString)
-				}
-				return hash, nil
-			}
+	for _, installedChaincode := range installedChaincodes {
+		if installedChaincode.Name == name && installedChaincode.Version == version {
+			return installedChaincode.Id, nil
 		}
 	}
 
@@ -189,6 +174,47 @@ func (s *Store) RetrieveHash(name string, version string) ([]byte, error) {
 	}
 
 	return nil, err
+}
+
+// ListInstalledChaincodes returns an array with information about the
+// chaincodes installed in the persistence store
+func (s *Store) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
+	files, err := s.ReadWriter.ReadDir(s.Path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading chaincode directory at %s", s.Path)
+	}
+
+	installedChaincodes := []chaincode.InstalledChaincode{}
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".json") {
+			metadataPath := filepath.Join(s.Path, file.Name())
+			ccName, ccVersion, err := s.LoadMetadata(metadataPath)
+			if err != nil {
+				logger.Warning(err.Error())
+				continue
+			}
+
+			// split the file name and get just the hash
+			hashString := strings.Split(file.Name(), ".")[0]
+			hash, err := hex.DecodeString(hashString)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error decoding hash from hex string: %s", hashString)
+			}
+			installedChaincode := chaincode.InstalledChaincode{
+				Name:    ccName,
+				Version: ccVersion,
+				Id:      hash,
+			}
+			installedChaincodes = append(installedChaincodes, installedChaincode)
+		}
+	}
+	return installedChaincodes, nil
+}
+
+// GetChaincodeInstallPath returns the path where chaincodes
+// are installed
+func (s *Store) GetChaincodeInstallPath() string {
+	return s.Path
 }
 
 // ChaincodeMetadata holds the name and version of a chaincode

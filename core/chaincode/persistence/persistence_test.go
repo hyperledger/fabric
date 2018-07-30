@@ -348,4 +348,62 @@ var _ = Describe("Persistence", func() {
 			})
 		})
 	})
+
+	Describe("GetInstalledChaincodes", func() {
+		var (
+			mockReadWriter *mock.IOReadWriter
+			store          *persistence.Store
+		)
+
+		BeforeEach(func() {
+			mockReadWriter = &mock.IOReadWriter{}
+			mockFileInfo := &mock.OSFileInfo{}
+			mockFileInfo.NameReturns(hex.EncodeToString([]byte("hash1")) + ".json")
+			mockFileInfo2 := &mock.OSFileInfo{}
+			mockFileInfo2.NameReturns(hex.EncodeToString([]byte("hash2")) + ".json")
+			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
+			mockReadWriter.ReadFileReturnsOnCall(0, []byte(`{"Name":"test1","Version":"1.0"}`), nil)
+			mockReadWriter.ReadFileReturnsOnCall(1, []byte(`{"Name":"test2","Version":"2.0"}`), nil)
+			store = &persistence.Store{
+				ReadWriter: mockReadWriter,
+			}
+		})
+
+		It("returns the list of installed chaincodes", func() {
+			installedChaincodes, err := store.ListInstalledChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(installedChaincodes)).To(Equal(2))
+		})
+
+		Context("when the hash cannot be decoded from the filename", func() {
+			BeforeEach(func() {
+				mockFileInfo := &mock.OSFileInfo{}
+				mockFileInfo.NameReturns("?.json")
+				mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo}, nil)
+			})
+
+			It("returns an error", func() {
+				installedChaincodes, err := store.ListInstalledChaincodes()
+				Expect(err).To(HaveOccurred())
+				Expect(len(installedChaincodes)).To(Equal(0))
+			})
+		})
+	})
+
+	Describe("GetChaincodeInstallPath", func() {
+		var (
+			store *persistence.Store
+		)
+
+		BeforeEach(func() {
+			store = &persistence.Store{
+				Path: "testPath",
+			}
+		})
+
+		It("returns the path where chaincodes are installed", func() {
+			path := store.GetChaincodeInstallPath()
+			Expect(path).To(Equal("testPath"))
+		})
+	})
 })

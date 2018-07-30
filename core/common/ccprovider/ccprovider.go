@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -161,6 +162,55 @@ func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackag
 	}
 
 	return cccdspack, nil
+}
+
+// DirEnumerator enumerates directories
+type DirEnumerator func(string) ([]os.FileInfo, error)
+
+// ChaincodeExtractor extracts chaincode from a given path
+type ChaincodeExtractor func(ccname string, ccversion string, path string) (CCPackage, error)
+
+// ListInstalledChaincodes retrieves the installed chaincodes
+func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) ([]chaincode.InstalledChaincode, error) {
+	var chaincodes []chaincode.InstalledChaincode
+	if _, err := os.Stat(dir); err != nil && os.IsNotExist(err) {
+		return nil, nil
+	}
+	files, err := ls(dir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed reading directory %s", dir)
+	}
+
+	for _, f := range files {
+		// Skip directories, we're only interested in normal files
+		if f.IsDir() {
+			continue
+		}
+		// A chaincode file name is of the type "name.version"
+		// We're only interested in the name.
+		// Skip files that don't adhere to the file naming convention of "A.B"
+		i := strings.Index(f.Name(), ".")
+		if i == -1 {
+			ccproviderLogger.Info("Skipping", f.Name(), "because of missing separator '.'")
+			continue
+		}
+		ccName := f.Name()[:i]      // Everything before the separator
+		ccVersion := f.Name()[i+1:] // Everything after the separator
+
+		ccPackage, err := ccFromPath(ccName, ccVersion, dir)
+		if err != nil {
+			ccproviderLogger.Warning("Failed obtaining chaincode information about", ccName, ccVersion, ":", err)
+			return nil, errors.Wrapf(err, "failed obtaining information about %s, version %s", ccName, ccVersion)
+		}
+
+		chaincodes = append(chaincodes, chaincode.InstalledChaincode{
+			Name:    ccName,
+			Version: ccVersion,
+			Id:      ccPackage.GetId(),
+		})
+	}
+	ccproviderLogger.Debug("Returning", chaincodes)
+	return chaincodes, nil
 }
 
 // ccInfoFSStorageMgr is the storage manager used either by the cache or if the

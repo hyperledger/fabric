@@ -7,12 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package persistence
 
 import (
+	"io/ioutil"
+
+	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/pkg/errors"
 )
 
 // StorePackageProvider is the interface needed to retrieve
 // the code package from a ChaincodeInstallPackage
 type StorePackageProvider interface {
+	GetChaincodeInstallPath() string
+	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
 	Load(hash []byte) (codePackage []byte, name, version string, err error)
 	RetrieveHash(name, version string) (hash []byte, err error)
 }
@@ -21,6 +27,7 @@ type StorePackageProvider interface {
 // the code package from a ChaincodeDeploymentSpec
 type LegacyPackageProvider interface {
 	GetChaincodeCodePackage(name, version string) (codePackage []byte, err error)
+	ListInstalledChaincodes(dir string, de ccprovider.DirEnumerator, ce ccprovider.ChaincodeExtractor) ([]chaincode.InstalledChaincode, error)
 }
 
 // PackageProvider holds the necessary dependencies to obtain the code
@@ -80,4 +87,30 @@ func (p *PackageProvider) getCodePackageFromLegacyPP(name, version string) ([]by
 		return nil, errors.Wrap(err, "error loading code package from ChaincodeDeploymentSpec")
 	}
 	return codePackage, nil
+}
+
+// ListInstalledChaincodes returns metadata (name, version, and ID) for
+// each chaincode installed on a peer
+func (p *PackageProvider) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
+	// first look through ChaincodeInstallPackages
+	installedChaincodes, err := p.Store.ListInstalledChaincodes()
+
+	if err != nil {
+		// log the error and continue
+		logger.Debugf("error getting installed chaincodes from persistence store: %s", err)
+	}
+
+	// then look through CDS/SCDS
+	installedChaincodesLegacy, err := p.LegacyPP.ListInstalledChaincodes(p.Store.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
+
+	if err != nil {
+		// log the error and continue
+		logger.Debugf("error getting installed chaincodes from ccprovider: %s", err)
+	}
+
+	for _, cc := range installedChaincodesLegacy {
+		installedChaincodes = append(installedChaincodes, cc)
+	}
+
+	return installedChaincodes, nil
 }

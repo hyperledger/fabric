@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
 	. "github.com/onsi/ginkgo"
@@ -15,7 +16,7 @@ import (
 )
 
 var _ = Describe("PackageProvider", func() {
-	var _ = Describe("GetCodePackage", func() {
+	var _ = Describe("GetChaincodeCodePackage", func() {
 		var (
 			mockSPP         *mock.StorePackageProvider
 			mockLPP         *mock.LegacyPackageProvider
@@ -90,6 +91,76 @@ var _ = Describe("PackageProvider", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("code package not found for chaincode with name 'testcc', version '1.0'"))
 				Expect(len(pkgBytes)).To(Equal(0))
+			})
+		})
+	})
+
+	var _ = Describe("ListInstalledChaincodes", func() {
+		var (
+			mockSPP         *mock.StorePackageProvider
+			mockLPP         *mock.LegacyPackageProvider
+			packageProvider *persistence.PackageProvider
+		)
+
+		BeforeEach(func() {
+			mockSPP = &mock.StorePackageProvider{}
+			installedChaincodes := []chaincode.InstalledChaincode{
+				{
+					Name:    "test1",
+					Version: "1.0",
+					Id:      []byte("hash1"),
+				},
+				{
+					Name:    "cc1",
+					Version: "2.0",
+					Id:      []byte("hash2"),
+				},
+			}
+			mockSPP.ListInstalledChaincodesReturns(installedChaincodes, nil)
+
+			mockLPP = &mock.LegacyPackageProvider{}
+			installedChaincodesLegacy := []chaincode.InstalledChaincode{
+				{
+					Name:    "testLegacy",
+					Version: "1.0",
+					Id:      []byte("hashLegacy"),
+				},
+			}
+			mockLPP.ListInstalledChaincodesReturns(installedChaincodesLegacy, nil)
+
+			packageProvider = &persistence.PackageProvider{
+				Store:    mockSPP,
+				LegacyPP: mockLPP,
+			}
+		})
+
+		It("lists the installed chaincodes successfully", func() {
+			installedChaincodes, err := packageProvider.ListInstalledChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(installedChaincodes)).To(Equal(3))
+		})
+
+		Context("when listing the installed chaincodes from the persistence store fails", func() {
+			BeforeEach(func() {
+				mockSPP.ListInstalledChaincodesReturns(nil, errors.New("football"))
+			})
+
+			It("falls back to listing the chaincodes from the legacy package provider", func() {
+				installedChaincodes, err := packageProvider.ListInstalledChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(installedChaincodes)).To(Equal(1))
+			})
+		})
+
+		Context("when listing the installed chaincodes from the legacy package provider fails", func() {
+			BeforeEach(func() {
+				mockLPP.ListInstalledChaincodesReturns(nil, errors.New("football"))
+			})
+
+			It("lists the chaincodes from only the persistence store package provider ", func() {
+				installedChaincodes, err := packageProvider.ListInstalledChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(installedChaincodes)).To(Equal(2))
 			})
 		})
 	})
