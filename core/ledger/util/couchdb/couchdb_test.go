@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -1622,5 +1623,37 @@ func TestDatabaseSecuritySettings(t *testing.T) {
 
 	//Verify retrieval of members, should be an empty array
 	testutil.AssertEquals(t, len(databaseSecurity.Members.Names), 0)
+
+}
+
+func TestURLWithSpecialCharacters(t *testing.T) {
+
+	database := "testdb+with+plus_sign"
+	err := cleanup(database)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
+	defer cleanup(database)
+
+	// parse a contructed URL
+	finalURL, err := url.Parse("http://127.0.0.1:5984")
+	testutil.AssertNoError(t, err, "error thrown while parsing couchdb url")
+
+	// test the constructCouchDBUrl function with multiple path elements
+	couchdbURL := constructCouchDBUrl(finalURL, database, "_index", "designdoc", "json", "indexname")
+	testutil.AssertEquals(t, couchdbURL.String(), "http://127.0.0.1:5984/testdb%2Bwith%2Bplus_sign/_index/designdoc/json/indexname")
+
+	//create a new instance and database object   --------------------------------------------------------
+	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
+
+	//create a new database
+	errdb := db.CreateDatabaseIfNotExist()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+	dbInfo, _, errInfo := db.GetDatabaseInfo()
+	testutil.AssertNoError(t, errInfo, fmt.Sprintf("Error when trying to get database info"))
+
+	testutil.AssertEquals(t, dbInfo.DbName, database)
 
 }

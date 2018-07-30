@@ -291,7 +291,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 		logger.Errorf("URL parse error: %s", err)
 		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	connectURL.Path = dbclient.DBName
+	connectURL = constructCouchDBUrl(connectURL, dbclient.DBName, "")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -367,7 +367,7 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 		logger.Errorf("URL parse error: %s", err)
 		return nil, nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	connectURL.Path = dbclient.DBName
+	connectURL = constructCouchDBUrl(connectURL, dbclient.DBName, "")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -456,7 +456,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	connectURL.Path = dbclient.DBName
+	connectURL = constructCouchDBUrl(connectURL, dbclient.DBName, "")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -499,7 +499,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	connectURL.Path = dbclient.DBName + "/_ensure_full_commit"
+	connectURL = constructCouchDBUrl(connectURL, dbclient.DBName, "_ensure_full_commit")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -562,9 +562,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 		return "", errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 
-	saveURL.Path = dbclient.DBName
-	// id can contain a '/', so encode separately
-	saveURL = &url.URL{Opaque: saveURL.String() + "/" + encodePathElement(id)}
+	saveURL = constructCouchDBUrl(saveURL, dbclient.DBName, id)
 
 	logger.Debugf("  rev=%s", rev)
 
@@ -616,7 +614,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 
 	//handle the request for saving document with a retry if there is a revision conflict
 	resp, _, err := dbclient.handleRequestWithRevisionRetry(id, http.MethodPut,
-		*saveURL, data, rev, defaultBoundary, maxRetries, keepConnectionOpen)
+		saveURL.String(), data, rev, defaultBoundary, maxRetries, keepConnectionOpen)
 
 	if err != nil {
 		return "", err
@@ -762,9 +760,8 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 		logger.Errorf("URL parse error: %s", err)
 		return nil, "", errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	readURL.Path = dbclient.DBName
-	// id can contain a '/', so encode separately
-	readURL = &url.URL{Opaque: readURL.String() + "/" + encodePathElement(id)}
+
+	readURL = constructCouchDBUrl(readURL, dbclient.DBName, id)
 
 	query := readURL.Query()
 	query.Add("attachments", "true")
@@ -895,7 +892,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	rangeURL.Path = dbclient.DBName + "/_all_docs"
+	rangeURL = constructCouchDBUrl(rangeURL, dbclient.DBName, "_all_docs")
 
 	queryParms := rangeURL.Query()
 	queryParms.Set("limit", strconv.Itoa(limit))
@@ -1001,17 +998,14 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 		logger.Errorf("URL parse error: %s", err)
 		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	deleteURL.Path = dbclient.DBName
-	// id can contain a '/', so encode separately
-	deleteURL = &url.URL{Opaque: deleteURL.String() + "/" + encodePathElement(id)}
+	deleteURL = constructCouchDBUrl(deleteURL, dbclient.DBName, id)
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
 	//handle the request for saving document with a retry if there is a revision conflict
 	resp, couchDBReturn, err := dbclient.handleRequestWithRevisionRetry(id, http.MethodDelete,
-		*deleteURL, nil, "", "", maxRetries, true)
+		deleteURL.String(), nil, "", "", maxRetries, true)
 
 	if err != nil {
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
@@ -1042,8 +1036,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	queryURL.Path = dbclient.DBName + "/_find"
+	queryURL = constructCouchDBUrl(queryURL, dbclient.DBName, "_find")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -1132,8 +1125,7 @@ func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	indexURL.Path = dbclient.DBName + "/_index/"
+	indexURL = constructCouchDBUrl(indexURL, dbclient.DBName, "_index")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -1196,8 +1188,7 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndex
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	indexURL.Path = dbclient.DBName + "/_index"
+	indexURL = constructCouchDBUrl(indexURL, dbclient.DBName, "_index")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -1251,8 +1242,7 @@ func (dbclient *CouchDatabase) DeleteIndex(designdoc, indexname string) error {
 		logger.Errorf("URL parse error: %s", err)
 		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	indexURL.Path = dbclient.DBName + "/_index/" + designdoc + "/json/" + indexname
+	indexURL = constructCouchDBUrl(indexURL, dbclient.DBName, "_index", designdoc, "json", indexname)
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -1279,7 +1269,7 @@ func (dbclient *CouchDatabase) WarmIndex(designdoc, indexname string) error {
 	}
 
 	//URL to execute the view function associated with the index
-	indexURL.Path = dbclient.DBName + "/_design/" + designdoc + "/_view/" + indexname
+	indexURL = constructCouchDBUrl(indexURL, dbclient.DBName, "_design", designdoc, "_view", indexname)
 
 	queryParms := indexURL.Query()
 	//Query parameter that allows the execution of the URL to return immediately
@@ -1347,8 +1337,7 @@ func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) 
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	securityURL.Path = dbclient.DBName + "/_security"
+	securityURL = constructCouchDBUrl(securityURL, dbclient.DBName, "_security")
 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
@@ -1390,8 +1379,7 @@ func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseS
 		logger.Errorf("URL parse error: %s", err)
 		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-
-	securityURL.Path = dbclient.DBName + "/_security"
+	securityURL = constructCouchDBUrl(securityURL, dbclient.DBName, "_security")
 
 	//Ensure all of the arrays are initialized to empty arrays instead of nil
 	if databaseSecurity.Admins.Names == nil {
@@ -1441,7 +1429,7 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	batchRetrieveURL.Path = dbclient.DBName + "/_all_docs"
+	batchRetrieveURL = constructCouchDBUrl(batchRetrieveURL, dbclient.DBName, "_all_docs")
 
 	queryParms := batchRetrieveURL.Query()
 
@@ -1521,7 +1509,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		logger.Errorf("URL parse error: %s", err)
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
-	batchUpdateURL.Path = dbclient.DBName + "/_bulk_docs"
+	batchUpdateURL = constructCouchDBUrl(batchUpdateURL, dbclient.DBName, "_bulk_docs")
 
 	documentMap := make(map[string]interface{})
 
@@ -1606,7 +1594,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 //a retry for document revision conflict errors,
 //which may be detected during saves or deletes that timed out from client http perspective,
 //but which eventually succeeded in couchdb
-func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method string, connectURL url.URL, data []byte, rev string,
+func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method, connectURL string, data []byte, rev string,
 	multipartBoundary string, maxRetries int, keepConnectionOpen bool) (*http.Response, *DBReturn, error) {
 
 	//Initialize a flag for the revision conflict
@@ -1627,7 +1615,7 @@ func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method string,
 		}
 
 		//handle the request for saving/deleting the couchdb data
-		resp, couchDBReturn, errResp = dbclient.CouchInstance.handleRequest(method, connectURL.String(),
+		resp, couchDBReturn, errResp = dbclient.CouchInstance.handleRequest(method, connectURL,
 			data, rev, multipartBoundary, maxRetries, keepConnectionOpen)
 
 		//If there was a 409 conflict error during the save/delete, log it and retry it.

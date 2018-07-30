@@ -6,8 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 package couchdb
 
 import (
+	"bytes"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_()-]*`
+var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_()+-]*`
 var maxLength = 238
 
 // To restrict the length of couchDB database name to the
@@ -136,6 +138,20 @@ func CreateSystemDatabasesIfNotExist(couchInstance *CouchInstance) error {
 
 	return nil
 
+}
+
+// constructCouchDBUrl constructs a couchDB url with encoding for the database name
+// and all path elements
+func constructCouchDBUrl(connectURL *url.URL, dbName string, pathElements ...string) *url.URL {
+	var buffer bytes.Buffer
+	buffer.WriteString(connectURL.String())
+	buffer.WriteString("/")
+	buffer.WriteString(encodePathElement(dbName))
+	for _, pathElement := range pathElements {
+		buffer.WriteString("/")
+		buffer.WriteString(encodePathElement(pathElement))
+	}
+	return &url.URL{Opaque: buffer.String()}
 }
 
 // ConstructMetadataDBName truncates the db name to couchdb allowed length to
