@@ -1,0 +1,116 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package flogging
+
+import (
+	"regexp"
+	"sync"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+// ModuleLevels tracks the logging level of logging modules.
+type ModuleLevels struct {
+	defaultLevel zapcore.Level
+
+	mutex  sync.RWMutex
+	levels map[string]zapcore.Level
+}
+
+// SetDefaultLevel sets the default logging level for modules that do not have
+// an explicit level set.
+func (m *ModuleLevels) SetDefaultLevel(l zapcore.Level) {
+	m.mutex.Lock()
+	m.defaultLevel = l
+	m.mutex.Unlock()
+}
+
+// DefaultLevel returns the default logging level for modules that do not have
+// an explicit level set.
+func (m *ModuleLevels) DefaultLevel() zapcore.Level {
+	m.mutex.RLock()
+	l := m.defaultLevel
+	m.mutex.RUnlock()
+	return l
+}
+
+// Reset discards level information about all modules and restores the default
+// logging level to zapcore.InfoLevel.
+func (m *ModuleLevels) Reset() {
+	m.mutex.Lock()
+	m.levels = map[string]zapcore.Level{}
+	m.defaultLevel = zapcore.InfoLevel
+	m.mutex.Unlock()
+}
+
+// SetLevel sets the logging level for a single logging module.
+func (m *ModuleLevels) SetLevel(module string, l zapcore.Level) {
+	m.mutex.Lock()
+	if m.levels == nil {
+		m.levels = map[string]zapcore.Level{}
+	}
+	m.levels[module] = l
+	m.mutex.Unlock()
+}
+
+// SetLevels sets the logging level for all logging modules that match the
+// provide regular expression.
+func (m *ModuleLevels) SetLevels(re *regexp.Regexp, l zapcore.Level) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	for module := range m.levels {
+		if re.MatchString(module) {
+			m.levels[module] = l
+		}
+	}
+}
+
+// Level returns the effective logging level for a module. If a level has not
+// been explicitly set for the module, the default logging level will be
+// returned.
+func (m *ModuleLevels) Level(module string) zapcore.Level {
+	m.mutex.RLock()
+	l, ok := m.levels[module]
+	if !ok {
+		l = m.defaultLevel
+	}
+	m.mutex.RUnlock()
+	return l
+}
+
+// Levels returns a copy of current log levels.
+func (m *ModuleLevels) Levels() map[string]zapcore.Level {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	levels := make(map[string]zapcore.Level, len(m.levels))
+	for k, v := range m.levels {
+		levels[k] = v
+	}
+	return levels
+}
+
+// RestoreLevels replaces the log levels with values previously acquired from
+// Levels.
+func (m *ModuleLevels) RestoreLevels(levels map[string]zapcore.Level) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	m.levels = map[string]zapcore.Level{}
+	for k, v := range levels {
+		m.levels[k] = v
+	}
+}
+
+// LevelEnabler adapts ModuleLevels for use with zap as a zapcore.LevelEnabler.
+func (m *ModuleLevels) LevelEnabler(module string) zapcore.LevelEnabler {
+	return zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+		return m.Level(module).Enabled(l)
+	})
+}
