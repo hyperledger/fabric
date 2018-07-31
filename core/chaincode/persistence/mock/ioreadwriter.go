@@ -7,6 +7,19 @@ import (
 )
 
 type IOReadWriter struct {
+	ReadDirStub        func(string) ([]os.FileInfo, error)
+	readDirMutex       sync.RWMutex
+	readDirArgsForCall []struct {
+		arg1 string
+	}
+	readDirReturns struct {
+		result1 []os.FileInfo
+		result2 error
+	}
+	readDirReturnsOnCall map[int]struct {
+		result1 []os.FileInfo
+		result2 error
+	}
 	ReadFileStub        func(string) ([]byte, error)
 	readFileMutex       sync.RWMutex
 	readFileArgsForCall []struct {
@@ -59,6 +72,57 @@ type IOReadWriter struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *IOReadWriter) ReadDir(arg1 string) ([]os.FileInfo, error) {
+	fake.readDirMutex.Lock()
+	ret, specificReturn := fake.readDirReturnsOnCall[len(fake.readDirArgsForCall)]
+	fake.readDirArgsForCall = append(fake.readDirArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("ReadDir", []interface{}{arg1})
+	fake.readDirMutex.Unlock()
+	if fake.ReadDirStub != nil {
+		return fake.ReadDirStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.readDirReturns.result1, fake.readDirReturns.result2
+}
+
+func (fake *IOReadWriter) ReadDirCallCount() int {
+	fake.readDirMutex.RLock()
+	defer fake.readDirMutex.RUnlock()
+	return len(fake.readDirArgsForCall)
+}
+
+func (fake *IOReadWriter) ReadDirArgsForCall(i int) string {
+	fake.readDirMutex.RLock()
+	defer fake.readDirMutex.RUnlock()
+	return fake.readDirArgsForCall[i].arg1
+}
+
+func (fake *IOReadWriter) ReadDirReturns(result1 []os.FileInfo, result2 error) {
+	fake.ReadDirStub = nil
+	fake.readDirReturns = struct {
+		result1 []os.FileInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *IOReadWriter) ReadDirReturnsOnCall(i int, result1 []os.FileInfo, result2 error) {
+	fake.ReadDirStub = nil
+	if fake.readDirReturnsOnCall == nil {
+		fake.readDirReturnsOnCall = make(map[int]struct {
+			result1 []os.FileInfo
+			result2 error
+		})
+	}
+	fake.readDirReturnsOnCall[i] = struct {
+		result1 []os.FileInfo
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *IOReadWriter) ReadFile(arg1 string) ([]byte, error) {
@@ -269,6 +333,8 @@ func (fake *IOReadWriter) WriteFileReturnsOnCall(i int, result1 error) {
 func (fake *IOReadWriter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.readDirMutex.RLock()
+	defer fake.readDirMutex.RUnlock()
 	fake.readFileMutex.RLock()
 	defer fake.readFileMutex.RUnlock()
 	fake.removeMutex.RLock()

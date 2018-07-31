@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -17,6 +18,11 @@ import (
 //go:generate counterfeiter -o mock/ioreadwriter.go -fake-name IOReadWriter . ioReadWriter
 type ioReadWriter interface {
 	persistence.IOReadWriter
+}
+
+//go:generate counterfeiter -o mock/osfileinfo.go -fake-name OSFileInfo . osFileInfo
+type osFileInfo interface {
+	os.FileInfo
 }
 
 func TestPersistence(t *testing.T) {
