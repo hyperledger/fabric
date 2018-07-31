@@ -21,6 +21,20 @@ type SCCFunctions struct {
 		result1 []byte
 		result2 error
 	}
+	QueryInstalledChaincodeStub        func(name, version string) (hash []byte, err error)
+	queryInstalledChaincodeMutex       sync.RWMutex
+	queryInstalledChaincodeArgsForCall []struct {
+		name    string
+		version string
+	}
+	queryInstalledChaincodeReturns struct {
+		result1 []byte
+		result2 error
+	}
+	queryInstalledChaincodeReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -83,11 +97,65 @@ func (fake *SCCFunctions) InstallChaincodeReturnsOnCall(i int, result1 []byte, r
 	}{result1, result2}
 }
 
+func (fake *SCCFunctions) QueryInstalledChaincode(name string, version string) (hash []byte, err error) {
+	fake.queryInstalledChaincodeMutex.Lock()
+	ret, specificReturn := fake.queryInstalledChaincodeReturnsOnCall[len(fake.queryInstalledChaincodeArgsForCall)]
+	fake.queryInstalledChaincodeArgsForCall = append(fake.queryInstalledChaincodeArgsForCall, struct {
+		name    string
+		version string
+	}{name, version})
+	fake.recordInvocation("QueryInstalledChaincode", []interface{}{name, version})
+	fake.queryInstalledChaincodeMutex.Unlock()
+	if fake.QueryInstalledChaincodeStub != nil {
+		return fake.QueryInstalledChaincodeStub(name, version)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.queryInstalledChaincodeReturns.result1, fake.queryInstalledChaincodeReturns.result2
+}
+
+func (fake *SCCFunctions) QueryInstalledChaincodeCallCount() int {
+	fake.queryInstalledChaincodeMutex.RLock()
+	defer fake.queryInstalledChaincodeMutex.RUnlock()
+	return len(fake.queryInstalledChaincodeArgsForCall)
+}
+
+func (fake *SCCFunctions) QueryInstalledChaincodeArgsForCall(i int) (string, string) {
+	fake.queryInstalledChaincodeMutex.RLock()
+	defer fake.queryInstalledChaincodeMutex.RUnlock()
+	return fake.queryInstalledChaincodeArgsForCall[i].name, fake.queryInstalledChaincodeArgsForCall[i].version
+}
+
+func (fake *SCCFunctions) QueryInstalledChaincodeReturns(result1 []byte, result2 error) {
+	fake.QueryInstalledChaincodeStub = nil
+	fake.queryInstalledChaincodeReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) QueryInstalledChaincodeReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.QueryInstalledChaincodeStub = nil
+	if fake.queryInstalledChaincodeReturnsOnCall == nil {
+		fake.queryInstalledChaincodeReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.queryInstalledChaincodeReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.installChaincodeMutex.RLock()
 	defer fake.installChaincodeMutex.RUnlock()
+	fake.queryInstalledChaincodeMutex.RLock()
+	defer fake.queryInstalledChaincodeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
