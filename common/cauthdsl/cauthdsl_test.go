@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
@@ -272,4 +273,35 @@ func TestSignedByMspPeer(t *testing.T) {
 
 	assert.Equal(t, role.MspIdentifier, "A")
 	assert.Equal(t, role.Role, mb.MSPRole_PEER)
+}
+
+func TestReturnNil(t *testing.T) {
+	policy := Envelope(And(SignedBy(-1), SignedBy(-2)), signers)
+
+	spe, err := compile(policy.Rule, policy.Identities, &mockDeserializer{})
+	assert.Nil(t, spe)
+	assert.EqualError(t, err, "identity index out of range, requested -1, but identies length is 2")
+}
+
+func TestDeserializeIdentityError(t *testing.T) {
+	// Prepare
+	policy := Envelope(SignedBy(0), signers)
+	spe, err := compile(policy.Rule, policy.Identities, &mockDeserializer{fail: errors.New("myError")})
+	assert.NoError(t, err)
+
+	// Let logger output to buf
+	var buf bytes.Buffer
+	backend := logging.NewLogBackend(&buf, "", 0)
+	cauthdslLogger.SetBackend(logging.AddModuleLevel(backend))
+	defer func() {
+		flogging.Reset()
+	}()
+
+	// Call
+	signedData, used := toSignedData([][]byte{nil}, [][]byte{nil}, [][]byte{nil})
+	ret := spe(signedData, used)
+
+	// Check result (ret and log)
+	assert.False(t, ret)
+	assert.Contains(t, buf.String(), "Principal deserialization failure (myError) for identity ")
 }
