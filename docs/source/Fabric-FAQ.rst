@@ -303,9 +303,11 @@ Kafka
   (see :ref:`kafka-caveat`). If you insist on proceeding without such expertise,
   you should complete, *at a minimum*, the first 6 steps of the
   `Kafka Quickstart guide`_ before experimenting with the Kafka-based ordering
-  service.
+  service. You can also consult `this sample configuration file`_ for a brief
+  explanation of the sensible defaults for Kafka/ZooKeeper.
 
 .. _Kafka Quickstart guide: https://kafka.apache.org/quickstart
+.. _this sample configuration file: https://github.com/hyperledger/fabric/blob/release-1.1/bddtests/dc-orderer-kafka.yml
 
 ..
 
