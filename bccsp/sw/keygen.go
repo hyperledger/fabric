@@ -30,7 +30,7 @@ type ecdsaKeyGenerator struct {
 	curve elliptic.Curve
 }
 
-func (kg *ecdsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+func (kg *ecdsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	privKey, err := ecdsa.GenerateKey(kg.curve, rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("Failed generating ECDSA key for [%v]: [%s]", kg.curve, err)
@@ -43,7 +43,7 @@ type aesKeyGenerator struct {
 	length int
 }
 
-func (kg *aesKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+func (kg *aesKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	lowLevelKey, err := GetRandomBytes(int(kg.length))
 	if err != nil {
 		return nil, fmt.Errorf("Failed generating AES %d key [%s]", kg.length, err)
@@ -56,7 +56,7 @@ type rsaKeyGenerator struct {
 	length int
 }
 
-func (kg *rsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+func (kg *rsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	lowLevelKey, err := rsa.GenerateKey(rand.Reader, int(kg.length))
 
 	if err != nil {
