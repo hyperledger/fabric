@@ -37,3 +37,21 @@ message QueryInstalledChaincodeArgs {
 message QueryInstalledChaincodeResult {
     bytes hash = 1;
 }
+
+// QueryInstalledChaincodesArgs currently is an empty argument to
+// '+lifecycle.QueryInstalledChaincodes'.   In the future, it may be
+// extended to have parameters.
+message QueryInstalledChaincodesArgs {
+}
+
+// QueryInstalledChaincodesResult is the message returned by
+// '+lifecycle.QueryInstalledChaincodes'.  It returns a list of
+// installed chaincodes.
+message QueryInstalledChaincodesResult {
+    message InstalledChaincode {
+        string name = 1;
+        string version = 2;
+        bytes hash = 3;
+    }
+    repeated InstalledChaincode installed_chaincodes = 1;
+}

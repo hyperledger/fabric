@@ -10,11 +10,13 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -212,6 +214,68 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincode': underlying-error"))
+				})
+			})
+		})
+
+		Describe("QueryInstalledChaincodes", func() {
+			var (
+				arg          *lb.QueryInstalledChaincodesArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryInstalledChaincodesArgs{}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincodes"), marshaledArg})
+
+				fakeSCCFuncs.QueryInstalledChaincodesReturns([]chaincode.InstalledChaincode{
+					{
+						Name:    "cc0-name",
+						Version: "cc0-version",
+						Id:      []byte("cc0-hash"),
+					},
+					{
+						Name:    "cc1-name",
+						Version: "cc1-version",
+						Id:      []byte("cc1-hash"),
+					},
+				}, nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryInstalledChaincodesResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(payload.InstalledChaincodes).To(HaveLen(2))
+
+				Expect(payload.InstalledChaincodes[0].Name).To(Equal(fmt.Sprintf("cc0-name")))
+				Expect(payload.InstalledChaincodes[0].Version).To(Equal(fmt.Sprintf("cc0-version")))
+				Expect(payload.InstalledChaincodes[0].Hash).To(Equal([]byte(fmt.Sprintf("cc0-hash"))))
+
+				Expect(payload.InstalledChaincodes[1].Name).To(Equal(fmt.Sprintf("cc1-name")))
+				Expect(payload.InstalledChaincodes[1].Version).To(Equal(fmt.Sprintf("cc1-version")))
+				Expect(payload.InstalledChaincodes[1].Hash).To(Equal([]byte(fmt.Sprintf("cc1-hash"))))
+
+				Expect(fakeSCCFuncs.QueryInstalledChaincodesCallCount()).To(Equal(1))
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryInstalledChaincodesReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincodes': underlying-error"))
 				})
 			})
 		})

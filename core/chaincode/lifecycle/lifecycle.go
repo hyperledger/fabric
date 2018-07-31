@@ -9,6 +9,7 @@ package lifecycle
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/pkg/errors"
 )
@@ -17,6 +18,7 @@ import (
 type ChaincodeStore interface {
 	Save(name, version string, ccInstallPkg []byte) (hash []byte, err error)
 	RetrieveHash(name, version string) (hash []byte, err error)
+	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
 }
 
 type PackageParser interface {
@@ -55,4 +57,9 @@ func (l *Lifecycle) QueryInstalledChaincode(name, version string) ([]byte, error
 	}
 
 	return hash, nil
+}
+
+// QueryInstalledChaincodes returns a list of installed chaincodes
+func (l *Lifecycle) QueryInstalledChaincodes() ([]chaincode.InstalledChaincode, error) {
+	return l.ChaincodeStore.ListInstalledChaincodes()
 }

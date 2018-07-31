@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -22,6 +23,9 @@ const (
 
 	// QueryInstalledChaincodeFuncName is the chaincode function name used to query an installed chaincode
 	QueryInstalledChaincodeFuncName = "QueryInstalledChaincode"
+
+	// QueryInstalledChaincodesFuncName is the chaincode function name used to query all installed chaincodes
+	QueryInstalledChaincodesFuncName = "QueryInstalledChaincodes"
 )
 
 // SCCFunctions provides a backing implementation with concrete arguments
@@ -32,6 +36,16 @@ type SCCFunctions interface {
 
 	// QueryInstalledChaincode returns the hash for a given name and version of an installed chaincode
 	QueryInstalledChaincode(name, version string) (hash []byte, err error)
+
+	// QueryInstalledChaincodes returns the currently installed chaincodes
+	QueryInstalledChaincodes() (chaincodes []chaincode.InstalledChaincode, err error)
+}
+
+// InstalledChaincode is the information to be returned about a chaincode
+type InstalledChaincode struct {
+	Name    string
+	Version string
+	Hash    []byte
 }
 
 // SCC implements the required methods to satisfy the chaincode interface.
@@ -104,6 +118,7 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if err != nil {
 		return shim.Error(fmt.Sprintf("failed to invoke backing implementation of '%s': %s", string(args[0]), err.Error()))
 	}
+
 	return shim.Success(outputBytes)
 }
 
@@ -131,4 +146,25 @@ func (scc *SCC) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (
 	return &lb.QueryInstalledChaincodeResult{
 		Hash: hash,
 	}, nil
+}
+
+// QueryInstalledChaincodes is a SCC function that may be dispatch to which routes to the underlying
+// lifecycle implementation.
+func (scc *SCC) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodesArgs) (proto.Message, error) {
+	chaincodes, err := scc.Functions.QueryInstalledChaincodes()
+	if err != nil {
+		return nil, err
+	}
+
+	result := &lb.QueryInstalledChaincodesResult{}
+	for _, chaincode := range chaincodes {
+		result.InstalledChaincodes = append(
+			result.InstalledChaincodes,
+			&lb.QueryInstalledChaincodesResult_InstalledChaincode{
+				Name:    chaincode.Name,
+				Version: chaincode.Version,
+				Hash:    chaincode.Id,
+			})
+	}
+	return result, nil
 }

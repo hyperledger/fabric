@@ -2,16 +2,16 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 )
 
 type PackageParser struct {
-	ParseStub        func([]byte) (*persistence.ChaincodePackage, error)
+	ParseStub        func(data []byte) (*persistence.ChaincodePackage, error)
 	parseMutex       sync.RWMutex
 	parseArgsForCall []struct {
-		arg1 []byte
+		data []byte
 	}
 	parseReturns struct {
 		result1 *persistence.ChaincodePackage
@@ -25,27 +25,26 @@ type PackageParser struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PackageParser) Parse(arg1 []byte) (*persistence.ChaincodePackage, error) {
-	var arg1Copy []byte
-	if arg1 != nil {
-		arg1Copy = make([]byte, len(arg1))
-		copy(arg1Copy, arg1)
+func (fake *PackageParser) Parse(data []byte) (*persistence.ChaincodePackage, error) {
+	var dataCopy []byte
+	if data != nil {
+		dataCopy = make([]byte, len(data))
+		copy(dataCopy, data)
 	}
 	fake.parseMutex.Lock()
 	ret, specificReturn := fake.parseReturnsOnCall[len(fake.parseArgsForCall)]
 	fake.parseArgsForCall = append(fake.parseArgsForCall, struct {
-		arg1 []byte
-	}{arg1Copy})
-	fake.recordInvocation("Parse", []interface{}{arg1Copy})
+		data []byte
+	}{dataCopy})
+	fake.recordInvocation("Parse", []interface{}{dataCopy})
 	fake.parseMutex.Unlock()
 	if fake.ParseStub != nil {
-		return fake.ParseStub(arg1)
+		return fake.ParseStub(data)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.parseReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fake.parseReturns.result1, fake.parseReturns.result2
 }
 
 func (fake *PackageParser) ParseCallCount() int {
@@ -54,22 +53,13 @@ func (fake *PackageParser) ParseCallCount() int {
 	return len(fake.parseArgsForCall)
 }
 
-func (fake *PackageParser) ParseCalls(stub func([]byte) (*persistence.ChaincodePackage, error)) {
-	fake.parseMutex.Lock()
-	defer fake.parseMutex.Unlock()
-	fake.ParseStub = stub
-}
-
 func (fake *PackageParser) ParseArgsForCall(i int) []byte {
 	fake.parseMutex.RLock()
 	defer fake.parseMutex.RUnlock()
-	argsForCall := fake.parseArgsForCall[i]
-	return argsForCall.arg1
+	return fake.parseArgsForCall[i].data
 }
 
 func (fake *PackageParser) ParseReturns(result1 *persistence.ChaincodePackage, result2 error) {
-	fake.parseMutex.Lock()
-	defer fake.parseMutex.Unlock()
 	fake.ParseStub = nil
 	fake.parseReturns = struct {
 		result1 *persistence.ChaincodePackage
@@ -78,8 +68,6 @@ func (fake *PackageParser) ParseReturns(result1 *persistence.ChaincodePackage, r
 }
 
 func (fake *PackageParser) ParseReturnsOnCall(i int, result1 *persistence.ChaincodePackage, result2 error) {
-	fake.parseMutex.Lock()
-	defer fake.parseMutex.Unlock()
 	fake.ParseStub = nil
 	if fake.parseReturnsOnCall == nil {
 		fake.parseReturnsOnCall = make(map[int]struct {
