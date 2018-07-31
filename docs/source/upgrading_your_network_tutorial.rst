@@ -34,7 +34,7 @@ BYFN will not cover them:
 * **CouchDB**
 * **SDK**
 
-The process for upgrading these components --- if necesary --- will be covered in
+The process for upgrading these components --- if necessary --- will be covered in
 a section following the tutorial.
 
 At a high level, our upgrade tutorial will perform the following steps:

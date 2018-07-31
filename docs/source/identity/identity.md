@@ -4,7 +4,7 @@
 
 The different actors in a blockchain network include peers, orderers, client
 applications, administrators and more. Each of these actors --- active elements
-inside or outside a network able to consume services --- has a digitial identity
+inside or outside a network able to consume services --- has a digital identity
 encapsulated in an X.509 digital certificate. These identities really matter
 because they **determine the exact permissions over resources and access to
 information that actors have in a blockchain network.**
