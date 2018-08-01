@@ -114,7 +114,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		return nil, nil, nil, fmt.Errorf("Error starting peer listener %s", err)
 	}
 
-	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
+	ccprovider.SetChaincodesPath(ccprovider.GetChaincodeInstallPathFromViper())
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()

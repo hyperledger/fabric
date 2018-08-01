@@ -167,7 +167,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 
 	peer.MockSetMSPIDGetter(mspGetter)
 
-	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
+	ccprovider.SetChaincodesPath(ccprovider.GetChaincodeInstallPathFromViper())
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	config := GlobalConfig()

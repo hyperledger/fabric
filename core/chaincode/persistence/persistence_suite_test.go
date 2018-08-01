@@ -25,6 +25,16 @@ type osFileInfo interface {
 	os.FileInfo
 }
 
+//go:generate counterfeiter -o mock/store_package_provider.go -fake-name StorePackageProvider . storePackageProvider
+type storePackageProvider interface {
+	persistence.StorePackageProvider
+}
+
+//go:generate counterfeiter -o mock/legacy_package_provider.go -fake-name LegacyPackageProvider . legacyPackageProvider
+type legacyPackageProvider interface {
+	persistence.LegacyPackageProvider
+}
+
 func TestPersistence(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")

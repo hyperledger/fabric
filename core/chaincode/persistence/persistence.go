@@ -9,6 +9,7 @@ package persistence
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -141,6 +142,17 @@ func (s *Store) LoadMetadata(path string) (name, version string, err error) {
 	return ccMetadata.Name, ccMetadata.Version, nil
 }
 
+// CodePackageNotFoundErr is the error returned when a code package cannot
+// be found in the persistence store
+type CodePackageNotFoundErr struct {
+	Name    string
+	Version string
+}
+
+func (e *CodePackageNotFoundErr) Error() string {
+	return fmt.Sprintf("chaincode install package not found with name '%s', version '%s'", e.Name, e.Version)
+}
+
 // RetrieveHash retrieves the hash of a chaincode install package given the
 // name and version of the chaincode
 func (s *Store) RetrieveHash(name string, version string) ([]byte, error) {
@@ -171,7 +183,12 @@ func (s *Store) RetrieveHash(name string, version string) ([]byte, error) {
 		}
 	}
 
-	return nil, errors.Errorf("chaincode install package not found with name '%s', version '%s'", name, version)
+	err = &CodePackageNotFoundErr{
+		Name:    name,
+		Version: version,
+	}
+
+	return nil, err
 }
 
 // ChaincodeMetadata holds the name and version of a chaincode

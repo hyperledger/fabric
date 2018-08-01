@@ -175,7 +175,7 @@ var _ = Describe("Persistence", func() {
 			})
 		})
 
-		Context("when writing the chaincode install package file fails with the metadata remove also fails", func() {
+		Context("when writing the chaincode install package file fails and the metadata remove also fails", func() {
 			BeforeEach(func() {
 				mockReadWriter.StatReturns(nil, errors.New("futbol2"))
 				mockReadWriter.WriteFileReturnsOnCall(1, errors.New("soccer2"))
@@ -311,6 +311,21 @@ var _ = Describe("Persistence", func() {
 			})
 		})
 
+		Context("when decoding the hash string fails", func() {
+			BeforeEach(func() {
+				mockFileInfo := &mock.OSFileInfo{}
+				mockFileInfo.NameReturns("?.json")
+				mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo}, nil)
+			})
+
+			It("returns an error", func() {
+				hash, err := store.RetrieveHash("test1", "1.0")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error decoding hash from hex string: ?"))
+				Expect(hash).To(BeNil())
+			})
+		})
+
 		Context("when reading a different metadata file fails but the desired chaincode metadata file exists", func() {
 			BeforeEach(func() {
 				mockReadWriter.ReadFileReturnsOnCall(0, nil, errors.New("penaltykick"))
@@ -328,7 +343,7 @@ var _ = Describe("Persistence", func() {
 			It("returns an error", func() {
 				hash, err := store.RetrieveHash("test3", "1.0")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("chaincode install package not found with name 'test3', version '1.0'"))
+				Expect(err.Error()).To(Equal("chaincode install package not found with name 'test3', version '1.0'"))
 				Expect(hash).To(BeNil())
 			})
 		})
