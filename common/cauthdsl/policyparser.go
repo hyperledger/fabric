@@ -272,6 +272,10 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 		return nil, err
 	}
+	resStr, ok := intermediateRes.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid policy string '%s'", policy)
+	}
 
 	// we still need two passes. The first pass just adds an extra
 	// argument ID to each of the outof calls. This is
@@ -279,7 +283,7 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	// to user-implemented functions other than via arguments.
 	// We need this argument because we need a global place where
 	// we put the identities that the policy requires
-	exp, err := govaluate.NewEvaluableExpressionWithFunctions(intermediateRes.(string), map[string]govaluate.ExpressionFunction{"outof": firstPass})
+	exp, err := govaluate.NewEvaluableExpressionWithFunctions(resStr, map[string]govaluate.ExpressionFunction{"outof": firstPass})
 	if err != nil {
 		return nil, err
 	}
@@ -296,12 +300,16 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 		return nil, err
 	}
+	resStr, ok = res.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid policy string '%s'", policy)
+	}
 
 	ctx := newContext()
 	parameters := make(map[string]interface{}, 1)
 	parameters["ID"] = ctx
 
-	exp, err = govaluate.NewEvaluableExpressionWithFunctions(res.(string), map[string]govaluate.ExpressionFunction{"outof": secondPass})
+	exp, err = govaluate.NewEvaluableExpressionWithFunctions(resStr, map[string]govaluate.ExpressionFunction{"outof": secondPass})
 	if err != nil {
 		return nil, err
 	}
@@ -318,11 +326,15 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 		return nil, err
 	}
+	rule, ok := res.(*common.SignaturePolicy)
+	if !ok {
+		return nil, fmt.Errorf("invalid policy string '%s'", policy)
+	}
 
 	p := &common.SignaturePolicyEnvelope{
 		Identities: ctx.principals,
 		Version:    0,
-		Rule:       res.(*common.SignaturePolicy),
+		Rule:       rule,
 	}
 
 	return p, nil

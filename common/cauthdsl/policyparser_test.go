@@ -233,3 +233,20 @@ func TestBadStringsNoPanic(t *testing.T) {
 	_, err = FromString("OR('A.member', Bmember)")
 	assert.Error(t, err)
 }
+
+func TestBadStringBeforeFAB11404_ThisCanDeleteAfterFAB11404HasMerged(t *testing.T) {
+	s1 := "1" // ineger in string
+	p1, err1 := FromString(s1)
+	assert.Nil(t, p1)
+	assert.EqualError(t, err1, `invalid policy string '1'`)
+
+	s2 := "'1'" // quoted ineger in string
+	p2, err2 := FromString(s2)
+	assert.Nil(t, p2)
+	assert.EqualError(t, err2, `invalid policy string ''1''`)
+
+	s3 := `'\'1\''` // nested quoted ineger in string
+	p3, err3 := FromString(s3)
+	assert.Nil(t, p3)
+	assert.EqualError(t, err3, `invalid policy string ''\'1\'''`)
+}
