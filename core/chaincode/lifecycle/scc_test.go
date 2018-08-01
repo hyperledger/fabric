@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/dispatcher"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,15 +22,15 @@ import (
 var _ = Describe("SCC", func() {
 	var (
 		scc          *lifecycle.SCC
-		fakeProto    *mock.Protobuf
 		fakeSCCFuncs *mock.SCCFunctions
 	)
 
 	BeforeEach(func() {
-		fakeProto = &mock.Protobuf{}
 		fakeSCCFuncs = &mock.SCCFunctions{}
 		scc = &lifecycle.SCC{
-			Protobuf:  fakeProto,
+			Dispatcher: &dispatcher.Dispatcher{
+				Protobuf: &dispatcher.ProtobufImpl{},
+			},
 			Functions: fakeSCCFuncs,
 		}
 	})
@@ -113,7 +114,7 @@ var _ = Describe("SCC", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("unknown lifecycle function: bad-function")))
+				Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("failed to invoke backing implementation of 'bad-function': receiver *lifecycle.SCC.bad-function does not exist")))
 			})
 		})
 
@@ -135,9 +136,6 @@ var _ = Describe("SCC", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("InstallChaincode"), marshaledArg})
-
-				fakeProto.UnmarshalStub = proto.Unmarshal
-				fakeProto.MarshalStub = proto.Marshal
 
 				fakeSCCFuncs.InstallChaincodeReturns([]byte("fake-hash"), nil)
 			})
@@ -165,31 +163,7 @@ var _ = Describe("SCC", func() {
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing InstallChaincode: underlying-error"))
-				})
-			})
-
-			Context("when unmarshaling the input fails", func() {
-				BeforeEach(func() {
-					fakeProto.UnmarshalReturns(fmt.Errorf("unmarshal-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to decode input arg to InstallChaincode: unmarshal-error"))
-				})
-			})
-
-			Context("when marshaling the output fails", func() {
-				BeforeEach(func() {
-					fakeProto.MarshalReturns(nil, fmt.Errorf("marshal-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to marshal result: marshal-error"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'InstallChaincode': underlying-error"))
 				})
 			})
 		})
@@ -211,9 +185,6 @@ var _ = Describe("SCC", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincode"), marshaledArg})
-
-				fakeProto.UnmarshalStub = proto.Unmarshal
-				fakeProto.MarshalStub = proto.Marshal
 
 				fakeSCCFuncs.QueryInstalledChaincodeReturns([]byte("fake-hash"), nil)
 			})
@@ -240,31 +211,7 @@ var _ = Describe("SCC", func() {
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing QueryInstalledChaincode: underlying-error"))
-				})
-			})
-
-			Context("when unmarshaling the input fails", func() {
-				BeforeEach(func() {
-					fakeProto.UnmarshalReturns(fmt.Errorf("unmarshal-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to decode input arg to QueryInstalledChaincode: unmarshal-error"))
-				})
-			})
-
-			Context("when marshaling the output fails", func() {
-				BeforeEach(func() {
-					fakeProto.MarshalReturns(nil, fmt.Errorf("marshal-error"))
-				})
-
-				It("wraps and returns the error", func() {
-					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to marshal result: marshal-error"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincode': underlying-error"))
 				})
 			})
 		})

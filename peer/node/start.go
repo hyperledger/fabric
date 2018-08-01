@@ -49,6 +49,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
+	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/endorser"
 	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
@@ -722,7 +723,9 @@ func startChaincodeServer(
 	}
 
 	lifecycleSCC := &lifecycle.SCC{
-		Protobuf: &lifecycle.ProtobufImpl{},
+		Dispatcher: &dispatcher.Dispatcher{
+			Protobuf: &dispatcher.ProtobufImpl{},
+		},
 		Functions: &lifecycle.Lifecycle{
 			PackageParser:  ccPackageParser,
 			ChaincodeStore: ccStore,

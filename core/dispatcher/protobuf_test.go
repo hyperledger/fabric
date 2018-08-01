@@ -4,24 +4,26 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lifecycle_test
+package dispatcher_test
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	lc "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/hyperledger/fabric/core/dispatcher"
+	lc "github.com/hyperledger/fabric/protos/peer/lifecycle"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var _ = Describe("ProtobufImpl", func() {
 	var (
-		pi        *lifecycle.ProtobufImpl
+		pi        *dispatcher.ProtobufImpl
 		sampleMsg *lc.InstallChaincodeArgs
 	)
 
 	BeforeEach(func() {
-		pi = &lifecycle.ProtobufImpl{}
+		pi = &dispatcher.ProtobufImpl{}
 		sampleMsg = &lc.InstallChaincodeArgs{
 			Name:                    "name",
 			Version:                 "version",

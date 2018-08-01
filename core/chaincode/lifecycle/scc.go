@@ -9,10 +9,11 @@ package lifecycle
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/dispatcher"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -36,8 +37,12 @@ type SCCFunctions interface {
 // SCC implements the required methods to satisfy the chaincode interface.
 // It routes the invocation calls to the backing implementations.
 type SCC struct {
-	Protobuf  Protobuf
+	// Functions provides the backing implementation of lifecycle.
 	Functions SCCFunctions
+
+	// Dispatcher handles the rote protobuf boilerplate for unmarshaling/marshaling
+	// the inputs and outputs of the SCC functions.
+	Dispatcher *dispatcher.Dispatcher
 }
 
 // Name returns "+lifecycle"
@@ -93,60 +98,37 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Error(fmt.Sprintf("lifecycle scc operations require exactly two arguments but received %d", len(args)))
 	}
 
-	funcName := args[0]
-	inputBytes := args[1]
-
 	// TODO add ACLs
 
-	switch string(funcName) {
-	// Each lifecycle SCC function gets a case here
-	case InstallChaincodeFuncName:
-		input := &lb.InstallChaincodeArgs{}
-		err := scc.Protobuf.Unmarshal(inputBytes, input)
-		if err != nil {
-			err = errors.WithMessage(err, "failed to decode input arg to InstallChaincode")
-			return shim.Error(err.Error())
-		}
-
-		hash, err := scc.Functions.InstallChaincode(input.Name, input.Version, input.ChaincodeInstallPackage)
-		if err != nil {
-			err = errors.WithMessage(err, "failed to invoke backing InstallChaincode")
-			return shim.Error(err.Error())
-		}
-
-		resultBytes, err := scc.Protobuf.Marshal(&lb.InstallChaincodeResult{
-			Hash: hash,
-		})
-		if err != nil {
-			err = errors.WithMessage(err, "failed to marshal result")
-			return shim.Error(err.Error())
-		}
-
-		return shim.Success(resultBytes)
-	case QueryInstalledChaincodeFuncName:
-		input := &lb.QueryInstalledChaincodeArgs{}
-		err := scc.Protobuf.Unmarshal(inputBytes, input)
-		if err != nil {
-			err = errors.WithMessage(err, "failed to decode input arg to QueryInstalledChaincode")
-			return shim.Error(err.Error())
-		}
-
-		hash, err := scc.Functions.QueryInstalledChaincode(input.Name, input.Version)
-		if err != nil {
-			err = errors.WithMessage(err, "failed to invoke backing QueryInstalledChaincode")
-			return shim.Error(err.Error())
-		}
-
-		resultBytes, err := scc.Protobuf.Marshal(&lb.QueryInstalledChaincodeResult{
-			Hash: hash,
-		})
-		if err != nil {
-			err = errors.WithMessage(err, "failed to marshal result")
-			return shim.Error(err.Error())
-		}
-
-		return shim.Success(resultBytes)
-	default:
-		return shim.Error(fmt.Sprintf("unknown lifecycle function: %s", funcName))
+	outputBytes, err := scc.Dispatcher.Dispatch(args[1], string(args[0]), scc)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("failed to invoke backing implementation of '%s': %s", string(args[0]), err.Error()))
 	}
+	return shim.Success(outputBytes)
+}
+
+// InstallChaincode is a SCC function that may be dispatched to which routes to the underlying
+// lifecycle implementation.
+func (scc *SCC) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
+	hash, err := scc.Functions.InstallChaincode(input.Name, input.Version, input.ChaincodeInstallPackage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lb.InstallChaincodeResult{
+		Hash: hash,
+	}, nil
+}
+
+// QueryInstalledChaincode is a SCC function that may be dispatched to which routes to the underlying
+// lifecycle implementation.
+func (scc *SCC) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeArgs) (proto.Message, error) {
+	hash, err := scc.Functions.QueryInstalledChaincode(input.Name, input.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lb.QueryInstalledChaincodeResult{
+		Hash: hash,
+	}, nil
 }
