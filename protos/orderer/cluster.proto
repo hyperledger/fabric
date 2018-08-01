@@ -1,0 +1,57 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+import "common/common.proto";
+
+option go_package = "github.com/hyperledger/fabric/protos/orderer";
+option java_package = "org.hyperledger.fabric.protos.orderer";
+
+package orderer;
+
+// Cluster defines communication between cluster members.
+service Cluster {
+    // Submit submits transactions to a cluster member
+    rpc Submit(stream SubmitRequest) returns (stream SubmitResponse);
+    // Step passes an implementation-specific message to another cluster member.
+    rpc Step(StepRequest) returns (StepResponse);
+}
+
+// StepRequest wraps a consensus implementation
+// specific message that is sent to a cluster member
+message StepRequest {
+    string channel = 1;
+    bytes payload  = 2;
+}
+
+// StepResponse wraps a consensus implementation
+// specific message that is received from
+// a cluster member as a response to a StepRequest
+message StepResponse {
+    bytes payload  = 1;
+}
+
+// SubmitRequest wraps a transaction to be sent for ordering
+message SubmitRequest {
+    string channel = 1;
+    // last_validation_seq denotes the last
+    // configuration sequence at which the
+    // sender validated this message
+    uint64 last_validation_seq = 2;
+    // content is the fabric transaction
+    // that is forwarded to the cluster member
+    common.Envelope content = 3;
+}
+
+// SubmitResponse returns a success
+// or failure status to the sender
+message SubmitResponse {
+    // Status code, which may be used to programatically respond to success/failure
+    common.Status status = 1;
+    // Info string which may contain additional information about the status returned
+    string info = 2;
+}
