@@ -118,3 +118,16 @@ func TestBigKeyFile(t *testing.T) {
 	_, err = ks.GetKey(ski)
 	assert.NoError(t, err)
 }
+
+func TestReInitKeyStore(t *testing.T) {
+	ksPath, err := ioutil.TempDir("", "bccspks")
+	assert.NoError(t, err)
+	defer os.RemoveAll(ksPath)
+
+	ks, err := NewFileBasedKeyStore(nil, ksPath, false)
+	assert.NoError(t, err)
+	fbKs, isFileBased := ks.(*fileBasedKeyStore)
+	assert.True(t, isFileBased)
+	err = fbKs.Init(nil, ksPath, false)
+	assert.EqualError(t, err, "KeyStore already initilized.")
+}

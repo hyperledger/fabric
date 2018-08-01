@@ -425,7 +425,7 @@ func (ks *fileBasedKeyStore) openKeyStore() error {
 	if ks.isOpen {
 		return nil
 	}
-
+	ks.isOpen = true
 	logger.Debugf("KeyStore opened at [%s]...done", ks.path)
 
 	return nil
