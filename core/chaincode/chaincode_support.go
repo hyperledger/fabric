@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -178,7 +179,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		SystemCCProvider:           cs.SystemCCProvider,
 		SystemCCVersion:            util.GetSysCCVersion(),
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
-		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
+		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100, TotalQueryLimit: ledgerconfig.GetTotalQueryLimit()},
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
 		LedgerGetter:               peer.Default,
 		AppConfig:                  cs.appConfig,

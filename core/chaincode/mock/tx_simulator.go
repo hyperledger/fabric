@@ -1676,5 +1676,3 @@ func (fake *TxSimulator) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ ledger.TxSimulator = new(TxSimulator)

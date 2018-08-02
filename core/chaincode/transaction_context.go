@@ -26,6 +26,7 @@ type TransactionContext struct {
 	queryMutex          sync.Mutex
 	queryIteratorMap    map[string]commonledger.ResultsIterator
 	pendingQueryResults map[string]*PendingQueryResult
+	totalReturnCount    map[string]*int32
 }
 
 func (t *TransactionContext) InitializeQueryContext(queryID string, iter commonledger.ResultsIterator) {
@@ -36,8 +37,13 @@ func (t *TransactionContext) InitializeQueryContext(queryID string, iter commonl
 	if t.pendingQueryResults == nil {
 		t.pendingQueryResults = map[string]*PendingQueryResult{}
 	}
+	if t.totalReturnCount == nil {
+		t.totalReturnCount = map[string]*int32{}
+	}
 	t.queryIteratorMap[queryID] = iter
 	t.pendingQueryResults[queryID] = &PendingQueryResult{}
+	zeroValue := int32(0)
+	t.totalReturnCount[queryID] = &zeroValue
 	t.queryMutex.Unlock()
 }
 
@@ -55,6 +61,13 @@ func (t *TransactionContext) GetPendingQueryResult(queryID string) *PendingQuery
 	return result
 }
 
+func (t *TransactionContext) GetTotalReturnCount(queryID string) *int32 {
+	t.queryMutex.Lock()
+	result := t.totalReturnCount[queryID]
+	t.queryMutex.Unlock()
+	return result
+}
+
 func (t *TransactionContext) CleanupQueryContext(queryID string) {
 	t.queryMutex.Lock()
 	defer t.queryMutex.Unlock()
@@ -64,6 +77,22 @@ func (t *TransactionContext) CleanupQueryContext(queryID string) {
 	}
 	delete(t.queryIteratorMap, queryID)
 	delete(t.pendingQueryResults, queryID)
+	delete(t.totalReturnCount, queryID)
+}
+
+func (t *TransactionContext) CleanupQueryContextWithBookmark(queryID string) string {
+	t.queryMutex.Lock()
+	defer t.queryMutex.Unlock()
+	iter := t.queryIteratorMap[queryID]
+	bookmark := ""
+	if iter != nil {
+		if queryResultIterator, ok := iter.(commonledger.QueryResultsIterator); ok {
+			bookmark = queryResultIterator.GetBookmarkAndClose()
+		}
+	}
+	delete(t.queryIteratorMap, queryID)
+	delete(t.pendingQueryResults, queryID)
+	return bookmark
 }
 
 func (t *TransactionContext) CloseQueryIterators() {
