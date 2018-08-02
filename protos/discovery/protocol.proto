@@ -153,12 +153,9 @@ message ChaincodeInterest {
 
 // ChaincodeCall defines a call to a chaincode.
 // It may have collections that are related to the chaincode
-// It also may have specific keys that each has a unique
-// endorsement policy
 message ChaincodeCall {
     string name = 1;
     repeated string collection_names = 2;
-    repeated string keys = 3;
 }
 
 // ChaincodeQueryResult contains EndorsementDescriptors for
