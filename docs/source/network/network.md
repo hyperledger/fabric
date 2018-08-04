@@ -112,7 +112,7 @@ Organizations are what form and join channels, and channel configurations can be
 
 ## Adding another peer
 
-*In this example, peer 3 (P3) owned by organization 3 has been added to channel 2 (C2).  Note that although there can be multiple ordering services on the network, there can also be a single ordering service that governs multiple channels.  In this example, the channel policies of C2 are isolated from those of C1.  Peer 3 (P3) is also isolated from C1 as it is authenticated only to C2.*
+*In this example, peer 3 (P3) owned by organization RC has been added to channel 2 (C2).  Note that although there can be multiple ordering services on the network, there can also be a single ordering service that governs multiple channels.  In this example, the channel policies of C2 are isolated from those of C1.  Peer 3 (P3) is also isolated from C1 as it is authenticated only to C2.*
 
 ![network.peer2](./network.diagram.11.png)
 
