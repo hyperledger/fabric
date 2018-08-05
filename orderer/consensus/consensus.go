@@ -67,6 +67,8 @@ type Chain interface {
 	Halt()
 }
 
+//go:generate counterfeiter -o mocks/mock_consenter_support.go . ConsenterSupport
+
 // ConsenterSupport provides the resources available to a Consenter implementation.
 type ConsenterSupport interface {
 	crypto.LocalSigner
