@@ -8,7 +8,7 @@ RUN mkdir src && mkdir pkg && mkdir bin
 ADD . src/github.com/hyperledger/fabric
 WORKDIR /opt/gopath/src/github.com/hyperledger/fabric
 ENV EXECUTABLES go git curl
-RUN make configtxgen configtxlator cryptogen peer discover
+RUN make configtxgen configtxlator cryptogen peer discover idemixgen
 
 FROM _BASE_NS_/fabric-baseimage:_BASE_TAG_
 ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
