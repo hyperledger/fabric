@@ -57,11 +57,6 @@ func (cu *cursor) Next() (*cb.Block, cb.Status) {
 	}
 }
 
-// ReadyChan supplies a channel which will block until Next will not block
-func (cu *cursor) ReadyChan() <-chan struct{} {
-	return cu.list.signal
-}
-
 // Close does nothing
 func (cu *cursor) Close() {}
 

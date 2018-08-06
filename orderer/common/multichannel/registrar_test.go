@@ -8,7 +8,6 @@ package multichannel
 
 import (
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -157,15 +156,10 @@ func TestManagerImpl(t *testing.T) {
 
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	defer it.Close()
-	select {
-	case <-it.ReadyChan():
-		block, status := it.Next()
-		assert.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
-		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-			assert.True(t, proto.Equal(messages[i], utils.ExtractEnvelopeOrPanic(block, i)), "Block contents wrong at index %d", i)
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Block 1 not produced after timeout")
+	block, status := it.Next()
+	assert.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
+	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
+		assert.True(t, proto.Equal(messages[i], utils.ExtractEnvelopeOrPanic(block, i)), "Block contents wrong at index %d", i)
 	}
 }
 
@@ -205,20 +199,15 @@ func TestNewChain(t *testing.T) {
 	func() {
 		it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 		defer it.Close()
-		select {
-		case <-it.ReadyChan():
-			block, status := it.Next()
-			if status != cb.Status_SUCCESS {
-				t.Fatalf("Could not retrieve block")
-			}
-			if len(block.Data.Data) != 1 {
-				t.Fatalf("Should have had only one message in the orderer transaction block")
-			}
-
-			assert.True(t, proto.Equal(wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
-		case <-time.After(time.Second):
-			t.Fatalf("Block 1 not produced after timeout in system chain")
+		block, status := it.Next()
+		if status != cb.Status_SUCCESS {
+			t.Fatalf("Could not retrieve block")
 		}
+		if len(block.Data.Data) != 1 {
+			t.Fatalf("Should have had only one message in the orderer transaction block")
+		}
+
+		assert.True(t, proto.Equal(wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
 	}()
 
 	chainSupport, ok = manager.GetChain(newChainID)
@@ -238,36 +227,26 @@ func TestNewChain(t *testing.T) {
 
 	it, _ := chainSupport.Reader().Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 0}}})
 	defer it.Close()
-	select {
-	case <-it.ReadyChan():
-		block, status := it.Next()
-		if status != cb.Status_SUCCESS {
-			t.Fatalf("Could not retrieve new chain genesis block")
-		}
-		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
-		if len(block.Data.Data) != 1 {
-			t.Fatalf("Should have had only one message in the new genesis block")
-		}
-
-		assert.True(t, proto.Equal(ingressTx, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
-	case <-time.After(time.Second):
-		t.Fatalf("Block 1 not produced after timeout in system chain")
+	block, status := it.Next()
+	if status != cb.Status_SUCCESS {
+		t.Fatalf("Could not retrieve new chain genesis block")
+	}
+	testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
+	if len(block.Data.Data) != 1 {
+		t.Fatalf("Should have had only one message in the new genesis block")
 	}
 
-	select {
-	case <-it.ReadyChan():
-		block, status := it.Next()
-		if status != cb.Status_SUCCESS {
-			t.Fatalf("Could not retrieve block on new chain")
+	assert.True(t, proto.Equal(ingressTx, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
+
+	block, status = it.Next()
+	if status != cb.Status_SUCCESS {
+		t.Fatalf("Could not retrieve block on new chain")
+	}
+	testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
+	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
+		if !proto.Equal(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
+			t.Errorf("Block contents wrong at index %d in new chain", i)
 		}
-		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
-		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-			if !proto.Equal(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
-				t.Errorf("Block contents wrong at index %d in new chain", i)
-			}
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Block 1 not produced after timeout on new chain")
 	}
 
 	rcs := newChainSupport(manager, chainSupport.ledgerResources, consenters, mockCrypto())

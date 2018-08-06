@@ -66,8 +66,7 @@ type chainSupport struct {
 	bundleSource *channelconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
-	ledger     ledger.PeerLedger
-	fileLedger *fileledger.FileLedger
+	ledger ledger.PeerLedger
 }
 
 var TransientStoreFactory = &storeProvider{stores: make(map[string]transientstore.Store)}
@@ -152,9 +151,16 @@ func (cs *chainSupport) Sequence() uint64 {
 	sb := cs.bundleSource.StableBundle()
 	return sb.ConfigtxValidator().Sequence()
 }
+
+// Reader returns an iterator to read from the ledger
 func (cs *chainSupport) Reader() blockledger.Reader {
-	return cs.fileLedger
+	return fileledger.NewFileLedger(fileLedgerBlockStore{cs.ledger})
 }
+
+// Errored returns a channel that can be used to determine
+// if a backing resource has errored. At this point in time,
+// the peer does not have any error conditions that lead to
+// this function signaling that an error has occurred.
 func (cs *chainSupport) Errored() <-chan struct{} {
 	return nil
 }
@@ -338,7 +344,6 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	cs := &chainSupport{
 		Application: ac, // TODO, refactor as this is accessible through Manager
 		ledger:      ledger,
-		fileLedger:  fileledger.NewFileLedger(fileLedgerBlockStore{ledger}),
 	}
 
 	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
