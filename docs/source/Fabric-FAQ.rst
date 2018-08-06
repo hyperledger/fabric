@@ -79,6 +79,22 @@ Application-side Programming Model
   application client.
 
 :Question:
+  Will a transaction proposal be rejected if the container of the relevant chaincode
+  invoked by the proposal is not up and running?
+
+:Answer:
+  No. The first transaction proposal sent to a chaincode which is not
+  running will start the chaincode. While the chaincode is starting, all other
+  proposals will be rejected with an error indicating that the chaincode is
+  currently starting. This is not to be confused with transaction invalidation.
+  Application clients are responsible for ensuring that proposals complete
+  successfully, and that submitted transactions are validated.
+  Transaction proposals which are rejected because the chaincode is
+  starting should be tried again after giving the chaincode time to start. To
+  avoid losing transaction proposals, a message queue can be utilized by
+  the application client.
+
+:Question:
   How do I query the ledger data?
 
 :Answer:
