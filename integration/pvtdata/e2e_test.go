@@ -41,7 +41,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 	// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
 	// when calling QueryChaincode with first arg "readMarble", it will query collectionMarbles[1]
 	// when calling QueryChaincode with first arg "readMarblePrivateDetails", it will query collectionMarblePrivateDetails[2]
-	PDescribe("collection config is modified", func() {
+	Describe("collection config is modified", func() {
 		BeforeEach(func() {
 			var err error
 			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
@@ -227,7 +227,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 		})
 	})
 
-	PDescribe("collection config BlockToLive is respected", func() {
+	Describe("collection config BlockToLive is respected", func() {
 		BeforeEach(func() {
 			var err error
 			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
@@ -316,6 +316,9 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 				return adminRunner.Err(), err
 			}).Should(gbytes.Say("Successfully submitted proposal to join channel"))
 
+			By("install the chaincode on peer1.org2 in order to query it")
+			adminPeer.InstallChaincode("marblesp", "1.0", "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd")
+
 			By("fetch latest blocks to peer1.org2")
 			EventuallyWithOffset(1, func() (*gbytes.Buffer, error) {
 				adminRunner := adminPeer.FetchChannel(d.Channel, filepath.Join(w.Rootpath, "peer1.org2.example.com", fmt.Sprintf("%s_block.pb", d.Channel)), "newest", d.Orderer)
@@ -323,8 +326,10 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 				return adminRunner.Err(), err
 			}).Should(gbytes.Say("Received block: 9"))
 
-			By("install the chaincode on peer1.org2 in order to query it")
-			adminPeer.InstallChaincode("marblesp", "1.0", "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd")
+			By("wait until ledger is updated with all blocks")
+			EventuallyWithOffset(1, func() int {
+				return getLedgerHeight(1, 2, d.Channel, testDir)
+			}, time.Minute).Should(Equal(10))
 
 			By("query peer1.org2, verify marble1 exist in collectionMarbles and private data doesn't exist")
 			verifyAccess(d.Chaincode.Name, d.Channel, `{"Args":["readMarble","marble1"]}`, []*runner.Peer{adminPeer}, `{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`)
