@@ -19,6 +19,15 @@ type OrdererConfig struct {
 	consensusTypeReturnsOnCall map[int]struct {
 		result1 string
 	}
+	ConsensusMetadataStub        func() []byte
+	consensusMetadataMutex       sync.RWMutex
+	consensusMetadataArgsForCall []struct{}
+	consensusMetadataReturns     struct {
+		result1 []byte
+	}
+	consensusMetadataReturnsOnCall map[int]struct {
+		result1 []byte
+	}
 	BatchSizeStub        func() *ab.BatchSize
 	batchSizeMutex       sync.RWMutex
 	batchSizeArgsForCall []struct{}
@@ -114,6 +123,46 @@ func (fake *OrdererConfig) ConsensusTypeReturnsOnCall(i int, result1 string) {
 	}
 	fake.consensusTypeReturnsOnCall[i] = struct {
 		result1 string
+	}{result1}
+}
+
+func (fake *OrdererConfig) ConsensusMetadata() []byte {
+	fake.consensusMetadataMutex.Lock()
+	ret, specificReturn := fake.consensusMetadataReturnsOnCall[len(fake.consensusMetadataArgsForCall)]
+	fake.consensusMetadataArgsForCall = append(fake.consensusMetadataArgsForCall, struct{}{})
+	fake.recordInvocation("ConsensusMetadata", []interface{}{})
+	fake.consensusMetadataMutex.Unlock()
+	if fake.ConsensusMetadataStub != nil {
+		return fake.ConsensusMetadataStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.consensusMetadataReturns.result1
+}
+
+func (fake *OrdererConfig) ConsensusMetadataCallCount() int {
+	fake.consensusMetadataMutex.RLock()
+	defer fake.consensusMetadataMutex.RUnlock()
+	return len(fake.consensusMetadataArgsForCall)
+}
+
+func (fake *OrdererConfig) ConsensusMetadataReturns(result1 []byte) {
+	fake.ConsensusMetadataStub = nil
+	fake.consensusMetadataReturns = struct {
+		result1 []byte
+	}{result1}
+}
+
+func (fake *OrdererConfig) ConsensusMetadataReturnsOnCall(i int, result1 []byte) {
+	fake.ConsensusMetadataStub = nil
+	if fake.consensusMetadataReturnsOnCall == nil {
+		fake.consensusMetadataReturnsOnCall = make(map[int]struct {
+			result1 []byte
+		})
+	}
+	fake.consensusMetadataReturnsOnCall[i] = struct {
+		result1 []byte
 	}{result1}
 }
 
@@ -362,6 +411,8 @@ func (fake *OrdererConfig) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.consensusTypeMutex.RLock()
 	defer fake.consensusTypeMutex.RUnlock()
+	fake.consensusMetadataMutex.RLock()
+	defer fake.consensusMetadataMutex.RUnlock()
 	fake.batchSizeMutex.RLock()
 	defer fake.batchSizeMutex.RUnlock()
 	fake.batchTimeoutMutex.RLock()
