@@ -95,7 +95,9 @@ func TestLoggingReset(t *testing.T) {
 }
 
 //go:generate counterfeiter -o mock/write_syncer.go -fake-name WriteSyncer . writeSyncer
-type writeSyncer interface{ zapcore.WriteSyncer }
+type writeSyncer interface {
+	zapcore.WriteSyncer
+}
 
 func TestLoggingSetWriter(t *testing.T) {
 	ws := &mock.WriteSyncer{}
