@@ -1,0 +1,26 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/orderer/etcdraft";
+option java_package = "org.hyperledger.fabric.protos.orderer.etcdraft";
+
+package etcdraft;
+
+// Metadata is serialized and set as the value of ConsensusType.Metadata in
+// a channel configuration when the ConsensusType.Type is set "etcdraft".
+message Metadata {
+	repeated Consenter consenters = 1;
+}
+
+// Consenter represents a consenting node (i.e. replica).
+message Consenter {
+	string host = 1;
+	uint32 port = 2;
+	bytes client_tls_cert = 3;
+	bytes server_tls_cert = 4;
+}
