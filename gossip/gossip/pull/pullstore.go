@@ -16,8 +16,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 // Constants go here.
@@ -113,7 +113,7 @@ type pullMediatorImpl struct {
 	*PullAdapter
 	msgType2Hook map[MsgType][]MessageHook
 	config       Config
-	logger       *logging.Logger
+	logger       util.Logger
 	itemID2Msg   map[string]*proto.SignedGossipMessage
 	engine       *algo.PullEngine
 }
@@ -290,7 +290,7 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 		},
 	}
 	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
-	if p.logger.IsEnabledFor(logging.DEBUG) {
+	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
 		p.logger.Debug("Sending", p.config.MsgType, "digest:", digMsg.GetDataDig().FormattedDigests(), "to", remotePeer)
 	}
 
@@ -312,7 +312,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 			},
 		},
 	}
-	if p.logger.IsEnabledFor(logging.DEBUG) {
+	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
 		p.logger.Debug("Sending", req.GetDataReq().FormattedDigests(), "to", dest)
 	}
 	sMsg, err := req.NoopSign()

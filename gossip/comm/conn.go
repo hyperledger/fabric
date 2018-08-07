@@ -14,8 +14,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -34,7 +34,7 @@ type connFactory interface {
 }
 
 type connectionStore struct {
-	logger           *logging.Logger        // logger
+	logger           util.Logger            // logger
 	isClosing        bool                   // whether this connection store is shutting down
 	connFactory      connFactory            // creates a connection to remote peer
 	sync.RWMutex                            // synchronize access to shared variables
@@ -43,7 +43,7 @@ type connectionStore struct {
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, logger *logging.Logger) *connectionStore {
+func newConnStore(connFactory connFactory, logger util.Logger) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
@@ -207,7 +207,7 @@ type connection struct {
 	cancel       context.CancelFunc
 	info         *proto.ConnectionInfo
 	outBuff      chan *msgSending
-	logger       *logging.Logger                 // logger
+	logger       util.Logger                     // logger
 	pkiID        common.PKIidType                // pkiID of the remote endpoint
 	handler      handler                         // function to invoke upon a message reception
 	conn         *grpc.ClientConn                // gRPC connection to remote endpoint
@@ -263,7 +263,7 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 	}
 
 	if len(conn.outBuff) == cap(conn.outBuff) {
-		if conn.logger.IsEnabledFor(logging.DEBUG) {
+		if conn.logger.IsEnabledFor(zapcore.DebugLevel) {
 			conn.logger.Debug("Buffer to", conn.info.Endpoint, "overflowed, dropping message", msg.String())
 		}
 		if !shouldBlock {

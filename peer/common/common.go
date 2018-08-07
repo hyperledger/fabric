@@ -9,7 +9,6 @@ package common
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"runtime"
@@ -29,7 +28,6 @@ import (
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,6 +37,9 @@ import (
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
 const UndefinedParamValue = ""
 const CmdRoot = "core"
+
+var mainLogger = flogging.MustGetLogger("main")
+var logOutput = os.Stderr
 
 var (
 	defaultConnTimeout = 3 * time.Second
@@ -75,9 +76,6 @@ var (
 
 	// GetCertificateFnc is a function that returns the client TLS certificate
 	GetCertificateFnc func() (tls.Certificate, error)
-
-	mainLogger *logging.Logger
-	logOutput  io.Writer
 )
 
 type commonClient struct {
@@ -94,8 +92,6 @@ func init() {
 	GetDeliverClientFnc = GetDeliverClient
 	GetPeerDeliverClientFnc = GetPeerDeliverClient
 	GetCertificateFnc = GetCertificate
-	mainLogger = flogging.MustGetLogger("main")
-	logOutput = os.Stderr
 }
 
 // InitConfig initializes viper config
@@ -242,17 +238,16 @@ func SetLogLevelFromViper(module string) error {
 	// of logging submodules
 	module = strings.Replace(module, ".", "/", -1)
 	// only set logging modules that begin with the supplied module name here
-	_, err = flogging.SetModuleLevel("^"+module, logLevelFromViper)
+	err = flogging.SetModuleLevel("^"+module, logLevelFromViper)
 	return err
 }
 
 // CheckLogLevel checks that a given log level string is valid
 func CheckLogLevel(level string) error {
-	_, err := logging.LogLevel(level)
-	if err != nil {
-		err = errors.Errorf("invalid log level provided - %s", level)
+	if !flogging.IsValidLevel(level) {
+		return errors.Errorf("invalid log level provided - %s", level)
 	}
-	return err
+	return nil
 }
 
 func configFromEnv(prefix string) (address, override string, clientConfig comm.ClientConfig, err error) {
@@ -304,9 +299,6 @@ func InitCmd(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// setup system-wide logging backend based on settings from core.yaml
-	flogging.InitBackend(flogging.SetFormat(viper.GetString("logging.format")), logOutput)
-
 	// check for --logging-level pflag first, which should override all other
 	// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
 	// (environment variable takes priority; otherwise, the value set in
@@ -317,7 +309,11 @@ func InitCmd(cmd *cobra.Command, args []string) {
 	} else {
 		loggingSpec = viper.GetString("logging.level")
 	}
-	flogging.InitFromSpec(loggingSpec)
+	flogging.Init(flogging.Config{
+		Format:  viper.GetString("logging.format"),
+		Writer:  logOutput,
+		LogSpec: loggingSpec,
+	})
 
 	// Init the MSP
 	var mspMgrConfigDir = config.GetPath("peer.mspConfigPath")

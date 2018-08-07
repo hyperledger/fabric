@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 )
 
 type msgImpl struct {
@@ -65,7 +64,7 @@ type adapterImpl struct {
 
 	channel common.ChainID
 
-	logger *logging.Logger
+	logger util.Logger
 
 	doneCh   chan struct{}
 	stopOnce *sync.Once

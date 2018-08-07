@@ -23,7 +23,6 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
@@ -34,11 +33,7 @@ const (
 	epoch      = 0
 )
 
-var logger *logging.Logger
-
-func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
-}
+var logger = flogging.MustGetLogger(pkgLogID)
 
 // checkResources makes sure that the channel config is compatible with this binary and logs sanity checks
 func checkResources(res channelconfig.Resources) error {

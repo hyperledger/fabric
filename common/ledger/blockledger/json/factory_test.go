@@ -23,13 +23,8 @@ import (
 	"path"
 	"testing"
 
-	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
 
 // This test checks that `New` factory should fail if parent directory is read-only
 func TestErrorMkdir(t *testing.T) {

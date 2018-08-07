@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	logging "github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/integration/runner"
@@ -82,7 +82,7 @@ func testMain(m *testing.M) int {
 	viper.Set("ledger.state.couchDBConfig.createGlobalChangesDB", true)
 
 	//set the logging level to DEBUG to test debug only code
-	logging.SetModuleLevel("couchdb", "Debug")
+	flogging.SetModuleLevel("couchdb", "Debug")
 
 	viper.Set("logging.peer", "debug")
 

@@ -14,17 +14,12 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
 const pkgLogID = "orderer/common/broadcast"
 
-var logger *logging.Logger
-
-func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
-}
+var logger = flogging.MustGetLogger(pkgLogID)
 
 // Handler defines an interface which handles broadcasts
 type Handler interface {

@@ -86,7 +86,6 @@ func TestLoggingCalls(t *testing.T) {
 	adminServer.v = &mockValidator{}
 	mv := adminServer.v.(*mockValidator)
 	flogging.MustGetLogger("test")
-	flogging.SetPeerStartupModulesMap()
 
 	wrapLogLevelRequest := func(llr *pb.LogLevelRequest) *pb.AdminOperation {
 		return &pb.AdminOperation{

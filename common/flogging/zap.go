@@ -15,25 +15,21 @@ import (
 	"go.uber.org/zap/zapgrpc"
 )
 
-var moduleLevels = &ModuleLevels{}
-
 // NewZapLogger creates a zap logger around a new zap.Core. The core will use
 // the provided encoder and sinks and a level enabler that is associated with
 // the provided module name. The logger that is returned will be named the same
 // as the module.
-func NewZapLogger(module string, enc zapcore.Encoder, sink zapcore.WriteSyncer, options ...zap.Option) *zap.Logger {
-	core := zapcore.NewCore(enc, sink, moduleLevels.LevelEnabler(module))
-	zl := zap.New(
+func NewZapLogger(core zapcore.Core, options ...zap.Option) *zap.Logger {
+	return zap.New(
 		core,
 		append([]zap.Option{
 			zap.AddCaller(),
 			zap.AddStacktrace(zapcore.ErrorLevel),
 		}, options...)...,
 	)
-
-	return zl.Named(module)
 }
 
+// NewGRPCLogger creates a grpc.Logger that delegates to a zap.Logger.
 func NewGRPCLogger(l *zap.Logger) *zapgrpc.Logger {
 	l = l.WithOptions(
 		zap.AddCaller(),
@@ -42,6 +38,7 @@ func NewGRPCLogger(l *zap.Logger) *zapgrpc.Logger {
 	return zapgrpc.NewLogger(l, zapgrpc.WithDebug())
 }
 
+// NewFabricLogger creates a logger that delegates to the zap.SugaredLogger.
 func NewFabricLogger(l *zap.Logger, options ...zap.Option) *FabricLogger {
 	return &FabricLogger{
 		s: l.WithOptions(append(options, zap.AddCallerSkip(1))...).Sugar(),

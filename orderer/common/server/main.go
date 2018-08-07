@@ -37,17 +37,12 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/performance"
-	"github.com/op/go-logging"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const pkgLogID = "orderer/common/server"
 
-var logger *logging.Logger
-
-func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
-}
+var logger = flogging.MustGetLogger(pkgLogID)
 
 //command line flags
 var (
@@ -119,8 +114,11 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 // Set the logging level
 func initializeLoggingLevel(conf *localconfig.TopLevel) {
-	flogging.InitBackend(flogging.SetFormat(conf.General.LogFormat), os.Stderr)
-	flogging.InitFromSpec(conf.General.LogLevel)
+	flogging.Init(flogging.Config{
+		Format:  conf.General.LogFormat,
+		Writer:  os.Stderr,
+		LogSpec: conf.General.LogLevel,
+	})
 }
 
 // Start the profiling service if enabled.

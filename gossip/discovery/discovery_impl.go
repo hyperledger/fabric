@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
@@ -86,7 +85,7 @@ type gossipDiscoveryImpl struct {
 	toDieChan        chan struct{}
 	toDieFlag        int32
 	port             int
-	logger           *logging.Logger
+	logger           util.Logger
 	disclosurePolicy DisclosurePolicy
 	pubsub           *util.PubSub
 

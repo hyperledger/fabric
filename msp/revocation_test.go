@@ -22,13 +22,8 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "msp/identity")
-}
 
 func TestRevocation(t *testing.T) {
 	// testdata/revocation

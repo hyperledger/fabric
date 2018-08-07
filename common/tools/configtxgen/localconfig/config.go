@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 
-	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -30,17 +29,11 @@ const (
 	Prefix string = "CONFIGTX"
 )
 
-var (
-	logger *logging.Logger
-
-	configName string
-)
+var logger = flogging.MustGetLogger(pkgLogID)
+var configName = strings.ToLower(Prefix)
 
 func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
 	flogging.SetModuleLevel(pkgLogID, "error")
-
-	configName = strings.ToLower(Prefix)
 }
 
 const (

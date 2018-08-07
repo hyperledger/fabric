@@ -23,9 +23,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -354,7 +354,7 @@ type peer2Digests map[remotePeer][]proto.PvtDataDigest
 type noneSelectedPeers []discovery.NetworkMember
 
 func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Filter digestToFilterMapping) (peer2Digests, noneSelectedPeers) {
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		logger.Debug("Matching", members, "to", dig2Filter.String())
 	}
 	res := make(map[remotePeer][]proto.PvtDataDigest)

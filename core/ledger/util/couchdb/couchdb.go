@@ -28,8 +28,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 var logger = flogging.MustGetLogger("couchdb")
@@ -386,12 +386,7 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 	}
 
 	// trace the database info response
-	if logger.IsEnabledFor(logging.DEBUG) {
-		dbResponseJSON, err := json.Marshal(dbResponse)
-		if err == nil {
-			logger.Debugf("GetDatabaseInfo() dbResponseJSON: %s", dbResponseJSON)
-		}
-	}
+	logger.Debugw("GetDatabaseInfo()", "dbResponseJSON", dbResponse)
 
 	return dbResponse, couchDBReturn, nil
 
@@ -428,12 +423,8 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	}
 
 	// trace the database info response
-	if logger.IsEnabledFor(logging.DEBUG) {
-		dbResponseJSON, err := json.Marshal(dbResponse)
-		if err == nil {
-			logger.Debugf("VerifyConnection() dbResponseJSON: %s", dbResponseJSON)
-		}
-	}
+	logger.Debugw("VerifyConnection() dbResponseJSON: %s", dbResponse)
+
 	//check to see if the system databases exist
 	//Verifying the existence of the system database accomplishes two steps
 	//1.  Ensures the system databases are created
@@ -930,7 +921,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	}
 	defer closeResponseBody(resp)
 
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, err2 := httputil.DumpResponse(resp, true)
 		if err2 != nil {
 			log.Fatal(err2)
@@ -1048,7 +1039,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 	}
 	defer closeResponseBody(resp)
 
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, err2 := httputil.DumpResponse(resp, true)
 		if err2 != nil {
 			log.Fatal(err2)
@@ -1461,7 +1452,7 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 	}
 	defer closeResponseBody(resp)
 
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
 		logger.Debugf("HTTP Response: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
@@ -1496,7 +1487,7 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 //BatchUpdateDocuments - batch method to batch update documents
 func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*BatchUpdateResponse, error) {
 
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		documentIdsString, err := printDocumentIds(documents)
 		if err == nil {
 			logger.Debugf("Entering BatchUpdateDocuments()  document ids=[%s]", documentIdsString)
@@ -1567,7 +1558,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	}
 	defer closeResponseBody(resp)
 
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
 		logger.Debugf("HTTP Response: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
@@ -1712,7 +1703,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 			req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
 		}
 
-		if logger.IsEnabledFor(logging.DEBUG) {
+		if logger.IsEnabledFor(zapcore.DebugLevel) {
 			dump, _ := httputil.DumpRequestOut(req, false)
 			// compact debug log by replacing carriage return / line feed with dashes to separate http headers
 			logger.Debugf("HTTP Request: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))

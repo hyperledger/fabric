@@ -475,41 +475,41 @@ type testCase struct {
 }
 
 func TestSetupChaincodeLogging_shim(t *testing.T) {
-	var tc []testCase
+	var tests = []struct {
+		name         string
+		ccLogLevel   string
+		shimLogLevel string
+	}{
+		{name: "ValidLevels", ccLogLevel: "debug", shimLogLevel: "warning"},
+		{name: "EmptyLevels", ccLogLevel: "", shimLogLevel: ""},
+		{name: "BadShimLevel", ccLogLevel: "debug", shimLogLevel: "war"},
+		{name: "BadCCLevel", ccLogLevel: "deb", shimLogLevel: "notice"},
+		{name: "EmptyShimLevel", ccLogLevel: "error", shimLogLevel: ""},
+		{name: "EmptyCCLevel", ccLogLevel: "", shimLogLevel: "critical"},
+	}
 
-	tc = append(tc,
-		testCase{"ValidLevels", "debug", "warning"},
-		testCase{"EmptyLevels", "", ""},
-		testCase{"BadShimLevel", "debug", "war"},
-		testCase{"BadCCLevel", "deb", "notice"},
-		testCase{"EmptyShimLevel", "error", ""},
-		testCase{"EmptyCCLevel", "", "critical"},
-	)
-
-	assert := assert.New(t)
-
-	for i := 0; i < len(tc); i++ {
-		t.Run(tc[i].name, func(t *testing.T) {
-			viper.Set("chaincode.logging.level", tc[i].ccLogLevel)
-			viper.Set("chaincode.logging.shim", tc[i].shimLogLevel)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			viper.Set("chaincode.logging.level", tc.ccLogLevel)
+			viper.Set("chaincode.logging.shim", tc.shimLogLevel)
 
 			SetupChaincodeLogging()
 
-			_, ccErr := logging.LogLevel(tc[i].ccLogLevel)
-			_, shimErr := logging.LogLevel(tc[i].shimLogLevel)
+			_, ccErr := logging.LogLevel(tc.ccLogLevel)
+			_, shimErr := logging.LogLevel(tc.shimLogLevel)
 			if ccErr == nil {
-				assert.Equal(strings.ToUpper(tc[i].ccLogLevel), flogging.GetModuleLevel("ccLogger"), "Test case '%s' failed", tc[i].name)
+				assert.Equal(t, strings.ToUpper(tc.ccLogLevel), logging.GetLevel("ccLogger").String())
 				if shimErr == nil {
-					assert.Equal(strings.ToUpper(tc[i].shimLogLevel), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+					assert.Equal(t, strings.ToUpper(tc.shimLogLevel), logging.GetLevel("shim").String())
 				} else {
-					assert.Equal(strings.ToUpper(tc[i].ccLogLevel), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+					assert.Equal(t, strings.ToUpper(tc.ccLogLevel), logging.GetLevel("shim").String())
 				}
 			} else {
-				assert.Equal(flogging.DefaultLevel(), flogging.GetModuleLevel("ccLogger"), "Test case '%s' failed", tc[i].name)
+				assert.Equal(t, flogging.DefaultLevel(), logging.GetLevel("ccLogger").String())
 				if shimErr == nil {
-					assert.Equal(strings.ToUpper(tc[i].shimLogLevel), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+					assert.Equal(t, strings.ToUpper(tc.shimLogLevel), logging.GetLevel("shim").String())
 				} else {
-					assert.Equal(flogging.DefaultLevel(), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+					assert.Equal(t, flogging.DefaultLevel(), logging.GetLevel("shim").String())
 				}
 			}
 		})

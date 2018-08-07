@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	ccapi "github.com/hyperledger/fabric/peer/chaincode/api"
@@ -24,7 +23,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -172,14 +170,10 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 	mockCF.EndorserClients[0] = common.GetMockEndorserClient(mockResponse, nil)
 
 	// set logger to logger with a backend that writes to a byte buffer
-	var buffer bytes.Buffer
-	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
-	// reset the logger after test
-	defer func() {
-		flogging.Reset()
-	}()
-	// make sure buffer is "clean" before running the invoke
-	buffer.Reset()
+	oldLogger := logger
+	defer func() { logger = oldLogger }()
+	l, recorder := floggingtest.NewTestLogger(t)
+	logger = l
 
 	cmd := invokeCmd(mockCF)
 	addFlags(cmd)
@@ -190,8 +184,9 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 	assert.NoError(t, err, "Run chaincode invoke cmd error")
 	err = cmd.Execute()
 	assert.Nil(t, err)
-	assert.Regexp(t, "Chaincode invoke successful", buffer.String())
-	assert.Regexp(t, fmt.Sprintf("result: <nil>"), buffer.String())
+
+	assert.NotEmpty(t, recorder.MessagesContaining("Chaincode invoke successful"), "missing invoke success log record")
+	assert.NotEmpty(t, recorder.MessagesContaining("result: <nil>"), "missing result log record")
 }
 
 func TestInvokeCmdEndorsementError(t *testing.T) {

@@ -25,7 +25,6 @@ import (
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -77,12 +76,7 @@ type TxValidator struct {
 	Vscc    vsccValidator
 }
 
-var logger *logging.Logger // package-level logger
-
-func init() {
-	// Init logger with module name
-	logger = flogging.MustGetLogger("committer/txvalidator")
-}
+var logger = flogging.MustGetLogger("committer/txvalidator")
 
 type blockValidationRequest struct {
 	block *common.Block

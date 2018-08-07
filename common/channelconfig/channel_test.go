@@ -15,13 +15,8 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
 
 func TestInterface(t *testing.T) {
 	_ = Channel(&ChannelConfig{})

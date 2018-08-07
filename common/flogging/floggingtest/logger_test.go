@@ -11,12 +11,13 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestLoggerRecorder(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
-	tl, recorder := NewTestLogger(t, Named("test-logging"))
+	tl, recorder := NewTestLogger(t, Named("test-logging"), AtLevel(zapcore.InfoLevel))
 	tl.Error("this", "is", "an", "error")
 
 	gt.Expect(recorder.Entries()).To(HaveLen(1))
@@ -39,7 +40,9 @@ func TestLoggerRecorderRegex(t *testing.T) {
 	tl.Debug("message three")
 
 	gt.Expect(recorder.EntriesContaining("message")).To(HaveLen(3))
+	gt.Expect(recorder.EntriesMatching("test-logging.*message t")).To(HaveLen(2))
 	gt.Expect(recorder.MessagesContaining("message")).To(HaveLen(3))
+	gt.Expect(recorder.MessagesMatching("^message t")).To(HaveLen(2))
 
 	gt.Expect(recorder.EntriesContaining("one")).To(HaveLen(1))
 	gt.Expect(recorder.MessagesContaining("one")).To(HaveLen(1))
@@ -77,4 +80,13 @@ func TestFatalAsPanic(t *testing.T) {
 
 	tl, _ := NewTestLogger(t)
 	gt.Expect(func() { tl.Fatal("this", "is", "an", "error") }).To(Panic())
+}
+
+func TestRecordingCoreWith(t *testing.T) {
+	gt := NewGomegaWithT(t)
+	logger, recorder := NewTestLogger(t)
+	logger = logger.With("key", "value")
+
+	logger.Debug("message")
+	gt.Expect(recorder).To(gbytes.Say(`message {"key": "value"}`))
 }
