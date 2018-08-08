@@ -849,6 +849,7 @@
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/protoc-gen-go",
+    "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/empty",
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/gorilla/mux",
