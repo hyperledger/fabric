@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
+	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	gossip2 "github.com/hyperledger/fabric/protos/gossip"
@@ -84,7 +85,7 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	assertion := assert.New(t)
 	assertion.NoError(err)
 	assertion.NotEmpty(rwSets)
-	dig2pvtRWSet := rwSets[DigKey{
+	dig2pvtRWSet := rwSets[privdatacommon.DigKey{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   2,
@@ -148,7 +149,7 @@ func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
 	assertion := assert.New(t)
 	assertion.NoError(err)
 	assertion.NotEmpty(rwSets)
-	pvtRWSet := rwSets[DigKey{
+	pvtRWSet := rwSets[privdatacommon.DigKey{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   5,
@@ -235,7 +236,7 @@ func TestNewDataRetriever_GetOnlyRelevantPvtData(t *testing.T) {
 	assertion := assert.New(t)
 	assertion.NoError(err)
 	assertion.NotEmpty(rwSets)
-	pvtRWSet := rwSets[DigKey{
+	pvtRWSet := rwSets[privdatacommon.DigKey{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   5,
@@ -329,7 +330,7 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 	assertion.NotEmpty(rwSets)
 	assertion.Equal(2, len(rwSets))
 
-	pvtRWSet := rwSets[DigKey{
+	pvtRWSet := rwSets[privdatacommon.DigKey{
 		Namespace:  ns1,
 		Collection: col1,
 		BlockSeq:   5,
@@ -344,7 +345,7 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 		mergedRWSet = append(mergedRWSet, rws...)
 	}
 
-	pvtRWSet = rwSets[DigKey{
+	pvtRWSet = rwSets[privdatacommon.DigKey{
 		Namespace:  ns2,
 		Collection: col2,
 		BlockSeq:   5,
@@ -393,7 +394,7 @@ func TestNewDataRetriever_EmptyWriteSet(t *testing.T) {
 	assertion.NoError(err)
 	assertion.NotEmpty(rwSets)
 
-	pvtRWSet := rwSets[DigKey{
+	pvtRWSet := rwSets[privdatacommon.DigKey{
 		Namespace:  ns1,
 		Collection: col1,
 		BlockSeq:   5,
@@ -632,7 +633,7 @@ func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
 	assertion := assert.New(t)
 	assertion.NoError(err)
 	assertion.NotEmpty(rwSets)
-	assertion.Empty(rwSets[DigKey{
+	assertion.Empty(rwSets[privdatacommon.DigKey{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   2,

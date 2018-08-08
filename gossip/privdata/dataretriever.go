@@ -12,8 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
+	"github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/protos/common"
 	gossip2 "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
@@ -70,8 +70,9 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 		logger.Debug("Current ledger height ", height, "is below requested block sequence number",
 			blockNum, "retrieving private data from transient store")
 	}
-	results := make(Dig2PvtRWSetWithConfig)
+
 	if height <= blockNum { // Check whenever current ledger height is equal or below block sequence num.
+		results := make(Dig2PvtRWSetWithConfig)
 		for _, dig := range digests {
 			filter := map[string]ledger.PvtCollFilter{
 				dig.Namespace: map[string]bool{
@@ -84,7 +85,7 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 					"digest %+v, because of %s", dig, err)
 				continue
 			}
-			results[DigKey{
+			results[common.DigKey{
 				Namespace:  dig.Namespace,
 				Collection: dig.Collection,
 				TxId:       dig.TxId,
@@ -149,13 +150,13 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 			return nil, errors.New(fmt.Sprint("no collection config update below block sequence = ", dig.BlockSeq,
 				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace, " is available "))
 		}
-		configs := dr.extractCollectionConfigs(configInfo.CollectionConfig, dig)
+		configs := extractCollectionConfig(configInfo.CollectionConfig, dig.Collection)
 		if configs == nil {
 			return nil, errors.New(fmt.Sprint("no collection config was found for collection ", dig.Collection,
 				" namespace ", dig.Namespace, " txID ", dig.TxId))
 		}
 		pvtRWSetWithConfig.CollectionConfig = configs
-		results[DigKey{
+		results[common.DigKey{
 			Namespace:  dig.Namespace,
 			Collection: dig.Collection,
 			TxId:       dig.TxId,
@@ -203,7 +204,8 @@ func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter m
 				dig.Namespace, "txID", dig.TxId)
 			continue
 		}
-		configs := dr.extractCollectionConfigs(colConfigs, dig)
+
+		configs := extractCollectionConfig(colConfigs, dig.Collection)
 		if configs == nil {
 			logger.Error("No collection config was found for collection", dig.Collection,
 				"namespace", dig.Namespace, "txID", dig.TxId)
@@ -241,18 +243,4 @@ func (dr *dataRetriever) extractPvtRWsets(pvtRWSets []*rwset.NsPvtReadWriteSet, 
 	}
 
 	return pRWsets
-}
-
-func (dr *dataRetriever) extractCollectionConfigs(configPackage *common.CollectionConfigPackage, digest *gossip2.PvtDataDigest) *common.CollectionConfig {
-	for _, config := range configPackage.Config {
-		switch cconf := config.Payload.(type) {
-		case *common.CollectionConfig_StaticCollectionConfig:
-			if cconf.StaticCollectionConfig.Name == digest.Collection {
-				return config
-			}
-		default:
-			return nil
-		}
-	}
-	return nil
 }

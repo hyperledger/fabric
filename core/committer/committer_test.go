@@ -113,6 +113,14 @@ func (m *mockLedger) CommitWithPvtData(blockAndPvtdata *ledger2.BlockAndPvtData)
 	return args.Error(0)
 }
 
+func (m *mockLedger) CommitPvtData(blockPvtData []*ledger2.BlockPvtData) ([]*ledger2.PvtdataHashMismatch, error) {
+	panic("implement me")
+}
+
+func (m *mockLedger) GetMissingPvtDataTracker() (ledger2.MissingPvtDataTracker, error) {
+	panic("implement me")
+}
+
 func (m *mockLedger) PurgePrivateData(maxBlockNumToRetain uint64) error {
 	args := m.Called(maxBlockNumToRetain)
 	return args.Error(0)

@@ -76,10 +76,12 @@ type privateHandler struct {
 	support     Support
 	coordinator privdata2.Coordinator
 	distributor privdata2.PvtDataDistributor
+	reconciler  privdata2.Reconciler
 }
 
 func (p privateHandler) close() {
 	p.coordinator.Close()
+	p.reconciler.Stop()
 }
 
 type gossipServiceImpl struct {
@@ -242,10 +244,14 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		Fetcher:         fetcher,
 	}, g.createSelfSignedData())
 
+	reconciler := privdata2.NewReconciler(support.Committer, fetcher, privdata2.GetReconcilerConfig())
+	reconciler.Start()
+
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
 		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory),
+		reconciler:  reconciler,
 	}
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator)
 	if g.deliveryService[chainID] == nil {
