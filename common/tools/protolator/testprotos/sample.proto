@@ -68,3 +68,11 @@ message DynamicMsg {
 message ContextlessMsg {
 	bytes opaque_field = 1;
 }
+
+// UnmarshalableDeepFields contains fields which are defined to be opaque, but will
+// return an error if they are asked to be deserialized.
+message UnmarshalableDeepFields {
+	bytes plain_opaque_field = 1;
+	map<string,bytes> map_opaque_field = 2;
+	repeated bytes slice_opaque_field = 3;
+}

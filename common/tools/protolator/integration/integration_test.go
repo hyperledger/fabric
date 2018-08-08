@@ -209,3 +209,25 @@ func TestProposalResponsePayload(t *testing.T) {
         }`)), prp))
 	bidirectionalMarshal(t, prp)
 }
+
+func TestChannelCreationPolicy(t *testing.T) {
+	cu := &cb.ConfigUpdate{
+		WriteSet: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": {
+					Groups: map[string]*cb.ConfigGroup{
+						"SampleConsortium": {
+							Values: map[string]*cb.ConfigValue{
+								"ChannelCreationPolicy": {
+									Version: 0,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	bidirectionalMarshal(t, cu)
+}
