@@ -1768,6 +1768,14 @@ var _ = Describe("Handler", func() {
 			Eventually(doneCh).Should(BeClosed())
 		})
 
+		It("returns the chaincode response", func() {
+			Eventually(responseNotifier).Should(BeSent(&pb.ChaincodeMessage{Txid: "a-transaction-id"}))
+
+			resp, err := handler.Execute(context.Background(), cccid, incomingMessage, time.Second)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&pb.ChaincodeMessage{Txid: "a-transaction-id"}))
+		})
+
 		It("deletes the transaction context", func() {
 			close(responseNotifier)
 			handler.Execute(context.Background(), cccid, incomingMessage, time.Second)
@@ -1776,6 +1784,29 @@ var _ = Describe("Handler", func() {
 			channelID, txid := fakeContextRegistry.DeleteArgsForCall(0)
 			Expect(channelID).To(Equal("channel-id"))
 			Expect(txid).To(Equal("tx-id"))
+		})
+
+		Context("when the serial send fails", func() {
+			BeforeEach(func() {
+				fakeChatStream.SendReturns(errors.New("where-is-waldo?"))
+			})
+
+			It("returns an error before before timing out", func() {
+				respCh := make(chan *pb.ChaincodeMessage, 1)
+				go func() {
+					defer GinkgoRecover()
+					resp, err := handler.Execute(context.Background(), cccid, incomingMessage, time.Second)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(respCh).Should(BeSent(resp))
+				}()
+
+				Eventually(respCh).Should(Receive(Equal(&pb.ChaincodeMessage{
+					Type:      pb.ChaincodeMessage_ERROR,
+					Payload:   []byte("[tx-id] error sending TRANSACTION: where-is-waldo?"),
+					Txid:      "tx-id",
+					ChannelId: "channel-id",
+				})))
+			})
 		})
 
 		Context("when the proposal is missing", func() {

@@ -221,7 +221,7 @@ type handleFunc func(*pb.ChaincodeMessage, *TransactionContext) (*pb.ChaincodeMe
 
 // HandleTransaction is a middleware function that obtains and verifies a transaction
 // context prior to forwarding the message to the provided delegate. Response messages
-// returened by the delegate are sent to the chat stream. Any errors returned by the
+// returned by the delegate are sent to the chat stream. Any errors returned by the
 // delegate are packaged as chaincode error messages.
 func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFunc) {
 	chaincodeLogger.Debugf("[%s] handling %s from chaincode", shorttxid(msg.Txid), msg.Type.String())
@@ -290,12 +290,13 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
 
-	var err error
-	if err = h.chatStream.Send(msg); err != nil {
+	if err := h.chatStream.Send(msg); err != nil {
 		err = errors.WithMessage(err, fmt.Sprintf("[%s] error sending %s", shorttxid(msg.Txid), msg.Type))
 		chaincodeLogger.Errorf("%+v", err)
+		return err
 	}
-	return err
+
+	return nil
 }
 
 // serialSendAsync serves the same purpose as serialSend (serialize msgs so gRPC will
@@ -307,6 +308,11 @@ func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, sendErr bool) {
 	go func() {
 		if err := h.serialSend(msg); err != nil {
 			if sendErr {
+				// provide an error response to the caller
+				resp := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId}
+				h.Notify(resp)
+
+				// provide an error response to the caller
 				h.errChan <- err
 			}
 		}
@@ -487,7 +493,7 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 func (h *Handler) Notify(msg *pb.ChaincodeMessage) {
 	tctx := h.TXContexts.Get(msg.ChannelId, msg.Txid)
 	if tctx == nil {
-		chaincodeLogger.Debugf("notifier Txid:%s, channelID:%s does not exist for handleing message %s", msg.Txid, msg.ChannelId, msg.Type)
+		chaincodeLogger.Debugf("notifier Txid:%s, channelID:%s does not exist for handling message %s", msg.Txid, msg.ChannelId, msg.Type)
 		return
 	}
 
