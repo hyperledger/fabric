@@ -643,6 +643,39 @@
   version = "v3.3.2"
 
 [[projects]]
+  digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  digest = "1:58ca93bdf81bac106ded02226b5395a0595d5346cdc4caa8d9c1f3a5f8f9976e"
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:5ae6395d25cd3fe19aea08161386d3eda6d149b8d6272d8902fb69d7da20bdfe"
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore",
+    "zapgrpc",
+    "zaptest/observer",
+  ]
+  pruneopts = "NUT"
+  revision = "4d45f9617f7d90f7a663ff21c7a4321dbe78098b"
+  version = "v1.9.0"
+
+[[projects]]
   branch = "master"
   digest = "1:54c0d39bc1dbfa0e9ca2969509f43100065a084e19e26a7c6efe80dea399c067"
   name = "golang.org/x/crypto"
@@ -845,6 +878,11 @@
     "github.com/uber-go/tally",
     "github.com/uber-go/tally/prometheus",
     "github.com/uber-go/tally/statsd",
+    "go.uber.org/zap",
+    "go.uber.org/zap/buffer",
+    "go.uber.org/zap/zapcore",
+    "go.uber.org/zap/zapgrpc",
+    "go.uber.org/zap/zaptest/observer",
     "golang.org/x/crypto/sha3",
     "golang.org/x/net/context",
     "golang.org/x/sync/semaphore",
