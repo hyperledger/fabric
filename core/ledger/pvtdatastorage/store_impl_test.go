@@ -57,15 +57,15 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	}
 
 	// no pvt data with block 0
-	assert.NoError(store.Prepare(0, nil))
+	assert.NoError(store.Prepare(0, nil, nil))
 	assert.NoError(store.Commit())
 
 	// pvt data with block 1 - commit
-	assert.NoError(store.Prepare(1, testData))
+	assert.NoError(store.Prepare(1, testData, nil))
 	assert.NoError(store.Commit())
 
 	// pvt data with block 2 - rollback
-	assert.NoError(store.Prepare(2, testData))
+	assert.NoError(store.Prepare(2, testData, nil))
 	assert.NoError(store.Rollback())
 
 	// pvt data retrieval for block 0 should return nil
@@ -118,7 +118,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	store := env.TestStore
 
 	// no pvt data with block 0
-	assert.NoError(store.Prepare(0, nil))
+	assert.NoError(store.Prepare(0, nil, nil))
 	assert.NoError(store.Commit())
 
 	// write pvt data for block 1
@@ -126,7 +126,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	assert.NoError(store.Prepare(1, testDataForBlk1))
+	assert.NoError(store.Prepare(1, testDataForBlk1, nil))
 	assert.NoError(store.Commit())
 
 	// write pvt data for block 2
@@ -134,7 +134,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 5, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	assert.NoError(store.Prepare(2, testDataForBlk2))
+	assert.NoError(store.Prepare(2, testDataForBlk2, nil))
 	assert.NoError(store.Commit())
 
 	retrievedData, _ := store.GetPvtDataByBlockNum(1, nil)
@@ -145,7 +145,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	}
 
 	// Commit block 3 with no pvtdata
-	assert.NoError(store.Prepare(3, nil))
+	assert.NoError(store.Prepare(3, nil, nil))
 	assert.NoError(store.Commit())
 
 	// After committing block 3, the data for "ns-1:coll1" of block 1 should have expired and should not be returned by the store
@@ -157,7 +157,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock1)
 
 	// Commit block 4 with no pvtdata
-	assert.NoError(store.Prepare(4, nil))
+	assert.NoError(store.Prepare(4, nil, nil))
 	assert.NoError(store.Commit())
 
 	// After committing block 4, the data for "ns-2:coll2" of block 1 should also have expired and should not be returned by the store
@@ -193,7 +193,7 @@ func TestStorePurge(t *testing.T) {
 	s := env.TestStore
 
 	// no pvt data with block 0
-	assert.NoError(s.Prepare(0, nil))
+	assert.NoError(s.Prepare(0, nil, nil))
 	assert.NoError(s.Commit())
 
 	// write pvt data for block 1
@@ -201,11 +201,11 @@ func TestStorePurge(t *testing.T) {
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	assert.NoError(s.Prepare(1, testDataForBlk1))
+	assert.NoError(s.Prepare(1, testDataForBlk1, nil))
 	assert.NoError(s.Commit())
 
 	// write pvt data for block 2
-	assert.NoError(s.Prepare(2, nil))
+	assert.NoError(s.Prepare(2, nil, nil))
 	assert.NoError(s.Commit())
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store
 	testWaitForPurgerRoutineToFinish(s)
@@ -213,7 +213,7 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
 
 	// write pvt data for block 3
-	assert.NoError(s.Prepare(3, nil))
+	assert.NoError(s.Prepare(3, nil, nil))
 	assert.NoError(s.Commit())
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store (because purger should not be launched at block 3)
 	testWaitForPurgerRoutineToFinish(s)
@@ -221,7 +221,7 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
 
 	// write pvt data for block 4
-	assert.NoError(s.Prepare(4, nil))
+	assert.NoError(s.Prepare(4, nil, nil))
 	assert.NoError(s.Commit())
 	// data for ns-1:coll-1 should not exist in store (because purger should be launched at block 4) but ns-2:coll-2 should exist because it
 	// expires at block 5
@@ -230,7 +230,7 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
 
 	// write pvt data for block 5
-	assert.NoError(s.Prepare(5, nil))
+	assert.NoError(s.Prepare(5, nil, nil))
 	assert.NoError(s.Commit())
 	// ns-2:coll-2 should exist because though the data expires at block 5 but purger is launched every second block
 	testWaitForPurgerRoutineToFinish(s)
@@ -238,7 +238,7 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testDataKeyExists(t, s, &dataKey{blkNum: 1, txNum: 2, ns: "ns-2", coll: "coll-2"}))
 
 	// write pvt data for block 6
-	assert.NoError(s.Prepare(6, nil))
+	assert.NoError(s.Prepare(6, nil, nil))
 	assert.NoError(s.Commit())
 	// ns-2:coll-2 should not exists now (because purger should be launched at block 6)
 	testWaitForPurgerRoutineToFinish(s)
@@ -262,14 +262,14 @@ func TestStoreState(t *testing.T) {
 	testData := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
 	}
-	_, ok := store.Prepare(1, testData).(*ErrIllegalArgs)
+	_, ok := store.Prepare(1, testData, nil).(*ErrIllegalArgs)
 	assert.True(ok)
 
-	assert.Nil(store.Prepare(0, testData))
+	assert.Nil(store.Prepare(0, testData, nil))
 	assert.NoError(store.Commit())
 
-	assert.Nil(store.Prepare(1, testData))
-	_, ok = store.Prepare(2, testData).(*ErrIllegalCall)
+	assert.Nil(store.Prepare(1, testData, nil))
+	_, ok = store.Prepare(2, testData, nil).(*ErrIllegalCall)
 	assert.True(ok)
 }
 

@@ -43,12 +43,16 @@ type Store interface {
 	// The pvt data is filtered by the list of 'ns/collections' supplied in the filter
 	// A nil filter does not filter any results
 	GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
-	// Prepare prepares the Store for commiting the pvt data. This call does not commit the pvt data.
-	// Subsequently, the caller is expected to call either `Commit` or `Rollback` function.
-	// Return from this should ensure that enough preparation is done such that `Commit` function invoked afterwards
-	// can commit the data and the store is capable of surviving a crash between this function call and the next
+	// Prepare prepares the Store for commiting the pvt data and storing both eligible and ineligible
+	// missing private data --- `eligible` denotes that the missing private data belongs to a collection
+	// for which this peer is a member; `ineligible` denotes that the missing private data belong to a
+	// collection for which this peer is not a member.
+	// This call does not commit the pvt data and store missing private data. Subsequently, the caller
+	// is expected to call either `Commit` or `Rollback` function. Return from this should ensure
+	// that enough preparation is done such that `Commit` function invoked afterwards can commit the
+	// data and the store is capable of surviving a crash between this function call and the next
 	// invoke to the `Commit`
-	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error
+	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missing []*ledger.MissingPrivateData) error
 	// Commit commits the pvt data passed in the previous invoke to the `Prepare` function
 	Commit() error
 	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function

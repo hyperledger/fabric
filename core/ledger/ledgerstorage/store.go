@@ -115,7 +115,7 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		for _, v := range blockAndPvtdata.BlockPvtData {
 			pvtdata = append(pvtdata, v)
 		}
-		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata); err != nil {
+		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, blockAndPvtdata.Missing); err != nil {
 			return err
 		}
 		writtenToPvtStore = true
