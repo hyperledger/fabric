@@ -249,7 +249,7 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 
 	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
 	h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
-	h.serialSendAsync(resp, false)
+	h.serialSendAsync(resp)
 }
 
 func shorttxid(txid string) string {
@@ -303,17 +303,20 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 // can be nonblocking. Only errors need to be handled and these are handled by
 // communication on supplied error channel. A typical use will be a non-blocking or
 // nil channel
-func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage, sendErr bool) {
+func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage) {
 	go func() {
 		if err := h.serialSend(msg); err != nil {
-			if sendErr {
-				// provide an error response to the caller
-				resp := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId}
-				h.Notify(resp)
-
-				// provide an error response to the caller
-				h.errChan <- err
+			// provide an error response to the caller
+			resp := &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_ERROR,
+				Payload:   []byte(err.Error()),
+				Txid:      msg.Txid,
+				ChannelId: msg.ChannelId,
 			}
+			h.Notify(resp)
+
+			// surface send error to stream processing
+			h.errChan <- err
 		}
 	}()
 }
@@ -411,7 +414,7 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 		case <-keepaliveCh:
 			// if no error message from serialSend, KEEPALIVE happy, and don't care about error
 			// (maybe it'll work later)
-			h.serialSendAsync(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE}, false)
+			h.serialSendAsync(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
 			continue
 		}
 	}
@@ -918,7 +921,7 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 		return nil, err
 	}
 
-	h.serialSendAsync(msg, true)
+	h.serialSendAsync(msg)
 
 	var ccresp *pb.ChaincodeMessage
 	select {
