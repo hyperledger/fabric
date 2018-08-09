@@ -635,6 +635,10 @@ ledger:
        # Increasing the value may improve write efficiency of peer and CouchDB,
        # but may degrade query response time.
        warmIndexesAfterNBlocks: 1
+       # Create the _global_changes system database
+       # This is optional.  Creating the global changes database will require
+       # additional system resources to track changes and maintain the database
+       createGlobalChangesDB: false
 
   history:
     # enableHistoryDatabase - options are true or false

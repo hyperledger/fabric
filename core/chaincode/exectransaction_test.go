@@ -192,8 +192,9 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 		maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
 		maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
 		requestTimeout := viper.GetDuration("ledger.state.couchDBConfig.requestTimeout")
+		createGlobalChangesDB := viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB")
 
-		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup, requestTimeout)
+		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup, requestTimeout, createGlobalChangesDB)
 		db := couchdb.CouchDatabase{CouchInstance: couchInstance, DBName: chainID}
 		//drop the test database
 		db.DropDatabase()

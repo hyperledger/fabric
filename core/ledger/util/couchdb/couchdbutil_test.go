@@ -22,12 +22,37 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	defer cleanup(database)
 	//create a new connection
 	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
 
 	_, err = CreateCouchDatabase(couchInstance, database)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchDatabase"))
 
+}
+
+//Unit test of couch db util functionality
+func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
+	value := couchDBDef.CreateGlobalChangesDB
+	couchDBDef.CreateGlobalChangesDB = false
+	defer resetCreateGlobalChangesDBValue(value)
+	database := "_global_changes"
+	cleanup(database)
+	defer cleanup(database)
+
+	//create a new connection
+	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
+
+	db := CouchDatabase{CouchInstance: couchInstance, DBName: "_global_changes"}
+
+	//Retrieve the info for the new database and make sure the name matches
+	_, _, errdb := db.GetDatabaseInfo()
+	testutil.AssertNotNil(t, errdb)
+}
+
+func resetCreateGlobalChangesDBValue(value bool) {
+	couchDBDef.CreateGlobalChangesDB = value
 }
 
 //Unit test of couch db util functionality
@@ -39,7 +64,7 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 
 	//create a new connection
 	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
 
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
 
@@ -68,6 +93,7 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 	testutil.AssertEquals(t, dbResp.DbName, "_global_changes")
 
 }
+
 func TestDatabaseMapping(t *testing.T) {
 	//create a new instance and database object using a database name mixed case
 	_, err := mapAndValidateDatabaseName("testDB")

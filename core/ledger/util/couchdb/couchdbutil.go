@@ -33,10 +33,10 @@ var collectionNameAllowedLength = 50
 
 //CreateCouchInstance creates a CouchDB instance
 func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
-	maxRetriesOnStartup int, connectionTimeout time.Duration) (*CouchInstance, error) {
+	maxRetriesOnStartup int, connectionTimeout time.Duration, createGlobalChangesDB bool) (*CouchInstance, error) {
 
 	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
-		id, pw, maxRetries, maxRetriesOnStartup, connectionTimeout)
+		id, pw, maxRetries, maxRetriesOnStartup, connectionTimeout, createGlobalChangesDB)
 	if err != nil {
 		logger.Errorf("Error calling CouchDB CreateConnectionDefinition(): %s", err)
 		return nil, err
@@ -53,7 +53,6 @@ func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
 
 	//Create the CouchDB instance
 	couchInstance := &CouchInstance{conf: *couchConf, client: client}
-
 	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
 	if verifyErr != nil {
 		return nil, verifyErr
@@ -127,15 +126,15 @@ func CreateSystemDatabasesIfNotExist(couchInstance *CouchInstance) error {
 		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
 		return err
 	}
-
-	dbName = "_global_changes"
-	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
-	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
-	if err != nil {
-		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
-		return err
+	if couchInstance.conf.CreateGlobalChangesDB {
+		dbName = "_global_changes"
+		systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
+		err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+		if err != nil {
+			logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
+			return err
+		}
 	}
-
 	return nil
 
 }
