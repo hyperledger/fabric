@@ -162,7 +162,9 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 func (handler *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan error) {
 	go func() {
 		err := handler.serialSend(msg)
-		if errc != nil {
+		if err != nil && errc != nil {
+			resp := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId}
+			handler.notify(resp)
 			errc <- err
 		}
 	}()
