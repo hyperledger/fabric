@@ -227,7 +227,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 		})
 	})
 
-	Describe("collection config BlockToLive is respected", func() {
+	PDescribe("collection config BlockToLive is respected", func() {
 		BeforeEach(func() {
 			var err error
 			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
@@ -337,7 +337,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 		})
 	})
 
-	Describe("network partition with respect of private data", func() {
+	PDescribe("network partition with respect of private data", func() {
 		BeforeEach(func() {
 			var err error
 			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
