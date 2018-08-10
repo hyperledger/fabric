@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -617,41 +616,6 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 
 	exists = true
 	return
-}
-
-func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*common.SignedData, error) {
-	// this is the first part of the signed message
-	prespBytes := cap.Action.ProposalResponsePayload
-
-	// build the signature set for the evaluation
-	signatureSet := []*common.SignedData{}
-	signatureMap := make(map[string]struct{})
-	// loop through each of the endorsements and build the signature set
-	for _, endorsement := range cap.Action.Endorsements {
-		//unmarshal endorser bytes
-		serializedIdentity := &msp.SerializedIdentity{}
-		if err := proto.Unmarshal(endorsement.Endorser, serializedIdentity); err != nil {
-			logger.Errorf("Unmarshal endorser error: %s", err)
-			return nil, policyErr(fmt.Errorf("Unmarshal endorser error: %s", err))
-		}
-		identity := serializedIdentity.Mspid + string(serializedIdentity.IdBytes)
-		if _, ok := signatureMap[identity]; ok {
-			// Endorsement with the same identity has already been added
-			logger.Warningf("Ignoring duplicated identity, Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
-			continue
-		}
-		signatureSet = append(signatureSet, &common.SignedData{
-			// set the data that is signed; concatenation of proposal response bytes and endorser ID
-			Data: append(prespBytes, endorsement.Endorser...),
-			// set the identity that signs the message: it's the endorser
-			Identity: endorsement.Endorser,
-			// set the signature
-			Signature: endorsement.Signature})
-		signatureMap[identity] = struct{}{}
-	}
-
-	logger.Debugf("Signature set is of size %d out of %d endorsement(s)", len(signatureSet), len(cap.Action.Endorsements))
-	return signatureSet, nil
 }
 
 type state struct {

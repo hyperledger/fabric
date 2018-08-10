@@ -104,9 +104,16 @@ func (vscc *Validator) Validate(
 		return policyErr(err)
 	}
 
-	signatureSet, err := vscc.deduplicateIdentity(cap)
-	if err != nil {
-		return policyErr(err)
+	// construct signature set
+	signatureSet := []*common.SignedData{}
+	for _, endorsement := range cap.Action.Endorsements {
+		signatureSet = append(signatureSet, &common.SignedData{
+			// set the data that is signed; concatenation of proposal response bytes and endorser ID
+			Data: append(append([]byte{}, cap.Action.ProposalResponsePayload...), endorsement.Endorser...),
+			// set the identity that signs the message: it's the endorser
+			Identity: endorsement.Endorser,
+			// set the signature
+			Signature: endorsement.Signature})
 	}
 
 	// evaluate the signature set against the policy
