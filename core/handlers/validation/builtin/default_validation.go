@@ -18,6 +18,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/1.2"
+	"github.com/hyperledger/fabric/core/handlers/validation/builtin/1.3"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -32,7 +33,9 @@ func (*DefaultValidationFactory) New() validation.Plugin {
 }
 
 type DefaultValidation struct {
-	TxValidator TransactionValidator
+	Capabilities    Capabilities
+	TxValidatorV1_2 TransactionValidator
+	TxValidatorV1_3 TransactionValidator
 }
 
 //go:generate mockery -dir . -name TransactionValidator -case underscore -output mocks/
@@ -58,7 +61,19 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 	if block.Header == nil {
 		return errors.Errorf("no block header")
 	}
-	err := v.TxValidator.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
+
+	var err error
+	switch {
+	case v.Capabilities.V1_3Validation():
+		err = v.TxValidatorV1_3.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
+
+	case v.Capabilities.V1_2Validation():
+		fallthrough
+
+	default:
+		err = v.TxValidatorV1_2.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
+	}
+
 	logger.Debugf("block %d, namespace: %s, tx %d validation results is: %v", block.Header.Number, namespace, txPosition, err)
 	return convertErrorTypeOrPanic(err)
 }
@@ -112,6 +127,10 @@ func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 	if pe == nil {
 		return errors.New("policy fetcher not passed in init")
 	}
-	v.TxValidator = builtin1_2.New(c, sf, d, pe)
+
+	v.Capabilities = c
+	v.TxValidatorV1_2 = builtin1_2.New(c, sf, d, pe)
+	v.TxValidatorV1_3 = builtin1_3.New(c, sf, d, pe)
+
 	return nil
 }

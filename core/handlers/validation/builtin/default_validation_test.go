@@ -40,8 +40,10 @@ func TestInit(t *testing.T) {
 
 func TestErrorConversion(t *testing.T) {
 	validator := &vmocks.TransactionValidator{}
+	capabilities := &mocks.Capabilities{}
 	validation := &DefaultValidation{
-		TxValidator: validator,
+		TxValidatorV1_2: validator,
+		Capabilities:    capabilities,
 	}
 	block := &common.Block{
 		Header: &common.BlockHeader{},
@@ -49,6 +51,9 @@ func TestErrorConversion(t *testing.T) {
 			Data: [][]byte{{}},
 		},
 	}
+
+	capabilities.On("V1_3Validation").Return(false)
+	capabilities.On("V1_2Validation").Return(true)
 
 	// Scenario I: An error that isn't *commonerrors.ExecutionFailureError or *commonerrors.VSCCEndorsementPolicyError
 	// should cause a panic
@@ -75,7 +80,7 @@ func TestErrorConversion(t *testing.T) {
 func TestValidateBadInput(t *testing.T) {
 	validator := &vmocks.TransactionValidator{}
 	validation := &DefaultValidation{
-		TxValidator: validator,
+		TxValidatorV1_2: validator,
 	}
 
 	// Scenario I: Nil block
