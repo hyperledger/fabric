@@ -98,7 +98,7 @@ func TestInstallLegacyFromPackage(t *testing.T) {
 	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
-	err := createSignedCDSPackage([]string{"-n", "somecc", "-p", "some/go/package", "-v", "0", ccpackfile}, false)
+	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", ccpackfile}, false)
 	if err != nil {
 		t.Fatalf("could not create package :%v", err)
 	}
