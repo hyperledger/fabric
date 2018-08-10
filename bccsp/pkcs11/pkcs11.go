@@ -279,6 +279,32 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]", err)
 	}
 
+	//Set CKA_Modifible to false for both public key and private keys
+	if csp.immutable {
+		setCKAModifiable := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_MODIFIABLE, false),
+		}
+
+		_, pubCopyerror := p11lib.CopyObject(session, pub, setCKAModifiable)
+		if pubCopyerror != nil {
+			return nil, nil, fmt.Errorf("P11: Public Key copy failed with error [%s] . Please contact your HSM vendor", pubCopyerror)
+		}
+
+		pubKeyDestroyError := p11lib.DestroyObject(session, pub)
+		if pubKeyDestroyError != nil {
+			return nil, nil, fmt.Errorf("P11: Public Key destroy failed with error [%s]. Please contact your HSM vendor", pubCopyerror)
+		}
+
+		_, prvCopyerror := p11lib.CopyObject(session, prv, setCKAModifiable)
+		if prvCopyerror != nil {
+			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
+		}
+		prvKeyDestroyError := p11lib.DestroyObject(session, prv)
+		if pubKeyDestroyError != nil {
+			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
+		}
+	}
+
 	nistCurve := namedCurveFromOID(curve)
 	if curve == nil {
 		return nil, nil, fmt.Errorf("Cound not recognize Curve from OID")

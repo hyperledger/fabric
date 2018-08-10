@@ -87,9 +87,11 @@ type PKCS11Opts struct {
 	Label      string `mapstructure:"label" json:"label"`
 	Pin        string `mapstructure:"pin" json:"pin"`
 	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
+	Immutable  bool   `mapstructure:"immutable,omitempty" json:"immutable,omitempty"`
 }
 
-// FileKeystoreOpts is needed for File Based Key Store. Since currently only ECDSA operations // go to PKCS11, need a keystore still Pluggable Keystores, could add JKS, P12, etc..
+// FileKeystoreOpts currently only ECDSA operations go to PKCS11, need a keystore still
+// Pluggable Keystores, could add JKS, P12, etc..
 type FileKeystoreOpts struct {
 	KeyStorePath string `mapstructure:"keystore" json:"keystore" yaml:"KeyStore"`
 }

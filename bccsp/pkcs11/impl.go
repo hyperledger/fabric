@@ -54,7 +54,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	}
 
 	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
-	csp := &impl{swCSP, conf, keyStore, ctx, sessions, slot, lib, opts.SoftVerify}
+	csp := &impl{swCSP, conf, keyStore, ctx, sessions, slot, lib, opts.SoftVerify, opts.Immutable}
 	csp.returnSession(*session)
 	return csp, nil
 }
@@ -71,6 +71,8 @@ type impl struct {
 
 	lib        string
 	softVerify bool
+	//Immutable flag makes object immutable
+	immutable bool
 }
 
 // KeyGen generates a key using opts.
