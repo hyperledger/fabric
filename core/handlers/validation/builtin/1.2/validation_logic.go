@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package builtin
+package builtin1_2
 
 import (
 	"bytes"
@@ -46,15 +46,15 @@ const (
 
 var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
-//go:generate mockery -dir ../api/capabilities/ -name Capabilities -case underscore -output mocks/
-//go:generate mockery -dir ../api/state/ -name StateFetcher -case underscore -output mocks/
-//go:generate mockery -dir ../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
-//go:generate mockery -dir ../api/policies/ -name PolicyEvaluator -case underscore -output mocks/
+//go:generate mockery -dir ../../api/capabilities/ -name Capabilities -case underscore -output mocks/
+//go:generate mockery -dir ../../api/state/ -name StateFetcher -case underscore -output mocks/
+//go:generate mockery -dir ../../api/identities/ -name IdentityDeserializer -case underscore -output mocks/
+//go:generate mockery -dir ../../api/policies/ -name PolicyEvaluator -case underscore -output mocks/
 
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
-func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *ValidatorOneValidSignature {
-	return &ValidatorOneValidSignature{
+func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *Validator {
+	return &Validator{
 		capabilities:    c,
 		stateFetcher:    s,
 		deserializer:    d,
@@ -62,11 +62,11 @@ func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvalua
 	}
 }
 
-// ValidatorOneValidSignature implements the default transaction validation policy,
+// Validator implements the default transaction validation policy,
 // which is to check the correctness of the read-write set and the endorsement
 // signatures against an endorsement policy that is supplied as argument to
 // every invoke
-type ValidatorOneValidSignature struct {
+type Validator struct {
 	deserializer    IdentityDeserializer
 	capabilities    Capabilities
 	stateFetcher    StateFetcher
@@ -75,7 +75,7 @@ type ValidatorOneValidSignature struct {
 
 // Validate validates the given envelope corresponding to a transaction with an endorsement
 // policy as given in its serialized form
-func (vscc *ValidatorOneValidSignature) Validate(
+func (vscc *Validator) Validate(
 	block *common.Block,
 	namespace string,
 	txPosition int,
@@ -150,7 +150,7 @@ func (vscc *ValidatorOneValidSignature) Validate(
 }
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
-func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
+func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
 	// get the signature header
 	shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
 	if err != nil {
@@ -332,7 +332,7 @@ func validateCollectionName(collectionName string) error {
 // validateRWSetAndCollection performs validation of the rwset
 // of an LSCC deploy operation and then it validates any collection
 // configuration
-func (vscc *ValidatorOneValidSignature) validateRWSetAndCollection(
+func (vscc *Validator) validateRWSetAndCollection(
 	lsccrwset *kvrwset.KVRWSet,
 	cdRWSet *ccprovider.ChaincodeData,
 	lsccArgs [][]byte,
@@ -452,7 +452,7 @@ func (vscc *ValidatorOneValidSignature) validateRWSetAndCollection(
 	return nil
 }
 
-func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
+func (vscc *Validator) ValidateLSCCInvocation(
 	chid string,
 	env *common.Envelope,
 	cap *pb.ChaincodeActionPayload,
@@ -706,7 +706,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 	}
 }
 
-func (vscc *ValidatorOneValidSignature) getInstantiatedCC(chid, ccid string) (cd *ccprovider.ChaincodeData, exists bool, err error) {
+func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.ChaincodeData, exists bool, err error) {
 	qe, err := vscc.stateFetcher.FetchState()
 	if err != nil {
 		err = fmt.Errorf("could not retrieve QueryExecutor for channel %s, error %s", chid, err)
@@ -735,7 +735,7 @@ func (vscc *ValidatorOneValidSignature) getInstantiatedCC(chid, ccid string) (cd
 	return
 }
 
-func (vscc *ValidatorOneValidSignature) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*common.SignedData, error) {
+func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*common.SignedData, error) {
 	// this is the first part of the signed message
 	prespBytes := cap.Action.ProposalResponsePayload
 

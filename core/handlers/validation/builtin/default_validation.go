@@ -11,14 +11,18 @@ import (
 	"reflect"
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	"github.com/hyperledger/fabric/core/handlers/validation/builtin/1.2"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
+
+var logger = flogging.MustGetLogger("vscc")
 
 type DefaultValidationFactory struct {
 }
@@ -108,11 +112,6 @@ func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 	if pe == nil {
 		return errors.New("policy fetcher not passed in init")
 	}
-	v.TxValidator = &ValidatorOneValidSignature{
-		policyEvaluator: pe,
-		deserializer:    d,
-		stateFetcher:    sf,
-		capabilities:    c,
-	}
+	v.TxValidator = builtin1_2.New(c, sf, d, pe)
 	return nil
 }

@@ -3,7 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package builtin
+package builtin1_2
 
 import (
 	"archive/tar"
@@ -32,7 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	cutils "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	"github.com/hyperledger/fabric/core/handlers/validation/builtin/mocks"
+	"github.com/hyperledger/fabric/core/handlers/validation/builtin/1.2/mocks"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	per "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -324,13 +324,13 @@ func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
 	return b, err
 }
 
-func newValidationInstance(state map[string]map[string][]byte) *ValidatorOneValidSignature {
+func newValidationInstance(state map[string]map[string][]byte) *Validator {
 	qec := &mocks2.QueryExecutorCreator{}
 	qec.On("NewQueryExecutor").Return(lm.NewMockQueryExecutor(state), nil)
 	return newCustomValidationInstance(qec, &mc.MockApplicationCapabilities{})
 }
 
-func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validation.Capabilities) *ValidatorOneValidSignature {
+func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validation.Capabilities) *Validator {
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
@@ -366,7 +366,7 @@ func TestDeduplicateIdentity(t *testing.T) {
 		},
 	}
 
-	signedData, err := (&ValidatorOneValidSignature{}).deduplicateIdentity(chaincodeActionPayload)
+	signedData, err := (&Validator{}).deduplicateIdentity(chaincodeActionPayload)
 	assert.NoError(t, err)
 	// The original bytes of proposalResponsePayload are preserved
 	assert.Equal(t, proposalResponsePayload, signedData[0].Data[:len(proposalResponsePayload)])
@@ -1792,7 +1792,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 	}
 }
 
-func testValidateCollection(t *testing.T, v *ValidatorOneValidSignature, collectionConfigs []*common.CollectionConfig, cdRWSet *ccprovider.ChaincodeData,
+func testValidateCollection(t *testing.T, v *Validator, collectionConfigs []*common.CollectionConfig, cdRWSet *ccprovider.ChaincodeData,
 	lsccFunc string, ac channelconfig.ApplicationCapabilities, chid string,
 ) error {
 	ccp := &common.CollectionConfigPackage{Config: collectionConfigs}

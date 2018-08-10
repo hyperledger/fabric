@@ -12,7 +12,8 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api"
-	"github.com/hyperledger/fabric/core/handlers/validation/builtin/mocks"
+	"github.com/hyperledger/fabric/core/handlers/validation/builtin/1.2/mocks"
+	vmocks "github.com/hyperledger/fabric/core/handlers/validation/builtin/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestInit(t *testing.T) {
 }
 
 func TestErrorConversion(t *testing.T) {
-	validator := &mocks.TransactionValidator{}
+	validator := &vmocks.TransactionValidator{}
 	validation := &DefaultValidation{
 		TxValidator: validator,
 	}
@@ -72,7 +73,7 @@ func TestErrorConversion(t *testing.T) {
 }
 
 func TestValidateBadInput(t *testing.T) {
-	validator := &mocks.TransactionValidator{}
+	validator := &vmocks.TransactionValidator{}
 	validation := &DefaultValidation{
 		TxValidator: validator,
 	}
