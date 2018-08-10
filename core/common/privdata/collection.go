@@ -85,6 +85,13 @@ type CollectionStore interface {
 
 	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
 	RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (CollectionPersistenceConfigs, error)
+
+	CollectionFilter
+}
+
+type CollectionFilter interface {
+	// AccessFilter retrieves the collection's filter that matches a given channel and a collectionPolicyConfig
+	AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (Filter, error)
 }
 
 const (

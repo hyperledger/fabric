@@ -43,6 +43,10 @@ func (m *MockCollectionStore) RetrieveCollectionPersistenceConfigs(cc common.Col
 	return nil, privdata.NoSuchCollectionError{}
 }
 
+func (m *MockCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (privdata.Filter, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *MockCollectionStore) SetBTL(ns, collection string, btl uint64) {
 	m.dummyData[[2]string{ns, collection}] = btl
 }

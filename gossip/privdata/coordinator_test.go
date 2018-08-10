@@ -406,6 +406,10 @@ func (cs *collectionStore) RetrieveCollectionPersistenceConfigs(cc common.Collec
 	panic("implement me")
 }
 
+func (cs *collectionStore) AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (privdata.Filter, error) {
+	panic("implement me")
+}
+
 type collectionAccessPolicy struct {
 	cs *collectionStore
 	n  uint64

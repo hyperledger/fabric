@@ -120,6 +120,15 @@ func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCri
 	return sc, nil
 }
 
+func (c *simpleCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (Filter, error) {
+	sc := &SimpleCollection{}
+	err := sc.setupAccessPolicy(collectionPolicyConfig, c.s.GetIdentityDeserializer(channelName))
+	if err != nil {
+		return nil, err
+	}
+	return sc.AccessFilter(), nil
+}
+
 func (c *simpleCollectionStore) RetrieveCollection(cc common.CollectionCriteria) (Collection, error) {
 	return c.retrieveSimpleCollection(cc)
 }

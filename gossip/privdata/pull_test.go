@@ -89,6 +89,10 @@ func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(cc fcommon.Co
 	return cs.m[cc.Collection], nil
 }
 
+func (cs mockCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *fcommon.CollectionPolicyConfig) (privdata.Filter, error) {
+	panic("implement me")
+}
+
 type mockCollectionAccess struct {
 	cs  *mockCollectionStore
 	btl uint64
