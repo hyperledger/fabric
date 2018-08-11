@@ -279,6 +279,27 @@ Orderer: &OrdererDefaults
             - kafka1:9092
             - kafka2:9092
 
+    # EtcdRaft defines configuration which must be set when the "etcdraft"
+    # orderertype is chosen.
+    EtcdRaft:
+        # The set of Raft replicas for this network. For the etcd/raft-based
+        # implementation, we expect every replica to also be an OSN. Therefore,
+        # a subset of the host:port items enumerated in this list should be
+        # replicated under the Orderer.Addresses key above.
+        Consenters:
+            - Host: raft0.example.com
+              Port: 7050
+              ClientTLSCert: path/to/ClientTLSCert0
+              ServerTLSCert: path/to/ServerTLSCert0
+            - Host: raft1.example.com
+              Port: 7050
+              ClientTLSCert: path/to/ClientTLSCert1
+              ServerTLSCert: path/to/ServerTLSCert1
+            - Host: raft2.example.com
+              Port: 7050
+              ClientTLSCert: path/to/ClientTLSCert2
+              ServerTLSCert: path/to/ServerTLSCert2
+
     # Organizations lists the orgs participating on the orderer side of the
     # network.
     Organizations:
@@ -484,3 +505,42 @@ Profiles:
             <<: *ApplicationDefaults
             Organizations:
                 - *SampleOrg
+
+    # SampleDevModeEtcdRaft defines a configuration that differs from the
+    # SampleDevModeSolo one only in that it uses the etcd/raft-based orderer.
+    SampleDevModeEtcdRaft:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            EtcdRaft:
+                Consenters:
+                    - Host: 127.0.0.1
+                      Port: 7050
+                      ClientTLSCert: etcdraft/tls-client-1.pem
+                      ServerTLSCert: etcdraft/tls-client-1.pem
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"

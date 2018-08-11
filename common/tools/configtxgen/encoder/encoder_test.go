@@ -9,6 +9,8 @@ package encoder
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -17,10 +19,12 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -283,6 +287,23 @@ func TestNewOrdererGroup(t *testing.T) {
 		group, err := NewOrdererGroup(config.Orderer)
 		assert.Error(t, err)
 		assert.Nil(t, group)
+	})
+
+	t.Run("etcd/raft-based Orderer", func(t *testing.T) {
+		config := configtxgentest.Load(genesisconfig.SampleDevModeEtcdRaftProfile)
+		group, _ := NewOrdererGroup(config.Orderer)
+		consensusType := group.GetValues()[channelconfig.ConsensusTypeKey]
+		packedType := consensusType.GetValue()
+		unpackedType := new(ab.ConsensusType)
+		err := proto.Unmarshal(packedType, unpackedType)
+		require.NoError(t, err, "cannot extract %s config value from orderer group", channelconfig.ConsensusTypeKey)
+		unpackedMetadata := new(etcdraft.Metadata)
+		err = proto.Unmarshal(unpackedType.GetMetadata(), unpackedMetadata)
+		require.NoError(t, err, "cannot extract metadata value from %s consenters", etcdraft.TypeKey)
+		for _, v := range unpackedMetadata.GetConsenters() {
+			// Checking one field for a non-nil value should be enough.
+			require.NotNil(t, v.GetClientTlsCert(), "cannot extract PEM-encoded client certificate of consenter")
+		}
 	})
 }
 

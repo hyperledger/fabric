@@ -9,15 +9,10 @@ package localconfig
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	flogging.SetModuleLevel(pkgLogID, "DEBUG")
-}
 
 func TestLoadProfile(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
@@ -79,4 +74,32 @@ func TestLoadTopLevelWithPath(t *testing.T) {
 	assert.NotNil(t, topLevel.Orderer, "orderer should not be nil")
 	assert.NotNil(t, topLevel.Organizations, "organizations should not be nil")
 	assert.NotNil(t, topLevel.Profiles, "profiles should not be nil")
+}
+
+func TestConsensusSpecificInit(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	devConfigDir, err := configtest.GetDevConfigDir()
+	require.NoError(t, err)
+
+	t.Run("solo", func(t *testing.T) {
+		profile := &Profile{
+			Orderer: &Orderer{
+				OrdererType: "solo",
+			},
+		}
+		profile.completeInitialization(devConfigDir)
+		assert.Nil(t, profile.Orderer.Kafka.Brokers, "Kafka config settings should not be set")
+	})
+
+	t.Run("kafka", func(t *testing.T) {
+		profile := &Profile{
+			Orderer: &Orderer{
+				OrdererType: "kafka",
+			},
+		}
+		profile.completeInitialization(devConfigDir)
+		assert.NotNil(t, profile.Orderer.Kafka.Brokers, "Kafka config settings should be set")
+	})
 }
