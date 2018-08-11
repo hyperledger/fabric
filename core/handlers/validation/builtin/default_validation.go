@@ -33,7 +33,7 @@ type DefaultValidation struct {
 
 //go:generate mockery -dir . -name TransactionValidator -case underscore -output mocks/
 type TransactionValidator interface {
-	Validate(txData []byte, policy []byte) commonerrors.TxValidationError
+	Validate(block *common.Block, namespace string, txPosition int, actionPosition int, policy []byte) commonerrors.TxValidationError
 }
 
 func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPosition int, actionPosition int, contextData ...validation.ContextDatum) error {
@@ -54,7 +54,7 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 	if block.Header == nil {
 		return errors.Errorf("no block header")
 	}
-	err := v.TxValidator.Validate(block.Data.Data[txPosition], serializedPolicy.Bytes())
+	err := v.TxValidator.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
 	logger.Debugf("block %d, namespace: %s, tx %d validation results is: %v", block.Header.Number, namespace, txPosition, err)
 	return convertErrorTypeOrPanic(err)
 }
