@@ -49,9 +49,22 @@ var mockRetryOptions = localconfig.Retry{
 }
 
 func init() {
-	mockLocalConfig = newMockLocalConfig(false, mockRetryOptions, false)
-	mockBrokerConfig = newMockBrokerConfig(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
-	mockConsenter = newMockConsenter(mockBrokerConfig, mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version)
+	mockLocalConfig = newMockLocalConfig(
+		false,
+		localconfig.SASLPlain{Enabled: false},
+		mockRetryOptions,
+		false)
+	mockBrokerConfig = newMockBrokerConfig(
+		mockLocalConfig.General.TLS,
+		mockLocalConfig.Kafka.SASLPlain,
+		mockLocalConfig.Kafka.Retry,
+		mockLocalConfig.Kafka.Version,
+		defaultPartition)
+	mockConsenter = newMockConsenter(
+		mockBrokerConfig,
+		mockLocalConfig.General.TLS,
+		mockLocalConfig.Kafka.Retry,
+		mockLocalConfig.Kafka.Version)
 	setupTestLogging("ERROR")
 }
 
@@ -109,8 +122,19 @@ func extractEncodedOffset(marshalledOrdererMetadata []byte) int64 {
 	return kmd.LastOffsetPersisted
 }
 
-func newMockBrokerConfig(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion sarama.KafkaVersion, chosenStaticPartition int32) *sarama.Config {
-	brokerConfig := newBrokerConfig(tlsConfig, retryOptions, kafkaVersion, chosenStaticPartition)
+func newMockBrokerConfig(
+	tlsConfig localconfig.TLS,
+	saslPlain localconfig.SASLPlain,
+	retryOptions localconfig.Retry,
+	kafkaVersion sarama.KafkaVersion,
+	chosenStaticPartition int32) *sarama.Config {
+
+	brokerConfig := newBrokerConfig(
+		tlsConfig,
+		saslPlain,
+		retryOptions,
+		kafkaVersion,
+		chosenStaticPartition)
 	brokerConfig.ClientID = "test"
 	return brokerConfig
 }
@@ -137,7 +161,12 @@ func newMockEnvelope(content string) *cb.Envelope {
 	})}
 }
 
-func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseLog bool) *localconfig.TopLevel {
+func newMockLocalConfig(
+	enableTLS bool,
+	saslPlain localconfig.SASLPlain,
+	retryOptions localconfig.Retry,
+	verboseLog bool) *localconfig.TopLevel {
+
 	return &localconfig.TopLevel{
 		General: localconfig.General{
 			TLS: localconfig.TLS{
@@ -148,9 +177,10 @@ func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseL
 			TLS: localconfig.TLS{
 				Enabled: enableTLS,
 			},
-			Retry:   retryOptions,
-			Verbose: verboseLog,
-			Version: sarama.V0_9_0_1, // sarama.MockBroker only produces messages compatible with version < 0.10
+			SASLPlain: saslPlain,
+			Retry:     retryOptions,
+			Verbose:   verboseLog,
+			Version:   sarama.V0_9_0_1, // sarama.MockBroker only produces messages compatible with version < 0.10
 		},
 	}
 }

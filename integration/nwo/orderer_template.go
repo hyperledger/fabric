@@ -74,6 +74,10 @@ Kafka:
     PrivateKey:
     Certificate:
     RootCAs:
+  SASLPlain:
+    Enabled: false
+    User:
+    Password:
   Version:{{ end }}
 Debug:
     BroadcastTraceDir:

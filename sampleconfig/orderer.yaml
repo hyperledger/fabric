@@ -244,6 +244,15 @@ Kafka:
         # value of RootCAs.
         #File: path/to/RootCAs
 
+    # SASLPlain: Settings for using SASL/PLAIN authentication with Kafka brokers
+    SASLPlain:
+      # Enabled: Use SASL/PLAIN to authenticate with Kafka brokers
+      Enabled: false
+      # User: Required when Enabled is set to true
+      User:
+      # Password: Required when Enabled is set to true
+      Password:
+
     # Kafka protocol version used to communicate with the Kafka cluster brokers
     # (defaults to 0.10.2.0 if not specified)
     Version:
