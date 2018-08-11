@@ -83,6 +83,9 @@ type Orderer interface {
 	// ConsensusType returns the configured consensus type
 	ConsensusType() string
 
+	// ConsensusMetadata returns the metadata associated with the consensus type.
+	ConsensusMetadata() []byte
+
 	// BatchSize returns the maximum number of messages to include in a block
 	BatchSize() *ab.BatchSize
 

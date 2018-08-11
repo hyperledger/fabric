@@ -30,6 +30,8 @@ package orderer;
 
 message ConsensusType {
     string type = 1;
+    // Opaque metadata, dependent on the consensus type.
+    bytes metadata = 2;
 }
 
 message BatchSize {
