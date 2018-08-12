@@ -43,7 +43,11 @@ func TestMgr(t *testing.T) {
 			// for each ledgerid and commitHeight combination, construct a unique collConfigPackage and induce a stateUpdate
 			collConfigPackage := sampleCollectionConfigPackage(ledgerid, committingBlockNum)
 			stateUpdate := sampleStateUpdate(t, chaincodeName, collConfigPackage)
-			mgr.HandleStateUpdates(ledgerid, stateUpdate, committingBlockNum)
+			mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
+				LedgerID:           ledgerid,
+				StateUpdates:       stateUpdate,
+				CommittingBlockNum: committingBlockNum},
+			)
 		}
 	}
 

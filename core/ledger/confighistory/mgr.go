@@ -59,9 +59,9 @@ func (m *mgr) StateCommitDone(ledgerID string) {
 // In this implementation, each collection configurations updates (in lscc namespace)
 // are persisted as a separate entry in a separate db. The composite key for the entry
 // is a tuple of <blockNum, namespace, key>
-func (m *mgr) HandleStateUpdates(ledgerID string, stateUpdates ledger.StateUpdates, commitHeight uint64) error {
-	batch := prepareDBBatch(stateUpdates, commitHeight)
-	dbHandle := m.dbProvider.getDB(ledgerID)
+func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
+	batch := prepareDBBatch(trigger.StateUpdates, trigger.CommittingBlockNum)
+	dbHandle := m.dbProvider.getDB(trigger.LedgerID)
 	return dbHandle.writeBatch(batch, true)
 }
 
