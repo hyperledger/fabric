@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 func TestKVLedgerBlockStorage(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -124,7 +124,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -185,7 +185,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 func TestKVLedgerDBRecovery(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	defer provider.Close()
 	testLedgerid := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, testLedgerid, false)
@@ -257,7 +257,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	// Here the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// StateDB and HistoryDB should be recovered before returning from NewKVLedger call
-	provider, _ = NewProvider()
+	provider = testutilNewProvider(t)
 	ledger, _ = provider.Open(testLedgerid)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
@@ -305,7 +305,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	// we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// history DB should be recovered before returning from NewKVLedger call
-	provider, _ = NewProvider()
+	provider = testutilNewProvider(t)
 	ledger, _ = provider.Open(testLedgerid)
 
 	checkBCSummaryForTest(t, ledger,
@@ -354,7 +354,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	// we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// state DB should be recovered before returning from NewKVLedger call
-	provider, _ = NewProvider()
+	provider = testutilNewProvider(t)
 	ledger, _ = provider.Open(testLedgerid)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
@@ -379,7 +379,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gbHash := gb.Header.Hash()

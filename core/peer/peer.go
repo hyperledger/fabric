@@ -207,7 +207,11 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 
 	var cb *common.Block
 	var ledger ledger.PeerLedger
-	ledgermgmt.Initialize(ConfigTxProcessors, pr)
+	ledgermgmt.Initialize(&ledgermgmt.Initializer{
+		CustomTxProcessors: ConfigTxProcessors,
+		PlatformRegistry:   pr,
+	})
+
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
 		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))

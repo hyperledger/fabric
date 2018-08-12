@@ -50,7 +50,8 @@ func newKVLedger(
 	historyDB historydb.HistoryDB,
 	configHistoryMgr confighistory.Mgr,
 	stateListeners []ledger.StateListener,
-	bookkeeperProvider bookkeeping.Provider) (*kvLedger, error) {
+	bookkeeperProvider bookkeeping.Provider,
+	ccInfoProvider ledger.DeployedChaincodeInfoProvider) (*kvLedger, error) {
 
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	stateListeners = append(stateListeners, configHistoryMgr)

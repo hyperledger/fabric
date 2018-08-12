@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-
 	"os"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -56,7 +55,9 @@ func init() {
 	testutil.SetupCoreYAMLConfig()
 
 	cleanup()
-	ledgermgmt.Initialize(nil, platforms.NewRegistry(&golang.Platform{}))
+	ledgermgmt.Initialize(&ledgermgmt.Initializer{
+		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
+	})
 	var err error
 	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
 	peerLedger, err = ledgermgmt.CreateLedger(gb)

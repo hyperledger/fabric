@@ -11,12 +11,19 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
+// Initializer encapsulates dependencies for PeerLedgerProvider
+type Initializer struct {
+	StateListeners                []StateListener
+	DeployedChaincodeInfoProvider DeployedChaincodeInfoProvider
+}
+
 // PeerLedgerProvider provides handle to ledger instances
 type PeerLedgerProvider interface {
-	Initialize(statelisteners []StateListener)
+	Initialize(initializer *Initializer)
 	// Create creates a new ledger with the given genesis block.
 	// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 	// The chain id retrieved from the genesis block is treated as a ledger id
@@ -373,3 +380,38 @@ type PvtdataHashMismatch struct {
 	ChaincodeName, CollectionName string
 	ExpectedHash                  []byte
 }
+
+// DeployedChaincodeInfoProvider is a dependency that is used by ledger to build collection config history
+// LSCC module is expected to provide an implementation fo this dependencys
+type DeployedChaincodeInfoProvider interface {
+	Namespaces() []string
+	UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite) ([]*ChaincodeLifecycleInfo, error)
+	ChaincodeInfo(chaincodeName string, qe SimpleQueryExecutor) (*DeployedChaincodeInfo, error)
+	CollectionInfo(chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+}
+
+// DeployedChaincodeInfo encapsulates chaincode information from the deployed chaincodes
+type DeployedChaincodeInfo struct {
+	Name                string
+	Hash                []byte
+	Version             string
+	CollectionConfigPkg *common.CollectionConfigPackage
+}
+
+// ChaincodeLifecycleInfo captures the update info of a chaincode
+type ChaincodeLifecycleInfo struct {
+	Name    string
+	Deleted bool
+	Details *ChaincodeLifecycleDetails // Can contain finer details about lifecycle event that can be used for certain optimization
+}
+
+// ChaincodeLifecycleDetails captures the finer details of chaincode lifecycle event
+type ChaincodeLifecycleDetails struct {
+	Updated bool // true, if an existing chaincode is updated (false for newly deployed chaincodes).
+	// Following attributes are meaningful only if 'Updated' is true
+	HashChanged        bool     // true, if the chaincode code package is changed
+	CollectionsUpdated []string // names of the collections that are either added or updated
+	CollectionsRemoved []string // names of the collections that are removed
+}
+
+//go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider

@@ -18,9 +18,8 @@ package ledgermgmt
 
 import (
 	"fmt"
-	"testing"
-
 	"os"
+	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -87,7 +86,9 @@ func TestLedgerMgmt(t *testing.T) {
 	Close()
 
 	// Restart ledger mgmt with existing ledgers
-	Initialize(nil, platforms.NewRegistry(&golang.Platform{}))
+	Initialize(&Initializer{
+		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
+	})
 	l, err = OpenLedger(ledgerID)
 	testutil.AssertNoError(t, err, "")
 	Close()
