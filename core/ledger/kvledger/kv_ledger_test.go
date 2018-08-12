@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/privdata"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
@@ -207,19 +206,6 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		},
 	)
 
-	// creating and committing the first block with collection configs
-	collectionConfigBlk := prepareNextBlockForTestCollectionConfigs(t, ledger, bg, "simulationForCollConfig", "ns", map[string]uint64{"coll": 0})
-	assert.NoError(t, ledger.CommitWithPvtData(collectionConfigBlk))
-	checkBCSummaryForTest(t, ledger,
-		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 2,
-				CurrentBlockHash:  collectionConfigBlk.Block.Header.Hash(),
-				PreviousBlockHash: gbHash},
-		},
-	)
-
-	// TODO because of above collection configuration block, the block numbering for the following blocks
-	// should be increased by 1 in the comments and variable names
 	// creating and committing the second data block
 	blockAndPvtdata1 := prepareNextBlockForTest(t, ledger, bg, "SimulateForBlk1",
 		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
@@ -227,9 +213,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata1))
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 3,
+			bcInfo: &common.BlockchainInfo{Height: 2,
 				CurrentBlockHash:  blockAndPvtdata1.Block.Header.Hash(),
-				PreviousBlockHash: collectionConfigBlk.Block.Header.Hash()},
+				PreviousBlockHash: gbHash},
 		},
 	)
 
@@ -247,15 +233,15 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// block storage should be as of block-2 but the state and history db should be as of block-1
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 4,
+			bcInfo: &common.BlockchainInfo{Height: 3,
 				CurrentBlockHash:  blockAndPvtdata2.Block.Header.Hash(),
 				PreviousBlockHash: blockAndPvtdata1.Block.Header.Hash()},
 
-			stateDBSavePoint: uint64(2),
+			stateDBSavePoint: uint64(1),
 			stateDBKVs:       map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
 			stateDBPvtKVs:    map[string]string{"key1": "pvtValue1.1", "key2": "pvtValue2.1", "key3": "pvtValue3.1"},
 
-			historyDBSavePoint: uint64(2),
+			historyDBSavePoint: uint64(1),
 			historyKey:         "key1",
 			historyVals:        []string{"value1.1"},
 		},
@@ -272,11 +258,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	ledger, _ = provider.Open(testLedgerid)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			stateDBSavePoint: uint64(3),
+			stateDBSavePoint: uint64(2),
 			stateDBKVs:       map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 			stateDBPvtKVs:    map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"},
 
-			historyDBSavePoint: uint64(3),
+			historyDBSavePoint: uint64(2),
 			historyKey:         "key1",
 			historyVals:        []string{"value1.1", "value1.2"},
 		},
@@ -298,15 +284,15 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// assume that peer fails here after committing the transaction to state DB but before history DB
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 5,
+			bcInfo: &common.BlockchainInfo{Height: 4,
 				CurrentBlockHash:  blockAndPvtdata3.Block.Header.Hash(),
 				PreviousBlockHash: blockAndPvtdata2.Block.Header.Hash()},
 
-			stateDBSavePoint: uint64(4),
+			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 			stateDBPvtKVs:    map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 
-			historyDBSavePoint: uint64(3),
+			historyDBSavePoint: uint64(2),
 			historyKey:         "key1",
 			historyVals:        []string{"value1.1", "value1.2"},
 		},
@@ -323,11 +309,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			stateDBSavePoint: uint64(4),
+			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 			stateDBPvtKVs:    map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 
-			historyDBSavePoint: uint64(4),
+			historyDBSavePoint: uint64(3),
 			historyKey:         "key1",
 			historyVals:        []string{"value1.1", "value1.2", "value1.3"},
 		},
@@ -349,15 +335,15 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 6,
+			bcInfo: &common.BlockchainInfo{Height: 5,
 				CurrentBlockHash:  blockAndPvtdata4.Block.Header.Hash(),
 				PreviousBlockHash: blockAndPvtdata3.Block.Header.Hash()},
 
-			stateDBSavePoint: uint64(4),
+			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 			stateDBPvtKVs:    map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 
-			historyDBSavePoint: uint64(5),
+			historyDBSavePoint: uint64(4),
 			historyKey:         "key1",
 			historyVals:        []string{"value1.1", "value1.2", "value1.3", "value1.4"},
 		},
@@ -373,11 +359,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	ledger, _ = provider.Open(testLedgerid)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
-			stateDBSavePoint: uint64(5),
+			stateDBSavePoint: uint64(4),
 			stateDBKVs:       map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 			stateDBPvtKVs:    map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 
-			historyDBSavePoint: uint64(5),
+			historyDBSavePoint: uint64(4),
 			historyKey:         "key1",
 			historyVals:        []string{"value1.1", "value1.2", "value1.3", "value1.4"},
 		},
@@ -582,26 +568,4 @@ type bcSummary struct {
 	historyDBSavePoint uint64
 	historyKey         string
 	historyVals        []string
-}
-
-func prepareNextBlockForTestCollectionConfigs(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockGenerator,
-	txid string, namespace string, btlConfigs map[string]uint64) *lgr.BlockAndPvtData {
-	simulator, _ := l.NewTxSimulator(txid)
-	key := privdata.BuildCollectionKVSKey(namespace)
-	var conf []*common.CollectionConfig
-	for collName, btl := range btlConfigs {
-		staticConf := &common.StaticCollectionConfig{Name: collName, BlockToLive: btl}
-		collectionConf := &common.CollectionConfig{}
-		collectionConf.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: staticConf}
-		conf = append(conf, collectionConf)
-	}
-	collectionConfPkg := &common.CollectionConfigPackage{Config: conf}
-	value, err := proto.Marshal(collectionConfPkg)
-	assert.NoError(t, err)
-	simulator.SetState("lscc", key, value)
-	simulator.Done()
-	simRes, _ := simulator.GetTxSimulationResults()
-	pubSimBytes, _ := simRes.GetPubSimulationBytes()
-	block := bg.NextBlock([][]byte{pubSimBytes})
-	return &lgr.BlockAndPvtData{Block: block}
 }

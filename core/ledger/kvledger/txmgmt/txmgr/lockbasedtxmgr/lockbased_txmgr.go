@@ -32,6 +32,7 @@ type LockBasedTxMgr struct {
 	pvtdataPurgeMgr *pvtdataPurgeMgr
 	validator       validator.Validator
 	stateListeners  []ledger.StateListener
+	ccInfoProvider  ledger.DeployedChaincodeInfoProvider
 	commitRWLock    sync.RWMutex
 	current         *current
 }
@@ -52,9 +53,9 @@ func (c *current) maxTxNumber() uint64 {
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
 func NewLockBasedTxMgr(ledgerid string, db privacyenabledstate.DB, stateListeners []ledger.StateListener,
-	btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (*LockBasedTxMgr, error) {
+	btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (*LockBasedTxMgr, error) {
 	db.Open()
-	txmgr := &LockBasedTxMgr{ledgerid: ledgerid, db: db, stateListeners: stateListeners}
+	txmgr := &LockBasedTxMgr{ledgerid: ledgerid, db: db, stateListeners: stateListeners, ccInfoProvider: ccInfoProvider}
 	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, btlPolicy, bookkeepingProvider)
 	if err != nil {
 		return nil, err

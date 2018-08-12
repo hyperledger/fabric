@@ -98,7 +98,7 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	// get simulation results and verify that this contains rwset only for one namespace
 	simulationResults1, err := simulator.GetTxSimulationResults()
 	assert.NoError(t, err)
-	assert.Len(t, simulationResults1.PubSimulationResults.NsRwset, 2)
+	assert.Len(t, simulationResults1.PubSimulationResults.NsRwset, 1)
 	// clone freeze simulationResults1
 	buff1 := new(bytes.Buffer)
 	assert.NoError(t, gob.NewEncoder(buff1).Encode(simulationResults1))

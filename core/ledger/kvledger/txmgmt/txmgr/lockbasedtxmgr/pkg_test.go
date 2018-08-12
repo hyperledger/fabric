@@ -17,6 +17,7 @@ limitations under the License.
 package lockbasedtxmgr
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -26,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
@@ -85,8 +87,12 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	assert.NoError(t, err)
 	env.testBookkeepingEnv = bookkeeping.NewTestEnv(t)
-	env.txmgr, err = NewLockBasedTxMgr(testLedgerID, env.testDB, nil, btlPolicy, env.testBookkeepingEnv.TestProvider)
+	env.txmgr, err = NewLockBasedTxMgr(
+		testLedgerID, env.testDB, nil,
+		btlPolicy, env.testBookkeepingEnv.TestProvider,
+		&mock.DeployedChaincodeInfoProvider{})
 	assert.NoError(t, err)
+
 }
 
 func (env *lockBasedEnv) getTxMgr() txmgr.TxMgr {
@@ -164,14 +170,12 @@ func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []co
 		}
 		pkg.Config = append(pkg.Config, &common.CollectionConfig{Payload: sCollConfig})
 	}
-	updates := privacyenabledstate.NewUpdateBatch()
-
-	for ns, pkg := range m {
-		pkgBytes, err := proto.Marshal(pkg)
-		assert.NoError(t, err)
-		updates.PubUpdates.Put(lsccNamespace, constructCollectionConfigKey(ns), pkgBytes, ht)
+	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	ccInfoProvider.ChaincodeInfoStub = func(ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+		fmt.Printf("retrieveing info for [%s] from [%s]\n", ccName, m)
+		return &ledger.DeployedChaincodeInfo{Name: ccName, CollectionConfigPkg: m[ccName]}, nil
 	}
-	txMgr.db.ApplyPrivacyAwareUpdates(updates, ht)
+	txMgr.ccInfoProvider = ccInfoProvider
 }
 
 func testutilPopulateDB(t *testing.T, txMgr *LockBasedTxMgr, ns string, data []*queryresult.KV, version *version.Height) {
