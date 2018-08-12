@@ -67,7 +67,7 @@ func newKVLedger(
 	if ccEventListener != nil {
 		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
 	}
-	btlPolicy := pvtdatapolicy.NewBTLPolicy(l)
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{l, ccInfoProvider})
 	if err := l.initTxMgr(versionedDB, stateListeners, btlPolicy, bookkeeperProvider); err != nil {
 		return nil, err
 	}
@@ -368,4 +368,18 @@ func (itr *blocksItr) Next() (commonledger.QueryResult, error) {
 
 func (itr *blocksItr) Close() {
 	itr.blocksItr.Close()
+}
+
+type collectionInfoRetriever struct {
+	ledger       ledger.PeerLedger
+	infoProvider ledger.DeployedChaincodeInfoProvider
+}
+
+func (r *collectionInfoRetriever) CollectionInfo(chaincodeName, collectionName string) (*common.StaticCollectionConfig, error) {
+	qe, err := r.ledger.NewQueryExecutor()
+	if err != nil {
+		return nil, err
+	}
+	defer qe.Done()
+	return r.infoProvider.CollectionInfo(chaincodeName, collectionName, qe)
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -22,11 +21,14 @@ import (
 
 func TestPvtdataResultsItr(t *testing.T) {
 	testEnv := testEnvs[0]
-	cs := btltestutil.NewMockCollectionStore()
-	cs.SetBTL("ns1", "coll1", 0)
-	cs.SetBTL("ns2", "coll1", 0)
-	cs.SetBTL("ns3", "coll1", 0)
-	testEnv.init(t, "test-pvtdata-range-queries", pvtdatapolicy.ConstructBTLPolicy(cs))
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns1", "coll1"}: 0,
+			{"ns2", "coll1"}: 0,
+			{"ns3", "coll1"}: 0,
+		},
+	)
+	testEnv.init(t, "test-pvtdata-range-queries", btlPolicy)
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
@@ -79,9 +81,11 @@ func TestPrivateDataMetadataRetrievalByHash(t *testing.T) {
 
 func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	ledgerid := "test-privatedata-metadata-retrieval-byhash"
-	cs := btltestutil.NewMockCollectionStore()
-	cs.SetBTL("ns", "coll", 0)
-	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns", "coll"}: 0,
+		},
+	)
 	env.init(t, ledgerid, btlPolicy)
 	defer env.cleanup()
 

@@ -365,8 +365,10 @@ func samplePvtData(t *testing.T, txNums []uint64) map[uint64]*ledger.TxPvtData {
 }
 
 func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
-	cs := btltestutil.NewMockCollectionStore()
-	cs.SetBTL("ns-1", "coll-1", 0)
-	cs.SetBTL("ns-1", "coll-2", 0)
-	return pvtdatapolicy.ConstructBTLPolicy(cs)
+	return btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+			{"ns-1", "coll-2"}: 0,
+		},
+	)
 }

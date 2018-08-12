@@ -12,7 +12,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -32,11 +31,12 @@ func TestV11v12(t *testing.T) {
 	defer viper.Reset()
 
 	ledgerid := "ch1"
-	cs := btltestutil.NewMockCollectionStore()
-	cs.SetBTL("marbles_private", "collectionMarbles", 0)
-	cs.SetBTL("marbles_private", "collectionMarblePrivateDetails", 0)
-	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
-
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"marbles_private", "collectionMarbles"}:              0,
+			{"marbles_private", "collectionMarblePrivateDetails"}: 0,
+		},
+	)
 	p := NewProvider()
 	defer p.Close()
 	s, err := p.OpenStore(ledgerid)

@@ -11,17 +11,13 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/mock"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBTLPolicy(t *testing.T) {
-	mockCollectionStore := testutil.NewMockCollectionStore()
-	mockCollectionStore.SetBTL("ns1", "coll1", 100)
-	mockCollectionStore.SetBTL("ns1", "coll2", 200)
-	mockCollectionStore.SetBTL("ns1", "coll3", 0)
-
-	btlPolicy := ConstructBTLPolicy(mockCollectionStore)
+	btlPolicy := testutilSampleBTLPolicy()
 	btl1, err := btlPolicy.GetBTL("ns1", "coll1")
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(100), btl1)
@@ -40,12 +36,7 @@ func TestBTLPolicy(t *testing.T) {
 }
 
 func TestExpiringBlock(t *testing.T) {
-	mockCollectionStore := testutil.NewMockCollectionStore()
-	mockCollectionStore.SetBTL("ns1", "coll1", 100)
-	mockCollectionStore.SetBTL("ns1", "coll2", 200)
-	mockCollectionStore.SetBTL("ns1", "coll3", 0)
-	btlPolicy := ConstructBTLPolicy(mockCollectionStore)
-
+	btlPolicy := testutilSampleBTLPolicy()
 	expiringBlk, err := btlPolicy.GetExpiringBlock("ns1", "coll1", 50)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(151), expiringBlk)
@@ -61,4 +52,24 @@ func TestExpiringBlock(t *testing.T) {
 	expiringBlk, err = btlPolicy.GetExpiringBlock("ns1", "coll4", 50)
 	_, ok := err.(privdata.NoSuchCollectionError)
 	assert.True(t, ok)
+}
+
+func testutilSampleBTLPolicy() BTLPolicy {
+	ccInfoRetriever := &mock.CollectionInfoProvider{}
+	ccInfoRetriever.CollectionInfoStub = func(ccName, collName string) (*common.StaticCollectionConfig, error) {
+		collConfig := &common.StaticCollectionConfig{}
+		var err error
+		switch collName {
+		case "coll1":
+			collConfig.BlockToLive = 100
+		case "coll2":
+			collConfig.BlockToLive = 200
+		case "coll3":
+			collConfig.BlockToLive = 0
+		default:
+			err = privdata.NoSuchCollectionError{}
+		}
+		return collConfig, err
+	}
+	return ConstructBTLPolicy(ccInfoRetriever)
 }
