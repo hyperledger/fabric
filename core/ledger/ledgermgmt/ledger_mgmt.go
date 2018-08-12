@@ -57,7 +57,7 @@ func initialize(initializer *Initializer) {
 	openedLedgers = make(map[string]ledger.PeerLedger)
 	customtx.Initialize(initializer.CustomTxProcessors)
 	cceventmgmt.Initialize(initializer.PlatformRegistry)
-	finalStateListeners := addListenerForCCEventsHandler([]ledger.StateListener{})
+	finalStateListeners := addListenerForCCEventsHandler(initializer.DeployedChaincodeInfoProvider, []ledger.StateListener{})
 	provider, err := kvledger.NewProvider()
 	if err != nil {
 		panic(errors.WithMessage(err, "Error in instantiating ledger provider"))
@@ -67,7 +67,6 @@ func initialize(initializer *Initializer) {
 		DeployedChaincodeInfoProvider: initializer.DeployedChaincodeInfoProvider,
 		MembershipInfoProvider:        initializer.MembershipInfoProvider,
 	})
-
 	ledgerProvider = provider
 	logger.Info("ledger mgmt initialized")
 }
@@ -169,6 +168,8 @@ func (l *closableLedger) closeWithoutLock() {
 
 // lscc namespace listener for chaincode instantiate transactions (which manipulates data in 'lscc' namespace)
 // this code should be later moved to peer and passed via `Initialize` function of ledgermgmt
-func addListenerForCCEventsHandler(stateListeners []ledger.StateListener) []ledger.StateListener {
-	return append(stateListeners, &cceventmgmt.KVLedgerLSCCStateListener{})
+func addListenerForCCEventsHandler(
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	stateListeners []ledger.StateListener) []ledger.StateListener {
+	return append(stateListeners, &cceventmgmt.KVLedgerLSCCStateListener{DeployedChaincodeInfoProvider: deployedCCInfoProvider})
 }
