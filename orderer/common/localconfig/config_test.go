@@ -107,6 +107,30 @@ func TestKafkaTLSConfig(t *testing.T) {
 	}
 }
 
+func TestKafkaSASLPlain(t *testing.T) {
+	testCases := []struct {
+		name        string
+		sasl        SASLPlain
+		shouldPanic bool
+	}{
+		{"Disabled", SASLPlain{Enabled: false}, false},
+		{"EnabledUserPassword", SASLPlain{Enabled: true, User: "user", Password: "pwd"}, false},
+		{"EnabledNoUserPassword", SASLPlain{Enabled: true}, true},
+		{"EnabledNoUser", SASLPlain{Enabled: true, Password: "pwd"}, true},
+		{"EnabledNoPassword", SASLPlain{Enabled: true, User: "user"}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Kafka: Kafka{SASLPlain: tc.sasl}}
+			if tc.shouldPanic {
+				assert.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
+			} else {
+				assert.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
+			}
+		})
+	}
+}
+
 func TestSystemChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()

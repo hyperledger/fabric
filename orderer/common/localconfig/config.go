@@ -73,6 +73,13 @@ type TLS struct {
 	ClientRootCAs      []string
 }
 
+// SASLPlain contains configuration for SASL/PLAIN authentication
+type SASLPlain struct {
+	Enabled  bool
+	User     string
+	Password string
+}
+
 // Authentication contains configuration parameters related to authenticating
 // client messages.
 type Authentication struct {
@@ -98,10 +105,11 @@ type RAMLedger struct {
 
 // Kafka contains configuration for the Kafka-based orderer.
 type Kafka struct {
-	Retry   Retry
-	Verbose bool
-	Version sarama.KafkaVersion // TODO Move this to global config
-	TLS     TLS
+	Retry     Retry
+	Verbose   bool
+	Version   sarama.KafkaVersion // TODO Move this to global config
+	TLS       TLS
+	SASLPlain SASLPlain
 }
 
 // Retry contains configuration related to retries and timeouts when the
@@ -287,6 +295,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Panicf("General.Kafka.TLS.PrivateKey must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.RootCAs == nil:
 			logger.Panicf("General.Kafka.TLS.CertificatePool must be set if General.Kafka.TLS.Enabled is set to true.")
+
+		case c.Kafka.SASLPlain.Enabled && c.Kafka.SASLPlain.User == "":
+			logger.Panic("General.Kafka.SASLPlain.User must be set if General.Kafka.SASLPlain.Enabled is set to true.")
+		case c.Kafka.SASLPlain.Enabled && c.Kafka.SASLPlain.Password == "":
+			logger.Panic("General.Kafka.SASLPlain.Password must be set if General.Kafka.SASLPlain.Enabled is set to true.")
 
 		case c.General.Profile.Enabled && c.General.Profile.Address == "":
 			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", Defaults.General.Profile.Address)

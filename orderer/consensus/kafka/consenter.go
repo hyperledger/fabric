@@ -19,7 +19,12 @@ func New(config localconfig.Kafka) consensus.Consenter {
 	if config.Verbose {
 		logging.SetLevel(logging.DEBUG, saramaLogID)
 	}
-	brokerConfig := newBrokerConfig(config.TLS, config.Retry, config.Version, defaultPartition)
+	brokerConfig := newBrokerConfig(
+		config.TLS,
+		config.SASLPlain,
+		config.Retry,
+		config.Version,
+		defaultPartition)
 	return &consenterImpl{
 		brokerConfigVal: brokerConfig,
 		tlsConfigVal:    config.TLS,
