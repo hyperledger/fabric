@@ -9,9 +9,8 @@ package cceventmgmt
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 // ChaincodeDefinition captures the info about chaincode
@@ -19,7 +18,7 @@ type ChaincodeDefinition struct {
 	Name              string
 	Hash              []byte
 	Version           string
-	CollectionConfigs []byte
+	CollectionConfigs *common.CollectionConfigPackage
 }
 
 func (cdef *ChaincodeDefinition) String() string {
@@ -42,25 +41,11 @@ type ChaincodeLifecycleEventListener interface {
 
 // ChaincodeInfoProvider interface enables event mgr to retrieve chaincode info for a given chaincode
 type ChaincodeInfoProvider interface {
-	// IsChaincodeDeployed returns true if the given chaincode is deployed on the given channel.
-	// TODO, the syscc provider should probably be part of the impl struct, but because of the
-	// current complexities of our initialization, it is much easier to pass as a parameter.
-	IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition, sccp sysccprovider.SystemChaincodeProvider) (bool, error)
+	// GetDeployedChaincodeInfo retrieves the details about the deployed chaincode.
+	// This function is expected to return nil, if the chaincode with the given name is not deployed
+	// or the version or hash of the deployed chaincode does not match with the given version and hash
+	GetDeployedChaincodeInfo(chainid string, chaincodeDefinition *ChaincodeDefinition) (*ledger.DeployedChaincodeInfo, error)
 	// RetrieveChaincodeArtifacts checks if the given chaincode is installed on the peer and if yes,
 	// it extracts the state db specific artifacts from the chaincode package tarball
 	RetrieveChaincodeArtifacts(chaincodeDefinition *ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error)
-}
-
-type chaincodeInfoProviderImpl struct {
-	PlatformRegistry *platforms.Registry
-}
-
-// IsChaincodeDeployed implements function in the interface ChaincodeInfoProvider
-func (p *chaincodeInfoProviderImpl) IsChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition, sccp sysccprovider.SystemChaincodeProvider) (bool, error) {
-	return ccprovider.IsChaincodeDeployed(chainid, chaincodeDefinition.Name, chaincodeDefinition.Version, chaincodeDefinition.Hash, sccp)
-}
-
-// RetrieveChaincodeArtifacts implements function in the interface ChaincodeInfoProvider
-func (p *chaincodeInfoProviderImpl) RetrieveChaincodeArtifacts(chaincodeDefinition *ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error) {
-	return ccprovider.ExtractStatedbArtifactsForChaincode(chaincodeDefinition.Name, chaincodeDefinition.Version, p.PlatformRegistry)
 }

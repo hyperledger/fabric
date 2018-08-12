@@ -7,13 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package cceventmgmt
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
-// KVLedgerLSCCStateListener listens for chaincode lifecycle
+// KVLedgerLSCCStateListener listens for state changes for chaincode lifecycle
 type KVLedgerLSCCStateListener struct {
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 }
@@ -41,17 +39,11 @@ func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.St
 		if err != nil {
 			return err
 		}
-		var collConfigPkgBytes []byte
-		if deployedCCInfo.CollectionConfigPkg != nil {
-			if collConfigPkgBytes, err = deserializeCollConfigPkg(deployedCCInfo.CollectionConfigPkg); err != nil {
-				return err
-			}
-		}
 		chaincodeDefs = append(chaincodeDefs, &ChaincodeDefinition{
 			Name:              deployedCCInfo.Name,
 			Hash:              deployedCCInfo.Hash,
 			Version:           deployedCCInfo.Version,
-			CollectionConfigs: collConfigPkgBytes,
+			CollectionConfigs: deployedCCInfo.CollectionConfigPkg,
 		})
 	}
 	return GetMgr().HandleChaincodeDeploy(channelName, chaincodeDefs)
@@ -73,8 +65,4 @@ func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.K
 		m[ns] = updates.([]*kvrwset.KVWrite)
 	}
 	return m
-}
-
-func deserializeCollConfigPkg(pkg *common.CollectionConfigPackage) ([]byte, error) {
-	return proto.Marshal(pkg)
 }

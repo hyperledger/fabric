@@ -25,6 +25,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -94,6 +96,54 @@ func TestLedgerMgmt(t *testing.T) {
 	Close()
 }
 
+func TestChaincodeInfoProvider(t *testing.T) {
+	InitializeTestEnv()
+	defer CleanupTestEnv()
+	gb, _ := test.MakeGenesisBlock("ledger1")
+	CreateLedger(gb)
+
+	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	mockDeployedCCInfoProvider.ChaincodeInfoStub = func(ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+		return constructTestCCInfo(ccName, ccName, ccName), nil
+	}
+
+	ccInfoProvider := &chaincodeInfoProviderImpl{
+		platforms.NewRegistry(&golang.Platform{}),
+		mockDeployedCCInfoProvider,
+	}
+	_, err := ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
+	t.Logf("Expected error received = %s", err)
+	assert.Error(t, err)
+
+	ccInfo, err := ccInfoProvider.GetDeployedChaincodeInfo("ledger1", constructTestCCDef("cc1", "non-matching-version", "cc1"))
+	assert.NoError(t, err)
+	assert.Nil(t, ccInfo)
+
+	ccInfo, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger1", constructTestCCDef("cc1", "cc1", "non-matching-hash"))
+	assert.NoError(t, err)
+	assert.Nil(t, ccInfo)
+
+	ccInfo, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger1", constructTestCCDef("cc1", "cc1", "cc1"))
+	assert.NoError(t, err)
+	assert.Equal(t, constructTestCCInfo("cc1", "cc1", "cc1"), ccInfo)
+}
+
 func constructTestLedgerID(i int) string {
 	return fmt.Sprintf("ledger_%06d", i)
+}
+
+func constructTestCCInfo(ccName, version, hash string) *ledger.DeployedChaincodeInfo {
+	return &ledger.DeployedChaincodeInfo{
+		Name:    ccName,
+		Hash:    []byte(hash),
+		Version: version,
+	}
+}
+
+func constructTestCCDef(ccName, version, hash string) *cceventmgmt.ChaincodeDefinition {
+	return &cceventmgmt.ChaincodeDefinition{
+		Name:    ccName,
+		Hash:    []byte(hash),
+		Version: version,
+	}
 }

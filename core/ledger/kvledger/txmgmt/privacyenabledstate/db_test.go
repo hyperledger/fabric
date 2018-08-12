@@ -11,7 +11,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -445,11 +444,7 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 
 	coll1 := createCollectionConfig("collectionMarbles")
 	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
-	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
-
-	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccpBytes}
+	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccp}
 
 	commonStorageDB := db.(*CommonStorageDB)
 
@@ -488,11 +483,7 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 
 	coll2 := createCollectionConfig("collectionMarblesPrivateDetails")
 	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
-	ccpBytes, err = proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
-
-	chaincodeDef = &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccpBytes}
+	chaincodeDef = &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccp}
 
 	// The collection config is added to the chaincodeDef and it contains all collections
 	// including collectionMarblesPrivateDetails which was missing earlier.

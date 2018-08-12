@@ -10,8 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 var logger = flogging.MustGetLogger("cceventmgmt")
@@ -19,8 +18,8 @@ var logger = flogging.MustGetLogger("cceventmgmt")
 var mgr *Mgr
 
 // Initialize initializes event mgmt
-func Initialize(pr *platforms.Registry) {
-	initialize(&chaincodeInfoProviderImpl{PlatformRegistry: pr})
+func Initialize(ccInfoProvider ChaincodeInfoProvider) {
+	initialize(ccInfoProvider)
 }
 
 func initialize(ccInfoProvider ChaincodeInfoProvider) {
@@ -103,24 +102,25 @@ func (m *Mgr) ChaincodeDeployDone(chainid string) {
 }
 
 // HandleChaincodeInstall is expected to get invoked during installation of a chaincode package
-func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, dbArtifacts []byte, sccp sysccprovider.SystemChaincodeProvider) error {
+func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, dbArtifacts []byte) error {
 	logger.Debugf("HandleChaincodeInstall() - chaincodeDefinition=%#v", chaincodeDefinition)
 	// Write lock prevents concurrent deploy operations
 	m.rwlock.Lock()
 	for chainid := range m.ccLifecycleListeners {
 		logger.Debugf("Channel [%s]: Handling chaincode install event for chaincode [%s]", chainid, chaincodeDefinition)
-		var deployed bool
+		var deployedCCInfo *ledger.DeployedChaincodeInfo
 		var err error
-		if deployed, err = m.infoProvider.IsChaincodeDeployed(chainid, chaincodeDefinition, sccp); err != nil {
+		if deployedCCInfo, err = m.infoProvider.GetDeployedChaincodeInfo(chainid, chaincodeDefinition); err != nil {
 			logger.Warningf("Channel [%s]: Error while getting the deployment status of chaincode: %s", chainid, err)
 			return err
 		}
-		if !deployed {
+		if deployedCCInfo == nil {
 			logger.Debugf("Channel [%s]: Chaincode [%s] is not deployed on channel hence not creating chaincode artifacts.",
 				chainid, chaincodeDefinition)
 			continue
 		}
 		m.callbackStatus.setInstallPending(chainid)
+		chaincodeDefinition.CollectionConfigs = deployedCCInfo.CollectionConfigPkg
 		if err := m.invokeHandler(chainid, chaincodeDefinition, dbArtifacts); err != nil {
 			logger.Warningf("Channel [%s]: Error while invoking a listener for handling chaincode install event: %s", chainid, err)
 			return err
