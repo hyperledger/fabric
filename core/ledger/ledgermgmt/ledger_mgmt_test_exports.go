@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 )
@@ -30,31 +29,29 @@ import (
 // InitializeTestEnv initializes ledgermgmt for tests
 func InitializeTestEnv() {
 	remove()
-	initialize(&Initializer{
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-	})
+	InitializeTestEnvWithInitializer(nil)
 }
 
-// InitializeTestEnvWithCustomProcessors initializes ledgermgmt for tests with the supplied custom tx processors
-func InitializeTestEnvWithCustomProcessors(customTxProcessors customtx.Processors) {
+// InitializeTestEnvWithInitializer initializes ledgermgmt for tests with the supplied Initializer
+func InitializeTestEnvWithInitializer(initializer *Initializer) {
 	remove()
-	customtx.InitializeTestEnv(customTxProcessors)
-	initialize(&Initializer{
-		CustomTxProcessors:            customTxProcessors,
-		PlatformRegistry:              platforms.NewRegistry(&golang.Platform{}),
-		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-	})
+	InitializeExistingTestEnvWithInitializer(initializer)
 }
 
-// InitializeExistingTestEnvWithCustomProcessors initializes ledgermgmt for tests with existing ledgers
+// InitializeExistingTestEnvWithInitializer initializes ledgermgmt for tests with existing ledgers
 // This function does not remove the existing ledgers and is used in upgrade tests
 // TODO ledgermgmt should be reworked to move the package scoped functions to a struct
-func InitializeExistingTestEnvWithCustomProcessors(customTxProcessors customtx.Processors) {
-	customtx.InitializeTestEnv(customTxProcessors)
-	initialize(&Initializer{
-		CustomTxProcessors: customTxProcessors,
-	})
+func InitializeExistingTestEnvWithInitializer(initializer *Initializer) {
+	if initializer == nil {
+		initializer = &Initializer{}
+	}
+	if initializer.DeployedChaincodeInfoProvider == nil {
+		initializer.DeployedChaincodeInfoProvider = &mock.DeployedChaincodeInfoProvider{}
+	}
+	if initializer.PlatformRegistry == nil {
+		initializer.PlatformRegistry = platforms.NewRegistry(&golang.Platform{})
+	}
+	initialize(initializer)
 }
 
 // CleanupTestEnv closes the ledgermagmt and removes the store directory

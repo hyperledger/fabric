@@ -48,7 +48,12 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	defer cleanup()
 
 	chainid := "testchain1"
-	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
+	ledgermgmt.InitializeTestEnvWithInitializer(
+		&ledgermgmt.Initializer{
+			CustomTxProcessors: ConfigTxProcessors,
+		},
+	)
+
 	defer ledgermgmt.CleanupTestEnv()
 
 	chanConf := helper.sampleChannelConfig(1, true)
@@ -67,7 +72,12 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	cleanup := setupPeerFS(t)
 	defer cleanup()
 	chainid := "testchain1"
-	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
+	ledgermgmt.InitializeTestEnvWithInitializer(
+		&ledgermgmt.Initializer{
+			CustomTxProcessors: ConfigTxProcessors,
+		},
+	)
+
 	defer ledgermgmt.CleanupTestEnv()
 
 	chanConf := helper.sampleChannelConfig(1, true)
@@ -104,7 +114,12 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 	b, err := configtxtest.MakeGenesisBlock("testchain")
 	assert.NoError(t, err)
 
-	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
+	ledgermgmt.InitializeTestEnvWithInitializer(
+		&ledgermgmt.Initializer{
+			CustomTxProcessors: ConfigTxProcessors,
+		},
+	)
+
 	defer ledgermgmt.CleanupTestEnv()
 
 	lgr, err := ledgermgmt.CreateLedger(b)
