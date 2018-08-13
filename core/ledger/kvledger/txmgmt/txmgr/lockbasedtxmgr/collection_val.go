@@ -105,5 +105,5 @@ type errCollConfigNotDefined struct {
 }
 
 func (e *errCollConfigNotDefined) Error() string {
-	return fmt.Sprintf("collection config not define for namespace [%s]", e.ns)
+	return fmt.Sprintf("collection config not defined for chaincode [%s], pass the collection configuration upon chaincode definition/instantiation", e.ns)
 }
