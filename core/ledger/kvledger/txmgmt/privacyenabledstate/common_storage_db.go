@@ -193,9 +193,11 @@ func (s *CommonStorageDB) ApplyUpdates(batch *statedb.UpdateBatch, height *versi
 
 // ApplyPrivacyAwareUpdates implements corresponding function in interface DB
 func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height *version.Height) error {
-	addPvtUpdates(updates.PubUpdates, updates.PvtUpdates)
-	addHashedUpdates(updates.PubUpdates, updates.HashUpdates, !s.BytesKeySuppoted())
-	return s.VersionedDB.ApplyUpdates(updates.PubUpdates.UpdateBatch, height)
+	// combinedUpdates includes both updates to public db and private db, which are partitioned by a separate namespace
+	combinedUpdates := updates.PubUpdates
+	addPvtUpdates(combinedUpdates, updates.PvtUpdates)
+	addHashedUpdates(combinedUpdates, updates.HashUpdates, !s.BytesKeySuppoted())
+	return s.VersionedDB.ApplyUpdates(combinedUpdates.UpdateBatch, height)
 }
 
 func (s *CommonStorageDB) getCollectionConfigMap(chaincodeDefinition *cceventmgmt.ChaincodeDefinition) (map[string]bool, error) {
