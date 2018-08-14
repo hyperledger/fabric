@@ -1,0 +1,33 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+package lifecycle;
+
+option java_package = "org.hyperledger.fabric.protos.peer.lifecycle";
+option go_package = "github.com/hyperledger/fabric/protos/peer/lifecycle";
+
+// These protos are used for encoding data into the statedb
+// in general, it should not be necessary for clients to utilize them.
+
+// StateMetadata describes the keys in a namespace.  It is necessary because
+// in collections, range scans are not possible during transactions which
+// write.  Therefore we must track the keys in our namespace ourselves.
+message StateMetadata {
+    string datatype = 1;
+    repeated string fields = 2;
+}
+
+// StateData encodes a particular field of a datatype
+message StateData {
+    oneof Type {
+        string String = 1;
+        bytes Bytes = 2;
+        uint64 Uint64 = 3;
+        int64 Int64 = 4;
+    }
+}
