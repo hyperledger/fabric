@@ -424,7 +424,7 @@ func (rc *RemoteContext) Step(req *orderer.StepRequest) (*orderer.StepResponse, 
 	return rc.Client.Step(ctx, req)
 }
 
-// Abort aborts the contexts the ClusterClient uses,
+// Abort aborts the contexts the RemoteContext uses,
 // thus effectively causes all operations on the embedded
 // ClusterClient to end.
 func (rc *RemoteContext) Abort() {
