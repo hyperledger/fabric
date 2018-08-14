@@ -147,3 +147,87 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 
 	return nil
 }
+
+// Deserialize accepts a struct (of a type previously serialized) and populates it with the values from the db.
+// Note: The struct names for the serialization and deserialization must match exactly.  Unencoded fields are not
+// populated, and the extraneous keys are ignored.
+func (s *Serializer) Deserialize(namespace, name string, structure interface{}, state ReadableState) error {
+	value := reflect.ValueOf(structure)
+	if value.Kind() != reflect.Ptr {
+		return errors.Errorf("can only deserialize pointers to struct, but got non-pointer %v", value.Kind())
+	}
+
+	value = value.Elem()
+	if value.Kind() != reflect.Struct {
+		return errors.Errorf("can only deserialize pointers to struct, but got pointer to %v", value.Kind())
+	}
+
+	metadataBin, err := state.GetState(fmt.Sprintf("%s/metadata/%s", namespace, name))
+	if err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("could not query metadata for namespace %s/%s", namespace, name))
+	}
+	if metadataBin == nil {
+		return errors.Errorf("no existing serialized message found")
+	}
+
+	metadata := &lb.StateMetadata{}
+	err = proto.Unmarshal(metadataBin, metadata)
+	if err != nil {
+		return errors.Wrapf(err, "could not unmarshal metadata for namespace %s/%s", namespace, name)
+	}
+
+	typeName := value.Type().Name()
+	if typeName != metadata.Datatype {
+		return errors.Errorf("type name mismatch '%s' != '%s'", typeName, metadata.Datatype)
+	}
+
+	for i := 0; i < value.NumField(); i++ {
+		fieldName := value.Type().Field(i).Name
+		keyName := fmt.Sprintf("%s/fields/%s/%s", namespace, name, fieldName)
+		stateDataBin, err := state.GetState(keyName)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("could not get state for key %s", keyName))
+		}
+		stateData := &lb.StateData{}
+		err = proto.Unmarshal(stateDataBin, stateData)
+		if err != nil {
+			return errors.Wrapf(err, "could not unmarshal state for key %s", keyName)
+		}
+
+		fieldValue := value.Field(i)
+		switch fieldValue.Kind() {
+		case reflect.String:
+			oneOf, ok := stateData.Type.(*lb.StateData_String_)
+			if !ok {
+				return errors.Errorf("expected key %s to encode a value of type String, but was %T", keyName, stateData.Type)
+			}
+			fieldValue.SetString(oneOf.String_)
+		case reflect.Int64:
+			oneOf, ok := stateData.Type.(*lb.StateData_Int64)
+			if !ok {
+				return errors.Errorf("expected key %s to encode a value of type Int64, but was %T", keyName, stateData.Type)
+			}
+			fieldValue.SetInt(oneOf.Int64)
+		case reflect.Uint64:
+			oneOf, ok := stateData.Type.(*lb.StateData_Uint64)
+			if !ok {
+				return errors.Errorf("expected key %s to encode a value of type Uint64, but was %T", keyName, stateData.Type)
+			}
+			fieldValue.SetUint(oneOf.Uint64)
+		case reflect.Slice:
+			if fieldValue.Type().Elem().Kind() != reflect.Uint8 {
+				return errors.Errorf("unsupported slice type %v for field %s", fieldValue.Type().Elem().Kind(), fieldName)
+			}
+
+			oneOf, ok := stateData.Type.(*lb.StateData_Bytes)
+			if !ok {
+				return errors.Errorf("expected key %s to encode a value of type []byte, but was %T", keyName, stateData.Type)
+			}
+			fieldValue.SetBytes(oneOf.Bytes)
+		default:
+			return errors.Errorf("unsupported structure field kind %v for deserialization for key %s", fieldValue.Kind(), keyName)
+		}
+	}
+
+	return nil
+}

@@ -326,4 +326,248 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 	})
+
+	Describe("Deserialize", func() {
+		var (
+			kvs map[string][]byte
+		)
+
+		BeforeEach(func() {
+			kvs = map[string][]byte{
+				"namespaces/fields/fake/Bytes": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
+				}),
+				"namespaces/fields/fake/String": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_String_{String_: "string"},
+				}),
+				"namespaces/fields/fake/Uint": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Uint64{Uint64: 93},
+				}),
+				"namespaces/fields/fake/Int": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Int64{Int64: -3},
+				}),
+				"namespaces/metadata/fake": utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestStruct",
+					Fields:   []string{"Bytes", "String", "Uint", "Int"},
+				}),
+			}
+
+			fakeState.GetStateStub = func(key string) ([]byte, error) {
+				fmt.Println("returning", kvs[key], "for", key)
+				return kvs[key], nil
+			}
+		})
+
+		It("populates the given struct with values from the state", func() {
+			target := &TestStruct{}
+			err := s.Deserialize("namespaces", "fake", target, fakeState)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(5))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
+
+			Expect(target).To(Equal(&TestStruct{
+				Int:    -3,
+				Uint:   93,
+				String: "string",
+				Bytes:  []byte("bytes"),
+			}))
+		})
+
+		Context("when the metadata encoding is bad", func() {
+			BeforeEach(func() {
+				kvs["namespaces/metadata/fake"] = []byte("bad-data")
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("could not unmarshal metadata for namespace namespaces/fake: unexpected EOF"))
+			})
+		})
+
+		Context("when the field encoding is bad", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/Uint"] = []byte("bad-data")
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("could not unmarshal state for key namespaces/fields/fake/Uint: unexpected EOF"))
+			})
+		})
+
+		Context("when the uint is not the correct type", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/Uint"] = kvs["namespaces/fields/fake/Bytes"]
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("expected key namespaces/fields/fake/Uint to encode a value of type Uint64, but was *lifecycle.StateData_Bytes"))
+			})
+		})
+
+		Context("when the int is not the correct type", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/Int"] = kvs["namespaces/fields/fake/Bytes"]
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("expected key namespaces/fields/fake/Int to encode a value of type Int64, but was *lifecycle.StateData_Bytes"))
+			})
+		})
+
+		Context("when the string is not the correct type", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/String"] = kvs["namespaces/fields/fake/Bytes"]
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("expected key namespaces/fields/fake/String to encode a value of type String, but was *lifecycle.StateData_Bytes"))
+			})
+		})
+
+		Context("when the bytes is not the correct type", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/Bytes"] = kvs["namespaces/fields/fake/String"]
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("expected key namespaces/fields/fake/Bytes to encode a value of type []byte, but was *lifecycle.StateData_String_"))
+			})
+		})
+
+		Context("when the metadata cannot be queried", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("state-error"))
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("could not query metadata for namespace namespaces/fake: state-error"))
+			})
+		})
+
+		Context("when the state cannot be queried", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturnsOnCall(0, kvs["namespaces/metadata/fake"], nil)
+				fakeState.GetStateReturnsOnCall(1, nil, fmt.Errorf("state-error"))
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/Int: state-error"))
+			})
+		})
+
+		Context("when no data is stored for the message", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("fails", func() {
+				testStruct := &TestStruct{}
+				err := s.Deserialize("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("no existing serialized message found"))
+			})
+		})
+
+		Context("when the argument is not a pointer", func() {
+			It("fails", func() {
+				err := s.Deserialize("namespaces", "fake", 8, fakeState)
+				Expect(err).To(MatchError("can only deserialize pointers to struct, but got non-pointer int"))
+			})
+		})
+
+		Context("when the argument is a pointer to not-a-struct", func() {
+			It("fails", func() {
+				value := 7
+				err := s.Deserialize("namespaces", "fake", &value, fakeState)
+				Expect(err).To(MatchError("can only deserialize pointers to struct, but got pointer to int"))
+			})
+		})
+
+		Context("when the argument does not match the stored type", func() {
+			It("it fails", func() {
+				type Other struct{}
+				err := s.Deserialize("namespaces", "fake", &Other{}, fakeState)
+				Expect(err).To(MatchError("type name mismatch 'Other' != 'TestStruct'"))
+			})
+		})
+
+		Context("when the argument contains an illegal field type", func() {
+			BeforeEach(func() {
+				kvs["namespaces/metadata/fake"] = utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "BadStruct",
+				})
+			})
+
+			It("it fails", func() {
+				type BadStruct struct {
+					BadField *TestStruct
+				}
+
+				err := s.Deserialize("namespaces", "fake", &BadStruct{}, fakeState)
+				Expect(err).To(MatchError("unsupported structure field kind ptr for deserialization for key namespaces/fields/fake/BadField"))
+			})
+		})
+
+		Context("when the argument contains a non-byte slice", func() {
+			BeforeEach(func() {
+				kvs["namespaces/metadata/fake"] = utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "BadStruct",
+				})
+			})
+
+			It("it fails", func() {
+				type BadStruct struct {
+					BadField []uint64
+				}
+
+				err := s.Deserialize("namespaces", "fake", &BadStruct{}, fakeState)
+				Expect(err).To(MatchError("unsupported slice type uint64 for field BadField"))
+			})
+		})
+	})
+
+	Describe("Integration Round Trip of Serialize/Deserialize", func() {
+		var (
+			KVStore map[string][]byte
+		)
+
+		BeforeEach(func() {
+			KVStore = map[string][]byte{}
+
+			fakeState.PutStateStub = func(key string, value []byte) error {
+				KVStore[key] = value
+				return nil
+			}
+
+			fakeState.GetStateStub = func(key string) ([]byte, error) {
+				return KVStore[key], nil
+			}
+		})
+
+		It("deserializes to the same value that was serialized in", func() {
+			err := s.Serialize("namespace", "fake", testStruct, fakeState)
+			Expect(err).NotTo(HaveOccurred())
+
+			deserialized := &TestStruct{}
+			err = s.Deserialize("namespace", "fake", deserialized, fakeState)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(testStruct).To(Equal(deserialized))
+		})
+	})
 })
