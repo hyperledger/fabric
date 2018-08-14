@@ -45,6 +45,15 @@ message ImportRequest {
     repeated TokenToIssue tokens_to_issue = 2;
 }
 
+// RequestTransfer is used to request creation of transfers
+message TransferRequest {
+    bytes credential = 1;
+
+    repeated bytes tokenIDs = 2;
+
+    repeated RecipientTransferShare shares = 3;
+}
+
 // Header is a generic replay prevention and identity message to include in a signed command
 message Header {
     // Timestamp is the local time when the message was created
@@ -72,6 +81,7 @@ message Command {
     // Payload is the payload of this command. It can assume one of the following value
     oneof payload {
         ImportRequest import_request = 2;
+        TransferRequest transfer_request = 3;
     }
 }
 

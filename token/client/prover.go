@@ -35,10 +35,10 @@ func (prover *ProverPeer) RequestImport(tokensToIssue []*token.TokenToIssue, sig
 	ir := &token.ImportRequest{
 		TokensToIssue: tokensToIssue,
 	}
-
 	payload := &token.Command_ImportRequest{ImportRequest: ir}
 
 	sc, err := prover.CreateSignedCommand(payload, signingIdentity)
+
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +47,29 @@ func (prover *ProverPeer) RequestImport(tokensToIssue []*token.TokenToIssue, sig
 	if err != nil {
 		return nil, err
 	}
+	return scr.Response, nil
+}
+
+func (prover *ProverPeer) RequestTransfer(
+	tokenIDs [][]byte,
+	shares []*token.RecipientTransferShare,
+	signingIdentity tk.SigningIdentity) ([]byte, error) {
+
+	tr := &token.TransferRequest{
+		Shares:   shares,
+		TokenIDs: tokenIDs,
+	}
+	payload := &token.Command_TransferRequest{TransferRequest: tr}
+
+	sc, err := prover.CreateSignedCommand(payload, signingIdentity)
+	if err != nil {
+		return nil, err
+	}
+	scr, err := prover.ProverClient.ProcessCommand(context.Background(), sc)
+	if err != nil {
+		return nil, err
+	}
+
 	return scr.Response, nil
 }
 
@@ -100,6 +123,8 @@ func (prover *ProverPeer) CreateSignedCommand(payload interface{}, signingIdenti
 func commandFromPayload(payload interface{}) (*token.Command, error) {
 	switch t := payload.(type) {
 	case *token.Command_ImportRequest:
+		return &token.Command{Payload: t}, nil
+	case *token.Command_TransferRequest:
 		return &token.Command{Payload: t}, nil
 	default:
 		return nil, errors.Errorf("command type not recognized: %T", t)
