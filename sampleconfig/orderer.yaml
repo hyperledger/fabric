@@ -210,7 +210,11 @@ Kafka:
         # https://godoc.org/github.com/Shopify/sarama#Config
         Consumer:
             RetryBackoff: 2s
-
+    # Settings to use when creating Kafka topics.  Only applies when
+    # Kafka.Version is v0.10.1.0 or higher
+    Topic:
+        # The number of Kafka brokers across which to replicate the topic
+        ReplicationFactor: 3
     # Verbose: Enable logging for interactions with the Kafka cluster.
     Verbose: false
 

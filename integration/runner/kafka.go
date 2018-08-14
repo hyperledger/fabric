@@ -211,6 +211,7 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 func (k *Kafka) buildEnv() []string {
 	env := []string{
 		"KAFKA_LOG_RETENTION_MS=-1",
+		//"KAFKA_AUTO_CREATE_TOPICS_ENABLE=false",
 		fmt.Sprintf("KAFKA_MESSAGE_MAX_BYTES=%d", k.MessageMaxBytes),
 		fmt.Sprintf("KAFKA_REPLICA_FETCH_MAX_BYTES=%d", k.ReplicaFetchMaxBytes),
 		fmt.Sprintf("KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=%s", strconv.FormatBool(k.UncleanLeaderElectionEnable)),

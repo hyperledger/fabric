@@ -255,6 +255,13 @@ func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
 func startThread(chain *chainImpl) {
 	var err error
 
+	// Create topic if it does not exist (requires Kafka v0.10.1.0)
+	err = setupTopicForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.consenter.topicDetail(), chain.channel)
+	if err != nil {
+		// log for now and fallback to auto create topics setting for broker
+		logger.Infof("[channel: %s]: failed to create Kafka topic = %s", chain.channel.topic(), err)
+	}
+
 	// Set up the producer
 	chain.producer, err = setupProducerForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
 	if err != nil {
@@ -949,4 +956,138 @@ func setupProducerForChannel(retryOptions localconfig.Retry, haltChan chan struc
 	})
 
 	return producer, setupProducer.retry()
+}
+
+// Creates the Kafka topic for the channel if it does not already exist
+func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, topicDetail *sarama.TopicDetail, channel channel) error {
+
+	// requires Kafka v0.10.1.0 or higher
+	if !brokerConfig.Version.IsAtLeast(sarama.V0_10_1_0) {
+		return nil
+	}
+
+	logger.Infof("[channel: %s] Setting up the topic for this channel...",
+		channel.topic())
+
+	retryMsg := fmt.Sprintf("Creating Kafka topic [%s] for channel [%s]",
+		channel.topic(), channel.String())
+
+	setupTopic := newRetryProcess(
+		retryOptions,
+		haltChan,
+		channel,
+		retryMsg,
+		func() error {
+
+			var err error
+			clusterMembers := map[int32]*sarama.Broker{}
+			var controllerId int32
+
+			// loop through brokers to access metadata
+			for _, address := range brokers {
+				broker := sarama.NewBroker(address)
+				err = broker.Open(brokerConfig)
+
+				if err != nil {
+					continue
+				}
+
+				var ok bool
+				ok, err = broker.Connected()
+				if !ok {
+					continue
+				}
+				defer broker.Close()
+
+				// metadata request which includes the topic
+				var apiVersion int16
+				if brokerConfig.Version.IsAtLeast(sarama.V0_11_0_0) {
+					// use API version 4 to disable auto topic creation for
+					// metadata requests
+					apiVersion = 4
+				} else {
+					apiVersion = 1
+				}
+				metadata, err := broker.GetMetadata(&sarama.MetadataRequest{
+					Version:                apiVersion,
+					Topics:                 []string{channel.topic()},
+					AllowAutoTopicCreation: false})
+
+				if err != nil {
+					continue
+				}
+
+				controllerId = metadata.ControllerID
+				for _, broker := range metadata.Brokers {
+					clusterMembers[broker.ID()] = broker
+				}
+
+				for _, topic := range metadata.Topics {
+					if topic.Name == channel.topic() {
+						if topic.Err != sarama.ErrUnknownTopicOrPartition {
+							// auto create topics must be enabled so return
+							return nil
+						}
+					}
+				}
+				break
+			}
+
+			// check to see if we got any metadata from any of the brokers in the list
+			if len(clusterMembers) == 0 {
+				return fmt.Errorf(
+					"error creating topic [%s]; failed to retrieve metadata for the cluster",
+					channel.topic())
+			}
+
+			// get the controller
+			controller := clusterMembers[controllerId]
+			err = controller.Open(brokerConfig)
+
+			if err != nil {
+				return err
+			}
+
+			var ok bool
+			ok, err = controller.Connected()
+			if !ok {
+				return err
+			}
+			defer controller.Close()
+
+			// create the topic
+			req := &sarama.CreateTopicsRequest{
+				Version: 0,
+				TopicDetails: map[string]*sarama.TopicDetail{
+					channel.topic(): topicDetail},
+				Timeout: 3 * time.Second}
+			resp := &sarama.CreateTopicsResponse{}
+			resp, err = controller.CreateTopics(req)
+			if err != nil {
+				return err
+			}
+
+			// check the response
+			if topicErr, ok := resp.TopicErrors[channel.topic()]; ok {
+				// treat no error and topic exists error as success
+				if topicErr.Err == sarama.ErrNoError ||
+					topicErr.Err == sarama.ErrTopicAlreadyExists {
+					return nil
+				}
+				if topicErr.Err == sarama.ErrInvalidTopic {
+					// topic is invalid so abort
+					logger.Warningf("[channel: %s] Failed to set up topic = %s",
+						channel.topic(), topicErr.Err.Error())
+					go func() {
+						haltChan <- struct{}{}
+					}()
+				}
+				return fmt.Errorf("error creating topic: [%s]",
+					topicErr.Err.Error())
+			}
+
+			return nil
+		})
+
+	return setupTopic.retry()
 }

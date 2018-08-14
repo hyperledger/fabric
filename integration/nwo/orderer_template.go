@@ -68,6 +68,8 @@ Kafka:
       RetryMax: 3
     Consumer:
       RetryBackoff: 2s
+  Topic:
+    ReplicationFactor: 1
   Verbose: false
   TLS:
     Enabled: false
