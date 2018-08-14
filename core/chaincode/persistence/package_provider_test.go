@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
@@ -20,6 +22,7 @@ var _ = Describe("PackageProvider", func() {
 		var (
 			mockSPP         *mock.StorePackageProvider
 			mockLPP         *mock.LegacyPackageProvider
+			mockParser      *mock.PackageParser
 			packageProvider *persistence.PackageProvider
 		)
 
@@ -28,11 +31,17 @@ var _ = Describe("PackageProvider", func() {
 			mockSPP.RetrieveHashReturns([]byte("testcchash"), nil)
 			mockSPP.LoadReturns([]byte("storeCode"), "testcc", "1.0", nil)
 
+			mockParser = &mock.PackageParser{}
+			mockParser.ParseReturns(&persistence.ChaincodePackage{
+				CodePackage: []byte("parsedCode"),
+			}, nil)
+
 			mockLPP = &mock.LegacyPackageProvider{}
 			mockLPP.GetChaincodeCodePackageReturns([]byte("legacyCode"), nil)
 
 			packageProvider = &persistence.PackageProvider{
 				Store:    mockSPP,
+				Parser:   mockParser,
 				LegacyPP: mockLPP,
 			}
 		})
@@ -40,7 +49,27 @@ var _ = Describe("PackageProvider", func() {
 		It("gets the code package successfully", func() {
 			pkgBytes, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pkgBytes).To(Equal([]byte("storeCode")))
+
+			Expect(mockSPP.RetrieveHashCallCount()).To(Equal(1))
+			ccName, ccVersion := mockSPP.RetrieveHashArgsForCall(0)
+			Expect(ccName).To(Equal("testcc"))
+			Expect(ccVersion).To(Equal("1.0"))
+
+			Expect(mockParser.ParseCallCount()).To(Equal(1))
+			Expect(mockParser.ParseArgsForCall(0)).To(Equal([]byte("storeCode")))
+
+			Expect(pkgBytes).To(Equal([]byte("parsedCode")))
+		})
+
+		Context("when parsing the code package fails", func() {
+			BeforeEach(func() {
+				mockParser.ParseReturns(nil, fmt.Errorf("fake-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := packageProvider.GetChaincodeCodePackage("testcc", "1.0")
+				Expect(err).To(MatchError("error parsing chaincode package: fake-error"))
+			})
 		})
 
 		Context("when the code package is not available in the store package provider", func() {

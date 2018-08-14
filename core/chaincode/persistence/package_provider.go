@@ -30,10 +30,16 @@ type LegacyPackageProvider interface {
 	ListInstalledChaincodes(dir string, de ccprovider.DirEnumerator, ce ccprovider.ChaincodeExtractor) ([]chaincode.InstalledChaincode, error)
 }
 
+// PackageParser provides an implementation of chaincode package parsing
+type PackageParser interface {
+	Parse(data []byte) (*ChaincodePackage, error)
+}
+
 // PackageProvider holds the necessary dependencies to obtain the code
 // package bytes for a chaincode
 type PackageProvider struct {
 	Store    StorePackageProvider
+	Parser   PackageParser
 	LegacyPP LegacyPackageProvider
 }
 
@@ -72,11 +78,17 @@ func (p *PackageProvider) getCodePackageFromStore(name, version string) ([]byte,
 		return nil, errors.WithMessage(err, "error retrieving hash")
 	}
 
-	codePackage, _, _, err := p.Store.Load(hash)
+	fsBytes, _, _, err := p.Store.Load(hash)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error loading code package from ChaincodeInstallPackage")
 	}
-	return codePackage, nil
+
+	ccPackage, err := p.Parser.Parse(fsBytes)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error parsing chaincode package")
+	}
+
+	return ccPackage.CodePackage, nil
 }
 
 // GetCodePackageFromLegacyPP gets the code packages bytes from the

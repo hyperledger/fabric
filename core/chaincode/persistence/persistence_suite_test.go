@@ -35,6 +35,11 @@ type legacyPackageProvider interface {
 	persistence.LegacyPackageProvider
 }
 
+//go:generate counterfeiter -o mock/package_parser.go -fake-name PackageParser . packageParser
+type packageParser interface {
+	persistence.PackageParser
+}
+
 func TestPersistence(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
