@@ -159,8 +159,7 @@ chaincode:
   car:
     runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
   java:
-    Dockerfile:  |
-      from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-1.1.0
+    Dockerfile: $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
   node:
       runtime: $(BASE_DOCKER_NS)/fabric-baseimage:$(ARCH)-$(BASE_VERSION)
   startuptimeout: 300s

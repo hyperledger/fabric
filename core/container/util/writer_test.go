@@ -140,7 +140,7 @@ func Test_WriteFolderToTarPackage1(t *testing.T) {
 	}
 	excludeFileTypes := map[string]bool{}
 
-	tarBytes := createTestTar(t, srcPath, "", includeFileTypes, excludeFileTypes)
+	tarBytes := createTestTar(t, srcPath, []string{}, includeFileTypes, excludeFileTypes)
 
 	// Read the file from the archive and check the name
 	entries := tarContents(t, tarBytes)
@@ -150,7 +150,7 @@ func Test_WriteFolderToTarPackage1(t *testing.T) {
 // Success case 2: with exclude dir and no include file types
 func Test_WriteFolderToTarPackage2(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles")
-	tarBytes := createTestTar(t, srcPath, "src", nil, nil)
+	tarBytes := createTestTar(t, srcPath, []string{"src"}, nil, nil)
 
 	entries := tarContents(t, tarBytes)
 	assert.ElementsMatch(t, []string{"src/artifact.xml", "META-INF/statedb/couchdb/indexes/indexOwner.json"}, entries)
@@ -161,7 +161,7 @@ func Test_WriteFolderToTarPackage3(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles")
 	filePath := "META-INF/statedb/couchdb/indexes/indexOwner.json"
 
-	tarBytes := createTestTar(t, srcPath, "", nil, nil)
+	tarBytes := createTestTar(t, srcPath, []string{}, nil, nil)
 
 	// Read the files from the archive and check for the metadata index file
 	entries := tarContents(t, tarBytes)
@@ -173,7 +173,7 @@ func Test_WriteFolderToTarPackage4(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles") + string(filepath.Separator)
 	filePath := "META-INF/statedb/couchdb/indexes/indexOwner.json"
 
-	tarBytes := createTestTar(t, srcPath, "", nil, nil)
+	tarBytes := createTestTar(t, srcPath, []string{}, nil, nil)
 
 	// Read the files from the archive and check for the metadata index file
 	entries := tarContents(t, tarBytes)
@@ -187,7 +187,7 @@ func Test_WriteFolderToTarPackage5(t *testing.T) {
 
 	assert.FileExists(t, filepath.Join(srcPath, "META-INF", ".hiddenfile"))
 
-	tarBytes := createTestTar(t, srcPath, "", nil, nil)
+	tarBytes := createTestTar(t, srcPath, []string{}, nil, nil)
 
 	// Read the files from the archive and check for the metadata index file
 	entries := tarContents(t, tarBytes)
@@ -203,7 +203,7 @@ func Test_WriteFolderToTarPackageFailure1(t *testing.T) {
 	tw := tar.NewWriter(bytes.NewBuffer(nil))
 	defer tw.Close()
 
-	err = WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
+	err = WriteFolderToTarPackage(tw, srcPath, []string{}, nil, nil)
 	assert.Contains(t, err.Error(), "no source files found")
 }
 
@@ -214,7 +214,7 @@ func Test_WriteFolderToTarPackageFailure2(t *testing.T) {
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
 
-	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
+	err := WriteFolderToTarPackage(tw, srcPath, []string{}, nil, nil)
 	assert.Error(t, err, "Should have received error writing folder to package")
 	assert.Contains(t, err.Error(), "Index metadata file [META-INF/statedb/couchdb/indexes/bad.json] is not a valid JSON")
 
@@ -229,7 +229,7 @@ func Test_WriteFolderToTarPackageFailure3(t *testing.T) {
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
 
-	err := WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
+	err := WriteFolderToTarPackage(tw, srcPath, []string{}, nil, nil)
 	assert.Error(t, err, "Should have received error writing folder to package")
 	assert.Contains(t, err.Error(), "metadata file path must begin with META-INF/statedb")
 
@@ -271,7 +271,7 @@ func Test_WriteBytesToPackage(t *testing.T) {
 	assert.NoError(t, err, "Error writing bytes to package")
 }
 
-func createTestTar(t *testing.T, srcPath string, excludeDir string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) []byte {
+func createTestTar(t *testing.T, srcPath string, excludeDir []string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) []byte {
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)

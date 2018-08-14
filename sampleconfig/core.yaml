@@ -522,8 +522,8 @@ chaincode:
         # tools added for java shim layer packaging.
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
-        Dockerfile:  |
-            from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-1.1.0
+        Dockerfile: $(DOCKER_NS)/fabric-javaenv:latest
+            # from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-1.2.0
 
     node:
         # need node.js engine at runtime, currently available in baseimage

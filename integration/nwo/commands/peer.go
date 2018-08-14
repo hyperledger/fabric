@@ -92,6 +92,7 @@ type ChaincodeInstall struct {
 	Name    string
 	Version string
 	Path    string
+	Lang    string
 }
 
 func (c ChaincodeInstall) SessionName() string {
@@ -99,12 +100,18 @@ func (c ChaincodeInstall) SessionName() string {
 }
 
 func (c ChaincodeInstall) Args() []string {
-	return []string{
+	args := []string{
 		"chaincode", "install",
 		"--name", c.Name,
 		"--version", c.Version,
 		"--path", c.Path,
 	}
+
+	if c.Lang != "" {
+		args = append(args, "--lang", c.Lang)
+	}
+
+	return args
 }
 
 type ChaincodeInstantiate struct {
@@ -114,6 +121,7 @@ type ChaincodeInstantiate struct {
 	Version           string
 	Ctor              string
 	Policy            string
+	Lang              string
 	CollectionsConfig string
 }
 
@@ -134,6 +142,11 @@ func (c ChaincodeInstantiate) Args() []string {
 	if c.CollectionsConfig != "" {
 		args = append(args, "--collections-config", c.CollectionsConfig)
 	}
+
+	if c.Lang != "" {
+		args = append(args, "--lang", c.Lang)
+	}
+
 	return args
 }
 

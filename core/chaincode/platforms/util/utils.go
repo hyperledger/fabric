@@ -240,6 +240,8 @@ func DockerBuild(opts DockerBuildOptions) error {
 		return fmt.Errorf("Error returned from build: %d \"%s\"", retval, stdout.String())
 	}
 
+	logger.Debugf("Build output is %s", stdout.String())
+
 	//-----------------------------------------------------------------------------------
 	// Finally, download the result
 	//-----------------------------------------------------------------------------------
