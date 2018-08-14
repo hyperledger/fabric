@@ -108,8 +108,7 @@ The optional ``-i`` option allows one to specify an instantiation policy
 for the chaincode. The instantiation policy has the same format as an
 endorsement policy and specifies which identities can instantiate the
 chaincode. In the example above, only the admin of OrgA is allowed to
-instantiate the chaincode. If no policy is provided, the default policy
-is used, which only allows the admin identity of the peer's MSP to
+instantiate the chaincode. If no policy is provided, peer-cli will add the policy ``"AND('" + mspid + ".admin')"`` into the signCDS, which only allows the admin identity of the current peer-cli's localMSP to
 instantiate chaincode.
 
 Package signing
@@ -266,7 +265,7 @@ at a time, the channel to which the transaction is submitted.
 
 There's one subtle difference with the ``instantiate`` transaction: the
 ``upgrade`` transaction is checked against the current chaincode instantiation
-policy, not the new policy (if specified). This is to ensure that only existing
+policy and the new policy (if specified). This is to ensure that only existing
 members specified in the current instantiation policy may upgrade the chaincode.
 
 .. note:: Note that during upgrade, the chaincode ``Init`` function is called to
