@@ -49,7 +49,7 @@ func addFlags(cmd *cobra.Command) {
 func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	addFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(installCmd(cf))
+	chaincodeCmd.AddCommand(installCmd(cf, nil))
 	chaincodeCmd.AddCommand(instantiateCmd(cf))
 	chaincodeCmd.AddCommand(invokeCmd(cf))
 	chaincodeCmd.AddCommand(packageCmd(cf, nil))
@@ -84,6 +84,7 @@ var (
 	connectionProfile     string
 	waitForEvent          bool
 	waitForEventTimeout   time.Duration
+	newLifecycle          bool
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -142,6 +143,7 @@ func resetFlags() {
 		fmt.Sprint("Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
 	flags.DurationVar(&waitForEventTimeout, "waitForEventTimeout", 30*time.Second,
 		fmt.Sprint("Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
+	flags.BoolVarP(&newLifecycle, "newLifecycle", "N", false, "Run command using +lifecycle")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {
