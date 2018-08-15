@@ -45,15 +45,15 @@
   revision = "cd527374f1e5bff4938207604a14f2e38a9cf512"
 
 [[projects]]
-  digest = "1:90a8a2a653a9b8d07a1e095a6dda29d6d8917014b44726f2aab487937e04a73b"
+  digest = "1:328f1cc93e91a3fb11d501fd4f3167f5a3903f50caf55edd6ed4e44a70ffaee1"
   name = "github.com/Shopify/sarama"
   packages = [
     ".",
     "mocks",
   ]
   pruneopts = "NUT"
-  revision = "f7be6aa2bc7b2e38edf816b08b582782194a1c02"
-  version = "v1.16.0"
+  revision = "35324cf48e33d8260e1c7c18854465a904ade249"
+  version = "v1.17.0"
 
 [[projects]]
   branch = "master"
