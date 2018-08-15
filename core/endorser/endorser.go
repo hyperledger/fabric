@@ -192,57 +192,6 @@ func (e *Endorser) SanitizeUserCDS(userCDS *pb.ChaincodeDeploymentSpec) (*pb.Cha
 	return sanitizedCDS, nil
 }
 
-// TO BE REMOVED WHEN JAVA CC IS ENABLED
-// disableJavaCCInst if trying to install, instantiate or upgrade Java CC
-func (e *Endorser) DisableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvocationSpec) error {
-	// if not lscc we don't care
-	if cid.Name != "lscc" {
-		return nil
-	}
-
-	// non-nil spec ? leave it to callers to handle error if this is an error
-	if cis.ChaincodeSpec == nil || cis.ChaincodeSpec.Input == nil {
-		return nil
-	}
-
-	// should at least have a command arg, leave it to callers if this is an error
-	if len(cis.ChaincodeSpec.Input.Args) < 1 {
-		return nil
-	}
-
-	var argNo int
-	switch string(cis.ChaincodeSpec.Input.Args[0]) {
-	case "install":
-		argNo = 1
-	case "deploy", "upgrade":
-		argNo = 2
-	default:
-		// what else can it be ? leave it caller to handle it if error
-		return nil
-	}
-
-	if argNo >= len(cis.ChaincodeSpec.Input.Args) {
-		return errors.Errorf("too few arguments passed. expected %d", argNo)
-	}
-
-	if JavaEnabled() {
-		endorserLogger.Debug("java chaincode enabled")
-	} else {
-		endorserLogger.Debug("java chaincode disabled")
-		// finally, if JAVA not enabled error out
-		isjava, err := e.s.IsJavaCC(cis.ChaincodeSpec.Input.Args[argNo])
-		if err != nil {
-			return err
-		}
-		if isjava {
-			return errors.New("Java chaincode is work-in-progress and disabled")
-		}
-	}
-
-	// not a java install, instantiate or upgrade op
-	return nil
-}
-
 // SimulateProposal simulates the proposal by calling the chaincode
 func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid *pb.ChaincodeID) (ccprovider.ChaincodeDefinition, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), cid)
@@ -252,11 +201,6 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 	// as something that should change
 	cis, err := putils.GetChaincodeInvocationSpec(txParams.Proposal)
 	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	// disable Java install,instantiate,upgrade for now
-	if err = e.DisableJavaCCInst(cid, cis); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
