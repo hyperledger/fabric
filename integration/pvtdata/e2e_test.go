@@ -41,7 +41,7 @@ var _ = Describe("PrivateData-EndToEnd", func() {
 	// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
 	// when calling QueryChaincode with first arg "readMarble", it will query collectionMarbles[1]
 	// when calling QueryChaincode with first arg "readMarblePrivateDetails", it will query collectionMarblePrivateDetails[2]
-	Describe("collection config is modified", func() {
+	PDescribe("collection config is modified", func() {
 		BeforeEach(func() {
 			var err error
 			testDir, err = ioutil.TempDir("", "e2e-pvtdata")
