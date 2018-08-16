@@ -15,7 +15,7 @@ has registered and enrolled with the organization’s certificate authority (CA)
 and received back necessary cryptographic material, which is used to authenticate
 to the network.
 
-The chaincode (containing a set of key value pairs representing the initial
+The ledger (containing a set of key value pairs representing the initial
 state of the radish market) is installed on the peers and instantiated on the
 channel.  The chaincode contains logic defining a set of transaction
 instructions and the agreed upon price for a radish. An endorsement policy has
