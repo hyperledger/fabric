@@ -1,18 +1,9 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package pkcs11
 
 import (
@@ -95,14 +86,13 @@ type PKCS11Opts struct {
 	Library    string `mapstructure:"library" json:"library"`
 	Label      string `mapstructure:"label" json:"label"`
 	Pin        string `mapstructure:"pin" json:"pin"`
-	Sensitive  bool   `mapstructure:"sensitivekeys,omitempty" json:"sensitivekeys,omitempty"`
 	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
 }
 
-// Since currently only ECDSA operations go to PKCS11, need a keystore still
-// Pluggable Keystores, could add JKS, P12, etc..
+// FileKeystoreOpts is needed for File Based Key Store. Since currently only ECDSA operations // go to PKCS11, need a keystore still Pluggable Keystores, could add JKS, P12, etc..
 type FileKeystoreOpts struct {
 	KeyStorePath string `mapstructure:"keystore" json:"keystore" yaml:"KeyStore"`
 }
 
+// DummyKeystoreOpts is placeholder for testing purposes
 type DummyKeystoreOpts struct{}
