@@ -891,6 +891,61 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	stub.MockTransactionEnd("foo")
 }
 
+func TestGetChaincodeCollectionData(t *testing.T) {
+	scc := New(NewMockProvider(), mockAclProvider, platforms.NewRegistry(&golang.Platform{}))
+	stub := shim.NewMockStub("lscc", scc)
+	stub.ChannelID = "test"
+	scc.Support = &lscc.MockSupport{}
+
+	cd := &ccprovider.ChaincodeData{Name: "foo"}
+
+	collName1 := "mycollection1"
+	policyEnvelope := &common.SignaturePolicyEnvelope{}
+	coll1 := createCollectionConfig(collName1, policyEnvelope, 1, 2)
+	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	stub.MockTransactionStart("foo")
+	err = scc.putChaincodeCollectionData(stub, cd, ccpBytes)
+	assert.NoError(t, err)
+	stub.MockTransactionEnd("foo")
+
+	res := stub.MockInit("1", nil)
+	assert.Equal(t, int32(shim.OK), res.Status, res.Message)
+
+	for _, function := range []string{"GetCollectionsConfig", "getcollectionsconfig"} {
+		sProp, _ := utils.MockSignedEndorserProposalOrPanic("test", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
+		sProp.Signature = sProp.ProposalBytes
+
+		t.Run("invalid number of arguments", func(t *testing.T) {
+			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo", "bar"), nil)
+			assert.NotEqual(t, int32(shim.OK), res.Status)
+			assert.Equal(t, "invalid number of arguments to lscc: 3", res.Message)
+		})
+		t.Run("invalid identity", func(t *testing.T) {
+			mockAclProvider.Reset()
+			mockAclProvider.On("CheckACL", resources.Lscc_GetCollectionsConfig, "test", sProp).Return(errors.New("acl check failed"))
+			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo"), sProp)
+			assert.NotEqual(t, int32(shim.OK), res.Status)
+			assert.Contains(t, res.Message, "access denied for ["+function+"]")
+		})
+		t.Run("non-exists collections config", func(t *testing.T) {
+			mockAclProvider.Reset()
+			mockAclProvider.On("CheckACL", resources.Lscc_GetCollectionsConfig, "test", sProp).Return(nil)
+			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "bar"), sProp)
+			assert.NotEqual(t, int32(shim.OK), res.Status)
+			assert.Equal(t, res.Message, "collections config not defined for chaincode bar")
+		})
+		t.Run("Success", func(t *testing.T) {
+			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo"), sProp)
+			assert.Equal(t, int32(shim.OK), res.Status)
+			assert.NotNil(t, res.Payload)
+		})
+	}
+}
+
 func TestCheckCollectionMemberPolicy(t *testing.T) {
 	// error case: no msp manager set, no collection config set
 	err := checkCollectionMemberPolicy(nil, nil)

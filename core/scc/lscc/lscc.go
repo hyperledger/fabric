@@ -86,6 +86,12 @@ const (
 	// GETINSTALLEDCHAINCODESALIAS gets the installed chaincodes on a peer
 	GETINSTALLEDCHAINCODESALIAS = "GetInstalledChaincodes"
 
+	// GETCOLLECTIONSCONFIG gets the collections config for a chaincode
+	GETCOLLECTIONSCONFIG = "GetCollectionsConfig"
+
+	// GETCOLLECTIONSCONFIGALIAS gets the collections config for a chaincode
+	GETCOLLECTIONSCONFIGALIAS = "getcollectionsconfig"
+
 	allowedChaincodeName = "^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$"
 	allowedCharsVersion  = "[A-Za-z0-9_.+-]+"
 )
@@ -334,6 +340,19 @@ func (lscc *LifeCycleSysCC) putChaincodeCollectionData(stub shim.ChaincodeStubIn
 	}
 
 	return nil
+}
+
+// getChaincodeCollectionData retrieve collections config.
+func (lscc *LifeCycleSysCC) getChaincodeCollectionData(stub shim.ChaincodeStubInterface, chaincodeName string) pb.Response {
+	key := privdata.BuildCollectionKVSKey(chaincodeName)
+	collectionsConfigBytes, err := stub.GetState(key)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if len(collectionsConfigBytes) == 0 {
+		return shim.Error(fmt.Sprintf("collections config not defined for chaincode %s", chaincodeName))
+	}
+	return shim.Success(collectionsConfigBytes)
 }
 
 //checks for existence of chaincode on the given channel
@@ -960,6 +979,20 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		return lscc.getInstalledChaincodes()
+	case GETCOLLECTIONSCONFIG, GETCOLLECTIONSCONFIGALIAS:
+		if len(args) != 2 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+
+		chaincodeName := string(args[1])
+
+		logger.Debugf("GetCollectionsConfig, chaincodeName:%s, start to check ACL for current identity policy", chaincodeName)
+		if err = lscc.ACLProvider.CheckACL(resources.Lscc_GetCollectionsConfig, stub.GetChannelID(), sp); err != nil {
+			logger.Debugf("ACL Check Failed for channel:%s, chaincode:%s", stub.GetChannelID(), chaincodeName)
+			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", function, err))
+		}
+
+		return lscc.getChaincodeCollectionData(stub, chaincodeName)
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())

@@ -20,6 +20,7 @@ const (
 	Lscc_GetChaincodeData          = "lscc/GetChaincodeData"
 	Lscc_GetInstantiatedChaincodes = "lscc/GetInstantiatedChaincodes"
 	Lscc_GetInstalledChaincodes    = "lscc/GetInstalledChaincodes"
+	Lscc_GetCollectionsConfig      = "lscc/GetCollectionsConfig"
 
 	//Qscc resources
 	Qscc_GetChainInfo       = "qscc/GetChainInfo"
