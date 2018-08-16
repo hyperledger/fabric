@@ -73,7 +73,7 @@ are considered to be the members of a blockchain network. For example, only
 identities from the `ORG1-MANUFACTURING` OU might be able to access a channel,
 whereas `ORG1-DISTRIBUTION` cannot.
 
-Finally, though this is a slight misuse of OUs, they can sometimes be used by
+Finally, they can sometimes be used by
 different organizations in a consortium to distinguish each other. In such cases, the
 different organizations use the same Root CAs and Intermediate CAs for their chain
 of trust, but assign the `OU` field to identify members of each organization.
