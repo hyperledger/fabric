@@ -44,7 +44,7 @@ var _ = Describe("EndToEnd-JavaCC", func() {
 
 	AfterEach(func() {
 		if process != nil {
-			process.Signal(syscall.SIGTERM)
+			process.Signal(syscall.SIGILL)
 			Eventually(process.Wait(), time.Minute).Should(Receive())
 		}
 		if network != nil {
@@ -88,20 +88,61 @@ var _ = Describe("EndToEnd-JavaCC", func() {
 
 			RunQueryInvokeQuery(network, orderer, peer)
 		})
+		It("support for private data in java chaincode", func() {
+			chaincode = nwo.Chaincode{
+				Name:              "mycc",
+				Version:           "0.0",
+				Path:              "../chaincode/java/simple_pvtdata/gradle/",
+				Ctor:              `{"Args":["init","a","100","b","200"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member')`,
+				Lang:              "java",
+				CollectionsConfig: "testdata/collection_config.json",
+			}
+
+			By("getting the orderer by name")
+			orderer := network.Orderer("orderer")
+
+			By("setting up the channel")
+			network.CreateAndJoinChannel(orderer, "testchannel")
+
+			By("deploying the chaincode")
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			By("getting the client peer by name")
+			peer := network.Peer("Org1", "peer0")
+
+			RunQueryInvokeQuery(network, orderer, peer)
+		})
 	})
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
-	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	By("invoking the chaincode - 1")
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: "testchannel",
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      "mycc",
+		Ctor:      `{"Args":["invoke","a","b","10"]}`,
+		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+
+	By("querying the chaincode - 1")
+	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say("100"))
+	Expect(sess).To(gbytes.Say("90"))
 
+	By("invoking the chaincode - 2")
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
@@ -116,12 +157,13 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
+	By("querying the chaincode - 2")
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
-		Ctor:      `{"Args":["query","a"]}`,
+		Ctor:      `{"Args":["query","b"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say("90"))
+	Expect(sess).To(gbytes.Say("220"))
 }
