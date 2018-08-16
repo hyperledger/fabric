@@ -3,7 +3,8 @@
 ## What is a Fabric Network?
 A Fabric permissioned blockchain network is a technical infrastructure that provides ledger services to application consumers and administrators. In most
 cases, multiple [organizations](../glossary.html#organization) come together as a [consortium](../glossary.html#consortium) to form the network and their permissions are determined by a set of [policies](../glossary.html#policy) that are agreed to by the
-the consortium when the network is originally configured. Moreover, network policies
+consortium when the network is originally configured. Moreover, network policies
+
 can change over time subject to the agreement of the organizations in the consortium.
 
 This document will take you through the decisions that organizations will need to make to configure and deploy a Hyperledger Fabric network, form channels to transact within the network, and how to update those decisions within the life of the network. You will also learn how those decisions are embedded in the architecture and components of Hyperledger Fabric.
