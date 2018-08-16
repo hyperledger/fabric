@@ -5,7 +5,7 @@ you've seen how a PKI can provide verifiable identities through a chain
 of trust. Now let's see how these identities can be used to represent the
 trusted members of a blockchain network.
 
-This is where a **Membership Service** Provider (MSP) comes into play ---
+This is where a **Membership Service Provider** (MSP) comes into play ---
 **it identifies which Root CAs and Intermediate CAs are trusted to define
 the members of a trust domain, e.g., an organization**, either by listing the
 identities of their members, or by identifying which CAs are authorized to
