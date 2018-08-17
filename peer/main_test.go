@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -48,7 +49,7 @@ func TestPluginLoadingFailure(t *testing.T) {
 
 			sess, err := gexec.Start(cmd, nil, nil)
 			gt.Expect(err).NotTo(HaveOccurred())
-			gt.Eventually(sess).Should(gexec.Exit(2))
+			gt.Eventually(sess, time.Minute).Should(gexec.Exit(2))
 
 			gt.Expect(sess.Err).To(gbytes.Say("panic: Error opening plugin at path testdata/invalid_plugins/invalidplugin.so"))
 			gt.Expect(sess.Err).To(gbytes.Say("plugin.Open"))
