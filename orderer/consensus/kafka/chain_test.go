@@ -447,6 +447,161 @@ func TestChain(t *testing.T) {
 	})
 }
 
+func TestSetupTopicForChannel(t *testing.T) {
+
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
+	haltChan := make(chan struct{})
+
+	mockBrokerNoError := sarama.NewMockBroker(t, 0)
+	defer mockBrokerNoError.Close()
+	metadataResponse := sarama.NewMockMetadataResponse(t)
+	metadataResponse.SetBroker(mockBrokerNoError.Addr(),
+		mockBrokerNoError.BrokerID())
+	metadataResponse.SetController(mockBrokerNoError.BrokerID())
+
+	mdrUnknownTopicOrPartition := &sarama.MetadataResponse{
+		Version:      1,
+		Brokers:      []*sarama.Broker{sarama.NewBroker(mockBrokerNoError.Addr())},
+		ControllerID: -1,
+		Topics: []*sarama.TopicMetadata{
+			{
+				Err:  sarama.ErrUnknownTopicOrPartition,
+				Name: mockChannel.topic(),
+			},
+		},
+	}
+
+	mockBrokerNoError.SetHandlerByMap(map[string]sarama.MockResponse{
+		"CreateTopicsRequest": sarama.NewMockWrapper(
+			&sarama.CreateTopicsResponse{
+				TopicErrors: map[string]*sarama.TopicError{
+					mockChannel.topic(): {
+						Err: sarama.ErrNoError}}}),
+		"MetadataRequest": sarama.NewMockWrapper(mdrUnknownTopicOrPartition)})
+
+	mockBrokerTopicExists := sarama.NewMockBroker(t, 1)
+	defer mockBrokerTopicExists.Close()
+	mockBrokerTopicExists.SetHandlerByMap(map[string]sarama.MockResponse{
+		"CreateTopicsRequest": sarama.NewMockWrapper(
+			&sarama.CreateTopicsResponse{
+				TopicErrors: map[string]*sarama.TopicError{
+					mockChannel.topic(): {
+						Err: sarama.ErrTopicAlreadyExists}}}),
+		"MetadataRequest": sarama.NewMockWrapper(&sarama.MetadataResponse{
+			Version: 1,
+			Topics: []*sarama.TopicMetadata{
+				{
+					Name: channelNameForTest(t),
+					Err:  sarama.ErrNoError}}})})
+
+	mockBrokerInvalidTopic := sarama.NewMockBroker(t, 2)
+	defer mockBrokerInvalidTopic.Close()
+	metadataResponse = sarama.NewMockMetadataResponse(t)
+	metadataResponse.SetBroker(mockBrokerInvalidTopic.Addr(),
+		mockBrokerInvalidTopic.BrokerID())
+	metadataResponse.SetController(mockBrokerInvalidTopic.BrokerID())
+	mockBrokerInvalidTopic.SetHandlerByMap(map[string]sarama.MockResponse{
+		"CreateTopicsRequest": sarama.NewMockWrapper(
+			&sarama.CreateTopicsResponse{
+				TopicErrors: map[string]*sarama.TopicError{
+					mockChannel.topic(): {
+						Err: sarama.ErrInvalidTopic}}}),
+		"MetadataRequest": metadataResponse})
+
+	mockBrokerInvalidTopic2 := sarama.NewMockBroker(t, 3)
+	defer mockBrokerInvalidTopic2.Close()
+	mockBrokerInvalidTopic2.SetHandlerByMap(map[string]sarama.MockResponse{
+		"CreateTopicsRequest": sarama.NewMockWrapper(
+			&sarama.CreateTopicsResponse{
+				TopicErrors: map[string]*sarama.TopicError{
+					mockChannel.topic(): {
+						Err: sarama.ErrInvalidTopic}}}),
+		"MetadataRequest": sarama.NewMockWrapper(&sarama.MetadataResponse{
+			Version:      1,
+			Brokers:      []*sarama.Broker{sarama.NewBroker(mockBrokerInvalidTopic2.Addr())},
+			ControllerID: mockBrokerInvalidTopic2.BrokerID()})})
+
+	closedBroker := sarama.NewMockBroker(t, 99)
+	badAddress := closedBroker.Addr()
+	closedBroker.Close()
+
+	var tests = []struct {
+		name         string
+		brokers      []string
+		brokerConfig *sarama.Config
+		version      sarama.KafkaVersion
+		expectErr    bool
+		errorMsg     string
+	}{
+		{
+			name:         "Unsupported Version",
+			brokers:      []string{mockBrokerNoError.Addr()},
+			brokerConfig: sarama.NewConfig(),
+			version:      sarama.V0_9_0_0,
+			expectErr:    false,
+		},
+		{
+			name:         "No Error",
+			brokers:      []string{mockBrokerNoError.Addr()},
+			brokerConfig: sarama.NewConfig(),
+			version:      sarama.V0_10_2_0,
+			expectErr:    false,
+		},
+		{
+			name:         "Topic Exists",
+			brokers:      []string{mockBrokerTopicExists.Addr()},
+			brokerConfig: sarama.NewConfig(),
+			version:      sarama.V0_10_2_0,
+			expectErr:    false,
+		},
+		{
+			name:         "Invalid Topic",
+			brokers:      []string{mockBrokerInvalidTopic.Addr()},
+			brokerConfig: sarama.NewConfig(),
+			version:      sarama.V0_10_2_0,
+			expectErr:    true,
+			errorMsg:     "process asked to exit",
+		},
+		{
+			name:         "Multiple Brokers - One No Error",
+			brokers:      []string{badAddress, mockBrokerNoError.Addr()},
+			brokerConfig: sarama.NewConfig(),
+			version:      sarama.V0_10_2_0,
+			expectErr:    false,
+		},
+		{
+			name:         "Multiple Brokers - All Errors",
+			brokers:      []string{badAddress, badAddress},
+			brokerConfig: sarama.NewConfig(),
+			version:      sarama.V0_10_2_0,
+			expectErr:    true,
+			errorMsg:     "failed to retrieve metadata",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			test.brokerConfig.Version = test.version
+			err := setupTopicForChannel(
+				mockRetryOptions,
+				haltChan,
+				test.brokers,
+				test.brokerConfig,
+				&sarama.TopicDetail{
+					NumPartitions:     1,
+					ReplicationFactor: 2},
+				mockChannel)
+			if test.expectErr {
+				assert.Contains(t, err.Error(), test.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+
+}
+
 func TestSetupProducerForChannel(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -577,7 +732,7 @@ func TestCloseKafkaObjects(t *testing.T) {
 
 		assert.Len(t, errs, 0, "Expected zero errors")
 
-		assert.Panics(t, func() {
+		assert.NotPanics(t, func() {
 			channelConsumer.Close()
 		})
 

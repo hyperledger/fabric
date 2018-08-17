@@ -67,6 +67,10 @@ type OrdererAuthentication struct {
 	TimeWindow time.Duration `yaml:"TimeWindow,omitempty"`
 }
 
+type OrdererTopic struct {
+	ReplicationFactor int16
+}
+
 type FileLedger struct {
 	Location string `yaml:"Location,omitempty"`
 	Prefix   string `yaml:"Prefix,omitempty"`
@@ -81,6 +85,7 @@ type Kafka struct {
 	Verbose   bool              `yaml:"Verbose"`
 	TLS       *OrdererTLS       `yaml:"TLS,omitempty"`
 	SASLPlain *OrdererSASLPlain `yaml:"SASLPlain,omitempty"`
+	Topic     *OrdererTopic     `yaml:"Topic,omitempty"`
 }
 
 type Retry struct {

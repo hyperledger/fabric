@@ -70,6 +70,7 @@ func (rp *retryProcess) try(interval, total time.Duration) (err error) {
 	for {
 		select {
 		case <-rp.exit:
+			fmt.Println("exit channel")
 			exitErr := fmt.Errorf("[channel: %s] process asked to exit", rp.channel.topic())
 			logger.Warning(exitErr.Error()) // Log it at the warning level
 			return exitErr

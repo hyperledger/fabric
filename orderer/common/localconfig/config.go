@@ -110,6 +110,7 @@ type Kafka struct {
 	Version   sarama.KafkaVersion // TODO Move this to global config
 	TLS       TLS
 	SASLPlain SASLPlain
+	Topic     Topic
 }
 
 // Retry contains configuration related to retries and timeouts when the
@@ -153,6 +154,11 @@ type Producer struct {
 // read from a Kafa partition.
 type Consumer struct {
 	RetryBackoff time.Duration
+}
+
+// Topic contains the settings to use when creating Kafka topics
+type Topic struct {
+	ReplicationFactor int16
 }
 
 // Debug contains configuration for the orderer's debug parameters.
@@ -218,6 +224,9 @@ var Defaults = TopLevel{
 		Version: sarama.V0_10_2_0,
 		TLS: TLS{
 			Enabled: false,
+		},
+		Topic: Topic{
+			ReplicationFactor: 3,
 		},
 	},
 	Debug: Debug{
