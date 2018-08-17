@@ -140,7 +140,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 
 	channelGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specificiations for the channel group in configtx.yaml")
+		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the channel group in configtx.yaml")
 		addImplicitMetaPolicyDefaults(channelGroup)
 	} else {
 		if err := addPolicies(channelGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
@@ -190,7 +190,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specificiations for the orderer group in configtx.yaml")
+		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer group in configtx.yaml")
 		addImplicitMetaPolicyDefaults(ordererGroup)
 	} else {
 		if err := addPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
@@ -252,7 +252,7 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 
 	ordererOrgGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specificiations for the orderer org group %s in configtx.yaml", conf.Name)
+		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer org group %s in configtx.yaml", conf.Name)
 		addSignaturePolicyDefaults(ordererOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
 	} else {
 		if err := addPolicies(ordererOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
@@ -271,7 +271,7 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 func NewApplicationGroup(conf *genesisconfig.Application) (*cb.ConfigGroup, error) {
 	applicationGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specificiations for the application group in configtx.yaml")
+		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the application group in configtx.yaml")
 		addImplicitMetaPolicyDefaults(applicationGroup)
 	} else {
 		if err := addPolicies(applicationGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
@@ -309,7 +309,7 @@ func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, 
 
 	applicationOrgGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
-		logger.Warningf("Default policy emission is deprecated, please include policy specificiations for the application org group %s in configtx.yaml", conf.Name)
+		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the application org group %s in configtx.yaml", conf.Name)
 		addSignaturePolicyDefaults(applicationOrgGroup, conf.ID, conf.AdminPrincipal != genesisconfig.AdminRoleAdminPrincipal)
 	} else {
 		if err := addPolicies(applicationOrgGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
