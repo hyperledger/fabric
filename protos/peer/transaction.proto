@@ -141,3 +141,8 @@ enum TxValidationCode {
 	NOT_VALIDATED = 254;
 	INVALID_OTHER_REASON = 255;
 }
+
+// Reserved entries in the key-level metadata map
+enum MetaDataKeys {
+	VALIDATION_PARAMETER = 0;
+}
