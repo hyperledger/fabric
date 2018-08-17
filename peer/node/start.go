@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
@@ -627,6 +628,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 
 	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
 	lsccInst := lscc.New(sccp, aclProvider, pr)
+	lifecycleSCC := &lifecycle.SCC{}
 
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
@@ -660,7 +662,7 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 
 	//Now that chaincode is initialized, register all system chaincodes.
 	sccs := scc.CreatePluginSysCCs(sccp)
-	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst}, sccs...) {
+	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
 		sccp.RegisterSysCC(cc)
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
