@@ -126,7 +126,7 @@ private data collections **(PDC)** can be defined to share private data between:
 ![private-data.private-data](./PrivateDataConcept-1.png)
 
 Using this example, peers owned by the **Distributor** will have multiple private
-private databases inside their ledger which includes the private data from the
+databases inside their ledger which includes the private data from the
 **Distributor**, **Farmer** and **Shipper** relationship and the
 **Distributor** and **Wholesaler** relationship. Because these databases are kept
 separate from the database that holds the channel ledger, private data is

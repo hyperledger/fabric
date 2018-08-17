@@ -249,7 +249,7 @@ to use with a simple smart contract and application.
 
 * :doc:`txflow`
 
-A high level look look at a sample transaction flow.
+A high level look at a sample transaction flow.
 
 * :doc:`fabric_model`
 
