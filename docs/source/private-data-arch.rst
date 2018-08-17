@@ -1,7 +1,7 @@
 Private Data
 ============
 
-.. note:: This topic assumes an understand of the conceptual material in the
+.. note:: This topic assumes an understanding of the conceptual material in the
           `documentation on private data <private-data/private-data.html>`_.
 
 Private data collection definition
