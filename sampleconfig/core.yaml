@@ -14,7 +14,7 @@ logging:
 
     # Valid logging levels are case-insensitive strings chosen from
 
-    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+    #     FATAL | PANIC | ERROR | WARNING | INFO | DEBUG
 
     # The overall default logging level can be specified in various ways,
     # listed below from strongest to weakest:
