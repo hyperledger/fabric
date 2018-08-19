@@ -275,6 +275,14 @@
   version = "v1.6.1"
 
 [[projects]]
+  digest = "1:1b497700cbc61544430babb4e4fd4313758bb9fec7144ca50c625fa6ce8266c7"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "c250d6563d4d4c20252cd865923440e829844f4e"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:b02943d3542f3fcb6faa4723b4e4f879d7fc166451e24f72c449de9a3be50e3c"
   name = "github.com/hashicorp/go-version"
@@ -845,6 +853,7 @@
     "github.com/golang/protobuf/ptypes/empty",
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/gorilla/mux",
+    "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/hashicorp/go-version",
     "github.com/hyperledger/fabric-amcl/amcl",
     "github.com/hyperledger/fabric-amcl/amcl/FP256BN",
@@ -887,11 +896,13 @@
     "golang.org/x/net/context",
     "golang.org/x/sync/semaphore",
     "google.golang.org/grpc",
+    "google.golang.org/grpc/codes",
     "google.golang.org/grpc/credentials",
     "google.golang.org/grpc/grpclog",
     "google.golang.org/grpc/keepalive",
     "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/peer",
+    "google.golang.org/grpc/status",
     "google.golang.org/grpc/transport",
     "gopkg.in/alecthomas/kingpin.v2",
     "gopkg.in/cheggaaa/pb.v1",

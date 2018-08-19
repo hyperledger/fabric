@@ -50,6 +50,12 @@ type ServerConfig struct {
 	SecOpts *SecureOptions
 	// KaOpts defines the keepalive parameters
 	KaOpts *KeepaliveOptions
+	// StreamInterceptors specifies a list of interceptors to apply to
+	// streaming RPCs.  They are executed in order.
+	StreamInterceptors []grpc.StreamServerInterceptor
+	// UnaryInterceptors specifies a list of interceptors to apply to unary
+	// RPCs.  They are executed in order.
+	UnaryInterceptors []grpc.UnaryServerInterceptor
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance

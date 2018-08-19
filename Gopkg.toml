@@ -12,6 +12,10 @@ required = [
 ignored = [
 ]
 
+noverify = [
+    "github.com/grpc-ecosystem/go-grpc-middleware"
+]
+
 [[constraint]]
   name = "github.com/Knetic/govaluate"
   version = "3.0.0"
@@ -158,7 +162,10 @@ ignored = [
       name = "github.com/coreos/etcd"
       non-go = false
 
-
 [[constraint]]
   name = "go.uber.org/zap"
   version = "1.9.0"
+
+[[constraint]]
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  version = "1.0.0"
