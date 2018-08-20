@@ -346,8 +346,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 			ccpack, err := GetChaincodeFromFS(ccname, ccversion)
 			if err != nil {
 				// either chaincode on filesystem has been tampered with or
-				// a non-chaincode file has been found in the chaincodes directory
-				ccproviderLogger.Errorf("Unreadable chaincode file found on filesystem: %s", file.Name())
+				// +lifecycle chaincode files exist in the chaincodes directory.
 				continue
 			}
 
