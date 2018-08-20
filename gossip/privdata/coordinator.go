@@ -223,13 +223,14 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	// populate missing RWSets to be passed to the ledger
+	blockAndPvtData.Missing = &ledger.MissingPrivateDataList{}
 	for missingRWS := range privateInfo.missingKeys {
-		blockAndPvtData.Missing = append(blockAndPvtData.Missing, constructMissingPvtData(&missingRWS, true))
+		blockAndPvtData.Missing.Add(missingRWS.txID, missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, true)
 	}
 
 	// populate missing RWSets for ineligible collections to be passed to the ledger
 	for _, missingRWS := range privateInfo.missingRWSButIneligible {
-		blockAndPvtData.Missing = append(blockAndPvtData.Missing, constructMissingPvtData(&missingRWS, false))
+		blockAndPvtData.Missing.Add(missingRWS.txID, missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, false)
 	}
 
 	// commit block and private data
@@ -254,16 +255,6 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	return nil
-}
-
-func constructMissingPvtData(missingRWS *rwSetKey, eligible bool) *ledger.MissingPrivateData {
-	return &ledger.MissingPrivateData{
-		TxId:       missingRWS.txID,
-		Namespace:  missingRWS.namespace,
-		Collection: missingRWS.collection,
-		SeqInBlock: int(missingRWS.seqInBlock),
-		Eligible:   eligible,
-	}
 }
 
 func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][]byte, privateInfo *privateDataInfo) {

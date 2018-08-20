@@ -11,13 +11,18 @@ option go_package = "github.com/hyperledger/fabric/core/ledger/pvtdatastorage";
 package pvtdatastorage;
 
 message ExpiryData {
-    map<string, Collections>  map = 1;
+	map<string, Collections>  map = 1;
 }
 
 message Collections {
-    map<string, TxNums> map = 1;
+	// for pvt data, there would be an
+	// entry in TxNums
+	map<string, TxNums> map = 1;
+	// for any number of missing pvt data of a collection,
+	// there would be an entry in the map
+	map<string, bool> missingDataMap = 2;
 }
 
 message TxNums {
-    repeated uint64 list = 1;
+	repeated uint64 list = 1;
 }

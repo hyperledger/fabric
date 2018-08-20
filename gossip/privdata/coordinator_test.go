@@ -1138,13 +1138,9 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
 		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
 		missingPrivateData := blockAndPrivateData.Missing
-		assert.Equal(t, []*ledger.MissingPrivateData{{
-			SeqInBlock: 0,
-			Collection: "c2",
-			Namespace:  "ns3",
-			TxId:       "tx1",
-			Eligible:   true,
-		}}, missingPrivateData)
+		expectedMissingPvtData := &ledger.MissingPrivateDataList{}
+		expectedMissingPvtData.Add("tx1", 0, "ns3", "c2", true)
+		assert.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
 	}).Return(nil)
 	purgedTxns := make(map[string]struct{})
@@ -1227,13 +1223,9 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
 		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData3))
 		missingPrivateData := blockAndPrivateData.Missing
-		assert.Equal(t, &ledger.MissingPrivateData{
-			SeqInBlock: 0,
-			Collection: "c2",
-			Namespace:  "ns3",
-			TxId:       "tx1",
-			Eligible:   false,
-		}, missingPrivateData[0])
+		expectedMissingPvtData := &ledger.MissingPrivateDataList{}
+		expectedMissingPvtData.Add("tx1", 0, "ns3", "c2", false)
+		assert.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
 	}).Return(nil)
 

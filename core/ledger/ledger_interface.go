@@ -191,10 +191,14 @@ type TxPvtData struct {
 // to the ledger at the commit of the corresponding block
 type MissingPrivateData struct {
 	TxId       string
-	SeqInBlock int
+	SeqInBlock uint64
 	Namespace  string
 	Collection string
-	Eligible   bool
+	IsEligible bool
+}
+
+type MissingPrivateDataList struct {
+	List []*MissingPrivateData
 }
 
 // BlockAndPvtData encapsulates the block and a map that contains the tuples <seqInBlock, *TxPvtData>
@@ -202,13 +206,17 @@ type MissingPrivateData struct {
 type BlockAndPvtData struct {
 	Block        *common.Block
 	BlockPvtData map[uint64]*TxPvtData
-	Missing      []*MissingPrivateData
+	Missing      *MissingPrivateDataList
 }
 
 // BlockPvtData contains the private data for a block
 type BlockPvtData struct {
 	BlockNum  uint64
 	WriteSets map[uint64]*TxPvtData
+}
+
+func (missing *MissingPrivateDataList) Add(txId string, txNum uint64, ns, coll string, isEligible bool) {
+	missing.List = append(missing.List, &MissingPrivateData{txId, txNum, ns, coll, isEligible})
 }
 
 // PvtCollFilter represents the set of the collection names (as keys of the map with value 'true')
@@ -323,13 +331,30 @@ type MissingBlockPvtdataInfo map[uint64][]*MissingCollectionPvtDataInfo
 
 // MissingCollectionPvtDataInfo includes the name of the chaincode and collection for which private data is missing
 type MissingCollectionPvtDataInfo struct {
-	ChaincodeName, CollectionName string
+	Namespace, Collection string
 }
 
 // CollectionConfigInfo encapsulates a collection config for a chaincode and its committing block number
 type CollectionConfigInfo struct {
 	CollectionConfig   *common.CollectionConfigPackage
 	CommittingBlockNum uint64
+}
+
+func (missingPvtDataInfo MissingPvtDataInfo) Add(blkNum, txNum uint64, ns, coll string) {
+	missingBlockPvtDataInfo, ok := missingPvtDataInfo[blkNum]
+	if !ok {
+		missingBlockPvtDataInfo = make(MissingBlockPvtdataInfo)
+		missingPvtDataInfo[blkNum] = missingBlockPvtDataInfo
+	}
+
+	if _, ok := missingBlockPvtDataInfo[txNum]; !ok {
+		missingBlockPvtDataInfo[txNum] = []*MissingCollectionPvtDataInfo{}
+	}
+
+	missingBlockPvtDataInfo[txNum] = append(missingBlockPvtDataInfo[txNum],
+		&MissingCollectionPvtDataInfo{
+			Namespace:  ns,
+			Collection: coll})
 }
 
 // ErrCollectionConfigNotYetAvailable is an error which is returned from the function
