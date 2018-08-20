@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
+	lifecycle_test "github.com/hyperledger/fabric/core/chaincode/lifecycle"
 )
 
 type SCCFunctions struct {
@@ -47,6 +48,19 @@ type SCCFunctions struct {
 	queryInstalledChaincodesReturnsOnCall map[int]struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
+	}
+	DefineChaincodeForOrgStub        func(cd *lifecycle_test.ChaincodeDefinition, publicState lifecycle_test.ReadableState, orgState lifecycle_test.ReadWritableState) error
+	defineChaincodeForOrgMutex       sync.RWMutex
+	defineChaincodeForOrgArgsForCall []struct {
+		cd          *lifecycle_test.ChaincodeDefinition
+		publicState lifecycle_test.ReadableState
+		orgState    lifecycle_test.ReadWritableState
+	}
+	defineChaincodeForOrgReturns struct {
+		result1 error
+	}
+	defineChaincodeForOrgReturnsOnCall map[int]struct {
+		result1 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -205,6 +219,56 @@ func (fake *SCCFunctions) QueryInstalledChaincodesReturnsOnCall(i int, result1 [
 	}{result1, result2}
 }
 
+func (fake *SCCFunctions) DefineChaincodeForOrg(cd *lifecycle_test.ChaincodeDefinition, publicState lifecycle_test.ReadableState, orgState lifecycle_test.ReadWritableState) error {
+	fake.defineChaincodeForOrgMutex.Lock()
+	ret, specificReturn := fake.defineChaincodeForOrgReturnsOnCall[len(fake.defineChaincodeForOrgArgsForCall)]
+	fake.defineChaincodeForOrgArgsForCall = append(fake.defineChaincodeForOrgArgsForCall, struct {
+		cd          *lifecycle_test.ChaincodeDefinition
+		publicState lifecycle_test.ReadableState
+		orgState    lifecycle_test.ReadWritableState
+	}{cd, publicState, orgState})
+	fake.recordInvocation("DefineChaincodeForOrg", []interface{}{cd, publicState, orgState})
+	fake.defineChaincodeForOrgMutex.Unlock()
+	if fake.DefineChaincodeForOrgStub != nil {
+		return fake.DefineChaincodeForOrgStub(cd, publicState, orgState)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.defineChaincodeForOrgReturns.result1
+}
+
+func (fake *SCCFunctions) DefineChaincodeForOrgCallCount() int {
+	fake.defineChaincodeForOrgMutex.RLock()
+	defer fake.defineChaincodeForOrgMutex.RUnlock()
+	return len(fake.defineChaincodeForOrgArgsForCall)
+}
+
+func (fake *SCCFunctions) DefineChaincodeForOrgArgsForCall(i int) (*lifecycle_test.ChaincodeDefinition, lifecycle_test.ReadableState, lifecycle_test.ReadWritableState) {
+	fake.defineChaincodeForOrgMutex.RLock()
+	defer fake.defineChaincodeForOrgMutex.RUnlock()
+	return fake.defineChaincodeForOrgArgsForCall[i].cd, fake.defineChaincodeForOrgArgsForCall[i].publicState, fake.defineChaincodeForOrgArgsForCall[i].orgState
+}
+
+func (fake *SCCFunctions) DefineChaincodeForOrgReturns(result1 error) {
+	fake.DefineChaincodeForOrgStub = nil
+	fake.defineChaincodeForOrgReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *SCCFunctions) DefineChaincodeForOrgReturnsOnCall(i int, result1 error) {
+	fake.DefineChaincodeForOrgStub = nil
+	if fake.defineChaincodeForOrgReturnsOnCall == nil {
+		fake.defineChaincodeForOrgReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.defineChaincodeForOrgReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -214,6 +278,8 @@ func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	defer fake.queryInstalledChaincodeMutex.RUnlock()
 	fake.queryInstalledChaincodesMutex.RLock()
 	defer fake.queryInstalledChaincodesMutex.RUnlock()
+	fake.defineChaincodeForOrgMutex.RLock()
+	defer fake.defineChaincodeForOrgMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

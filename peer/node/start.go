@@ -728,6 +728,8 @@ func startChaincodeServer(
 		Store:    ccStore,
 	}
 
+	mspID := viper.GetString("peer.localMspId")
+
 	lifecycleSCC := &lifecycle.SCC{
 		Dispatcher: &dispatcher.Dispatcher{
 			Protobuf: &dispatcher.ProtobufImpl{},
@@ -736,6 +738,7 @@ func startChaincodeServer(
 			PackageParser:  ccPackageParser,
 			ChaincodeStore: ccStore,
 		},
+		OrgMSPID: mspID,
 	}
 
 	// Create a self-signed CA for chaincode service

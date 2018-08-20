@@ -25,7 +25,7 @@ message InstallChaincodeResult {
     bytes hash = 1;
 }
 
-// QueryInstalledChaincodeArgs is the message returned by
+// QueryInstalledChaincodeArgs is the message used as arguments
 // '+lifecycle.QueryInstalledChaincode'
 message QueryInstalledChaincodeArgs {
     string name = 1;
@@ -54,4 +54,22 @@ message QueryInstalledChaincodesResult {
         bytes hash = 3;
     }
     repeated InstalledChaincode installed_chaincodes = 1;
+}
+
+// DefineChaincodeForMyOrgArgs is the message used as arguments to
+// `+lifecycle.DefineChaincodeForMyOrg`.
+message DefineChaincodeForMyOrgArgs {
+    int64 sequence = 1;
+    string name = 2;
+    string version = 3;
+    bytes hash = 4;
+    string endorsement_plugin = 5;
+    string validation_plugin = 6;
+    bytes validation_parameter = 7;
+}
+
+// DefineChaincodeForMyOrgArgs is the message returned by
+// `+lifecycle.DefineChaincodeForMyOrg`. Currently it returns
+// nothing, but may be extended in the future.
+message DefineChaincodeForMyOrgResult {
 }
