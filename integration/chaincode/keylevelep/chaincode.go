@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package main
+package keylevelep
 
 import (
 	"encoding/json"
@@ -21,9 +21,9 @@ In the init function, it creates a single KVS state "endorsed_state" that
 can then be modified through chaincode functions that use the state-based
 endorsement chaincode convenience layer. The following chaincode functions
 are provided:
--) "addorgs": supply a list of json-encoded MSP IDs that will be added to the
+-) "addorgs": supply a list of MSP IDs that will be added to the
    state's endorsement policy
--) "delorgs": supply a list of json-encoded MSP IDs that will be removed from
+-) "delorgs": supply a list of MSP IDs that will be removed from
    the state's endorsement policy
 -) "delep": delete the key-level endorsement policy for the state altogether
 -) "listorgs": list the orgs included in the state's endorsement policy
@@ -57,9 +57,10 @@ var functions = map[string]func(stub shim.ChaincodeStubInterface) pb.Response{
 	"delep":    delEP,
 	"setval":   setVal,
 	"getval":   getVal,
+	"cc2cc":    invokeCC,
 }
 
-// addOrgs adds the list of json-encoded MSP IDs from the invocation parameters
+// addOrgs adds the list of MSP IDs from the invocation parameters
 // to the state's endorsement policy
 func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
@@ -96,7 +97,7 @@ func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success([]byte{})
 }
 
-// delOrgs adds the list of json-encoded MSP IDs from the invocation parameters
+// delOrgs removes the list of MSP IDs from the invocation parameters
 // from the state's endorsement policy
 func delOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
@@ -186,9 +187,15 @@ func getVal(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(val)
 }
 
-func main() {
-	err := shim.Start(new(EndorsementCC))
-	if err != nil {
-		fmt.Printf("Error starting chaincode: %s", err)
+// invokeCC is used for chaincode to chaincode invocation of a given cc on another channel
+func invokeCC(stub shim.ChaincodeStubInterface) pb.Response {
+	args := stub.GetArgs()
+	if len(args) < 3 {
+		return shim.Error("cc2cc expects at least two arguments (channel and chaincode)")
 	}
+	channel := string(args[1])
+	cc := string(args[2])
+	nargs := args[3:]
+	resp := stub.InvokeChaincode(cc, nargs, channel)
+	return resp
 }
