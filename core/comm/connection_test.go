@@ -63,14 +63,12 @@ func TestClientConnections(t *testing.T) {
 		creds      credentials.TransportCredentials
 		clientPort int
 		fail       bool
-		serverPort int
 	}{
 		{
 			name: "ValidConnection",
 			sc: ServerConfig{
 				SecOpts: &SecureOptions{
 					UseTLS: false}},
-			serverPort: 8050,
 		},
 		{
 			name: "InvalidConnection",
@@ -79,7 +77,6 @@ func TestClientConnections(t *testing.T) {
 					UseTLS: false}},
 			clientPort: 20040,
 			fail:       true,
-			serverPort: 8051,
 		},
 		{
 			name: "ValidConnectionTLS",
@@ -88,8 +85,7 @@ func TestClientConnections(t *testing.T) {
 					UseTLS:      true,
 					Certificate: certPEMBlock,
 					Key:         keyPEMBlock}},
-			creds:      credentials.NewClientTLSFromCert(certPool, ""),
-			serverPort: 8052,
+			creds: credentials.NewClientTLSFromCert(certPool, ""),
 		},
 		{
 			name: "InvalidConnectionTLS",
@@ -98,9 +94,8 @@ func TestClientConnections(t *testing.T) {
 					UseTLS:      true,
 					Certificate: certPEMBlock,
 					Key:         keyPEMBlock}},
-			creds:      credentials.NewClientTLSFromCert(nil, ""),
-			fail:       true,
-			serverPort: 8053,
+			creds: credentials.NewClientTLSFromCert(nil, ""),
+			fail:  true,
 		},
 	}
 
@@ -109,16 +104,19 @@ func TestClientConnections(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			t.Logf("Running test %s ...", test.name)
-			serverAddress := fmt.Sprintf("localhost:%d", test.serverPort)
-			clientAddress := serverAddress
-			if test.clientPort > 0 {
-				clientAddress = fmt.Sprintf("localhost:%d", test.clientPort)
+			lis, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("failed to create listener for test server: %v", err)
 			}
-			srv, err := NewGRPCServer(serverAddress, test.sc)
+			clientAddress := lis.Addr().String()
+			if test.clientPort > 0 {
+				clientAddress = fmt.Sprintf("127.0.0.1:%d", test.clientPort)
+			}
+			srv, err := NewGRPCServerFromListener(lis, test.sc)
 			//check for error
 			if err != nil {
 				t.Fatalf("Error [%s] creating test server for address [%s]",
-					err, serverAddress)
+					err, lis.Addr().String())
 			}
 			//start the server
 			go srv.Start()
@@ -251,7 +249,8 @@ func TestCredentialSupport(t *testing.T) {
 }
 
 type srv struct {
-	port int
+	port    int
+	address string
 	*GRPCServer
 	caCert   []byte
 	serviced uint32
@@ -267,7 +266,7 @@ func (s *srv) EmptyCall(context.Context, *testpb.Empty) (*testpb.Empty, error) {
 	return &testpb.Empty{}, nil
 }
 
-func newServer(org string, port int) *srv {
+func newServer(org string) *srv {
 	certs := map[string][]byte{
 		"ca.crt":     nil,
 		"server.crt": nil,
@@ -281,9 +280,9 @@ func newServer(org string, port int) *srv {
 		}
 		certs[suffix] = cert
 	}
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		panic(fmt.Errorf("Failed listening on port %d: %v", port, err))
+		panic(fmt.Errorf("Failed to create listener: %v", err))
 	}
 	gSrv, err := NewGRPCServerFromListener(l, ServerConfig{
 		ConnectionTimeout: 250 * time.Millisecond,
@@ -297,7 +296,7 @@ func newServer(org string, port int) *srv {
 		panic(fmt.Errorf("Failed starting gRPC server: %v", err))
 	}
 	s := &srv{
-		port:       port,
+		address:    l.Addr().String(),
 		caCert:     certs["ca.crt"],
 		GRPCServer: gSrv,
 	}
@@ -312,16 +311,16 @@ func TestImpersonation(t *testing.T) {
 	// and each of them are in their respected channels- A, B.
 	// The test would obtain credentials.TransportCredentials by calling GetDeliverServiceCredentials.
 	// Each organization would have its own gRPC server (srvA and srvB) with a TLS certificate
-	// signed by its root CA and with a SAN entry of 'localhost'.
+	// signed by its root CA and with a SAN entry of '127.0.0.1'.
 	// We test the following assertions:
 	// 1) Invocation with GetDeliverServiceCredentials("A") to srvA succeeds
 	// 2) Invocation with GetDeliverServiceCredentials("B") to srvB succeeds
 	// 3) Invocation with GetDeliverServiceCredentials("A") to srvB fails
 	// 4) Invocation with GetDeliverServiceCredentials("B") to srvA fails
 
-	osA := newServer("orgA", 7070)
+	osA := newServer("orgA")
 	defer osA.Stop()
-	osB := newServer("orgB", 7080)
+	osB := newServer("orgB")
 	defer osB.Stop()
 	time.Sleep(time.Second)
 
@@ -353,7 +352,8 @@ func testInvoke(
 
 	creds, err := cs.GetDeliverServiceCredentials(channelID)
 	assert.NoError(t, err)
-	endpoint := fmt.Sprintf("localhost:%d", s.port)
+
+	endpoint := s.address
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(creds), grpc.WithBlock())

@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"net"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -80,7 +81,11 @@ func TestNoopBindingInspector(t *testing.T) {
 
 func TestBindingInspector(t *testing.T) {
 	t.Parallel()
-	testAddress := "localhost:25000"
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to create listener for test server: %v", err)
+	}
+
 	extract := func(msg proto.Message) []byte {
 		env, isEnvelope := msg.(*common.Envelope)
 		if !isEnvelope || env == nil {
@@ -92,13 +97,13 @@ func TestBindingInspector(t *testing.T) {
 		}
 		return ch.TlsCertHash
 	}
-	srv := newInspectingServer(testAddress, comm.NewBindingInspector(true, extract))
+	srv := newInspectingServer(lis, comm.NewBindingInspector(true, extract))
 	go srv.Start()
 	defer srv.Stop()
 	time.Sleep(time.Second)
 
 	// Scenario I: Invalid header sent
-	err := srv.newInspection(t).inspectBinding(nil)
+	err = srv.newInspection(t).inspectBinding(nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
@@ -153,8 +158,8 @@ func (is *inspectingServer) inspect(envelope *common.Envelope) error {
 	return is.inspector(is.lastContext.Load().(context.Context), envelope)
 }
 
-func newInspectingServer(addr string, inspector comm.BindingInspector) *inspectingServer {
-	srv, err := comm.NewGRPCServer(addr, comm.ServerConfig{
+func newInspectingServer(listener net.Listener, inspector comm.BindingInspector) *inspectingServer {
+	srv, err := comm.NewGRPCServerFromListener(listener, comm.ServerConfig{
 		ConnectionTimeout: 250 * time.Millisecond,
 		SecOpts: &comm.SecureOptions{
 			UseTLS:      true,
@@ -165,7 +170,7 @@ func newInspectingServer(addr string, inspector comm.BindingInspector) *inspecti
 		panic(err)
 	}
 	is := &inspectingServer{
-		addr:       addr,
+		addr:       listener.Addr().String(),
 		GRPCServer: srv,
 		inspector:  inspector,
 	}
