@@ -304,57 +304,10 @@ func serve(args []string) error {
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
 
-	// Initialize gossip component
-	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
-
 	policyMgr := peer.NewChannelPolicyManagerGetter()
-	messageCryptoService := peergossip.NewMCS(
-		policyMgr,
-		localmsp.NewSigner(),
-		mgmt.NewDeserializersManager())
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 
-	// callback function for secure dial options for gossip service
-	secureDialOpts := func() []grpc.DialOption {
-		var dialOpts []grpc.DialOption
-		// set max send/recv msg sizes
-		dialOpts = append(
-			dialOpts,
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-				grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
-		// set the keepalive options
-		kaOpts := comm.DefaultKeepaliveOptions
-		if viper.IsSet("peer.keepalive.client.interval") {
-			kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.client.interval")
-		}
-		if viper.IsSet("peer.keepalive.client.timeout") {
-			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
-		}
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
-
-		if viper.GetBool("peer.tls.enabled") {
-			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCredentialSupport().GetPeerCredentials()))
-		} else {
-			dialOpts = append(dialOpts, grpc.WithInsecure())
-		}
-		return dialOpts
-	}
-
-	var certs *gossipcommon.TLSCertificates
-	if peerServer.TLSEnabled() {
-		serverCert := peerServer.ServerCertificate()
-		clientCert, err := peer.GetClientCertificate()
-		if err != nil {
-			return errors.Wrap(err, "failed obtaining client certificates")
-		}
-		certs = &gossipcommon.TLSCertificates{}
-		certs.TLSServerCert.Store(&serverCert)
-		certs.TLSClientCert.Store(&clientCert)
-	}
-
-	err = service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(), certs,
-		messageCryptoService, secAdv, secureDialOpts, bootstrap...)
+	// Initialize gossip component
+	err = initGossipService(policyMgr, peerServer, serializedIdentity, peerEndpoint.Address)
 	if err != nil {
 		return err
 	}
@@ -712,4 +665,60 @@ func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
 	}
 
 	pb.RegisterAdminServer(gRPCService, admin.NewAdminServer(adminPolicy))
+}
+
+// secureDialOpts is the callback function for secure dial options for gossip service
+func secureDialOpts() []grpc.DialOption {
+	var dialOpts []grpc.DialOption
+	// set max send/recv msg sizes
+	dialOpts = append(
+		dialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+	// set the keepalive options
+	kaOpts := comm.DefaultKeepaliveOptions
+	if viper.IsSet("peer.keepalive.client.interval") {
+		kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.client.interval")
+	}
+	if viper.IsSet("peer.keepalive.client.timeout") {
+		kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
+	}
+	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+
+	if viper.GetBool("peer.tls.enabled") {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCredentialSupport().GetPeerCredentials()))
+	} else {
+		dialOpts = append(dialOpts, grpc.WithInsecure())
+	}
+	return dialOpts
+}
+
+// initGossipService will initialize the gossip service by:
+// 1. Enable TLS if configured;
+// 2. Init the message crypto service;
+// 3. Init the security advisor;
+// 4. Init gossip related struct.
+func initGossipService(policyMgr policies.ChannelPolicyManagerGetter, peerServer *comm.GRPCServer, serializedIdentity []byte, peerAddr string) error {
+	var certs *gossipcommon.TLSCertificates
+	if peerServer.TLSEnabled() {
+		serverCert := peerServer.ServerCertificate()
+		clientCert, err := peer.GetClientCertificate()
+		if err != nil {
+			return errors.Wrap(err, "failed obtaining client certificates")
+		}
+		certs = &gossipcommon.TLSCertificates{}
+		certs.TLSServerCert.Store(&serverCert)
+		certs.TLSClientCert.Store(&clientCert)
+	}
+
+	messageCryptoService := peergossip.NewMCS(
+		policyMgr,
+		localmsp.NewSigner(),
+		mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
+
+	return service.InitGossipService(serializedIdentity, peerAddr, peerServer.Server(), certs,
+		messageCryptoService, secAdv, secureDialOpts, bootstrap...)
 }
