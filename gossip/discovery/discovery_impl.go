@@ -795,7 +795,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossi
 
 	for _, m := range aliveArr {
 		am := m.GetAliveMsg()
-		if m == nil {
+		if am == nil {
 			d.logger.Warning("Expected alive message, got instead:", m)
 			return
 		}
