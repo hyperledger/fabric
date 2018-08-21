@@ -81,7 +81,7 @@ var _ = Describe("Prover", func() {
 					Data: &token.PlainTokenAction_PlainTransfer{
 						PlainTransfer: &token.PlainTransfer{
 							Inputs: []*token.InputId{{
-								TxId:  []byte("txid"),
+								TxId:  "txid",
 								Index: 0,
 							}},
 							Outputs: []*token.PlainOutput{{

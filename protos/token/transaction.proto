@@ -104,7 +104,7 @@ message PlainOutput {
 message InputId {
 
     // The transaction ID
-    bytes tx_id = 1;
+    string tx_id = 1;
 
     // The index of the output in the transaction
     uint32 index = 2;

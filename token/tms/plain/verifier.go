@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package plain
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"unicode/utf8"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -69,6 +71,8 @@ func (v *Verifier) checkAction(creator identity.PublicInfo, plainAction *token.P
 	switch action := plainAction.Data.(type) {
 	case *token.PlainTokenAction_PlainImport:
 		return v.checkImportAction(creator, action.PlainImport, txID, simulator)
+	case *token.PlainTokenAction_PlainTransfer:
+		return v.checkTransferAction(creator, action.PlainTransfer, txID, simulator)
 	default:
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("unknown plain token action: %T", action)}
 	}
@@ -99,6 +103,24 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 	return nil
 }
 
+func (v *Verifier) checkTransferAction(creator identity.PublicInfo, transferAction *token.PlainTransfer, txID string, simulator ledger.LedgerReader) error {
+	outputType, outputSum, err := v.checkTransferOutputs(transferAction.GetOutputs(), txID, simulator)
+	if err != nil {
+		return err
+	}
+	inputType, inputSum, err := v.checkTransferInputs(creator, transferAction.GetInputs(), txID, simulator)
+	if err != nil {
+		return err
+	}
+	if outputType != inputType {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token type mismatch in inputs and outputs for transfer with ID %s (%s vs %s)", txID, outputType, inputType)}
+	}
+	if outputSum != inputSum {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transfer with ID %s (%d vs %d)", txID, outputSum, inputSum)}
+	}
+	return nil
+}
+
 func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator ledger.LedgerReader) error {
 	outputID, err := createOutputKey(txID, index)
 	if err != nil {
@@ -112,6 +134,73 @@ func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator led
 
 	if existingOutputBytes != nil {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", outputID)}
+	}
+	return nil
+}
+
+func (v *Verifier) checkTransferOutputs(outputs []*token.PlainOutput, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
+	tokenType := ""
+	tokenSum := uint64(0)
+	for i, output := range outputs {
+		err := v.checkOutputDoesNotExist(i, txID, simulator)
+		if err != nil {
+			return "", 0, err
+		}
+		if tokenType == "" {
+			tokenType = output.GetType()
+		} else if tokenType != output.GetType() {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in transfer output for txID '%s'", tokenType, output.GetType(), txID)}
+		}
+		tokenSum += output.GetQuantity()
+	}
+	return tokenType, tokenSum, nil
+}
+
+func (v *Verifier) checkTransferInputs(creator identity.PublicInfo, inputIDs []*token.InputId, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
+	tokenType := ""
+	inputSum := uint64(0)
+	processedIDs := make(map[string]bool)
+	for _, id := range inputIDs {
+		inputKey, err := createOutputKey(id.TxId, int(id.Index))
+		if err != nil {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID for transfer input: %s", err)}
+		}
+		input, err := v.getOutput(inputKey, simulator)
+		if err != nil {
+			return "", 0, err
+		}
+		err = v.checkInputOwner(creator, input, inputKey)
+		if err != nil {
+			return "", 0, err
+		}
+		if tokenType == "" {
+			tokenType = input.GetType()
+		} else if tokenType != input.GetType() {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types in transfer input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
+		}
+		if processedIDs[inputKey] {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("token input '%s' spent more than once in single transfer with txID '%s'", inputKey, txID)}
+		}
+		processedIDs[inputKey] = true
+		inputSum += input.GetQuantity()
+		spentKey, err := createSpentKey(id.TxId, int(id.Index))
+		if err != nil {
+			return "", 0, err
+		}
+		spent, err := v.isSpent(spentKey, simulator)
+		if err != nil {
+			return "", 0, err
+		}
+		if spent {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer has already been spent", inputKey)}
+		}
+	}
+	return tokenType, inputSum, nil
+}
+
+func (v *Verifier) checkInputOwner(creator identity.PublicInfo, input *token.PlainOutput, inputID string) error {
+	if !bytes.Equal(creator.Public(), input.Owner) {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("transfer input with ID %s not owned by creator", inputID)}
 	}
 	return nil
 }
@@ -164,6 +253,8 @@ func (v *Verifier) commitAction(plainAction *token.PlainTokenAction, txID string
 	switch action := plainAction.Data.(type) {
 	case *token.PlainTokenAction_PlainImport:
 		err = v.commitImportAction(action.PlainImport, txID, simulator)
+	case *token.PlainTokenAction_PlainTransfer:
+		err = v.commitTransferAction(action.PlainTransfer, txID, simulator)
 	}
 	return
 }
@@ -183,6 +274,21 @@ func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID stri
 	return nil
 }
 
+func (v *Verifier) commitTransferAction(transferAction *token.PlainTransfer, txID string, simulator ledger.LedgerWriter) error {
+	for i, output := range transferAction.GetOutputs() {
+		outputID, err := createOutputKey(txID, i)
+		if err != nil {
+			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
+		}
+
+		err = v.addOutput(outputID, output, simulator)
+		if err != nil {
+			return err
+		}
+	}
+	return v.markInputsSpent(txID, transferAction.GetInputs(), simulator)
+}
+
 func (v *Verifier) addOutput(outputID string, output *token.PlainOutput, simulator ledger.LedgerWriter) error {
 	outputBytes := utils.MarshalOrPanic(output)
 
@@ -200,6 +306,42 @@ func (v *Verifier) addTransaction(txID string, ttx *token.TokenTransaction, simu
 	return simulator.SetState(tokenNamespace, ttxID, ttxBytes)
 }
 
+var TokenInputSpentMarker = []byte{1}
+
+func (v *Verifier) markInputsSpent(txID string, inputs []*token.InputId, simulator ledger.LedgerWriter) error {
+	for _, id := range inputs {
+		inputID, err := createSpentKey(id.TxId, int(id.Index))
+		if err != nil {
+			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating spent key: %s", err)}
+		}
+
+		err = simulator.SetState(tokenNamespace, inputID, TokenInputSpentMarker)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *Verifier) getOutput(outputID string, simulator ledger.LedgerReader) (*token.PlainOutput, error) {
+	outputBytes, err := simulator.GetState(tokenNamespace, outputID)
+	if err != nil {
+		return nil, err
+	}
+	if outputBytes == nil {
+		return nil, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer does not exist", outputID)}
+	}
+	output := &token.PlainOutput{}
+	err = proto.Unmarshal(outputBytes, output)
+	return output, err
+}
+
+// isSpent checks whether an output token with identifier outputID has been spent.
+func (v *Verifier) isSpent(spentKey string, simulator ledger.LedgerReader) (bool, error) {
+	result, err := simulator.GetState(namespace, spentKey)
+	return result != nil, err
+}
+
 // Create a ledger key for an individual output in a token transaction, as a function of
 // the transaction ID, and the index of the output
 func createOutputKey(txID string, index int) (string, error) {
@@ -209,6 +351,12 @@ func createOutputKey(txID string, index int) (string, error) {
 // Create a ledger key for a token transaction, as a function of the transaction ID
 func createTxKey(txID string) (string, error) {
 	return createCompositeKey(tokenTx, []string{txID})
+}
+
+// Create a ledger key for a spent individual output in a token transaction, as a function of
+// the transaction ID, and the index of the output
+func createSpentKey(txID string, index int) (string, error) {
+	return createCompositeKey("tokenInput", []string{txID, strconv.Itoa(index)})
 }
 
 // createCompositeKey and its related functions and consts copied from core/chaincode/shim/chaincode.go
@@ -237,4 +385,12 @@ func validateCompositeKeyAttribute(str string) error {
 		}
 	}
 	return nil
+}
+
+func parseCompositeKeyBytes(keyBytes []byte) string {
+	return string(keyBytes)
+}
+
+func getCompositeKeyBytes(compositeKey string) []byte {
+	return []byte(compositeKey)
 }

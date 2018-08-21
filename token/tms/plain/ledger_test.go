@@ -71,4 +71,12 @@ var _ = Describe("MemoryLedger", func() {
 			})
 		})
 	})
+
+	Describe("when the dummy function is invoked", func() {
+		It("returns nil", func() {
+			res, err := memoryLedger.GetStateRangeScanIterator("", "", "")
+			Expect(res).To(BeNil())
+			Expect(err).To(BeNil())
+		})
+	})
 })
