@@ -381,7 +381,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	}
 
 	// set up test TLS server
-	address := "localhost:8358"
+	address := "localhost:18358"
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		t.Fatalf("failed to create listener for test server: %v", err)
@@ -430,7 +430,7 @@ func TestSetServerRootCAs(t *testing.T) {
 
 func TestSetMessageSize(t *testing.T) {
 	t.Parallel()
-	address := "localhost:8359"
+	address := "localhost:18359"
 
 	// setup test server
 	srv, err := comm.NewGRPCServer(address, comm.ServerConfig{})
