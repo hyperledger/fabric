@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -163,10 +164,16 @@ func IsEnabledForLogLevel(logLevel string) bool {
 	return chaincodeLogger.IsEnabledFor(lvl)
 }
 
+var loggingSetup sync.Once
+
 // SetupChaincodeLogging sets the chaincode logging format and the level
 // to the values of CORE_CHAINCODE_LOGGING_FORMAT, CORE_CHAINCODE_LOGGING_LEVEL
 // and CORE_CHAINCODE_LOGGING_SHIM set from core.yaml by chaincode_support.go
 func SetupChaincodeLogging() {
+	loggingSetup.Do(setupChaincodeLogging)
+}
+
+func setupChaincodeLogging() {
 	// This is the default log config from 1.2
 	const defaultLogFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
 	const defaultLevel = logging.INFO
