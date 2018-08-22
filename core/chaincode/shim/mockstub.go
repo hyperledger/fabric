@@ -410,7 +410,7 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 	}
 
 	if iter.Current == nil {
-		mockLogger.Error("HasNext() couldn't get Current")
+		mockLogger.Debug("HasNext() couldn't get Current")
 		return false
 	}
 
