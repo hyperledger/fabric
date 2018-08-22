@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -315,7 +314,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID,
 
 			// Acquire a custom logger for our chaincode, inheriting the level from the peer
 			containerLogger := flogging.MustGetLogger(containerName)
-			logging.SetLevel(logging.GetLevel("peer"), containerName)
+			flogging.SetModuleLevel(flogging.GetModuleLevel("peer"), containerName)
 
 			for {
 				// Loop forever dumping lines of text into the containerLogger
