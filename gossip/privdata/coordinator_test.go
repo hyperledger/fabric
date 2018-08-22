@@ -344,6 +344,7 @@ func createcollectionStore(expectedSignedData common.SignedData) *collectionStor
 type collectionStore struct {
 	expectedSignedData common.SignedData
 	acceptsAll         bool
+	acceptsNone        bool
 	lenient            bool
 	store              map[CollectionCriteria]collectionAccessPolicy
 	policies           map[collectionAccessPolicy]CollectionCriteria
@@ -351,6 +352,11 @@ type collectionStore struct {
 
 func (cs *collectionStore) thatAcceptsAll() *collectionStore {
 	cs.acceptsAll = true
+	return cs
+}
+
+func (cs *collectionStore) thatAcceptsNone() *collectionStore {
+	cs.acceptsNone = true
 	return cs
 }
 
@@ -373,7 +379,7 @@ func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCr
 	if sp, exists := cs.store[fromCollectionCriteria(cc)]; exists {
 		return &sp, nil
 	}
-	if cs.acceptsAll || cs.lenient {
+	if cs.acceptsAll || cs.acceptsNone || cs.lenient {
 		return &collectionAccessPolicy{
 			cs: cs,
 			n:  util.RandomUInt64(),
@@ -434,8 +440,15 @@ func (cap *collectionAccessPolicy) AccessFilter() privdata.Filter {
 		if hex.EncodeToString(that) != hex.EncodeToString(this) {
 			panic(fmt.Errorf("self signed data passed isn't equal to expected:%v, %v", sd, cap.cs.expectedSignedData))
 		}
+
+		if cap.cs.acceptsNone {
+			return false
+		} else if cap.cs.acceptsAll {
+			return true
+		}
+
 		_, exists := cap.cs.policies[*cap]
-		return exists || cap.cs.acceptsAll
+		return exists
 	}
 }
 
@@ -656,6 +669,8 @@ var expectedCommittedPrivateData2 = map[uint64]*ledger.TxPvtData{
 		},
 	}},
 }
+
+var expectedCommittedPrivateData3 = map[uint64]*ledger.TxPvtData{}
 
 func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	peerSelfSignedData := common.SignedData{
@@ -1123,11 +1138,12 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
 		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
 		missingPrivateData := blockAndPrivateData.Missing
-		assert.Equal(t, []ledger.MissingPrivateData{{
+		assert.Equal(t, []*ledger.MissingPrivateData{{
 			SeqInBlock: 0,
 			Collection: "c2",
 			Namespace:  "ns3",
 			TxId:       "tx1",
+			Eligible:   true,
 		}}, missingPrivateData)
 		commitHappened = true
 	}).Return(nil)
@@ -1187,6 +1203,57 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	assert.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1")
+}
+
+func TestProceedWithInEligiblePrivateData(t *testing.T) {
+	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
+	// Block needs to be committed with missing private data.
+	peerSelfSignedData := common.SignedData{
+		Identity:  []byte{0, 1, 2},
+		Signature: []byte{3, 4, 5},
+		Data:      []byte{6, 7, 8},
+	}
+
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsNone()
+
+	var commitHappened bool
+	assertCommitHappened := func() {
+		assert.True(t, commitHappened)
+		commitHappened = false
+	}
+	committer := &committerMock{}
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
+		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
+		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData3))
+		missingPrivateData := blockAndPrivateData.Missing
+		assert.Equal(t, &ledger.MissingPrivateData{
+			SeqInBlock: 0,
+			Collection: "c2",
+			Namespace:  "ns3",
+			TxId:       "tx1",
+			Eligible:   false,
+		}, missingPrivateData[0])
+		commitHappened = true
+	}).Return(nil)
+
+	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+	bf := &blockFactory{
+		channelID: "test",
+	}
+
+	block := bf.AddTxn("tx1", "ns3", hash, "c2").create()
+
+	coordinator := NewCoordinator(Support{
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         nil,
+		TransientStore:  nil,
+		Validator:       &validatorMock{},
+	}, peerSelfSignedData)
+	err := coordinator.StoreBlock(block, nil)
+	assert.NoError(t, err)
+	assertCommitHappened()
 }
 
 func TestCoordinatorGetBlocks(t *testing.T) {

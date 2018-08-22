@@ -194,6 +194,7 @@ type MissingPrivateData struct {
 	SeqInBlock int
 	Namespace  string
 	Collection string
+	Eligible   bool
 }
 
 // BlockAndPvtData encapsulates the block and a map that contains the tuples <seqInBlock, *TxPvtData>
@@ -201,7 +202,7 @@ type MissingPrivateData struct {
 type BlockAndPvtData struct {
 	Block        *common.Block
 	BlockPvtData map[uint64]*TxPvtData
-	Missing      []MissingPrivateData
+	Missing      []*MissingPrivateData
 }
 
 // BlockPvtData contains the private data for a block

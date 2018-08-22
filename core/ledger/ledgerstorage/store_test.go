@@ -172,7 +172,7 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 		pvtdataAtCrash = append(pvtdataAtCrash, p)
 	}
 	// Only call Prepare on pvt data store and mimic a crash
-	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash)
+	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash, nil)
 	store.Shutdown()
 	provider.Close()
 	provider = NewProvider()
@@ -229,7 +229,7 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 
 	// Mimic a crash just short of calling the final commit on pvtdata store
 	// After starting the store again, the block and the pvtdata should be available
-	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash)
+	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash, nil)
 	store.BlockStore.AddBlock(dataAtCrash.Block)
 	store.Shutdown()
 	provider.Close()

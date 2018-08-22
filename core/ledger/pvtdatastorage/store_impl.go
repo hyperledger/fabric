@@ -104,7 +104,7 @@ func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 }
 
 // Prepare implements the function in the interface `Store`
-func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
+func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missing []*ledger.MissingPrivateData) error {
 	if s.batchPending {
 		return &ErrIllegalCall{`A pending batch exists as as result of last invoke to "Prepare" call.
 			 Invoke "Commit" or "Rollback" on the pending batch before invoking "Prepare" function`}
@@ -139,6 +139,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
 	if err := s.db.WriteBatch(batch, true); err != nil {
 		return err
 	}
+	// TODO: Using MissingPrivateData, implement FAB-11318 (https://jira.hyperledger.org/browse/FAB-11318)
 	s.batchPending = true
 	logger.Debugf("Saved %d private data write sets for block [%d]", len(pvtData), blockNum)
 	return nil
