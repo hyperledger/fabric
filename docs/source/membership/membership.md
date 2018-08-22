@@ -279,7 +279,7 @@ Let's describe these folders in a little more detail and see why they are import
 
   This list is conceptually the same as a CA's Certificate Revocation List (CRL),
   but it also relates to revocation of membership from the organization. As a result,
-  the administrator of an MSP, local or channel, can quickly revoke a actor or node
+  the administrator of an MSP, local or channel, can quickly revoke an actor or node
   from an organization by advertising the updated CRL of the CA the revoked certificate
   as issued by. This "list of lists" is optional. It will only become populated
   as certificates are revoked.
