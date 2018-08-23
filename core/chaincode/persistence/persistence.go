@@ -71,25 +71,26 @@ type Store struct {
 
 // Save persists chaincode install package bytes with the given name
 // and version
-func (s *Store) Save(name, version string, ccInstallPkg []byte) error {
+func (s *Store) Save(name, version string, ccInstallPkg []byte) ([]byte, error) {
 	metadataJSON, err := toJSON(name, version)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	hashString := hex.EncodeToString(util.ComputeSHA256(ccInstallPkg))
+	hash := util.ComputeSHA256(ccInstallPkg)
+	hashString := hex.EncodeToString(hash)
 	metadataPath := filepath.Join(s.Path, hashString+".json")
 	if _, err := s.ReadWriter.Stat(metadataPath); err == nil {
-		return errors.Errorf("chaincode metadata already exists at %s", metadataPath)
+		return nil, errors.Errorf("chaincode metadata already exists at %s", metadataPath)
 	}
 
 	ccInstallPkgPath := filepath.Join(s.Path, hashString+".bin")
 	if _, err := s.ReadWriter.Stat(ccInstallPkgPath); err == nil {
-		return errors.Errorf("ChaincodeInstallPackage already exists at %s", ccInstallPkgPath)
+		return nil, errors.Errorf("ChaincodeInstallPackage already exists at %s", ccInstallPkgPath)
 	}
 
 	if err := s.ReadWriter.WriteFile(metadataPath, metadataJSON, 0600); err != nil {
-		return errors.Wrapf(err, "error writing metadata file to %s", metadataPath)
+		return nil, errors.Wrapf(err, "error writing metadata file to %s", metadataPath)
 	}
 
 	if err := s.ReadWriter.WriteFile(ccInstallPkgPath, ccInstallPkg, 0600); err != nil {
@@ -100,10 +101,10 @@ func (s *Store) Save(name, version string, ccInstallPkg []byte) error {
 		if err2 := s.ReadWriter.Remove(metadataPath); err2 != nil {
 			logger.Errorf("error removing metadata file at %s: %s", metadataPath, err2)
 		}
-		return err
+		return nil, err
 	}
 
-	return nil
+	return hash, nil
 }
 
 // Load loads a persisted chaincode install package bytes with the given hash
