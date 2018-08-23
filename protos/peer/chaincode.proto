@@ -104,10 +104,3 @@ message ChaincodeInvocationSpec {
 message LifecycleEvent {
     string chaincode_name = 1;
 }
-
-// ChaincodeInstallPackage stores the necessary information about a chaincode.
-message ChaincodeInstallPackage {
-    string type = 1;
-    string path = 2;
-    bytes code_package = 3;
-}
