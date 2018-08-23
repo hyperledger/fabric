@@ -758,9 +758,12 @@ func (vscc *ValidatorOneValidSignature) deduplicateIdentity(cap *pb.ChaincodeAct
 			logger.Warningf("Ignoring duplicated identity, Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
 			continue
 		}
+		data := make([]byte, len(prespBytes)+len(endorsement.Endorser))
+		copy(data, prespBytes)
+		copy(data[len(prespBytes):], endorsement.Endorser)
 		signatureSet = append(signatureSet, &common.SignedData{
 			// set the data that is signed; concatenation of proposal response bytes and endorser ID
-			Data: append(prespBytes, endorsement.Endorser...),
+			Data: data,
 			// set the identity that signs the message: it's the endorser
 			Identity: endorsement.Endorser,
 			// set the signature

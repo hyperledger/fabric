@@ -339,6 +339,43 @@ func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validat
 	return New(c, sf, is, pe)
 }
 
+func TestDeduplicateIdentity(t *testing.T) {
+	// We allocate a slice with capacity greater than the length
+	proposalResponsePayload := []byte{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}
+	prpBuff := make([]byte, len(proposalResponsePayload), len(proposalResponsePayload)*2)
+	copy(prpBuff, proposalResponsePayload)
+
+	identity1 := utils.MarshalOrPanic(&mspproto.SerializedIdentity{
+		IdBytes: []byte{1, 1, 1},
+	})
+	identity2 := utils.MarshalOrPanic(&mspproto.SerializedIdentity{
+		IdBytes: []byte{2, 2, 2},
+	})
+
+	chaincodeActionPayload := &peer.ChaincodeActionPayload{
+		Action: &peer.ChaincodeEndorsedAction{
+			Endorsements: []*peer.Endorsement{
+				{
+					Endorser: identity1,
+				},
+				{
+					Endorser: identity2,
+				},
+			},
+			ProposalResponsePayload: prpBuff,
+		},
+	}
+
+	signedData, err := (&ValidatorOneValidSignature{}).deduplicateIdentity(chaincodeActionPayload)
+	assert.NoError(t, err)
+	// The original bytes of proposalResponsePayload are preserved
+	assert.Equal(t, proposalResponsePayload, signedData[0].Data[:len(proposalResponsePayload)])
+	assert.Equal(t, proposalResponsePayload, signedData[1].Data[:len(proposalResponsePayload)])
+	// And are suffixed with the identity bytes
+	assert.Equal(t, identity1, signedData[0].Data[len(proposalResponsePayload):])
+	assert.Equal(t, identity2, signedData[1].Data[len(proposalResponsePayload):])
+}
+
 func TestInvoke(t *testing.T) {
 	v := newValidationInstance(make(map[string]map[string][]byte))
 
