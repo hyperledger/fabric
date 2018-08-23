@@ -128,7 +128,7 @@ var _ = Describe("Network", func() {
 		It("deploys and executes chaincode (the hard way)", func() {
 			// This demonstrates how to control the processes that make up a network.
 			// If you don't care about a collection of processes (like the brokers or
-			// the orderers) use the group runner to manage thos processes.
+			// the orderers) use the group runner to manage those processes.
 			zookeepers := []string{}
 			for i := 0; i < network.Consensus.ZooKeepers; i++ {
 				zk := network.ZooKeeperRunner(i)

@@ -88,11 +88,40 @@ func (c ChannelFetch) Args() []string {
 	return args
 }
 
+type ChaincodePackage struct {
+	Name       string
+	Version    string
+	Path       string
+	Lang       string
+	OutputFile string
+}
+
+func (c ChaincodePackage) SessionName() string {
+	return "peer-chaincode-package"
+}
+
+func (c ChaincodePackage) Args() []string {
+	args := []string{
+		"chaincode", "package",
+		"--name", c.Name,
+		"--version", c.Version,
+		"--path", c.Path,
+		c.OutputFile,
+	}
+
+	if c.Lang != "" {
+		args = append(args, "--lang", c.Lang)
+	}
+
+	return args
+}
+
 type ChaincodeInstall struct {
-	Name    string
-	Version string
-	Path    string
-	Lang    string
+	Name        string
+	Version     string
+	Path        string
+	Lang        string
+	PackageFile string
 }
 
 func (c ChaincodeInstall) SessionName() string {
@@ -102,11 +131,20 @@ func (c ChaincodeInstall) SessionName() string {
 func (c ChaincodeInstall) Args() []string {
 	args := []string{
 		"chaincode", "install",
-		"--name", c.Name,
-		"--version", c.Version,
-		"--path", c.Path,
 	}
 
+	if c.PackageFile != "" {
+		args = append(args, c.PackageFile)
+	}
+	if c.Name != "" {
+		args = append(args, "--name", c.Name)
+	}
+	if c.Version != "" {
+		args = append(args, "--version", c.Version)
+	}
+	if c.Path != "" {
+		args = append(args, "--path", c.Path)
+	}
 	if c.Lang != "" {
 		args = append(args, "--lang", c.Lang)
 	}
