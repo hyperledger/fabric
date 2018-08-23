@@ -348,7 +348,7 @@ saved to a folder titled ``crypto-config``.
 Configuration Transaction Generator
 -----------------------------------
 
-The ``configtxgen tool`` is used to create four configuration artifacts:
+The ``configtxgen`` tool is used to create four configuration artifacts:
 
   * orderer ``genesis block``,
   * channel ``configuration transaction``,
