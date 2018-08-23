@@ -1,0 +1,131 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/token";
+option java_package = "org.hyperledger.fabric.protos.token";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+import "token/transaction.proto";
+
+// TokenToIssue describes a token to be issued in the system
+message TokenToIssue {
+    // Recipient refers to the owner of the token to be issued
+    bytes recipient = 1;
+
+    // Type refers to the token type
+    string type = 2;
+
+    // Quantity refers to the number of token units to be issued
+    uint64 quantity = 3;
+}
+
+// ImportRequest is used to request creation of imports
+message ImportRequest {
+    // Credential contains information about the party who is requesting the operation
+    // the content of this field depends on the charateristic of the token manager system used.
+    bytes credential = 1;
+
+    // TokenToIssue contains the information about the tokens to be issued
+    repeated TokenToIssue tokens_to_issue = 2;
+}
+
+// Header is a generic replay prevention and identity message to include in a signed command
+message Header {
+    // Timestamp is the local time when the message was created
+    // by the sender
+    google.protobuf.Timestamp timestamp = 1;
+
+    // ChannelId identifies the channel this message is bound for
+    string channel_id = 2;
+
+    // Nonce is a sufficientley long random value
+    // used to ensure the request has enough entropy.
+    bytes nonce = 3;
+
+    // Creator of the message.
+    // Typically, a marshaled msp.SerializedIdentity
+    bytes creator = 4;
+}
+
+
+// Command describes the type of operation that a client is requesting.
+message Command {
+    // Header is the header of this command
+    Header header = 1;
+
+    // Payload is the payload of this command. It can assume one of the following value
+    oneof payload {
+        ImportRequest import_request = 2;
+    }
+}
+
+// SignedCommand is a command that carries the signature of the command's creator.
+message SignedCommand {
+    // Command is the serialised version of a Command message
+    bytes command = 1;
+
+    // Signature is the signature over command
+    bytes signature = 2;
+}
+
+message CommandResponseHeader {
+    // Timestamp is the time that the message
+    // was created as  defined by the sender
+    google.protobuf.Timestamp timestamp = 1;
+
+    // CommandHash is the hash computed on the concatenation of the SignedCommand's command and signature fields.
+    // If not specified differently, SHA256 is used
+    // The hash is used to link a response with its request, both for bookeeping purposes on an
+    // asynchronous system and for security reasons (accountability, non-repudiation)
+    bytes command_hash = 2;
+
+    // Creator is the identity of the party creating this message
+    bytes creator = 3;
+}
+
+// Error reports an applicaton error
+message Error {
+    // Message associated with this response.
+    string message = 1;
+
+    // Payload that can be used to include metadata with this response.
+    bytes payload = 2;
+}
+
+// A CommnandResponse is returned from a prover to the command submitter.
+message CommandResponse {
+    // Header of the response.
+    CommandResponseHeader header = 1;
+
+    // Payload of the response.
+    oneof payload {
+        Error err = 2;
+        TokenTransaction token_transaction = 3;
+    }
+}
+
+// SignedCommandResponse is a signed command response
+message SignedCommandResponse {
+    // Response is the serialised version of a CommandResponse message
+    bytes response = 1;
+
+    // Signature is the signature over command
+    bytes signature = 2;
+}
+
+// Prover provides support to clients for the creation of FabToken transactions,
+// and to query the ledger.
+service Prover {
+    // ProcessCommand processes the passed command ensuring proper access control.
+    // The returned response allows the client to understand if the
+    // operation was succeffully executed and if not, the response
+    // reports the reason of the failure.
+    rpc ProcessCommand(SignedCommand) returns (SignedCommandResponse) {}
+}
