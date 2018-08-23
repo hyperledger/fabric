@@ -123,8 +123,13 @@ func TestApplyWriteSet(t *testing.T) {
 	expected.HashUpdates.Delete(ns1, coll1, key3, ver1)
 	expected.HashUpdates.Put(ns1, coll1, key4, value4, ver1)
 
+	testdbEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testdbEnv.Init(t)
+	defer testdbEnv.Cleanup()
+	testdb := testdbEnv.GetDBHandle("testdb")
+
 	// Call
-	pahu.ApplyWriteSet(txRWSet1, ver1)
+	pahu.ApplyWriteSet(txRWSet1, ver1, testdb)
 
 	// Check result
 	assert.Equal(t, expected, pahu)
