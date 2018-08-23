@@ -14,6 +14,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
+//go:generate counterfeiter -o mock/results_iterator.go -fake-name ResultsIterator . ResultsIterator
+
 // VersionedDBProvider provides an instance of an versioned DB
 type VersionedDBProvider interface {
 	// GetDBHandle returns a handle to a VersionedDB
@@ -85,6 +87,11 @@ type VersionedValue struct {
 	Value    []byte
 	Metadata []byte
 	Version  *version.Height
+}
+
+// IsDelete returns true if this update indicates delete of a key
+func (vv *VersionedValue) IsDelete() bool {
+	return vv.Value == nil
 }
 
 // VersionedKV encloses key and corresponding VersionedValue
