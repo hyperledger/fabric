@@ -75,9 +75,15 @@ type ValidatorOneValidSignature struct {
 
 // Validate validates the given envelope corresponding to a transaction with an endorsement
 // policy as given in its serialized form
-func (vscc *ValidatorOneValidSignature) Validate(envelopeBytes []byte, policyBytes []byte) commonerrors.TxValidationError {
+func (vscc *ValidatorOneValidSignature) Validate(
+	block *common.Block,
+	namespace string,
+	txPosition int,
+	actionPosition int,
+	policyBytes []byte,
+) commonerrors.TxValidationError {
 	// get the envelope...
-	env, err := utils.GetEnvelopeFromBlock(envelopeBytes)
+	env, err := utils.GetEnvelopeFromBlock(block.Data.Data[txPosition])
 	if err != nil {
 		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
 		return policyErr(err)
@@ -108,46 +114,38 @@ func (vscc *ValidatorOneValidSignature) Validate(envelopeBytes []byte, policyByt
 		return policyErr(err)
 	}
 
-	// loop through each of the actions within
-	for _, act := range tx.Actions {
-		cap, err := utils.GetChaincodeActionPayload(act.Payload)
-		if err != nil {
-			logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
-			return policyErr(err)
-		}
+	cap, err := utils.GetChaincodeActionPayload(tx.Actions[actionPosition].Payload)
+	if err != nil {
+		logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
+		return policyErr(err)
+	}
 
-		signatureSet, err := vscc.deduplicateIdentity(cap)
-		if err != nil {
-			return policyErr(err)
-		}
+	signatureSet, err := vscc.deduplicateIdentity(cap)
+	if err != nil {
+		return policyErr(err)
+	}
 
-		// evaluate the signature set against the policy
-		err = vscc.policyEvaluator.Evaluate(policyBytes, signatureSet)
-		if err != nil {
-			logger.Warningf("Endorsement policy failure for transaction txid=%s, err: %s", chdr.GetTxId(), err.Error())
-			if len(signatureSet) < len(cap.Action.Endorsements) {
-				// Warning: duplicated identities exist, endorsement failure might be cause by this reason
-				return policyErr(errors.New(DUPLICATED_IDENTITY_ERROR))
-			}
-			return policyErr(fmt.Errorf("VSCC error: endorsement policy failure, err: %s", err))
+	// evaluate the signature set against the policy
+	err = vscc.policyEvaluator.Evaluate(policyBytes, signatureSet)
+	if err != nil {
+		logger.Warningf("Endorsement policy failure for transaction txid=%s, err: %s", chdr.GetTxId(), err.Error())
+		if len(signatureSet) < len(cap.Action.Endorsements) {
+			// Warning: duplicated identities exist, endorsement failure might be cause by this reason
+			return policyErr(errors.New(DUPLICATED_IDENTITY_ERROR))
 		}
+		return policyErr(fmt.Errorf("VSCC error: endorsement policy failure, err: %s", err))
+	}
 
-		hdrExt, err := utils.GetChaincodeHeaderExtension(payl.Header)
+	// do some extra validation that is specific to lscc
+	if namespace == "lscc" {
+		logger.Debugf("VSCC info: doing special validation for LSCC")
+		err := vscc.ValidateLSCCInvocation(chdr.ChannelId, env, cap, payl, vscc.capabilities)
 		if err != nil {
-			logger.Errorf("VSCC error: GetChaincodeHeaderExtension failed, err %s", err)
-			return policyErr(err)
-		}
-
-		// do some extra validation that is specific to lscc
-		if hdrExt.ChaincodeId.Name == "lscc" {
-			logger.Debugf("VSCC info: doing special validation for LSCC")
-			err := vscc.ValidateLSCCInvocation(chdr.ChannelId, env, cap, payl, vscc.capabilities)
-			if err != nil {
-				logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
-				return err
-			}
+			logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
+			return err
 		}
 	}
+
 	return nil
 }
 

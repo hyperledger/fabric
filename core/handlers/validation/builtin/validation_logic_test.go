@@ -381,16 +381,19 @@ func TestInvoke(t *testing.T) {
 
 	// broken Envelope
 	var err error
-	err = v.Validate([]byte("a"), []byte("a"))
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{[]byte("a")}}}
+	err = v.Validate(b, "foo", 0, 0, []byte("a"))
 	assert.Error(t, err)
 
 	// (still) broken Envelope
-	err = v.Validate(utils.MarshalOrPanic(&common.Envelope{Payload: []byte("barf")}), []byte("a"))
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{Payload: []byte("barf")})}}}
+	err = v.Validate(b, "foo", 0, 0, []byte("a"))
 	assert.Error(t, err)
 
 	// (still) broken Envelope
-	b := utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("barf")}})})
-	err = v.Validate(b, []byte("a"))
+	e := utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("barf")}})})
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}}
+	err = v.Validate(b, "foo", 0, 0, []byte("a"))
 	assert.Error(t, err)
 
 	tx, err := createTx(false)
@@ -404,7 +407,8 @@ func TestInvoke(t *testing.T) {
 	}
 
 	// broken policy
-	err = v.Validate(envBytes, []byte("barf"))
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, []byte("barf"))
 	assert.Error(t, err)
 
 	policy, err := getSignedByMSPMemberPolicy(mspid)
@@ -413,17 +417,20 @@ func TestInvoke(t *testing.T) {
 	}
 
 	// broken type
-	b = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
-	err = v.Validate(b, policy)
+	e = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.Error(t, err)
 
 	// broken tx payload
-	b = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
-	err = v.Validate(b, policy)
+	e = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.Error(t, err)
 
 	// good path: signed by the right MSP
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 
 	// bad path: signed by the wrong MSP
@@ -432,7 +439,7 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(b, policy)
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.Error(t, err)
 
 	// bad path: signed by duplicated MSP identity
@@ -448,7 +455,8 @@ func TestInvoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
 	}
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -508,7 +516,8 @@ func TestRWSetTooBig(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -549,7 +558,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/************************/
@@ -578,7 +588,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/**********************/
@@ -604,7 +615,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/**********************/
@@ -630,7 +642,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/***********************/
@@ -656,7 +669,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/*************/
@@ -679,7 +693,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/********************/
@@ -704,7 +719,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/**********************/
@@ -729,7 +745,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 	/************************/
@@ -765,7 +782,8 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 
 }
@@ -829,7 +847,8 @@ func TestAlreadyDeployed(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -862,7 +881,8 @@ func TestValidateDeployNoLedger(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -905,7 +925,8 @@ func TestValidateDeployOK(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 }
 
@@ -978,7 +999,8 @@ func TestValidateDeployWithCollection(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 
 	// Test 2: Deploy the chaincode with duplicate collection configs --> no error as the
@@ -1001,7 +1023,8 @@ func TestValidateDeployWithCollection(t *testing.T) {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 
 	// Test 3: Once the V1_2Validation is enabled, validation should fail due to duplicate collection configs
@@ -1027,7 +1050,8 @@ func TestValidateDeployWithCollection(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 }
 
 func TestValidateDeployWithPolicies(t *testing.T) {
@@ -1071,7 +1095,8 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 
 	/********************************************/
@@ -1097,7 +1122,8 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -1138,7 +1164,8 @@ func TestInvalidUpgrade(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(b, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -1204,7 +1231,8 @@ func TestValidateUpgradeOK(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 }
 
@@ -1268,7 +1296,8 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
@@ -1371,7 +1400,8 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "lscc", 0, 0, policy)
 	if V1_2Validation {
 		assert.NoError(t, err)
 	} else {
@@ -1406,7 +1436,8 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 			t.Fatalf("GetBytesEnvelope returned err %s", err)
 		}
 
-		err = v.Validate(envBytes, policy)
+		bl = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+		err = v.Validate(bl, "lscc", 0, 0, policy)
 		assert.Error(t, err, "Some existing collection configurations are missing in the new collection configuration package")
 
 		ccver = "3"
@@ -1432,7 +1463,8 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 		}
 
 		args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
-		err = v.Validate(envBytes, policy)
+		bl = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+		err = v.Validate(bl, "lscc", 0, 0, policy)
 		assert.Error(t, err, "existing collection named mycollection2 is missing in the new collection configuration package")
 
 		ccver = "3"
@@ -1456,7 +1488,8 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 			t.Fatalf("GetBytesEnvelope returned err %s", err)
 		}
 
-		err = v.Validate(envBytes, policy)
+		bl = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+		err = v.Validate(bl, "lscc", 0, 0, policy)
 		assert.NoError(t, err)
 	}
 }
@@ -1533,7 +1566,8 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	err = v.Validate(envBytes, policy)
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "foo", 0, 0, policy)
 	assert.NoError(t, err)
 }
 
@@ -1629,10 +1663,12 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 
 	// execute the upgrade tx
 	if expecterr {
-		err = v.Validate(envBytes, policy)
+		bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+		err = v.Validate(bl, "lscc", 0, 0, policy)
 		assert.Error(t, err)
 	} else {
-		err = v.Validate(envBytes, policy)
+		bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+		err = v.Validate(bl, "lscc", 0, 0, policy)
 		assert.NoError(t, err)
 	}
 }
@@ -1701,7 +1737,8 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	err = v.Validate(envBytes, policy)
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "lscc", 0, 0, policy)
 	assert.Error(t, err)
 }
 
