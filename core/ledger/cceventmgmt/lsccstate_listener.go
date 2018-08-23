@@ -26,7 +26,8 @@ type KVLedgerLSCCStateListener struct {
 // HandleStateUpdates iterates over key-values being written in the 'lscc' namespace (which indicates deployment of a chaincode)
 // and invokes `HandleChaincodeDeploy` function on chaincode event manager (which in turn is responsible for creation of statedb
 // artifacts for the chaincode statedata)
-func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(channelName string, stateUpdates ledger.StateUpdates, committingBlockNum uint64) error {
+func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
+	channelName, stateUpdates := trigger.LedgerID, trigger.StateUpdates
 	kvWrites := stateUpdates[lsccNamespace].([]*kvrwset.KVWrite)
 	logger.Debugf("Channel [%s]: Handling state updates in LSCC namespace - stateUpdates=%#v", channelName, kvWrites)
 	chaincodeDefs := []*ChaincodeDefinition{}

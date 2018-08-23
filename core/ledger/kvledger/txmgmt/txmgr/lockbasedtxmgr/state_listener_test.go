@@ -8,11 +8,13 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
@@ -94,14 +96,63 @@ func TestStateListener(t *testing.T) {
 	assert.Equal(t, 1, ml3.StateCommitDoneCallCount())
 }
 
+func TestStateListenerQueryExecutor(t *testing.T) {
+	testEnv := testEnvsMap[levelDBtestEnvName]
+	testEnv.init(t, "testLedger", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+
+	namespace := "ns"
+	initialData := []*queryresult.KV{
+		{Namespace: namespace, Key: "key1", Value: []byte("value1")},
+		{Namespace: namespace, Key: "key2", Value: []byte("value2")},
+		{Namespace: namespace, Key: "key3", Value: []byte("value3")},
+	}
+	// populate initial data in db
+	testutilPopulateDB(t, txMgr, namespace, initialData, version.NewHeight(1, 1))
+
+	sl := new(mock.StateListener)
+	sl.InterestedInNamespacesStub = func() []string { return []string{"ns"} }
+	txMgr.stateListeners = []ledger.StateListener{sl}
+
+	// Create next block
+	sim, err := txMgr.NewTxSimulator("tx1")
+	assert.NoError(t, err)
+	sim.SetState(namespace, "key1", []byte("value1_new"))
+	sim.DeleteState(namespace, "key2")
+	sim.SetState(namespace, "key4", []byte("value4_new"))
+	simRes, err := sim.GetTxSimulationResults()
+	simResBytes, err := simRes.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	block := testutil.ConstructBlock(t, 1, nil, [][]byte{simResBytes}, false)
+
+	// invoke ValidateAndPrepare function
+	err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
+	assert.NoError(t, err)
+
+	// validate that the query executors passed to the state listener
+	trigger := sl.HandleStateUpdatesArgsForCall(0)
+	assert.NotNil(t, trigger)
+
+	expectedCommittedData := initialData
+	checkQueryExecutor(t, trigger.CommittedStateQueryExecutor, namespace, expectedCommittedData)
+
+	expectedPostCommitData := []*queryresult.KV{
+		{Namespace: namespace, Key: "key1", Value: []byte("value1_new")},
+		{Namespace: namespace, Key: "key3", Value: []byte("value3")},
+		{Namespace: namespace, Key: "key4", Value: []byte("value4_new")},
+	}
+	checkQueryExecutor(t, trigger.PostCommitQueryExecutor, namespace, expectedPostCommitData)
+}
+
 func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callNumber int,
 	expectedLedgerid string,
 	expectedUpdates ledger.StateUpdates,
 	expectedCommitHt uint64) {
-	actualNs, actualStateUpdate, actualHt := ml.HandleStateUpdatesArgsForCall(callNumber)
-	assert.Equal(t, expectedLedgerid, actualNs)
-	checkEqualUpdates(t, expectedUpdates, actualStateUpdate)
-	assert.Equal(t, expectedCommitHt, actualHt)
+	actualTrigger := ml.HandleStateUpdatesArgsForCall(callNumber)
+	assert.Equal(t, expectedLedgerid, actualTrigger.LedgerID)
+	checkEqualUpdates(t, expectedUpdates, actualTrigger.StateUpdates)
+	assert.Equal(t, expectedCommitHt, actualTrigger.CommittingBlockNum)
 }
 
 func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
@@ -109,4 +160,29 @@ func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
 	for ns, expectedUpdates := range expected {
 		assert.ElementsMatch(t, expectedUpdates, actual[ns])
 	}
+}
+
+func checkQueryExecutor(t *testing.T, qe ledger.SimpleQueryExecutor, namespace string, expectedResults []*queryresult.KV) {
+	for _, kv := range expectedResults {
+		val, err := qe.GetState(namespace, kv.Key)
+		assert.NoError(t, err)
+		assert.Equal(t, kv.Value, val)
+	}
+
+	itr, err := qe.GetStateRangeScanIterator(namespace, "", "")
+	assert.NoError(t, err)
+	defer itr.Close()
+
+	actualRes := []*queryresult.KV{}
+	for {
+		res, err := itr.Next()
+		if err != nil {
+			assert.NoError(t, err)
+		}
+		if res == nil {
+			break
+		}
+		actualRes = append(actualRes, res.(*queryresult.KV))
+	}
+	assert.Equal(t, expectedResults, actualRes)
 }

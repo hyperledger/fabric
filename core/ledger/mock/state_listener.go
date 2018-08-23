@@ -17,12 +17,10 @@ type StateListener struct {
 	interestedInNamespacesReturnsOnCall map[int]struct {
 		result1 []string
 	}
-	HandleStateUpdatesStub        func(ledgerID string, stateUpdates ledger.StateUpdates, committingBlockNum uint64) error
+	HandleStateUpdatesStub        func(trigger *ledger.StateUpdateTrigger) error
 	handleStateUpdatesMutex       sync.RWMutex
 	handleStateUpdatesArgsForCall []struct {
-		ledgerID           string
-		stateUpdates       ledger.StateUpdates
-		committingBlockNum uint64
+		trigger *ledger.StateUpdateTrigger
 	}
 	handleStateUpdatesReturns struct {
 		result1 error
@@ -79,18 +77,16 @@ func (fake *StateListener) InterestedInNamespacesReturnsOnCall(i int, result1 []
 	}{result1}
 }
 
-func (fake *StateListener) HandleStateUpdates(ledgerID string, stateUpdates ledger.StateUpdates, committingBlockNum uint64) error {
+func (fake *StateListener) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	fake.handleStateUpdatesMutex.Lock()
 	ret, specificReturn := fake.handleStateUpdatesReturnsOnCall[len(fake.handleStateUpdatesArgsForCall)]
 	fake.handleStateUpdatesArgsForCall = append(fake.handleStateUpdatesArgsForCall, struct {
-		ledgerID           string
-		stateUpdates       ledger.StateUpdates
-		committingBlockNum uint64
-	}{ledgerID, stateUpdates, committingBlockNum})
-	fake.recordInvocation("HandleStateUpdates", []interface{}{ledgerID, stateUpdates, committingBlockNum})
+		trigger *ledger.StateUpdateTrigger
+	}{trigger})
+	fake.recordInvocation("HandleStateUpdates", []interface{}{trigger})
 	fake.handleStateUpdatesMutex.Unlock()
 	if fake.HandleStateUpdatesStub != nil {
-		return fake.HandleStateUpdatesStub(ledgerID, stateUpdates, committingBlockNum)
+		return fake.HandleStateUpdatesStub(trigger)
 	}
 	if specificReturn {
 		return ret.result1
@@ -104,10 +100,10 @@ func (fake *StateListener) HandleStateUpdatesCallCount() int {
 	return len(fake.handleStateUpdatesArgsForCall)
 }
 
-func (fake *StateListener) HandleStateUpdatesArgsForCall(i int) (string, ledger.StateUpdates, uint64) {
+func (fake *StateListener) HandleStateUpdatesArgsForCall(i int) *ledger.StateUpdateTrigger {
 	fake.handleStateUpdatesMutex.RLock()
 	defer fake.handleStateUpdatesMutex.RUnlock()
-	return fake.handleStateUpdatesArgsForCall[i].ledgerID, fake.handleStateUpdatesArgsForCall[i].stateUpdates, fake.handleStateUpdatesArgsForCall[i].committingBlockNum
+	return fake.handleStateUpdatesArgsForCall[i].trigger
 }
 
 func (fake *StateListener) HandleStateUpdatesReturns(result1 error) {

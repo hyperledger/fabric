@@ -90,24 +90,29 @@ type ValidatedLedger interface {
 	commonledger.Ledger
 }
 
-// QueryExecutor executes the queries
-// Get* methods are for supporting KV-based data model. ExecuteQuery method is for supporting a rich datamodel and query support
-//
-// ExecuteQuery method in the case of a rich data model is expected to support queries on
-// latest state, historical state and on the intersection of state and transactions
-type QueryExecutor interface {
+// SimpleQueryExecutor encapsulates basic functions
+type SimpleQueryExecutor interface {
 	// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	GetState(namespace string, key string) ([]byte, error)
-	// GetStateMetadata returns the metadata for given namespace and key
-	GetStateMetadata(namespace, key string) (map[string][]byte, error)
-	// GetStateMultipleKeys gets the values for multiple keys in a single call
-	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
 	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
 	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error)
+}
+
+// QueryExecutor executes the queries
+// Get* methods are for supporting KV-based data model. ExecuteQuery method is for supporting a rich datamodel and query support
+//
+// ExecuteQuery method in the case of a rich data model is expected to support queries on
+// latest state, historical state and on the intersection of state and transactions
+type QueryExecutor interface {
+	SimpleQueryExecutor
+	// GetStateMetadata returns the metadata for given namespace and key
+	GetStateMetadata(namespace, key string) (map[string][]byte, error)
+	// GetStateMultipleKeys gets the values for multiple keys in a single call
+	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
@@ -297,8 +302,17 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // and result in a panic
 type StateListener interface {
 	InterestedInNamespaces() []string
-	HandleStateUpdates(ledgerID string, stateUpdates StateUpdates, committingBlockNum uint64) error
+	HandleStateUpdates(trigger *StateUpdateTrigger) error
 	StateCommitDone(channelID string)
+}
+
+// StateUpdateTrigger encapsulates the information and helper tools that may be used by a StateListener
+type StateUpdateTrigger struct {
+	LedgerID                    string
+	StateUpdates                StateUpdates
+	CommittingBlockNum          uint64
+	CommittedStateQueryExecutor SimpleQueryExecutor
+	PostCommitQueryExecutor     SimpleQueryExecutor
 }
 
 // StateUpdates is the generic type to represent the state updates
