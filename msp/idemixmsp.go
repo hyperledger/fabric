@@ -366,6 +366,16 @@ func (msp *idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 				return errors.Errorf("user is not an admin")
 			}
 			return nil
+		case m.MSPRole_PEER:
+			if msp.version >= MSPv1_3 {
+				return errors.Errorf("idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
+			}
+			fallthrough
+		case m.MSPRole_CLIENT:
+			if msp.version >= MSPv1_3 {
+				return nil // any valid idemixmsp member must be a client
+			}
+			fallthrough
 		default:
 			return errors.Errorf("invalid MSP role type %d", int32(mspRole.Role))
 		}

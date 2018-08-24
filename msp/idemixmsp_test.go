@@ -457,6 +457,17 @@ func TestPrincipalRoleMember(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.NoError(t, err)
+
+	// Member should also satisfy client
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+
+	principal = &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
 }
 
 func TestPrincipalRoleAdmin(t *testing.T) {
@@ -486,6 +497,25 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	assert.NoError(t, err)
+}
+
+func TestPrincipalRoleNotPeer(t *testing.T) {
+	msp1, err := setup("testdata/idemix/MSP1OU1Admin", "MSP1OU1")
+	assert.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	assert.Error(t, err, "Admin should not satisfy PEER principal")
+	assert.Contains(t, err.Error(), "idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
 }
 
 func TestPrincipalRoleNotAdmin(t *testing.T) {
@@ -680,4 +710,36 @@ func TestPrincipalCombinedV11(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principalsCombined)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Combined MSP Principals are unsupported in MSPv1_1")
+}
+
+func TestRoleClientV11(t *testing.T) {
+	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
+	assert.NoError(t, err)
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+	principalRole := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id1.SatisfiesPrincipal(principalRole)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid MSP role type")
+}
+
+func TestRolePeerV11(t *testing.T) {
+	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
+	assert.NoError(t, err)
+	id1, err := getDefaultSigner(msp1)
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
+	assert.NoError(t, err)
+	principalRole := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	err = id1.SatisfiesPrincipal(principalRole)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid MSP role type")
 }
