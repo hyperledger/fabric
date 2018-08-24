@@ -27,8 +27,9 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
-	ledgerproto "github.com/hyperledger/fabric/core/ledger"
+	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -39,7 +40,7 @@ func TestLedgerProvider(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
 	numLedgers := 10
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	existingLedgerIDs, err := provider.List()
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, len(existingLedgerIDs), 0)
@@ -55,7 +56,7 @@ func TestLedgerProvider(t *testing.T) {
 
 	provider.Close()
 
-	provider, _ = NewProvider()
+	provider = testutilNewProvider(t)
 	defer provider.Close()
 	ledgerIds, _ := provider.List()
 	testutil.AssertEquals(t, len(ledgerIds), numLedgers)
@@ -97,12 +98,12 @@ func TestLedgerProvider(t *testing.T) {
 func TestRecovery(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
 	ledger, err := provider.(*Provider).openInternal(constructTestLedgerID(1))
-	ledger.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: genesisBlock})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: genesisBlock})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
@@ -111,8 +112,7 @@ func TestRecovery(t *testing.T) {
 	provider.Close()
 
 	// construct a new provider to invoke recovery
-	provider, err = NewProvider()
-	testutil.AssertNoError(t, err, "Provider failed to recover an underConstructionLedger")
+	provider = testutilNewProvider(t)
 	// verify the underecoveryflag and open the ledger
 	flag, err := provider.(*Provider).idStore.getUnderConstructionFlag()
 	testutil.AssertNoError(t, err, "Failed to read the underconstruction flag")
@@ -127,7 +127,7 @@ func TestRecovery(t *testing.T) {
 	provider.Close()
 
 	// construct a new provider to invoke recovery
-	provider, err = NewProvider()
+	provider = testutilNewProvider(t)
 	testutil.AssertNoError(t, err, "Provider failed to recover an underConstructionLedger")
 	flag, err = provider.(*Provider).idStore.getUnderConstructionFlag()
 	testutil.AssertNoError(t, err, "Failed to read the underconstruction flag")
@@ -139,8 +139,8 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
 	numLedgers := 10
-	provider, _ := NewProvider()
-	ledgers := make([]ledgerproto.PeerLedger, numLedgers)
+	provider := testutilNewProvider(t)
+	ledgers := make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		bg, gb := testutil.NewBlockGenerator(t, constructTestLedgerID(i), false)
 		l, err := provider.Create(gb)
@@ -155,16 +155,16 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		testutil.AssertNoError(t, err, "")
 		pubSimBytes, _ := res.GetPubSimulationBytes()
 		b := bg.NextBlock([][]byte{pubSimBytes})
-		err = l.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: b})
+		err = l.CommitWithPvtData(&lgr.BlockAndPvtData{Block: b})
 		l.Close()
 		testutil.AssertNoError(t, err, "")
 	}
 
 	provider.Close()
 
-	provider, _ = NewProvider()
+	provider = testutilNewProvider(t)
 	defer provider.Close()
-	ledgers = make([]ledgerproto.PeerLedger, numLedgers)
+	ledgers = make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider.Open(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")
@@ -189,7 +189,7 @@ func TestLedgerBackup(t *testing.T) {
 
 	// create and populate a ledger in the original environment
 	env := createTestEnv(t, originalPath)
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
 	gbHash := gb.Header.Hash()
 	ledger, _ := provider.Create(gb)
@@ -203,7 +203,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: block1})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
@@ -214,7 +214,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: block2})
+	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
 
 	ledger.Close()
 	provider.Close()
@@ -231,7 +231,7 @@ func TestLedgerBackup(t *testing.T) {
 	defer env.cleanup()
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
-	provider, _ = NewProvider()
+	provider = testutilNewProvider(t)
 	defer provider.Close()
 
 	_, err := provider.Create(gb)
@@ -299,4 +299,13 @@ func TestLedgerBackup(t *testing.T) {
 
 func constructTestLedgerID(i int) string {
 	return fmt.Sprintf("ledger_%06d", i)
+}
+
+func testutilNewProvider(t *testing.T) lgr.PeerLedgerProvider {
+	provider, err := NewProvider()
+	testutil.AssertNoError(t, err, "")
+	provider.Initialize(&lgr.Initializer{
+		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
+	})
+	return provider
 }

@@ -55,7 +55,9 @@ func init() {
 	// Note, if subledgers are supported in the future,
 	// the various ledgers could be created/managed at this level
 	cleanup()
-	ledgermgmt.Initialize(nil, platforms.NewRegistry(&golang.Platform{}))
+	ledgermgmt.Initialize(&ledgermgmt.Initializer{
+		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
+	})
 	var err error
 
 	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)

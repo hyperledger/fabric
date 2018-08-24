@@ -164,7 +164,11 @@ func serve(args []string) error {
 	)
 
 	//initialize resource management exit
-	ledgermgmt.Initialize(peer.ConfigTxProcessors, pr)
+	ledgermgmt.Initialize(
+		&ledgermgmt.Initializer{
+			CustomTxProcessors: peer.ConfigTxProcessors,
+			PlatformRegistry:   pr,
+		})
 
 	// Parameter overrides must be processed before any parameters are
 	// cached. Failures to cache cause the server to terminate immediately.

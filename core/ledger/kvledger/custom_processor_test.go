@@ -43,7 +43,7 @@ func (ctp *customTxProcessor) GenerateSimulationResults(txEnvelop *common.Envelo
 func TestCustomProcessor(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider, _ := NewProvider()
+	provider := testutilNewProvider(t)
 	defer provider.Close()
 
 	// create a custom tx processor and register it to handle '100 and 101' type of transaction
