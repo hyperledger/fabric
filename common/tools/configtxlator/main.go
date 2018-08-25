@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/metadata"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/rest"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
@@ -30,12 +31,9 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
-
-var logger = logging.MustGetLogger("configtxlator")
 
 // command line flags
 var (
@@ -63,6 +61,8 @@ var (
 
 	version = app.Command("version", "Show version information")
 )
+
+var logger = flogging.MustGetLogger("configtxlator")
 
 func main() {
 	kingpin.Version("0.0.1")

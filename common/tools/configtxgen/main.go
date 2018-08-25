@@ -24,7 +24,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
@@ -233,8 +232,6 @@ func main() {
 		printVersion()
 		os.Exit(exitCode)
 	}
-
-	logging.SetLevel(logging.INFO, "")
 
 	// don't need to panic when running via command line
 	defer func() {

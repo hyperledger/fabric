@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -52,10 +51,6 @@ func SetupTestConfig() {
 			panic(fmt.Errorf("Fatal error config file: %s \n", err))
 		}
 	}
-	var formatter = logging.MustStringFormatter(
-		`%{color}%{time:15:04:05.000} [%{module}] %{shortfunc} [%{shortfile}] -> %{level:.4s} %{id:03x}%{color:reset} %{message}`,
-	)
-	logging.SetFormatter(formatter)
 }
 
 // SetupCoreYAMLConfig sets up configurations for testing
@@ -85,11 +80,6 @@ func ResetConfigToDefaultValues() {
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", true)
 	viper.Set("ledger.state.couchDBConfig.warmIndexesAfterNBlocks", 1)
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/production")
-}
-
-// SetLogLevel sets up log level
-func SetLogLevel(level logging.Level, module string) {
-	logging.SetLevel(level, module)
 }
 
 // ParseTestParams parses tests params

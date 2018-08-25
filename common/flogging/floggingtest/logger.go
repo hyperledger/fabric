@@ -216,12 +216,16 @@ func AtLevel(level zapcore.Level) Option {
 	}
 }
 
-func NewTestLogger(tb testing.TB, options ...Option) (flogging.Logger, *Recorder) {
+func NewTestLogger(tb testing.TB, options ...Option) (*flogging.FabricLogger, *Recorder) {
 	enabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 		return zapcore.DebugLevel.Enabled(l)
 	})
 
-	encoder, err := fabenc.NewFormatEncoder(DefaultFormat)
+	formatters, err := fabenc.ParseFormat(DefaultFormat)
+	if err != nil {
+		tb.Fatalf("failed to parse format %s: %s", DefaultFormat, err)
+	}
+	encoder := fabenc.NewFormatEncoder(formatters...)
 	if err != nil {
 		tb.Fatalf("failed to create format encoder: %s", err)
 	}

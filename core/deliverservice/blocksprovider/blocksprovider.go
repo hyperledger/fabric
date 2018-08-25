@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/op/go-logging"
 )
 
 // LedgerInfo an adapter to provide the interface to query
@@ -103,12 +102,7 @@ type blocksProviderImpl struct {
 const wrongStatusThreshold = 10
 
 var maxRetryDelay = time.Second * 10
-
-var logger *logging.Logger // package-level logger
-
-func init() {
-	logger = flogging.MustGetLogger("blocksProvider")
-}
+var logger = flogging.MustGetLogger("blocksProvider")
 
 // NewBlocksProvider constructor function to create blocks deliverer instance
 func NewBlocksProvider(chainID string, client streamClient, gossip GossipServiceAdapter, mcs api.MessageCryptoService) BlocksProvider {

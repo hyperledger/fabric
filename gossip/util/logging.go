@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/op/go-logging"
+	"go.uber.org/zap/zapcore"
 )
 
 // Module names for logger initialization.
@@ -27,15 +27,31 @@ const (
 	LoggingPrivModule      = "gossip/privdata"
 )
 
-var loggersByModules = make(map[string]*logging.Logger)
+var loggersByModules = make(map[string]Logger)
 var lock = sync.Mutex{}
 var testMode bool
 
 // defaultTestSpec is the default logging level for gossip tests
 var defaultTestSpec = "WARNING"
 
+type Logger interface {
+	Debug(args ...interface{})
+	Debugf(format string, args ...interface{})
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Info(args ...interface{})
+	Infof(format string, args ...interface{})
+	Panic(args ...interface{})
+	Panicf(format string, args ...interface{})
+	Warning(args ...interface{})
+	Warningf(format string, args ...interface{})
+	IsEnabledFor(l zapcore.Level) bool
+}
+
 // GetLogger returns a logger for given gossip module and peerID
-func GetLogger(module string, peerID string) *logging.Logger {
+func GetLogger(module string, peerID string) Logger {
 	if peerID != "" && testMode {
 		module = module + "#" + peerID
 	}

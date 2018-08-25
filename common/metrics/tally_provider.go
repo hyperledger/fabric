@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/cactus/go-statsd-client/statsd"
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/uber-go/tally"
@@ -25,7 +25,7 @@ import (
 	statsdreporter "github.com/uber-go/tally/statsd"
 )
 
-var logger = logging.MustGetLogger("common/metrics/tally")
+var logger = flogging.MustGetLogger("common/metrics/tally")
 
 var scopeRegistryKey = tally.KeyForPrefixedStringMap
 

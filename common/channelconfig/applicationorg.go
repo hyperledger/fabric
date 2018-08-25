@@ -12,7 +12,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
@@ -69,8 +68,6 @@ func (aog *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 }
 
 func (aoc *ApplicationOrgConfig) Validate() error {
-	if logger.IsEnabledFor(logging.DEBUG) {
-		logger.Debugf("Anchor peers for org %s are %v", aoc.name, aoc.protos.AnchorPeers)
-	}
+	logger.Debugf("Anchor peers for org %s are %v", aoc.name, aoc.protos.AnchorPeers)
 	return aoc.OrganizationConfig.Validate()
 }

@@ -8,8 +8,10 @@ package flogging
 
 import (
 	"regexp"
+	"strings"
 	"sync"
 
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -46,6 +48,46 @@ func (m *ModuleLevels) Reset() {
 	m.levels = map[string]zapcore.Level{}
 	m.defaultLevel = zapcore.InfoLevel
 	m.mutex.Unlock()
+}
+
+// ActivateSpec is used to modify module logging levels.
+//
+// The logging specification has the following form:
+//   [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+func (m *ModuleLevels) ActivateSpec(spec string) error {
+	levelAll := m.defaultLevel
+	updates := map[string]zapcore.Level{}
+
+	fields := strings.Split(spec, ":")
+	for _, field := range fields {
+		split := strings.Split(field, "=")
+		switch len(split) {
+		case 1: // level
+			levelAll = NameToLevel(field)
+
+		case 2: // <module>[,<module>...]=<level>
+			level := NameToLevel(split[1])
+			if split[0] == "" {
+				return errors.Errorf("invalid logging specification '%s': no module specified in segment '%s'", spec, field)
+			}
+
+			modules := strings.Split(split[0], ",")
+			for _, module := range modules {
+				updates[module] = level
+			}
+
+		default:
+			return errors.Errorf("invalid logging specification '%s': bad segment '%s'", spec, field)
+		}
+	}
+
+	m.Reset()
+	m.SetDefaultLevel(NameToLevel(levelAll.String()))
+	for module, level := range updates {
+		m.SetLevel(module, level)
+	}
+
+	return nil
 }
 
 // SetLevel sets the logging level for a single logging module.

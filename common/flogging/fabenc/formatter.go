@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"go.uber.org/zap/zapcore"
@@ -27,6 +28,23 @@ var formatRegexp = regexp.MustCompile(`%{(color|id|level|message|module|shortfun
 
 // ParseFormat parses a log format spec and returns a slice of formatters
 // that should be iterated over to build a formatted log record.
+//
+// The op-loggng specifiers supported by this formatter are:
+//   - %{color} - level specific SGR color escape or SGR reset
+//   - %{id} - a unique log sequence number
+//   - %{level} - the log level of the entry
+//   - %{message} - the log message
+//   - %{module} - the zap logger name
+//   - %{shortfunc} - the name of the function creating the log record
+//   - %{time} - the time the log entry was created
+//
+// Specifiers may include an optional format verb:
+//   - color: reset|bold
+//   - id: a fmt style numeric formatter without the leading %
+//   - level: a fmt style string formatter without the leading %
+//   - message: a fmt style string formatter without the leading %
+//   - module: a fmt style string formatter without the leading %
+//
 func ParseFormat(spec string) ([]Formatter, error) {
 	cursor := 0
 	formatters := []Formatter{}
@@ -62,6 +80,40 @@ func ParseFormat(spec string) ([]Formatter, error) {
 	}
 
 	return formatters, nil
+}
+
+// A MultiFormatter presents multiple formatters as a single Formatter. It can
+// be used to change the set of formatters associated with an encoder at
+// runtime.
+type MultiFormatter struct {
+	mutex      sync.RWMutex
+	formatters []Formatter
+}
+
+// NewMultiFormatter creates a new MultiFormatter that delegates to the
+// provided formatters. The formatters are used in the order they are
+// presented.
+func NewMultiFormatter(formatters ...Formatter) *MultiFormatter {
+	return &MultiFormatter{
+		formatters: formatters,
+	}
+}
+
+// Format iterates over its delegates to format a log record to the provided
+// buffer.
+func (m *MultiFormatter) Format(w io.Writer, entry zapcore.Entry, fields []zapcore.Field) {
+	m.mutex.RLock()
+	for i := range m.formatters {
+		m.formatters[i].Format(w, entry, fields)
+	}
+	m.mutex.RUnlock()
+}
+
+// SetFormatters replaces the delegate formatters.
+func (m *MultiFormatter) SetFormatters(formatters []Formatter) {
+	m.mutex.Lock()
+	m.formatters = formatters
+	m.mutex.Unlock()
 }
 
 // A StringFormatter formats a fixed string.
@@ -167,7 +219,7 @@ func newMessageFormatter(f string) MessageFormatter {
 
 // Format writes the log entry message to the provided writer.
 func (m MessageFormatter) Format(w io.Writer, entry zapcore.Entry, fields []zapcore.Field) {
-	fmt.Fprintf(w, m.FormatVerb, entry.Message)
+	fmt.Fprintf(w, m.FormatVerb, strings.TrimRight(entry.Message, "\n"))
 }
 
 // ModuleFormatter formats the zap logger name.

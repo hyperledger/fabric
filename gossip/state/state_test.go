@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -39,7 +39,6 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -655,7 +654,6 @@ func TestBlockingEnqueue(t *testing.T) {
 }
 
 func TestHaltChainProcessing(t *testing.T) {
-	t.Parallel()
 	gossipChannel := func(c chan *proto.GossipMessage) <-chan *proto.GossipMessage {
 		return c
 	}
@@ -689,14 +687,11 @@ func TestHaltChainProcessing(t *testing.T) {
 			},
 		}
 	}
-	logAsserter := &logBackend{
-		logEntries: make(chan string, 100),
-	}
-	logger.SetBackend(logAsserter)
-	// Restore old backend at the end of the test
-	defer func() {
-		logger.SetBackend(defaultBackend())
-	}()
+
+	oldLogger := logger
+	defer func() { logger = oldLogger }()
+	l, recorder := floggingtest.NewTestLogger(t)
+	logger = l
 
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	mc.On("CommitWithPvtData", mock.Anything)
@@ -715,8 +710,9 @@ func TestHaltChainProcessing(t *testing.T) {
 	portPrefix := portStartRange + 350
 	newPeerNodeWithGossipWithValidator(newGossipConfig(portPrefix, 0), mc, noopPeerIdentityAcceptor, g, v)
 	gossipMsgs <- newBlockMsg(1)
-	logAsserter.assertLastLogContains(t, "Got error while committing")
-	logAsserter.assertLastLogContains(t, "foobar", "Aborting chain processing")
+	assertLogged(t, recorder, "Got error while committing")
+	assertLogged(t, recorder, "Aborting chain processing")
+	assertLogged(t, recorder, "foobar")
 }
 
 func TestFailures(t *testing.T) {
@@ -1659,39 +1655,7 @@ func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Du
 	logger.Debug("Stop waiting until timeout or true")
 }
 
-type logBackend struct {
-	logEntries chan string
-}
-
-func (l *logBackend) assertLastLogContains(t *testing.T, ss ...string) {
-	lastLogMsg := <-l.logEntries
-	for _, s := range ss {
-		assert.Contains(t, lastLogMsg, s)
-	}
-}
-
-func (l *logBackend) Log(lvl logging.Level, n int, r *logging.Record) error {
-	l.logEntries <- fmt.Sprint(r.Message(), r.Args)
-	return nil
-}
-
-func (*logBackend) GetLevel(string) logging.Level {
-	return logging.DEBUG
-}
-
-func (*logBackend) SetLevel(logging.Level, string) {
-	panic("implement me")
-}
-
-func (*logBackend) IsEnabledFor(logging.Level, string) bool {
-	return true
-}
-
-func defaultBackend() logging.LeveledBackend {
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	defaultFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
-	backendFormatter := logging.NewBackendFormatter(backend, logging.MustStringFormatter(defaultFormat))
-	be := logging.SetBackend(backendFormatter)
-	be.SetLevel(logging.WARNING, "")
-	return be
+func assertLogged(t *testing.T, r *floggingtest.Recorder, msg string) {
+	observed := func() bool { return len(r.MessagesContaining(msg)) > 0 }
+	waitUntilTrueOrTimeout(t, observed, 30*time.Second)
 }

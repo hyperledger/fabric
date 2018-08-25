@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/idemix"
 	m "github.com/hyperledger/fabric/protos/msp"
-	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -541,7 +541,7 @@ func (id *idemixidentity) Validate() error {
 }
 
 func (id *idemixidentity) Verify(msg []byte, sig []byte) error {
-	if mspLogger.IsEnabledFor(logging.DEBUG) {
+	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
 		mspIdentityLogger.Debugf("Verify Idemix sig: msg = %s", hex.Dump(msg))
 		mspIdentityLogger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
 	}

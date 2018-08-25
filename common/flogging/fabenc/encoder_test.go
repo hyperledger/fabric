@@ -17,11 +17,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func TestNewFormatEncoderBadFormat(t *testing.T) {
-	_, err := fabenc.NewFormatEncoder("%{color:garbage}")
-	assert.EqualError(t, err, "invalid color option: garbage")
-}
-
 func TestEncodeEntry(t *testing.T) {
 	var tests = []struct {
 		name     string
@@ -38,8 +33,10 @@ func TestEncodeEntry(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			enc, err := fabenc.NewFormatEncoder(tc.spec)
+			formatters, err := fabenc.ParseFormat(tc.spec)
 			assert.NoError(t, err)
+
+			enc := fabenc.NewFormatEncoder(formatters...)
 
 			line, err := enc.EncodeEntry(zapcore.Entry{}, tc.fields)
 			assert.NoError(t, err)
@@ -55,17 +52,15 @@ func (b *brokenEncoder) EncodeEntry(zapcore.Entry, []zapcore.Field) (*buffer.Buf
 }
 
 func TestEncodeFieldsFailed(t *testing.T) {
-	enc, err := fabenc.NewFormatEncoder("spec")
-	assert.NoError(t, err)
+	enc := fabenc.NewFormatEncoder()
 	enc.Encoder = &brokenEncoder{}
 
-	_, err = enc.EncodeEntry(zapcore.Entry{}, nil)
+	_, err := enc.EncodeEntry(zapcore.Entry{}, nil)
 	assert.EqualError(t, err, "broken encoder")
 }
 
 func TestFormatEncoderClone(t *testing.T) {
-	enc, err := fabenc.NewFormatEncoder("spec")
-	assert.NoError(t, err)
+	enc := fabenc.NewFormatEncoder()
 	cloned := enc.Clone()
 	assert.Equal(t, enc, cloned)
 }

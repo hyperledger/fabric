@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 )
 
 // PayloadsBuffer is used to store payloads into which used to
@@ -50,7 +49,7 @@ type PayloadsBufferImpl struct {
 
 	mutex sync.RWMutex
 
-	logger *logging.Logger
+	logger util.Logger
 }
 
 // NewPayloadsBuffer is factory function to create new payloads buffer

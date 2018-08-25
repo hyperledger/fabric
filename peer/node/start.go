@@ -20,7 +20,6 @@ import (
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -145,8 +144,6 @@ func serve(args []string) error {
 	// the deliver service connection factory as it has process wide implications
 	// and was racy with respect to initialization of gRPC clients and servers.
 	grpc.EnableTracing = true
-
-	flogging.SetPeerStartupModulesMap()
 
 	logger.Infof("Starting %s", version.GetInfo())
 

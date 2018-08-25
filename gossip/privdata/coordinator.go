@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -39,11 +38,7 @@ const (
 	transientBlockRetentionDefault   = 1000
 )
 
-var logger *logging.Logger // package-level logger
-
-func init() {
-	logger = util.GetLogger(util.LoggingPrivModule, "")
-}
+var logger = util.GetLogger(util.LoggingPrivModule, "")
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {

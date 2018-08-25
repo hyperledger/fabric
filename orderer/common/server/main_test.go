@@ -5,10 +5,8 @@ package server
 
 import (
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,12 +16,12 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,10 +98,9 @@ func TestInitializeServerConfig(t *testing.T) {
 	goodFile := "main.go"
 	badFile := "does_not_exist"
 
-	logger.SetBackend(logging.AddModuleLevel(newPanicOnCriticalBackend()))
-	defer func() {
-		logger = logging.MustGetLogger("orderer/main")
-	}()
+	oldLogger := logger
+	defer func() { logger = oldLogger }()
+	logger, _ = floggingtest.NewTestLogger(t)
 
 	testCases := []struct {
 		name              string
@@ -132,7 +129,8 @@ func TestInitializeServerConfig(t *testing.T) {
 								ClientRootCAs:      []string{tc.clientCertificate},
 							},
 						},
-					})
+					},
+				)
 			},
 			)
 		})
@@ -213,10 +211,10 @@ func TestInitializeLocalMsp(t *testing.T) {
 		})
 	})
 	t.Run("Error", func(t *testing.T) {
-		logger.SetBackend(logging.AddModuleLevel(newPanicOnCriticalBackend()))
-		defer func() {
-			logger = logging.MustGetLogger("orderer/main")
-		}()
+		oldLogger := logger
+		defer func() { logger = oldLogger }()
+		logger, _ = floggingtest.NewTestLogger(t)
+
 		assert.Panics(t, func() {
 			initializeLocalMsp(
 				&localconfig.TopLevel{
@@ -358,22 +356,4 @@ func genesisConfig(t *testing.T) *localconfig.TopLevel {
 			},
 		},
 	}
-}
-
-func newPanicOnCriticalBackend() *panicOnCriticalBackend {
-	return &panicOnCriticalBackend{
-		backend: logging.AddModuleLevel(logging.NewLogBackend(os.Stderr, "", log.LstdFlags)),
-	}
-}
-
-type panicOnCriticalBackend struct {
-	backend logging.Backend
-}
-
-func (b *panicOnCriticalBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
-	err := b.backend.Log(level, calldepth, record)
-	if level == logging.CRITICAL {
-		panic(record.Formatted(calldepth))
-	}
-	return err
 }

@@ -19,16 +19,11 @@ package blockcutter
 import (
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/op/go-logging"
 )
 
 const pkgLogID = "orderer/mocks/common/blockcutter"
 
-var logger *logging.Logger
-
-func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
-}
+var logger = flogging.MustGetLogger(pkgLogID)
 
 // Receiver mocks the blockcutter.Receiver interface
 type Receiver struct {

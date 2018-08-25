@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package flogging_test
 
 import (
+	"errors"
 	"regexp"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func TestModuleLevels(t *testing.T) {
+func TestModuleLevelsSetLevel(t *testing.T) {
 	ml := &flogging.ModuleLevels{}
 
 	lvl := ml.Level("module-name")
@@ -101,6 +102,77 @@ func TestModuleLevelsRestoreLevels(t *testing.T) {
 	ml.RestoreLevels(levels)
 	levels = ml.Levels()
 	assert.Equal(t, map[string]zapcore.Level{"module-one": zapcore.DebugLevel, "module-two": zapcore.DebugLevel}, levels)
+}
+
+func TestModuleLevelsActivateSpec(t *testing.T) {
+	var tests = []struct {
+		spec                 string
+		err                  error
+		initialLevels        map[string]zapcore.Level
+		expectedLevels       map[string]zapcore.Level
+		expectedDefaultLevel zapcore.Level
+	}{
+		{
+			spec:                 "DEBUG",
+			err:                  nil,
+			initialLevels:        map[string]zapcore.Level{},
+			expectedLevels:       map[string]zapcore.Level{},
+			expectedDefaultLevel: zapcore.DebugLevel,
+		},
+		{
+			spec:          "module1=info:DEBUG",
+			err:           nil,
+			initialLevels: map[string]zapcore.Level{},
+			expectedLevels: map[string]zapcore.Level{
+				"module1": zapcore.InfoLevel,
+			},
+			expectedDefaultLevel: zapcore.DebugLevel,
+		},
+		{
+			spec: "module1,module2=info:module3=WARN:DEBUG",
+			err:  nil,
+			initialLevels: map[string]zapcore.Level{
+				"unknown": zapcore.PanicLevel,
+			},
+			expectedLevels: map[string]zapcore.Level{
+				"module1": zapcore.InfoLevel,
+				"module2": zapcore.InfoLevel,
+				"module3": zapcore.WarnLevel,
+			},
+			expectedDefaultLevel: zapcore.DebugLevel,
+		},
+		{
+			spec:                 "=INFO:DEBUG",
+			err:                  errors.New("invalid logging specification '=INFO:DEBUG': no module specified in segment '=INFO'"),
+			initialLevels:        map[string]zapcore.Level{},
+			expectedLevels:       map[string]zapcore.Level{},
+			expectedDefaultLevel: zapcore.DebugLevel,
+		},
+		{
+			spec:                 "=INFO=:DEBUG",
+			err:                  errors.New("invalid logging specification '=INFO=:DEBUG': bad segment '=INFO='"),
+			initialLevels:        map[string]zapcore.Level{},
+			expectedLevels:       map[string]zapcore.Level{},
+			expectedDefaultLevel: zapcore.DebugLevel,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.spec, func(t *testing.T) {
+			ml := &flogging.ModuleLevels{}
+			ml.RestoreLevels(tc.initialLevels)
+
+			err := ml.ActivateSpec(tc.spec)
+
+			if tc.err == nil {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedDefaultLevel, ml.DefaultLevel())
+				assert.Equal(t, tc.expectedLevels, ml.Levels())
+			} else {
+				assert.EqualError(t, err, tc.err.Error())
+			}
+		})
+	}
 }
 
 func TestModuleLevelsEnabler(t *testing.T) {

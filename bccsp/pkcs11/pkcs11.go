@@ -17,7 +17,7 @@ import (
 	"sync"
 
 	"github.com/miekg/pkcs11"
-	"github.com/op/go-logging"
+	"go.uber.org/zap/zapcore"
 )
 
 func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, error) {
@@ -290,7 +290,7 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 
 	pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
 
-	if logger.IsEnabledFor(logging.DEBUG) {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		listAttrs(p11lib, session, prv)
 		listAttrs(p11lib, session, pub)
 	}

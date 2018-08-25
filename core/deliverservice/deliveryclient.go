@@ -19,17 +19,12 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
-var logger *logging.Logger // package-level logger
-
-func init() {
-	logger = flogging.MustGetLogger("deliveryClient")
-}
+var logger = flogging.MustGetLogger("deliveryClient")
 
 const (
 	defaultReConnectTotalTimeThreshold = time.Second * 60 * 60

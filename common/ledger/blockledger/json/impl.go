@@ -18,18 +18,17 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
 const pkgLogID = "orderer/ledger/jsonledger"
 
-var logger *logging.Logger
+var logger = flogging.MustGetLogger(pkgLogID)
+
 var closedChan chan struct{}
 var fileLock sync.Mutex
 
 func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
 	closedChan = make(chan struct{})
 	close(closedChan)
 }

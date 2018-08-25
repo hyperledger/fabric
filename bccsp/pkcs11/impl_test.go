@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 )
@@ -49,9 +48,6 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
-	// Activate DEBUG level to cover listAttrs function
-	logging.SetLevel(logging.DEBUG, "bccsp_p11")
-
 	ks, err := sw.NewFileBasedKeyStore(nil, os.TempDir(), false)
 	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)

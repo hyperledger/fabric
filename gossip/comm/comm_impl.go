@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -128,7 +127,7 @@ type commImpl struct {
 	pubSub         *util.PubSub
 	peerIdentity   api.PeerIdentityType
 	idMapper       identity.Mapper
-	logger         *logging.Logger
+	logger         util.Logger
 	opts           []grpc.DialOption
 	secureDialOpts func() []grpc.DialOption
 	connStore      *connectionStore
