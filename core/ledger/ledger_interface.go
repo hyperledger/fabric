@@ -450,9 +450,9 @@ func (e *InvalidCollNameError) Error() string {
 // does not match the corresponding hash present in the block
 // See function `PeerLedger.CommitPvtData` for the usages
 type PvtdataHashMismatch struct {
-	BlockNum, TxNum               uint64
-	ChaincodeName, CollectionName string
-	ExpectedHash                  []byte
+	BlockNum, TxNum       uint64
+	Namespace, Collection string
+	ExpectedHash          []byte
 }
 
 // DeployedChaincodeInfoProvider is a dependency that is used by ledger to build collection config history

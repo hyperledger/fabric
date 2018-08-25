@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -337,8 +336,29 @@ func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, e
 	return l.configHistoryRetriever, nil
 }
 
+// TODO: FAB-12849 rename CommitPvtData() ledger API to CommitPvtDataOfOldBlocks()
 func (l *kvLedger) CommitPvtData(pvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
-	return nil, fmt.Errorf("not yet implemented")
+	validPvtData, hashMismatches, err := ConstructValidAndInvalidPvtData(pvtData, l.blockStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.blockStore.CommitPvtDataOfOldBlocks(validPvtData)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: call txmgr with pvtData list to check whether any states need
+	// to be updated. if so, update the state.
+	// We need to compare write set version in the committedPvtData with the
+	// version in the stateDB. For a tx, if all versions matches, we need to
+	// committ the pvtData. This will be addressed by FAB-11765.
+
+	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
+		return nil, err
+	}
+
+	return hashMismatches, nil
 }
 
 func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
