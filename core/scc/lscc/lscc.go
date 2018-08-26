@@ -773,8 +773,10 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		// the maximum number of arguments depends on the capability of the channel
-		if (!ac.Capabilities().PrivateChannelData() && len(args) > 6) ||
-			(ac.Capabilities().PrivateChannelData() && len(args) > 7) {
+		if !ac.Capabilities().PrivateChannelData() && len(args) > 6 {
+			return shim.Error(PrivateChannelDataNotAvailable("").Error())
+		}
+		if ac.Capabilities().PrivateChannelData() && len(args) > 7 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 

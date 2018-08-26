@@ -227,7 +227,7 @@ func TestDeploy(t *testing.T) {
 	// As the PrivateChannelData is disabled, the following error message is expected due to the presence of
 	// collectionConfigBytes in the stub.args
 	errMessage := InvalidArgsLenErr(7).Error()
-	testDeploy(t, "example02", "1.0", path, false, false, true, InvalidArgsLenErr(7).Error(), scc, stub, []byte("collections"))
+	testDeploy(t, "example02", "1.0", path, false, false, true, PrivateChannelDataNotAvailable("").Error(), scc, stub, []byte("collections"))
 
 	// Enable PrivateChannelData
 	mocksccProvider := (&mscc.MocksccProviderFactory{
