@@ -54,8 +54,8 @@ The top level `peer` command has the following flags:
 
   This flag sets the logging level for a peer when it is started.
 
-  There are six possible values for  `<string>` : `debug`, `info`, `notice`,
-  `warning`, `error`, and `critical`.
+  There are six possible values for  `<string>` : `debug`, `info`, `warning`,
+  `error`, `panic`, and `fatal`.
 
   If `logging-level` is not explicitly specified, then it is taken from the
   `CORE_LOGGING_LEVEL` environment variable if it is set. If

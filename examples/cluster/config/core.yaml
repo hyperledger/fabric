@@ -25,7 +25,7 @@ logging:
     # subcommands, the defaults also apply to all subcommands of the command.
     # Valid logging levels are case-insensitive strings chosen from
 
-    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+    #     FATAL | PANIC | ERROR | WARNING | INFO | DEBUG
 
     # The logging levels specified here can be overridden in various ways,
     # listed below from strongest to weakest:

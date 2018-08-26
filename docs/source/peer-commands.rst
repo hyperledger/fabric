@@ -71,10 +71,10 @@ Flag details
 
   This flag sets the log level for the single peer command it is supplied with.
   Once the command has been executed, the log level will not persist. There are
-  six possible log levels: ``debug``, ``info``, ``notice`, ``warning``, ``error``,
-  and ``critical``. Note that there is no single logging level for the peer. You
+  six possible log levels: ``debug``, ``info``, ``warning``, ``error``, ``panic``,
+  and ``fatal``. Note that there is no single logging level for the peer. You
   can find the current logging level for a specific component on the peer by
-  running ``peer logging getlevel <component-name``. The defaults are defined in
+  running ``peer logging getlevel <component-name>``. The defaults are defined in
   ``sampleconfig/core.yaml`` if you'd like to take a look at what logging levels are
   set if the system admin doesn't modify anything.
 
