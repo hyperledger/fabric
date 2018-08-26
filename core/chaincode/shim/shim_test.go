@@ -493,7 +493,7 @@ func TestSetupChaincodeLogging_shim(t *testing.T) {
 			viper.Set("chaincode.logging.level", tc.ccLogLevel)
 			viper.Set("chaincode.logging.shim", tc.shimLogLevel)
 
-			SetupChaincodeLogging()
+			setupChaincodeLogging()
 
 			_, ccErr := logging.LogLevel(tc.ccLogLevel)
 			_, shimErr := logging.LogLevel(tc.shimLogLevel)
