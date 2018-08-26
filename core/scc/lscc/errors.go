@@ -133,3 +133,10 @@ type CollectionsConfigUpgradesNotAllowed string
 func (f CollectionsConfigUpgradesNotAllowed) Error() string {
 	return "as V1_2 capability is not enabled, collection upgrades are not allowed"
 }
+
+// PrivateChannelDataNotAvailable when V1_2 or later capability is not enabled
+type PrivateChannelDataNotAvailable string
+
+func (f PrivateChannelDataNotAvailable) Error() string {
+	return "as V1_2 or later capability is not enabled, private channel collections and data are not available"
+}
