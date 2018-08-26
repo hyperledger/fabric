@@ -81,14 +81,6 @@ func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	}
 
 	chaincodeLang = strings.ToUpper(chaincodeLang)
-	if javaEnabled() {
-		logger.Debug("java chaincode enabled")
-	} else {
-		logger.Debug("java chaincode disabled")
-		if pb.ChaincodeSpec_Type_value[chaincodeLang] == int32(pb.ChaincodeSpec_JAVA) {
-			return nil, errors.New("java chaincode is work-in-progress and disabled")
-		}
-	}
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
 		ChaincodeId: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName, Version: chaincodeVersion},

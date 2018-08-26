@@ -381,75 +381,6 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 	assert.Equal(t, "attempting to deploy a system chaincode barf/testchainid", pResp.Response.Message)
 }
 
-func TestEndorserLSCCJava1(t *testing.T) {
-	if endorser.JavaEnabled() {
-		t.Skip("Java chaincode is supported")
-	}
-
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &em.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		IsJavaRV:                   true,
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, platforms.NewRegistry(&golang.Platform{}))
-
-	cds := utils.MarshalOrPanic(
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
-				Type:        pb.ChaincodeSpec_JAVA,
-			},
-		},
-	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "Java chaincode is work-in-progress and disabled", pResp.Response.Message)
-}
-
-func TestEndorserLSCCJava2(t *testing.T) {
-	if endorser.JavaEnabled() {
-		t.Skip("Java chaincode is supported")
-	}
-
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &em.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		IsJavaErr:                  errors.New(""),
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, platforms.NewRegistry(&golang.Platform{}))
-
-	cds := utils.MarshalOrPanic(
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
-				Type:        pb.ChaincodeSpec_JAVA,
-			},
-		},
-	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-}
-
 func TestEndorserGoodPathWEvents(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
@@ -607,34 +538,6 @@ func TestSimulateProposal(t *testing.T) {
 	}, platforms.NewRegistry(&golang.Platform{}))
 
 	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, nil)
-	assert.Error(t, err)
-}
-
-func TestEndorserJavaChecks(t *testing.T) {
-	if endorser.JavaEnabled() {
-		t.Skip("Java chaincode is supported")
-	}
-
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &em.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mockccprovider.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, platforms.NewRegistry(&golang.Platform{}))
-
-	err := es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{})
-	assert.NoError(t, err)
-	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{}}})
-	assert.NoError(t, err)
-	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("foo")}}}})
-	assert.NoError(t, err)
-	err = es.DisableJavaCCInst(&pb.ChaincodeID{Name: "lscc"}, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install")}}}})
 	assert.Error(t, err)
 }
 
