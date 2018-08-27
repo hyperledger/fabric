@@ -1,18 +1,9 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package pkcs11
 
 import (
@@ -67,7 +58,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	}
 
 	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
-	csp := &impl{swCSP, conf, keyStore, ctx, sessions, slot, lib, opts.Sensitive, opts.SoftVerify}
+	csp := &impl{swCSP, conf, keyStore, ctx, sessions, slot, lib, opts.SoftVerify, opts.Immutable}
 	csp.returnSession(*session)
 	return csp, nil
 }
@@ -83,8 +74,8 @@ type impl struct {
 	slot     uint
 
 	lib        string
-	privImport bool
 	softVerify bool
+	immutable  bool //Immutable flag makes object immutable
 }
 
 // KeyGen generates a key using opts.
@@ -313,64 +304,28 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		}
 
 		var ski []byte
-		if !csp.privImport {
-			// opencryptoki does not support public ec key imports. This is a sufficient
-			// workaround for now to use soft verify
-			hash := sha256.Sum256(ecPt)
-			ski = hash[:]
-		} else {
-			// Warn about potential future problems
-			if !csp.softVerify {
-				logger.Debugf("opencryptoki workaround warning: Importing public EC Key does not store out to pkcs11 store,\n" +
-					"so verify with this key will fail, unless key is already present in store. Enable 'softwareverify'\n" +
-					"in pkcs11 options, if suspect this issue.")
-			}
-			ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
-			}
+		// opencryptoki does not support public ec key imports. This is a sufficient
+		// workaround for now to use soft verify
+		hash := sha256.Sum256(ecPt)
+		ski = hash[:]
+
+		// Warn about potential future problems
+		if !csp.softVerify {
+			logger.Debugf("opencryptoki workaround warning: Importing public EC Key does not store out to pkcs11 store,\n" +
+				"so verify with this key will fail, unless key is already present in store. Enable 'softwareverify'\n" +
+				"in pkcs11 options, if suspect this issue.")
+		}
+		ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
 		}
 
 		k = &ecdsaPublicKey{ski, ecdsaPK}
 		return k, nil
 
 	case *bccsp.ECDSAPrivateKeyImportOpts:
-		if !csp.privImport {
-			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] PKCS11 options 'sensitivekeys' is set to true. Cannot import")
-		}
 
-		der, ok := raw.([]byte)
-		if !ok {
-			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw material. Expected byte array")
-		}
-
-		if len(der) == 0 {
-			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil")
-		}
-
-		lowLevelKey, err := utils.DERToPrivateKey(der)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Failed converting PKIX to ECDSA public key [%s]")
-		}
-
-		ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)
-		if !ok {
-			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material")
-		}
-
-		ecPt := elliptic.Marshal(ecdsaSK.Curve, ecdsaSK.X, ecdsaSK.Y)
-		oid, ok := oidFromNamedCurve(ecdsaSK.Curve)
-		if !ok {
-			return nil, errors.New("Do not know OID for this Curve")
-		}
-
-		ski, err := csp.importECKey(oid, ecdsaSK.D.Bytes(), ecPt, opts.Ephemeral(), privateKeyFlag)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Failed getting importing EC Private Key")
-		}
-
-		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, &ecdsaSK.PublicKey}}
-		return k, nil
+		return nil, errors.New("[ECDSADERPrivateKeyImportOpts] PKCS11 options 'sensitivekeys' is set to true. Cannot import")
 
 	case *bccsp.ECDSAGoPublicKeyImportOpts:
 		lowLevelKey, ok := raw.(*ecdsa.PublicKey)
@@ -385,22 +340,19 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		}
 
 		var ski []byte
-		if !csp.privImport {
-			// opencryptoki does not support public ec key imports. This is a sufficient
-			// workaround for now to use soft verify
-			hash := sha256.Sum256(ecPt)
-			ski = hash[:]
-		} else {
-			// Warn about potential future problems
-			if !csp.softVerify {
-				logger.Debugf("opencryptoki workaround warning: Importing public EC Key does not store out to pkcs11 store,\n" +
-					"so verify with this key will fail, unless key is already present in store. Enable 'softwareverify'\n" +
-					"in pkcs11 options, if suspect this issue.")
-			}
-			ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
-			}
+		// opencryptoki does not support public ec key imports. This is a sufficient
+		// workaround for now to use soft verify
+		hash := sha256.Sum256(ecPt)
+		ski = hash[:]
+		// Warn about potential future problems
+		if !csp.softVerify {
+			logger.Debugf("opencryptoki workaround warning: Importing public EC Key does not store out to pkcs11 store,\n" +
+				"so verify with this key will fail, unless key is already present in store. Enable 'softwareverify'\n" +
+				"in pkcs11 options, if suspect this issue.")
+		}
+		ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
 		}
 
 		k = &ecdsaPublicKey{ski, lowLevelKey}
