@@ -5,7 +5,9 @@ Upgrading Your Network Components
           referring to changing the version of a component (for example, going
           from a v1.0.x binary to a v1.1 binary). The term “update,” on the other
           hand, refers not to versions but to configuration changes, such as
-          updating a channel configuration or a deployment script.
+          updating a channel configuration or a deployment script. As there is
+          no data migration, technically speaking, in Fabric, we will not use
+          the term “migration” or “migrate” here.
 
 Overview
 --------
