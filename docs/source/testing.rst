@@ -39,6 +39,9 @@ a feature is working as expected across different interfaces.
 
 For more details on how to execute the integration tests, see the integration README.
 
+See `IT Daily Results <https://jenkins.hyperledger.org/view/Daily/>`__
+
+See `IT Weekly Results <https://jenkins.hyperledger.org/view/Weekly/>`__
 
 System test
 ~~~~~~~~~~~
@@ -60,11 +63,11 @@ System testing includes the following categories:
 
 * Functional (only for regression purposes)
 
-See `Performance test results <http://169.46.120.39:31000/#/>`__
+See `SVT Daily Results <https://jenkins.hyperledger.org/view/fabric-test/job/fabric-test-daily-results-x86_64/test_results_analyzer/>`__
 
-See `Daily test results <https://jenkins.hyperledger.org/view/Daily/>`__
+See `SVT Weekly Results <https://jenkins.hyperledger.org/view/fabric-test/job/fabric-test-weekly-results-x86_64/test_results_analyzer/>`__
 
-See `Weekly test results <https://jenkins.hyperledger.org/view/Weekly/>`__
+See `SVT Performance Test Results Graphs With Testviewer <https://github.com/hyperledger/fabric-test/blob/master/tools/Testviewer/README.md>`__
 
 
 .. Licensed under Creative Commons Attribution 4.0 International License
