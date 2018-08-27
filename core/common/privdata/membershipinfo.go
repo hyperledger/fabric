@@ -10,24 +10,20 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-// MembershipInfoProvider interface defines an interface to check whether a peer is eligible to a collection or not
-type MembershipInfoProvider interface {
-	// AmMemberOf checks whether the current peer is a member of the given collection config
-	AmMemberOf(collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error)
-}
-
-type membershipProvider struct {
+// MembershipProvider can be used to check whether a peer is eligible to a collection or not
+type MembershipProvider struct {
 	selfSignedData common.SignedData
 	cf             CollectionFilter
-	channelName    string
 }
 
-func NewMembershipInfoProvider(channelName string, selfSignedData common.SignedData, filter CollectionFilter) MembershipInfoProvider {
-	return &membershipProvider{channelName: channelName, selfSignedData: selfSignedData, cf: filter}
+// NewMembershipInfoProvider returns MembershipProvider
+func NewMembershipInfoProvider(selfSignedData common.SignedData, filter CollectionFilter) *MembershipProvider {
+	return &MembershipProvider{selfSignedData: selfSignedData, cf: filter}
 }
 
-func (m *membershipProvider) AmMemberOf(collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error) {
-	filt, err := m.cf.AccessFilter(m.channelName, collectionPolicyConfig)
+// AmMemberOf checks whether the current peer is a member of the given collection config
+func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error) {
+	filt, err := m.cf.AccessFilter(channelName, collectionPolicyConfig)
 	if err != nil {
 		return false, err
 	}

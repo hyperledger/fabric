@@ -25,18 +25,18 @@ func TestMembershipInfoProvider(t *testing.T) {
 	collectionStore := NewSimpleCollectionStore(&mockStoreSupport{})
 
 	// verify membership provider returns true
-	membershipProvider := NewMembershipInfoProvider("test1", peerSelfSignedData, collectionStore)
-	res, err := membershipProvider.AmMemberOf(getAccessPolicy([]string{"peer0", "peer1"}))
+	membershipProvider := NewMembershipInfoProvider(peerSelfSignedData, collectionStore)
+	res, err := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
 	assert.True(t, res)
 	assert.Nil(t, err)
 
 	// verify membership provider returns false
-	res, err = membershipProvider.AmMemberOf(getAccessPolicy([]string{"peer2", "peer3"}))
+	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
 	assert.False(t, res)
 	assert.Nil(t, err)
 
 	// verify membership provider returns nil and error
-	res, err = membershipProvider.AmMemberOf(nil)
+	res, err = membershipProvider.AmMemberOf("test1", nil)
 	assert.False(t, res)
 	assert.Error(t, err)
 	assert.Equal(t, "Collection config policy is nil", err.Error())
