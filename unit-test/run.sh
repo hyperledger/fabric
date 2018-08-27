@@ -24,7 +24,7 @@ plugin_packages=(
 
 # packages which need to be tested with build tag pkcs11
 pkcs11_packages=(
-    "github.com/hyperledger/fabric/bccsp"
+    "github.com/hyperledger/fabric/bccsp/..."
 )
 
 # obtain packages changed since some git refspec
