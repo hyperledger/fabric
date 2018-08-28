@@ -60,6 +60,11 @@ type Store interface {
 	Commit() error
 	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function
 	Rollback() error
+	// ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to recieve data for an
+	// existing collection. Parameter 'committingBlk' refers to the block number that contains the corresponding
+	// collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
+	// is now eligible to recieve pvt data
+	ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error
 	// IsEmpty returns true if the store does not have any block committed yet
 	IsEmpty() (bool, error)
 	// LastCommittedBlockHeight returns the height of the last committed block

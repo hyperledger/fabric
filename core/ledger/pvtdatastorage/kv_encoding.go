@@ -8,11 +8,13 @@ package pvtdatastorage
 
 import (
 	"bytes"
+	"math"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/pkg/errors"
 	"github.com/willf/bitset"
 )
 
@@ -23,6 +25,7 @@ var (
 	expiryKeyPrefix                = []byte{3}
 	eligibleMissingDataKeyPrefix   = []byte{4}
 	ineligibleMissingDataKeyPrefix = []byte{5}
+	collElgKeyPrefix               = []byte{6}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
@@ -145,9 +148,51 @@ func decodeMissingDataValue(bitmapBytes []byte) (*bitset.BitSet, error) {
 	return bitmap, nil
 }
 
+func encodeCollElgKey(blkNum uint64) []byte {
+	return append(collElgKeyPrefix, util.EncodeReverseOrderVarUint64(blkNum)...)
+}
+
+func decodeCollElgKey(b []byte) uint64 {
+	blkNum, _ := util.DecodeReverseOrderVarUint64(b[1:])
+	return blkNum
+}
+
+func encodeCollElgVal(m *CollElgInfo) ([]byte, error) {
+	return proto.Marshal(m)
+}
+
+func decodeCollElgVal(b []byte) (*CollElgInfo, error) {
+	m := &CollElgInfo{}
+	if err := proto.Unmarshal(b, m); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return m, nil
+}
+
 func createRangeScanKeysForEligibleMissingDataEntries(blkNum uint64) (startKey, endKey []byte) {
 	startKey = append(eligibleMissingDataKeyPrefix, util.EncodeReverseOrderVarUint64(blkNum)...)
 	endKey = append(eligibleMissingDataKeyPrefix, util.EncodeReverseOrderVarUint64(0)...)
 
 	return startKey, endKey
+}
+
+func createRangeScanKeysForIneligibleMissingData(maxBlkNum uint64, ns, coll string) (startKey, endKey []byte) {
+	startKey = encodeMissingDataKey(
+		&missingDataKey{
+			nsCollBlk:  nsCollBlk{ns: ns, coll: coll, blkNum: maxBlkNum},
+			isEligible: false,
+		},
+	)
+	endKey = encodeMissingDataKey(
+		&missingDataKey{
+			nsCollBlk:  nsCollBlk{ns: ns, coll: coll, blkNum: 0},
+			isEligible: false,
+		},
+	)
+	return
+}
+
+func createRangeScanKeysForCollElg() (startKey, endKey []byte) {
+	return encodeCollElgKey(math.MaxUint64),
+		encodeCollElgKey(0)
 }

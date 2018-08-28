@@ -38,6 +38,9 @@ const confMaxBatchSize = "ledger.state.couchDBConfig.maxBatchUpdateSize"
 const confAutoWarmIndexes = "ledger.state.couchDBConfig.autoWarmIndexes"
 const confWarmIndexesAfterNBlocks = "ledger.state.couchDBConfig.warmIndexesAfterNBlocks"
 
+var confCollElgProcMaxDbBatchSize = &conf{"ledger.pvtdataStore.collElgProcMaxDbBatchSize", 5000}
+var confCollElgProcDbBatchesInterval = &conf{"ledger.pvtdataStore.collElgProcDbBatchesInterval", 1000}
+
 // GetRootPath returns the filesystem path.
 // All ledger related contents are expected to be stored under this path
 func GetRootPath() string {
@@ -85,7 +88,7 @@ func GetMaxBlockfileSize() int {
 	return 64 * 1024 * 1024
 }
 
-//GetTotalLimit exposes the totalLimit variable
+// GetTotalQueryLimit exposes the totalLimit variable
 func GetTotalQueryLimit() int {
 	totalQueryLimit := viper.GetInt(confTotalQueryLimit)
 	// if queryLimit was unset, default to 10000
@@ -95,7 +98,7 @@ func GetTotalQueryLimit() int {
 	return totalQueryLimit
 }
 
-//GetQueryLimit exposes the queryLimit variable
+// GetInternalQueryLimit exposes the queryLimit variable
 func GetInternalQueryLimit() int {
 	internalQueryLimit := viper.GetInt(confInternalQueryLimit)
 	// if queryLimit was unset, default to 1000
@@ -123,6 +126,26 @@ func GetPvtdataStorePurgeInterval() uint64 {
 		purgeInterval = 100
 	}
 	return uint64(purgeInterval)
+}
+
+// GetPvtdataStoreCollElgProcMaxDbBatchSize returns the maximum db batch size for converting
+// the ineligible missing data entries to eligible missing data entries
+func GetPvtdataStoreCollElgProcMaxDbBatchSize() int {
+	collElgProcMaxDbBatchSize := viper.GetInt(confCollElgProcMaxDbBatchSize.Name)
+	if collElgProcMaxDbBatchSize <= 0 {
+		collElgProcMaxDbBatchSize = confCollElgProcMaxDbBatchSize.DefaultVal
+	}
+	return collElgProcMaxDbBatchSize
+}
+
+// GetPvtdataStoreCollElgProcDbBatchesInterval returns the minimum duration (in milliseconds) between writing
+// two consecutive db batches for converting the ineligible missing data entries to eligible missing data entries
+func GetPvtdataStoreCollElgProcDbBatchesInterval() int {
+	collElgProcDbBatchesInterval := viper.GetInt(confCollElgProcDbBatchesInterval.Name)
+	if collElgProcDbBatchesInterval <= 0 {
+		collElgProcDbBatchesInterval = confCollElgProcDbBatchesInterval.DefaultVal
+	}
+	return collElgProcDbBatchesInterval
 }
 
 //IsHistoryDBEnabled exposes the historyDatabase variable
@@ -161,4 +184,9 @@ func GetWarmIndexesAfterNBlocks() int {
 		warmAfterNBlocks = 1
 	}
 	return warmAfterNBlocks
+}
+
+type conf struct {
+	Name       string
+	DefaultVal int
 }

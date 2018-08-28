@@ -136,6 +136,11 @@ func (batch *UpdateBatch) Delete(key []byte) {
 	batch.KVs[string(key)] = nil
 }
 
+// Len returns the number of entries in the batch
+func (batch *UpdateBatch) Len() int {
+	return len(batch.KVs)
+}
+
 // Iterator extends actual leveldb iterator
 type Iterator struct {
 	iterator.Iterator
