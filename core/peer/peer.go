@@ -195,7 +195,7 @@ var validationWorkersSemaphore *semaphore.Weighted
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper, pr *platforms.Registry) {
+func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
@@ -208,10 +208,10 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 	var cb *common.Block
 	var ledger ledger.PeerLedger
 	ledgermgmt.Initialize(&ledgermgmt.Initializer{
-		CustomTxProcessors: ConfigTxProcessors,
-		PlatformRegistry:   pr,
+		CustomTxProcessors:            ConfigTxProcessors,
+		PlatformRegistry:              pr,
+		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 	})
-
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
 		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
