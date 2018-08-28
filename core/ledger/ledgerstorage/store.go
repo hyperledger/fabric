@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package ledgerstorage
@@ -171,6 +161,14 @@ func (s *Store) getPvtDataByNumWithoutLock(blockNum uint64, filter ledger.PvtNsC
 		return nil, err
 	}
 	return pvtdata, nil
+}
+
+func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
+	// it is safe to not acquire a read lock. Without a lock, the value of lastCommittedBlock
+	// can change due to a new block commit. As a result, we may not be able to fetch the
+	// missing data info of the most recent block. This decision was made to ensure that
+	// the block commit rate is not affected.
+	return s.pvtdataStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
 // init first invokes function `initFromExistingBlockchain`

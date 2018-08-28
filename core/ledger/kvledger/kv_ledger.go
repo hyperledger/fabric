@@ -283,6 +283,12 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 	return nil
 }
 
+// GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
+// most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
+func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
+	return l.blockStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
+}
+
 // GetPvtDataAndBlockByNum returns the block and the corresponding pvt data.
 // The pvt data is filtered by the list of 'collections' supplied
 func (l *kvLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {
@@ -322,7 +328,7 @@ func (l *kvLedger) CommitPvtData(pvtData []*ledger.BlockPvtData) ([]*ledger.Pvtd
 }
 
 func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
-	return nil, fmt.Errorf("not yet implemented")
+	return l, nil
 }
 
 // Close closes `KVLedger`

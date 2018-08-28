@@ -651,6 +651,14 @@
   version = "v3.3.2"
 
 [[projects]]
+  digest = "1:4a89d259d0c9800105554c2e61a1c783730b772a2f97b1cd85938976eb8c6775"
+  name = "github.com/willf/bitset"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "c3421afa22c6123d7cfc4d5f9c527a37b764ef73"
+  version = "v1.1.8"
+
+[[projects]]
   digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
   name = "go.uber.org/atomic"
   packages = ["."]
@@ -887,6 +895,7 @@
     "github.com/uber-go/tally",
     "github.com/uber-go/tally/prometheus",
     "github.com/uber-go/tally/statsd",
+    "github.com/willf/bitset",
     "go.uber.org/zap",
     "go.uber.org/zap/buffer",
     "go.uber.org/zap/zapcore",
