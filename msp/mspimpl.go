@@ -334,7 +334,7 @@ func (msp *bccspmsp) hasOURoleInternal(id *identity, mspRole m.MSPRole_MSPRoleTy
 // DeserializeIdentity returns an Identity given the byte-level
 // representation of a SerializedIdentity struct
 func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
-	mspLogger.Infof("Obtaining identity")
+	mspLogger.Debug("Obtaining identity")
 
 	// We first deserialize to a SerializedIdentity to get the MSP ID
 	sId := &m.SerializedIdentity{}

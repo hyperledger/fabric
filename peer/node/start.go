@@ -88,12 +88,6 @@ const (
 var chaincodeDevMode bool
 var orderingEndpoint string
 
-// XXXDefaultChannelMSPID should not be defined in production code
-// It should only be referenced in tests.  However, it is necessary
-// to support the 'default chain' setup so temporarily adding until
-// this concept can be removed to testing scenarios only
-const XXXDefaultChannelMSPID = "SampleOrg"
-
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
 	flags := nodeStartCmd.Flags()
