@@ -19,6 +19,7 @@ import (
 type Initializer struct {
 	StateListeners                []StateListener
 	DeployedChaincodeInfoProvider DeployedChaincodeInfoProvider
+	MembershipInfoProvider        MembershipInfoProvider
 }
 
 // PeerLedgerProvider provides handle to ledger instances
@@ -437,6 +438,13 @@ type ChaincodeLifecycleDetails struct {
 	HashChanged        bool     // true, if the chaincode code package is changed
 	CollectionsUpdated []string // names of the collections that are either added or updated
 	CollectionsRemoved []string // names of the collections that are removed
+}
+
+// MembershipInfoProvider is a dependency that is used by ledger to determine whether the current peer is
+// a member of a collection. Gossip module is expected to provide the dependency to ledger
+type MembershipInfoProvider interface {
+	// AmMemberOf checks whether the current peer is a member of the given collection
+	AmMemberOf(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error)
 }
 
 //go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider

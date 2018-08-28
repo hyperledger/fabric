@@ -39,6 +39,7 @@ type Initializer struct {
 	CustomTxProcessors            customtx.Processors
 	PlatformRegistry              *platforms.Registry
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
+	MembershipInfoProvider        ledger.MembershipInfoProvider
 }
 
 // Initialize initializes ledgermgmt
@@ -64,6 +65,7 @@ func initialize(initializer *Initializer) {
 	provider.Initialize(&ledger.Initializer{
 		StateListeners:                finalStateListeners,
 		DeployedChaincodeInfoProvider: initializer.DeployedChaincodeInfoProvider,
+		MembershipInfoProvider:        initializer.MembershipInfoProvider,
 	})
 
 	ledgerProvider = provider
