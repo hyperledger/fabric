@@ -7,25 +7,30 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
 // MembershipProvider can be used to check whether a peer is eligible to a collection or not
 type MembershipProvider struct {
-	selfSignedData common.SignedData
-	cf             CollectionFilter
+	selfSignedData              common.SignedData
+	IdentityDeserializerFactory func(chainID string) msp.IdentityDeserializer
 }
 
 // NewMembershipInfoProvider returns MembershipProvider
-func NewMembershipInfoProvider(selfSignedData common.SignedData, filter CollectionFilter) *MembershipProvider {
-	return &MembershipProvider{selfSignedData: selfSignedData, cf: filter}
+func NewMembershipInfoProvider(selfSignedData common.SignedData, identityDeserializerFunc func(chainID string) msp.IdentityDeserializer) *MembershipProvider {
+	return &MembershipProvider{selfSignedData: selfSignedData, IdentityDeserializerFactory: identityDeserializerFunc}
 }
 
 // AmMemberOf checks whether the current peer is a member of the given collection config
 func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error) {
-	filt, err := m.cf.AccessFilter(channelName, collectionPolicyConfig)
+	deserializer := m.IdentityDeserializerFactory(channelName)
+	accessPolicy, err := getPolicy(collectionPolicyConfig, deserializer)
 	if err != nil {
 		return false, err
 	}
-	return filt(m.selfSignedData), nil
+	if err := accessPolicy.Evaluate([]*common.SignedData{&m.selfSignedData}); err != nil {
+		return false, nil
+	}
+	return true, nil
 }

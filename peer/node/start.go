@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
@@ -70,6 +71,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
+	common2 "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
@@ -157,12 +159,19 @@ func serve(args []string) error {
 
 	deployedCCInfoProvider := &lscc.DeployedCCInfoProvider{}
 
+	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain(chainID)
+	}
+
+	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
+
 	//initialize resource management exit
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:            peer.ConfigTxProcessors,
 			PlatformRegistry:              pr,
 			DeployedChaincodeInfoProvider: deployedCCInfoProvider,
+			MembershipInfoProvider:        membershipInfoProvider,
 		})
 
 	// Parameter overrides must be processed before any parameters are
@@ -314,7 +323,7 @@ func serve(args []string) error {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
-	}, ccp, sccp, txvalidator.MapBasedPluginMapper(validationPluginsByName), pr, deployedCCInfoProvider)
+	}, ccp, sccp, txvalidator.MapBasedPluginMapper(validationPluginsByName), pr, deployedCCInfoProvider, membershipInfoProvider)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, policyMgr, lifecycle)
@@ -371,6 +380,24 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 		logger.Panicf("Failed creating local policy: +%v", err)
 	}
 	return policy
+}
+
+func createSelfSignedData() common2.SignedData {
+	sId := mgmt.GetLocalSigningIdentityOrPanic()
+	msg := make([]byte, 32)
+	sig, err := sId.Sign(msg)
+	if err != nil {
+		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
+	}
+	peerIdentity, err := sId.Serialize()
+	if err != nil {
+		logger.Panicf("Failed creating self signed data because peer identity couldn't be serialized: %v", err)
+	}
+	return common2.SignedData{
+		Data:      msg,
+		Signature: sig,
+		Identity:  peerIdentity,
+	}
 }
 
 func registerDiscoveryService(peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {

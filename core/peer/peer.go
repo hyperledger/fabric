@@ -195,7 +195,7 @@ var validationWorkersSemaphore *semaphore.Weighted
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) {
+func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
@@ -211,6 +211,7 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 		CustomTxProcessors:            ConfigTxProcessors,
 		PlatformRegistry:              pr,
 		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
+		MembershipInfoProvider:        membershipProvider,
 	})
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {

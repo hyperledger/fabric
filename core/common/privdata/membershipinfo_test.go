@@ -10,22 +10,24 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMembershipInfoProvider(t *testing.T) {
-	// define identity of self peer as peer0
 	peerSelfSignedData := common.SignedData{
 		Identity:  []byte("peer0"),
 		Signature: []byte{1, 2, 3},
 		Data:      []byte{4, 5, 6},
 	}
 
-	collectionStore := NewSimpleCollectionStore(&mockStoreSupport{})
+	identityDeserializer := func(chainID string) msp.IdentityDeserializer {
+		return &mockDeserializer{}
+	}
 
 	// verify membership provider returns true
-	membershipProvider := NewMembershipInfoProvider(peerSelfSignedData, collectionStore)
+	membershipProvider := NewMembershipInfoProvider(peerSelfSignedData, identityDeserializer)
 	res, err := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
 	assert.True(t, res)
 	assert.Nil(t, err)
@@ -35,11 +37,11 @@ func TestMembershipInfoProvider(t *testing.T) {
 	assert.False(t, res)
 	assert.Nil(t, err)
 
-	// verify membership provider returns nil and error
+	// verify membership provider returns nil and error when collection policy config is nil
 	res, err = membershipProvider.AmMemberOf("test1", nil)
 	assert.False(t, res)
 	assert.Error(t, err)
-	assert.Equal(t, "Collection config policy is nil", err.Error())
+	assert.Equal(t, "Collection policy config is nil", err.Error())
 }
 
 func getAccessPolicy(signers []string) *common.CollectionPolicyConfig {
