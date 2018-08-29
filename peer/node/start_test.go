@@ -1,23 +1,14 @@
 /*
-Copyright 2017 Hitachi America, Ltd.
+Copyright Hitachi America, Ltd.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package node
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -32,21 +23,22 @@ import (
 
 func TestStartCmd(t *testing.T) {
 	defer viper.Reset()
-
 	g := NewGomegaWithT(t)
+
+	tempDir, err := ioutil.TempDir("", "startcmd")
+	g.Expect(err).NotTo(HaveOccurred())
+	defer os.RemoveAll(tempDir)
 
 	viper.Set("peer.address", "localhost:6051")
 	viper.Set("peer.listenAddress", "0.0.0.0:6051")
 	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:6052")
-	viper.Set("peer.fileSystemPath", "/tmp/hyperledger/test")
+	viper.Set("peer.fileSystemPath", tempDir)
 	viper.Set("chaincode.executetimeout", "30s")
 	viper.Set("chaincode.mode", "dev")
 	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc"}
 	for _, module := range overrideLogModules {
 		viper.Set("logging."+module, "INFO")
 	}
-
-	defer os.RemoveAll("/tmp/hyperledger/test")
 
 	msptesttools.LoadMSPSetupForTesting()
 
