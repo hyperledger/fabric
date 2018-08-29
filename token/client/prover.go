@@ -57,7 +57,7 @@ func (prover *ProverPeer) RequestTransfer(
 
 	tr := &token.TransferRequest{
 		Shares:   shares,
-		TokenIDs: tokenIDs,
+		TokenIds: tokenIDs,
 	}
 	payload := &token.Command_TransferRequest{TransferRequest: tr}
 

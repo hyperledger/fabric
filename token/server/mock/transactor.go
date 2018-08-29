@@ -9,6 +9,19 @@ import (
 )
 
 type Transactor struct {
+	RequestTransferStub        func(request *token.TransferRequest) (*token.TokenTransaction, error)
+	requestTransferMutex       sync.RWMutex
+	requestTransferArgsForCall []struct {
+		request *token.TransferRequest
+	}
+	requestTransferReturns struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
+	requestTransferReturnsOnCall map[int]struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
 	ListTokensStub        func() (*token.UnspentTokens, error)
 	listTokensMutex       sync.RWMutex
 	listTokensArgsForCall []struct{}
@@ -22,6 +35,57 @@ type Transactor struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Transactor) RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error) {
+	fake.requestTransferMutex.Lock()
+	ret, specificReturn := fake.requestTransferReturnsOnCall[len(fake.requestTransferArgsForCall)]
+	fake.requestTransferArgsForCall = append(fake.requestTransferArgsForCall, struct {
+		request *token.TransferRequest
+	}{request})
+	fake.recordInvocation("RequestTransfer", []interface{}{request})
+	fake.requestTransferMutex.Unlock()
+	if fake.RequestTransferStub != nil {
+		return fake.RequestTransferStub(request)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.requestTransferReturns.result1, fake.requestTransferReturns.result2
+}
+
+func (fake *Transactor) RequestTransferCallCount() int {
+	fake.requestTransferMutex.RLock()
+	defer fake.requestTransferMutex.RUnlock()
+	return len(fake.requestTransferArgsForCall)
+}
+
+func (fake *Transactor) RequestTransferArgsForCall(i int) *token.TransferRequest {
+	fake.requestTransferMutex.RLock()
+	defer fake.requestTransferMutex.RUnlock()
+	return fake.requestTransferArgsForCall[i].request
+}
+
+func (fake *Transactor) RequestTransferReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.RequestTransferStub = nil
+	fake.requestTransferReturns = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Transactor) RequestTransferReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.RequestTransferStub = nil
+	if fake.requestTransferReturnsOnCall == nil {
+		fake.requestTransferReturnsOnCall = make(map[int]struct {
+			result1 *token.TokenTransaction
+			result2 error
+		})
+	}
+	fake.requestTransferReturnsOnCall[i] = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Transactor) ListTokens() (*token.UnspentTokens, error) {
@@ -70,6 +134,8 @@ func (fake *Transactor) ListTokensReturnsOnCall(i int, result1 *token.UnspentTok
 func (fake *Transactor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.requestTransferMutex.RLock()
+	defer fake.requestTransferMutex.RUnlock()
 	fake.listTokensMutex.RLock()
 	defer fake.listTokensMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

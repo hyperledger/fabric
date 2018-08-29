@@ -26,6 +26,11 @@ type Transactor struct {
 	Ledger           ledger.LedgerReader
 }
 
+// RequestTransfer creates a TokenTransaction of type transfer request
+func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error) {
+	panic("not implemented!")
+}
+
 // ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
 func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 	iterator, err := t.Ledger.GetStateRangeScanIterator(namespace, "", "")

@@ -71,7 +71,7 @@ message ImportRequest {
 message TransferRequest {
     bytes credential = 1;
 
-    repeated bytes tokenIDs = 2;
+    repeated bytes token_ids = 2;
 
     repeated RecipientTransferShare shares = 3;
 }
