@@ -277,14 +277,13 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), 
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
 	msgChan := make(chan *proto.SignedGossipMessage, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
-	defer close(msgChan)
-
+	quit := make(chan struct{})
 	// Call stream.Recv() asynchronously in readFromStream(),
 	// and wait for either the Recv() call to end,
 	// or a signal to close the connection, which exits
 	// the method and makes the Recv() call to fail in the
 	// readFromStream() method
-	go conn.readFromStream(errChan, msgChan)
+	go conn.readFromStream(errChan, quit, msgChan)
 
 	go conn.writeToStream()
 
@@ -332,10 +331,7 @@ func (conn *connection) drainOutputBuffer() {
 	}
 }
 
-func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.SignedGossipMessage) {
-	defer func() {
-		recover()
-	}() // msgChan might be closed
+func (conn *connection) readFromStream(errChan chan error, quit chan struct{}, msgChan chan *proto.SignedGossipMessage) {
 	for !conn.toDie() {
 		stream := conn.getStream()
 		if stream == nil {
@@ -358,7 +354,11 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.S
 			errChan <- err
 			conn.logger.Warningf("Got error, aborting: %v", err)
 		}
-		msgChan <- msg
+		select {
+		case msgChan <- msg:
+		case <-quit:
+			return
+		}
 	}
 }
 
