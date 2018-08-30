@@ -264,10 +264,9 @@ func TestAddAndRemove(t *testing.T) {
 
 func TestDigestsFilters(t *testing.T) {
 	t.Parallel()
-	peer2pullInst := make(map[string]*pullInstance)
 	df1 := createDigestsFilter(2)
-	inst1 := createPullInstanceWithFilters("localhost:5611", peer2pullInst, nil, df1)
-	inst2 := createPullInstance("localhost:5612", peer2pullInst)
+	inst1 := createPullInstanceWithFilters("localhost:5611", make(map[string]*pullInstance), nil, df1)
+	inst2 := createPullInstance("localhost:5612", make(map[string]*pullInstance))
 	inst1ReceivedDigest := int32(0)
 
 	defer inst1.stop()
