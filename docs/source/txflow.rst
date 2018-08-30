@@ -109,6 +109,8 @@ notify the client application that the transaction (invocation) has been
 immutably appended to the chain, as well as notification of whether the
 transaction was validated or invalidated.
 
+**Note**: See the :ref:`sequence diagram <swimlane>` to better understand the
+transaction flow.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
