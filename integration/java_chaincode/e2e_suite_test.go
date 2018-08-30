@@ -18,7 +18,7 @@ import (
 
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "EndToEnd Suite")
+	RunSpecs(t, "Java Chaincode Suite")
 }
 
 var components *nwo.Components
