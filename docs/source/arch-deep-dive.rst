@@ -593,6 +593,8 @@ conclusion whether a transaction contained in a blob is valid. Hence,
 all peers commit and apply the same sequence of transactions and update
 their state in the same way.
 
+.. _swimlane:
+
 .. image:: images/flow-4.png
    :alt: Illustration of the transaction flow (common-case path).
 
