@@ -222,7 +222,7 @@ For example, in the following snippet of the ``initMarble`` function,
 To summarize, the policy definition above for our ``collection.json``
 allows all peers in Org1 and Org2 can store and transact (endorse, commit,
 query) with the marbles private data ``name, color, size, owner`` in their
-private database. But only peers in Org1 can can store and transact with
+private database. But only peers in Org1 can store and transact with
 the ``price`` private data in an additional private database.
 
 As an additional data privacy benefit, since a collection is being used,
