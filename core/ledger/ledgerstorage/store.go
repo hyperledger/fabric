@@ -171,12 +171,18 @@ func (s *Store) getPvtDataByNumWithoutLock(blockNum uint64, filter ledger.PvtNsC
 	return pvtdata, nil
 }
 
+// GetMissingPvtDataInfoForMostRecentBlocks invokes the function on underlying pvtdata store
 func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	// it is safe to not acquire a read lock. Without a lock, the value of lastCommittedBlock
 	// can change due to a new block commit. As a result, we may not be able to fetch the
 	// missing data info of the most recent block. This decision was made to ensure that
 	// the block commit rate is not affected.
 	return s.pvtdataStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
+}
+
+// ProcessCollsEligibilityEnabled invokes the function on underlying pvtdata store
+func (s *Store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
+	return s.pvtdataStore.ProcessCollsEligibilityEnabled(committingBlk, nsCollMap)
 }
 
 // init first invokes function `initFromExistingBlockchain`

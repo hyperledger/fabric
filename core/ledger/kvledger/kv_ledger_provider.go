@@ -48,6 +48,7 @@ type Provider struct {
 	stateListeners      []ledger.StateListener
 	bookkeepingProvider bookkeeping.Provider
 	initializer         *ledger.Initializer
+	collElgNotifier     *collElgNotifier
 }
 
 // NewProvider instantiates a new Provider.
@@ -67,15 +68,29 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
 	logger.Info("ledger provider Initialized")
 	provider := &Provider{idStore, ledgerStoreProvider,
-		vdbProvider, historydbProvider, nil, nil, bookkeepingProvider, nil}
+		vdbProvider, historydbProvider, nil, nil, bookkeepingProvider, nil, nil}
 	return provider, nil
 }
 
 // Initialize implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Initialize(initializer *ledger.Initializer) {
+	configHistoryMgr := confighistory.NewMgr()
+	collElgNotifier := &collElgNotifier{
+		initializer.DeployedChaincodeInfoProvider,
+		initializer.MembershipInfoProvider,
+		make(map[string]collElgListener),
+	}
+	stateListeners := initializer.StateListeners
+	// TODO uncomment follwoing line when FAB-11780 is done.
+	// Because, collElgNotifier has a dependency on `ledger.MembershipInfoProvider` which is nil as of now
+	// and will lead to a nil pointer
+	// stateListeners = append(stateListeners, collElgNotifier)
+	stateListeners = append(stateListeners, configHistoryMgr)
+
 	provider.initializer = initializer
-	provider.configHistoryMgr = confighistory.NewMgr()
-	provider.stateListeners = initializer.StateListeners
+	provider.configHistoryMgr = configHistoryMgr
+	provider.stateListeners = stateListeners
+	provider.collElgNotifier = collElgNotifier
 	provider.recoverUnderConstructionLedger()
 }
 
@@ -136,6 +151,7 @@ func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, erro
 	if err != nil {
 		return nil, err
 	}
+	provider.collElgNotifier.registerListener(ledgerID, blockStore)
 
 	// Get the versioned database (state database) for a chain/ledger
 	vDB, err := provider.vdbProvider.GetDBHandle(ledgerID)
