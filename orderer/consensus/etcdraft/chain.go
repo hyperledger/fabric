@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -129,8 +130,53 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
-	c.logger.Panicf("Configure not implemented yet")
-	return nil
+	if err := c.checkConfigUpdateValidity(env); err != nil {
+		return err
+	}
+	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Content: env}, 0)
+}
+
+// validate the config update for being of Type A or Type B as described in the design doc.
+func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
+	var err error
+	payload, err := utils.UnmarshalPayload(ctx.Payload)
+	if err != nil {
+		return err
+	}
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return err
+	}
+
+	switch chdr.Type {
+	case int32(common.HeaderType_ORDERER_TRANSACTION):
+		return errors.Errorf("channel creation requests not supported yet")
+	case int32(common.HeaderType_CONFIG):
+		configEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		if err != nil {
+			return err
+		}
+		configUpdateEnv, err := utils.EnvelopeToConfigUpdate(configEnv.LastUpdate)
+		if err != nil {
+			return err
+		}
+		configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+		if err != nil {
+			return err
+		}
+
+		// ignoring the read set for now
+		// check only if the ConsensusType is updated in the write set
+		if ordererConfigGroup, ok := configUpdate.WriteSet.Groups["Orderer"]; ok {
+			if _, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
+				return errors.Errorf("updates to ConsensusType not supported currently")
+			}
+		}
+		return nil
+
+	default:
+		return errors.Errorf("config transaction has unknown header type")
+	}
 }
 
 // WaitReady is currently a no-op.
@@ -209,28 +255,18 @@ func (c *Chain) serveRequest() {
 	}
 
 	for {
-		seq := c.support.Sequence()
 
 		select {
 		case msg := <-c.submitC:
-			if c.isConfig(msg.Content) {
-				c.logger.Panicf("Processing config envelope is not implemented yet")
+			batches, pending, err := c.ordered(msg)
+			if err != nil {
+				c.logger.Errorf("Failed to order message: %s", err)
 			}
-
-			if msg.LastValidationSeq < seq {
-				if _, err := c.support.ProcessNormalMsg(msg.Content); err != nil {
-					c.logger.Warningf("Discarding bad normal message: %s", err)
-					continue
-				}
+			if pending {
+				start() // no-op if timer is already started
+			} else {
+				stop()
 			}
-
-			batches, _ := c.support.BlockCutter().Ordered(msg.Content)
-			if len(batches) == 0 {
-				start()
-				continue
-			}
-
-			stop()
 
 			if err := c.commitBatches(batches...); err != nil {
 				c.logger.Errorf("Failed to commit block: %s", err)
@@ -257,6 +293,42 @@ func (c *Chain) serveRequest() {
 	}
 }
 
+// Orders the envelope in the `msg` content. SubmitRequest.
+// Returns
+//   -- batches [][]*common.Envelope; the batches cut,
+//   -- pending bool; if there are envelopes pending to be ordered,
+//   -- err error; the error encountered, if any.
+// It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
+func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
+	seq := c.support.Sequence()
+
+	if c.isConfig(msg.Content) {
+		// ConfigMsg
+		if msg.LastValidationSeq < seq {
+			msg.Content, _, err = c.support.ProcessConfigMsg(msg.Content)
+			if err != nil {
+				return nil, true, errors.Errorf("bad config message: %s", err)
+			}
+		}
+		batch := c.support.BlockCutter().Cut()
+		batches = [][]*common.Envelope{}
+		if len(batch) != 0 {
+			batches = append(batches, batch)
+		}
+		batches = append(batches, []*common.Envelope{msg.Content})
+		return batches, false, nil
+	}
+	// it is a normal message
+	if msg.LastValidationSeq < seq {
+		if _, err := c.support.ProcessNormalMsg(msg.Content); err != nil {
+			return nil, true, errors.Errorf("bad normal message: %s", err)
+		}
+	}
+	batches, pending = c.support.BlockCutter().Ordered(msg.Content)
+	return batches, pending, nil
+
+}
+
 func (c *Chain) commitBatches(batches ...[]*common.Envelope) error {
 	for _, batch := range batches {
 		b := c.support.CreateNextBlock(batch)
@@ -268,9 +340,10 @@ func (c *Chain) commitBatches(batches ...[]*common.Envelope) error {
 		select {
 		case block := <-c.commitC:
 			if utils.IsConfigBlock(block) {
-				c.logger.Panicf("Config block is not supported yet")
+				c.support.WriteConfigBlock(block, nil)
+			} else {
+				c.support.WriteBlock(block, nil)
 			}
-			c.support.WriteBlock(block, nil)
 
 		case <-c.doneC:
 			return nil
