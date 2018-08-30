@@ -20,10 +20,15 @@ import (
 )
 
 type mockPolicyEvaluator struct {
-	EvaluateRV error
+	EvaluateRV          error
+	EvaluateResByPolicy map[string]error
 }
 
 func (m *mockPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error {
+	if res, ok := m.EvaluateResByPolicy[string(policyBytes)]; ok {
+		return res
+	}
+
 	return m.EvaluateRV
 }
 
@@ -332,6 +337,51 @@ func TestCCEPValidationReads(t *testing.T) {
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	assert.Error(t, err)
 	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+}
+
+func TestOnlySBEPChecked(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: we ensure that as long as there is one key that
+	// requires state-based endorsement, we only check that policy
+	// and we do not check the cc-EP. We check that by setting up the
+	// policy evaluator mock into returning an error for all policies
+	// but the state-based one, and expect successful evaluation
+
+	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+	mr := &mockState{map[string][]byte{vpMetadataKey: []byte("SBEP")}, nil, map[string][]byte{}, nil, false}
+	ms := &mockStateFetcher{mr, nil}
+	pm := &KeyLevelValidationParameterManagerImpl{Support: ms}
+	pe := &mockPolicyEvaluator{}
+	validator := NewKeyLevelValidator(pe, pm)
+
+	rwsb := rwsetBytes(t, "cc")
+	prp := []byte("barf")
+	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
+
+	validator.PreValidate(1, block)
+
+	go func() {
+		validator.PostValidate("cc", 1, 0, fmt.Errorf(""))
+	}()
+
+	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
+	pe.EvaluateResByPolicy = map[string]error{
+		"SBEP": nil,
+	}
+
+	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
+	assert.NoError(t, err)
+
+	// we also test with a read-write set that has a read as well as a write
+	rwsbu := rwsetutil.NewRWSetBuilder()
+	rwsbu.AddToWriteSet("cc", "key", []byte("value"))
+	rwsbu.AddToReadSet("cc", "key", nil)
+	rws := rwsbu.GetTxReadWriteSet()
+	rwsb, _ = rws.ToProtoBytes()
+
+	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
+	assert.NoError(t, err)
 }
 
 func TestCCEPValidationPvtReads(t *testing.T) {

@@ -23,6 +23,7 @@ import (
 /**********************************************************************************************************/
 
 type policyChecker struct {
+	someEPChecked bool
 	ccEPChecked   bool
 	vpmgr         KeyLevelValidationParameterManager
 	policySupport validation.PolicyEvaluator
@@ -30,8 +31,8 @@ type policyChecker struct {
 	signatureSet  []*common.SignedData
 }
 
-func (p *policyChecker) checkCCEP(cc string, blockNum, txNum uint64) commonerrors.TxValidationError {
-	if p.ccEPChecked {
+func (p *policyChecker) checkCCEPIfCondition(cc string, blockNum, txNum uint64, condition bool) commonerrors.TxValidationError {
+	if condition {
 		return nil
 	}
 
@@ -42,7 +43,16 @@ func (p *policyChecker) checkCCEP(cc string, blockNum, txNum uint64) commonerror
 	}
 
 	p.ccEPChecked = true
+	p.someEPChecked = true
 	return nil
+}
+
+func (p *policyChecker) checkCCEPIfNotChecked(cc string, blockNum, txNum uint64) commonerrors.TxValidationError {
+	return p.checkCCEPIfCondition(cc, blockNum, txNum, p.ccEPChecked)
+}
+
+func (p *policyChecker) checkCCEPIfNoEPChecked(cc string, blockNum, txNum uint64) commonerrors.TxValidationError {
+	return p.checkCCEPIfCondition(cc, blockNum, txNum, p.someEPChecked)
 }
 
 func (p *policyChecker) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uint64) commonerrors.TxValidationError {
@@ -61,7 +71,7 @@ func (p *policyChecker) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 
 	// if no key-level validation parameter has been specified, the regular cc endorsement policy needs to hold
 	if len(vp) == 0 {
-		return p.checkCCEP(cc, blockNum, txNum)
+		return p.checkCCEPIfNotChecked(cc, blockNum, txNum)
 	}
 
 	// validate against key-level vp
@@ -69,6 +79,8 @@ func (p *policyChecker) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 	if err != nil {
 		return policyErr(errors.Wrapf(err, "validation of key %s (coll'%s':ns'%s') in tx %d:%d failed", key, coll, cc, blockNum, txNum))
 	}
+
+	p.someEPChecked = true
 
 	return nil
 }
@@ -244,26 +256,10 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 				}
 			}
 		}
-		// public reads
-		// if there are any we check the chaincode endorsement policy because of FAB-9473
-		if len(nsRWSet.KvRwSet.Reads) > 0 {
-			err := policyChecker.checkCCEP(cc, blockNum, txNum)
-			if err != nil {
-				return err
-			}
-		}
-		// private reads
-		// if there are any we check the chaincode endorsement policy because of FAB-9473
-		for _, collRWSet := range nsRWSet.CollHashedRwSets {
-			if len(collRWSet.HashedRwSet.HashedReads) > 0 {
-				err := policyChecker.checkCCEP(cc, blockNum, txNum)
-				if err != nil {
-					return err
-				}
-			}
-		}
 	}
-	return nil
+
+	// we make sure that we check at least the CCEP to honour FAB-9473
+	return policyChecker.checkCCEPIfNoEPChecked(cc, blockNum, txNum)
 }
 
 // PostValidate implements the function of the StateBasedValidator interface
