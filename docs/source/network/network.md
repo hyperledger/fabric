@@ -408,7 +408,7 @@ generate an endorsed transaction response, which is returned by the peer node to
 the client application.
 
 It's these transactions responses that are packaged together with the
-transaction proposal to form a fully endorsed transaction, which can de
+transaction proposal to form a fully endorsed transaction, which can be
 distributed to the entire network.  We'll look at this in more detail later  For
 now, it's enough to understand how applications invoke smart contracts to
 generate endorsed transactions.
@@ -654,8 +654,8 @@ channels. The channel configuration CC2 now contains the policies that govern
 channel resources, assigning management rights to organizations R2 and R3 over
 channel C2. It is managed exclusively by R2 and R3; R1 and R4 have no power in
 channel C2. For example, channel configuration CC2 can subsequently be updated
-to add organizations to support network growth, but this can only be done done
-by R2 or R3.
+to add organizations to support network growth, but this can only be done by R2 
+or R3.
 
 Note how the channel configurations CC1 and CC2 remain completely separate from
 each other, and completely separate from the network configuration, NC4. Again
