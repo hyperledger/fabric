@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/transientstore"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
+	"github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -396,7 +397,7 @@ func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCr
 			n:  util.RandomUInt64(),
 		}, nil
 	}
-	return nil, errors.New("not found")
+	return nil, privdata.NoSuchCollectionError{}
 }
 
 func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privdata.Collection, error) {
@@ -1040,7 +1041,24 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	assertCommitHappened()
 
 	fmt.Println("Scenario V")
-	// Scenario V: Block didn't get with any private data alongside it, and the transient store
+	// Scenario V: Block we got has private data alongside it but coordinator cannot retrieve collection access
+	// policy of collections due to databse unavailability error.
+	// we verify that the error propagates properly.
+	mockCs := &mocks.CollectionStore{}
+	mockCs.On("RetrieveCollectionAccessPolicy", mock.Anything).Return(nil, errors.New("test error"))
+	coordinator = NewCoordinator(Support{
+		CollectionStore: mockCs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
+	}, peerSelfSignedData)
+	err = coordinator.StoreBlock(block, nil)
+	assert.Error(t, err)
+	assert.Equal(t, "test error", err.Error())
+
+	fmt.Println("Scenario VI")
+	// Scenario VI: Block didn't get with any private data alongside it, and the transient store
 	// has some problem.
 	// In this case, we should try to fetch data from peers.
 	block = bf.AddTxn("tx3", "ns3", hash, "c3").create()
@@ -1088,8 +1106,8 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assertCommitHappened()
 
-	fmt.Println("Scenario VI")
-	// Scenario VI: Block contains 2 transactions, and the peer is eligible for only tx3-ns3-c3.
+	fmt.Println("Scenario VII")
+	// Scenario VII: Block contains 2 transactions, and the peer is eligible for only tx3-ns3-c3.
 	// Also, the blocks comes with a private data for tx3-ns3-c3 so that the peer won't have to fetch the
 	// private data from the transient store or peers, and in fact- if it attempts to fetch the data it's not eligible
 	// for from the transient store or from peers - the test would fail because the Mock wasn't initialized.

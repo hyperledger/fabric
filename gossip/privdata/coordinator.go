@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	vsccErrors "github.com/hyperledger/fabric/common/errors"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -39,6 +40,8 @@ const (
 )
 
 var logger = util.GetLogger(util.LoggingPrivModule, "")
+
+//go:generate mockery -dir ../../core/common/privdata/ -name CollectionStore -case underscore -output mocks/
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {
@@ -531,9 +534,9 @@ func (k *rwSetKey) toTxPvtReadWriteSet(rws []byte) *rwset.TxPvtReadWriteSet {
 
 type txns []string
 type blockData [][]byte
-type blockConsumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement)
+type blockConsumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error
 
-func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockConsumer) txns {
+func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockConsumer) (txns, error) {
 	var txList []string
 	for seqInBlock, envBytes := range data {
 		env, err := utils.GetEnvelopeFromBlock(envBytes)
@@ -593,9 +596,12 @@ func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockCons
 			logger.Warning("Failed obtaining TxRwSet from ChaincodeAction's results", err)
 			continue
 		}
-		consumer(uint64(seqInBlock), chdr, txRWSet, ccActionPayload.Action.Endorsements)
+		err = consumer(uint64(seqInBlock), chdr, txRWSet, ccActionPayload.Action.Endorsements)
+		if err != nil {
+			return txList, err
+		}
 	}
-	return txList
+	return txList, nil
 }
 
 func endorsersFromOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs []string) []*peer.Endorsement {
@@ -645,7 +651,10 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		privateRWsetsInBlock: privateRWsetsInBlock,
 		coordinator:          c,
 	}
-	txList := data.forEachTxn(txsFilter, bi.inspectTransaction)
+	txList, err := data.forEachTxn(txsFilter, bi.inspectTransaction)
+	if err != nil {
+		return nil, err
+	}
 
 	privateInfo := &privateDataInfo{
 		sources:            sources,
@@ -687,18 +696,22 @@ type transactionInspector struct {
 	missingRWSButIneligible []rwSetKey
 }
 
-func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) {
+func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error {
 	for _, ns := range txRWSet.NsRwSets {
 		for _, hashedCollection := range ns.CollHashedRwSets {
 			if !containsWrites(chdr.TxId, ns.NameSpace, hashedCollection) {
 				continue
 			}
-			// TODO: The return type of accessPolicyForCollection should be (policy, error).
+
 			// If an error occurred due to the unavailability of database, we should stop committing
 			// blocks for the associated chain. The policy can never be nil for a valid collection.
-			// For collections which were never defined, the policy would be nil and we can safetly
-			// move on to the next collection. This is covered in FAB-11630.
-			policy := bi.accessPolicyForCollection(chdr, ns.NameSpace, hashedCollection.CollectionName)
+			// For collections which were never defined, the policy would be nil and we can safely
+			// move on to the next collection.
+			policy, err := bi.accessPolicyForCollection(chdr, ns.NameSpace, hashedCollection.CollectionName)
+			if err != nil {
+				return &vsccErrors.VSCCExecutionFailureError{Err: err}
+			}
+
 			if policy == nil {
 				logger.Errorf("Failed to retrieve collection config for channel [%s], chaincode [%s], collection name [%s] for txID [%s]. Skipping.",
 					chdr.ChannelId, ns.NameSpace, hashedCollection.CollectionName, chdr.TxId)
@@ -732,11 +745,12 @@ func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *comm
 			}
 		} // for all hashed RW sets
 	} // for all RW sets
+	return nil
 }
 
 // accessPolicyForCollection retrieves a CollectionAccessPolicy for a given namespace, collection name
 // that corresponds to a given ChannelHeader
-func (c *coordinator) accessPolicyForCollection(chdr *common.ChannelHeader, namespace string, col string) privdata.CollectionAccessPolicy {
+func (c *coordinator) accessPolicyForCollection(chdr *common.ChannelHeader, namespace string, col string) (privdata.CollectionAccessPolicy, error) {
 	cp := common.CollectionCriteria{
 		Channel:    chdr.ChannelId,
 		Namespace:  namespace,
@@ -744,11 +758,12 @@ func (c *coordinator) accessPolicyForCollection(chdr *common.ChannelHeader, name
 		TxId:       chdr.TxId,
 	}
 	sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cp)
-	if err != nil {
-		logger.Warning("Failed obtaining policy for", cp, ":", err, "skipping collection")
-		return nil
+
+	if _, isNoSuchCollectionError := err.(privdata.NoSuchCollectionError); err != nil && !isNoSuchCollectionError {
+		logger.Warning("Failed obtaining policy for", cp, "due to database unavailability:", err)
+		return nil, err
 	}
-	return sp
+	return sp, nil
 }
 
 // isEligible checks if this peer is eligible for a given CollectionAccessPolicy
@@ -813,10 +828,10 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
-	data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) {
+	data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) error {
 		item, exists := blockAndPvtData.BlockPvtData[seqInBlock]
 		if !exists {
-			return
+			return nil
 		}
 
 		for _, ns := range item.WriteSet.NsPvtRwset {
@@ -844,6 +859,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 				seqs2Namespaces.addCollection(seqInBlock, item.WriteSet.DataModel, ns.Namespace, col)
 			}
 		}
+		return nil
 	})
 
 	return blockAndPvtData.Block, seqs2Namespaces.asPrivateData(), nil
