@@ -415,7 +415,7 @@ Not using a configuration file
 
 It is possible to execute the discovery CLI without having a
 configuration file, and just passing all needed configuration as
-commandline flags. The followng is an example of a local peer membership
+commandline flags. The following is an example of a local peer membership
 query which loads administrator credentials:
 
 ~~~~ {.sourceCode .shell}

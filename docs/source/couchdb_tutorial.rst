@@ -299,7 +299,7 @@ Install and instantiate the Chaincode
 
 Client applications interact with the blockchain ledger through chaincode. As
 such we need to install the chaincode on every peer that will
-execute and endorse our transactions and and instantiate the chaincode on the
+execute and endorse our transactions and instantiate the chaincode on the
 channel. In the previous section, we demonstrated how to package the chaincode
 so they should be ready for deployment.
 

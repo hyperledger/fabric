@@ -52,7 +52,7 @@ Policies:
 ```
 
 This policy construct can be interpreted as: *the policy named `MyPolicy` can
-only be satisfied by the signature of of an identity with role of "a peer from
+only be satisfied by the signature of an identity with role of "a peer from
 Org1" or "a peer from Org2"*.
 
 Signature policies support arbitrary combinations of `AND`, `OR`, and `NOutOf`,
