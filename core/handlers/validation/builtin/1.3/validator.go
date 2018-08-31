@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package statebased
+package builtin1_3
 
 import (
 	"github.com/hyperledger/fabric/protos/peer"
