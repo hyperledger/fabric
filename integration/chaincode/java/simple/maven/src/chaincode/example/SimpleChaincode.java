@@ -35,8 +35,8 @@ public class SimpleChaincode extends ChaincodeBase {
 			int account2Value = Integer.parseInt(args.get(3));
 			
 			_logger.info(String.format("account %s, value = %s; account %s, value %s", account1Key, account1Value, account2Key, account2Value));
-			stub.putStringState(account1Key, args.get(1));
-			stub.putStringState(account2Key, args.get(3));
+			stub.putState(account1Key, args.get(1));
+			stub.putState(account2Key, args.get(3));
 			
 			return newSuccessResponse();
 		} catch (Throwable e) {
@@ -72,13 +72,13 @@ public class SimpleChaincode extends ChaincodeBase {
 		String accountFromKey = args.get(0);
 		String accountToKey = args.get(1);
 
-		String accountFromValueStr = stub.getStringState(accountFromKey);
+		String accountFromValueStr = stub.getStateUTF8(accountFromKey);
 		if (accountFromValueStr == null) {
 			return newErrorResponse(String.format("Entity %s not found", accountFromKey));
 		}
 		int accountFromValue = Integer.parseInt(accountFromValueStr);
 
-		String accountToValueStr = stub.getStringState(accountToKey);
+		String accountToValueStr = stub.getStateUTF8(accountToKey);
 		if (accountToValueStr == null) {
 			return newErrorResponse(String.format("Entity %s not found", accountToKey));
 		}
@@ -96,8 +96,8 @@ public class SimpleChaincode extends ChaincodeBase {
 		_logger.info(String.format("new value of A: %s", accountFromValue));
 		_logger.info(String.format("new value of B: %s", accountToValue));
 		
-		stub.putStringState(accountFromKey, Integer.toString(accountFromValue));
-		stub.putStringState(accountToKey, Integer.toString(accountToValue));
+		stub.putState(accountFromKey, Integer.toString(accountFromValue));
+		stub.putState(accountToKey, Integer.toString(accountToValue));
 		
 		_logger.info("Transfer complete");
 
@@ -122,7 +122,7 @@ public class SimpleChaincode extends ChaincodeBase {
 		}
 		String key = args.get(0);
 		//byte[] stateBytes
-		String val	= stub.getStringState(key);
+		String val	= stub.getStateUTF8(key);
 		if (val == null) {
 			return newErrorResponse(String.format("Error: state for %s is null", key));
 		}
