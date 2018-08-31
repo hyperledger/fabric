@@ -86,15 +86,17 @@ func NewService(config Config, sup Support) *service {
 
 func (s *service) Discover(ctx context.Context, request *discovery.SignedRequest) (*discovery.Response, error) {
 	addr := util.ExtractRemoteAddress(ctx)
-	req, err := validateStructure(ctx, request, addr, s.config.TLS, comm.ExtractCertificateHashFromContext)
+	req, err := validateStructure(ctx, request, s.config.TLS, comm.ExtractCertificateHashFromContext)
 	if err != nil {
+		logger.Warningf("Request from %s is malformed or invalid: %v", addr, err)
 		return nil, err
 	}
-
+	logger.Debugf("Processing request from %s: %v", addr, req)
 	var res []*discovery.QueryResult
 	for _, q := range req.Queries {
 		res = append(res, s.processQuery(q, request, req.Authentication.ClientIdentity, addr))
 	}
+	logger.Debugf("Returning to %s a response containing: %v", addr, res)
 	return &discovery.Response{
 		Results: res,
 	}, nil
@@ -229,7 +231,7 @@ func (s *service) computeMembership(q *discovery.Query) map[string]peerMapping {
 }
 
 // validateStructure validates that the request contains all the needed fields and that they are computed correctly
-func validateStructure(ctx context.Context, request *discovery.SignedRequest, addr string, tlsEnabled bool, certHashFromContext certHashExtractor) (*discovery.Request, error) {
+func validateStructure(ctx context.Context, request *discovery.SignedRequest, tlsEnabled bool, certHashFromContext certHashExtractor) (*discovery.Request, error) {
 	if request == nil {
 		return nil, errors.New("nil request")
 	}
@@ -243,7 +245,6 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, ad
 	if len(req.Authentication.ClientIdentity) == 0 {
 		return nil, errors.New("access denied, client identity wasn't supplied")
 	}
-	logger.Debug("Received request from", addr)
 	if !tlsEnabled {
 		return req, nil
 	}

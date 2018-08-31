@@ -323,19 +323,19 @@ func TestValidateStructure(t *testing.T) {
 	// Scenarios I-V without TLS, scenarios VI onwards TLS
 
 	// Scenario I: Nil request
-	res, err := validateStructure(context.Background(), nil, "", false, extractHash)
+	res, err := validateStructure(context.Background(), nil, false, extractHash)
 	assert.Nil(t, res)
 	assert.Equal(t, "nil request", err.Error())
 
 	// Scenario II: Malformed envelope
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: []byte{1, 2, 3},
-	}, "", false, extractHash)
+	}, false, extractHash)
 	assert.Nil(t, res)
 	assert.Contains(t, err.Error(), "failed parsing request")
 
 	// Scenario III: Empty request
-	res, err = validateStructure(context.Background(), &discovery.SignedRequest{}, "", false, extractHash)
+	res, err = validateStructure(context.Background(), &discovery.SignedRequest{}, false, extractHash)
 	assert.Nil(t, res)
 	assert.Equal(t, "access denied, no authentication info in request", err.Error())
 
@@ -346,7 +346,7 @@ func TestValidateStructure(t *testing.T) {
 	b, _ := proto.Marshal(req)
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
-	}, "", false, extractHash)
+	}, false, extractHash)
 	assert.Nil(t, res)
 	assert.Equal(t, "access denied, client identity wasn't supplied", err.Error())
 
@@ -359,7 +359,7 @@ func TestValidateStructure(t *testing.T) {
 	b, _ = proto.Marshal(req)
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
-	}, "", false, extractHash)
+	}, false, extractHash)
 	assert.NoError(t, err)
 	// Ensure returned request is as before serialization to bytes
 	assert.Equal(t, req, res)
@@ -373,7 +373,7 @@ func TestValidateStructure(t *testing.T) {
 	b, _ = proto.Marshal(req)
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
-	}, "", true, extractHash)
+	}, true, extractHash)
 	assert.Nil(t, res)
 	assert.Equal(t, "client didn't send a TLS certificate", err.Error())
 
@@ -391,7 +391,7 @@ func TestValidateStructure(t *testing.T) {
 	b, _ = proto.Marshal(req)
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
-	}, "", true, extractHash)
+	}, true, extractHash)
 	assert.Nil(t, res)
 	assert.Equal(t, "client claimed TLS hash doesn't match computed TLS hash from gRPC stream", err.Error())
 
@@ -409,7 +409,7 @@ func TestValidateStructure(t *testing.T) {
 	b, _ = proto.Marshal(req)
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
-	}, "", true, extractHash)
+	}, true, extractHash)
 }
 
 func TestValidateCCQuery(t *testing.T) {
