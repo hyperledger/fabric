@@ -405,7 +405,7 @@ type MockStateRangeQueryIterator struct {
 func (iter *MockStateRangeQueryIterator) HasNext() bool {
 	if iter.Closed {
 		// previously called Close()
-		mockLogger.Error("HasNext() but already closed")
+		mockLogger.Debug("HasNext() but already closed")
 		return false
 	}
 
