@@ -13,12 +13,12 @@ import (
 // ValidationParameterUpdatedErr is returned whenever
 // Validation Parameters for a key could not be
 // supplied because they are being updated
-type ValidationParameterUpdatedErr struct {
+type ValidationParameterUpdatedError struct {
 	Key    string
 	Height uint64
 }
 
-func (f *ValidationParameterUpdatedErr) Error() string {
+func (f *ValidationParameterUpdatedError) Error() string {
 	return fmt.Sprintf("validation parameters for key %s have been changed in a transaction in block %d", f.Key, f.Height)
 }
 

@@ -60,7 +60,7 @@ func (p *policyChecker) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 	vp, err := p.vpmgr.GetValidationParameterForKey(cc, coll, key, blockNum, txNum)
 	if err != nil {
 		switch err := err.(type) {
-		case *ValidationParameterUpdatedErr:
+		case *ValidationParameterUpdatedError:
 			return policyErr(err)
 		default:
 			return &commonerrors.VSCCExecutionFailureError{

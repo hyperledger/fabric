@@ -40,7 +40,7 @@ var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollect
 // New creates a new instance of the default VSCC
 // Typically this will only be invoked once per peer
 func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *Validator {
-	vpmgr := &KeyLevelValidationParameterManagerImpl{Support: s}
+	vpmgr := &KeyLevelValidationParameterManagerImpl{StateFetcher: s}
 	sbv := NewKeyLevelValidator(pe, vpmgr)
 
 	return &Validator{

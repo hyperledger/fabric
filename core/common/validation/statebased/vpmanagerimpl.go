@@ -46,10 +46,10 @@ type txDependency struct {
 	mutex               sync.Mutex
 	cond                *sync.Cond
 	validationResultMap map[string]error
-	depInserted         chan (struct{})
+	depInserted         chan struct{}
 }
 
-func newTxDependency(txNum uint64) *txDependency {
+func newTxDependency() *txDependency {
 	txd := &txDependency{
 		depInserted:         make(chan struct{}),
 		validationResultMap: make(map[string]error),
@@ -167,7 +167,7 @@ func (c *validationContext) getOrCreateDependencyByTxnum(txnum uint64) *txDepend
 		defer c.mutex.Unlock()
 		dep, ok = c.depsByTxnumMap[txnum]
 		if !ok {
-			dep = newTxDependency(txnum)
+			dep = newTxDependency()
 			c.depsByTxnumMap[txnum] = dep
 		}
 	}
@@ -192,7 +192,7 @@ func (c *validationContext) waitForValidationResults(kid *ledgerKeyID, blockNum 
 		for depTxnum, dep := range dl {
 			if depTxnum < txnum {
 				if valErr := dep.waitForAndRetrieveValidationResult(kid.cc); valErr == nil {
-					err := &ValidationParameterUpdatedErr{kid.key, blockNum}
+					err := &ValidationParameterUpdatedError{kid.key, blockNum}
 					return err
 				}
 			}
@@ -207,7 +207,7 @@ func (c *validationContext) waitForValidationResults(kid *ledgerKeyID, blockNum 
 type KeyLevelValidationParameterManagerImpl struct {
 	// mutex ensures that only one goroutine at a time will modify validationCtxMap
 	mutex         sync.RWMutex
-	Support       validation.StateFetcher
+	StateFetcher  validation.StateFetcher
 	validationCtx validationContext
 }
 
@@ -274,7 +274,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	// if we're here, it means that it is safe to retrieve validation
 	// parameters for the requested key from the ledger
 
-	state, err := m.Support.FetchState()
+	state, err := m.StateFetcher.FetchState()
 	if err != nil {
 		err = errors.WithMessage(err, "could not retrieve ledger")
 		logger.Errorf(err.Error())
