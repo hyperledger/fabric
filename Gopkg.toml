@@ -37,10 +37,6 @@ noverify = [
   version = "1.2.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/golang/groupcache"
-
-[[constraint]]
   name = "github.com/golang/protobuf"
   version = "1.1.0"
 

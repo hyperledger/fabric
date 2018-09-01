@@ -220,14 +220,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:3fb07f8e222402962fa190eb060608b34eddfb64562a18e2167df2de0ece85d8"
-  name = "github.com/golang/groupcache"
-  packages = ["lru"]
-  pruneopts = "NUT"
-  revision = "66deaeb636dff1ac7d938ce666d090556056a4b0"
-
-[[projects]]
   digest = "1:6f8bed5a0e510c667026ac9b89371d833007ed373b6e95656acf90324209f545"
   name = "github.com/golang/protobuf"
   packages = [
@@ -854,7 +846,6 @@
     "github.com/coreos/etcd/raft",
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
-    "github.com/golang/groupcache/lru",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/protoc-gen-go",

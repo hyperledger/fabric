@@ -38,9 +38,9 @@ func TestSetup(t *testing.T) {
 	err = i.Setup(nil)
 	assert.NoError(t, err)
 	mockMSP.AssertExpectations(t)
-	assert.Equal(t, 0, i.(*cachedMSP).deserializeIdentityCache.Len())
-	assert.Equal(t, 0, i.(*cachedMSP).satisfiesPrincipalCache.Len())
-	assert.Equal(t, 0, i.(*cachedMSP).validateIdentityCache.Len())
+	assert.Equal(t, 0, i.(*cachedMSP).deserializeIdentityCache.len())
+	assert.Equal(t, 0, i.(*cachedMSP).satisfiesPrincipalCache.len())
+	assert.Equal(t, 0, i.(*cachedMSP).validateIdentityCache.len())
 }
 
 func TestGetType(t *testing.T) {
@@ -152,7 +152,7 @@ func TestDeserializeIdentity(t *testing.T) {
 
 	mockMSP.AssertExpectations(t)
 	// Check the cache
-	_, ok := wrappedMSP.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
+	_, ok := wrappedMSP.(*cachedMSP).deserializeIdentityCache.get(string(serializedIdentity))
 	assert.True(t, ok)
 
 	// Check the same object is returned
@@ -170,7 +170,7 @@ func TestDeserializeIdentity(t *testing.T) {
 	assert.Contains(t, err.Error(), "Invalid identity")
 	mockMSP.AssertExpectations(t)
 
-	_, ok = wrappedMSP.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
+	_, ok = wrappedMSP.(*cachedMSP).deserializeIdentityCache.get(string(serializedIdentity))
 	assert.False(t, ok)
 }
 
@@ -190,7 +190,7 @@ func TestValidate(t *testing.T) {
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
 	key := string(identifier.Mspid + ":" + identifier.Id)
-	v, ok := i.(*cachedMSP).validateIdentityCache.Get(string(key))
+	v, ok := i.(*cachedMSP).validateIdentityCache.get(string(key))
 	assert.True(t, ok)
 	assert.True(t, v.(bool))
 
@@ -209,7 +209,7 @@ func TestValidate(t *testing.T) {
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
 	key = string(identifier.Mspid + ":" + identifier.Id)
-	_, ok = i.(*cachedMSP).validateIdentityCache.Get(string(key))
+	_, ok = i.(*cachedMSP).validateIdentityCache.get(string(key))
 	assert.False(t, ok)
 }
 
@@ -293,7 +293,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	identityKey := string(identifier.Mspid + ":" + identifier.Id)
 	principalKey := string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key := identityKey + principalKey
-	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.Get(key)
+	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.get(key)
 	assert.True(t, ok)
 	assert.Nil(t, v)
 
@@ -316,7 +316,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	identityKey = string(identifier.Mspid + ":" + identifier.Id)
 	principalKey = string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key = identityKey + principalKey
-	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.Get(key)
+	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.get(key)
 	assert.True(t, ok)
 	assert.NotNil(t, v)
 	assert.Contains(t, "Invalid", v.(error).Error())
