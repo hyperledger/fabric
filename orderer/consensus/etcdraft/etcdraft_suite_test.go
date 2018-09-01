@@ -12,7 +12,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var testingInstance *testing.T
+
 func TestEtcdraft(t *testing.T) {
+	testingInstance = t
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Etcdraft Suite")
 }

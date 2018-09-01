@@ -58,6 +58,8 @@ func (rm RemoteNode) String() string {
 		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert))
 }
 
+//go:generate mockery -dir . -name Communicator -case underscore -output ./mocks/
+
 // Communicator defines communication for a consenter
 type Communicator interface {
 	// Remote returns a RemoteContext for the given RemoteNode ID in the context
@@ -67,7 +69,7 @@ type Communicator interface {
 	// Configure configures the communication to connect to all
 	// given members, and disconnect from any members not among the given
 	// members.
-	Configure(channel string, members []*RemoteNode)
+	Configure(channel string, members []RemoteNode)
 	// Shutdown shuts down the communicator
 	Shutdown()
 }

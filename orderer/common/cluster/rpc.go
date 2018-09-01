@@ -14,16 +14,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-//go:generate mockery -dir . -name RemoteCommunicator -case underscore -output ./mocks/
-
-// RemoteCommunicator communicates to remote nodes
-type RemoteCommunicator interface {
-	// Remote returns a RemoteContext for the given node ID in the context
-	// of the given channel, or error if connection cannot be established, or
-	// the channel wasn't configured
-	Remote(channel string, id uint64) (*RemoteContext, error)
-}
-
 //go:generate mockery -dir . -name SubmitClient -case underscore -output ./mocks/
 
 // SubmitClient is the Submit gRPC stream
@@ -48,7 +38,7 @@ type Client interface {
 type RPC struct {
 	stream  orderer.Cluster_SubmitClient
 	Channel string
-	Comm    RemoteCommunicator
+	Comm    Communicator
 }
 
 // Step sends a StepRequest to the given destination node and returns the response

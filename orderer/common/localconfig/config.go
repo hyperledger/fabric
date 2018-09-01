@@ -62,6 +62,7 @@ type Cluster struct {
 	ClientCertificate string
 	ClientPrivateKey  string
 	DialTimeout       time.Duration
+	RPCTimeout        time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -269,8 +270,12 @@ func Load() (*TopLevel, error) {
 func (c *TopLevel) completeInitialization(configDir string) {
 	defer func() {
 		// Translate any paths for cluster TLS configuration if applicable
-		coreconfig.TranslatePathInPlace(configDir, &c.General.Cluster.ClientPrivateKey)
-		coreconfig.TranslatePathInPlace(configDir, &c.General.Cluster.ClientCertificate)
+		if c.General.Cluster.ClientPrivateKey != "" {
+			coreconfig.TranslatePathInPlace(configDir, &c.General.Cluster.ClientPrivateKey)
+		}
+		if c.General.Cluster.ClientCertificate != "" {
+			coreconfig.TranslatePathInPlace(configDir, &c.General.Cluster.ClientCertificate)
+		}
 		c.General.Cluster.RootCAs = translateCAs(configDir, c.General.Cluster.RootCAs)
 		// Translate any paths for general TLS configuration
 		c.General.TLS.RootCAs = translateCAs(configDir, c.General.TLS.RootCAs)
