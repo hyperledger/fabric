@@ -3,7 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package builtin1_2
+package v12
 
 import (
 	"archive/tar"
@@ -32,7 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	cutils "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	"github.com/hyperledger/fabric/core/handlers/validation/builtin/1.2/mocks"
+	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12/mocks"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	per "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
