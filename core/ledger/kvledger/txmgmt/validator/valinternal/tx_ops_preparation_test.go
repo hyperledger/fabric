@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package valinternal
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -22,8 +24,14 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	tempDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		fmt.Printf("could not create temp dir %s", err)
+		os.Exit(-1)
+		return
+	}
 	flogging.SetModuleLevel("valinternal", "debug")
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/validator/valinternal")
+	viper.Set("peer.fileSystemPath", tempDir)
 	os.Exit(m.Run())
 }
 
