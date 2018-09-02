@@ -182,8 +182,9 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 	// joinMsg is supposed to have been already verified
 	g.chanState.joinChannel(joinMsg, chainID)
 
+	g.logger.Info("Joining gossip network of channel", string(chainID), "with", len(joinMsg.Members()), "organizations")
 	for _, org := range joinMsg.Members() {
-		g.learnAnchorPeers(org, joinMsg.AnchorPeersOf(org))
+		g.learnAnchorPeers(string(chainID), org, joinMsg.AnchorPeersOf(org))
 	}
 }
 
@@ -214,7 +215,12 @@ func (g *gossipServiceImpl) periodicalIdentityValidation(suspectFunc api.PeerSus
 	}
 }
 
-func (g *gossipServiceImpl) learnAnchorPeers(orgOfAnchorPeers api.OrgIdentityType, anchorPeers []api.AnchorPeer) {
+func (g *gossipServiceImpl) learnAnchorPeers(channel string, orgOfAnchorPeers api.OrgIdentityType, anchorPeers []api.AnchorPeer) {
+	if len(anchorPeers) == 0 {
+		g.logger.Info("No configured anchor peers of", string(orgOfAnchorPeers), "for channel", channel, "to learn about")
+		return
+	}
+	g.logger.Info("Learning about the configured anchor peers of", string(orgOfAnchorPeers), "for channel", channel, ":", anchorPeers)
 	for _, ap := range anchorPeers {
 		if ap.Host == "" {
 			g.logger.Warning("Got empty hostname, skipping connecting to anchor peer", ap)
