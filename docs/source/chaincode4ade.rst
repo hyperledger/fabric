@@ -25,6 +25,18 @@ and walk through the purpose of each method in the Chaincode Shim API.
 Chaincode API
 -------------
 
+.. note:: There is another set of chaincode APIs that allow the client (submitter)
+          identity to be used for access control decisions, whether that is based
+          on client identity itself, or the org identity, or on a client identity
+          attribute. For example an asset that is represented as a key/value may
+          include the client's identity, and only this client may be authorized
+          to make updates to the key/value. The client identity library has APIs
+          that chaincode can use to retrieve this submitter information to make
+          such access control decisions.
+
+          We won't cover that in this tutorial, however it is
+          `documented here <https://github.com/hyperledger/fabric/blob/release-1.2/core/chaincode/lib/cid/README.md`_.
+
 Every chaincode program must implement the ``Chaincode interface``:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`__
