@@ -26,17 +26,21 @@ var _ = Describe("Prover", func() {
 		fakePolicyChecker *mock.PolicyChecker
 		fakeMarshaler     *mock.Marshaler
 		fakeIssuer        *mock.Issuer
+		fakeTransactor    *mock.Transactor
 		fakeTMSManager    *mock.TMSManager
 
 		prover *server.Prover
 
-		importRequest    *token.ImportRequest
-		command          *token.Command
-		marshaledCommand []byte
-		signedCommand    *token.SignedCommand
-
+		importRequest     *token.ImportRequest
+		command           *token.Command
+		marshaledCommand  []byte
+		signedCommand     *token.SignedCommand
 		tokenTransaction  *token.TokenTransaction
 		marshaledResponse *token.SignedCommandResponse
+
+		listRequest      *token.ListRequest
+		unspentTokens    *token.UnspentTokens
+		transactorTokens []*token.TokenOutput
 	)
 
 	BeforeEach(func() {
@@ -60,8 +64,18 @@ var _ = Describe("Prover", func() {
 		fakeIssuer = &mock.Issuer{}
 		fakeIssuer.RequestImportReturns(tokenTransaction, nil)
 
+		transactorTokens = []*token.TokenOutput{
+			{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
+			{Id: []byte("idby"), Type: "typeby", Quantity: 79},
+		}
+		unspentTokens = &token.UnspentTokens{Tokens: transactorTokens}
+
+		fakeTransactor = &mock.Transactor{}
+		fakeTransactor.ListUnspentTokensReturns(transactorTokens, nil)
+
 		fakeTMSManager = &mock.TMSManager{}
 		fakeTMSManager.GetIssuerReturns(fakeIssuer, nil)
+		fakeTMSManager.GetTransactorReturns(fakeTransactor, nil)
 
 		marshaledResponse = &token.SignedCommandResponse{Response: []byte("signed-command-response")}
 		fakeMarshaler = &mock.Marshaler{}
@@ -96,6 +110,10 @@ var _ = Describe("Prover", func() {
 			Command:   marshaledCommand,
 			Signature: []byte("command-signature"),
 		}
+
+		listRequest = &token.ListRequest{
+			Credential: []byte("credential"),
+		}
 	})
 
 	Describe("ProcessCommand", func() {
@@ -107,19 +125,6 @@ var _ = Describe("Prover", func() {
 			sc, c := fakePolicyChecker.CheckArgsForCall(0)
 			Expect(sc).To(Equal(signedCommand))
 			Expect(proto.Equal(c, command)).To(BeTrue())
-		})
-
-		It("returns a signed command response", func() {
-			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(marshaledResponse))
-
-			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
-			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
-			Expect(cmd).To(Equal(marshaledCommand))
-			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
-				TokenTransaction: tokenTransaction,
-			}))
 		})
 
 		Context("when the access control check fails", func() {
@@ -265,6 +270,54 @@ var _ = Describe("Prover", func() {
 					Err: &token.Error{Message: "command type not recognized: <nil>"},
 				}))
 			})
+		})
+	})
+
+	Describe("Process RequestImport command", func() {
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: tokenTransaction,
+			}))
+		})
+	})
+
+	Describe("Process ListUnspentTokens command", func() {
+		BeforeEach(func() {
+			command = &token.Command{
+				Header: &token.Header{
+					ChannelId: "channel-id",
+					Creator:   []byte("creator"),
+					Nonce:     []byte("nonce"),
+				},
+				Payload: &token.Command_ListRequest{
+					ListRequest: listRequest,
+				},
+			}
+			marshaledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshaledCommand,
+				Signature: []byte("command-signature"),
+			}
+		})
+
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_UnspentTokens{
+				UnspentTokens: unspentTokens,
+			}))
 		})
 	})
 
@@ -480,6 +533,51 @@ var _ = Describe("Prover", func() {
 				Expect(commandResp.Header.Creator).To(Equal([]byte("response_creator")))
 				Expect(commandResp.Header.CommandHash).To(Equal(util.ComputeSHA256(ProtoMarshal(command))))
 				Expect(resp.Signature).To(Equal([]byte("response_signature")))
+			})
+		})
+	})
+
+	Describe("ListUnspentTokens", func() {
+		It("gets a transactor", func() {
+			_, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(1))
+			channel, cred, creator := fakeTMSManager.GetTransactorArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(cred).To(Equal([]byte("credential")))
+			Expect(creator).To(Equal([]byte("creator")))
+		})
+
+		It("uses the transactor to list unspent tokens", func() {
+			resp, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&token.CommandResponse_UnspentTokens{
+				UnspentTokens: unspentTokens,
+			}))
+
+			Expect(fakeTransactor.ListUnspentTokensCallCount()).To(Equal(1))
+		})
+
+		Context("when the TMS manager fails to get a transactor", func() {
+			BeforeEach(func() {
+				fakeTMSManager.GetTransactorReturns(nil, errors.New("pineapple"))
+			})
+
+			It("returns the error", func() {
+				_, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
+				Expect(err).To(MatchError("pineapple"))
+			})
+		})
+
+		Context("when the transactor fails to list tokens", func() {
+			BeforeEach(func() {
+				fakeTransactor.ListUnspentTokensReturns(nil, errors.New("pineapple"))
+			})
+
+			It("returns the error", func() {
+				_, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
+				Expect(err).To(MatchError("pineapple"))
 			})
 		})
 	})

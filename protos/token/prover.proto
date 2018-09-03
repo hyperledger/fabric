@@ -35,6 +35,28 @@ message RecipientTransferShare {
     uint64 quantity = 2;
 }
 
+// TokenOutput is used to specify a token returned by ListRequest
+message TokenOutput {
+    // ID is used to uniquely identify the token
+    bytes id = 1;
+
+    // Type is the type of the token
+    string type = 2;
+
+    // Quantity represents the number for this type of token
+    uint64 quantity = 3;
+}
+
+// UnspentTokens is used to hold the output of listRequest
+message UnspentTokens {
+    repeated TokenOutput tokens = 1;
+}
+
+// ListRequest is used to request a list of unspent tokens
+message ListRequest {
+    bytes credential = 1;
+}
+
 // ImportRequest is used to request creation of imports
 message ImportRequest {
     // Credential contains information about the party who is requesting the operation
@@ -82,6 +104,7 @@ message Command {
     oneof payload {
         ImportRequest import_request = 2;
         TransferRequest transfer_request = 3;
+        ListRequest list_request = 4;
     }
 }
 
@@ -109,7 +132,7 @@ message CommandResponseHeader {
     bytes creator = 3;
 }
 
-// Error reports an applicaton error
+// Error reports an application error
 message Error {
     // Message associated with this response.
     string message = 1;
@@ -127,6 +150,7 @@ message CommandResponse {
     oneof payload {
         Error err = 2;
         TokenTransaction token_transaction = 3;
+        UnspentTokens unspent_tokens = 4;
     }
 }
 

@@ -21,3 +21,9 @@ type Manager struct {
 func (t *Manager) GetIssuer(channel string, privateCredential, publicCredential []byte) (Issuer, error) {
 	return &plain.Issuer{}, nil
 }
+
+// GetTransactor returns a Transactor bound to the passed channel and whose credential
+// is the tuple (privateCredential, publicCredential).
+func (t *Manager) GetTransactor(channel string, privateCredential, publicCredential []byte) (Transactor, error) {
+	panic("not implemented yet")
+}
