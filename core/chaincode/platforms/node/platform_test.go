@@ -27,6 +27,11 @@ var _ = platforms.Platform(&Platform{})
 
 var platform = &Platform{}
 
+type packageFile struct {
+	packagePath string
+	mode        int64
+}
+
 func TestValidatePath(t *testing.T) {
 	err := platform.ValidatePath("there/is/no/way/this/path/exists")
 	if err == nil {
@@ -52,7 +57,7 @@ func TestValidateCodePackage(t *testing.T) {
 		t.Fatalf("should have returned an error about opening the invalid archive, but got '%v'", err)
 	}
 
-	cp, err := makeCodePackage("filename.txt", 0100744)
+	cp, err := makeCodePackage([]*packageFile{{"filename.txt", 0100744}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +69,7 @@ func TestValidateCodePackage(t *testing.T) {
 		t.Fatalf("should have returned error about illegal file detected, but got '%s'", err)
 	}
 
-	cp, err = makeCodePackage("src/filename.txt", 0100744)
+	cp, err = makeCodePackage([]*packageFile{{"src/filename.txt", 0100744}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +81,7 @@ func TestValidateCodePackage(t *testing.T) {
 		t.Fatalf("should have returned error about illegal file mode detected, but got '%s'", err)
 	}
 
-	cp, err = makeCodePackage("src/filename.txt", 0100666)
+	cp, err = makeCodePackage([]*packageFile{{"src/filename.txt", 0100666}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +93,18 @@ func TestValidateCodePackage(t *testing.T) {
 		t.Fatalf("should have returned error about no package.json found, but got '%s'", err)
 	}
 
-	cp, err = makeCodePackage("src/package.json", 0100666)
+	cp, err = makeCodePackage([]*packageFile{{"src/package.json", 0100666}, {"META-INF/path/to/meta", 0100744}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = platform.ValidateCodePackage(cp)
+	if err == nil {
+		t.Fatalf("should have failed to validate because file in the archive is executable")
+	} else if !strings.HasPrefix(err.Error(), "illegal file mode detected for file") {
+		t.Fatalf("should have returned error about illegal file mode detected, but got '%s'", err)
+	}
+	cp, err = makeCodePackage([]*packageFile{{"src/package.json", 0100666}, {"META-INF/path/to/meta", 0100666}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,23 +207,25 @@ func TestGenerateDockerBuild(t *testing.T) {
 	}
 }
 
-func makeCodePackage(packagePath string, mode int64) ([]byte, error) {
+func makeCodePackage(pfiles []*packageFile) ([]byte, error) {
 	contents := []byte("fake file's content")
 
 	payload := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	if err := tw.WriteHeader(&tar.Header{
-		Name: packagePath,
-		Mode: mode,
-		Size: int64(len(contents)),
-	}); err != nil {
-		return nil, fmt.Errorf("Error write header: %s", err)
-	}
+	for _, f := range pfiles {
+		if err := tw.WriteHeader(&tar.Header{
+			Name: f.packagePath,
+			Mode: f.mode,
+			Size: int64(len(contents)),
+		}); err != nil {
+			return nil, fmt.Errorf("Error write header: %s", err)
+		}
 
-	if _, err := tw.Write(contents); err != nil {
-		return nil, fmt.Errorf("Error writing contents: %s", err)
+		if _, err := tw.Write(contents); err != nil {
+			return nil, fmt.Errorf("Error writing contents: %s", err)
+		}
 	}
 
 	// Write the tar file out
