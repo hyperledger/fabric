@@ -12,3 +12,5 @@ solutions.
    namespace.md
    transactioncontext.md
    transactionhandler.md
+   wallet.md
+   gateway.md

@@ -68,7 +68,7 @@ Current state = redeemed
 
 This final **redeem** transaction has ended the commercial paper's lifecycle --
 it can be considered closed. It is often mandatory to keep a record of redeemed
-commercial papers, and the `redeemed` value allows us to quickly identify these.
+commercial papers, and the `redeemed` state allows us to quickly identify these.
 
 ## Transactions
 
@@ -120,7 +120,8 @@ See how the **buy** transaction has fewer properties that end up in this paper.
 That's because this transaction only **modifies** this paper. It's only `New
 owner = DigiBank` that changes as a result of this transaction; everything else
 is the same. That's OK -- the most important thing about the **buy** transaction
-is the change of ownership!
+is the change of ownership, and indeed in this transaction, there's an
+acknowledgement of the current owner of the paper, MagnetoCorp.
 
 You might ask why the `Purchase time` and `Price` properties are not captured in
 paper 00001? This comes back to the difference between the transaction and the
@@ -189,10 +190,10 @@ fundamental elements in any Hyperledger Fabric distributed
 value of all objects, and a blockchain that records the history of all
 transactions that resulted in the current world state.
 
-You're now in a great place translate these ideas into a smart contract. Don't
-worry if your programming is a little rusty, we'll provide tips and pointers to
-understand the program code. Mastering the commercial paper smart
-is the first big step towards designing your own application.
+You're now in a great place to translate these ideas into a smart contract.
+Don't worry if your programming is a little rusty, we'll provide tips and
+pointers to understand the program code. Mastering the commercial paper smart
+contract is the first big step towards designing your own application.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
