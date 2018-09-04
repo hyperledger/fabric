@@ -88,7 +88,11 @@ func TestValidateCDS(t *testing.T) {
 	specs := make([]spec, 0)
 	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/nowhere", File: "/bin/warez", Mode: 0100400, SuccessExpected: false})
 	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/src/path/to/somewhere/main.go", Mode: 0100400, SuccessExpected: true})
+	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/bad-src/path/to/somewhere/main.go", Mode: 0100400, SuccessExpected: false})
 	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/src/path/to/somewhere/warez", Mode: 0100555, SuccessExpected: false})
+	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/META-INF/path/to/a/meta1", Mode: 0100555, SuccessExpected: false})
+	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/META-Inf/path/to/a/meta2", Mode: 0100400, SuccessExpected: false})
+	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "META-INF/path/to/a/meta3", Mode: 0100400, SuccessExpected: true})
 
 	for _, s := range specs {
 		cds, err := generateFakeCDS(s.CCName, s.Path, s.File, s.Mode)
