@@ -362,14 +362,28 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 		return true
 	}
 
-	// do not look at collection data if we don't support that capability
-	if !v.support.Capabilities().PrivateChannelData() {
-		return false
+	// only look at collection data if we support that capability
+	if v.support.Capabilities().PrivateChannelData() {
+		// check for private writes for all collections
+		for _, c := range ns.CollHashedRwSets {
+			if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
+				return true
+			}
+
+			// only look at private metadata writes if we support that capability
+			if v.support.Capabilities().KeyLevelEndorsement() {
+				// private metadata updates
+				if c.HashedRwSet != nil && len(c.HashedRwSet.MetadataWrites) > 0 {
+					return true
+				}
+			}
+		}
 	}
 
-	// check for private writes for all collections
-	for _, c := range ns.CollHashedRwSets {
-		if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
+	// only look at metadata writes if we support that capability
+	if v.support.Capabilities().KeyLevelEndorsement() {
+		// public metadata updates
+		if ns.KvRwSet != nil && len(ns.KvRwSet.MetadataWrites) > 0 {
 			return true
 		}
 	}

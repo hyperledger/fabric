@@ -8,19 +8,17 @@ package statebased
 
 import (
 	"fmt"
-
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // ValidationParameterUpdatedErr is returned whenever
 // Validation Parameters for a key could not be
 // supplied because they are being updated
-type ValidationParameterUpdatedErr struct {
+type ValidationParameterUpdatedError struct {
 	Key    string
 	Height uint64
 }
 
-func (f ValidationParameterUpdatedErr) Error() string {
+func (f *ValidationParameterUpdatedError) Error() string {
 	return fmt.Sprintf("validation parameters for key %s have been changed in a transaction in block %d", f.Key, f.Height)
 }
 
@@ -34,8 +32,7 @@ func (f ValidationParameterUpdatedErr) Error() string {
 // 3) the validation plugin determines the validation code for the tx and calls SetTxValidationCode.
 type KeyLevelValidationParameterManager interface {
 	// GetValidationParameterForKey returns the validation parameter for the
-	// supplied KVS key identified by (ch, cc, coll, key) at the specified block
-	// TODO: remove ch from the comment on the previous line as part of FAB-9908
+	// supplied KVS key identified by (cc, coll, key) at the specified block
 	// height h. The function returns the validation parameter and no error in case of
 	// success, or nil and an error otherwise. One particular error that may be
 	// returned is ValidationParameterUpdatedErr, which is returned in case the
@@ -46,19 +43,17 @@ type KeyLevelValidationParameterManager interface {
 	// conflicts).  This function may be blocking until sufficient information has
 	// been passed (by calling ApplyRWSetUpdates and ApplyValidatedRWSetUpdates) for
 	// all txes with txNum smaller than the one supplied by the caller.
-	GetValidationParameterForKey(ch, cc, coll, key string, blockNum, txNum uint64) ([]byte, error)
-	// TODO: remove the channel argument as part of FAB-9908
+	GetValidationParameterForKey(cc, coll, key string, blockNum, txNum uint64) ([]byte, error)
 
 	// ExtractValidationParameterDependency is used to determine which validation parameters are
-	// updated by transaction at height `h` on channel `ch`. This is needed to determine which txes
-	// have dependencies for specific validation parameters and will determine whether
-	// GetValidationParameterForKey may block.
-	ExtractValidationParameterDependency(ch, cc string, blockNum, txNum uint64, rwset []byte)
-	// TODO: remove the channel argument as part of FAB-9908
+	// updated by transaction at height `blockNum, txNum`. This is needed
+	// to determine which txes have dependencies for specific validation parameters and will
+	// determine whether GetValidationParameterForKey may block.
+	ExtractValidationParameterDependency(blockNum, txNum uint64, rwset []byte)
 
-	// SetTxValidationCode sets the validation code transaction at height `h` on channel `ch`.
+	// SetTxValidationResult sets the validation result for transaction at height
+	// `blockNum, txNum` for the specified chaincode `cc`.
 	// This is used to determine whether the dependencies set by
 	// ExtractValidationParameterDependency matter or not.
-	SetTxValidationCode(ch, cc string, blockNum, txNum uint64, vc peer.TxValidationCode)
-	// TODO: remove the channel argument as part of FAB-9908
+	SetTxValidationResult(cc string, blockNum, txNum uint64, err error)
 }
