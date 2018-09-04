@@ -103,34 +103,48 @@ func TestInitializeServerConfig(t *testing.T) {
 	logger, _ = floggingtest.NewTestLogger(t)
 
 	testCases := []struct {
-		name              string
-		certificate       string
-		privateKey        string
-		rootCA            string
-		clientCertificate string
+		name           string
+		certificate    string
+		privateKey     string
+		rootCA         string
+		clientRootCert string
+		clusterCert    string
+		clusterKey     string
+		clusterCA      string
 	}{
-		{"BadCertificate", badFile, goodFile, goodFile, goodFile},
-		{"BadPrivateKey", goodFile, badFile, goodFile, goodFile},
-		{"BadRootCA", goodFile, goodFile, badFile, goodFile},
-		{"BadClientCertificate", goodFile, goodFile, goodFile, badFile},
+		{"BadCertificate", badFile, goodFile, goodFile, goodFile, "", "", ""},
+		{"BadPrivateKey", goodFile, badFile, goodFile, goodFile, "", "", ""},
+		{"BadRootCA", goodFile, goodFile, badFile, goodFile, "", "", ""},
+		{"BadClientRootCertificate", goodFile, goodFile, goodFile, badFile, "", "", ""},
+		{"ClusterBadCertificate", goodFile, goodFile, goodFile, goodFile, badFile, goodFile, goodFile},
+		{"ClusterBadPrivateKey", goodFile, goodFile, goodFile, goodFile, goodFile, badFile, goodFile},
+		{"ClusterBadRootCA", goodFile, goodFile, goodFile, goodFile, goodFile, goodFile, badFile},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Panics(t, func() {
-				initializeServerConfig(
-					&localconfig.TopLevel{
-						General: localconfig.General{
-							TLS: localconfig.TLS{
-								Enabled:            true,
-								ClientAuthRequired: true,
-								Certificate:        tc.certificate,
-								PrivateKey:         tc.privateKey,
-								RootCAs:            []string{tc.rootCA},
-								ClientRootCAs:      []string{tc.clientCertificate},
-							},
-						},
+			conf := &localconfig.TopLevel{
+				General: localconfig.General{
+					TLS: localconfig.TLS{
+						Enabled:            true,
+						ClientAuthRequired: true,
+						Certificate:        tc.certificate,
+						PrivateKey:         tc.privateKey,
+						RootCAs:            []string{tc.rootCA},
+						ClientRootCAs:      []string{tc.clientRootCert},
 					},
-				)
+					Cluster: localconfig.Cluster{
+						ClientCertificate: tc.clusterCert,
+						ClientPrivateKey:  tc.clusterKey,
+						RootCAs:           []string{tc.clusterCA},
+					},
+				},
+			}
+			assert.Panics(t, func() {
+				if tc.clusterCert == "" {
+					initializeServerConfig(conf)
+				} else {
+					initializeClusterConfig(conf)
+				}
 			},
 			)
 		})

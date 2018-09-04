@@ -132,6 +132,49 @@ func initializeProfilingService(conf *localconfig.TopLevel) {
 	}
 }
 
+func initializeClusterConfig(conf *localconfig.TopLevel) comm.ClientConfig {
+	cc := comm.ClientConfig{
+		KaOpts:  comm.DefaultKeepaliveOptions,
+		Timeout: conf.General.Cluster.DialTimeout,
+	}
+
+	if (!conf.General.TLS.Enabled) || conf.General.Cluster.ClientCertificate == "" {
+		return cc
+	}
+
+	certFile := conf.General.Cluster.ClientCertificate
+	certBytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		logger.Fatalf("Failed to load client TLS certificate file '%s' (%s)", certFile, err)
+	}
+
+	keyFile := conf.General.Cluster.ClientPrivateKey
+	keyBytes, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		logger.Fatalf("Failed to load client TLS key file '%s' (%s)", keyFile, err)
+	}
+
+	var serverRootCAs [][]byte
+	for _, serverRoot := range conf.General.Cluster.RootCAs {
+		rootCACert, err := ioutil.ReadFile(serverRoot)
+		if err != nil {
+			logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)",
+				err, serverRoot)
+		}
+		serverRootCAs = append(serverRootCAs, rootCACert)
+	}
+
+	cc.SecOpts = &comm.SecureOptions{
+		CipherSuites:  comm.DefaultTLSCipherSuites,
+		ServerRootCAs: serverRootCAs,
+		Certificate:   certBytes,
+		Key:           keyBytes,
+		UseTLS:        true,
+	}
+
+	return cc
+}
+
 func initializeServerConfig(conf *localconfig.TopLevel) comm.ServerConfig {
 	// secure server config
 	secureOpts := &comm.SecureOptions{
@@ -174,7 +217,6 @@ func initializeServerConfig(conf *localconfig.TopLevel) comm.ServerConfig {
 		}
 		secureOpts.Key = serverKey
 		secureOpts.Certificate = serverCertificate
-		secureOpts.ServerRootCAs = serverRootCAs
 		secureOpts.ClientRootCAs = clientRootCAs
 		logger.Infof("Starting orderer with %s enabled", msg)
 	}
