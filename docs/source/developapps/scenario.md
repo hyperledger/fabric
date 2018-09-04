@@ -46,7 +46,7 @@ At the end of May, MagnetoCorp needs 5M USD to meet payroll for the extra
 workers it hired on May 1. To do this, it issues a commercial paper with a face
 value of 5M USD with a maturity date 6 months in the future -- when it expects
 to see cash flow from Daintree. DigiBank thinks that MagnetoCorp is
-creditworthy, and therefore doesn't require much a premium above the central
+creditworthy, and therefore doesn't require much of a premium above the central
 bank base rate of 2%, which would value 4.95M USD today at 5M USD in 6 months
 time. It therefore purchases the MagnetoCorp 6 month commercial paper for 4.94M
 USD -- a slight discount compared to the 4.95M USD it is worth. DigiBank fully

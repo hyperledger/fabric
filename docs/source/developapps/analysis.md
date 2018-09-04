@@ -133,10 +133,10 @@ transactions that affect this paper, as well its latest state. Being clear on
 this separation of information is really important.
 
 It's also worth remembering that paper 00001 may be bought and sold many times.
-For example, we might see the following transactions as paper 0001 changes
-ownership.
+Although we're skipping ahead a little in our scenario, let's examine what
+transactions we **might** see if paper 00001 changes ownership.
 
-A purchase by BigFund:
+If we have a purchase by BigFund:
 
 ```
 Txn = buy
@@ -147,7 +147,7 @@ New owner = BigFund
 Purchase time = 2 June 2020 12:20:00 EST
 Price = 4.93M USD
 ```
-A subsequent purchase by HedgeMatic:
+Followed by a subsequent purchase by HedgeMatic:
 ```
 Txn = buy
 Issuer = MagnetoCorp
@@ -158,14 +158,15 @@ Purchase time = 3 June 2020 15:59:00 EST
 Price = 4.90M USD
 ```
 
-Can you think of a reason why the price of MagnetoCorp commercial paper
-might be falling?
+See how the paper owners changes, and how in out example, the price changes. Can
+you think of a reason why the price of MagnetoCorp commercial paper might be
+falling?
 
 ### Redeem
 
 The **redeem** transaction for paper 00001 represents the end of its lifecycle.
-DigiBank initiates the transaction which transfers the commercial paper back to
-MagnetoCorp:
+In our relatively simple example, DigiBank initiates the transaction which
+transfers the commercial paper back to MagnetoCorp:
 
 ```
 Txn = redeem
@@ -190,10 +191,12 @@ fundamental elements in any Hyperledger Fabric distributed
 value of all objects, and a blockchain that records the history of all
 transactions that resulted in the current world state.
 
-You're now in a great place to translate these ideas into a smart contract.
-Don't worry if your programming is a little rusty, we'll provide tips and
-pointers to understand the program code. Mastering the commercial paper smart
-contract is the first big step towards designing your own application.
+You're now in a great place translate these ideas into a smart contract. Don't
+worry if your programming is a little rusty, we'll provide tips and pointers to
+understand the program code. Mastering the commercial paper smart contract is
+the first big step towards designing your own application. Or, if you're a
+business analyst who's comfortable with a little programming, don't be afraid to
+keep dig a little deeper!
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

@@ -1,11 +1,13 @@
-# Smart Contract
+# Smart Contract Processing
 
 **Audience**: Architects, Application and smart contract developers
 
-At the heart of PaperNet is a smart contract. The code in it defines the
-commercial paper states, and the transaction logic that controls them. Because
-the story of MagnetoCorp and PaperNet started gently, our smart contract is
-quite straightforward.
+At the heart of PaperNet is a smart contract. In this topic, we'll see how a
+particular smart contract governs the business process of issuing, buying and
+redeeming commercial paper in PaperNet. The code in the smart contract will
+define the valid states for commercial paper, and the transaction logic that
+controls them. Because the story of MagnetoCorp and PaperNet started gently, our
+smart contract is quite straightforward.
 
 Let's walk through the sample commercial paper smart contract provided with
 Hyperledger Fabric. If you'd like, you can
@@ -47,6 +49,20 @@ Our commercial paper contract will use built-in features of these classes, such
 as automatic method invocation, a
 [per-transaction context](./transactioncontext.html),
 [transaction handlers](./transactionhandler.html), and class-shared state.
+
+Notice also how the class constructor uses its
+[superclass](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/super)
+to initialize itself with a [namespace](./namespace.html):
+
+```JavaScript
+constructor() {
+    super('org.papernet.commercialpaper');
+}
+```
+
+This can be really helpful if `papercontract.js` contained multiple smart
+contracts, as transactions with the same name can be scoped by their namespace
+to disambiguate them.
 
 Notice also how the class constructor uses its
 [superclass](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/super)
