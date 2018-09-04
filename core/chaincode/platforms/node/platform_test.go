@@ -26,6 +26,11 @@ import (
 
 var platform = &Platform{}
 
+type packageFile struct {
+	packagePath string
+	mode        int64
+}
+
 func TestValidateSpec(t *testing.T) {
 	ccSpec := &peer.ChaincodeSpec{
 		Type:        peer.ChaincodeSpec_NODE,
@@ -79,7 +84,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cp, err := writeCodePackage(tmpfile.Name(), "filename.txt", 0100744)
+	cp, err := writeCodePackage(tmpfile.Name(), []*packageFile{{"filename.txt", 0100744}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +97,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatalf("should have returned error about illegal file detected, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt", 0100744)
+	cp, err = writeCodePackage(tmpfile.Name(), []*packageFile{{"src/filename.txt", 0100744}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +110,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatalf("should have returned error about illegal file mode detected, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt", 0100666)
+	cp, err = writeCodePackage(tmpfile.Name(), []*packageFile{{"src/filename.txt", 0100666}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +123,31 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatalf("should have returned error about no package.json found, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/package.json", 0100666)
+	cp, err = writeCodePackage(tmpfile.Name(), []*packageFile{{"src/package.json", 0100666}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cds.CodePackage = cp
+	err = platform.ValidateDeploymentSpec(cds)
+	if err != nil {
+		t.Fatalf("should have returned no errors, but got '%s'", err)
+	}
+
+	cp, err = writeCodePackage(tmpfile.Name(), []*packageFile{{"src/package.json", 0100666}, {"META-INF/path/to/meta", 0100744}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cds.CodePackage = cp
+	err = platform.ValidateDeploymentSpec(cds)
+	if err == nil {
+		t.Fatalf("should have failed to validate because file in the archive is executable")
+	} else if !strings.HasPrefix(err.Error(), "illegal file mode detected for file") {
+		t.Fatalf("should have returned error about illegal file mode detected, but got '%s'", err)
+	}
+
+	cp, err = writeCodePackage(tmpfile.Name(), []*packageFile{{"src/package.json", 0100666}, {"META-INF/path/to/meta", 0100666}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,13 +263,15 @@ func TestGenerateDockerBuild(t *testing.T) {
 	}
 }
 
-func writeCodePackage(file string, packagePath string, mode int64) ([]byte, error) {
+func writeCodePackage(file string, pfiles []*packageFile) ([]byte, error) {
 	payload := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	if err := writeFileToPackage(file, packagePath, tw, mode); err != nil {
-		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+	for _, f := range pfiles {
+		if err := writeFileToPackage(file, f.packagePath, tw, f.mode); err != nil {
+			return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+		}
 	}
 
 	// Write the tar file out
