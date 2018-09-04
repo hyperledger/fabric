@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
@@ -42,6 +43,36 @@ func TestValidatePath(t *testing.T) {
 
 	err := platform.ValidatePath(spec.ChaincodeId.Path)
 	assert.NoError(t, err)
+}
+
+func TestValidateCodePackage(t *testing.T) {
+	platform := java.Platform{}
+	b, _ := generateMockPackegeBytes("src/pom.xml", 0100400)
+	assert.NoError(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/pom.xml", 0100555)
+	assert.Error(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/build.gradle", 0100400)
+	assert.NoError(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/build.xml", 0100400)
+	assert.Error(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/src/Main.java", 0100400)
+	assert.NoError(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/build/Main.java", 0100400)
+	assert.Error(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/src/xyz/main.java", 0100400)
+	assert.NoError(t, platform.ValidateCodePackage(b))
+
+	b, _ = generateMockPackegeBytes("src/src/xyz/main.class", 0100400)
+	assert.Error(t, platform.ValidateCodePackage(b))
+
+	b, _ = platform.GetDeploymentPayload(chaincodePathFolderGradle)
+	assert.NoError(t, platform.ValidateCodePackage(b))
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
@@ -160,4 +191,23 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 	os.Exit(m.Run())
+}
+
+func generateMockPackegeBytes(fileName string, mode int64) ([]byte, error) {
+	var zeroTime time.Time
+	codePackage := bytes.NewBuffer(nil)
+	gw := gzip.NewWriter(codePackage)
+	tw := tar.NewWriter(gw)
+	payload := make([]byte, 25, 25)
+	err := tw.WriteHeader(&tar.Header{Name: fileName, Size: int64(len(payload)), ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime, Mode: mode})
+	if err != nil {
+		return nil, err
+	}
+	_, err = tw.Write(payload)
+	if err != nil {
+		return nil, err
+	}
+	tw.Close()
+	gw.Close()
+	return codePackage.Bytes(), nil
 }

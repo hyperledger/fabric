@@ -11,7 +11,9 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -45,7 +47,52 @@ func (javaPlatform *Platform) ValidatePath(rawPath string) error {
 }
 
 func (javaPlatform *Platform) ValidateCodePackage(code []byte) error {
-	// FIXME: Java platform needs to implement its own validation similar to GOLANG
+	if len(code) == 0 {
+		// Nothing to validate if no CodePackage was included
+		return nil
+	}
+
+	// File to be valid should match first RegExp and not match second one.
+	filesToMatch := regexp.MustCompile(`^(/)?src/((src|META-INF)/.*|(build\.gradle|settings\.gradle|pom\.xml))`)
+	filesToIgnore := regexp.MustCompile(`.*\.class$`)
+	is := bytes.NewReader(code)
+	gr, err := gzip.NewReader(is)
+	if err != nil {
+		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
+	}
+	tr := tar.NewReader(gr)
+
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				// We only get here if there are no more entries to scan
+				break
+			} else {
+				return err
+			}
+		}
+
+		// --------------------------------------------------------------------------------------
+		// Check name for conforming path
+		// --------------------------------------------------------------------------------------
+		if !filesToMatch.MatchString(header.Name) || filesToIgnore.MatchString(header.Name) {
+			return fmt.Errorf("illegal file detected in payload: \"%s\"", header.Name)
+		}
+
+		// --------------------------------------------------------------------------------------
+		// Check that file mode makes sense
+		// --------------------------------------------------------------------------------------
+		// Acceptable flags:
+		//      ISREG      == 0100000
+		//      -rw-rw-rw- == 0666
+		//
+		// Anything else is suspect in this context and will be rejected
+		// --------------------------------------------------------------------------------------
+		if header.Mode&^0100666 != 0 {
+			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
+		}
+	}
 	return nil
 }
 
