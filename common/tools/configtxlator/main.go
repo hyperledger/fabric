@@ -30,6 +30,13 @@ import (
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	// Import these to register the proto types
+	_ "github.com/hyperledger/fabric/protos/common"
+	_ "github.com/hyperledger/fabric/protos/msp"
+	_ "github.com/hyperledger/fabric/protos/orderer"
+	_ "github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	_ "github.com/hyperledger/fabric/protos/peer"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
