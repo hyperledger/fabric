@@ -147,10 +147,6 @@ type ApplicationCapabilities interface {
 	// v1.0/v1.1 lifecycle, or whether it should use the newer per channel peer local chaincode
 	// metadata package approach planned for release with Fabric v1.2
 	MetadataLifecycle() bool
-
-	// KeyLevelEndorsement returns true if this channel supports endorsement
-	// policies expressible at a ledger key granularity, as described in FAB-8812
-	KeyLevelEndorsement() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel

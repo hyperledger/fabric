@@ -50,20 +50,6 @@ func (_m *Capabilities) ForbidDuplicateTXIdInBlock() bool {
 	return r0
 }
 
-// KeyLevelEndorsement provides a mock function with given fields:
-func (_m *Capabilities) KeyLevelEndorsement() bool {
-	ret := _m.Called()
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
 // MetadataLifecycle provides a mock function with given fields:
 func (_m *Capabilities) MetadataLifecycle() bool {
 	ret := _m.Called()

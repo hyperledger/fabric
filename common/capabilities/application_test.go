@@ -36,7 +36,6 @@ func TestApplicationV12(t *testing.T) {
 	assert.True(t, op.ForbidDuplicateTXIdInBlock())
 	assert.True(t, op.V1_1Validation())
 	assert.True(t, op.V1_2Validation())
-	assert.True(t, op.KeyLevelEndorsement())
 }
 
 func TestApplicationPvtDataExperimental(t *testing.T) {

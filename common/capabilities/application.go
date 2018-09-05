@@ -100,12 +100,6 @@ func (ap *ApplicationProvider) MetadataLifecycle() bool {
 	return ap.v12LifecycleExperimental
 }
 
-// KeyLevelEndorsement returns true if this channel supports endorsement
-// policies expressible at a ledger key granularity, as described in FAB-8812
-func (ap *ApplicationProvider) KeyLevelEndorsement() bool {
-	return ap.v12
-}
-
 // HasCapability returns true if the capability is supported by this binary.
 func (ap *ApplicationProvider) HasCapability(capability string) bool {
 	switch capability {

@@ -603,10 +603,6 @@ func (ds *dynamicCapabilities) ForbidDuplicateTXIdInBlock() bool {
 	return ds.support.Capabilities().ForbidDuplicateTXIdInBlock()
 }
 
-func (ds *dynamicCapabilities) KeyLevelEndorsement() bool {
-	return ds.support.Capabilities().KeyLevelEndorsement()
-}
-
 func (ds *dynamicCapabilities) MetadataLifecycle() bool {
 	return ds.support.Capabilities().MetadataLifecycle()
 }
