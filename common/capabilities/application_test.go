@@ -52,7 +52,6 @@ func TestApplicationV13(t *testing.T) {
 	assert.True(t, ap.V1_2Validation())
 	assert.True(t, ap.V1_3Validation())
 	assert.True(t, ap.KeyLevelEndorsement())
-	assert.True(t, ap.MetadataLifecycle())
 	assert.True(t, ap.ACLs())
 	assert.True(t, ap.CollectionUpgrade())
 	assert.True(t, ap.PrivateChannelData())
