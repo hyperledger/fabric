@@ -168,12 +168,12 @@ func (r *reconciler) getDig2CollectionConfig(missingPvtDataInfo ledger.MissingPv
 		for seqInBlock, collectionPvtDataInfo := range blockPvtDataInfo {
 			for _, pvtDataInfo := range collectionPvtDataInfo {
 				collConfigKey := collectionConfigKey{
-					chaincodeName:  pvtDataInfo.ChaincodeName,
-					collectionName: pvtDataInfo.CollectionName,
+					chaincodeName:  pvtDataInfo.Namespace,
+					collectionName: pvtDataInfo.Collection,
 					blockNum:       blockNum,
 				}
 				if _, exists := collectionConfigCache[collConfigKey]; !exists {
-					collectionConfig, err := r.getMostRecentCollectionConfig(pvtDataInfo.ChaincodeName, pvtDataInfo.CollectionName, blockNum)
+					collectionConfig, err := r.getMostRecentCollectionConfig(pvtDataInfo.Namespace, pvtDataInfo.Collection, blockNum)
 					if err != nil {
 						logger.Debug(err)
 						continue
@@ -182,8 +182,8 @@ func (r *reconciler) getDig2CollectionConfig(missingPvtDataInfo ledger.MissingPv
 				}
 				digKey := privdatacommon.DigKey{
 					SeqInBlock: seqInBlock,
-					Collection: pvtDataInfo.CollectionName,
-					Namespace:  pvtDataInfo.ChaincodeName,
+					Collection: pvtDataInfo.Collection,
+					Namespace:  pvtDataInfo.Namespace,
 					BlockSeq:   blockNum,
 				}
 				dig2collectionCfg[digKey] = collectionConfigCache[collConfigKey]

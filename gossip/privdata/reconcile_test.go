@@ -55,7 +55,7 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 
 	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
 		1: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
-			1: {{CollectionName: "col1", ChaincodeName: "chain1"}},
+			1: {{Collection: "col1", Namespace: "chain1"}},
 		},
 	}
 
@@ -91,7 +91,7 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 
 	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
 		3: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
-			1: {{CollectionName: "col1", ChaincodeName: "ns1"}},
+			1: {{Collection: "col1", Namespace: "ns1"}},
 		},
 	}
 
@@ -164,7 +164,7 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 
 	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
 		3: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
-			1: {{CollectionName: "col1", ChaincodeName: "ns1"}},
+			1: {{Collection: "col1", Namespace: "ns1"}},
 		},
 	}
 
