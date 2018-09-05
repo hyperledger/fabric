@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
+	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
@@ -56,12 +57,14 @@ var policyLock sync.Mutex
 var policy2Filter map[privdata.CollectionAccessPolicy]privdata.Filter
 
 type mockCollectionStore struct {
-	m map[string]*mockCollectionAccess
+	m            map[string]*mockCollectionAccess
+	accessFilter privdata.Filter
 }
 
 func newCollectionStore() *mockCollectionStore {
 	return &mockCollectionStore{
-		m: make(map[string]*mockCollectionAccess),
+		m:            make(map[string]*mockCollectionAccess),
+		accessFilter: nil,
 	}
 }
 
@@ -69,6 +72,11 @@ func (cs *mockCollectionStore) withPolicy(collection string, btl uint64) *mockCo
 	coll := &mockCollectionAccess{cs: cs, btl: btl}
 	cs.m[collection] = coll
 	return coll
+}
+
+func (cs *mockCollectionStore) withAccessFilter(filter privdata.Filter) *mockCollectionStore {
+	cs.accessFilter = filter
+	return cs
 }
 
 func (cs mockCollectionStore) RetrieveCollectionAccessPolicy(cc fcommon.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
@@ -88,6 +96,9 @@ func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(cc fcommon.Co
 }
 
 func (cs mockCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *fcommon.CollectionPolicyConfig) (privdata.Filter, error) {
+	if cs.accessFilter != nil {
+		return cs.accessFilter, nil
+	}
 	panic("implement me")
 }
 
@@ -309,7 +320,7 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	}
 
 	store := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
@@ -332,9 +343,9 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 
 	dasf := &digestsAndSourceFactory{}
 
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create(), uint64(1))
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	assert.NoError(t, err)
 	assert.Equal(t, p2TransientStore.RWSet, fetched)
@@ -360,7 +371,7 @@ func TestPullerDataNotAvailable(t *testing.T) {
 	}
 
 	store := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
@@ -377,8 +388,8 @@ func TestPullerDataNotAvailable(t *testing.T) {
 	})
 
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create(), uint64(1))
-	assert.Empty(t, fetchedMessages.AvailableElemenets)
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
+	assert.Empty(t, fetchedMessages.AvailableElements)
 	assert.NoError(t, err)
 }
 
@@ -392,8 +403,8 @@ func TestPullerNoPeersKnown(t *testing.T) {
 
 	p1 := gn.newPuller("p1", policyStore, factoryMock)
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	d2s := dasf.mapDigest(&privdatacommon.DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.Empty(t, fetchedMessages)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Empty membership")
@@ -410,8 +421,8 @@ func TestPullPeerFilterError(t *testing.T) {
 	p1 := gn.newPuller("p1", policyStore, factoryMock)
 	gn.peers[0].On("PeerFilter", mock.Anything, mock.Anything).Return(nil, errors.New("Failed obtaining filter"))
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	d2s := dasf.mapDigest(&privdatacommon.DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed obtaining filter")
 	assert.Empty(t, fetchedMessages)
@@ -449,7 +460,7 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	}
 
 	store := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
@@ -478,9 +489,9 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	p3 := gn.newPuller("p3", policyStore, factoryMock3)
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig)), mock.Anything).Return(store, nil)
 	dasf := &digestsAndSourceFactory{}
-	d2s := dasf.mapDigest(&DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s, uint64(1))
-	assert.Empty(t, fetchedMessages.AvailableElemenets)
+	d2s := dasf.mapDigest(&privdatacommon.DigKey{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	fetchedMessages, err := p1.fetch(d2s)
+	assert.Empty(t, fetchedMessages.AvailableElements)
 	assert.NoError(t, err)
 }
 
@@ -526,7 +537,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	}
 
 	store1 := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col2",
 			Namespace:  "ns1",
@@ -547,7 +558,7 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	}
 
 	store2 := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col3",
 			Namespace:  "ns1",
@@ -571,12 +582,12 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig2)), mock.Anything).Return(store2, nil)
 
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig1)).toSources().mapDigest(toDigKey(dig2)).toSources().create(), uint64(1))
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig1)).toSources().mapDigest(toDigKey(dig2)).toSources().create())
 	assert.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	assert.Contains(t, fetched, p2TransientStore.RWSet[0])
 	assert.Contains(t, fetched, p2TransientStore.RWSet[1])
@@ -623,7 +634,7 @@ func TestPullerRetries(t *testing.T) {
 	}
 
 	store := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
@@ -680,10 +691,10 @@ func TestPullerRetries(t *testing.T) {
 
 	// Fetch from someone
 	dasf := &digestsAndSourceFactory{}
-	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create(), uint64(1))
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
 	assert.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	assert.NoError(t, err)
 	assert.Equal(t, transientStore.RWSet, fetched)
@@ -751,12 +762,12 @@ func TestPullerPreferEndorsers(t *testing.T) {
 	}
 
 	store := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
 		}: p3TransientStore,
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col2",
 			Namespace:  "ns1",
@@ -773,12 +784,129 @@ func TestPullerPreferEndorsers(t *testing.T) {
 
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(toDigKey(dig1)).toSources("p3").mapDigest(toDigKey(dig2)).toSources().create()
-	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElemenets[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[1])
+	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
+	assert.Contains(t, fetched, p3TransientStore.RWSet[0])
+	assert.Contains(t, fetched, p3TransientStore.RWSet[1])
+	assert.Contains(t, fetched, p2TransientStore.RWSet[0])
+	assert.Contains(t, fetched, p2TransientStore.RWSet[1])
+}
+
+func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
+	t.Parallel()
+	// Scenario: p1 pulls from p2, p3, p4, p5
+	// the only peer that was in the collection config while data was created for col1 is p3, so it should be selected
+	// at the top priority for col1.
+	// for col2, p3 was in the collection config while the data was created but was removed from collection and now only p2 should have the data.
+	// so obviously p2 should be selected for col2.
+	gn := &gossipNetwork{}
+	factoryMock := &collectionAccessFactoryMock{}
+	accessPolicyMock2 := &collectionAccessPolicyMock{}
+	accessPolicyMock2.Setup(1, 2, func(data fcommon.SignedData) bool {
+		return bytes.Equal(data.Identity, []byte("p2")) || bytes.Equal(data.Identity, []byte("p1"))
+	}, []string{"org1", "org2"})
+	factoryMock.On("AccessPolicy", mock.Anything, mock.Anything).Return(accessPolicyMock2, nil)
+
+	policyStore := newCollectionStore().
+		withPolicy("col1", uint64(100)).
+		thatMapsTo("p1", "p2", "p3", "p4", "p5").
+		withPolicy("col2", uint64(100)).
+		thatMapsTo("p1", "p2").
+		withAccessFilter(func(data fcommon.SignedData) bool {
+			return bytes.Equal(data.Identity, []byte("p3"))
+		})
+
+	p1 := gn.newPuller("p1", policyStore, factoryMock, membership(peerData{"p2", uint64(1)},
+		peerData{"p3", uint64(1)}, peerData{"p4", uint64(1)}, peerData{"p5", uint64(1)})...)
+
+	p3TransientStore := &util.PrivateRWSetWithConfig{
+		RWSet: newPRWSet(),
+		CollectionConfig: &fcommon.CollectionConfig{
+			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+					Name: "col2",
+				},
+			},
+		},
+	}
+
+	p2TransientStore := &util.PrivateRWSetWithConfig{
+		RWSet: newPRWSet(),
+		CollectionConfig: &fcommon.CollectionConfig{
+			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+					Name: "col2",
+				},
+			},
+		},
+	}
+
+	p2 := gn.newPuller("p2", policyStore, factoryMock)
+	p3 := gn.newPuller("p3", policyStore, factoryMock)
+	gn.newPuller("p4", policyStore, factoryMock)
+	gn.newPuller("p5", policyStore, factoryMock)
+
+	dig1 := &proto.PvtDataDigest{
+		TxId:       "txID1",
+		Collection: "col1",
+		Namespace:  "ns1",
+	}
+
+	dig2 := &proto.PvtDataDigest{
+		TxId:       "txID1",
+		Collection: "col2",
+		Namespace:  "ns1",
+	}
+
+	store := Dig2PvtRWSetWithConfig{
+		privdatacommon.DigKey{
+			TxId:       "txID1",
+			Collection: "col1",
+			Namespace:  "ns1",
+		}: p3TransientStore,
+		privdatacommon.DigKey{
+			TxId:       "txID1",
+			Collection: "col2",
+			Namespace:  "ns1",
+		}: p2TransientStore,
+	}
+
+	// We only define an action for dig2 on p2, and the test would fail with panic if any other peer is asked for
+	// a private RWSet on dig2
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig2)), uint64(0)).Return(store, nil)
+
+	// We only define an action for dig1 on p3, and the test would fail with panic if any other peer is asked for
+	// a private RWSet on dig1
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", mock.MatchedBy(protoMatcher(dig1)), uint64(0)).Return(store, nil)
+
+	d2cc := privdatacommon.Dig2CollectionConfig{
+		privdatacommon.DigKey{
+			TxId:       "txID1",
+			Collection: "col1",
+			Namespace:  "ns1",
+		}: &fcommon.StaticCollectionConfig{
+			Name: "col1",
+		},
+		privdatacommon.DigKey{
+			TxId:       "txID1",
+			Collection: "col2",
+			Namespace:  "ns1",
+		}: &fcommon.StaticCollectionConfig{
+			Name: "col2",
+		},
+	}
+
+	fetchedMessages, err := p1.FetchReconciledItems(d2cc)
+	assert.NoError(t, err)
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	assert.Contains(t, fetched, p3TransientStore.RWSet[0])
 	assert.Contains(t, fetched, p3TransientStore.RWSet[1])
@@ -845,12 +973,12 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	}
 
 	store := Dig2PvtRWSetWithConfig{
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
 		}: privateData1,
-		DigKey{
+		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col2",
 			Namespace:  "ns1",
@@ -877,7 +1005,7 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(toDigKey(dig1)).toSources("p3", "p2").mapDigest(toDigKey(dig2)).toSources("p3").create()
 	// trying to fetch missing pvt data for block seq 1
-	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	fetchedMessages, err := p1.fetch(d2s)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(fetchedMessages.PurgedElements))
@@ -955,7 +1083,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	dataRetreiver := &counterDataRetreiver{PrivateDataRetriever: NewDataRetriever(dataStore), numberOfCalls: 0}
 	p2.PrivateDataRetriever = dataRetreiver
 
-	dig1 := &DigKey{
+	dig1 := &privdatacommon.DigKey{
 		TxId:       "txID1",
 		Collection: col1,
 		Namespace:  ns1,
@@ -963,7 +1091,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 		SeqInBlock: 1,
 	}
 
-	dig2 := &DigKey{
+	dig2 := &privdatacommon.DigKey{
 		TxId:       "txID1",
 		Collection: col2,
 		Namespace:  ns2,
@@ -973,16 +1101,16 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 
 	dasf := &digestsAndSourceFactory{}
 	d2s := dasf.mapDigest(dig1).toSources("p2").mapDigest(dig2).toSources("p2").create()
-	fetchedMessages, err := p1.fetch(d2s, uint64(1))
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(fetchedMessages.AvailableElemenets))
+	assert.Equal(t, 2, len(fetchedMessages.AvailableElements))
 	assert.Equal(t, 1, dataRetreiver.getNumberOfCalls())
-	assert.Equal(t, 2, len(fetchedMessages.AvailableElemenets[0].Payload))
-	assert.Equal(t, 2, len(fetchedMessages.AvailableElemenets[1].Payload))
+	assert.Equal(t, 2, len(fetchedMessages.AvailableElements[0].Payload))
+	assert.Equal(t, 2, len(fetchedMessages.AvailableElements[1].Payload))
 }
 
-func toDigKey(dig *proto.PvtDataDigest) *DigKey {
-	return &DigKey{
+func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {
+	return &privdatacommon.DigKey{
 		TxId:       dig.TxId,
 		BlockSeq:   dig.BlockSeq,
 		SeqInBlock: dig.SeqInBlock,

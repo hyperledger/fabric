@@ -30,11 +30,15 @@ type PeerLedgerSupport interface {
 
 	CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 
+	CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error)
+
 	GetBlockchainInfo() (*common.BlockchainInfo, error)
 
 	GetBlockByNumber(blockNumber uint64) (*common.Block, error)
 
 	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
+
+	GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error)
 
 	Close()
 }

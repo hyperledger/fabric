@@ -20,9 +20,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/transientstore"
+	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
-	gossip2 "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -89,27 +89,20 @@ type Coordinator interface {
 	Close()
 }
 
-type dig2sources map[DigKey][]*peer.Endorsement
+type dig2sources map[privdatacommon.DigKey][]*peer.Endorsement
 
-func (d2s dig2sources) keys() []DigKey {
-	var res []DigKey
+func (d2s dig2sources) keys() []privdatacommon.DigKey {
+	res := make([]privdatacommon.DigKey, 0, len(d2s))
 	for dig := range d2s {
 		res = append(res, dig)
 	}
 	return res
 }
 
-// FetchedPvtDataContainer container for pvt data elements
-// returned by Fetcher
-type FetchedPvtDataContainer struct {
-	AvailableElemenets []*gossip2.PvtDataElement
-	PurgedElements     []*gossip2.PvtDataDigest
-}
-
 // Fetcher interface which defines API to fetch missing
 // private data elements
 type Fetcher interface {
-	fetch(dig2src dig2sources, blockSeq uint64) (*FetchedPvtDataContainer, error)
+	fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error)
 }
 
 // Support encapsulates set of interfaces to
@@ -253,10 +246,10 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 }
 
 func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][]byte, privateInfo *privateDataInfo) {
-	dig2src := make(map[DigKey][]*peer.Endorsement)
+	dig2src := make(map[privdatacommon.DigKey][]*peer.Endorsement)
 	privateInfo.missingKeys.foreach(func(k rwSetKey) {
 		logger.Debug("Fetching", k, "from peers")
-		dig := DigKey{
+		dig := privdatacommon.DigKey{
 			TxId:       k.txID,
 			SeqInBlock: k.seqInBlock,
 			Collection: k.collection,
@@ -265,14 +258,14 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 		}
 		dig2src[dig] = privateInfo.sources[k]
 	})
-	fetchedData, err := c.fetch(dig2src, blockSeq)
+	fetchedData, err := c.fetch(dig2src)
 	if err != nil {
 		logger.Warning("Failed fetching private data for block", blockSeq, "from peers:", err)
 		return
 	}
 
 	// Iterate over data fetched from peers
-	for _, element := range fetchedData.AvailableElemenets {
+	for _, element := range fetchedData.AvailableElements {
 		dig := element.Digest
 		for _, rws := range element.Payload {
 			hash := hex.EncodeToString(util2.ComputeSHA256(rws))

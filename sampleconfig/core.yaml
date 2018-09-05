@@ -237,6 +237,14 @@ peer:
             # This helps a newly joined peer catch up to current
             # blockchain height quicker.
             btlPullMargin: 10
+            # the process of reconciliation is done in an endless loop, while in each iteration reconciler tries to
+            # pull from the other peers the most recent missing blocks with a maximum batch size limitation.
+            # reconcileBatchSize determines the maximum batch size of missing private data that will be reconciled in a
+            # single iteration.
+            reconcileBatchSize: 10
+            # reconcileSleepInterval determines the time reconciler sleeps from end of an iteration until the beginning
+            # of the next reconciliation iteration.
+            reconcileSleepInterval: 5m
 
     # TLS Settings
     # Note that peer-chaincode connections through chaincodeListenAddress is

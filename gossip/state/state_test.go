@@ -237,12 +237,28 @@ func (mc *mockCommitter) GetBlocks(blockSeqs []uint64) []*pcomm.Block {
 	return mc.Called(blockSeqs).Get(0).([]*pcomm.Block)
 }
 
+func (*mockCommitter) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
+	panic("implement me")
+}
+
+func (*mockCommitter) CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+	panic("implement me")
+}
+
 func (*mockCommitter) Close() {
 }
 
 type ramLedger struct {
 	ledger map[uint64]*ledger.BlockAndPvtData
 	sync.RWMutex
+}
+
+func (mock *ramLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
+	panic("implement me")
+}
+
+func (mock *ramLedger) CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+	panic("implement me")
 }
 
 func (mock *ramLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {

@@ -51,6 +51,15 @@ type Committer interface {
 	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
 	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
 
+	// CommitPvtData commits the private data corresponding to already committed block
+	// If hashes for some of the private data supplied in this function does not match
+	// the corresponding hash present in the block, the unmatched private data is not
+	// committed and instead the mismatch inforation is returned back
+	CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error)
+
+	// GetMissingPvtDataTracker return the MissingPvtDataTracker
+	GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error)
+
 	// Closes committing service
 	Close()
 }

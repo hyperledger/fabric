@@ -342,11 +342,19 @@ func (li *mockLedgerInfo) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetri
 	panic("implement me")
 }
 
+func (li *mockLedgerInfo) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
+	panic("implement me")
+}
+
 func (li *mockLedgerInfo) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	panic("implement me")
 }
 
 func (li *mockLedgerInfo) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+	panic("implement me")
+}
+
+func (li *mockLedgerInfo) CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
 	panic("implement me")
 }
 
