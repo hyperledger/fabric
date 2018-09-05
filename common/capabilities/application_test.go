@@ -36,7 +36,6 @@ func TestApplicationV12(t *testing.T) {
 	assert.True(t, ap.ForbidDuplicateTXIdInBlock())
 	assert.True(t, ap.V1_1Validation())
 	assert.True(t, ap.V1_2Validation())
-	assert.True(t, ap.KeyLevelEndorsement())
 	assert.True(t, ap.ACLs())
 	assert.True(t, ap.CollectionUpgrade())
 	assert.True(t, ap.PrivateChannelData())
