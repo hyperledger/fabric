@@ -300,8 +300,6 @@ func (msp *idemixmsp) deserializeIdentityInternal(serializedID []byte) (Identity
 }
 
 func (msp *idemixmsp) Validate(id Identity) error {
-	mspLogger.Infof("Validating identity %s", id)
-
 	var identity *idemixidentity
 	switch t := id.(type) {
 	case *idemixidentity:
@@ -311,6 +309,8 @@ func (msp *idemixmsp) Validate(id Identity) error {
 	default:
 		return errors.Errorf("identity type %T is not recognized", t)
 	}
+
+	mspLogger.Debugf("Validating identity %+v", identity)
 	if identity.GetMSPIdentifier() != msp.name {
 		return errors.Errorf("the supplied identity does not belong to this msp")
 	}
