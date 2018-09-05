@@ -140,6 +140,7 @@ func (l *kvLedger) recoverDBs() error {
 //recommitLostBlocks retrieves blocks in specified range and commit the write set to either
 //state DB or history DB or both
 func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64, recoverables ...recoverable) error {
+	logger.Debugf("recommitLostBlocks() - firstBlockNum=%d, lastBlockNum=%d, recoverables=%#v", firstBlockNum, lastBlockNum, recoverables)
 	var err error
 	var blockAndPvtdata *ledger.BlockAndPvtData
 	for blockNumber := firstBlockNum; blockNumber <= lastBlockNum; blockNumber++ {
