@@ -37,15 +37,27 @@ func TestNew(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 	assert.Equal(t, MSPVersion(MSPv1_0), i.(*bccspmsp).version)
-	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.setupV1)-fm")
-	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.validateIdentityOUsV1)-fm")
+	assert.Equal(t,
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(),
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).setupV1).Pointer()).Name(),
+	)
+	assert.Equal(t,
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(),
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).validateIdentityOUsV1).Pointer()).Name(),
+	)
 
 	i, err = New(&BCCSPNewOpts{NewBaseOpts{Version: MSPv1_1}})
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 	assert.Equal(t, MSPVersion(MSPv1_1), i.(*bccspmsp).version)
-	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.setupV11)-fm")
-	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.validateIdentityOUsV11)-fm")
+	assert.Equal(t,
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(),
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).setupV11).Pointer()).Name(),
+	)
+	assert.Equal(t,
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(),
+		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).validateIdentityOUsV11).Pointer()).Name(),
+	)
 
 	i, err = New(&IdemixNewOpts{NewBaseOpts{Version: MSPv1_0}})
 	assert.Error(t, err)
