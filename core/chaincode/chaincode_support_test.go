@@ -192,6 +192,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		),
 		sccp,
 		pr,
+		peer.DefaultSupport,
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 

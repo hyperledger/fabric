@@ -53,6 +53,7 @@ type ChaincodeSupport struct {
 	Launcher         Launcher
 	SystemCCProvider sysccprovider.SystemChaincodeProvider
 	Lifecycle        Lifecycle
+	appConfig        ApplicationConfigRetriever
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance.
@@ -68,6 +69,7 @@ func NewChaincodeSupport(
 	processor Processor,
 	SystemCCProvider sysccprovider.SystemChaincodeProvider,
 	platformRegistry *platforms.Registry,
+	appConfig ApplicationConfigRetriever,
 ) *ChaincodeSupport {
 	cs := &ChaincodeSupport{
 		UserRunsCC:       userRunsCC,
@@ -77,6 +79,7 @@ func NewChaincodeSupport(
 		ACLProvider:      aclProvider,
 		SystemCCProvider: SystemCCProvider,
 		Lifecycle:        lifecycle,
+		appConfig:        appConfig,
 	}
 
 	// Keep TestQueries working
@@ -178,6 +181,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
 		LedgerGetter:               peer.Default,
+		AppConfig:                  cs.appConfig,
 	}
 
 	return handler.ProcessStream(stream)

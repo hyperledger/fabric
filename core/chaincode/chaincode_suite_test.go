@@ -135,3 +135,8 @@ type queryResponseBuilder interface {
 type registry interface {
 	chaincode.Registry
 }
+
+//go:generate counterfeiter -o fake/application_config_retriever.go --fake-name ApplicationConfigRetriever . applicationConfigRetriever
+type applicationConfigRetriever interface {
+	chaincode.ApplicationConfigRetriever
+}
