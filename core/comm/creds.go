@@ -11,6 +11,7 @@ import (
 	"errors"
 	"net"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 )
@@ -29,19 +30,25 @@ var (
 
 // NewServerTransportCredentials returns a new initialized
 // grpc/credentials.TransportCredentials
-func NewServerTransportCredentials(serverConfig *tls.Config) credentials.TransportCredentials {
+func NewServerTransportCredentials(
+	serverConfig *tls.Config,
+	logger *flogging.FabricLogger) credentials.TransportCredentials {
+
 	// NOTE: unlike the default grpc/credentials implementation, we do not
 	// clone the tls.Config which allows us to update it dynamically
 	serverConfig.NextProtos = alpnProtoStr
 	// override TLS version and ensure it is 1.2
 	serverConfig.MinVersion = tls.VersionTLS12
 	serverConfig.MaxVersion = tls.VersionTLS12
-	return &serverCreds{serverConfig}
+	return &serverCreds{
+		serverConfig: serverConfig,
+		logger:       logger}
 }
 
 // serverCreds is an implementation of grpc/credentials.TransportCredentials.
 type serverCreds struct {
 	serverConfig *tls.Config
+	logger       *flogging.FabricLogger
 }
 
 // ClientHandShake is not implemented for `serverCreds`.
@@ -54,6 +61,10 @@ func (sc *serverCreds) ClientHandshake(context.Context,
 func (sc *serverCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	conn := tls.Server(rawConn, sc.serverConfig)
 	if err := conn.Handshake(); err != nil {
+		if sc.logger != nil {
+			sc.logger.With("remote address",
+				conn.RemoteAddr().String()).Errorf("TLS handshake failed with error %s", err)
+		}
 		return nil, nil, err
 	}
 	return conn, credentials.TLSInfo{State: conn.ConnectionState()}, nil
@@ -69,7 +80,7 @@ func (sc *serverCreds) Info() credentials.ProtocolInfo {
 
 // Clone makes a copy of this TransportCredentials.
 func (sc *serverCreds) Clone() credentials.TransportCredentials {
-	creds := NewServerTransportCredentials(sc.serverConfig)
+	creds := NewServerTransportCredentials(sc.serverConfig, sc.logger)
 	return creds
 }
 

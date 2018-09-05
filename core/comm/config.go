@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -56,6 +57,8 @@ type ServerConfig struct {
 	// UnaryInterceptors specifies a list of interceptors to apply to unary
 	// RPCs.  They are executed in order.
 	UnaryInterceptors []grpc.UnaryServerInterceptor
+	// Logger specifies the logger the server will use
+	Logger *flogging.FabricLogger
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance

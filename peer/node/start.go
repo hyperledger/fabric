@@ -20,6 +20,7 @@ import (
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -195,6 +196,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Fatalf("Error loading secure config for peer (%s)", err)
 	}
+	serverConfig.Logger = flogging.MustGetLogger("core/comm").With("server", "PeerServer")
 	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
@@ -456,6 +458,9 @@ func createChaincodeServer(ca tlsgen.CA, peerHostname string) (srv *comm.GRPCSer
 		return nil, "", err
 	}
 
+	// set the logger for the server
+	config.Logger = flogging.MustGetLogger("core/comm").With("server", "ChaincodeServer")
+
 	// Override TLS configuration if TLS is applicable
 	if config.SecOpts.UseTLS {
 		// Create a self-signed TLS certificate with a SAN that matches the computed chaincode endpoint
@@ -649,6 +654,7 @@ func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
 	if separateLsnrForAdmin {
 		logger.Info("Creating gRPC server for admin service on", adminListenAddress)
 		serverConfig, err := peer.GetServerConfig()
+		serverConfig.Logger = flogging.MustGetLogger("core/comm").With("server", "AdminServer")
 		if err != nil {
 			logger.Fatalf("Error loading secure config for admin service (%s)", err)
 		}
