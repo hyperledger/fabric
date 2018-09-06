@@ -3,6 +3,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:41531922c7f47d5157308b4dd1abc6142c4c583845ce424ed9664db867fa48cf"
+  name = "code.cloudfoundry.org/clock"
+  packages = [
+    ".",
+    "fakeclock",
+  ]
+  pruneopts = "NUT"
+  revision = "02e53af36e6c978af692887ed449b74026d76fec"
+
+[[projects]]
+  branch = "master"
   digest = "1:81f8c061c3d18ed1710957910542bc17d2b789c6cd19e0f654c30b35fd255ca5"
   name = "github.com/Azure/go-ansiterm"
   packages = [
@@ -838,12 +849,15 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "code.cloudfoundry.org/clock",
+    "code.cloudfoundry.org/clock/fakeclock",
     "github.com/Knetic/govaluate",
     "github.com/Shopify/sarama",
     "github.com/Shopify/sarama/mocks",
     "github.com/alecthomas/template",
     "github.com/cactus/go-statsd-client/statsd",
     "github.com/coreos/etcd/raft",
+    "github.com/coreos/etcd/raft/raftpb",
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
     "github.com/golang/protobuf/jsonpb",
