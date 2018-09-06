@@ -15,7 +15,7 @@ network, so it similar to a "smart contract". A chaincode can be invoked to upda
 the ledger in a proposal transaction. Given the appropriate permission, a chaincode
 may invoke another chaincode, either in the same channel or in different channels, to access its state.
 Note that, if the called chaincode is on a different channel from the calling chaincode,
-only read query is allowed. That is, the called chaincode on a different channel is only a `Query`,
+only read query is allowed. That is, the called chaincode on a different channel is only a ``Query``,
 which does not participate in state validation checks in subsequent commit phase.
 
 In the following sections, we will explore chaincode through the eyes of an
@@ -35,9 +35,9 @@ Chaincode API
           such access control decisions.
 
           We won't cover that in this tutorial, however it is
-          `documented here <https://github.com/hyperledger/fabric/blob/release-1.2/core/chaincode/lib/cid/README.md`_.
+          `documented here <https://github.com/hyperledger/fabric/blob/master/core/chaincode/lib/cid/README.md>`_.
 
-Every chaincode program must implement the ``Chaincode interface``:
+Every chaincode program must implement the ``Chaincode`` interface:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`__
   - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`__
