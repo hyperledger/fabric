@@ -19,7 +19,6 @@ import (
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb/historyleveldb/fakes"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -331,6 +330,8 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 
 	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
 	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
+
+	// verify the results for each key
 	testutilVerifyResults(t, qhistory, "ns1", "key", []string{"value1", "value2"})
 	testutilVerifyResults(t, qhistory, "ns1", key1, []string{"dummyVal1"})
 	testutilVerifyResults(t, qhistory, "ns1", key2, []string{"dummyVal2"})
@@ -338,34 +339,12 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	testutilVerifyResults(t, qhistory, "ns1", key4, []string{"dummyVal4"})
 	testutilVerifyResults(t, qhistory, "ns1", key5, []string{"dummyVal5"})
 
-	// verify key2-key5 fall in range but key1 is not in range
-	testutilCheckKeyInRange(t, qhistory, "ns1", "key", key1, 0)
-	testutilCheckKeyInRange(t, qhistory, "ns1", "key", key2, 1)
-	testutilCheckKeyInRange(t, qhistory, "ns1", "key", key3, 1)
-	testutilCheckKeyInRange(t, qhistory, "ns1", "key", key4, 1)
-	testutilCheckKeyInRange(t, qhistory, "ns1", "key", key5, 1)
-
-	// temporarily replace logger with a fake logger so that we can verify Warnf message call count and call args
-	origLogger := logger
-	fakeLogger := &fakes.HistoryleveldbLogger{HistorydbLogger: &fakes.HistorydbLogger{}}
-	logger = fakeLogger
-	defer func() {
-		logger = origLogger
-	}()
-	exhaustQueryResultsForKey(t, qhistory, "ns1", "key")
-	assert.Equalf(t, 4, fakeLogger.WarnfCallCount(), "Get expected number of warning messages")
-	testutilVerifyWarningMsg(t, fakeLogger, "ns1", key2,
-		"Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping (decoding error: %s)",
-		"decoded size from DecodeVarint is invalid, expected <=8, but got 21")
-	testutilVerifyWarningMsg(t, fakeLogger, "ns1", key3,
-		"Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping (decoding error: %s)",
-		"decoded size from DecodeVarint is invalid, expected <=8, but got 12")
-	testutilVerifyWarningMsg(t, fakeLogger, "ns1", key4,
-		"Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping (decoding error: %s)",
-		"number of decoded bytes (4) is not equal to the length of blockNumTranNumBytes (6)")
-	testutilVerifyWarningMsg(t, fakeLogger, "ns1", key5,
-		"Some other clashing key [%#v] found in the range while scanning history for key [%#v]. Skipping (cannot find block:tx)",
-		"")
+	// verify none of key1-key5 falls in the range of history query for "key"
+	testutilCheckKeyNotInRange(t, qhistory, "ns1", "key", key1)
+	testutilCheckKeyNotInRange(t, qhistory, "ns1", "key", key2)
+	testutilCheckKeyNotInRange(t, qhistory, "ns1", "key", key3)
+	testutilCheckKeyNotInRange(t, qhistory, "ns1", "key", key4)
+	testutilCheckKeyNotInRange(t, qhistory, "ns1", "key", key5)
 }
 
 // TestNoKeyFoundForFalseKey creates a false key that maps to block 257: tran 0.
@@ -402,10 +381,12 @@ func TestNoKeyFoundForFalseKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add blocks 2-256, each block has 1 transaction setting state for "ns1" and "key", value is "value<blockNum>"
+	expectedResults := make([]string, 0, 255)
 	for i := 2; i <= 256; i++ {
 		txid := util2.GenerateUUID()
 		simulator, _ := env.txmgr.NewTxSimulator(txid)
 		value := fmt.Sprintf("value%d", i)
+		expectedResults = append(expectedResults, value)
 		simulator.SetState("ns1", "key", []byte(value))
 		simulator.Done()
 		simRes, _ := simulator.GetTxSimulationResults()
@@ -434,20 +415,13 @@ func TestNoKeyFoundForFalseKey(t *testing.T) {
 	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
 	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
 
-	// temporarily replace logger with a fake logger so that we can verify Warnf call count and call args
-	origLogger := logger
-	fakeLogger := &fakes.HistoryleveldbLogger{HistorydbLogger: &fakes.HistorydbLogger{}}
-	logger = fakeLogger
-	defer func() {
-		logger = origLogger
-	}()
-	exhaustQueryResultsForKey(t, qhistory, "ns1", "key")
-	assert.Equalf(t, 1, fakeLogger.WarnfCallCount(), "Get expected number of warning messages")
-	msg, _ := fakeLogger.WarnfArgsForCall(0)
-	// key "ns, key\x00\x04\x00, 1, 0" is returned as a false key in range query for "key".
-	// Its "x04\x00, 1, 0" portion happens to be decoded to a valid blockNum:tranNum (257:0)
-	// but the desired ns/key is not present in the blockNum:tranNum.
-	assert.Equal(t, "Some other key [%#v] found in the range while scanning history for key [%#v]. Skipping (namespace or key not found)", msg)
+	testutilVerifyResults(t, qhistory, "ns1", otherKey, []string{"otherValue"})
+	testutilVerifyResults(t, qhistory, "ns1", "key", expectedResults)
+	testutilVerifyResults(t, qhistory, "ns1", "key2", []string{"key2Value"})
+
+	// TODO: test results for key are as expected
+	// test results for "otherKey" and "key2"
+
 }
 
 // TestHistoryWithBlockNumber256 creates 256 blocks and then
@@ -512,6 +486,7 @@ func TestName(t *testing.T) {
 	assert.Equal(t, "history", env.testHistoryDB.Name())
 }
 
+// verify history results match the expected values
 func testutilVerifyResults(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, key string, expectedVals []string) {
 	itr, err := hqe.GetHistoryForKey(ns, key)
 	assert.NoError(t, err, "Error upon GetHistoryForKey()")
@@ -529,61 +504,19 @@ func testutilVerifyResults(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, ke
 	assert.Equal(t, expectedVals, retrievedVals)
 }
 
-// testutilCheckKeyInRange check if falseKey falls in range query when searching for desiredKey
-func testutilCheckKeyInRange(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, desiredKey, falseKey string, expectedMatchCount int) {
+// testutilCheckKeyNotInRange verifies that a (false) key is not returned in range query when searching for the desired key
+func testutilCheckKeyNotInRange(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, desiredKey, falseKey string) {
 	itr, err := hqe.GetHistoryForKey(ns, desiredKey)
 	assert.NoError(t, err, "Error upon GetHistoryForKey()")
 	scanner := itr.(*historyScanner)
 	compositePartialKey := historydb.ConstructPartialCompositeHistoryKey(ns, falseKey, false)
-	count := 0
 	for {
 		if !scanner.dbItr.Next() {
 			break
 		}
 		historyKey := scanner.dbItr.Key()
 		if bytes.Contains(historyKey, compositePartialKey) {
-			count++
+			assert.Failf(t, "false key %s should not be returned in range query for key %s", falseKey, desiredKey)
 		}
 	}
-	assert.Equal(t, expectedMatchCount, count)
-}
-
-// exhaustQueryResultsForKey is a helper method to exhaust all the results returned by history query.
-// A fake logger can be set before calling this method to verify if a false key is skipped.
-func exhaustQueryResultsForKey(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, key string) {
-	itr, err := hqe.GetHistoryForKey(ns, key)
-	assert.NoError(t, err, "Error upon GetHistoryForKey()")
-	for {
-		kmod, _ := itr.Next()
-		if kmod == nil {
-			break
-		}
-	}
-}
-
-// testutilVerifyWarningMsg verifies fakeLogger had a Warnf call for the falseKey.
-// It iterates fakeLogger.WarnfCallCount() to find a history key that matches compositePartialKey
-// and then verifies warnMsg and decodeErrMsg (if not empty).
-func testutilVerifyWarningMsg(t *testing.T, fakeLogger *fakes.HistoryleveldbLogger, ns, falseKey, warnMsg, decodeErrMsg string) {
-	// because there is no particular order, iterate each call to find the matched one
-	compositePartialKey := historydb.ConstructPartialCompositeHistoryKey(ns, falseKey, false)
-	for i := 0; i < fakeLogger.WarnfCallCount(); i++ {
-		msg, args := fakeLogger.WarnfArgsForCall(i)
-
-		if !bytes.Contains(args[0].([]byte), compositePartialKey) {
-			// not matched
-			continue
-		}
-
-		assert.Equal(t, warnMsg, msg)
-
-		if decodeErrMsg == "" {
-			assert.Equal(t, 2, len(args))
-		} else {
-			assert.Equal(t, 3, len(args))
-			assert.Equal(t, decodeErrMsg, fmt.Sprintf("%s", args[2]))
-		}
-		return
-	}
-	assert.Fail(t, fmt.Sprintf("did not find false key %s in range", falseKey))
 }

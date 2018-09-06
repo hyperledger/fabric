@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package historydb
@@ -25,13 +15,15 @@ import (
 // CompositeKeySep is a nil byte used as a separator between different components of a composite key
 var CompositeKeySep = []byte{0x00}
 
-//ConstructCompositeHistoryKey builds the History Key of namespace~key~blocknum~trannum
+// ConstructCompositeHistoryKey builds the History Key of namespace~len(key)~key~blocknum~trannum
 // using an order preserving encoding so that history query results are ordered by height
+// Note: this key format is different than the format in pre-v2.0 releases and requires
+//       a historydb rebuild when upgrading an older version to v2.0.
 func ConstructCompositeHistoryKey(ns string, key string, blocknum uint64, trannum uint64) []byte {
-
 	var compositeKey []byte
 	compositeKey = append(compositeKey, []byte(ns)...)
 	compositeKey = append(compositeKey, CompositeKeySep...)
+	compositeKey = append(compositeKey, util.EncodeOrderPreservingVarUint64(uint64(len(key)))...)
 	compositeKey = append(compositeKey, []byte(key)...)
 	compositeKey = append(compositeKey, CompositeKeySep...)
 	compositeKey = append(compositeKey, util.EncodeOrderPreservingVarUint64(blocknum)...)
@@ -40,12 +32,13 @@ func ConstructCompositeHistoryKey(ns string, key string, blocknum uint64, trannu
 	return compositeKey
 }
 
-//ConstructPartialCompositeHistoryKey builds a partial History Key namespace~key~
+// ConstructPartialCompositeHistoryKey builds a partial History Key namespace~len(key)~key~
 // for use in history key range queries
 func ConstructPartialCompositeHistoryKey(ns string, key string, endkey bool) []byte {
 	var compositeKey []byte
 	compositeKey = append(compositeKey, []byte(ns)...)
 	compositeKey = append(compositeKey, CompositeKeySep...)
+	compositeKey = append(compositeKey, util.EncodeOrderPreservingVarUint64(uint64(len(key)))...)
 	compositeKey = append(compositeKey, []byte(key)...)
 	compositeKey = append(compositeKey, CompositeKeySep...)
 	if endkey {
