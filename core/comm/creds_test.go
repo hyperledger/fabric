@@ -9,13 +9,11 @@ package comm_test
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"sync"
 	"testing"
-
-	"google.golang.org/grpc/credentials"
 
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/core/comm"
@@ -42,12 +40,12 @@ func TestCreds(t *testing.T) {
 		t.Fatalf("failed to load TLS certificate [%s]", err)
 	}
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert}}
+		Certificates: []tls.Certificate{cert},
+	}
 
 	logger, recorder := floggingtest.NewTestLogger(t)
 
-	var creds credentials.TransportCredentials
-	creds = comm.NewServerTransportCredentials(tlsConfig, logger)
+	creds := comm.NewServerTransportCredentials(tlsConfig, logger)
 	_, _, err = creds.ClientHandshake(nil, "", nil)
 	assert.EqualError(t, err, comm.ClientHandshakeNotImplError.Error())
 	err = creds.OverrideServerName("")
@@ -63,7 +61,12 @@ func TestCreds(t *testing.T) {
 	}
 	defer lis.Close()
 
-	go func() {
+	_, port, err := net.SplitHostPort(lis.Addr().String())
+	assert.NoError(t, err)
+	addr := net.JoinHostPort("localhost", port)
+
+	handshake := func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		conn, err := lis.Accept()
 		if err != nil {
 			t.Logf("failed to accept connection [%s]", err)
@@ -72,29 +75,23 @@ func TestCreds(t *testing.T) {
 		if err != nil {
 			t.Logf("ServerHandshake error [%s]", err)
 		}
-		conn, err = lis.Accept()
-		if err != nil {
-			t.Logf("failed to accept connection [%s]", err)
-		}
-		_, _, err = creds.ServerHandshake(conn)
-		if err != nil {
-			t.Logf("ServerHandshake error [%s]", err)
-		}
-	}()
-
-	_, port, err := net.SplitHostPort(lis.Addr().String())
-	if err != nil {
-		t.Fatalf("failed to get server port [%s]", err)
 	}
-	_, err = tls.Dial("tcp", fmt.Sprintf("localhost:%s", port),
-		&tls.Config{RootCAs: certPool})
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go handshake(wg)
+	_, err = tls.Dial("tcp", addr, &tls.Config{RootCAs: certPool})
+	wg.Wait()
 	assert.NoError(t, err)
 
-	_, err = tls.Dial("tcp", fmt.Sprintf("localhost:%s", port),
-		&tls.Config{
-			RootCAs:    certPool,
-			MaxVersion: tls.VersionTLS10})
+	wg = &sync.WaitGroup{}
+	wg.Add(1)
+	go handshake(wg)
+	_, err = tls.Dial("tcp", addr, &tls.Config{
+		RootCAs:    certPool,
+		MaxVersion: tls.VersionTLS10,
+	})
+	wg.Wait()
 	assert.Contains(t, err.Error(), "protocol version not supported")
 	assert.Contains(t, recorder.Messages()[0], "TLS handshake failed with error")
-
 }
