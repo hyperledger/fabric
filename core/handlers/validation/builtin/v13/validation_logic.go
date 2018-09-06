@@ -25,10 +25,6 @@ import (
 
 var logger = flogging.MustGetLogger("vscc")
 
-const (
-	DUPLICATED_IDENTITY_ERROR = "Endorsement policy evaluation failure might be caused by duplicated identities"
-)
-
 var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollectionName)
 
 //go:generate mockery -dir ../../api/capabilities/ -name Capabilities -case underscore -output mocks/
