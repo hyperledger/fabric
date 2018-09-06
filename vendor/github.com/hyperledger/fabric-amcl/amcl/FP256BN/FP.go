@@ -67,6 +67,7 @@ func NewFPcopy(a *FP) *FP {
 }
 
 func (F *FP) toString() string {
+	F.reduce()
 	return F.redc().toString()
 }
 
@@ -171,8 +172,9 @@ func (F *FP) reduce() {
 
 /* test this=0? */
 func (F *FP) iszilch() bool {
-	F.reduce()
-	return F.x.iszilch()
+	W:=NewFPcopy(F)
+	W.reduce()
+	return W.x.iszilch()
 }
 
 /* copy from FP b */
@@ -304,38 +306,84 @@ func (F *FP) div2() {
 
 /* this=1/this mod Modulus */
 func (F *FP) inverse() {
+/*
 	p:=NewBIGints(Modulus);
 	r:=F.redc()
 	r.Invmodp(p)
 	F.x.copy(r)
 	F.nres()
+*/
+
+	m2:=NewBIGints(Modulus);
+	m2.dec(2); m2.norm()
+	F.copy(F.pow(m2))
+
 }
 
 /* return TRUE if this==a */
 func (F *FP) Equals(a *FP) bool {
-	a.reduce()
-	F.reduce()
-	if (comp(a.x,F.x)==0) {return true}
+	f:=NewFPcopy(F)
+	s:=NewFPcopy(a);
+
+	s.reduce()
+	f.reduce()
+	if (comp(s.x,f.x)==0) {return true}
 	return false
 }
 
 /* return this^e mod Modulus */
+/*
 func (F *FP) pow(e *BIG) *FP {
 	r:=NewFPint(1)
 	e.norm()
-	F.x.norm()
+	F.norm()
 	m:=NewFPcopy(F)
 	for true {
-		bt:=e.parity();
-		e.fshr(1);
+		bt:=e.parity()
+		e.fshr(1)
 		if bt==1 {r.mul(m)}
 		if e.iszilch() {break}
-		m.sqr();
+		m.sqr()
 	}
-	p:=NewBIGints(Modulus);
-	r.x.Mod(p);
-	return r;
+	r.reduce()
+	return r
 }
+*/
+
+
+func (F *FP) pow(e *BIG) *FP {
+	var tb []*FP
+	var w [1+(NLEN*int(BASEBITS)+3)/4]int8	
+	F.norm()
+	t:=NewBIGcopy(e)
+	t.norm()
+	nb:=1+(t.nbits()+3)/4
+
+	for i:=0;i<nb;i++ {
+		lsbs:=t.lastbits(4)
+		t.dec(lsbs)
+		t.norm()
+		w[i]=int8(lsbs)
+		t.fshr(4);
+	}
+	tb=append(tb,NewFPint(1))
+	tb=append(tb,NewFPcopy(F))
+	for i:=2;i<16;i++ {
+		tb=append(tb,NewFPcopy(tb[i-1]))
+		tb[i].mul(F);
+	}
+	r:=NewFPcopy(tb[w[nb-1]])
+	for i:=nb-2;i>=0;i-- {
+		r.sqr()
+		r.sqr()
+		r.sqr()
+		r.sqr()
+		r.mul(tb[w[i]])
+	}
+	r.reduce()
+	return r
+}
+
 
 /* return sqrt(this) mod Modulus */
 func (F *FP) sqrt() *FP {
