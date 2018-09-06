@@ -983,7 +983,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	for i := 0; i < bootstrapSetSize; i++ {
 		commit := newCommitter()
-		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(portPrefix, i), commit, noopPeerIdentityAcceptor))
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(portPrefix, i, 0, 1, 2, 3, 4), commit, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -1529,17 +1529,6 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	peers["peer1"].coord.On("GetPvtDataAndBlockByNum", uint64(2)).Return(&pcomm.Block{
 		Header: &pcomm.BlockHeader{
 			Number:       2,
-			DataHash:     []byte{0, 1, 1, 1},
-			PreviousHash: []byte{0, 0, 0, 1},
-		},
-		Data: &pcomm.BlockData{
-			Data: [][]byte{{1}, {2}, {3}},
-		},
-	}, gutil.PvtDataCollections{}, nil)
-
-	peers["peer1"].coord.On("GetPvtDataAndBlockByNum", uint64(3)).Return(&pcomm.Block{
-		Header: &pcomm.BlockHeader{
-			Number:       3,
 			DataHash:     []byte{0, 0, 0, 1},
 			PreviousHash: []byte{0, 1, 1, 1},
 		},
@@ -1608,7 +1597,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	})
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 	peers["peer2"].coord.On("StoreBlock", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		wg.Done() // Done once second peer hits commit of the block
 	}).Return([]string{}, nil) // No pvt data to complete and no error
