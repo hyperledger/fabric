@@ -16,19 +16,17 @@ const (
 	RoleTypeMember = RoleType("MEMBER")
 	// RoleTypePeer identifies an org's peer identity
 	RoleTypePeer = RoleType("PEER")
-	// RoleTypeClient identifies an org's client identity
-	RoleTypeClient = RoleType("CLIENT")
 )
 
 // RoleTypeDoesNotExistError is returned by function AddOrgs of
 // KeyEndorsementPolicy if a role type that does not match one
 // specified above is passed as an argument.
 type RoleTypeDoesNotExistError struct {
-	roleType RoleType
+	RoleType RoleType
 }
 
 func (r *RoleTypeDoesNotExistError) Error() string {
-	return fmt.Sprintf("Role type %s does not exist", r.roleType)
+	return fmt.Sprintf("role type %s does not exist", r.RoleType)
 }
 
 // KeyEndorsementPolicy provides a set of convenience methods to create and
