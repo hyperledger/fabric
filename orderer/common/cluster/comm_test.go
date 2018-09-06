@@ -495,8 +495,13 @@ func TestNoTLSCertificate(t *testing.T) {
 	}
 	cl, err := comm_utils.NewGRPCClient(clientConfig)
 	assert.NoError(t, err)
+	gt := gomega.NewGomegaWithT(t)
+	gt.Eventually(func() (bool, error) {
+		_, err := cl.NewConnection(node1.srv.Address(), "")
+		return true, err
+	})
+
 	conn, err := cl.NewConnection(node1.srv.Address(), "")
-	assert.NoError(t, err)
 	echoClient := orderer.NewClusterClient(conn)
 	_, err = echoClient.Step(context.Background(), testStepReq)
 	assert.EqualError(t, err, "rpc error: code = Unknown desc = no TLS certificate sent")
@@ -526,8 +531,12 @@ func TestReconnect(t *testing.T) {
 	node2.srv.Stop()
 	// Obtain the stub for node 2.
 	// Should succeed, because the connection was created at time of configuration
+	gt := gomega.NewGomegaWithT(t)
+	gt.Eventually(func() (bool, error) {
+		_, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+		return true, err
+	})
 	stub, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
-	assert.NoError(t, err)
 	// Send a message from node 1 to node 2.
 	// Should fail.
 	_, err = stub.Step(testStepReq)
