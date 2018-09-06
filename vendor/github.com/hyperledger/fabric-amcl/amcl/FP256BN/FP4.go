@@ -73,8 +73,14 @@ func (F *FP4) norm() {
 
 /* test this==0 ? */
 func (F *FP4) iszilch() bool {
-	F.reduce()
+	//F.reduce()
 	return F.a.iszilch() && F.b.iszilch()
+}
+
+/* Conditional move */
+func (F *FP4) cmove(g *FP4,d int) {
+	F.a.cmove(g.a,d)
+	F.b.cmove(g.b,d)
 }
 
 /* test this==1 ? */
@@ -122,6 +128,7 @@ func (F *FP4) one() {
 
 /* set this=-this */
 func (F *FP4) neg() {
+	F.norm()
 	m:=NewFP2copy(F.a);
 	t:=NewFP2int(0)
 	m.add(F.b)
@@ -156,11 +163,24 @@ func (F *FP4) sub(x *FP4) {
 	F.add(m)
 }
 
+/* this-=x */
+func (F *FP4) rsub(x *FP4) {
+	F.neg()
+	F.add(x)
+}
+
 /* this*=s where s is FP2 */
 func (F *FP4) pmul(s *FP2) {
 	F.a.mul(s)
 	F.b.mul(s)
 }
+
+/* this*=s where s is FP2 */
+func (F *FP4) qmul(s *FP) {
+	F.a.pmul(s)
+	F.b.pmul(s)
+}
+
 /* this*=c where c is int */
 func (F *FP4) imul(c int) {
 	F.a.imul(c)
@@ -490,4 +510,78 @@ func (F *FP4) xtr_pow2(ck *FP4,ckml *FP4,ckm2l *FP4,a *BIG,b *BIG) *FP4 {
 	for i:=0;i<f2;i++ {r.xtr_D()}
 	r=r.xtr_pow(d)
 	return r
+}
+
+/* this/=2 */
+func (F *FP4) div2() {
+	F.a.div2()
+	F.b.div2()
+}
+
+func (F *FP4) div_i() {
+	u:=NewFP2copy(F.a)
+	v:=NewFP2copy(F.b)
+	u.div_ip()
+	F.a.copy(v)
+	F.b.copy(u)
+}	
+
+func (F *FP4) div_2i() {
+	u:=NewFP2copy(F.a)
+	v:=NewFP2copy(F.b)
+	u.div_ip2()
+	v.add(v); v.norm()
+	F.a.copy(v)
+	F.b.copy(u)
+}
+
+/* sqrt(a+ib) = sqrt(a+sqrt(a*a-n*b*b)/2)+ib/(2*sqrt(a+sqrt(a*a-n*b*b)/2)) */
+/* returns true if this is QR */
+func (F *FP4) sqrt() bool {
+	if F.iszilch() {return true}
+
+	a:=NewFP2copy(F.a)
+	s:=NewFP2copy(F.b)
+	t:=NewFP2copy(F.a)
+
+	if s.iszilch() {
+		if t.sqrt() {
+			F.a.copy(t)
+			F.b.zero()
+		} else {
+			t.div_ip()
+			t.sqrt()
+			F.b.copy(t)
+			F.a.zero()
+		}
+		return true
+	}
+	s.sqr()
+	a.sqr()
+	s.mul_ip()
+	s.norm()
+	a.sub(s)
+
+	s.copy(a)
+	if !s.sqrt() {
+		return false
+	}
+
+	a.copy(t); a.add(s); a.norm(); a.div2()
+
+	if !a.sqrt() {
+		a.copy(t); a.sub(s); a.norm(); a.div2()
+		if !a.sqrt() {
+			return false
+		}
+	}
+	t.copy(F.b)
+	s.copy(a); s.add(a)
+	s.inverse()
+
+	t.mul(s)
+	F.a.copy(a)
+	F.b.copy(t)
+
+	return true
 }
