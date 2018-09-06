@@ -596,7 +596,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				continue
 			}
 
-			s.requestBlocksInRange(uint64(ourHeight), uint64(maxHeight))
+			s.requestBlocksInRange(uint64(ourHeight), uint64(maxHeight)-1)
 		}
 	}
 }
@@ -619,7 +619,7 @@ func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 }
 
 // GetBlocksInRange capable to acquire blocks with sequence
-// numbers in the range [start...end].
+// numbers in the range [start...end).
 func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64) {
 	atomic.StoreInt32(&s.stateTransferActive, 1)
 	defer atomic.StoreInt32(&s.stateTransferActive, 0)
@@ -634,19 +634,19 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 
 		for !responseReceived {
 			if tryCounts > defAntiEntropyMaxRetries {
-				logger.Warningf("Wasn't  able to get blocks in range [%d...%d], after %d retries",
+				logger.Warningf("Wasn't  able to get blocks in range [%d...%d), after %d retries",
 					prev, next, tryCounts)
 				return
 			}
 			// Select peers to ask for blocks
 			peer, err := s.selectPeerToRequestFrom(next)
 			if err != nil {
-				logger.Warningf("Cannot send state request for blocks in range [%d...%d], due to %+v",
+				logger.Warningf("Cannot send state request for blocks in range [%d...%d), due to %+v",
 					prev, next, errors.WithStack(err))
 				return
 			}
 
-			logger.Debugf("State transfer, with peer %s, requesting blocks in range [%d...%d], "+
+			logger.Debugf("State transfer, with peer %s, requesting blocks in range [%d...%d), "+
 				"for chainID %s", peer.Endpoint, prev, next, s.chainID)
 
 			s.mediator.Send(gossipMsg, peer)
