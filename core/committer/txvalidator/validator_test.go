@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
@@ -36,7 +38,9 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	mb "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -160,6 +164,35 @@ func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderTy
 
 func getEnv(ccID string, event []byte, res []byte, t *testing.T) *common.Envelope {
 	return getEnvWithType(ccID, event, res, common.HeaderType_ENDORSER_TRANSACTION, t)
+}
+
+func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIdentity, t *testing.T) *common.Envelope {
+	// get a toy proposal
+	pType := common.HeaderType_ENDORSER_TRANSACTION
+	cis := &peer.ChaincodeInvocationSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			ChaincodeId: &peer.ChaincodeID{Name: ccID, Version: ccVersion},
+			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
+			Type:        peer.ChaincodeSpec_GOLANG,
+		},
+	}
+
+	sID, err := sig.Serialize()
+	assert.NoError(t, err)
+	prop, _, err := utils.CreateProposalFromCIS(pType, "foochain", cis, sID)
+	assert.NoError(t, err)
+
+	response := &peer.Response{Status: 200}
+
+	// endorse it to get a proposal response
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, sig)
+	assert.NoError(t, err)
+
+	// assemble a transaction from that proposal and endorsement
+	tx, err := utils.CreateSignedTx(prop, sig, presp)
+	assert.NoError(t, err)
+
+	return tx
 }
 
 func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver string, policy []byte, t *testing.T) {
@@ -381,6 +414,263 @@ func testInvokeNoRWSet(t *testing.T, l ledger.PeerLedger, v txvalidator.Validato
 	err := v.Validate(b)
 	assert.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+}
+
+// SerializedIdentity mock for the parallel validation test
+type mockSI struct {
+	SerializedID []byte
+	MspID        string
+	SatPrinError error
+}
+
+func (msi *mockSI) ExpiresAt() time.Time {
+	return time.Now()
+}
+
+func (msi *mockSI) GetIdentifier() *msp.IdentityIdentifier {
+	return &msp.IdentityIdentifier{
+		Mspid: msi.MspID,
+		Id:    "",
+	}
+}
+
+func (msi *mockSI) GetMSPIdentifier() string {
+	return msi.MspID
+}
+
+func (msi *mockSI) Validate() error {
+	return nil
+}
+
+func (msi *mockSI) GetOrganizationalUnits() []*msp.OUIdentifier {
+	return nil
+}
+
+func (msi *mockSI) Anonymous() bool {
+	return false
+}
+
+func (msi *mockSI) Verify(msg []byte, sig []byte) error {
+	return nil
+}
+
+func (msi *mockSI) Serialize() ([]byte, error) {
+	sid := &mb.SerializedIdentity{
+		Mspid:   msi.MspID,
+		IdBytes: msi.SerializedID,
+	}
+	sidBytes := utils.MarshalOrPanic(sid)
+	return sidBytes, nil
+}
+
+func (msi *mockSI) SatisfiesPrincipal(principal *mb.MSPPrincipal) error {
+	return msi.SatPrinError
+}
+
+func (msi *mockSI) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
+}
+
+func (msi *mockSI) GetPublicVersion() msp.Identity {
+	return msi
+}
+
+// MSP mock for the parallel validation test
+type mockMSP struct {
+	ID           msp.Identity
+	SatPrinError error
+	MspID        string
+}
+
+func (fake *mockMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	return fake.ID, nil
+}
+
+func (fake *mockMSP) IsWellFormed(identity *mb.SerializedIdentity) error {
+	return nil
+}
+func (fake *mockMSP) Setup(config *mb.MSPConfig) error {
+	return nil
+}
+
+func (fake *mockMSP) GetVersion() msp.MSPVersion {
+	return msp.MSPv1_3
+}
+
+func (fake *mockMSP) GetType() msp.ProviderType {
+	return msp.FABRIC
+}
+
+func (fake *mockMSP) GetIdentifier() (string, error) {
+	return fake.MspID, nil
+}
+
+func (fake *mockMSP) GetSigningIdentity(identifier *msp.IdentityIdentifier) (msp.SigningIdentity, error) {
+	return nil, nil
+}
+
+func (fake *mockMSP) GetDefaultSigningIdentity() (msp.SigningIdentity, error) {
+	return nil, nil
+}
+
+func (fake *mockMSP) GetTLSRootCerts() [][]byte {
+	return nil
+}
+
+func (fake *mockMSP) GetTLSIntermediateCerts() [][]byte {
+	return nil
+}
+
+func (fake *mockMSP) Validate(id msp.Identity) error {
+	return nil
+}
+
+func (fake *mockMSP) SatisfiesPrincipal(id msp.Identity, principal *mb.MSPPrincipal) error {
+	return fake.SatPrinError
+}
+
+// parallel validation on a block with a high number of transactions and sbe dependencies among those
+func TestParallelValidation(t *testing.T) {
+	// number of transactions in the block
+	txCnt := 100
+
+	// create two MSPs to control the policy evaluation result, one of them returning an error on SatisfiesPrincipal()
+	msp1 := &mockMSP{
+		ID: &mockSI{
+			MspID:        "Org1",
+			SerializedID: []byte("signer0"),
+			SatPrinError: nil,
+		},
+		SatPrinError: nil,
+		MspID:        "Org1",
+	}
+	msp2 := &mockMSP{
+		ID: &mockSI{
+			MspID:        "Org2",
+			SerializedID: []byte("signer1"),
+			SatPrinError: errors.New("nope"),
+		},
+		SatPrinError: errors.New("nope"),
+		MspID:        "Org2",
+	}
+	mgmt.GetManagerForChain("foochain")
+	mgr := mgmt.GetManagerForChain("foochain")
+	mgr.Setup([]msp.MSP{msp1, msp2})
+
+	vpKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+
+	l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, V1_3ValidationRv: true}, &builtin.DefaultValidation{}, mgr)
+	defer ledgermgmt.CleanupTestEnv()
+	defer l.Close()
+
+	ccID := "mycc"
+
+	policy := cauthdsl.SignedByMspPeer("Org1")
+	polBytes := utils.MarshalOrPanic(policy)
+	putCCInfo(l, ccID, polBytes, t)
+
+	// create a number of txes
+	blockData := make([][]byte, 0, txCnt)
+	col := "col1"
+	sigID0 := &mockSI{
+		SerializedID: []byte("signer0"),
+		MspID:        "Org1",
+	}
+	sigID1 := &mockSI{
+		SerializedID: []byte("signer1"),
+		MspID:        "Org2",
+	}
+	for txNum := 0; txNum < txCnt; txNum++ {
+		var sig msp.SigningIdentity
+		// create rwset for the tx - KVS key depends on the txnum
+		key := strconv.Itoa(txNum % 10)
+		rwsetBuilder := rwsetutil.NewRWSetBuilder()
+		// pick action that we want to do: read / modify the value or the ep
+		switch uint(txNum / 10) {
+		case 0:
+			// set the value of the key (valid)
+			rwsetBuilder.AddToWriteSet(ccID, key, []byte("value1"))
+			sig = sigID0
+		case 1:
+			// set the ep of the key (invalid, because Org2's MSP returns principal not satisfied)
+			metadata := make(map[string][]byte)
+			metadata[vpKey] = signedByAnyMember([]string{"SampleOrg"})
+			rwsetBuilder.AddToMetadataWriteSet(ccID, key, metadata)
+			sig = sigID1
+		case 2:
+			// set the value of the key (valid, because the ep change before was invalid)
+			rwsetBuilder.AddToWriteSet(ccID, key, []byte("value2"))
+			sig = sigID0
+		case 3:
+			// set the ep of the key (valid)
+			metadata := make(map[string][]byte)
+			metadata[vpKey] = signedByAnyMember([]string{"Org2"})
+			rwsetBuilder.AddToMetadataWriteSet(ccID, key, metadata)
+			sig = sigID0
+		case 4:
+			// set the value of the key (invalid, because the ep change before was valid)
+			rwsetBuilder.AddToWriteSet(ccID, key, []byte("value3"))
+			sig = &mockSI{
+				SerializedID: []byte("signer0"),
+				MspID:        "Org1",
+			}
+		// do the same txes for private data
+		case 5:
+			// set the value of the key (valid)
+			rwsetBuilder.AddToPvtAndHashedWriteSet(ccID, col, key, []byte("value1"))
+			sig = sigID0
+		case 6:
+			// set the ep of the key (invalid, because Org2's MSP returns principal not satisfied)
+			metadata := make(map[string][]byte)
+			metadata[vpKey] = signedByAnyMember([]string{"SampleOrg"})
+			rwsetBuilder.AddToHashedMetadataWriteSet(ccID, col, key, metadata)
+			sig = sigID1
+		case 7:
+			// set the value of the key (valid, because the ep change before was invalid)
+			rwsetBuilder.AddToPvtAndHashedWriteSet(ccID, col, key, []byte("value2"))
+			sig = sigID0
+		case 8:
+			// set the ep of the key (valid)
+			metadata := make(map[string][]byte)
+			metadata[vpKey] = signedByAnyMember([]string{"Org2"})
+			rwsetBuilder.AddToHashedMetadataWriteSet(ccID, col, key, metadata)
+			sig = sigID0
+		case 9:
+			// set the value of the key (invalid, because the ep change before was valid)
+			rwsetBuilder.AddToPvtAndHashedWriteSet(ccID, col, key, []byte("value3"))
+			sig = sigID0
+		}
+		rwset, err := rwsetBuilder.GetTxSimulationResults()
+		assert.NoError(t, err)
+		rwsetBytes, err := rwset.GetPubSimulationBytes()
+		tx := getEnvWithSigner(ccID, nil, rwsetBytes, sig, t)
+		blockData = append(blockData, utils.MarshalOrPanic(tx))
+	}
+
+	// assemble block from all those txes
+	b := &common.Block{Data: &common.BlockData{Data: blockData}, Header: &common.BlockHeader{Number: uint64(txCnt)}}
+
+	// validate the block
+	err := v.Validate(b)
+	assert.NoError(t, err)
+
+	// Block metadata array position to store serialized bit array filter of invalid transactions
+	txsFilter := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	// tx validity
+	for txNum := 0; txNum < txCnt; txNum += 1 {
+		switch uint(txNum / 10) {
+		case 1:
+			fallthrough
+		case 4:
+			fallthrough
+		case 6:
+			fallthrough
+		case 9:
+			assert.True(t, txsFilter.IsInvalid(txNum))
+		default:
+			assert.False(t, txsFilter.IsInvalid(txNum))
+		}
+	}
 }
 
 func TestChaincodeEvent(t *testing.T) {
