@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package comm_test
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -18,7 +17,7 @@ import (
 
 	"google.golang.org/grpc/credentials"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,21 +36,16 @@ func TestCreds(t *testing.T) {
 	}
 	cert, err := tls.LoadX509KeyPair(
 		filepath.Join("testdata", "certs", "Org1-server1-cert.pem"),
-		filepath.Join("testdata", "certs", "Org1-server1-key.pem"))
+		filepath.Join("testdata", "certs", "Org1-server1-key.pem"),
+	)
 	if err != nil {
 		t.Fatalf("failed to load TLS certificate [%s]", err)
 	}
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert}}
 
-	buf := &bytes.Buffer{}
-	conf := flogging.Config{
-		Writer: buf}
-	logging, err := flogging.New(conf)
-	if err != nil {
-		t.Fatalf("error creating logger [%s]", err)
-	}
-	logger := logging.Logger("creds")
+	logger, recorder := floggingtest.NewTestLogger(t)
+
 	var creds credentials.TransportCredentials
 	creds = comm.NewServerTransportCredentials(tlsConfig, logger)
 	_, _, err = creds.ClientHandshake(nil, "", nil)
@@ -101,6 +95,6 @@ func TestCreds(t *testing.T) {
 			RootCAs:    certPool,
 			MaxVersion: tls.VersionTLS10})
 	assert.Contains(t, err.Error(), "protocol version not supported")
-	assert.Contains(t, buf.String(), "TLS handshake failed with error")
+	assert.Contains(t, recorder.Messages()[0], "TLS handshake failed with error")
 
 }
