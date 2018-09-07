@@ -47,11 +47,10 @@ type ChannelResponse interface {
 	// The method returns a random set of endorsers, such that signatures from all of them
 	// combined, satisfy the endorsement policy.
 	// The selection is based on the given selection hints:
-	// PrioritySelector: Determines which endorsers are selected over others
-	// ExclusionFilter: Determines which endorsers are not selected
+	// Filter: Filters and sorts the endorsers
 	// The given InvocationChain specifies the chaincode calls (along with collections)
 	// that the client passed during the construction of the request
-	Endorsers(invocationChain InvocationChain, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error)
+	Endorsers(invocationChain InvocationChain, f Filter) (Endorsers, error)
 }
 
 // LocalResponse aggregates responses for a channel-less scope

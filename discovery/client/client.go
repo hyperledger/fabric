@@ -240,7 +240,7 @@ func (cr *channelResponse) Peers(invocationChain ...*discovery.ChaincodeCall) ([
 	return parsePeers(discovery.PeerMembershipQueryType, cr.response, cr.channel, invocationChain...)
 }
 
-func (cr *channelResponse) Endorsers(invocationChain InvocationChain, ps PrioritySelector, ef ExclusionFilter) (Endorsers, error) {
+func (cr *channelResponse) Endorsers(invocationChain InvocationChain, f Filter) (Endorsers, error) {
 	// If we have a key that has no chaincode field,
 	// it means it's an error returned from the service
 	if err, exists := cr.response[key{
@@ -266,7 +266,7 @@ func (cr *channelResponse) Endorsers(invocationChain InvocationChain, ps Priorit
 	// We iterate over all layouts to find one that we have enough peers to select
 	for _, index := range rand.Perm(len(desc.layouts)) {
 		layout := desc.layouts[index]
-		endorsers, canLayoutBeSatisfied := selectPeersForLayout(desc.endorsersByGroups, layout, ps, ef)
+		endorsers, canLayoutBeSatisfied := selectPeersForLayout(desc.endorsersByGroups, layout, f)
 		if canLayoutBeSatisfied {
 			return endorsers, nil
 		}
@@ -274,11 +274,33 @@ func (cr *channelResponse) Endorsers(invocationChain InvocationChain, ps Priorit
 	return nil, errors.New("no endorsement combination can be satisfied")
 }
 
-func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, ps PrioritySelector, ef ExclusionFilter) (Endorsers, bool) {
+type filter struct {
+	ef ExclusionFilter
+	ps PrioritySelector
+}
+
+// NewFilter returns an endorser filter that uses the given exclusion filter and priority selector
+// to filter and sort the endorsers
+func NewFilter(ps PrioritySelector, ef ExclusionFilter) Filter {
+	return &filter{
+		ef: ef,
+		ps: ps,
+	}
+}
+
+// Filter returns a filtered and sorted list of endorsers
+func (f *filter) Filter(endorsers Endorsers) Endorsers {
+	return endorsers.Shuffle().Filter(f.ef).Sort(f.ps)
+}
+
+// NoFilter returns a noop Filter
+var NoFilter = NewFilter(NoPriorities, NoExclusion)
+
+func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, f Filter) (Endorsers, bool) {
 	var endorsers []*Peer
 	for grp, count := range layout {
-		shuffledEndorsers := Endorsers(endorsersByGroups[grp]).Shuffle()
-		endorsersOfGrp := shuffledEndorsers.Filter(ef).Sort(ps)
+		endorsersOfGrp := f.Filter(Endorsers(endorsersByGroups[grp]))
+
 		// We couldn't select enough peers for this layout because the current group
 		// requires more peers than we have available to be selected
 		if len(endorsersOfGrp) < count {

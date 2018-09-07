@@ -33,13 +33,13 @@ func (_m *ChannelResponse) Config() (*discovery.ConfigResult, error) {
 	return r0, r1
 }
 
-// Endorsers provides a mock function with given fields: invocationChain, ps, ef
-func (_m *ChannelResponse) Endorsers(invocationChain client.InvocationChain, ps client.PrioritySelector, ef client.ExclusionFilter) (client.Endorsers, error) {
-	ret := _m.Called(invocationChain, ps, ef)
+// Endorsers provides a mock function with given fields: invocationChain, f
+func (_m *ChannelResponse) Endorsers(invocationChain client.InvocationChain, f client.Filter) (client.Endorsers, error) {
+	ret := _m.Called(invocationChain, f)
 
 	var r0 client.Endorsers
-	if rf, ok := ret.Get(0).(func(client.InvocationChain, client.PrioritySelector, client.ExclusionFilter) client.Endorsers); ok {
-		r0 = rf(invocationChain, ps, ef)
+	if rf, ok := ret.Get(0).(func(client.InvocationChain, client.Filter) client.Endorsers); ok {
+		r0 = rf(invocationChain, f)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(client.Endorsers)
@@ -47,8 +47,8 @@ func (_m *ChannelResponse) Endorsers(invocationChain client.InvocationChain, ps 
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(client.InvocationChain, client.PrioritySelector, client.ExclusionFilter) error); ok {
-		r1 = rf(invocationChain, ps, ef)
+	if rf, ok := ret.Get(1).(func(client.InvocationChain, client.Filter) error); ok {
+		r1 = rf(invocationChain, f)
 	} else {
 		r1 = ret.Error(1)
 	}

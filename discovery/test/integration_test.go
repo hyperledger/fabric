@@ -168,7 +168,7 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Endorser chaincode to chaincode", func(t *testing.T) {
-		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.Chaincodes, disc.PrioritiesByHeight, disc.NoExclusion)
+		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.Chaincodes, disc.NoFilter)
 		assert.NoError(t, err)
 		endorsersByMSP := map[string][]string{}
 
@@ -181,7 +181,7 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Endorser chaincode with collection", func(t *testing.T) {
-		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.PrioritiesByHeight, disc.NoExclusion)
+		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
 		assert.NoError(t, err)
 
 		endorsersByMSP := map[string][]string{}
@@ -233,7 +233,7 @@ func TestEndorsementComputationFailure(t *testing.T) {
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
 	assert.NoError(t, err)
 
-	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.PrioritiesByHeight, disc.NoExclusion)
+	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
 	assert.Empty(t, endorsers)
 	assert.Contains(t, err.Error(), "failed constructing descriptor")
 }
@@ -259,7 +259,7 @@ func TestLedgerFailure(t *testing.T) {
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
 	assert.NoError(t, err)
 
-	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.PrioritiesByHeight, disc.NoExclusion)
+	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
 	assert.Empty(t, endorsers)
 	assert.Contains(t, err.Error(), "failed constructing descriptor")
 }

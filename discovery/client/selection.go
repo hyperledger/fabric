@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+// Filter filters and sorts the given endorsers
+type Filter interface {
+	Filter(endorsers Endorsers) Endorsers
+}
+
 // ExclusionFilter returns true if the given Peer
 // is not to be considered when selecting peers
 type ExclusionFilter interface {
