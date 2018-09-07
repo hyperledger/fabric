@@ -59,7 +59,7 @@ func (bc *broadcastClient) Recv() (*orderer.DeliverResponse, error) {
 		if bc.shouldStop() {
 			return nil, errors.New("closing")
 		}
-		return bc.BlocksDeliverer.Recv()
+		return bc.tryReceive()
 	})
 	if err != nil {
 		return nil, err
@@ -73,9 +73,29 @@ func (bc *broadcastClient) Send(msg *common.Envelope) error {
 		if bc.shouldStop() {
 			return nil, errors.New("closing")
 		}
-		return nil, bc.BlocksDeliverer.Send(msg)
+		return bc.trySend(msg)
 	})
 	return err
+}
+
+func (bc *broadcastClient) trySend(msg *common.Envelope) (interface{}, error) {
+	bc.Lock()
+	stream := bc.BlocksDeliverer
+	bc.Unlock()
+	if stream == nil {
+		return nil, errors.New("client stream has been closed")
+	}
+	return nil, stream.Send(msg)
+}
+
+func (bc *broadcastClient) tryReceive() (*orderer.DeliverResponse, error) {
+	bc.Lock()
+	stream := bc.BlocksDeliverer
+	bc.Unlock()
+	if stream == nil {
+		return nil, errors.New("client stream has been closed")
+	}
+	return stream.Recv()
 }
 
 func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{}, error) {
@@ -110,7 +130,10 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 }
 
 func (bc *broadcastClient) doAction(action func() (interface{}, error), actionOnNewConnection func()) (interface{}, error) {
-	if bc.conn == nil {
+	bc.Lock()
+	conn := bc.conn
+	bc.Unlock()
+	if conn == nil {
 		err := bc.connect()
 		if err != nil {
 			return nil, err
