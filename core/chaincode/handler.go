@@ -545,24 +545,13 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 }
 
 func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
-	ac, there := h.AppConfig.GetApplicationConfig(msg.ChannelId)
-	var err error
-	if !there {
-		err = errors.Errorf("[%s]Failed to get application config for invoked chaincode. Sending %s",
-			shorttxid(msg.Txid),
-			pb.ChaincodeMessage_ERROR,
-		)
-		chaincodeLogger.Errorf(err.Error())
-		return err
+	ac, exists := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+	if !exists {
+		return errors.Errorf("application config does not exist for %s", msg.ChannelId)
 	}
 
 	if !ac.Capabilities().KeyLevelEndorsement() {
-		err = errors.Errorf("[%s]Request to invoke metadata function not supported. Sending %s",
-			shorttxid(msg.Txid),
-			pb.ChaincodeMessage_ERROR,
-		)
-		chaincodeLogger.Errorf(err.Error())
-		return err
+		return errors.New("key level endorsement is not enabled")
 	}
 	return nil
 }
@@ -600,7 +589,7 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	err := h.checkMetadataCap(msg)
 	if err != nil {
-		return nil, errors.Wrap(err, "metadata not supported")
+		return nil, err
 	}
 
 	getStateMetadata := &pb.GetStateMetadata{}
@@ -857,7 +846,7 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	err := h.checkMetadataCap(msg)
 	if err != nil {
-		return nil, errors.Wrap(err, "metadata not supported")
+		return nil, err
 	}
 
 	putStateMetadata := &pb.PutStateMetadata{}
@@ -1053,11 +1042,6 @@ func (h *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.P
 
 func (h *Handler) State() State { return h.state }
 func (h *Handler) Close()       { h.TXContexts.Close() }
-
-// GetApplicationConfig implements the method of the same name in the handlerSupport interface
-func (h *Handler) GetApplicationConfig(chainID string) (channelconfig.Application, bool) {
-	return h.AppConfig.GetApplicationConfig(chainID)
-}
 
 type State int
 
