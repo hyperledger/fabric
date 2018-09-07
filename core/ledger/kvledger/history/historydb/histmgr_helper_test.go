@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 )
 
-var strKeySep = string(compositeKeySep)
+var strKeySep = string(CompositeKeySep)
 
 func TestConstructCompositeKey(t *testing.T) {
 	compositeKey := ConstructCompositeHistoryKey("ns1", "key1", 1, 1)
