@@ -124,3 +124,9 @@ func TestValueAndMetadataWrites(t *testing.T) {
 	defer env.Cleanup()
 	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
 }
+
+func TestPaginatedRangeQuery(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
+}

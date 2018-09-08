@@ -44,6 +44,12 @@ type ResultsIterator interface {
 	Close()
 }
 
+// QueryResultsIterator - an iterator for query result set
+type QueryResultsIterator interface {
+	ResultsIterator
+	GetBookmarkAndClose() string
+}
+
 // QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries
 type QueryResult interface{}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/spf13/viper"
 )
 
 // TestGetStateMultipleKeys tests read for given multiple keys
@@ -189,7 +190,6 @@ func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	batch.Put("ns3", "key7", []byte("value7"), version.NewHeight(1, 7))
 	savePoint := version.NewHeight(2, 5)
 	db.ApplyUpdates(batch, savePoint)
-
 	itr1, _ := db.GetStateRangeScanIterator("ns1", "key1", "")
 	testItr(t, itr1, []string{"key1", "key2", "key3", "key4"})
 
@@ -201,6 +201,7 @@ func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 	itr4, _ := db.GetStateRangeScanIterator("ns2", "", "")
 	testItr(t, itr4, []string{"key5", "key6"})
+
 }
 
 func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
@@ -211,9 +212,8 @@ func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
 		key := vkv.Key
 		testutil.AssertEquals(t, key, expectedKey)
 	}
-	last, err := itr.Next()
+	_, err := itr.Next()
 	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, last)
 }
 
 // TestQuery tests queries
@@ -759,4 +759,193 @@ func TestValueAndMetadataWrites(t *testing.T, dbProvider statedb.VersionedDBProv
 
 	vv, _ = db.GetState("ns2", "key4")
 	testutil.AssertEquals(t, vv, &vv4)
+}
+
+// TestPaginatedRangeQuery tests range queries with pagination
+func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("testpaginatedrangequery")
+	testutil.AssertNoError(t, err, "")
+	db.Open()
+	defer db.Close()
+	batch := statedb.NewUpdateBatch()
+	jsonValue1 := "{\"asset_name\": \"marble1\",\"color\": \"blue\",\"size\": 1,\"owner\": \"tom\"}"
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+	jsonValue2 := "{\"asset_name\": \"marble2\",\"color\": \"red\",\"size\": 2,\"owner\": \"jerry\"}"
+	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 2))
+	jsonValue3 := "{\"asset_name\": \"marble3\",\"color\": \"red\",\"size\": 3,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key3", []byte(jsonValue3), version.NewHeight(1, 3))
+	jsonValue4 := "{\"asset_name\": \"marble4\",\"color\": \"red\",\"size\": 4,\"owner\": \"martha\"}"
+	batch.Put("ns1", "key4", []byte(jsonValue4), version.NewHeight(1, 4))
+	jsonValue5 := "{\"asset_name\": \"marble5\",\"color\": \"blue\",\"size\": 5,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key5", []byte(jsonValue5), version.NewHeight(1, 5))
+	jsonValue6 := "{\"asset_name\": \"marble6\",\"color\": \"red\",\"size\": 6,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key6", []byte(jsonValue6), version.NewHeight(1, 6))
+	jsonValue7 := "{\"asset_name\": \"marble7\",\"color\": \"blue\",\"size\": 7,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key7", []byte(jsonValue7), version.NewHeight(1, 7))
+	jsonValue8 := "{\"asset_name\": \"marble8\",\"color\": \"red\",\"size\": 8,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key8", []byte(jsonValue8), version.NewHeight(1, 8))
+	jsonValue9 := "{\"asset_name\": \"marble9\",\"color\": \"green\",\"size\": 9,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key9", []byte(jsonValue9), version.NewHeight(1, 9))
+	jsonValue10 := "{\"asset_name\": \"marble10\",\"color\": \"green\",\"size\": 10,\"owner\": \"mary\"}"
+	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
+
+	jsonValue11 := "{\"asset_name\": \"marble11\",\"color\": \"cyan\",\"size\": 8,\"owner\": \"joe\"}"
+	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
+	jsonValue12 := "{\"asset_name\": \"marble12\",\"color\": \"red\",\"size\": 4,\"owner\": \"martha\"}"
+	batch.Put("ns1", "key12", []byte(jsonValue12), version.NewHeight(1, 4))
+	jsonValue13 := "{\"asset_name\": \"marble13\",\"color\": \"red\",\"size\": 6,\"owner\": \"james\"}"
+	batch.Put("ns1", "key13", []byte(jsonValue13), version.NewHeight(1, 4))
+	jsonValue14 := "{\"asset_name\": \"marble14\",\"color\": \"red\",\"size\": 10,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key14", []byte(jsonValue14), version.NewHeight(1, 4))
+	jsonValue15 := "{\"asset_name\": \"marble15\",\"color\": \"red\",\"size\": 8,\"owner\": \"mary\"}"
+	batch.Put("ns1", "key15", []byte(jsonValue15), version.NewHeight(1, 4))
+	jsonValue16 := "{\"asset_name\": \"marble16\",\"color\": \"red\",\"size\": 4,\"owner\": \"robert\"}"
+	batch.Put("ns1", "key16", []byte(jsonValue16), version.NewHeight(1, 4))
+	jsonValue17 := "{\"asset_name\": \"marble17\",\"color\": \"red\",\"size\": 2,\"owner\": \"alan\"}"
+	batch.Put("ns1", "key17", []byte(jsonValue17), version.NewHeight(1, 4))
+	jsonValue18 := "{\"asset_name\": \"marble18\",\"color\": \"red\",\"size\": 10,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key18", []byte(jsonValue18), version.NewHeight(1, 4))
+	jsonValue19 := "{\"asset_name\": \"marble19\",\"color\": \"red\",\"size\": 2,\"owner\": \"alan\"}"
+	batch.Put("ns1", "key19", []byte(jsonValue19), version.NewHeight(1, 4))
+	jsonValue20 := "{\"asset_name\": \"marble20\",\"color\": \"red\",\"size\": 10,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key20", []byte(jsonValue20), version.NewHeight(1, 4))
+
+	jsonValue21 := "{\"asset_name\": \"marble21\",\"color\": \"cyan\",\"size\": 1000007,\"owner\": \"joe\"}"
+	batch.Put("ns1", "key21", []byte(jsonValue21), version.NewHeight(1, 11))
+	jsonValue22 := "{\"asset_name\": \"marble22\",\"color\": \"red\",\"size\": 4,\"owner\": \"martha\"}"
+	batch.Put("ns1", "key22", []byte(jsonValue22), version.NewHeight(1, 4))
+	jsonValue23 := "{\"asset_name\": \"marble23\",\"color\": \"blue\",\"size\": 6,\"owner\": \"james\"}"
+	batch.Put("ns1", "key23", []byte(jsonValue23), version.NewHeight(1, 4))
+	jsonValue24 := "{\"asset_name\": \"marble24\",\"color\": \"red\",\"size\": 10,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key24", []byte(jsonValue24), version.NewHeight(1, 4))
+	jsonValue25 := "{\"asset_name\": \"marble25\",\"color\": \"red\",\"size\": 8,\"owner\": \"mary\"}"
+	batch.Put("ns1", "key25", []byte(jsonValue25), version.NewHeight(1, 4))
+	jsonValue26 := "{\"asset_name\": \"marble26\",\"color\": \"red\",\"size\": 4,\"owner\": \"robert\"}"
+	batch.Put("ns1", "key26", []byte(jsonValue26), version.NewHeight(1, 4))
+	jsonValue27 := "{\"asset_name\": \"marble27\",\"color\": \"green\",\"size\": 2,\"owner\": \"alan\"}"
+	batch.Put("ns1", "key27", []byte(jsonValue27), version.NewHeight(1, 4))
+	jsonValue28 := "{\"asset_name\": \"marble28\",\"color\": \"red\",\"size\": 10,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key28", []byte(jsonValue28), version.NewHeight(1, 4))
+	jsonValue29 := "{\"asset_name\": \"marble29\",\"color\": \"red\",\"size\": 2,\"owner\": \"alan\"}"
+	batch.Put("ns1", "key29", []byte(jsonValue29), version.NewHeight(1, 4))
+	jsonValue30 := "{\"asset_name\": \"marble30\",\"color\": \"red\",\"size\": 10,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key30", []byte(jsonValue30), version.NewHeight(1, 4))
+
+	jsonValue31 := "{\"asset_name\": \"marble31\",\"color\": \"cyan\",\"size\": 1000007,\"owner\": \"joe\"}"
+	batch.Put("ns1", "key31", []byte(jsonValue31), version.NewHeight(1, 11))
+	jsonValue32 := "{\"asset_name\": \"marble32\",\"color\": \"red\",\"size\": 4,\"owner\": \"martha\"}"
+	batch.Put("ns1", "key32", []byte(jsonValue32), version.NewHeight(1, 4))
+	jsonValue33 := "{\"asset_name\": \"marble33\",\"color\": \"red\",\"size\": 6,\"owner\": \"james\"}"
+	batch.Put("ns1", "key33", []byte(jsonValue33), version.NewHeight(1, 4))
+	jsonValue34 := "{\"asset_name\": \"marble34\",\"color\": \"red\",\"size\": 10,\"owner\": \"fred\"}"
+	batch.Put("ns1", "key34", []byte(jsonValue34), version.NewHeight(1, 4))
+	jsonValue35 := "{\"asset_name\": \"marble35\",\"color\": \"red\",\"size\": 8,\"owner\": \"mary\"}"
+	batch.Put("ns1", "key35", []byte(jsonValue35), version.NewHeight(1, 4))
+	jsonValue36 := "{\"asset_name\": \"marble36\",\"color\": \"orange\",\"size\": 4,\"owner\": \"robert\"}"
+	batch.Put("ns1", "key36", []byte(jsonValue36), version.NewHeight(1, 4))
+	jsonValue37 := "{\"asset_name\": \"marble37\",\"color\": \"red\",\"size\": 2,\"owner\": \"alan\"}"
+	batch.Put("ns1", "key37", []byte(jsonValue37), version.NewHeight(1, 4))
+	jsonValue38 := "{\"asset_name\": \"marble38\",\"color\": \"yellow\",\"size\": 10,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key38", []byte(jsonValue38), version.NewHeight(1, 4))
+	jsonValue39 := "{\"asset_name\": \"marble39\",\"color\": \"red\",\"size\": 2,\"owner\": \"alan\"}"
+	batch.Put("ns1", "key39", []byte(jsonValue39), version.NewHeight(1, 4))
+	jsonValue40 := "{\"asset_name\": \"marble40\",\"color\": \"red\",\"size\": 10,\"owner\": \"elaine\"}"
+	batch.Put("ns1", "key40", []byte(jsonValue40), version.NewHeight(1, 4))
+
+	savePoint := version.NewHeight(2, 22)
+	db.ApplyUpdates(batch, savePoint)
+
+	//Test range query with no pagination
+	returnKeys := []string{}
+	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(0), returnKeys)
+	testutil.AssertNoError(t, err, "")
+
+	//Test range query with large page size (single page return)
+	returnKeys = []string{"key1", "key10", "key11", "key12", "key13", "key14"}
+	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(10), returnKeys)
+	testutil.AssertNoError(t, err, "")
+
+	//Test explicit pagination
+	//Test range query with multiple pages
+	returnKeys = []string{"key1", "key10"}
+	nextStartKey, err := executeRangeQuery(t, db, "ns1", "key1", "key22", int32(2), returnKeys)
+	testutil.AssertNoError(t, err, "")
+
+	// NextStartKey is now passed in as startKey,  verify the pagesize is working
+	returnKeys = []string{"key11", "key12"}
+	_, err = executeRangeQuery(t, db, "ns1", nextStartKey, "key22", int32(2), returnKeys)
+	testutil.AssertNoError(t, err, "")
+
+	//Set queryLimit to 2
+	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 2)
+
+	//Test implicit pagination
+	//Test range query with no pagesize and a small queryLimit
+	returnKeys = []string{}
+	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(0), returnKeys)
+	testutil.AssertNoError(t, err, "")
+
+	//Test range query with pagesize greater than the queryLimit
+	returnKeys = []string{"key1", "key10", "key11", "key12"}
+	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(4), returnKeys)
+	testutil.AssertNoError(t, err, "")
+
+	//reset queryLimit to 1000
+	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 1000)
+}
+
+func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey, endKey string, limit int32, returnKeys []string) (string, error) {
+
+	var itr statedb.ResultsIterator
+	var err error
+
+	if limit == 0 {
+
+		itr, err = db.GetStateRangeScanIterator(namespace, startKey, endKey)
+		if err != nil {
+			return "", err
+		}
+
+	} else {
+
+		queryOptions := make(map[string]interface{})
+
+		if limit != 0 {
+			queryOptions["limit"] = limit
+		}
+
+		itr, err = db.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, queryOptions)
+		if err != nil {
+			return "", err
+		}
+
+		// Verify the keys returned
+		if limit > 0 {
+			TestItrWithoutClose(t, itr, returnKeys)
+		}
+
+	}
+
+	returnBookmark := ""
+	if limit > 0 {
+		if queryResultItr, ok := itr.(statedb.QueryResultsIterator); ok {
+			returnBookmark = queryResultItr.GetBookmarkAndClose()
+		}
+	}
+
+	return returnBookmark, nil
+}
+
+// TestItrWithoutClose verifies an iterator contains expected keys
+func TestItrWithoutClose(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
+	for _, expectedKey := range expectedKeys {
+		queryResult, err := itr.Next()
+		testutil.AssertNoError(t, err, "An unexpected error was thrown during iterator Next()")
+		vkv := queryResult.(*statedb.VersionedKV)
+		key := vkv.Key
+		testutil.AssertEquals(t, key, expectedKey)
+	}
+	queryResult, err := itr.Next()
+	testutil.AssertNoError(t, err, "An unexpected error was thrown during iterator Next()")
+	testutil.AssertNil(t, queryResult)
 }

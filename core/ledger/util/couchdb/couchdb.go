@@ -77,8 +77,8 @@ type ConnectionInfo struct {
 
 //RangeQueryResponse is used for processing REST range query responses from CouchDB
 type RangeQueryResponse struct {
-	TotalRows int `json:"total_rows"`
-	Offset    int `json:"offset"`
+	TotalRows int32 `json:"total_rows"`
+	Offset    int32 `json:"offset"`
 	Rows      []struct {
 		ID    string `json:"id"`
 		Key   string `json:"key"`
@@ -91,8 +91,9 @@ type RangeQueryResponse struct {
 
 //QueryResponse is used for processing REST query responses from CouchDB
 type QueryResponse struct {
-	Warning string            `json:"warning"`
-	Docs    []json.RawMessage `json:"docs"`
+	Warning  string            `json:"warning"`
+	Docs     []json.RawMessage `json:"docs"`
+	Bookmark string            `json:"bookmark"`
 }
 
 // DocMetadata is used for capturing CouchDB document header info,
@@ -873,30 +874,29 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 //startKey and endKey can also be empty strings.  If startKey and endKey are empty, all documents are returned
 //This function provides a limit option to specify the max number of entries and is supplied by config.
 //Skip is reserved for possible future future use.
-func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip int) (*[]QueryResult, error) {
+func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32) ([]*QueryResult, string, error) {
 
 	logger.Debugf("Entering ReadDocRange()  startKey=%s, endKey=%s", startKey, endKey)
 
-	var results []QueryResult
+	var results []*QueryResult
 
 	rangeURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err)
-		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
+		return nil, "", errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	rangeURL = constructCouchDBUrl(rangeURL, dbclient.DBName, "_all_docs")
 
 	queryParms := rangeURL.Query()
-	queryParms.Set("limit", strconv.Itoa(limit))
-	queryParms.Add("skip", strconv.Itoa(skip))
+	//Increment the limit by 1 to see if there are more qualifying records
+	queryParms.Set("limit", strconv.FormatInt(int64(limit+1), 10))
 	queryParms.Add("include_docs", "true")
 	queryParms.Add("inclusive_end", "false") // endkey should be exclusive to be consistent with goleveldb
 
 	//Append the startKey if provided
-
 	if startKey != "" {
 		if startKey, err = encodeForJSON(startKey); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		queryParms.Add("startkey", "\""+startKey+"\"")
 	}
@@ -905,7 +905,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	if endKey != "" {
 		var err error
 		if endKey, err = encodeForJSON(endKey); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		queryParms.Add("endkey", "\""+endKey+"\"")
 	}
@@ -917,7 +917,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer closeResponseBody(resp)
 
@@ -932,23 +932,39 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error reading response body")
+		return nil, "", errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &RangeQueryResponse{}
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
-		return nil, errors.Wrap(err2, "error unmarshalling json data")
+		return nil, "", errors.Wrap(err2, "error unmarshalling json data")
+	}
+
+	//if an additional record is found, then reduce the count by 1
+	//and populate the nextStartKey
+	if jsonResponse.TotalRows > limit {
+		jsonResponse.TotalRows = limit
 	}
 
 	logger.Debugf("Total Rows: %d", jsonResponse.TotalRows)
 
-	for _, row := range jsonResponse.Rows {
+	//Use the next endKey as the starting default for the nextStartKey
+	nextStartKey := endKey
+
+	for index, row := range jsonResponse.Rows {
 
 		var docMetadata = &DocMetadata{}
 		err3 := json.Unmarshal(row.Doc, &docMetadata)
 		if err3 != nil {
-			return nil, errors.Wrap(err3, "error unmarshalling json data")
+			return nil, "", errors.Wrap(err3, "error unmarshalling json data")
+		}
+
+		//if there is an extra row for the nextStartKey, then do not add the row to the result set
+		//and populate the nextStartKey variable
+		if int32(index) >= jsonResponse.TotalRows {
+			nextStartKey = docMetadata.ID
+			continue
 		}
 
 		if docMetadata.AttachmentsInfo != nil {
@@ -957,18 +973,18 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 
 			var addDocument = &QueryResult{docMetadata.ID, couchDoc.JSONValue, couchDoc.Attachments}
-			results = append(results, *addDocument)
+			results = append(results, addDocument)
 
 		} else {
 
 			logger.Debugf("Adding json docment for id: %s", docMetadata.ID)
 
 			var addDocument = &QueryResult{docMetadata.ID, row.Doc, nil}
-			results = append(results, *addDocument)
+			results = append(results, addDocument)
 
 		}
 
@@ -976,7 +992,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	logger.Debugf("Exiting ReadDocRange()")
 
-	return &results, nil
+	return results, nextStartKey, nil
 
 }
 
@@ -1017,16 +1033,16 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 }
 
 //QueryDocuments method provides function for processing a query
-func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, error) {
+func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, string, error) {
 
 	logger.Debugf("Entering QueryDocuments()  query=%s", query)
 
-	var results []QueryResult
+	var results []*QueryResult
 
 	queryURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err)
-		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
+		return nil, "", errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.CouchInstance.conf.URL)
 	}
 	queryURL = constructCouchDBUrl(queryURL, dbclient.DBName, "_find")
 
@@ -1035,7 +1051,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, queryURL.String(), []byte(query), "", "", maxRetries, true)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer closeResponseBody(resp)
 
@@ -1050,14 +1066,14 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 	//handle as JSON document
 	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error reading response body")
+		return nil, "", errors.Wrap(err, "error reading response body")
 	}
 
 	var jsonResponse = &QueryResponse{}
 
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
-		return nil, errors.Wrap(err2, "error unmarshalling json data")
+		return nil, "", errors.Wrap(err2, "error unmarshalling json data")
 	}
 
 	for _, row := range jsonResponse.Docs {
@@ -1065,7 +1081,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 		var docMetadata = &DocMetadata{}
 		err3 := json.Unmarshal(row, &docMetadata)
 		if err3 != nil {
-			return nil, errors.Wrap(err3, "error unmarshalling json data")
+			return nil, "", errors.Wrap(err3, "error unmarshalling json data")
 		}
 
 		if docMetadata.AttachmentsInfo != nil {
@@ -1074,22 +1090,23 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 			var addDocument = &QueryResult{ID: docMetadata.ID, Value: couchDoc.JSONValue, Attachments: couchDoc.Attachments}
-			results = append(results, *addDocument)
+			results = append(results, addDocument)
 
 		} else {
 			logger.Debugf("Adding json docment for id: %s", docMetadata.ID)
 			var addDocument = &QueryResult{ID: docMetadata.ID, Value: row, Attachments: nil}
 
-			results = append(results, *addDocument)
+			results = append(results, addDocument)
 
 		}
 	}
+
 	logger.Debugf("Exiting QueryDocuments()")
 
-	return &results, nil
+	return results, jsonResponse.Bookmark, nil
 
 }
 

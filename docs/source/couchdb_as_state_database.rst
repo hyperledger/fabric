@@ -125,6 +125,8 @@ Below is the ``stateDatabase`` section from *core.yaml*:
       # goleveldb - default state database stored in goleveldb.
       # CouchDB - store state database in CouchDB
       stateDatabase: goleveldb
+      # Limit on the number of records to return per query
+      totalQueryLimit: 10000
       couchDBConfig:
          # It is recommended to run CouchDB on the same server as the peer, and
          # not map the CouchDB container port to a server port in docker-compose.
@@ -144,8 +146,21 @@ Below is the ``stateDatabase`` section from *core.yaml*:
          maxRetriesOnStartup: 10
          # CouchDB request timeout (unit: duration, e.g. 20s)
          requestTimeout: 35s
-         # Limit on the number of records to return per query
-         queryLimit: 10000
+         # Limit on the number of records per each CouchDB query
+         # Note that chaincode queries are only bound by totalQueryLimit.
+         # Internally the chaincode may execute multiple CouchDB queries,
+         # each of size internalQueryLimit.
+         internalQueryLimit: 1000
+         # Limit on the number of records per CouchDB bulk update batch
+         maxBatchUpdateSize: 1000
+         # Warm indexes after every N blocks.
+         # This option warms any indexes that have been
+         # deployed to CouchDB after every N blocks.
+         # A value of 1 will warm indexes after every block commit,
+         # to ensure fast selector queries.
+         # Increasing the value may improve write efficiency of peer and CouchDB,
+         # but may degrade query response time.
+         warmIndexesAfterNBlocks: 1
 
 CouchDB hosted in docker containers supplied with Hyperledger Fabric have the
 capability of setting the CouchDB username and password with environment

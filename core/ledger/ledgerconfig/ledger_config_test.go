@@ -99,23 +99,43 @@ func TestLedgerConfigPath(t *testing.T) {
 		"/tmp/hyperledger/production/ledgersData/bookkeeper")
 }
 
+func TestGetTotalLimitDefault(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defaultValue := GetTotalQueryLimit()
+	testutil.AssertEquals(t, defaultValue, 10000) //test default config is 1000
+}
+
+func TestGetTotalLimitUnset(t *testing.T) {
+	viper.Reset()
+	defaultValue := GetTotalQueryLimit()
+	testutil.AssertEquals(t, defaultValue, 10000) //test default config is 1000
+}
+
+func TestGetTotalLimit(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defer ledgertestutil.ResetConfigToDefaultValues()
+	viper.Set("ledger.state.totalQueryLimit", 5000)
+	updatedValue := GetTotalQueryLimit()
+	testutil.AssertEquals(t, updatedValue, 5000) //test config returns 5000
+}
+
 func TestGetQueryLimitDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
-	defaultValue := GetQueryLimit()
-	testutil.AssertEquals(t, defaultValue, 10000) //test default config is 10000
+	defaultValue := GetInternalQueryLimit()
+	testutil.AssertEquals(t, defaultValue, 1000) //test default config is 1000
 }
 
 func TestGetQueryLimitUnset(t *testing.T) {
 	viper.Reset()
-	defaultValue := GetQueryLimit()
-	testutil.AssertEquals(t, defaultValue, 10000) //test default config is 10000
+	defaultValue := GetInternalQueryLimit()
+	testutil.AssertEquals(t, defaultValue, 1000) //test default config is 1000
 }
 
 func TestGetQueryLimit(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.couchDBConfig.queryLimit", 5000)
-	updatedValue := GetQueryLimit()
+	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 5000)
+	updatedValue := GetInternalQueryLimit()
 	testutil.AssertEquals(t, updatedValue, 5000) //test config returns 5000
 }
 
