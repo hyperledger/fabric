@@ -156,6 +156,24 @@ type ChaincodeStub struct {
 		result1 shim.StateQueryIteratorInterface
 		result2 error
 	}
+	GetStateByRangeWithPaginationStub        func(startKey, endKey string, pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
+	getStateByRangeWithPaginationMutex       sync.RWMutex
+	getStateByRangeWithPaginationArgsForCall []struct {
+		startKey string
+		endKey   string
+		pageSize int32
+		bookmark string
+	}
+	getStateByRangeWithPaginationReturns struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}
+	getStateByRangeWithPaginationReturnsOnCall map[int]struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}
 	GetStateByPartialCompositeKeyStub        func(objectType string, keys []string) (shim.StateQueryIteratorInterface, error)
 	getStateByPartialCompositeKeyMutex       sync.RWMutex
 	getStateByPartialCompositeKeyArgsForCall []struct {
@@ -169,6 +187,24 @@ type ChaincodeStub struct {
 	getStateByPartialCompositeKeyReturnsOnCall map[int]struct {
 		result1 shim.StateQueryIteratorInterface
 		result2 error
+	}
+	GetStateByPartialCompositeKeyWithPaginationStub        func(objectType string, keys []string, pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
+	getStateByPartialCompositeKeyWithPaginationMutex       sync.RWMutex
+	getStateByPartialCompositeKeyWithPaginationArgsForCall []struct {
+		objectType string
+		keys       []string
+		pageSize   int32
+		bookmark   string
+	}
+	getStateByPartialCompositeKeyWithPaginationReturns struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}
+	getStateByPartialCompositeKeyWithPaginationReturnsOnCall map[int]struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
 	}
 	CreateCompositeKeyStub        func(objectType string, attributes []string) (string, error)
 	createCompositeKeyMutex       sync.RWMutex
@@ -211,6 +247,23 @@ type ChaincodeStub struct {
 	getQueryResultReturnsOnCall map[int]struct {
 		result1 shim.StateQueryIteratorInterface
 		result2 error
+	}
+	GetQueryResultWithPaginationStub        func(query string, pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
+	getQueryResultWithPaginationMutex       sync.RWMutex
+	getQueryResultWithPaginationArgsForCall []struct {
+		query    string
+		pageSize int32
+		bookmark string
+	}
+	getQueryResultWithPaginationReturns struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}
+	getQueryResultWithPaginationReturnsOnCall map[int]struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
 	}
 	GetHistoryForKeyStub        func(key string) (shim.HistoryQueryIteratorInterface, error)
 	getHistoryForKeyMutex       sync.RWMutex
@@ -1026,6 +1079,63 @@ func (fake *ChaincodeStub) GetStateByRangeReturnsOnCall(i int, result1 shim.Stat
 	}{result1, result2}
 }
 
+func (fake *ChaincodeStub) GetStateByRangeWithPagination(startKey string, endKey string, pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	fake.getStateByRangeWithPaginationMutex.Lock()
+	ret, specificReturn := fake.getStateByRangeWithPaginationReturnsOnCall[len(fake.getStateByRangeWithPaginationArgsForCall)]
+	fake.getStateByRangeWithPaginationArgsForCall = append(fake.getStateByRangeWithPaginationArgsForCall, struct {
+		startKey string
+		endKey   string
+		pageSize int32
+		bookmark string
+	}{startKey, endKey, pageSize, bookmark})
+	fake.recordInvocation("GetStateByRangeWithPagination", []interface{}{startKey, endKey, pageSize, bookmark})
+	fake.getStateByRangeWithPaginationMutex.Unlock()
+	if fake.GetStateByRangeWithPaginationStub != nil {
+		return fake.GetStateByRangeWithPaginationStub(startKey, endKey, pageSize, bookmark)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.getStateByRangeWithPaginationReturns.result1, fake.getStateByRangeWithPaginationReturns.result2, fake.getStateByRangeWithPaginationReturns.result3
+}
+
+func (fake *ChaincodeStub) GetStateByRangeWithPaginationCallCount() int {
+	fake.getStateByRangeWithPaginationMutex.RLock()
+	defer fake.getStateByRangeWithPaginationMutex.RUnlock()
+	return len(fake.getStateByRangeWithPaginationArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetStateByRangeWithPaginationArgsForCall(i int) (string, string, int32, string) {
+	fake.getStateByRangeWithPaginationMutex.RLock()
+	defer fake.getStateByRangeWithPaginationMutex.RUnlock()
+	return fake.getStateByRangeWithPaginationArgsForCall[i].startKey, fake.getStateByRangeWithPaginationArgsForCall[i].endKey, fake.getStateByRangeWithPaginationArgsForCall[i].pageSize, fake.getStateByRangeWithPaginationArgsForCall[i].bookmark
+}
+
+func (fake *ChaincodeStub) GetStateByRangeWithPaginationReturns(result1 shim.StateQueryIteratorInterface, result2 *pb.QueryResponseMetadata, result3 error) {
+	fake.GetStateByRangeWithPaginationStub = nil
+	fake.getStateByRangeWithPaginationReturns = struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *ChaincodeStub) GetStateByRangeWithPaginationReturnsOnCall(i int, result1 shim.StateQueryIteratorInterface, result2 *pb.QueryResponseMetadata, result3 error) {
+	fake.GetStateByRangeWithPaginationStub = nil
+	if fake.getStateByRangeWithPaginationReturnsOnCall == nil {
+		fake.getStateByRangeWithPaginationReturnsOnCall = make(map[int]struct {
+			result1 shim.StateQueryIteratorInterface
+			result2 *pb.QueryResponseMetadata
+			result3 error
+		})
+	}
+	fake.getStateByRangeWithPaginationReturnsOnCall[i] = struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, keys []string) (shim.StateQueryIteratorInterface, error) {
 	var keysCopy []string
 	if keys != nil {
@@ -1081,6 +1191,68 @@ func (fake *ChaincodeStub) GetStateByPartialCompositeKeyReturnsOnCall(i int, res
 		result1 shim.StateQueryIteratorInterface
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string, pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	var keysCopy []string
+	if keys != nil {
+		keysCopy = make([]string, len(keys))
+		copy(keysCopy, keys)
+	}
+	fake.getStateByPartialCompositeKeyWithPaginationMutex.Lock()
+	ret, specificReturn := fake.getStateByPartialCompositeKeyWithPaginationReturnsOnCall[len(fake.getStateByPartialCompositeKeyWithPaginationArgsForCall)]
+	fake.getStateByPartialCompositeKeyWithPaginationArgsForCall = append(fake.getStateByPartialCompositeKeyWithPaginationArgsForCall, struct {
+		objectType string
+		keys       []string
+		pageSize   int32
+		bookmark   string
+	}{objectType, keysCopy, pageSize, bookmark})
+	fake.recordInvocation("GetStateByPartialCompositeKeyWithPagination", []interface{}{objectType, keysCopy, pageSize, bookmark})
+	fake.getStateByPartialCompositeKeyWithPaginationMutex.Unlock()
+	if fake.GetStateByPartialCompositeKeyWithPaginationStub != nil {
+		return fake.GetStateByPartialCompositeKeyWithPaginationStub(objectType, keys, pageSize, bookmark)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.getStateByPartialCompositeKeyWithPaginationReturns.result1, fake.getStateByPartialCompositeKeyWithPaginationReturns.result2, fake.getStateByPartialCompositeKeyWithPaginationReturns.result3
+}
+
+func (fake *ChaincodeStub) GetStateByPartialCompositeKeyWithPaginationCallCount() int {
+	fake.getStateByPartialCompositeKeyWithPaginationMutex.RLock()
+	defer fake.getStateByPartialCompositeKeyWithPaginationMutex.RUnlock()
+	return len(fake.getStateByPartialCompositeKeyWithPaginationArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetStateByPartialCompositeKeyWithPaginationArgsForCall(i int) (string, []string, int32, string) {
+	fake.getStateByPartialCompositeKeyWithPaginationMutex.RLock()
+	defer fake.getStateByPartialCompositeKeyWithPaginationMutex.RUnlock()
+	return fake.getStateByPartialCompositeKeyWithPaginationArgsForCall[i].objectType, fake.getStateByPartialCompositeKeyWithPaginationArgsForCall[i].keys, fake.getStateByPartialCompositeKeyWithPaginationArgsForCall[i].pageSize, fake.getStateByPartialCompositeKeyWithPaginationArgsForCall[i].bookmark
+}
+
+func (fake *ChaincodeStub) GetStateByPartialCompositeKeyWithPaginationReturns(result1 shim.StateQueryIteratorInterface, result2 *pb.QueryResponseMetadata, result3 error) {
+	fake.GetStateByPartialCompositeKeyWithPaginationStub = nil
+	fake.getStateByPartialCompositeKeyWithPaginationReturns = struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *ChaincodeStub) GetStateByPartialCompositeKeyWithPaginationReturnsOnCall(i int, result1 shim.StateQueryIteratorInterface, result2 *pb.QueryResponseMetadata, result3 error) {
+	fake.GetStateByPartialCompositeKeyWithPaginationStub = nil
+	if fake.getStateByPartialCompositeKeyWithPaginationReturnsOnCall == nil {
+		fake.getStateByPartialCompositeKeyWithPaginationReturnsOnCall = make(map[int]struct {
+			result1 shim.StateQueryIteratorInterface
+			result2 *pb.QueryResponseMetadata
+			result3 error
+		})
+	}
+	fake.getStateByPartialCompositeKeyWithPaginationReturnsOnCall[i] = struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
@@ -1243,6 +1415,62 @@ func (fake *ChaincodeStub) GetQueryResultReturnsOnCall(i int, result1 shim.State
 		result1 shim.StateQueryIteratorInterface
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	fake.getQueryResultWithPaginationMutex.Lock()
+	ret, specificReturn := fake.getQueryResultWithPaginationReturnsOnCall[len(fake.getQueryResultWithPaginationArgsForCall)]
+	fake.getQueryResultWithPaginationArgsForCall = append(fake.getQueryResultWithPaginationArgsForCall, struct {
+		query    string
+		pageSize int32
+		bookmark string
+	}{query, pageSize, bookmark})
+	fake.recordInvocation("GetQueryResultWithPagination", []interface{}{query, pageSize, bookmark})
+	fake.getQueryResultWithPaginationMutex.Unlock()
+	if fake.GetQueryResultWithPaginationStub != nil {
+		return fake.GetQueryResultWithPaginationStub(query, pageSize, bookmark)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.getQueryResultWithPaginationReturns.result1, fake.getQueryResultWithPaginationReturns.result2, fake.getQueryResultWithPaginationReturns.result3
+}
+
+func (fake *ChaincodeStub) GetQueryResultWithPaginationCallCount() int {
+	fake.getQueryResultWithPaginationMutex.RLock()
+	defer fake.getQueryResultWithPaginationMutex.RUnlock()
+	return len(fake.getQueryResultWithPaginationArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetQueryResultWithPaginationArgsForCall(i int) (string, int32, string) {
+	fake.getQueryResultWithPaginationMutex.RLock()
+	defer fake.getQueryResultWithPaginationMutex.RUnlock()
+	return fake.getQueryResultWithPaginationArgsForCall[i].query, fake.getQueryResultWithPaginationArgsForCall[i].pageSize, fake.getQueryResultWithPaginationArgsForCall[i].bookmark
+}
+
+func (fake *ChaincodeStub) GetQueryResultWithPaginationReturns(result1 shim.StateQueryIteratorInterface, result2 *pb.QueryResponseMetadata, result3 error) {
+	fake.GetQueryResultWithPaginationStub = nil
+	fake.getQueryResultWithPaginationReturns = struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *ChaincodeStub) GetQueryResultWithPaginationReturnsOnCall(i int, result1 shim.StateQueryIteratorInterface, result2 *pb.QueryResponseMetadata, result3 error) {
+	fake.GetQueryResultWithPaginationStub = nil
+	if fake.getQueryResultWithPaginationReturnsOnCall == nil {
+		fake.getQueryResultWithPaginationReturnsOnCall = make(map[int]struct {
+			result1 shim.StateQueryIteratorInterface
+			result2 *pb.QueryResponseMetadata
+			result3 error
+		})
+	}
+	fake.getQueryResultWithPaginationReturnsOnCall[i] = struct {
+		result1 shim.StateQueryIteratorInterface
+		result2 *pb.QueryResponseMetadata
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *ChaincodeStub) GetHistoryForKey(key string) (shim.HistoryQueryIteratorInterface, error) {
@@ -2060,14 +2288,20 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.getStateValidationParameterMutex.RUnlock()
 	fake.getStateByRangeMutex.RLock()
 	defer fake.getStateByRangeMutex.RUnlock()
+	fake.getStateByRangeWithPaginationMutex.RLock()
+	defer fake.getStateByRangeWithPaginationMutex.RUnlock()
 	fake.getStateByPartialCompositeKeyMutex.RLock()
 	defer fake.getStateByPartialCompositeKeyMutex.RUnlock()
+	fake.getStateByPartialCompositeKeyWithPaginationMutex.RLock()
+	defer fake.getStateByPartialCompositeKeyWithPaginationMutex.RUnlock()
 	fake.createCompositeKeyMutex.RLock()
 	defer fake.createCompositeKeyMutex.RUnlock()
 	fake.splitCompositeKeyMutex.RLock()
 	defer fake.splitCompositeKeyMutex.RUnlock()
 	fake.getQueryResultMutex.RLock()
 	defer fake.getQueryResultMutex.RUnlock()
+	fake.getQueryResultWithPaginationMutex.RLock()
+	defer fake.getQueryResultWithPaginationMutex.RUnlock()
 	fake.getHistoryForKeyMutex.RLock()
 	defer fake.getHistoryForKeyMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()

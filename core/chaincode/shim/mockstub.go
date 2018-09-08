@@ -312,6 +312,21 @@ func (stub *MockStub) SplitCompositeKey(compositeKey string) (string, []string, 
 	return splitCompositeKey(compositeKey)
 }
 
+func (stub *MockStub) GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	return nil, nil, nil
+}
+
+func (stub *MockStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
+	pageSize int32, bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	return nil, nil, nil
+}
+
+func (stub *MockStub) GetQueryResultWithPagination(query string, pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	return nil, nil, nil
+}
+
 // InvokeChaincode calls a peered chaincode.
 // E.g. stub1.InvokeChaincode("stub2Hash", funcArgs, channel)
 // Before calling this make sure to create another MockStub stub2, call stub2.MockInit(uuid, func, args)
