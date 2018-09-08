@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	fmt "fmt"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/protos/orderer"
