@@ -66,6 +66,22 @@ type TxSimulator struct {
 		result1 [][]byte
 		result2 error
 	}
+	GetStateRangeScanIteratorWithMetadataStub        func(namespace string, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error)
+	getStateRangeScanIteratorWithMetadataMutex       sync.RWMutex
+	getStateRangeScanIteratorWithMetadataArgsForCall []struct {
+		namespace string
+		startKey  string
+		endKey    string
+		metadata  map[string]interface{}
+	}
+	getStateRangeScanIteratorWithMetadataReturns struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}
+	getStateRangeScanIteratorWithMetadataReturnsOnCall map[int]struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}
 	ExecuteQueryStub        func(namespace, query string) (commonledger.ResultsIterator, error)
 	executeQueryMutex       sync.RWMutex
 	executeQueryArgsForCall []struct {
@@ -78,6 +94,21 @@ type TxSimulator struct {
 	}
 	executeQueryReturnsOnCall map[int]struct {
 		result1 commonledger.ResultsIterator
+		result2 error
+	}
+	ExecuteQueryWithMetadataStub        func(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error)
+	executeQueryWithMetadataMutex       sync.RWMutex
+	executeQueryWithMetadataArgsForCall []struct {
+		namespace string
+		query     string
+		metadata  map[string]interface{}
+	}
+	executeQueryWithMetadataReturns struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}
+	executeQueryWithMetadataReturnsOnCall map[int]struct {
+		result1 ledger.QueryResultsIterator
 		result2 error
 	}
 	GetPrivateDataStub        func(namespace, collection, key string) ([]byte, error)
@@ -528,6 +559,60 @@ func (fake *TxSimulator) GetStateMultipleKeysReturnsOnCall(i int, result1 [][]by
 	}{result1, result2}
 }
 
+func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
+	ret, specificReturn := fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)]
+	fake.getStateRangeScanIteratorWithMetadataArgsForCall = append(fake.getStateRangeScanIteratorWithMetadataArgsForCall, struct {
+		namespace string
+		startKey  string
+		endKey    string
+		metadata  map[string]interface{}
+	}{namespace, startKey, endKey, metadata})
+	fake.recordInvocation("GetStateRangeScanIteratorWithMetadata", []interface{}{namespace, startKey, endKey, metadata})
+	fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
+	if fake.GetStateRangeScanIteratorWithMetadataStub != nil {
+		return fake.GetStateRangeScanIteratorWithMetadataStub(namespace, startKey, endKey, metadata)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getStateRangeScanIteratorWithMetadataReturns.result1, fake.getStateRangeScanIteratorWithMetadataReturns.result2
+}
+
+func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataCallCount() int {
+	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	return len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)
+}
+
+func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataArgsForCall(i int) (string, string, string, map[string]interface{}) {
+	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	return fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].namespace, fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].startKey, fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].endKey, fake.getStateRangeScanIteratorWithMetadataArgsForCall[i].metadata
+}
+
+func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataReturns(result1 ledger.QueryResultsIterator, result2 error) {
+	fake.GetStateRangeScanIteratorWithMetadataStub = nil
+	fake.getStateRangeScanIteratorWithMetadataReturns = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
+	fake.GetStateRangeScanIteratorWithMetadataStub = nil
+	if fake.getStateRangeScanIteratorWithMetadataReturnsOnCall == nil {
+		fake.getStateRangeScanIteratorWithMetadataReturnsOnCall = make(map[int]struct {
+			result1 ledger.QueryResultsIterator
+			result2 error
+		})
+	}
+	fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[i] = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *TxSimulator) ExecuteQuery(namespace string, query string) (commonledger.ResultsIterator, error) {
 	fake.executeQueryMutex.Lock()
 	ret, specificReturn := fake.executeQueryReturnsOnCall[len(fake.executeQueryArgsForCall)]
@@ -576,6 +661,59 @@ func (fake *TxSimulator) ExecuteQueryReturnsOnCall(i int, result1 commonledger.R
 	}
 	fake.executeQueryReturnsOnCall[i] = struct {
 		result1 commonledger.ResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxSimulator) ExecuteQueryWithMetadata(namespace string, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	fake.executeQueryWithMetadataMutex.Lock()
+	ret, specificReturn := fake.executeQueryWithMetadataReturnsOnCall[len(fake.executeQueryWithMetadataArgsForCall)]
+	fake.executeQueryWithMetadataArgsForCall = append(fake.executeQueryWithMetadataArgsForCall, struct {
+		namespace string
+		query     string
+		metadata  map[string]interface{}
+	}{namespace, query, metadata})
+	fake.recordInvocation("ExecuteQueryWithMetadata", []interface{}{namespace, query, metadata})
+	fake.executeQueryWithMetadataMutex.Unlock()
+	if fake.ExecuteQueryWithMetadataStub != nil {
+		return fake.ExecuteQueryWithMetadataStub(namespace, query, metadata)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.executeQueryWithMetadataReturns.result1, fake.executeQueryWithMetadataReturns.result2
+}
+
+func (fake *TxSimulator) ExecuteQueryWithMetadataCallCount() int {
+	fake.executeQueryWithMetadataMutex.RLock()
+	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	return len(fake.executeQueryWithMetadataArgsForCall)
+}
+
+func (fake *TxSimulator) ExecuteQueryWithMetadataArgsForCall(i int) (string, string, map[string]interface{}) {
+	fake.executeQueryWithMetadataMutex.RLock()
+	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	return fake.executeQueryWithMetadataArgsForCall[i].namespace, fake.executeQueryWithMetadataArgsForCall[i].query, fake.executeQueryWithMetadataArgsForCall[i].metadata
+}
+
+func (fake *TxSimulator) ExecuteQueryWithMetadataReturns(result1 ledger.QueryResultsIterator, result2 error) {
+	fake.ExecuteQueryWithMetadataStub = nil
+	fake.executeQueryWithMetadataReturns = struct {
+		result1 ledger.QueryResultsIterator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxSimulator) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
+	fake.ExecuteQueryWithMetadataStub = nil
+	if fake.executeQueryWithMetadataReturnsOnCall == nil {
+		fake.executeQueryWithMetadataReturnsOnCall = make(map[int]struct {
+			result1 ledger.QueryResultsIterator
+			result2 error
+		})
+	}
+	fake.executeQueryWithMetadataReturnsOnCall[i] = struct {
+		result1 ledger.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
@@ -1478,8 +1616,12 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.getStateMetadataMutex.RUnlock()
 	fake.getStateMultipleKeysMutex.RLock()
 	defer fake.getStateMultipleKeysMutex.RUnlock()
+	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
 	fake.executeQueryMutex.RLock()
 	defer fake.executeQueryMutex.RUnlock()
+	fake.executeQueryWithMetadataMutex.RLock()
+	defer fake.executeQueryWithMetadataMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
 	fake.getPrivateDataMetadataMutex.RLock()
@@ -1534,3 +1676,5 @@ func (fake *TxSimulator) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ ledger.TxSimulator = new(TxSimulator)

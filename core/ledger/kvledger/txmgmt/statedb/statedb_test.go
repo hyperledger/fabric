@@ -123,7 +123,7 @@ func TestUpdateBatchIterator(t *testing.T) {
 	checkItrResults(t, batch.GetRangeScanIterator("non-existing-ns", "", ""), nil)
 }
 
-func checkItrResults(t *testing.T, itr ResultsIterator, expectedResults []*VersionedKV) {
+func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
 	for i := 0; i < len(expectedResults); i++ {
 		res, _ := itr.Next()
 		testutil.AssertEquals(t, res, expectedResults[i])

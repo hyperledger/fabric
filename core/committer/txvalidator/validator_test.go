@@ -831,9 +831,19 @@ func (exec *mockQueryExecutor) GetStateRangeScanIterator(namespace string, start
 	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
 }
 
+func (exec *mockQueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	args := exec.Called(namespace, startKey, endKey, metadata)
+	return args.Get(0).(ledger.QueryResultsIterator), args.Error(1)
+}
+
 func (exec *mockQueryExecutor) ExecuteQuery(namespace, query string) (ledger2.ResultsIterator, error) {
 	args := exec.Called(namespace)
 	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	args := exec.Called(namespace, query, metadata)
+	return args.Get(0).(ledger.QueryResultsIterator), args.Error(1)
 }
 
 func (exec *mockQueryExecutor) GetPrivateData(namespace, collection, key string) ([]byte, error) {

@@ -218,7 +218,7 @@ func (batch *UpdateBatch) GetUpdates(ns string) map[string]*VersionedValue {
 // For instance, a validator implementation can used this to verify the validity of a range query of a transaction
 // where the UpdateBatch represents the union of the modifications performed by the preceding valid transactions in the same block
 // (Assuming Group commit approach where we commit all the updates caused by a block together).
-func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKey string) ResultsIterator {
+func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKey string) QueryResultsIterator {
 	return newNsIterator(ns, startKey, endKey, batch)
 }
 

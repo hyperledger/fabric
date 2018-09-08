@@ -19,18 +19,9 @@ type ResultsIterator struct {
 		result1 statedb.QueryResult
 		result2 error
 	}
-	CloseStub                      func()
-	closeMutex                     sync.RWMutex
-	closeArgsForCall               []struct{}
-	GetBookmarkAndCloseStub        func() string
-	getBookmarkAndCloseMutex       sync.RWMutex
-	getBookmarkAndCloseArgsForCall []struct{}
-	getBookmarkAndCloseReturns     struct {
-		result1 string
-	}
-	getBookmarkAndCloseReturnsOnCall map[int]struct {
-		result1 string
-	}
+	CloseStub        func()
+	closeMutex       sync.RWMutex
+	closeArgsForCall []struct{}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -94,46 +85,6 @@ func (fake *ResultsIterator) CloseCallCount() int {
 	return len(fake.closeArgsForCall)
 }
 
-func (fake *ResultsIterator) GetBookmarkAndClose() string {
-	fake.getBookmarkAndCloseMutex.Lock()
-	ret, specificReturn := fake.getBookmarkAndCloseReturnsOnCall[len(fake.getBookmarkAndCloseArgsForCall)]
-	fake.getBookmarkAndCloseArgsForCall = append(fake.getBookmarkAndCloseArgsForCall, struct{}{})
-	fake.recordInvocation("GetBookmarkAndClose", []interface{}{})
-	fake.getBookmarkAndCloseMutex.Unlock()
-	if fake.GetBookmarkAndCloseStub != nil {
-		return fake.GetBookmarkAndCloseStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.getBookmarkAndCloseReturns.result1
-}
-
-func (fake *ResultsIterator) GetBookmarkAndCloseCallCount() int {
-	fake.getBookmarkAndCloseMutex.RLock()
-	defer fake.getBookmarkAndCloseMutex.RUnlock()
-	return len(fake.getBookmarkAndCloseArgsForCall)
-}
-
-func (fake *ResultsIterator) GetBookmarkAndCloseReturns(result1 string) {
-	fake.GetBookmarkAndCloseStub = nil
-	fake.getBookmarkAndCloseReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *ResultsIterator) GetBookmarkAndCloseReturnsOnCall(i int, result1 string) {
-	fake.GetBookmarkAndCloseStub = nil
-	if fake.getBookmarkAndCloseReturnsOnCall == nil {
-		fake.getBookmarkAndCloseReturnsOnCall = make(map[int]struct {
-			result1 string
-		})
-	}
-	fake.getBookmarkAndCloseReturnsOnCall[i] = struct {
-		result1 string
-	}{result1}
-}
-
 func (fake *ResultsIterator) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -141,8 +92,6 @@ func (fake *ResultsIterator) Invocations() map[string][][]interface{} {
 	defer fake.nextMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
-	fake.getBookmarkAndCloseMutex.RLock()
-	defer fake.getBookmarkAndCloseMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

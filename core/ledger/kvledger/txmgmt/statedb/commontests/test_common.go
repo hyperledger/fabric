@@ -909,11 +909,9 @@ func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey
 	} else {
 
 		queryOptions := make(map[string]interface{})
-
 		if limit != 0 {
 			queryOptions["limit"] = limit
 		}
-
 		itr, err = db.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, queryOptions)
 		if err != nil {
 			return "", err
