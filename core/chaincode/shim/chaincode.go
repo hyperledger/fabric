@@ -485,15 +485,23 @@ func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 	return stub.handler.handlePutState(collection, key, value, stub.ChannelId, stub.TxID)
 }
 
+func (stub *ChaincodeStub) createStateQueryIterator(response *pb.QueryResponse) *StateQueryIterator {
+	return &StateQueryIterator{CommonIterator: &CommonIterator{
+		handler:    stub.handler,
+		channelId:  stub.ChannelId,
+		txid:       stub.TxID,
+		response:   response,
+		currentLoc: 0}}
+}
+
 // GetQueryResult documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
 	// Access public data by setting the collection to empty string
 	collection := ""
-	response, err := stub.handler.handleGetQueryResult(collection, query, stub.ChannelId, stub.TxID)
-	if err != nil {
-		return nil, err
-	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.ChannelId, stub.TxID, response, 0}}, nil
+	// ignore QueryResponseMetadata as it is not applicable for a rich query without pagination
+	iterator, _, err := stub.handleGetQueryResult(collection, query, nil)
+
+	return iterator, err
 }
 
 // DelState documentation can be found in interfaces.go
@@ -543,7 +551,21 @@ func (stub *ChaincodeStub) GetPrivateDataByRange(collection, startKey, endKey st
 	if err := validateSimpleKeys(startKey, endKey); err != nil {
 		return nil, err
 	}
-	return stub.handleGetStateByRange(collection, startKey, endKey)
+	// ignore QueryResponseMetadata as it is not applicable for a range query without pagination
+	iterator, _, err := stub.handleGetStateByRange(collection, startKey, endKey, nil)
+
+	return iterator, err
+}
+
+func (stub *ChaincodeStub) createRangeKeysForPartialCompositeKey(objectType string, attributes []string) (string, string, error) {
+	partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes)
+	if err != nil {
+		return "", "", err
+	}
+	startKey := partialCompositeKey
+	endKey := partialCompositeKey + string(maxUnicodeRuneValue)
+
+	return startKey, endKey, nil
 }
 
 // GetPrivateDataByPartialCompositeKey documentation can be found in interfaces.go
@@ -551,11 +573,15 @@ func (stub *ChaincodeStub) GetPrivateDataByPartialCompositeKey(collection, objec
 	if collection == "" {
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
-	if partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes); err == nil {
-		return stub.handleGetStateByRange(collection, partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
-	} else {
+
+	startKey, endKey, err := stub.createRangeKeysForPartialCompositeKey(objectType, attributes)
+	if err != nil {
 		return nil, err
 	}
+	// ignore QueryResponseMetadata as it is not applicable for a partial composite key query without pagination
+	iterator, _, err := stub.handleGetStateByRange(collection, startKey, endKey, nil)
+
+	return iterator, err
 }
 
 // GetPrivateDataQueryResult documentation can be found in interfaces.go
@@ -563,15 +589,10 @@ func (stub *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (
 	if collection == "" {
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
-	response, err := stub.handler.handleGetQueryResult(collection, query, stub.ChannelId, stub.TxID)
-	if err != nil {
-		return nil, err
-	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{
-		handler:   stub.handler,
-		channelId: stub.ChannelId,
-		txid:      stub.TxID,
-		response:  response}}, nil
+	// ignore QueryResponseMetadata as it is not applicable for a range query without pagination
+	iterator, _, err := stub.handleGetQueryResult(collection, query, nil)
+
+	return iterator, err
 }
 
 // GetPrivateDataValidationParameter documentation can be found in interfaces.go
@@ -617,12 +638,48 @@ const (
 	HISTORY_QUERY_RESULT
 )
 
-func (stub *ChaincodeStub) handleGetStateByRange(collection, startKey, endKey string) (StateQueryIteratorInterface, error) {
-	response, err := stub.handler.handleGetStateByRange(collection, startKey, endKey, stub.ChannelId, stub.TxID)
+func createQueryResponseMetadata(metadataBytes []byte) (*pb.QueryResponseMetadata, error) {
+	metadata := &pb.QueryResponseMetadata{}
+	err := proto.Unmarshal(metadataBytes, metadata)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.ChannelId, stub.TxID, response, 0}}, nil
+
+	return metadata, nil
+}
+
+func (stub *ChaincodeStub) handleGetStateByRange(collection, startKey, endKey string,
+	metadata []byte) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+
+	response, err := stub.handler.handleGetStateByRange(collection, startKey, endKey, metadata, stub.ChannelId, stub.TxID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	iterator := stub.createStateQueryIterator(response)
+	responseMetadata, err := createQueryResponseMetadata(response.Metadata)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return iterator, responseMetadata, nil
+}
+
+func (stub *ChaincodeStub) handleGetQueryResult(collection, query string,
+	metadata []byte) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+
+	response, err := stub.handler.handleGetQueryResult(collection, query, metadata, stub.ChannelId, stub.TxID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	iterator := stub.createStateQueryIterator(response)
+	responseMetadata, err := createQueryResponseMetadata(response.Metadata)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return iterator, responseMetadata, nil
 }
 
 // GetStateByRange documentation can be found in interfaces.go
@@ -634,7 +691,11 @@ func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryI
 		return nil, err
 	}
 	collection := ""
-	return stub.handleGetStateByRange(collection, startKey, endKey)
+
+	// ignore QueryResponseMetadata as it is not applicable for a range query without pagination
+	iterator, _, err := stub.handleGetStateByRange(collection, startKey, endKey, nil)
+
+	return iterator, err
 }
 
 // GetHistoryForKey documentation can be found in interfaces.go
@@ -716,26 +777,73 @@ func validateSimpleKeys(simpleKeys ...string) error {
 //would be returned.
 func (stub *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	collection := ""
-	if partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes); err == nil {
-		return stub.handleGetStateByRange(collection, partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
-	} else {
+	startKey, endKey, err := stub.createRangeKeysForPartialCompositeKey(objectType, attributes)
+	if err != nil {
 		return nil, err
 	}
+	// ignore QueryResponseMetadata as it is not applicable for a partial composite key query without pagination
+	iterator, _, err := stub.handleGetStateByRange(collection, startKey, endKey, nil)
+
+	return iterator, err
+}
+
+func createQueryMetadata(pageSize int32, bookmark string) ([]byte, error) {
+	// Construct the QueryMetadata with a page size and a bookmark needed for pagination
+	metadata := &pb.QueryMetadata{PageSize: pageSize, Bookmark: bookmark}
+	metadataBytes, err := proto.Marshal(metadata)
+	if err != nil {
+		return nil, err
+	}
+	return metadataBytes, nil
 }
 
 func (stub *ChaincodeStub) GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
 	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
-	return nil, nil, nil
+
+	if startKey == "" {
+		startKey = emptyKeySubstitute
+	}
+	if err := validateSimpleKeys(startKey, endKey); err != nil {
+		return nil, nil, err
+	}
+
+	collection := ""
+
+	metadata, err := createQueryMetadata(pageSize, bookmark)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return stub.handleGetStateByRange(collection, startKey, endKey, metadata)
 }
 
 func (stub *ChaincodeStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
 	pageSize int32, bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
-	return nil, nil, nil
+
+	collection := ""
+
+	metadata, err := createQueryMetadata(pageSize, bookmark)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	startKey, endKey, err := stub.createRangeKeysForPartialCompositeKey(objectType, keys)
+	if err != nil {
+		return nil, nil, err
+	}
+	return stub.handleGetStateByRange(collection, startKey, endKey, metadata)
 }
 
 func (stub *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int32,
 	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
-	return nil, nil, nil
+	// Access public data by setting the collection to empty string
+	collection := ""
+
+	metadata, err := createQueryMetadata(pageSize, bookmark)
+	if err != nil {
+		return nil, nil, err
+	}
+	return stub.handleGetQueryResult(collection, query, metadata)
 }
 
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
