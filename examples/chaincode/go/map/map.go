@@ -29,6 +29,11 @@ import (
 type SimpleChaincode struct {
 }
 
+type PageResponse struct {
+	Bookmark string   `json:"bookmark"`
+	Keys     []string `json:"keys"`
+}
+
 // Init is a no-op
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(nil)
@@ -245,6 +250,61 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		}
 
 		return shim.Success(jsonKeys)
+
+	case "keysByPage":
+		if len(args) < 4 {
+			return shim.Error("put operation must include four arguments, a key and value")
+		}
+		startKey := args[0]
+		endKey := args[1]
+		pageSize, parserr := strconv.ParseInt(args[2], 10, 32)
+		if parserr != nil {
+			return shim.Error(fmt.Sprintf("error parsing range pagesize: %s", parserr))
+		}
+		bookmark := args[3]
+
+		//sleep needed to test peer's timeout behavior when using iterators
+		stime := 0
+		if len(args) > 2 {
+			stime, _ = strconv.Atoi(args[2])
+		}
+
+		keysIter, resp, err := stub.GetStateByRangeWithPagination(startKey, endKey, int32(pageSize), bookmark)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
+		}
+		defer keysIter.Close()
+
+		var keys []string
+		for keysIter.HasNext() {
+			//if sleeptime is specied, take a nap
+			if stime > 0 {
+				time.Sleep(time.Duration(stime) * time.Millisecond)
+			}
+
+			response, iterErr := keysIter.Next()
+			if iterErr != nil {
+				return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
+			}
+			keys = append(keys, response.Key)
+		}
+
+		for key, value := range keys {
+			fmt.Printf("key %d contains %s\n", key, value)
+		}
+
+		jsonResp := PageResponse{
+			Bookmark: resp.Bookmark,
+			Keys:     keys,
+		}
+
+		queryResp, err := json.Marshal(jsonResp)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("keys operation failed. Error marshaling JSON: %s", err))
+		}
+
+		return shim.Success(queryResp)
+
 	case "query":
 		query := args[0]
 		keysIter, err := stub.GetQueryResult(query)
@@ -268,6 +328,46 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		}
 
 		return shim.Success(jsonKeys)
+
+	case "queryByPage":
+		query := args[0]
+		pageSize, parserr := strconv.ParseInt(args[1], 10, 32)
+		if parserr != nil {
+			return shim.Error(fmt.Sprintf("error parsing range pagesize: %s", parserr))
+		}
+		bookmark := args[2]
+
+		keysIter, resp, err := stub.GetQueryResultWithPagination(query, int32(pageSize), bookmark)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+		}
+		defer keysIter.Close()
+
+		var keys []string
+		for keysIter.HasNext() {
+			response, iterErr := keysIter.Next()
+			if iterErr != nil {
+				return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+			}
+			keys = append(keys, response.Key)
+		}
+
+		for key, value := range keys {
+			fmt.Printf("key %d contains %s\n", key, value)
+		}
+
+		jsonResp := PageResponse{
+			Bookmark: resp.Bookmark,
+			Keys:     keys,
+		}
+
+		queryResp, err := json.Marshal(jsonResp)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("keys operation failed. Error marshaling JSON: %s", err))
+		}
+
+		return shim.Success(queryResp)
+
 	case "history":
 		key := args[0]
 		keysIter, err := stub.GetHistoryForKey(key)

@@ -212,10 +212,10 @@ var _ = Describe("HandlerRegistry", func() {
 	})
 
 	Describe("Deregister", func() {
-		var fakeResultsIterator *mock.ResultsIterator
+		var fakeResultsIterator *mock.QueryResultsIterator
 
 		BeforeEach(func() {
-			fakeResultsIterator = &mock.ResultsIterator{}
+			fakeResultsIterator = &mock.QueryResultsIterator{}
 			transactionContexts := chaincode.NewTransactionContexts()
 
 			txContext, err := transactionContexts.Create(&ccprovider.TransactionParams{

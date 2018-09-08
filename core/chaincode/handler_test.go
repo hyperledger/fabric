@@ -942,7 +942,7 @@ var _ = Describe("Handler", func() {
 			incomingMessage       *pb.ChaincodeMessage
 			request               *pb.GetStateByRange
 			expectedResponse      *pb.ChaincodeMessage
-			fakeIterator          *mock.ResultsIterator
+			fakeIterator          *mock.QueryResultsIterator
 			expectedQueryResponse *pb.QueryResponse
 			expectedPayload       []byte
 		)
@@ -962,7 +962,7 @@ var _ = Describe("Handler", func() {
 				ChannelId: "channel-id",
 			}
 
-			fakeIterator = &mock.ResultsIterator{}
+			fakeIterator = &mock.QueryResultsIterator{}
 			fakeTxSimulator.GetStateRangeScanIteratorReturns(fakeIterator, nil)
 
 			expectedQueryResponse = &pb.QueryResponse{
@@ -991,6 +991,8 @@ var _ = Describe("Handler", func() {
 			Expect(pqr).To(Equal(&chaincode.PendingQueryResult{}))
 			iter := txContext.GetQueryIterator("generated-query-id")
 			Expect(iter).To(Equal(fakeIterator))
+			retCount := txContext.GetTotalReturnCount("generated-query-id")
+			Expect(*retCount).To(Equal(int32(0)))
 		})
 
 		It("returns the response message", func() {
@@ -1111,13 +1113,15 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 	})
 
 	Describe("HandleQueryStateNext", func() {
 		var (
-			fakeIterator          *mock.ResultsIterator
+			fakeIterator          *mock.QueryResultsIterator
 			expectedQueryResponse *pb.QueryResponse
 			request               *pb.QueryStateNext
 			incomingMessage       *pb.ChaincodeMessage
@@ -1130,7 +1134,7 @@ var _ = Describe("Handler", func() {
 			payload, err := proto.Marshal(request)
 			Expect(err).NotTo(HaveOccurred())
 
-			fakeIterator = &mock.ResultsIterator{}
+			fakeIterator = &mock.QueryResultsIterator{}
 			txContext.InitializeQueryContext("query-state-next-id", fakeIterator)
 
 			incomingMessage = &pb.ChaincodeMessage{
@@ -1152,7 +1156,7 @@ var _ = Describe("Handler", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeQueryResponseBuilder.BuildQueryResponseCallCount()).To(Equal(1))
-			tctx, iter, id := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
+			tctx, iter, id, _, _ := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
 			Expect(tctx).To(Equal(txContext))
 			Expect(iter).To(Equal(fakeIterator))
 			Expect(id).To(Equal("query-state-next-id"))
@@ -1212,6 +1216,8 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 
@@ -1232,13 +1238,15 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 	})
 
 	Describe("HandleQueryStateClose", func() {
 		var (
-			fakeIterator          *mock.ResultsIterator
+			fakeIterator          *mock.QueryResultsIterator
 			expectedQueryResponse *pb.QueryResponse
 			request               *pb.QueryStateClose
 			incomingMessage       *pb.ChaincodeMessage
@@ -1251,7 +1259,7 @@ var _ = Describe("Handler", func() {
 			payload, err := proto.Marshal(request)
 			Expect(err).NotTo(HaveOccurred())
 
-			fakeIterator = &mock.ResultsIterator{}
+			fakeIterator = &mock.QueryResultsIterator{}
 			txContext.InitializeQueryContext("query-state-close-id", fakeIterator)
 
 			incomingMessage = &pb.ChaincodeMessage{
@@ -1308,7 +1316,7 @@ var _ = Describe("Handler", func() {
 			request               *pb.GetQueryResult
 			incomingMessage       *pb.ChaincodeMessage
 			expectedQueryResponse *pb.QueryResponse
-			fakeIterator          *mock.ResultsIterator
+			fakeIterator          *mock.QueryResultsIterator
 		)
 
 		BeforeEach(func() {
@@ -1330,7 +1338,7 @@ var _ = Describe("Handler", func() {
 			}
 			fakeQueryResponseBuilder.BuildQueryResponseReturns(expectedQueryResponse, nil)
 
-			fakeIterator = &mock.ResultsIterator{}
+			fakeIterator = &mock.QueryResultsIterator{}
 			fakeTxSimulator.ExecuteQueryReturns(fakeIterator, nil)
 		})
 
@@ -1386,6 +1394,8 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(Equal(&chaincode.PendingQueryResult{}))
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(Equal(fakeIterator))
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(*retCount).To(Equal(int32(0)))
 			})
 
 			Context("and ExecuteQueryOnPrivateData fails", func() {
@@ -1405,7 +1415,7 @@ var _ = Describe("Handler", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeQueryResponseBuilder.BuildQueryResponseCallCount()).To(Equal(1))
-			tctx, iter, iterID := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
+			tctx, iter, iterID, _, _ := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
 			Expect(tctx).To(Equal(txContext))
 			Expect(iter).To(Equal(fakeIterator))
 			Expect(iterID).To(Equal("generated-query-id"))
@@ -1428,6 +1438,8 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 
@@ -1459,6 +1471,8 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 	})
@@ -1468,7 +1482,7 @@ var _ = Describe("Handler", func() {
 			request               *pb.GetHistoryForKey
 			incomingMessage       *pb.ChaincodeMessage
 			expectedQueryResponse *pb.QueryResponse
-			fakeIterator          *mock.ResultsIterator
+			fakeIterator          *mock.QueryResultsIterator
 		)
 
 		BeforeEach(func() {
@@ -1490,7 +1504,7 @@ var _ = Describe("Handler", func() {
 			}
 			fakeQueryResponseBuilder.BuildQueryResponseReturns(expectedQueryResponse, nil)
 
-			fakeIterator = &mock.ResultsIterator{}
+			fakeIterator = &mock.QueryResultsIterator{}
 			fakeHistoryQueryExecutor.GetHistoryForKeyReturns(fakeIterator, nil)
 		})
 
@@ -1512,6 +1526,8 @@ var _ = Describe("Handler", func() {
 			Expect(pqr).To(Equal(&chaincode.PendingQueryResult{}))
 			iter := txContext.GetQueryIterator("generated-query-id")
 			Expect(iter).To(Equal(fakeIterator))
+			retCount := txContext.GetTotalReturnCount("generated-query-id")
+			Expect(*retCount).To(Equal(int32(0)))
 		})
 
 		It("builds a query response", func() {
@@ -1519,7 +1535,7 @@ var _ = Describe("Handler", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeQueryResponseBuilder.BuildQueryResponseCallCount()).To(Equal(1))
-			tctx, iter, iterID := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
+			tctx, iter, iterID, _, _ := fakeQueryResponseBuilder.BuildQueryResponseArgsForCall(0)
 			Expect(tctx).To(Equal(txContext))
 			Expect(iter).To(Equal(fakeIterator))
 			Expect(iterID).To(Equal("generated-query-id"))
@@ -1564,6 +1580,8 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 
@@ -1584,6 +1602,8 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
 			})
 		})
 	})
@@ -2432,11 +2452,11 @@ var _ = Describe("Handler", func() {
 	})
 
 	Describe("Notify", func() {
-		var fakeIterator *mock.ResultsIterator
+		var fakeIterator *mock.QueryResultsIterator
 		var incomingMessage *pb.ChaincodeMessage
 
 		BeforeEach(func() {
-			fakeIterator = &mock.ResultsIterator{}
+			fakeIterator = &mock.QueryResultsIterator{}
 			incomingMessage = &pb.ChaincodeMessage{
 				Txid:      "tx-id",
 				ChannelId: "channel-id",

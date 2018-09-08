@@ -141,12 +141,12 @@ var _ = Describe("TransactionContexts", func() {
 	})
 
 	Describe("Close", func() {
-		var fakeIterators []*mock.ResultsIterator
+		var fakeIterators []*mock.QueryResultsIterator
 
 		BeforeEach(func() {
-			fakeIterators = make([]*mock.ResultsIterator, 6)
+			fakeIterators = make([]*mock.QueryResultsIterator, 6)
 			for i := 0; i < len(fakeIterators); i++ {
-				fakeIterators[i] = &mock.ResultsIterator{}
+				fakeIterators[i] = &mock.QueryResultsIterator{}
 			}
 
 			txContext, err := txContexts.Create(&ccprovider.TransactionParams{

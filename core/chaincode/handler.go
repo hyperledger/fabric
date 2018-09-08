@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -82,7 +83,8 @@ func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(name, version str
 // QueryResponseBuilder is responsible for building QueryResponse messages for query
 // transactions initiated by chaincode.
 type QueryResponseBuilder interface {
-	BuildQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator, iterID string) (*pb.QueryResponse, error)
+	BuildQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator,
+		iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error)
 }
 
 // ChaincodeDefinitionGetter is responsible for retrieving a chaincode definition
@@ -643,21 +645,49 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
+	metadata, err := getQueryMetadataFromBytes(getStateByRange.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	totalReturnLimit := calculateTotalReturnLimit(metadata)
+
 	iterID := h.UUIDGenerator.New()
 	chaincodeName := h.ChaincodeName()
 
 	var rangeIter commonledger.ResultsIterator
+	var paginationInfo map[string]interface{}
+
+	isPaginated := false
+
 	if isCollectionSet(getStateByRange.Collection) {
-		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(chaincodeName, getStateByRange.Collection, getStateByRange.StartKey, getStateByRange.EndKey)
+		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(chaincodeName, getStateByRange.Collection,
+			getStateByRange.StartKey, getStateByRange.EndKey)
+	} else if isMetadataSetForPagination(metadata) {
+		paginationInfo, err = createPaginationInfoFromMetadata(metadata, totalReturnLimit, pb.ChaincodeMessage_GET_STATE_BY_RANGE)
+		if err != nil {
+			return nil, err
+		}
+		isPaginated = true
+
+		startKey := getStateByRange.StartKey
+
+		if isMetadataSetForPagination(metadata) {
+			if metadata.Bookmark != "" {
+				startKey = metadata.Bookmark
+			}
+		}
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithMetadata(chaincodeName,
+			startKey, getStateByRange.EndKey, paginationInfo)
 	} else {
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(chaincodeName, getStateByRange.StartKey, getStateByRange.EndKey)
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-
 	txContext.InitializeQueryContext(iterID, rangeIter)
-	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, rangeIter, iterID)
+
+	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, rangeIter, iterID, isPaginated, totalReturnLimit)
 	if err != nil {
 		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
@@ -686,7 +716,9 @@ func (h *Handler) HandleQueryStateNext(msg *pb.ChaincodeMessage, txContext *Tran
 		return nil, errors.New("query iterator not found")
 	}
 
-	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, queryIter, queryStateNext.Id)
+	totalReturnLimit := calculateTotalReturnLimit(nil)
+
+	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, queryIter, queryStateNext.Id, false, totalReturnLimit)
 	if err != nil {
 		txContext.CleanupQueryContext(queryStateNext.Id)
 		return nil, errors.WithStack(err)
@@ -734,9 +766,28 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
+	metadata, err := getQueryMetadataFromBytes(getQueryResult.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	totalReturnLimit := calculateTotalReturnLimit(metadata)
+	isPaginated := false
+
 	var executeIter commonledger.ResultsIterator
+	var paginationInfo map[string]interface{}
+
 	if isCollectionSet(getQueryResult.Collection) {
 		executeIter, err = txContext.TXSimulator.ExecuteQueryOnPrivateData(chaincodeName, getQueryResult.Collection, getQueryResult.Query)
+	} else if isMetadataSetForPagination(metadata) {
+		paginationInfo, err = createPaginationInfoFromMetadata(metadata, totalReturnLimit, pb.ChaincodeMessage_GET_QUERY_RESULT)
+		if err != nil {
+			return nil, err
+		}
+		isPaginated = true
+		executeIter, err = txContext.TXSimulator.ExecuteQueryWithMetadata(chaincodeName,
+			getQueryResult.Query, paginationInfo)
+
 	} else {
 		executeIter, err = txContext.TXSimulator.ExecuteQuery(chaincodeName, getQueryResult.Query)
 	}
@@ -746,7 +797,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 
 	txContext.InitializeQueryContext(iterID, executeIter)
 
-	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, executeIter, iterID)
+	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, executeIter, iterID, isPaginated, totalReturnLimit)
 	if err != nil {
 		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
@@ -778,8 +829,10 @@ func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *Tr
 		return nil, errors.WithStack(err)
 	}
 
+	totalReturnLimit := calculateTotalReturnLimit(nil)
+
 	txContext.InitializeQueryContext(iterID, historyIter)
-	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, historyIter, iterID)
+	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, historyIter, iterID, false, totalReturnLimit)
 	if err != nil {
 		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
@@ -797,6 +850,57 @@ func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *Tr
 
 func isCollectionSet(collection string) bool {
 	return collection != ""
+}
+
+func isMetadataSetForPagination(metadata *pb.QueryMetadata) bool {
+	if metadata == nil {
+		return false
+	}
+
+	if metadata.PageSize == 0 && metadata.Bookmark == "" {
+		return false
+	}
+
+	return true
+}
+
+func getQueryMetadataFromBytes(metadataBytes []byte) (*pb.QueryMetadata, error) {
+	if metadataBytes != nil {
+		metadata := &pb.QueryMetadata{}
+		err := proto.Unmarshal(metadataBytes, metadata)
+		if err != nil {
+			return nil, errors.Wrap(err, "unmarshal failed")
+		}
+		return metadata, nil
+	}
+	return nil, nil
+}
+
+func createPaginationInfoFromMetadata(metadata *pb.QueryMetadata, totalReturnLimit int32, queryType pb.ChaincodeMessage_Type) (map[string]interface{}, error) {
+	paginationInfoMap := make(map[string]interface{})
+
+	switch queryType {
+	case pb.ChaincodeMessage_GET_QUERY_RESULT:
+		paginationInfoMap["bookmark"] = metadata.Bookmark
+	case pb.ChaincodeMessage_GET_STATE_BY_RANGE:
+		// this is a no-op for range query
+	default:
+		return nil, errors.New("query type must be either GetQueryResult or GetStateByRange")
+	}
+
+	paginationInfoMap["limit"] = totalReturnLimit
+	return paginationInfoMap, nil
+}
+
+func calculateTotalReturnLimit(metadata *pb.QueryMetadata) int32 {
+	totalReturnLimit := int32(ledgerconfig.GetTotalQueryLimit())
+	if metadata != nil {
+		pageSize := int32(metadata.PageSize)
+		if pageSize > 0 && pageSize < totalReturnLimit {
+			totalReturnLimit = pageSize
+		}
+	}
+	return totalReturnLimit
 }
 
 func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload []byte, format string, args ...interface{}) (*TransactionContext, error) {
