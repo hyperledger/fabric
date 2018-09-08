@@ -59,9 +59,12 @@ message ChaincodeMessage {
 // TODO: We need to finalize the design on chaincode container
 // compatibility upon upgrade, see FAB-5777.
 
+// GetState is the payload of a ChaincodeMessage. It contains a key which
+// is to be fetched from the ledger. If the collection is specified, the key
+// would be fetched from the collection (i.e., private state)
 message GetState {
-    string key = 1;
-    string collection = 2;
+	string key = 1;
+	string collection = 2;
 }
 
 message GetStateMetadata {
@@ -69,10 +72,14 @@ message GetStateMetadata {
     string collection = 2;
 }
 
+// PutState is the payload of a ChaincodeMessage. It contains a key and value
+// which needs to be written to the transaction's write set. If the collection is
+// specified, the key and value would be written to the transaction's private
+// write set.
 message PutState {
-    string key = 1;
-    bytes value = 2;
-    string collection = 3;
+	string key = 1;
+	bytes value = 2;
+	string collection = 3;
 }
 
 message PutStateMetadata {
@@ -81,42 +88,80 @@ message PutStateMetadata {
     StateMetadata metadata = 4;
 }
 
+// DelState is the payload of a ChaincodeMessage. It contains a key which
+// needs to be recorded in the transaction's write set as a delete operation.
+// If the collection is specified, the key needs to be recorded in the
+// transaction's private write set as a delete operation.
 message DelState {
-    string key = 1;
-    string collection = 2;
+	string key = 1;
+	string collection = 2;
 }
 
+// GetStateByRange is the payload of a ChaincodeMessage. It contains a start key and
+// a end key required to execute range query. If the collection is specified,
+// the range query needs to be executed on the private data. The metadata hold
+// the byte representation of QueryMetadata.
 message GetStateByRange {
-    string startKey = 1;
-    string endKey = 2;
-    string collection = 3;
+	string startKey = 1;
+	string endKey = 2;
+	string collection = 3;
+	bytes metadata = 4;
 }
 
+// GetQueryResult is the payload of a ChaincodeMessage. It contains a query
+// string in the form that is supported by the underlying state database.
+// If the collection is specified, the query needs to be executed on the
+// private data.  The metadata hold the byte representation of QueryMetadata.
 message GetQueryResult {
-    string query = 1;
-    string collection = 2;
+	string query = 1;
+	string collection = 2;
+	bytes metadata = 3;
 }
 
+// QueryMetadata is the metadata of a GetStateByRange and GetQueryResult.
+// It contains a pageSize which denotes the number of records to be fetched
+// and a bookmark.
+message QueryMetadata {
+	int32 pageSize = 1;
+	string bookmark = 2;
+}
+
+// GetHistoryForKey is the payload of a ChaincodeMessage. It contains a key
+// for which the historical values need to be retrieved.
 message GetHistoryForKey {
-    string key = 1;
+	string key = 1;
 }
 
 message QueryStateNext {
-    string id = 1;
+	string id = 1;
 }
 
 message QueryStateClose {
-    string id = 1;
+	string id = 1;
 }
 
+// QueryResultBytes hold the byte representation of a record returned by the peer.
 message QueryResultBytes {
-    bytes resultBytes = 1;
+	bytes resultBytes = 1;
 }
 
+// QueryResponse is returned by the peer as a result of a GetStateByRange,
+// GetQueryResult, and GetHistoryForKey. It holds a bunch of records in
+// results field, a flag to denote whether more results need to be fetched from
+// the peer in has_more field, transaction id in id field, and a QueryResponseMetadata
+// in metadata field.
 message QueryResponse {
-    repeated QueryResultBytes results = 1;
-    bool has_more = 2;
-    string id = 3;
+	repeated QueryResultBytes results = 1;
+	bool has_more = 2;
+	string id = 3;
+	bytes metadata = 4;
+}
+
+// QueryResponseMetadata is the metadata of a QueryResponse. It contains a count
+// which denotes the number of records fetched from the ledger and a bookmark.
+message QueryResponseMetadata {
+	int32 fetched_records_count = 1;
+	string bookmark = 2;
 }
 
 message StateMetadata {
@@ -132,7 +177,7 @@ message StateMetadataResult {
 // provides the context necessary for the server to respond appropriately.
 service ChaincodeSupport {
 
-    rpc Register(stream ChaincodeMessage) returns (stream ChaincodeMessage) {}
+	rpc Register(stream ChaincodeMessage) returns (stream ChaincodeMessage) {}
 
 
 }
