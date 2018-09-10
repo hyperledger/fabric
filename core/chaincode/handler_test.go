@@ -522,6 +522,40 @@ var _ = Describe("Handler", func() {
 			}))
 		})
 
+		It("acquires application config for the channel", func() {
+			_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeApplicationConfigRetriever.GetApplicationConfigCallCount()).To(Equal(1))
+			cid := fakeApplicationConfigRetriever.GetApplicationConfigArgsForCall(0)
+			Expect(cid).To(Equal("channel-id"))
+		})
+
+		Context("when getting the app config metadata fails", func() {
+			BeforeEach(func() {
+				fakeApplicationConfigRetriever.GetApplicationConfigReturns(nil, false)
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError("application config does not exist for channel-id"))
+			})
+		})
+
+		Context("when key level endorsement is not supported", func() {
+			BeforeEach(func() {
+				applicationCapability := &config.MockApplication{
+					CapabilitiesRv: &config.MockApplicationCapabilities{KeyLevelEndorsementRv: false},
+				}
+				fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError("key level endorsement is not enabled"))
+			})
+		})
+
 		Context("when unmarshaling the request fails", func() {
 			BeforeEach(func() {
 				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
@@ -542,7 +576,9 @@ var _ = Describe("Handler", func() {
 				ccname, key, value := fakeTxSimulator.SetStateMetadataArgsForCall(0)
 				Expect(ccname).To(Equal("cc-instance-name"))
 				Expect(key).To(Equal("put-state-key"))
-				Expect(value).To(Equal(map[string][]byte{"put-state-metakey": []byte("put-state-metadata-value")}))
+				Expect(value).To(Equal(map[string][]byte{
+					"put-state-metakey": []byte("put-state-metadata-value"),
+				}))
 			})
 
 			Context("when SetStateMetadata fails", func() {
@@ -574,7 +610,9 @@ var _ = Describe("Handler", func() {
 				Expect(ccname).To(Equal("cc-instance-name"))
 				Expect(collection).To(Equal("collection-name"))
 				Expect(key).To(Equal("put-state-key"))
-				Expect(value).To(Equal(map[string][]byte{"put-state-metakey": []byte("put-state-metadata-value")}))
+				Expect(value).To(Equal(map[string][]byte{
+					"put-state-metakey": []byte("put-state-metadata-value"),
+				}))
 			})
 
 			Context("when SetPrivateDataMetadata fails", func() {
@@ -837,6 +875,40 @@ var _ = Describe("Handler", func() {
 			}
 		})
 
+		It("acquires application config for the channel", func() {
+			_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeApplicationConfigRetriever.GetApplicationConfigCallCount()).To(Equal(1))
+			cid := fakeApplicationConfigRetriever.GetApplicationConfigArgsForCall(0)
+			Expect(cid).To(Equal("channel-id"))
+		})
+
+		Context("when getting the app config metadata fails", func() {
+			BeforeEach(func() {
+				fakeApplicationConfigRetriever.GetApplicationConfigReturns(nil, false)
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError("application config does not exist for channel-id"))
+			})
+		})
+
+		Context("when key level endorsement is not supported", func() {
+			BeforeEach(func() {
+				applicationCapability := &config.MockApplication{
+					CapabilitiesRv: &config.MockApplicationCapabilities{KeyLevelEndorsementRv: false},
+				}
+				fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError("key level endorsement is not enabled"))
+			})
+		})
+
 		Context("when unmarshalling the request fails", func() {
 			BeforeEach(func() {
 				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
@@ -855,7 +927,10 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
 
-				fakeTxSimulator.GetPrivateDataMetadataReturns(map[string][]byte{"get-state-metakey": []byte("get-private-metadata-response")}, nil)
+				metadata := map[string][]byte{
+					"get-state-metakey": []byte("get-private-metadata-response"),
+				}
+				fakeTxSimulator.GetPrivateDataMetadataReturns(metadata, nil)
 				responsePayload, err := proto.Marshal(&pb.StateMetadataResult{
 					Entries: []*pb.StateMetadata{{
 						Metakey: "get-state-metakey",
@@ -877,6 +952,12 @@ var _ = Describe("Handler", func() {
 				Expect(key).To(Equal("get-state-key"))
 			})
 
+			It("returns the response message from GetPrivateDataMetadata", func() {
+				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(Equal(expectedResponse))
+			})
+
 			Context("and GetPrivateDataMetadata fails", func() {
 				BeforeEach(func() {
 					fakeTxSimulator.GetPrivateDataMetadataReturns(nil, errors.New("french fries"))
@@ -887,17 +968,14 @@ var _ = Describe("Handler", func() {
 					Expect(err).To(MatchError("french fries"))
 				})
 			})
-
-			It("returns the response message from GetPrivateDataMetadata", func() {
-				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(Equal(expectedResponse))
-			})
 		})
 
 		Context("when collection is not set", func() {
 			BeforeEach(func() {
-				fakeTxSimulator.GetStateMetadataReturns(map[string][]byte{"get-state-metakey": []byte("get-state-metadata-response")}, nil)
+				metadata := map[string][]byte{
+					"get-state-metakey": []byte("get-state-metadata-response"),
+				}
+				fakeTxSimulator.GetStateMetadataReturns(metadata, nil)
 				responsePayload, err := proto.Marshal(&pb.StateMetadataResult{
 					Entries: []*pb.StateMetadata{{
 						Metakey: "get-state-metakey",
@@ -918,6 +996,12 @@ var _ = Describe("Handler", func() {
 				Expect(key).To(Equal("get-state-key"))
 			})
 
+			It("returns the response from GetStateMetadata", func() {
+				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(Equal(expectedResponse))
+			})
+
 			Context("and GetStateMetadata fails", func() {
 				BeforeEach(func() {
 					fakeTxSimulator.GetStateMetadataReturns(nil, errors.New("tomato"))
@@ -927,12 +1011,6 @@ var _ = Describe("Handler", func() {
 					_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
 					Expect(err).To(MatchError("tomato"))
 				})
-			})
-
-			It("returns the response from GetStateMetadata", func() {
-				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(Equal(expectedResponse))
 			})
 		})
 	})
