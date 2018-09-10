@@ -13,6 +13,7 @@ The tutorial will take you through the following steps:
 #. :ref:`cdb-add-index`
 #. :ref:`cdb-install-instantiate`
 #. :ref:`cdb-query`
+#. :ref:`cdb-pagination`
 #. :ref:`cdb-update-index`
 #. :ref:`cdb-delete-index`
 
@@ -494,6 +495,155 @@ The query runs successfully and the index is leveraged with the following result
 .. code:: json
 
   Query Result: [{"Key":"marble1", "Record":{"color":"blue","docType":"marble","name":"marble1","owner":"tom","size":35}}]
+
+.. _cdb-pagination:
+
+
+Query the CouchDB State Database With Pagination
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When large result sets are returned by CouchDB queries, a set of APIs is
+available which can be called by chaincode to paginate the list of results.
+Pagination provides a mechanism to partition the result set by
+specifying a ``pagesize`` and a start point -- a ``bookmark`` which indicates
+where to begin the result set. The client application iteratively invokes the
+chaincode that executes the query until no more results are returned. For more information refer to
+this `topic on pagination with CouchDB <http://hyperledger-fabric.readthedocs.io/en/master/couchdb_as_state_database.html#couchdb-pagination>`__.
+
+
+We will use the  `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__ 
+function ``queryMarblesWithPagination`` to  demonstrate how
+pagination can be implemented in chaincode and the client application.
+
+* **queryMarblesWithPagination** --
+
+    Example of an **ad hoc rich query with pagination**. This is a query
+    where a (selector) string can be passed into the function similar to the
+    above example.  In this case, a ``pageSize`` is also included with the query as
+    well as a ``bookmark``.
+
+In order to demonstrate pagination, more data is required. This example assumes
+that you have already added marble1 from above. Run the following commands in
+the peer container to create four more marbles owned by "tom", to create a
+total of five marbles owned by "tom":
+
+:guilabel:`Try it yourself`
+
+.. code:: bash
+
+  peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble2","yellow","35","tom"]}'
+  peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble3","green","20","tom"]}'
+  peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble4","purple","20","tom"]}'
+  peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble5","blue","40","tom"]}'
+
+In addition to the arguments for the query in the previous example,
+queryMarblesWithPagination adds ``pagesize`` and ``bookmark``. ``PageSize``
+specifies the number of records to return per query.  The ``bookmark`` is an
+"anchor" telling couchDB where to begin the page. (Each page of results returns
+a unique bookmark.)
+
+*  ``queryMarblesWithPagination``
+  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim>`__
+  ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
+  ``getQueryResultForQueryStringWithPagination()`` passes the queryString along
+    with the pagesize and bookmark to the shim API ``GetQueryResultWithPagination()``.
+
+.. code:: bash
+
+  func (t *SimpleChaincode) queryMarblesWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+  	//   0
+  	// "queryString"
+  	if len(args) < 3 {
+  		return shim.Error("Incorrect number of arguments. Expecting 3")
+  	}
+
+  	queryString := args[0]
+  	//return type of ParseInt is int64
+  	pageSize, err := strconv.ParseInt(args[1], 10, 32)
+  	if err != nil {
+  		return shim.Error(err.Error())
+  	}
+  	bookmark := args[2]
+
+  	queryResults, err := getQueryResultForQueryStringWithPagination(stub, queryString, int32(pageSize), bookmark)
+  	if err != nil {
+  		return shim.Error(err.Error())
+  	}
+  	return shim.Success(queryResults)
+  }
+
+
+The following example is a peer command which calls queryMarblesWithPagination
+with a pageSize of ``3`` and no bookmark specified.
+
+.. tip:: When no bookmark is specified, the query starts with the "first"
+         page of records.
+
+:guilabel:`Try it yourself`
+
+.. code:: bash
+
+  // Rich Query with index name explicitly specified and a page size of 3:
+  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarblesWithPagination", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3",""]}'
+
+The following response is received (carriage returns added for clarity), three
+of the five marbles are returned because the ``pagsize`` was set to ``3``:
+
+.. code:: bash
+
+  [{"Key":"marble1", "Record":{"color":"blue","docType":"marble","name":"marble1","owner":"tom","size":35}},
+   {"Key":"marble2", "Record":{"color":"yellow","docType":"marble","name":"marble2","owner":"tom","size":35}},
+   {"Key":"marble3", "Record":{"color":"green","docType":"marble","name":"marble3","owner":"tom","size":20}}]
+  [{"ResponseMetadata":{"RecordsCount":"3",
+  "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkGoOkOWDSOSANIFk2iCyIyVySn5uVBQAGEhRz"}}]
+
+.. note::  Bookmarks are uniquely generated by CouchDB for each query and
+           represent a placeholder in the result set. Pass the
+           returned bookmark on the subsequent iteration of the query to 
+           retrieve the next set of results.
+
+The following is a peer command to call queryMarblesWithPagination with a
+pageSize of ``3``. Notice this time, the query includes the bookmark returned
+from the previous query.
+
+:guilabel:`Try it yourself`
+
+.. code:: bash
+
+  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarblesWithPagination", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkGoOkOWDSOSANIFk2iCyIyVySn5uVBQAGEhRz"]}'
+
+The following response is received (carriage returns added for clarity).  The
+last two records are retrieved:
+
+.. code:: bash
+
+  [{"Key":"marble4", "Record":{"color":"purple","docType":"marble","name":"marble4","owner":"tom","size":20}},
+   {"Key":"marble5", "Record":{"color":"blue","docType":"marble","name":"marble5","owner":"tom","size":40}}]
+  [{"ResponseMetadata":{"RecordsCount":"2",
+  "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"}}]
+
+The final command is a peer command to call queryMarblesWithPagination with
+a pageSize of ``3`` and with the bookmark from the previous query.
+
+:guilabel:`Try it yourself`
+
+.. code:: bash
+
+    peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarblesWithPagination", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"]}'
+
+The following response is received (carriage returns added for clarity).
+No records are returned, indicating that all pages have been retrieved:
+
+.. code:: bash
+
+    []
+    [{"ResponseMetadata":{"RecordsCount":"0",
+    "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"}}]
+
+For an example of how a client application can iterate over
+the result sets using pagination, search for the ``getQueryResultForQueryStringWithPagination`` 
+function in the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__.
 
 .. _cdb-update-index:
 

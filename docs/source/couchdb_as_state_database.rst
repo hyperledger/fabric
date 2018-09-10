@@ -46,6 +46,9 @@ complex rich queries if needed in the future.
 Using CouchDB from Chaincode
 ----------------------------
 
+Chaincode queries
+~~~~~~~~~~~~~~~~~
+
 Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>`__
 can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``, ``PutState``,
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
@@ -62,6 +65,36 @@ syntax:
 .. code:: bash
 
   {"selector":{"docType":"marble","owner":<OWNER_ID>}}
+
+.. couchdb-pagination:
+
+CouchDB pagination
+^^^^^^^^^^^^^^^^^^
+
+Fabric supports paging of query results for rich queries and range based queries.
+APIs supporting pagination allow the use of page size and bookmarks to be used for
+both range and rich queries.
+
+If a pagesize is specified using the paginated query APIs (``GetStateByRangeWithPagination``,
+``GetStateByPartialCompositeKeyWithPagination()``, and ``GetQueryResultWithPagination()``),
+a set of results will be returned along with a bookmark. The bookmark can be used
+with a follow on query to receive the next "page" of results.
+
+All chaincode queries are bound by ``totalQueryLimit`` (default 100000)
+from ``core.yaml``. This is the maximum number of results that chaincode
+will iterate through and return to the client, in order to avoid accidental
+or malicious long-running queries.
+
+An example using pagination is included in the :doc:`couchdb_tutorial` tutorial.
+
+.. note:: Regardless of whether chaincode uses paginated queries or not, the peer will
+          query CouchDB in batches based on ``internalQueryLimit`` (default 1000)
+          from ``core.yaml``. This behavior ensures reasonably sized result sets are
+          passed between the peer and CouchDB, and is transparent to chaincode and
+          requires no additional configuration.
+
+CouchDB indexes
+~~~~~~~~~~~~~~~
 
 Indexes in CouchDB are required in order to make JSON queries efficient and are required for
 any JSON query with a sort. Indexes can be packaged alongside chaincode in a
