@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -495,13 +496,14 @@ func TestNoTLSCertificate(t *testing.T) {
 	}
 	cl, err := comm_utils.NewGRPCClient(clientConfig)
 	assert.NoError(t, err)
+
+	var conn *grpc.ClientConn
 	gt := gomega.NewGomegaWithT(t)
 	gt.Eventually(func() (bool, error) {
-		_, err := cl.NewConnection(node1.srv.Address(), "")
+		conn, err = cl.NewConnection(node1.srv.Address(), "")
 		return true, err
-	})
+	}).Should(gomega.BeTrue())
 
-	conn, err := cl.NewConnection(node1.srv.Address(), "")
 	echoClient := orderer.NewClusterClient(conn)
 	_, err = echoClient.Step(context.Background(), testStepReq)
 	assert.EqualError(t, err, "rpc error: code = Unknown desc = no TLS certificate sent")
@@ -535,7 +537,7 @@ func TestReconnect(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		_, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 		return true, err
-	})
+	}).Should(gomega.BeTrue())
 	stub, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 	// Send a message from node 1 to node 2.
 	// Should fail.
@@ -622,7 +624,7 @@ func TestMembershipReconfiguration(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		_, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
 		return true, err
-	})
+	}).Should(gomega.BeTrue())
 
 	stub, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
 	_, err = stub.Step(testStepReq)
