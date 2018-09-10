@@ -43,7 +43,6 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-	mspproto "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -289,24 +288,6 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
 	p := cauthdsl.SignedByMspMember(mspID)
 
-	b, err := utils.Marshal(p)
-	if err != nil {
-		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
-	}
-
-	return b, err
-}
-
-func getSignedByOneMemberTwicePolicy(mspID string) ([]byte, error) {
-	principal := &mspproto.MSPPrincipal{
-		PrincipalClassification: mspproto.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&mspproto.MSPRole{Role: mspproto.MSPRole_MEMBER, MspIdentifier: mspID})}
-
-	p := &common.SignaturePolicyEnvelope{
-		Version:    0,
-		Rule:       cauthdsl.NOutOf(2, []*common.SignaturePolicy{cauthdsl.SignedBy(0), cauthdsl.SignedBy(0)}),
-		Identities: []*mspproto.MSPPrincipal{principal},
-	}
 	b, err := utils.Marshal(p)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
@@ -1990,15 +1971,6 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"
-
-func NewMockProvider() *scc.MocksccProviderImpl {
-	return (&scc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &mc.MockApplication{
-			CapabilitiesRv: &mc.MockApplicationCapabilities{},
-		},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
-}
 
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lccctestpath)
