@@ -113,7 +113,7 @@ type ChaincodeStubInterface interface {
 	// between the startKey (inclusive) and endKey (exclusive).
 	// However, if the number of keys between startKey and endKey is greater than the
 	// totalQueryLimit (defined in core.yaml), this iterator cannot be used
-	// to fetch all keys (results will be limited by the totalQueryLimit).
+	// to fetch all keys (results will be capped by the totalQueryLimit).
 	// The keys are returned by the iterator in lexical order. Note
 	// that startKey and endKey can be empty string, which implies unbounded range
 	// query on start or end.
@@ -132,14 +132,12 @@ type ChaincodeStubInterface interface {
 	// the first `pageSize` keys between the bookmark (inclusive) and endKey (exclusive).
 	// Note that only the bookmark present in a prior page of query results (ResponseMetadata)
 	// can be used as a value to the bookmark argument. Otherwise, an empty string must
-	// be passed as bookmark. The `pageSize` cannot be greater than the totalQueryLimit (defined
-	// in the core.yaml).
+	// be passed as bookmark.
 	// The keys are returned by the iterator in lexical order. Note
 	// that startKey and endKey can be empty string, which implies unbounded range
 	// query on start or end.
 	// Call Close() on the returned StateQueryIteratorInterface object when done.
-	// The query is re-executed during validation phase to ensure result set
-	// has not changed since transaction endorsement (phantom reads detected).
+	// This call is only supported in a read only transaction.
 	GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
 		bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
 
@@ -169,14 +167,12 @@ type ChaincodeStubInterface interface {
 	// composite key.
 	// Note that only the bookmark present in a prior page of query result (ResponseMetadata)
 	// can be used as a value to the bookmark argument. Otherwise, an empty string must
-	// be passed as bookmark. The `pageSize` cannot be greater than the totalQueryLimit (defined
-	// in the core.yaml).
+	// be passed as bookmark.
 	// The `objectType` and attributes are expected to have only valid utf8 strings
 	// and should not contain U+0000 (nil byte) and U+10FFFF (biggest and unallocated
 	// code point). See related functions SplitCompositeKey and CreateCompositeKey.
 	// Call Close() on the returned StateQueryIteratorInterface object when done.
-	// The query is re-executed during validation phase to ensure result set
-	// has not changed since transaction endorsement (phantom reads detected).
+	// This call is only supported in a read only transaction.
 	GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
 		pageSize int32, bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
 
@@ -221,14 +217,8 @@ type ChaincodeStubInterface interface {
 	// the first `pageSize` keys between the bookmark and the last key in the query result.
 	// Note that only the bookmark present in a prior page of query results (ResponseMetadata)
 	// can be used as a value to the bookmark argument. Otherwise, an empty string
-	// must be passed as bookmark. The `pageSize` cannot be greater than the totalQueryLimit
-	// (defined in the core.yaml).
-	// The query is NOT re-executed during validation phase, phantom reads are
-	// not detected. That is, other committed transactions may have added,
-	// updated, or removed keys that impact the result set, and this would not
-	// be detected at validation/commit time.  Applications susceptible to this
-	// should therefore not use GetQueryResult as part of transactions that update
-	// ledger, and should limit use to read-only chaincode operations.
+	// must be passed as bookmark.
+	// This call is only supported in a read only transaction.
 	GetQueryResultWithPagination(query string, pageSize int32,
 		bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
 

@@ -1287,7 +1287,7 @@ func TestQueries(t *testing.T) {
 			return
 		}
 
-		//The following rich query should return 5 marbles due to the queryLimit
+		//The following rich query should return 2 marbles due to the pagesize
 		f = "queryByPage"
 		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}", "2", "")
 
