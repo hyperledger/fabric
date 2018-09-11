@@ -209,7 +209,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	case "keys":
 		if len(args) < 2 {
-			return shim.Error("put operation must include two arguments, a key and value")
+			return shim.Error("keys operation must include two arguments, a key and value")
 		}
 		startKey := args[0]
 		endKey := args[1]
@@ -253,7 +253,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	case "keysByPage":
 		if len(args) < 4 {
-			return shim.Error("put operation must include four arguments, a key and value")
+			return shim.Error("paginated range query operation must include four arguments, a key, value, pageSize and a bookmark")
 		}
 		startKey := args[0]
 		endKey := args[1]
@@ -265,13 +265,13 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 		//sleep needed to test peer's timeout behavior when using iterators
 		stime := 0
-		if len(args) > 2 {
-			stime, _ = strconv.Atoi(args[2])
+		if len(args) > 4 {
+			stime, _ = strconv.Atoi(args[4])
 		}
 
 		keysIter, resp, err := stub.GetStateByRangeWithPagination(startKey, endKey, int32(pageSize), bookmark)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
+			return shim.Error(fmt.Sprintf("keysByPage operation failed. Error accessing state: %s", err))
 		}
 		defer keysIter.Close()
 
@@ -284,13 +284,13 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 			response, iterErr := keysIter.Next()
 			if iterErr != nil {
-				return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
+				return shim.Error(fmt.Sprintf("keysByPage operation failed. Error accessing state: %s", err))
 			}
 			keys = append(keys, response.Key)
 		}
 
-		for key, value := range keys {
-			fmt.Printf("key %d contains %s\n", key, value)
+		for index, value := range keys {
+			fmt.Printf("key %d contains %s\n", index, value)
 		}
 
 		jsonResp := PageResponse{
@@ -300,7 +300,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 		queryResp, err := json.Marshal(jsonResp)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("keys operation failed. Error marshaling JSON: %s", err))
+			return shim.Error(fmt.Sprintf("keysByPage operation failed. Error marshaling JSON: %s", err))
 		}
 
 		return shim.Success(queryResp)
@@ -333,13 +333,13 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		query := args[0]
 		pageSize, parserr := strconv.ParseInt(args[1], 10, 32)
 		if parserr != nil {
-			return shim.Error(fmt.Sprintf("error parsing range pagesize: %s", parserr))
+			return shim.Error(fmt.Sprintf("error parsing query pagesize: %s", parserr))
 		}
 		bookmark := args[2]
 
 		keysIter, resp, err := stub.GetQueryResultWithPagination(query, int32(pageSize), bookmark)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+			return shim.Error(fmt.Sprintf("queryByPage operation failed. Error accessing state: %s", err))
 		}
 		defer keysIter.Close()
 
@@ -347,7 +347,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		for keysIter.HasNext() {
 			response, iterErr := keysIter.Next()
 			if iterErr != nil {
-				return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+				return shim.Error(fmt.Sprintf("queryByPage operation failed. Error accessing state: %s", err))
 			}
 			keys = append(keys, response.Key)
 		}
@@ -363,7 +363,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 		queryResp, err := json.Marshal(jsonResp)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("keys operation failed. Error marshaling JSON: %s", err))
+			return shim.Error(fmt.Sprintf("queryByPage operation failed. Error marshaling JSON: %s", err))
 		}
 
 		return shim.Success(queryResp)
@@ -372,7 +372,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		key := args[0]
 		keysIter, err := stub.GetHistoryForKey(key)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+			return shim.Error(fmt.Sprintf("get history operation failed. Error accessing state: %s", err))
 		}
 		defer keysIter.Close()
 
@@ -380,7 +380,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		for keysIter.HasNext() {
 			response, iterErr := keysIter.Next()
 			if iterErr != nil {
-				return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+				return shim.Error(fmt.Sprintf("get history operation failed. Error accessing state: %s", err))
 			}
 			keys = append(keys, response.TxId)
 		}
@@ -391,7 +391,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 		jsonKeys, err := json.Marshal(keys)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("query operation failed. Error marshaling JSON: %s", err))
+			return shim.Error(fmt.Sprintf("get history operation failed. Error marshaling JSON: %s", err))
 		}
 
 		return shim.Success(jsonKeys)

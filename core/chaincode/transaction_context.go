@@ -92,6 +92,7 @@ func (t *TransactionContext) CleanupQueryContextWithBookmark(queryID string) str
 	}
 	delete(t.queryIteratorMap, queryID)
 	delete(t.pendingQueryResults, queryID)
+	delete(t.totalReturnCount, queryID)
 	return bookmark
 }
 
