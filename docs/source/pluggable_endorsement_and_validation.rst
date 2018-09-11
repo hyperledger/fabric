@@ -15,8 +15,6 @@ checks before applying the state changes that come with the transaction itself:
 There are use cases which demand custom transaction validation rules different
 from the default Fabric validation rules, such as:
 
-- **State-based endorsement:** When the endorsement policy depends on the key,
-  and not only on the namespace.
 - **UTXO (Unspent Transaction Output):** When the validation takes into account
   whether the transaction doesn't double spend its inputs.
 - **Anonymous transactions:** When the endorsement doesn't contain the identity
@@ -73,9 +71,9 @@ Since this is cumbersome and poses a deployment challenge, one can also deploy
 custom endorsement and validation as a Golang plugin by adding another property
 under the ``name`` called ``library``.
 
-For example, if we have custom endorsement and validation logic that represents
-state-based endorsement which is implemented as a plugin, we would have the following
-entries in the configuration in ``core.yaml``:
+For example, if we have custom endorsement and validation logic which is
+implemented as a plugin, we would have the following entries in the configuration
+in ``core.yaml``:
 
 .. code-block:: YAML
 
@@ -83,15 +81,15 @@ entries in the configuration in ``core.yaml``:
         endorsers:
           escc:
             name: DefaultEndorsement
-          statebased:
-            name: state_based
-            library: /etc/hyperledger/fabric/plugins/state_based_endorsement.so
+          custom:
+            name: customEndorsement
+            library: /etc/hyperledger/fabric/plugins/customEndorsement.so
         validators:
           vscc:
             name: DefaultValidation
-          statebased:
-            name: state_based
-            library: /etc/hyperledger/fabric/plugins/state_based_validation.so
+          custom:
+            name: customValidation
+            library: /etc/hyperledger/fabric/plugins/customValidation.so
 
 And we'd have to place the ``.so`` plugin files in the peer's local file system.
 
