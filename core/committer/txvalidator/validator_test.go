@@ -56,8 +56,42 @@ func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, txvalidator.Valid
 	return setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
 }
 
+func preV12Capabilities() *mockconfig.MockApplicationCapabilities {
+	return &mockconfig.MockApplicationCapabilities{}
+}
+
+func v12Capabilities() *mockconfig.MockApplicationCapabilities {
+	return &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true}
+}
+
+func v13Capabilities() *mockconfig.MockApplicationCapabilities {
+	return &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true, V1_3ValidationRv: true, KeyLevelEndorsementRv: true}
+}
+
 func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicationCapabilities, plugin validation.Plugin) (ledger.PeerLedger, txvalidator.Validator) {
 	return setupLedgerAndValidatorExplicitWithMSP(t, cpb, plugin, nil)
+}
+
+func setupLedgerAndValidatorWithPreV12Capabilities(t *testing.T) (ledger.PeerLedger, txvalidator.Validator) {
+	return setupLedgerAndValidatorWithCapabilities(t, preV12Capabilities())
+}
+
+func setupLedgerAndValidatorWithV12Capabilities(t *testing.T) (ledger.PeerLedger, txvalidator.Validator) {
+	return setupLedgerAndValidatorWithCapabilities(t, v12Capabilities())
+}
+
+func setupLedgerAndValidatorWithV13Capabilities(t *testing.T) (ledger.PeerLedger, txvalidator.Validator) {
+	return setupLedgerAndValidatorWithCapabilities(t, v13Capabilities())
+}
+
+func setupLedgerAndValidatorWithCapabilities(t *testing.T, c *mockconfig.MockApplicationCapabilities) (ledger.PeerLedger, txvalidator.Validator) {
+	mspmgr := &mocks2.MSPManager{}
+	idThatSatisfiesPrincipal := &mocks2.Identity{}
+	idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(nil)
+	idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
+	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
+
+	return setupLedgerAndValidatorExplicitWithMSP(t, c, &builtin.DefaultValidation{}, mspmgr)
 }
 
 func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockApplicationCapabilities, plugin validation.Plugin, mspMgr msp.MSPManager) (ledger.PeerLedger, txvalidator.Validator) {
@@ -155,6 +189,26 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 	assert.NoError(t, err)
 }
 
+func putSBEP(theLedger ledger.PeerLedger, cc, key string, policy []byte, t *testing.T) {
+	vpMetadataKey := peer.MetaDataKeys_VALIDATION_PARAMETER.String()
+	txid := util.GenerateUUID()
+	simulator, err := theLedger.NewTxSimulator(txid)
+	assert.NoError(t, err)
+	simulator.SetStateMetadata(cc, key, map[string][]byte{vpMetadataKey: policy})
+	simulator.SetState(cc, key, []byte("I am a man who walks alone"))
+	simulator.Done()
+
+	simRes, err := simulator.GetTxSimulationResults()
+	assert.NoError(t, err)
+	pubSimulationBytes, err := simRes.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	block0 := testutil.ConstructBlock(t, 2, []byte("hash"), [][]byte{pubSimulationBytes}, true)
+	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
+		Block: block0,
+	})
+	assert.NoError(t, err)
+}
+
 func putCCInfo(theLedger ledger.PeerLedger, ccname string, policy []byte, t *testing.T) {
 	putCCInfoWithVSCCAndVer(theLedger, ccname, "vscc", ccVersion, policy, t)
 }
@@ -171,14 +225,28 @@ func assertValid(block *common.Block, t *testing.T) {
 }
 
 func TestInvokeBadRWSet(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeBadRWSet(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeBadRWSet(t, l, v)
+	})
+}
+
+func testInvokeBadRWSet(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	tx := getEnv(ccID, nil, []byte("barf"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -186,16 +254,30 @@ func TestInvokeBadRWSet(t *testing.T) {
 }
 
 func TestInvokeNoPolicy(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNoPolicy(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNoPolicy(t, l, v)
+	})
+}
+
+func testInvokeNoPolicy(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, nil, t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -203,16 +285,30 @@ func TestInvokeNoPolicy(t *testing.T) {
 }
 
 func TestInvokeOK(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeOK(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeOK(t, l, v)
+	})
+}
+
+func testInvokeOK(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -224,7 +320,7 @@ func TestInvokeNoRWSet(t *testing.T) {
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	t.Run("Pre-1.2Capability", func(t *testing.T) {
-		l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
+		l, v := setupLedgerAndValidatorExplicit(t, preV12Capabilities(), plugin)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
 
@@ -240,65 +336,50 @@ func TestInvokeNoRWSet(t *testing.T) {
 		assertValid(b, t)
 	})
 
+	mspmgr := &mocks2.MSPManager{}
+	idThatSatisfiesPrincipal := &mocks2.Identity{}
+	idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
+	idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
+	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
+
 	// No need to define validation behavior for the previous test case because pre 1.2 we don't validate transactions
 	// that have no write set.
 	t.Run("Post-1.2Capability", func(t *testing.T) {
-		mspmgr := &mocks2.MSPManager{}
-		idThatSatisfiesPrincipal := &mocks2.Identity{}
-		idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
-		idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
-		mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
-
-		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, v12Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
 
-		ccID := "mycc"
-
-		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
-
-		tx := getEnv(ccID, nil, createRWset(t), t)
-		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{}}
-
-		err := v.Validate(b)
-		assert.NoError(t, err)
-		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+		testInvokeNoRWSet(t, l, v)
 	})
 
 	// Here we test that if we have the 1.3 capability, we still reject a transaction that only contains
 	// reads if it doesn't comply with the endorsement policy
 	t.Run("Post-1.3Capability", func(t *testing.T) {
-		mspmgr := &mocks2.MSPManager{}
-		idThatSatisfiesPrincipal := &mocks2.Identity{}
-		idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
-		idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
-		mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
-
-		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, V1_3ValidationRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, v13Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
 
-		ccID := "mycc"
-
-		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
-
-		tx := getEnv(ccID, nil, createRWset(t), t)
-		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
-
-		err := v.Validate(b)
-		assert.NoError(t, err)
-		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+		testInvokeNoRWSet(t, l, v)
 	})
 }
 
-func TestChaincodeEvent(t *testing.T) {
-	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+func testInvokeNoRWSet(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	ccID := "mycc"
 
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	tx := getEnv(ccID, nil, createRWset(t), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+}
+
+func TestChaincodeEvent(t *testing.T) {
 	t.Run("PreV1.2", func(t *testing.T) {
 		t.Run("MisMatchedName", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false}, plugin)
+			l, v := setupLedgerAndValidatorWithPreV12Capabilities(t)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -307,7 +388,7 @@ func TestChaincodeEvent(t *testing.T) {
 			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
-			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 			err := v.Validate(b)
 			assert.NoError(t, err)
@@ -315,7 +396,7 @@ func TestChaincodeEvent(t *testing.T) {
 		})
 
 		t.Run("BadBytes", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false}, plugin)
+			l, v := setupLedgerAndValidatorWithPreV12Capabilities(t)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -324,7 +405,7 @@ func TestChaincodeEvent(t *testing.T) {
 			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 			tx := getEnv(ccID, []byte("garbage"), createRWset(t), t)
-			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 			err := v.Validate(b)
 			assert.NoError(t, err)
@@ -332,7 +413,7 @@ func TestChaincodeEvent(t *testing.T) {
 		})
 
 		t.Run("GoodPath", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: false}, plugin)
+			l, v := setupLedgerAndValidatorWithPreV12Capabilities(t)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
@@ -341,7 +422,7 @@ func TestChaincodeEvent(t *testing.T) {
 			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
-			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 			err := v.Validate(b)
 			assert.NoError(t, err)
@@ -351,71 +432,121 @@ func TestChaincodeEvent(t *testing.T) {
 
 	t.Run("PostV1.2", func(t *testing.T) {
 		t.Run("MisMatchedName", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
+			l, v := setupLedgerAndValidatorWithV12Capabilities(t)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
-			ccID := "mycc"
-
-			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
-
-			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
-			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-
-			err := v.Validate(b)
-			assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
-			assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
+			testCCEventMismatchedName(t, l, v)
 		})
 
 		t.Run("BadBytes", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
+			l, v := setupLedgerAndValidatorWithV12Capabilities(t)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
-			ccID := "mycc"
-
-			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
-
-			tx := getEnv(ccID, []byte("garbage"), createRWset(t), t)
-			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-
-			err := v.Validate(b)
-			assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
-			assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
+			testCCEventBadBytes(t, l, v)
 		})
 
 		t.Run("GoodPath", func(t *testing.T) {
-			l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true}, plugin)
+			l, v := setupLedgerAndValidatorWithV12Capabilities(t)
 			defer ledgermgmt.CleanupTestEnv()
 			defer l.Close()
 
-			ccID := "mycc"
+			testCCEventGoodPath(t, l, v)
+		})
+	})
 
-			putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+	t.Run("V1.3", func(t *testing.T) {
+		t.Run("MisMatchedName", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
 
-			tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
-			b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+			testCCEventMismatchedName(t, l, v)
+		})
 
-			err := v.Validate(b)
-			assert.NoError(t, err)
-			assertValid(b, t)
+		t.Run("BadBytes", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			testCCEventBadBytes(t, l, v)
+		})
+
+		t.Run("GoodPath", func(t *testing.T) {
+			l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+			defer ledgermgmt.CleanupTestEnv()
+			defer l.Close()
+
+			testCCEventGoodPath(t, l, v)
 		})
 	})
 }
 
+func testCCEventMismatchedName(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: "wrong"}), createRWset(t), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
+	assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
+}
+
+func testCCEventBadBytes(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	tx := getEnv(ccID, []byte("garbage"), createRWset(t), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err) // TODO, convert test so it can check the error text for INVALID_OTHER_REASON
+	assertInvalid(b, t, peer.TxValidationCode_INVALID_OTHER_REASON)
+}
+
+func testCCEventGoodPath(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+
+	tx := getEnv(ccID, utils.MarshalOrPanic(&peer.ChaincodeEvent{ChaincodeId: ccID}), createRWset(t), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
+
+	err := v.Validate(b)
+	assert.NoError(t, err)
+	assertValid(b, t)
+}
+
 func TestInvokeOKPvtDataOnly(t *testing.T) {
-	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mspmgr := &mocks2.MSPManager{}
+	idThatSatisfiesPrincipal := &mocks2.Identity{}
+	idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
+	idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
+	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
 
-	l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("V1.2", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, v12Capabilities(), &builtin.DefaultValidation{}, mspmgr)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
-	v.(*txvalidator.TxValidator).Support.(struct {
-		*mocktxvalidator.Support
-		*semaphore.Weighted
-	}).ACVal = &mockconfig.MockApplicationCapabilities{PrivateChannelDataRv: true}
+		testInvokeOKPvtDataOnly(t, l, v)
+	})
 
+	t.Run("V1.3", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, v13Capabilities(), &builtin.DefaultValidation{}, mspmgr)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeOKPvtDataOnly(t, l, v)
+	})
+}
+
+func testInvokeOKPvtDataOnly(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -428,9 +559,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, nil, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-
-	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("tx is invalid"))
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -438,18 +567,30 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 }
 
 func TestInvokeOKMetaUpdateOnly(t *testing.T) {
-	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mspmgr := &mocks2.MSPManager{}
+	idThatSatisfiesPrincipal := &mocks2.Identity{}
+	idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
+	idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
+	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
 
-	l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("V1.2", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
-	v.(*txvalidator.TxValidator).Support.(struct {
-		*mocktxvalidator.Support
-		*semaphore.Weighted
-	}).ACVal = &mockconfig.MockApplicationCapabilities{KeyLevelEndorsementRv: true}
+		testInvokeOKMetaUpdateOnly(t, l, v)
+	})
 
+	t.Run("V1.3", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_3ValidationRv: true, V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeOKMetaUpdateOnly(t, l, v)
+	})
+}
+
+func testInvokeOKMetaUpdateOnly(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -462,9 +603,7 @@ func TestInvokeOKMetaUpdateOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, nil, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-
-	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("tx is invalid"))
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -472,21 +611,30 @@ func TestInvokeOKMetaUpdateOnly(t *testing.T) {
 }
 
 func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
-	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mspmgr := &mocks2.MSPManager{}
+	idThatSatisfiesPrincipal := &mocks2.Identity{}
+	idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(errors.New("principal not satisfied"))
+	idThatSatisfiesPrincipal.GetIdentifierReturns(&msp.IdentityIdentifier{})
+	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
 
-	l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("V1.2", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
-	v.(*txvalidator.TxValidator).Support.(struct {
-		*mocktxvalidator.Support
-		*semaphore.Weighted
-	}).ACVal = &mockconfig.MockApplicationCapabilities{
-		KeyLevelEndorsementRv: true,
-		PrivateChannelDataRv:  true,
-	}
+		testInvokeOKPvtMetaUpdateOnly(t, l, v)
+	})
 
+	t.Run("V1.3", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_3ValidationRv: true, V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeOKPvtMetaUpdateOnly(t, l, v)
+	})
+}
+
+func testInvokeOKPvtMetaUpdateOnly(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -499,9 +647,7 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, nil, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-
-	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("tx is invalid"))
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err = v.Validate(b)
 	assert.NoError(t, err)
@@ -509,33 +655,81 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 }
 
 func TestInvokeOKSCC(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
-	ccID := "lscc"
+		testInvokeOKSCC(t, l, v)
+	})
 
-	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
-	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+		testInvokeOKSCC(t, l, v)
+	})
+}
 
-	err := v.Validate(b)
+func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
+	cds := utils.MarshalOrPanic(&peer.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			Type:        peer.ChaincodeSpec_GOLANG,
+			ChaincodeId: &peer.ChaincodeID{Name: "cc", Version: "ver"},
+			Input:       &peer.ChaincodeInput{},
+		},
+	})
+	cis := &peer.ChaincodeInvocationSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			ChaincodeId: &peer.ChaincodeID{Name: "lscc", Version: ccVersion},
+			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(util.GetTestChainID()), cds}},
+			Type:        peer.ChaincodeSpec_GOLANG}}
+
+	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, signerSerialized)
+	assert.NoError(t, err)
+	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder.AddToWriteSet("lscc", "cc", utils.MarshalOrPanic(&ccp.ChaincodeData{Name: "cc", Version: "ver", InstantiationPolicy: cauthdsl.MarshaledAcceptAllPolicy}))
+	rwset, err := rwsetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	rwsetBytes, err := rwset.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, nil, signer)
+	assert.NoError(t, err)
+	tx, err := utils.CreateSignedTx(prop, signer, presp)
+	assert.NoError(t, err)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
+
+	err = v.Validate(b)
 	assert.NoError(t, err)
 	assertValid(b, t)
 }
 
 func TestInvokeNOKWritesToLSCC(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKWritesToLSCC(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKWritesToLSCC(t, l, v)
+	})
+}
+
+func testInvokeNOKWritesToLSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID, "lscc"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -543,10 +737,24 @@ func TestInvokeNOKWritesToLSCC(t *testing.T) {
 }
 
 func TestInvokeNOKWritesToESCC(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKWritesToESCC(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKWritesToESCC(t, l, v)
+	})
+}
+
+func testInvokeNOKWritesToESCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -560,10 +768,24 @@ func TestInvokeNOKWritesToESCC(t *testing.T) {
 }
 
 func TestInvokeNOKWritesToNotExt(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKWritesToNotExt(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKWritesToNotExt(t, l, v)
+	})
+}
+
+func testInvokeNOKWritesToNotExt(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -577,10 +799,24 @@ func TestInvokeNOKWritesToNotExt(t *testing.T) {
 }
 
 func TestInvokeNOKInvokesNotExt(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKInvokesNotExt(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKInvokesNotExt(t, l, v)
+	})
+}
+
+func testInvokeNOKInvokesNotExt(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "notext"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -594,10 +830,24 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 }
 
 func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKInvokesEmptyCCName(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKInvokesEmptyCCName(t, l, v)
+	})
+}
+
+func testInvokeNOKInvokesEmptyCCName(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := ""
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -611,10 +861,24 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 }
 
 func TestInvokeNOKExpiredCC(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKExpiredCC(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKExpiredCC(t, l, v)
+	})
+}
+
+func testInvokeNOKExpiredCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"SampleOrg"}), t)
@@ -628,10 +892,24 @@ func TestInvokeNOKExpiredCC(t *testing.T) {
 }
 
 func TestInvokeNOKBogusActions(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKBogusActions(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKBogusActions(t, l, v)
+	})
+}
+
+func testInvokeNOKBogusActions(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -645,10 +923,24 @@ func TestInvokeNOKBogusActions(t *testing.T) {
 }
 
 func TestInvokeNOKCCDoesntExist(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKCCDoesntExist(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKCCDoesntExist(t, l, v)
+	})
+}
+
+func testInvokeNOKCCDoesntExist(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -660,10 +952,24 @@ func TestInvokeNOKCCDoesntExist(t *testing.T) {
 }
 
 func TestInvokeNOKVSCCUnspecified(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNOKVSCCUnspecified(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNOKVSCCUnspecified(t, l, v)
+	})
+}
+
+func testInvokeNOKVSCCUnspecified(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	ccID := "mycc"
 
 	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -677,12 +983,78 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 }
 
 func TestInvokeNoBlock(t *testing.T) {
-	l, v := setupLedgerAndValidator(t)
-	defer ledgermgmt.CleanupTestEnv()
-	defer l.Close()
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
 
+		testInvokeNoBlock(t, l, v)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		testInvokeNoBlock(t, l, v)
+	})
+}
+
+func testInvokeNoBlock(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 	err := v.Validate(&common.Block{Data: &common.BlockData{Data: [][]byte{}}})
 	assert.NoError(t, err)
+}
+
+func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
+
+	// SCENARIO: we validate a transaction that writes to key "key". This key
+	// has a state-based endorsement policy that cannot be satisfied, while
+	// the chaincode endorseemnt policy is satisfied by this transaction.
+	// When we run with the 1.2 capability we expect the transaction to be
+	// successfully validated, while when we run with the 1.3 capability,
+	// validation is expected to fail owing to the unsatisfiable SBEP.
+	// Notice that this corner case should never occur in practice, since
+	// capabilities also determine whether honest peers will endorse
+	// chaincodes that set state-based endorsement policies. Still, the test
+	// is valuable as it shows how transactions that are affected by state-based
+	// endorsement policies are handled by the 1.3 validation, and simply
+	// ignored by 1.2.
+
+	t.Run("1.2Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV12Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		err, b := validateTxWithStateBasedEndorsement(t, l, v)
+
+		assert.NoError(t, err)
+		assertValid(b, t)
+	})
+
+	t.Run("1.3Capability", func(t *testing.T) {
+		l, v := setupLedgerAndValidatorWithV13Capabilities(t)
+		defer ledgermgmt.CleanupTestEnv()
+		defer l.Close()
+
+		err, b := validateTxWithStateBasedEndorsement(t, l, v)
+
+		assert.NoError(t, err)
+		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+	})
+}
+
+func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) (error, *common.Block) {
+	ccID := "mycc"
+
+	putCCInfoWithVSCCAndVer(l, ccID, "vscc", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
+	putSBEP(l, ccID, "key", cauthdsl.MarshaledRejectAllPolicy, t)
+
+	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}
+
+	err := v.Validate(b)
+
+	return err, b
 }
 
 // mockLedger structure used to test ledger
