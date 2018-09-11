@@ -36,16 +36,17 @@ type retryPolicy func(attemptNum int, elapsedTime time.Duration) (time.Duration,
 type clientFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 
 type broadcastClient struct {
-	stopFlag int32
-	sync.Mutex
+	stopFlag     int32
 	stopChan     chan struct{}
 	createClient clientFactory
 	shouldRetry  retryPolicy
 	onConnect    broadcastSetup
 	prod         comm.ConnectionProducer
-	blocksprovider.BlocksDeliverer
-	conn     *connection
-	endpoint string
+
+	mutex           sync.Mutex
+	blocksDeliverer blocksprovider.BlocksDeliverer
+	conn            *connection
+	endpoint        string
 }
 
 // NewBroadcastClient returns a broadcastClient with the given params
@@ -79,9 +80,9 @@ func (bc *broadcastClient) Send(msg *common.Envelope) error {
 }
 
 func (bc *broadcastClient) trySend(msg *common.Envelope) (interface{}, error) {
-	bc.Lock()
-	stream := bc.BlocksDeliverer
-	bc.Unlock()
+	bc.mutex.Lock()
+	stream := bc.blocksDeliverer
+	bc.mutex.Unlock()
 	if stream == nil {
 		return nil, errors.New("client stream has been closed")
 	}
@@ -89,9 +90,9 @@ func (bc *broadcastClient) trySend(msg *common.Envelope) (interface{}, error) {
 }
 
 func (bc *broadcastClient) tryReceive() (*orderer.DeliverResponse, error) {
-	bc.Lock()
-	stream := bc.BlocksDeliverer
-	bc.Unlock()
+	bc.mutex.Lock()
+	stream := bc.blocksDeliverer
+	bc.mutex.Unlock()
 	if stream == nil {
 		return nil, errors.New("client stream has been closed")
 	}
@@ -130,9 +131,9 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 }
 
 func (bc *broadcastClient) doAction(action func() (interface{}, error), actionOnNewConnection func()) (interface{}, error) {
-	bc.Lock()
+	bc.mutex.Lock()
 	conn := bc.conn
-	bc.Unlock()
+	bc.mutex.Unlock()
 	if conn == nil {
 		err := bc.connect()
 		if err != nil {
@@ -156,9 +157,9 @@ func (bc *broadcastClient) sleep(duration time.Duration) {
 }
 
 func (bc *broadcastClient) connect() error {
-	bc.Lock()
+	bc.mutex.Lock()
 	bc.endpoint = ""
-	bc.Unlock()
+	bc.mutex.Unlock()
 	conn, endpoint, err := bc.prod.NewConnection()
 	logger.Debug("Connected to", endpoint)
 	if err != nil {
@@ -187,23 +188,23 @@ func (bc *broadcastClient) connect() error {
 func (bc *broadcastClient) afterConnect(conn *grpc.ClientConn, abc orderer.AtomicBroadcast_DeliverClient, cf context.CancelFunc, endpoint string) error {
 	logger.Debug("Entering")
 	defer logger.Debug("Exiting")
-	bc.Lock()
+	bc.mutex.Lock()
 	bc.endpoint = endpoint
 	bc.conn = &connection{ClientConn: conn, cancel: cf}
-	bc.BlocksDeliverer = abc
+	bc.blocksDeliverer = abc
 	if bc.shouldStop() {
-		bc.Unlock()
+		bc.mutex.Unlock()
 		return errors.New("closing")
 	}
-	bc.Unlock()
+	bc.mutex.Unlock()
 	// If the client is closed at this point- before onConnect,
 	// any use of this object by onConnect would return an error.
 	err := bc.onConnect(bc)
 	// If the client is closed right after onConnect, but before
 	// the following lock- this method would return an error because
 	// the client has been closed.
-	bc.Lock()
-	defer bc.Unlock()
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
 	if bc.shouldStop() {
 		return errors.New("closing")
 	}
@@ -227,8 +228,8 @@ func (bc *broadcastClient) shouldStop() bool {
 func (bc *broadcastClient) Close() {
 	logger.Debug("Entering")
 	defer logger.Debug("Exiting")
-	bc.Lock()
-	defer bc.Unlock()
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
 	if bc.shouldStop() {
 		return
 	}
@@ -245,8 +246,8 @@ func (bc *broadcastClient) Close() {
 func (bc *broadcastClient) Disconnect(disableEndpoint bool) {
 	logger.Debug("Entering")
 	defer logger.Debug("Exiting")
-	bc.Lock()
-	defer bc.Unlock()
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
 	if disableEndpoint && bc.endpoint != "" {
 		bc.prod.DisableEndpoint(bc.endpoint)
 	}
@@ -256,7 +257,7 @@ func (bc *broadcastClient) Disconnect(disableEndpoint bool) {
 	}
 	bc.conn.Close()
 	bc.conn = nil
-	bc.BlocksDeliverer = nil
+	bc.blocksDeliverer = nil
 }
 
 // UpdateEndpoints update endpoints to new values
