@@ -34,19 +34,20 @@ func init() {
 	grpclog.SetLogger(NewGRPCLogger(grpcLogger))
 }
 
-// Init initializes the logging logging with the provided config.
+// Init initializes logging with the provided config.
 func Init(config Config) {
-	err := Global.Reset(config)
+	err := Global.Apply(config)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// Reset sets to logging to the defaults defined in this package.
+// Reset sets logging to the defaults defined in this package.
 //
 // Used in tests and in the package init
 func Reset() {
-	Global.Reset(Config{})
+	Global.ResetLevels()
+	Global.Apply(Config{})
 }
 
 // GetModuleLevel gets the current logging level for the specified module.

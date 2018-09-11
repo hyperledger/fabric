@@ -95,7 +95,7 @@ func TestModuleLevelsRestoreLevels(t *testing.T) {
 	levels = ml.Levels()
 	assert.Equal(t, map[string]zapcore.Level{"module-one": zapcore.DebugLevel, "module-two": zapcore.DebugLevel}, levels)
 
-	ml.Reset()
+	ml.ResetLevels()
 	ml.SetLevel("module-three", zapcore.ErrorLevel)
 	assert.Equal(t, map[string]zapcore.Level{"module-three": zapcore.ErrorLevel}, ml.Levels())
 
@@ -114,14 +114,24 @@ func TestModuleLevelsActivateSpec(t *testing.T) {
 	}{
 		{
 			spec:                 "DEBUG",
-			err:                  nil,
 			initialLevels:        map[string]zapcore.Level{},
 			expectedLevels:       map[string]zapcore.Level{},
 			expectedDefaultLevel: zapcore.DebugLevel,
 		},
 		{
+			spec: "INFO",
+			initialLevels: map[string]zapcore.Level{
+				"module1": zapcore.DebugLevel,
+				"module2": zapcore.WarnLevel,
+			},
+			expectedLevels: map[string]zapcore.Level{
+				"module1": zapcore.InfoLevel,
+				"module2": zapcore.InfoLevel,
+			},
+			expectedDefaultLevel: zapcore.InfoLevel,
+		},
+		{
 			spec:          "module1=info:DEBUG",
-			err:           nil,
 			initialLevels: map[string]zapcore.Level{},
 			expectedLevels: map[string]zapcore.Level{
 				"module1": zapcore.InfoLevel,
@@ -130,14 +140,14 @@ func TestModuleLevelsActivateSpec(t *testing.T) {
 		},
 		{
 			spec: "module1,module2=info:module3=WARN:DEBUG",
-			err:  nil,
 			initialLevels: map[string]zapcore.Level{
-				"unknown": zapcore.PanicLevel,
+				"existing": zapcore.PanicLevel,
 			},
 			expectedLevels: map[string]zapcore.Level{
-				"module1": zapcore.InfoLevel,
-				"module2": zapcore.InfoLevel,
-				"module3": zapcore.WarnLevel,
+				"existing": zapcore.DebugLevel,
+				"module1":  zapcore.InfoLevel,
+				"module2":  zapcore.InfoLevel,
+				"module3":  zapcore.WarnLevel,
 			},
 			expectedDefaultLevel: zapcore.DebugLevel,
 		},
@@ -154,6 +164,26 @@ func TestModuleLevelsActivateSpec(t *testing.T) {
 			initialLevels:        map[string]zapcore.Level{},
 			expectedLevels:       map[string]zapcore.Level{},
 			expectedDefaultLevel: zapcore.DebugLevel,
+		},
+		{
+			spec: "error:existing,module1=debug:info",
+			initialLevels: map[string]zapcore.Level{
+				"existing": zapcore.PanicLevel,
+			},
+			expectedLevels: map[string]zapcore.Level{
+				"existing": zapcore.DebugLevel,
+				"module1":  zapcore.DebugLevel,
+			},
+		},
+		{
+			spec: "existing=debug:module1=panic",
+			initialLevels: map[string]zapcore.Level{
+				"existing": zapcore.PanicLevel,
+			},
+			expectedLevels: map[string]zapcore.Level{
+				"existing": zapcore.DebugLevel,
+				"module1":  zapcore.PanicLevel,
+			},
 		},
 	}
 

@@ -77,7 +77,8 @@ func TestLoggingReset(t *testing.T) {
 			buf := &bytes.Buffer{}
 			tc.Config.Writer = buf
 
-			err := logging.Reset(tc.Config)
+			logging.ResetLevels()
+			err := logging.Apply(tc.Config)
 			if tc.err != nil {
 				assert.EqualError(t, err, tc.err.Error())
 				return

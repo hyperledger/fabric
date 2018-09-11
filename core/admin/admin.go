@@ -91,7 +91,7 @@ func (s *ServerAdmin) SetModuleLogLevel(ctx context.Context, env *common.Envelop
 	if request == nil {
 		return nil, errors.New("request is nil")
 	}
-	err = flogging.SetModuleLevel(request.LogModule, request.LogLevel)
+	err = flogging.SetModuleLevels(request.LogModule, request.LogLevel)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: strings.ToUpper(request.LogLevel)}
 	return logResponse, err
 }

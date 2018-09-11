@@ -41,11 +41,11 @@ func (m *ModuleLevels) DefaultLevel() zapcore.Level {
 	return l
 }
 
-// Reset discards level information about all modules and restores the default
+// ResetLevels discards level information about all modules and restores the default
 // logging level to zapcore.InfoLevel.
-func (m *ModuleLevels) Reset() {
+func (m *ModuleLevels) ResetLevels() {
 	m.mutex.Lock()
-	m.levels = map[string]zapcore.Level{}
+	m.levels = nil
 	m.defaultLevel = zapcore.InfoLevel
 	m.mutex.Unlock()
 }
@@ -55,7 +55,7 @@ func (m *ModuleLevels) Reset() {
 // The logging specification has the following form:
 //   [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
 func (m *ModuleLevels) ActivateSpec(spec string) error {
-	levelAll := m.defaultLevel
+	var levelAll *zapcore.Level
 	updates := map[string]zapcore.Level{}
 
 	fields := strings.Split(spec, ":")
@@ -63,8 +63,8 @@ func (m *ModuleLevels) ActivateSpec(spec string) error {
 		split := strings.Split(field, "=")
 		switch len(split) {
 		case 1: // level
-			levelAll = NameToLevel(field)
-
+			l := NameToLevel(field)
+			levelAll = &l
 		case 2: // <module>[,<module>...]=<level>
 			level := NameToLevel(split[1])
 			if split[0] == "" {
@@ -81,8 +81,15 @@ func (m *ModuleLevels) ActivateSpec(spec string) error {
 		}
 	}
 
-	m.Reset()
-	m.SetDefaultLevel(NameToLevel(levelAll.String()))
+	// Update existing modules iff an unqualified level is set.
+	if levelAll != nil {
+		l := *levelAll
+		m.SetDefaultLevel(l)
+		for module := range m.Levels() {
+			m.SetLevel(module, l)
+		}
+	}
+
 	for module, level := range updates {
 		m.SetLevel(module, level)
 	}
@@ -101,7 +108,7 @@ func (m *ModuleLevels) SetLevel(module string, l zapcore.Level) {
 }
 
 // SetLevels sets the logging level for all logging modules that match the
-// provide regular expression.
+// provided regular expression.
 func (m *ModuleLevels) SetLevels(re *regexp.Regexp, l zapcore.Level) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -123,6 +130,7 @@ func (m *ModuleLevels) Level(module string) zapcore.Level {
 		l = m.defaultLevel
 	}
 	m.mutex.RUnlock()
+
 	return l
 }
 
