@@ -18,13 +18,6 @@ const pkgLogID = "common/ledger/blockledger/file"
 
 var logger = flogging.MustGetLogger(pkgLogID)
 
-var closedChan chan struct{}
-
-func init() {
-	closedChan = make(chan struct{})
-	close(closedChan)
-}
-
 // FileLedger is a struct used to interact with a node's ledger
 type FileLedger struct {
 	blockStore FileLedgerBlockStore
