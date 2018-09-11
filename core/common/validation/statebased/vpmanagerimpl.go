@@ -219,8 +219,11 @@ func (c *validationContext) waitForValidationResults(kid *ledgerKeyID, blockNum 
 	for _, dep := range c.dependenciesForTxnum(kid, txnum) {
 		if valErr := dep.waitForAndRetrieveValidationResult(kid.cc); valErr == nil {
 			return &ValidationParameterUpdatedError{
+				CC:     kid.cc,
+				Coll:   kid.coll,
 				Key:    kid.key,
 				Height: blockNum,
+				Txnum:  txnum,
 			}
 		}
 	}
