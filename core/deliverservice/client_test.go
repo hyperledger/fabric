@@ -738,10 +738,6 @@ func TestDisconnectAndDisableEndpoint(t *testing.T) {
 	// Disconnect from the node we are currently connected to, and attempt to black-list it
 	cl.Disconnect(true)
 
-	go func() {
-		cl.Recv()
-	}()
-
 	// Ensure we are still connected to some orderer, even though both endpoints are now black-listed
 	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
 		return os1.ConnCount() == 1 || os2.ConnCount() == 1
