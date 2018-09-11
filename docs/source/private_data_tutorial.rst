@@ -9,7 +9,7 @@ of organizations.
 The information in this tutorial assumes knowledge of private data
 stores and their use cases. For more information, check out :doc:`private-data/private-data`.
 
-The tutorial will take you through the following steps for practice defining,
+The tutorial will take you through the following steps to practice defining,
 configuring and using private data with Fabric:
 
 #. :ref:`pd-build-json`
@@ -80,7 +80,7 @@ have the private data in their private database.
 For more information on building a policy definition refer to the :doc:`endorsement-policies`
 topic.
 
-.. code-block:: JSON
+.. code:: json
 
  // collections_config.json
 
@@ -137,7 +137,7 @@ be accessed.
    Price      int    `json:"price"`
  }
 
- Specifically access to the private data will be restricted as follows:
+Specifically access to the private data will be restricted as follows:
 
  - ``name, color, size, and owner`` will be visible to all members of the channel (Org1 and Org2)
  - ``price`` only visible to members of Org1
@@ -432,61 +432,61 @@ database. As an authorized peer in Org1, we will query both sets of private data
 The first ``query`` command calls the ``readMarble`` function which passes
 ``collectionMarbles`` as an argument.
 
-.. code:: GO
+.. code-block:: GO
 
    // ===============================================
    // readMarble - read a marble from chaincode state
    // ===============================================
 
    func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-	    var name, jsonResp string
-      var err error
-      if len(args) != 1 {
-	 	    return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
-	     }
+   	var name, jsonResp string
+   	var err error
+   	if len(args) != 1 {
+   		return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
+   	}
 
-  name = args[0]
-   valAsbytes, err := stub.GetPrivateData("collectionMarbles", name) //get the marble from chaincode state
+   	name = args[0]
+   	valAsbytes, err := stub.GetPrivateData("collectionMarbles", name) //get the marble from chaincode state
 
-	  if err != nil {
-       jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
-       return shim.Error(jsonResp)
-     } else if valAsbytes == nil {
-       jsonResp = "{\"Error\":\"Marble does not exist: " + name + "\"}"
-       return shim.Error(jsonResp)
-     }
+   	if err != nil {
+   		jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
+   		return shim.Error(jsonResp)
+   	} else if valAsbytes == nil {
+   		jsonResp = "{\"Error\":\"Marble does not exist: " + name + "\"}"
+   		return shim.Error(jsonResp)
+   	}
 
-   return shim.Success(valAsbytes)
+   	return shim.Success(valAsbytes)
    }
 
-The second ``query`` command calls the ``readMarblereadMarblePrivateDetails``
+The second ``query`` command calls the ``readMarblePrivateDetails``
 function which passes ``collectionMarblePrivateDetails`` as an argument.
 
-.. code:: GO
+.. code-block:: GO
 
    // ===============================================
-   // readMarblereadMarblePrivateDetails - read a marble private details from chaincode state
+   // readMarblePrivateDetails - read a marble private details from chaincode state
    // ===============================================
 
    func (t *SimpleChaincode) readMarblePrivateDetails(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-   var name, jsonResp string
-   var err error
+   	var name, jsonResp string
+   	var err error
 
-   if len(args) != 1 {
-     return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
-    }
+   	if len(args) != 1 {
+   		return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
+   	}
 
-   name = args[0]
-   valAsbytes, err := stub.GetPrivateData("collectionMarblePrivateDetails", name) //get the marble private details from chaincode state
+   	name = args[0]
+   	valAsbytes, err := stub.GetPrivateData("collectionMarblePrivateDetails", name) //get the marble private details from chaincode state
 
-   if err != nil {
-     jsonResp = "{\"Error\":\"Failed to get private details for " + name + ": " + err.Error() + "\"}"
-     return shim.Error(jsonResp)
-    } else if valAsbytes == nil {
-     jsonResp = "{\"Error\":\"Marble private details does not exist: " + name + "\"}"
-     return shim.Error(jsonResp)
-    }
-   return shim.Success(valAsbytes)
+   	if err != nil {
+   		jsonResp = "{\"Error\":\"Failed to get private details for " + name + ": " + err.Error() + "\"}"
+   		return shim.Error(jsonResp)
+   	} else if valAsbytes == nil {
+   		jsonResp = "{\"Error\":\"Marble private details does not exist: " + name + "\"}"
+   		return shim.Error(jsonResp)
+   	}
+   	return shim.Success(valAsbytes)
    }
 
 Now :guilabel:`Try it yourself`
@@ -664,7 +664,7 @@ price private data is purged.
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
- The ``price`` data is still on the private data ledger.
+ The ``price`` data is still in the private data ledger.
 
  Create a new **marble2** by issuing the following command. This transaction
  creates a new block on the chain.
