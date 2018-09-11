@@ -69,7 +69,7 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(channelID, localsigner.NewSigner(), nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(channelID, localsigner.NewSigner(), genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
 	if err != nil {
 		return nil, err
 	}

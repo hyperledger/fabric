@@ -184,7 +184,7 @@ func TestNewChain(t *testing.T) {
 	manager := NewRegistrar(lf, consenters, mockCrypto())
 	orglessChannelConf := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	orglessChannelConf.Application.Organizations = nil
-	envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, mockCrypto(), nil, orglessChannelConf)
+	envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, mockCrypto(), orglessChannelConf)
 	assert.NoError(t, err, "Constructing chain creation tx")
 
 	res, err := manager.NewChannelConfig(envConfigUpdate)
