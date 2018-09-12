@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"runtime"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,12 +54,38 @@ func (ms *mockState) Done() {
 }
 
 type mockStateFetcher struct {
-	FetchStateRv  *mockState
-	FetchStateErr error
+	mutex          sync.Mutex
+	returnedStates []*mockState
+	FetchStateRv   *mockState
+	FetchStateErr  error
+}
+
+func (ms *mockStateFetcher) DoneCalled() bool {
+	for _, s := range ms.returnedStates {
+		if !s.DoneCalled {
+			return false
+		}
+	}
+	return true
 }
 
 func (ms *mockStateFetcher) FetchState() (validation.State, error) {
-	return ms.FetchStateRv, ms.FetchStateErr
+	var rv *mockState
+	if ms.FetchStateRv != nil {
+		rv = &mockState{
+			GetPrivateDataMetadataErr: ms.FetchStateRv.GetPrivateDataMetadataErr,
+			GetStateMetadataErr:       ms.FetchStateRv.GetStateMetadataErr,
+			GetPrivateDataMetadataRv:  ms.FetchStateRv.GetPrivateDataMetadataRv,
+			GetStateMetadataRv:        ms.FetchStateRv.GetStateMetadataRv,
+		}
+		ms.mutex.Lock()
+		if ms.returnedStates != nil {
+			ms.returnedStates = make([]*mockState, 0, 1)
+		}
+		ms.returnedStates = append(ms.returnedStates, rv)
+		ms.mutex.Unlock()
+	}
+	return rv, ms.FetchStateErr
 }
 
 func TestSimple(t *testing.T) {
@@ -77,7 +104,7 @@ func TestSimple(t *testing.T) {
 	sp, err := pm.GetValidationParameterForKey("cc", "coll", "key", 0, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, utils.MarshalOrPanic(spe), sp)
-	assert.True(t, mr.DoneCalled)
+	assert.True(t, ms.DoneCalled())
 }
 
 func rwsetUpdatingMetadataFor(cc, key string) []byte {
@@ -186,7 +213,7 @@ func TestDependencyNoConflict(t *testing.T) {
 	err := <-errC
 	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
 	assert.Equal(t, utils.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestDependencyConflict(t *testing.T) {
@@ -279,7 +306,7 @@ func TestMultipleDependencyNoConflict(t *testing.T) {
 	err := <-errC
 	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
 	assert.Equal(t, utils.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestMultipleDependencyConflict(t *testing.T) {
@@ -367,7 +394,7 @@ func TestPvtDependencyNoConflict(t *testing.T) {
 	err := <-errC
 	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
 	assert.Equal(t, utils.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestPvtDependencyConflict(t *testing.T) {
@@ -502,7 +529,7 @@ func TestLedgerErrors(t *testing.T) {
 
 	err = <-errC
 	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestBadRwsetIsNoDependency(t *testing.T) {
@@ -540,7 +567,7 @@ func TestBadRwsetIsNoDependency(t *testing.T) {
 	err := <-errC
 	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
 	assert.Equal(t, utils.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestWritesIntoDifferentNamespaces(t *testing.T) {
@@ -578,7 +605,7 @@ func TestWritesIntoDifferentNamespaces(t *testing.T) {
 	err := <-errC
 	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
 	assert.Equal(t, utils.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestCombinedCalls(t *testing.T) {
@@ -638,7 +665,7 @@ func TestCombinedCalls(t *testing.T) {
 	assert.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
 	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
 
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestForRaces(t *testing.T) {
@@ -681,5 +708,5 @@ func TestForRaces(t *testing.T) {
 
 	runFunctions(t, seed, funcArray...)
 
-	assert.True(t, mr.DoneCalled, "assert failure occurred with seed %d", seed)
+	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
