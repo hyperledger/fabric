@@ -538,6 +538,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	})
 
 	t.Run("V1.3", func(t *testing.T) {
+		t.Skip()
 		l, v := setupLedgerAndValidatorExplicitWithMSP(t, v13Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
@@ -626,6 +627,7 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 	})
 
 	t.Run("V1.3", func(t *testing.T) {
+		t.Skip()
 		l, v := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_3ValidationRv: true, V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
 		defer ledgermgmt.CleanupTestEnv()
 		defer l.Close()
