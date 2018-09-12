@@ -28,7 +28,7 @@ func TestEncodeDecodeCompositeKey(t *testing.T) {
 	}
 }
 
-func TesComparetEncodedHight(t *testing.T) {
+func TestCompareEncodedHeight(t *testing.T) {
 	assert.Equal(t, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)), 1)
 	assert.Equal(t, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)), -1)
 }
