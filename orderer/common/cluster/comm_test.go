@@ -668,8 +668,13 @@ func TestShutdown(t *testing.T) {
 	node2.c.Configure(testChannel, []cluster.RemoteNode{node1.nodeInfo})
 	// Configuration of node doesn't take place
 	node1.c.Configure(testChannel, []cluster.RemoteNode{node2.nodeInfo})
+	gt := gomega.NewGomegaWithT(t)
+	gt.Eventually(func() (bool, error) {
+		_, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
+		return true, err
+	}).Should(gomega.BeTrue())
+
 	stub, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
-	assert.NoError(t, err)
 	// Therefore, sending a message doesn't succeed because node 1 rejected the configuration change
 	_, err = stub.Step(testStepReq)
 	assert.EqualError(t, err, "rpc error: code = Unknown desc = channel test doesn't exist")
