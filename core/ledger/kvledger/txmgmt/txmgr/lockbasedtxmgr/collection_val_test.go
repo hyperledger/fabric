@@ -49,3 +49,28 @@ func TestCollectionValidation(t *testing.T) {
 	err = sim.SetPrivateData("ns1", "coll1", "key1", []byte("val1"))
 	assert.NoError(t, err)
 }
+
+func TestPvtGetNoCollection(t *testing.T) {
+	testEnv := testEnvs[0]
+	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	queryHelper := newQueryHelper(txMgr, nil)
+	valueHash, metadataBytes, err := queryHelper.getPrivateDataValueHash("cc", "coll", "key")
+	assert.Nil(t, valueHash)
+	assert.Nil(t, metadataBytes)
+	assert.Error(t, err)
+	assert.IsType(t, &errCollConfigNotDefined{}, err)
+}
+
+func TestPvtPutNoCollection(t *testing.T) {
+	testEnv := testEnvs[0]
+	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txsim, err := txMgr.NewTxSimulator("txid")
+	assert.NoError(t, err)
+	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
+	assert.Error(t, err)
+	assert.IsType(t, &errCollConfigNotDefined{}, err)
+}

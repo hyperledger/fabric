@@ -155,6 +155,9 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 }
 
 func (h *queryHelper) getPrivateDataValueHash(ns, coll, key string) (valueHash, metadataBytes []byte, err error) {
+	if err := h.validateCollName(ns, coll); err != nil {
+		return nil, nil, err
+	}
 	if err := h.checkDone(); err != nil {
 		return nil, nil, err
 	}
