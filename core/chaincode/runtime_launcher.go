@@ -16,7 +16,7 @@ import (
 
 // LaunchRegistry tracks launching chaincode instances.
 type LaunchRegistry interface {
-	Launching(cname string) (*LaunchState, error)
+	Launching(cname string) (launchState *LaunchState, started bool)
 	Deregister(cname string) error
 }
 
@@ -34,49 +34,59 @@ type RuntimeLauncher struct {
 }
 
 func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error {
-	var codePackage []byte
-	if ccci.ContainerType != inproccontroller.ContainerType {
-		var err error
-		codePackage, err = r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
-		if err != nil {
-			return errors.Wrap(err, "failed to get chaincode package")
-		}
-	}
+	var startFailCh chan error
+	var timeoutCh <-chan time.Time
 
 	cname := ccci.Name + ":" + ccci.Version
-	launchState, err := r.Registry.Launching(cname)
-	if err != nil {
-		return errors.Wrapf(err, "failed to register %s as launching", cname)
+	launchState, started := r.Registry.Launching(cname)
+	if !started {
+		startFailCh = make(chan error, 1)
+		timeoutCh = time.NewTimer(r.StartupTimeout).C
+
+		codePackage, err := r.getCodePackage(ccci)
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			if err := r.Runtime.Start(ccci, codePackage); err != nil {
+				startFailCh <- errors.WithMessage(err, "error starting container")
+			}
+		}()
 	}
 
-	startFail := make(chan error, 1)
-	go func() {
-		chaincodeLogger.Debugf("chaincode %s is being launched", cname)
-		err := r.Runtime.Start(ccci, codePackage)
-		if err != nil {
-			startFail <- errors.WithMessage(err, "error starting container")
-		}
-	}()
-
+	var err error
 	select {
 	case <-launchState.Done():
-		if launchState.Err() != nil {
-			err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
-		}
-	case err = <-startFail:
-	case <-time.After(r.StartupTimeout):
+		err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
+	case err = <-startFailCh:
+		launchState.Notify(err)
+	case <-timeoutCh:
 		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", cname)
+		launchState.Notify(err)
 	}
 
-	if err != nil {
+	if err != nil && !started {
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
 		defer r.Registry.Deregister(cname)
 		if err := r.Runtime.Stop(ccci); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
-		return err
 	}
 
 	chaincodeLogger.Debug("launch complete")
-	return nil
+	return err
+}
+
+func (r *RuntimeLauncher) getCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
+	if ccci.ContainerType == inproccontroller.ContainerType {
+		return nil, nil
+	}
+
+	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get chaincode package")
+	}
+
+	return codePackage, nil
 }
