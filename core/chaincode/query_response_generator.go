@@ -13,8 +13,7 @@ import (
 )
 
 type QueryResponseGenerator struct {
-	MaxResultLimit  int
-	TotalQueryLimit int
+	MaxResultLimit int
 }
 
 // BuildQueryResponse takes an iterator and fetch state to construct QueryResponse
