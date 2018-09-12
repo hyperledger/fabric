@@ -32,9 +32,9 @@ type historyQueryExecutor interface {
 	ledger.HistoryQueryExecutor
 }
 
-//go:generate counterfeiter -o mock/results_iterator.go --fake-name ResultsIterator . resultsIterator
-type resultsIterator interface {
-	commonledger.ResultsIterator
+//go:generate counterfeiter -o mock/results_iterator.go --fake-name QueryResultsIterator . queryResultsIterator
+type queryResultsIterator interface {
+	commonledger.QueryResultsIterator
 }
 
 //go:generate counterfeiter -o mock/runtime.go --fake-name Runtime . chaincodeRuntime

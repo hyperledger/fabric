@@ -4,19 +4,19 @@ package mock
 import (
 	"sync"
 
-	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger"
 )
 
 type QueryResultsIterator struct {
-	NextStub        func() (commonledger.QueryResult, error)
+	NextStub        func() (ledger.QueryResult, error)
 	nextMutex       sync.RWMutex
 	nextArgsForCall []struct{}
 	nextReturns     struct {
-		result1 commonledger.QueryResult
+		result1 ledger.QueryResult
 		result2 error
 	}
 	nextReturnsOnCall map[int]struct {
-		result1 commonledger.QueryResult
+		result1 ledger.QueryResult
 		result2 error
 	}
 	CloseStub                      func()
@@ -35,7 +35,7 @@ type QueryResultsIterator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *QueryResultsIterator) Next() (commonledger.QueryResult, error) {
+func (fake *QueryResultsIterator) Next() (ledger.QueryResult, error) {
 	fake.nextMutex.Lock()
 	ret, specificReturn := fake.nextReturnsOnCall[len(fake.nextArgsForCall)]
 	fake.nextArgsForCall = append(fake.nextArgsForCall, struct{}{})
@@ -56,24 +56,24 @@ func (fake *QueryResultsIterator) NextCallCount() int {
 	return len(fake.nextArgsForCall)
 }
 
-func (fake *QueryResultsIterator) NextReturns(result1 commonledger.QueryResult, result2 error) {
+func (fake *QueryResultsIterator) NextReturns(result1 ledger.QueryResult, result2 error) {
 	fake.NextStub = nil
 	fake.nextReturns = struct {
-		result1 commonledger.QueryResult
+		result1 ledger.QueryResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *QueryResultsIterator) NextReturnsOnCall(i int, result1 commonledger.QueryResult, result2 error) {
+func (fake *QueryResultsIterator) NextReturnsOnCall(i int, result1 ledger.QueryResult, result2 error) {
 	fake.NextStub = nil
 	if fake.nextReturnsOnCall == nil {
 		fake.nextReturnsOnCall = make(map[int]struct {
-			result1 commonledger.QueryResult
+			result1 ledger.QueryResult
 			result2 error
 		})
 	}
 	fake.nextReturnsOnCall[i] = struct {
-		result1 commonledger.QueryResult
+		result1 ledger.QueryResult
 		result2 error
 	}{result1, result2}
 }

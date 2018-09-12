@@ -5,15 +5,15 @@ import (
 	"sync"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/chaincode"
+	chaincode_test "github.com/hyperledger/fabric/core/chaincode"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type QueryResponseBuilder struct {
-	BuildQueryResponseStub        func(txContext *chaincode.TransactionContext, iter commonledger.ResultsIterator, iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error)
+	BuildQueryResponseStub        func(txContext *chaincode_test.TransactionContext, iter commonledger.ResultsIterator, iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error)
 	buildQueryResponseMutex       sync.RWMutex
 	buildQueryResponseArgsForCall []struct {
-		txContext        *chaincode.TransactionContext
+		txContext        *chaincode_test.TransactionContext
 		iter             commonledger.ResultsIterator
 		iterID           string
 		isPaginated      bool
@@ -31,11 +31,11 @@ type QueryResponseBuilder struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *QueryResponseBuilder) BuildQueryResponse(txContext *chaincode.TransactionContext, iter commonledger.ResultsIterator, iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error) {
+func (fake *QueryResponseBuilder) BuildQueryResponse(txContext *chaincode_test.TransactionContext, iter commonledger.ResultsIterator, iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error) {
 	fake.buildQueryResponseMutex.Lock()
 	ret, specificReturn := fake.buildQueryResponseReturnsOnCall[len(fake.buildQueryResponseArgsForCall)]
 	fake.buildQueryResponseArgsForCall = append(fake.buildQueryResponseArgsForCall, struct {
-		txContext        *chaincode.TransactionContext
+		txContext        *chaincode_test.TransactionContext
 		iter             commonledger.ResultsIterator
 		iterID           string
 		isPaginated      bool
@@ -58,7 +58,7 @@ func (fake *QueryResponseBuilder) BuildQueryResponseCallCount() int {
 	return len(fake.buildQueryResponseArgsForCall)
 }
 
-func (fake *QueryResponseBuilder) BuildQueryResponseArgsForCall(i int) (*chaincode.TransactionContext, commonledger.ResultsIterator, string, bool, int32) {
+func (fake *QueryResponseBuilder) BuildQueryResponseArgsForCall(i int) (*chaincode_test.TransactionContext, commonledger.ResultsIterator, string, bool, int32) {
 	fake.buildQueryResponseMutex.RLock()
 	defer fake.buildQueryResponseMutex.RUnlock()
 	return fake.buildQueryResponseArgsForCall[i].txContext, fake.buildQueryResponseArgsForCall[i].iter, fake.buildQueryResponseArgsForCall[i].iterID, fake.buildQueryResponseArgsForCall[i].isPaginated, fake.buildQueryResponseArgsForCall[i].totalReturnLimit
