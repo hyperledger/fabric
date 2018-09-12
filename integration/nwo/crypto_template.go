@@ -43,6 +43,10 @@ PeerOrgs:{{ range .PeerOrgs }}
     Count: {{ .Users }}
   Specs:{{ range $w.PeersInOrg .Name }}
   - Hostname: {{ .Name }}
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
   {{- end }}
 {{- end }}
 {{- end }}

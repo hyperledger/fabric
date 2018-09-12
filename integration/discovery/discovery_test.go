@@ -355,7 +355,7 @@ func toDiscoveredPeer(n *nwo.Network, p *nwo.Peer, chaincodes ...string) Discove
 
 	return DiscoveredPeer{
 		MSPID:      n.Organization(p.Organization).MSPID,
-		Endpoint:   fmt.Sprintf("0.0.0.0:%d", n.PeerPort(p, nwo.ListenPort)),
+		Endpoint:   fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, nwo.ListenPort)),
 		Identity:   string(peerCert),
 		Chaincodes: chaincodes,
 	}

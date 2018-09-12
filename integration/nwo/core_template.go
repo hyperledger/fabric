@@ -22,9 +22,9 @@ logging:
 peer:
   id: {{ Peer.ID }}
   networkId: {{ .NetworkID }}
-  address: 0.0.0.0:{{ .PeerPort Peer "Listen" }}
-  addressAutoDetect: false
-  listenAddress: 0.0.0.0:{{ .PeerPort Peer "Listen" }}
+  address: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
+  addressAutoDetect: true
+  listenAddress: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
   chaincodeListenAddress: 0.0.0.0:{{ .PeerPort Peer "Chaincode" }}
   gomaxprocs: -1
   keepalive:
@@ -36,7 +36,7 @@ peer:
       interval: 60s
       timeout: 20s
   gossip:
-    bootstrap: 0.0.0.0:{{ .PeerPort Peer "Listen" }}
+    bootstrap: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
     useLeaderElection: true
     orgLeader: false
     endpoint:
@@ -61,7 +61,7 @@ peer:
     aliveTimeInterval: 5s
     aliveExpirationTimeout: 25s
     reconnectInterval: 25s
-    externalEndpoint: 0.0.0.0:{{ .PeerPort Peer "Listen" }}
+    externalEndpoint: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
     election:
       startupGracePeriod: 15s
       membershipSampleInterval: 1s
@@ -72,24 +72,24 @@ peer:
       transientstoreMaxBlockRetention: 1000
       pushAckTimeout: 3s
   events:
-    address: 0.0.0.0:{{ .PeerPort Peer "Events" }}
+    address: 127.0.0.1:{{ .PeerPort Peer "Events" }}
     buffersize: 100
     timeout: 10ms
     timewindow: 15m
     keepalive:
       minInterval: 60s
   tls:
-    enabled:  false
+    enabled:  true
     clientAuthRequired: false
     cert:
-      file: tls/server.crt
+      file: {{ .PeerLocalTLSDir Peer }}/server.crt
     key:
-      file: tls/server.key
+      file: {{ .PeerLocalTLSDir Peer }}/server.key
     rootcert:
-      file: tls/ca.crt
+      file: {{ .PeerLocalTLSDir Peer }}/ca.crt
     clientRootCAs:
       files:
-      - tls/ca.crt
+      - {{ .PeerLocalTLSDir Peer }}/ca.crt
   authentication:
     timewindow: 15m
   fileSystemPath: filesystem
