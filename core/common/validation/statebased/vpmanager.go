@@ -14,12 +14,15 @@ import (
 // Validation Parameters for a key could not be
 // supplied because they are being updated
 type ValidationParameterUpdatedError struct {
+	CC     string
+	Coll   string
 	Key    string
 	Height uint64
+	Txnum  uint64
 }
 
 func (f *ValidationParameterUpdatedError) Error() string {
-	return fmt.Sprintf("validation parameters for key %s have been changed in a transaction in block %d", f.Key, f.Height)
+	return fmt.Sprintf("validation parameters for key [%s] in namespace [%s:%s] have been changed in transaction %d of block %d", f.Key, f.CC, f.Coll, f.Txnum, f.Height)
 }
 
 // KeyLevelValidationParameterManager is used by validation plugins in order
