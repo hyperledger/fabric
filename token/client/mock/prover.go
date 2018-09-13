@@ -10,6 +10,19 @@ import (
 )
 
 type Prover struct {
+	ListTokensStub        func(tokena.SigningIdentity) ([]*token.TokenOutput, error)
+	listTokensMutex       sync.RWMutex
+	listTokensArgsForCall []struct {
+		arg1 tokena.SigningIdentity
+	}
+	listTokensReturns struct {
+		result1 []*token.TokenOutput
+		result2 error
+	}
+	listTokensReturnsOnCall map[int]struct {
+		result1 []*token.TokenOutput
+		result2 error
+	}
 	RequestImportStub        func([]*token.TokenToIssue, tokena.SigningIdentity) ([]byte, error)
 	requestImportMutex       sync.RWMutex
 	requestImportArgsForCall []struct {
@@ -41,6 +54,69 @@ type Prover struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Prover) ListTokens(arg1 tokena.SigningIdentity) ([]*token.TokenOutput, error) {
+	fake.listTokensMutex.Lock()
+	ret, specificReturn := fake.listTokensReturnsOnCall[len(fake.listTokensArgsForCall)]
+	fake.listTokensArgsForCall = append(fake.listTokensArgsForCall, struct {
+		arg1 tokena.SigningIdentity
+	}{arg1})
+	fake.recordInvocation("ListTokens", []interface{}{arg1})
+	fake.listTokensMutex.Unlock()
+	if fake.ListTokensStub != nil {
+		return fake.ListTokensStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.listTokensReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Prover) ListTokensCallCount() int {
+	fake.listTokensMutex.RLock()
+	defer fake.listTokensMutex.RUnlock()
+	return len(fake.listTokensArgsForCall)
+}
+
+func (fake *Prover) ListTokensCalls(stub func(tokena.SigningIdentity) ([]*token.TokenOutput, error)) {
+	fake.listTokensMutex.Lock()
+	defer fake.listTokensMutex.Unlock()
+	fake.ListTokensStub = stub
+}
+
+func (fake *Prover) ListTokensArgsForCall(i int) tokena.SigningIdentity {
+	fake.listTokensMutex.RLock()
+	defer fake.listTokensMutex.RUnlock()
+	argsForCall := fake.listTokensArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Prover) ListTokensReturns(result1 []*token.TokenOutput, result2 error) {
+	fake.listTokensMutex.Lock()
+	defer fake.listTokensMutex.Unlock()
+	fake.ListTokensStub = nil
+	fake.listTokensReturns = struct {
+		result1 []*token.TokenOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Prover) ListTokensReturnsOnCall(i int, result1 []*token.TokenOutput, result2 error) {
+	fake.listTokensMutex.Lock()
+	defer fake.listTokensMutex.Unlock()
+	fake.ListTokensStub = nil
+	if fake.listTokensReturnsOnCall == nil {
+		fake.listTokensReturnsOnCall = make(map[int]struct {
+			result1 []*token.TokenOutput
+			result2 error
+		})
+	}
+	fake.listTokensReturnsOnCall[i] = struct {
+		result1 []*token.TokenOutput
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Prover) RequestImport(arg1 []*token.TokenToIssue, arg2 tokena.SigningIdentity) ([]byte, error) {
@@ -190,6 +266,8 @@ func (fake *Prover) RequestTransferReturnsOnCall(i int, result1 []byte, result2 
 func (fake *Prover) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.listTokensMutex.RLock()
+	defer fake.listTokensMutex.RUnlock()
 	fake.requestImportMutex.RLock()
 	defer fake.requestImportMutex.RUnlock()
 	fake.requestTransferMutex.RLock()

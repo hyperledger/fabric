@@ -256,6 +256,46 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("ListTokens", func() {
+		var (
+			expectedTokens []*token.TokenOutput
+		)
+
+		BeforeEach(func() {
+			// prepare CommandResponse for mocked prover to return
+			expectedTokens = []*token.TokenOutput{
+				{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
+				{Id: []byte("idby"), Type: "typeby", Quantity: 79},
+			}
+			fakeProver.ListTokensReturns(expectedTokens, nil)
+		})
+
+		It("returns tokens", func() {
+			tokens, err := tokenClient.ListTokens()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tokens).To(Equal(expectedTokens))
+
+			Expect(fakeProver.ListTokensCallCount()).To(Equal(1))
+			arg := fakeProver.ListTokensArgsForCall(0)
+			Expect(arg).To(Equal(tokenClient.SigningIdentity))
+		})
+
+		Context("when prover.ListTokens returns an error", func() {
+			BeforeEach(func() {
+				fakeProver.ListTokensReturns(nil, errors.New("banana-loop"))
+			})
+
+			It("returns an error", func() {
+				_, err := tokenClient.ListTokens()
+				Expect(err).To(MatchError("banana-loop"))
+
+				Expect(fakeProver.ListTokensCallCount()).To(Equal(1))
+				arg := fakeProver.ListTokensArgsForCall(0)
+				Expect(arg).To(Equal(tokenClient.SigningIdentity))
+			})
+		})
+	})
+
 	Describe("NewClient", func() {
 		var (
 			config          *client.ClientConfig

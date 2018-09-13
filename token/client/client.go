@@ -30,6 +30,10 @@ type Prover interface {
 	// among recipients; it returns a response in bytes and an error message in the case the
 	// request fails
 	RequestTransfer(tokenIDs [][]byte, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error)
+
+	// ListTokens allows the client to submit a list request to a prover peer service;
+	// it returns a list of TokenOutput and an error message in the case the request fails
+	ListTokens(signingIdentity tk.SigningIdentity) ([]*token.TokenOutput, error)
 }
 
 //go:generate counterfeiter -o mock/fabric_tx_submitter.go -fake-name FabricTxSubmitter . FabricTxSubmitter
@@ -133,4 +137,10 @@ func (c *Client) Transfer(tokenIDs [][]byte, shares []*token.RecipientTransferSh
 
 	ordererStatus, committed, err := c.TxSubmitter.Submit(txEnvelope, waitTimeout)
 	return txEnvelope, txid, ordererStatus, committed, err
+}
+
+// ListTokens allows the client to submit a list request to a prover peer service;
+// it returns a list of TokenOutput and an error in the case the request fails
+func (c *Client) ListTokens() ([]*token.TokenOutput, error) {
+	return c.Prover.ListTokens(c.SigningIdentity)
 }
