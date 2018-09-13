@@ -139,8 +139,8 @@ be accessed.
 
 Specifically access to the private data will be restricted as follows:
 
- - ``name, color, size, and owner`` will be visible to all members of the channel (Org1 and Org2)
- - ``price`` only visible to members of Org1
+- ``name, color, size, and owner`` will be visible to all members of the channel (Org1 and Org2)
+- ``price`` only visible to members of Org1
 
 Thus two different sets of private data are defined in the marbles private data
 sample. The mapping of this data to the collection policy which restricts its
@@ -218,7 +218,7 @@ For example, in the following snippet of the ``initMarble`` function,
 	err = stub.PutPrivateData("collectionMarblePrivateDetails", marbleName, marblePrivateDetailsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
- }
+	}
 
 To summarize, the policy definition above for our ``collection.json``
 allows all peers in Org1 and Org2 can store and transact (endorse, commit,
@@ -529,7 +529,7 @@ Switch to a peer in Org2
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 From inside the docker container, run the following commands to switch to
-the peer which is unauthorized to the marbles ``price`` private data.
+the peer which is unauthorized to access the marbles ``price`` private data.
 
  :guilabel:`Try it yourself`
 
@@ -582,7 +582,7 @@ the public state but will not have the private state.
     transaction ID: b04adebbf165ddc90b4ab897171e1daa7d360079ac18e65fa15d84ddfebfae90:
     Private data matching public hash version is not available. Public hash
     version = &version.Height{BlockNum:0x6, TxNum:0x0}, Private data version =
-    (*version.Height)(nil)"}"
+    (*version.Height)(nil)"}
 
 Members of Org2 will only be able to see the public hash of the private data.
 
