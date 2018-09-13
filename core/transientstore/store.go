@@ -345,13 +345,13 @@ func (s *store) GetMinTransientBlkHt() (uint64, error) {
 	// is to explicitly store the minBlockHeight in the transientStore.
 	startKey := createPurgeIndexByHeightRangeStartKey(0)
 	iter := s.db.GetIterator(startKey, nil)
+	defer iter.Release()
 	// Fetch the minimum transient block height
 	if iter.Next() {
 		dbKey := iter.Key()
 		_, _, blockHeight := splitCompositeKeyOfPurgeIndexByHeight(dbKey)
 		return blockHeight, nil
 	}
-	iter.Release()
 	// Returning an error may not be the right thing to do here. May be
 	// return a bool. -1 is not possible due to unsigned int as first
 	// return value
