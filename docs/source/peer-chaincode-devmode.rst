@@ -31,7 +31,7 @@ Start the peer in dev mode
 
 ::
 
-    peer node start --peer-chaincodedev=true
+    CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052 peer node start --peer-chaincodedev=true
 
 The above command starts the peer using the default ``sampleconfig/msp``
 MSP. The ``--peer-chaincodedev=true`` puts it in “dev” mode.
