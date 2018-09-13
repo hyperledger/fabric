@@ -388,3 +388,39 @@ func TestRevalidation(t *testing.T) {
 	case <-wg.done:
 	}
 }
+
+func TestPendingMsgCutByTimeout(t *testing.T) {
+	support := &mockmultichannel.ConsenterSupport{
+		Blocks:          make(chan *cb.Block),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: 500 * time.Millisecond},
+	}
+	defer close(support.BlockCutterVal.Block)
+
+	bs := newChain(support)
+	wg := goWithWait(bs.main)
+	defer bs.Halt()
+
+	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
+	support.BlockCutterVal.CutAncestors = true
+	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
+
+	select {
+	case <-support.Blocks:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected first block to be cut")
+	}
+
+	select {
+	case <-support.Blocks:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected second block to be cut because of batch timer expiration but did not")
+	}
+
+	bs.Halt()
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Should have exited")
+	case <-wg.done:
+	}
+}

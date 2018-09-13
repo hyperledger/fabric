@@ -577,17 +577,26 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	commitNormalMsg := func(message *cb.Envelope, newOffset int64) {
 		batches, pending := chain.BlockCutter().Ordered(message)
 		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, pending = %v", chain.ChainID(), len(batches), pending)
+
+		switch {
+		case chain.timer != nil && !pending:
+			// Timer is already running but there are no messages pending, stop the timer
+			chain.timer = nil
+		case chain.timer == nil && pending:
+			// Timer is not already running and there are messages pending, so start it
+			chain.timer = time.After(chain.SharedConfig().BatchTimeout())
+			logger.Debugf("[channel: %s] Just began %s batch timer", chain.ChainID(), chain.SharedConfig().BatchTimeout().String())
+		default:
+			// Do nothing when:
+			// 1. Timer is already running and there are messages pending
+			// 2. Timer is not set and there are no messages pending
+		}
+
 		if len(batches) == 0 {
 			// If no block is cut, we update the `lastOriginalOffsetProcessed`, start the timer if necessary and return
 			chain.lastOriginalOffsetProcessed = newOffset
-			if chain.timer == nil {
-				chain.timer = time.After(chain.SharedConfig().BatchTimeout())
-				logger.Debugf("[channel: %s] Just began %s batch timer", chain.ChainID(), chain.SharedConfig().BatchTimeout().String())
-			}
 			return
 		}
-
-		chain.timer = nil
 
 		offset := receivedOffset
 		if pending || len(batches) == 2 {
