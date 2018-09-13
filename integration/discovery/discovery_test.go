@@ -8,7 +8,6 @@ package e2e
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -121,8 +120,8 @@ var _ = Describe("DiscoveryService", func() {
 		By("discovering endorsers for chaincode that has been installed to some orgs")
 		de := discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]DiscoveredPeer{toDiscoveredPeer(network, org1Peer0)},
-			[]DiscoveredPeer{toDiscoveredPeer(network, org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
 		))
 		discovered := de()
 		Expect(discovered).To(HaveLen(1))
@@ -134,9 +133,9 @@ var _ = Describe("DiscoveryService", func() {
 
 		By("discovering endorsers for chaincode that has been installed to all orgs")
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]DiscoveredPeer{toDiscoveredPeer(network, org1Peer0)},
-			[]DiscoveredPeer{toDiscoveredPeer(network, org2Peer0)},
-			[]DiscoveredPeer{toDiscoveredPeer(network, org3Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
 		))
 
 		By("upgrading chaincode and adding a collections config")
@@ -149,8 +148,8 @@ var _ = Describe("DiscoveryService", func() {
 		endorsers.Collection = "mycc:collectionMarbles"
 		de = discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]DiscoveredPeer{toDiscoveredPeer(network, org1Peer0)},
-			[]DiscoveredPeer{toDiscoveredPeer(network, org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
 		))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
@@ -168,9 +167,9 @@ var _ = Describe("DiscoveryService", func() {
 		endorsers.Chaincode = "mycc2"
 		de = discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			ConsistOf(toDiscoveredPeer(network, org1Peer0), toDiscoveredPeer(network, network.Peer("org1", "peer1"))),
-			ConsistOf(toDiscoveredPeer(network, org2Peer0), toDiscoveredPeer(network, network.Peer("org2", "peer1"))),
-			ConsistOf(toDiscoveredPeer(network, org3Peer0), toDiscoveredPeer(network, network.Peer("org3", "peer1"))),
+			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(network.Peer("org1", "peer1"))),
+			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(network.Peer("org2", "peer1"))),
+			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(network.Peer("org3", "peer1"))),
 		))
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
@@ -202,13 +201,13 @@ var _ = Describe("DiscoveryService", func() {
 		org1Peer0 := network.Peer("org1", "peer0")
 
 		By("discovering peers")
-		Eventually(discoverPeers(network, org1Peer0, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
-			toDiscoveredPeer(network, network.Peer("org1", "peer0")),
-			toDiscoveredPeer(network, network.Peer("org1", "peer1")),
-			toDiscoveredPeer(network, network.Peer("org2", "peer0")),
-			toDiscoveredPeer(network, network.Peer("org2", "peer1")),
-			toDiscoveredPeer(network, network.Peer("org3", "peer0")),
-			toDiscoveredPeer(network, network.Peer("org3", "peer1")),
+		Eventually(nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+			network.DiscoveredPeer(network.Peer("org1", "peer0")),
+			network.DiscoveredPeer(network.Peer("org1", "peer1")),
+			network.DiscoveredPeer(network.Peer("org2", "peer0")),
+			network.DiscoveredPeer(network.Peer("org2", "peer1")),
+			network.DiscoveredPeer(network.Peer("org3", "peer0")),
+			network.DiscoveredPeer(network.Peer("org3", "peer1")),
 		))
 
 		By("installing and instantiating chaincode on a peer")
@@ -222,10 +221,10 @@ var _ = Describe("DiscoveryService", func() {
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode, org1Peer0)
 
 		By("discovering peers after installing and instantiating chaincode on a peer")
-		dp := discoverPeers(network, org1Peer0, "User1", "testchannel")
+		dp := nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
 		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(1))
 		peersWithCC := peersWithChaincode(dp, "mycc")()
-		Expect(peersWithCC).To(ConsistOf(toDiscoveredPeer(network, org1Peer0, "mycc")))
+		Expect(peersWithCC).To(ConsistOf(network.DiscoveredPeer(org1Peer0, "mycc")))
 	})
 
 	It("discovers network configuration information", func() {
@@ -274,36 +273,9 @@ var _ = Describe("DiscoveryService", func() {
 	})
 })
 
-type DiscoveredPeer struct {
-	MSPID      string
-	Endpoint   string
-	Identity   string
-	Chaincodes []string
-}
-
-func discoverPeers(n *nwo.Network, p *nwo.Peer, user, channelName string) func() []DiscoveredPeer {
-	return func() []DiscoveredPeer {
-		peers := commands.Peers{
-			UserCert: n.PeerUserCert(p, user),
-			UserKey:  n.PeerUserKey(p, user),
-			MSPID:    n.Organization(p.Organization).MSPID,
-			Server:   n.PeerAddress(p, nwo.ListenPort),
-			Channel:  channelName,
-		}
-		sess, err := n.Discover(peers)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-		discovered := []DiscoveredPeer{}
-		err = json.Unmarshal(sess.Out.Contents(), &discovered)
-		Expect(err).NotTo(HaveOccurred())
-		return discovered
-	}
-}
-
 type ChaincodeEndorsers struct {
 	Chaincode         string
-	EndorsersByGroups map[string][]DiscoveredPeer
+	EndorsersByGroups map[string][]nwo.DiscoveredPeer
 	Layouts           []*discovery.Layout
 }
 
@@ -323,19 +295,19 @@ func discoverEndorsers(n *nwo.Network, command commands.Endorsers) func() []Chai
 	}
 }
 
-func endorsersByGroups(discover func() []ChaincodeEndorsers) func() map[string][]DiscoveredPeer {
-	return func() map[string][]DiscoveredPeer {
+func endorsersByGroups(discover func() []ChaincodeEndorsers) func() map[string][]nwo.DiscoveredPeer {
+	return func() map[string][]nwo.DiscoveredPeer {
 		discovered := discover()
 		if len(discovered) == 1 {
 			return discovered[0].EndorsersByGroups
 		}
-		return map[string][]DiscoveredPeer{}
+		return map[string][]nwo.DiscoveredPeer{}
 	}
 }
 
-func peersWithChaincode(discover func() []DiscoveredPeer, ccName string) func() []DiscoveredPeer {
-	return func() []DiscoveredPeer {
-		peers := []DiscoveredPeer{}
+func peersWithChaincode(discover func() []nwo.DiscoveredPeer, ccName string) func() []nwo.DiscoveredPeer {
+	return func() []nwo.DiscoveredPeer {
+		peers := []nwo.DiscoveredPeer{}
 		for _, p := range discover() {
 			for _, cc := range p.Chaincodes {
 				if cc == ccName {
@@ -344,18 +316,6 @@ func peersWithChaincode(discover func() []DiscoveredPeer, ccName string) func() 
 			}
 		}
 		return peers
-	}
-}
-
-func toDiscoveredPeer(n *nwo.Network, p *nwo.Peer, chaincodes ...string) DiscoveredPeer {
-	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
-	Expect(err).NotTo(HaveOccurred())
-
-	return DiscoveredPeer{
-		MSPID:      n.Organization(p.Organization).MSPID,
-		Endpoint:   fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, nwo.ListenPort)),
-		Identity:   string(peerCert),
-		Chaincodes: chaincodes,
 	}
 }
 

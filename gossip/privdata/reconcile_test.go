@@ -37,7 +37,7 @@ func TestNoItemsToReconcile(t *testing.T) {
 	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
 	fetcher.On("FetchReconciledItems", mock.Anything).Return(nil, errors.New("this function shouldn't be called"))
 
-	r := &reconciler{config: ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1}, ReconciliationFetcher: fetcher, Committer: committer}
+	r := &reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, isEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
 	assert.NoError(t, err)
@@ -73,7 +73,7 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 		fetchCalled = true
 	}).Return(nil, errors.New("called with no digests"))
 
-	r := &reconciler{config: ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1}, ReconciliationFetcher: fetcher, Committer: committer}
+	r := &reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, isEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
 	assert.Error(t, err)
@@ -147,7 +147,7 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 		commitPvtDataHappened = true
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
-	r := &reconciler{config: ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1}, ReconciliationFetcher: fetcher, Committer: committer}
+	r := &reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, isEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
 	err := r.reconcile()
 
 	assert.NoError(t, err)
@@ -224,7 +224,7 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 		wg.Done()
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
-	r := NewReconciler(committer, fetcher, ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1})
+	r := NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, isEnabled: true})
 	r.Start()
 	wg.Wait()
 	r.Stop()

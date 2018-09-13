@@ -62,6 +62,9 @@ peer:
       pullRetryThreshold: 60s
       transientstoreMaxBlockRetention: 1000
       pushAckTimeout: 3s
+      reconcileBatchSize: 10
+      reconcileSleepInterval: 10s
+      reconciliationEnabled: true
   events:
     address: 127.0.0.1:{{ .PeerPort Peer "Events" }}
     buffersize: 100

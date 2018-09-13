@@ -245,11 +245,13 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		Fetcher:         fetcher,
 	}, g.createSelfSignedData())
 
+	reconcilerConfig := privdata2.GetReconcilerConfig()
+
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
 		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory),
-		reconciler:  &privdata2.NoOpReconciler{},
+		reconciler:  privdata2.NewReconciler(support.Committer, fetcher, reconcilerConfig),
 	}
 	g.privateHandlers[chainID].reconciler.Start()
 
