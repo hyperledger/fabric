@@ -20,6 +20,13 @@ General:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
     ClientAuthRequired: false
     ClientRootCAs:
+  Cluster:
+    ClientCertificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
+    ClientPrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
+    DialTimeout: 5s
+    RPCTimeout: 7s
+    RootCAs:
+    -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
   Keepalive:
     ServerMinInterval: 60s
     ServerInterval: 7200s

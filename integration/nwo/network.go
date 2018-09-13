@@ -28,6 +28,7 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -430,9 +431,9 @@ func (n *Network) OrdererOrgMSPDir(o *Organization) string {
 	)
 }
 
-// ordererLocalCryptoDir returns the path to the local crypto directory for the
+// OrdererLocalCryptoDir returns the path to the local crypto directory for the
 // Orderer.
-func (n *Network) ordererLocalCryptoDir(o *Orderer, cryptoType string) string {
+func (n *Network) OrdererLocalCryptoDir(o *Orderer, cryptoType string) string {
 	org := n.Organization(o.Organization)
 	Expect(org).NotTo(BeNil())
 
@@ -450,13 +451,13 @@ func (n *Network) ordererLocalCryptoDir(o *Orderer, cryptoType string) string {
 // OrdererLocalMSPDir returns the path to the local MSP directory for the
 // Orderer.
 func (n *Network) OrdererLocalMSPDir(o *Orderer) string {
-	return n.ordererLocalCryptoDir(o, "msp")
+	return n.OrdererLocalCryptoDir(o, "msp")
 }
 
 // OrdererLocalTLSDir returns the path to the local TLS directory for the
 // Orderer.
 func (n *Network) OrdererLocalTLSDir(o *Orderer) string {
-	return n.ordererLocalCryptoDir(o, "tls")
+	return n.OrdererLocalCryptoDir(o, "tls")
 }
 
 // ProfileForChannel gets the configtxgen profile name associated with the
@@ -647,21 +648,13 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 	if len(peers) == 0 {
 		return
 	}
-	creator := peers[0]
 
 	tempFile, err := ioutil.TempFile("", "genesis-block")
 	Expect(err).NotTo(HaveOccurred())
 	tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	sess, err := n.PeerAdminSession(creator, commands.ChannelCreate{
-		ChannelID:   channelName,
-		Orderer:     n.OrdererAddress(o, ListenPort),
-		File:        n.CreateChannelTxPath(channelName),
-		OutputBlock: tempFile.Name(),
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	n.CreateChannel(channelName, o, peers[0], tempFile.Name())
 
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
@@ -713,15 +706,23 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 // returned by CreateChannelTxPath.
 //
 // The orderer must be running when this is called.
-func (n *Network) CreateChannel(name string, o *Orderer, p *Peer) {
-	sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
-		ChannelID:   name,
-		Orderer:     n.OrdererAddress(o, ListenPort),
-		File:        n.CreateChannelTxPath(name),
-		OutputBlock: "/dev/null",
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, outputFile string) {
+	tryToCreateChannel := func() (bool, error) {
+		sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
+			ChannelID:   channelName,
+			Orderer:     n.OrdererAddress(o, ListenPort),
+			File:        n.CreateChannelTxPath(channelName),
+			OutputBlock: outputFile,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		output := sess.Wait(n.EventuallyTimeout)
+		if sess.ExitCode() == 0 {
+			return true, nil
+		}
+		return false, errors.New(string(output.Out.Contents()))
+	}
+
+	Eventually(tryToCreateChannel, n.EventuallyTimeout).Should(BeTrue())
 }
 
 // JoinChannel will join peers to the specified channel. The orderer is used to

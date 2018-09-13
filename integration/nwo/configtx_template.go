@@ -87,6 +87,15 @@ Profiles:{{ range .Profiles }}
         - {{ . }}
         {{- end }}
       {{- end }}
+      {{- if eq $w.Consensus.Type "etcdraft" }}
+      EtcdRaft:
+        Consenters:{{ range .Orderers }}{{ with $w.Orderer . }}
+        - Host: 127.0.0.1
+          Port: {{ $w.OrdererPort . "Listen" }}
+          ClientTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
+          ServerTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
+        {{- end }}{{- end }}
+      {{- end }}
       Organizations:{{ range $w.OrgsForOrderers .Orderers }}
       - *{{ .MSPID }}
       {{- end }}

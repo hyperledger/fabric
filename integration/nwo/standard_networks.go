@@ -93,3 +93,18 @@ func BasicKafka() *Config {
 	config.Consensus.Brokers = 1
 	return config
 }
+
+func BasicEtcdRaft() *Config {
+	config := BasicSolo()
+	config.Consensus.Type = "etcdraft"
+	config.Profiles = []*Profile{{
+		Name:     "SampleDevModeEtcdRaft",
+		Orderers: []string{"orderer"},
+	}, {
+		Name:          "TwoOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2"},
+	}}
+	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
+	return config
+}

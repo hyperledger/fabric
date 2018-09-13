@@ -161,7 +161,7 @@ var _ = Describe("Network", func() {
 
 			orderer := network.Orderer("orderer0")
 			testPeers := network.PeersWithChannel("testchannel")
-			network.CreateChannel("testchannel", orderer, testPeers[0])
+			network.CreateChannel("testchannel", orderer, testPeers[0], "/dev/null")
 			network.JoinChannel("testchannel", orderer, testPeers...)
 
 			chaincode := nwo.Chaincode{

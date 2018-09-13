@@ -13,14 +13,13 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
 )
 
 var _ = Describe("EndToEnd", func() {
@@ -101,6 +100,27 @@ var _ = Describe("EndToEnd", func() {
 		})
 
 		It("executes a basic kafka network with 2 orgs", func() {
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer1")
+
+			network.CreateAndJoinChannel(orderer, "testchannel")
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			RunQueryInvokeQuery(network, orderer, peer)
+		})
+	})
+
+	Describe("basic single node etcdraft network with 2 orgs", func() {
+		BeforeEach(func() {
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, 32000, components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
+		})
+
+		It("executes a basic etcdraft network with 2 orgs and a single node", func() {
 			orderer := network.Orderer("orderer")
 			peer := network.Peer("Org1", "peer1")
 
