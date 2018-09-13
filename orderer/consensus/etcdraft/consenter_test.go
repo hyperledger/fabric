@@ -103,6 +103,13 @@ var _ = Describe("Consenter", func() {
 			Consenters: []*etcdraftproto.Consenter{
 				{ServerTlsCert: certBytes},
 			},
+			Options: &etcdraftproto.Options{
+				TickInterval:    100,
+				ElectionTick:    10,
+				HeartbeatTick:   1,
+				MaxInflightMsgs: 256,
+				MaxSizePerMsg:   1048576,
+			},
 		}
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
@@ -121,6 +128,13 @@ var _ = Describe("Consenter", func() {
 			Consenters: []*etcdraftproto.Consenter{
 				{ServerTlsCert: []byte("cert.orderer1.org1")},
 			},
+			Options: &etcdraftproto.Options{
+				TickInterval:    100,
+				ElectionTick:    10,
+				HeartbeatTick:   1,
+				MaxInflightMsgs: 256,
+				MaxSizePerMsg:   1048576,
+			},
 		}
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
@@ -131,6 +145,23 @@ var _ = Describe("Consenter", func() {
 		Expect(chain).To(BeNil())
 		Expect(err).To(MatchError("failed to detect own Raft ID because no matching certificate found"))
 	})
+
+	It("fails to handle chain if etcdraft options have not been provided", func() {
+		m := &etcdraftproto.Metadata{
+			Consenters: []*etcdraftproto.Consenter{
+				{ServerTlsCert: []byte("cert.orderer1.org1")},
+			},
+		}
+		metadata := utils.MarshalOrPanic(m)
+		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
+
+		consenter := newConsenter(chainGetter)
+
+		chain, err := consenter.HandleChain(support, nil)
+		Expect(chain).To(BeNil())
+		Expect(err).To(MatchError("etcdraft options have not been provided"))
+	})
+
 })
 
 func newConsenter(chainGetter *mocks.ChainGetter) *etcdraft.Consenter {

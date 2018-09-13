@@ -94,6 +94,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	if err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), m); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
 	}
+
+	if m.Options == nil {
+		return nil, errors.New("etcdraft options have not been provided")
+	}
+
 	id, err := c.detectSelfID(m)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -110,12 +115,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		Storage: raft.NewMemoryStorage(),
 		Logger:  c.Logger,
 
-		// TODO make options for raft configurable via channel configs
-		TickInterval:    100 * time.Millisecond,
-		ElectionTick:    10,
-		HeartbeatTick:   1,
-		MaxInflightMsgs: 256,
-		MaxSizePerMsg:   1024 * 1024, // This could potentially be deduced from max block size
+		TickInterval:    time.Duration(m.Options.TickInterval) * time.Millisecond,
+		ElectionTick:    int(m.Options.ElectionTick),
+		HeartbeatTick:   int(m.Options.HeartbeatTick),
+		MaxInflightMsgs: int(m.Options.MaxInflightMsgs),
+		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
 
 		Peers: peers,
 	}
