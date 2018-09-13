@@ -474,9 +474,9 @@ var _ = Describe("Chain", func() {
 							configSeq = 0
 						}) // BeforeEach block
 
-						It("should throw an error", func() {
+						It("should be able to create a channel", func() {
 							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("channel creation requests not supported yet"))
+							Expect(err).NotTo(HaveOccurred())
 						})
 					})
 				}) // Context block for type A config

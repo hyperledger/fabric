@@ -150,7 +150,7 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 
 	switch chdr.Type {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		return errors.Errorf("channel creation requests not supported yet")
+		return nil
 	case int32(common.HeaderType_CONFIG):
 		configEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 		if err != nil {
