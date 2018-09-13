@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
@@ -260,6 +261,48 @@ func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	assert.Error(t, err)
 	assert.IsType(t, &errors.VSCCExecutionFailureError{}, err)
+}
+
+func TestKeylevelValidationLedgerFailures(t *testing.T) {
+	// Scenario: we validate a transaction that updates
+	// the key-level validation parameters for a key.
+	// we simulate the case where we fail to retrieve
+	// the validation parameters from the ledger with
+	// both deterministic and non-deterministic errors
+
+	rwsb := rwsetBytes(t, "cc")
+	prp := []byte("barf")
+
+	t.Run("CollConfigNotDefinedError", func(t *testing.T) {
+		mr := &mockState{GetStateMetadataErr: &ledger.CollConfigNotDefinedError{Ns: "mycc"}}
+		ms := &mockStateFetcher{FetchStateRv: mr}
+		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+		validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+
+		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("InvalidCollNameError", func(t *testing.T) {
+		mr := &mockState{GetStateMetadataErr: &ledger.InvalidCollNameError{Ns: "mycc", Coll: "mycoll"}}
+		ms := &mockStateFetcher{FetchStateRv: mr}
+		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+		validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+
+		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("I/O error", func(t *testing.T) {
+		mr := &mockState{GetStateMetadataErr: fmt.Errorf("some I/O error")}
+		ms := &mockStateFetcher{FetchStateRv: mr}
+		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
+		validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+
+		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
+		assert.Error(t, err)
+		assert.IsType(t, &errors.VSCCExecutionFailureError{}, err)
+	})
 }
 
 func TestCCEPValidation(t *testing.T) {

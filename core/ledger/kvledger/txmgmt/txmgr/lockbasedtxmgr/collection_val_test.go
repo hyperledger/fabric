@@ -8,6 +8,7 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,19 +32,19 @@ func TestCollectionValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = sim.GetPrivateData("ns3", "coll1", "key1")
-	_, ok := err.(*errCollConfigNotDefined)
+	_, ok := err.(*ledger.CollConfigNotDefinedError)
 	assert.True(t, ok)
 
 	err = sim.SetPrivateData("ns3", "coll1", "key1", []byte("val1"))
-	_, ok = err.(*errCollConfigNotDefined)
+	_, ok = err.(*ledger.CollConfigNotDefinedError)
 	assert.True(t, ok)
 
 	_, err = sim.GetPrivateData("ns1", "coll3", "key1")
-	_, ok = err.(*errInvalidCollName)
+	_, ok = err.(*ledger.InvalidCollNameError)
 	assert.True(t, ok)
 
 	err = sim.SetPrivateData("ns1", "coll3", "key1", []byte("val1"))
-	_, ok = err.(*errInvalidCollName)
+	_, ok = err.(*ledger.InvalidCollNameError)
 	assert.True(t, ok)
 
 	err = sim.SetPrivateData("ns1", "coll1", "key1", []byte("val1"))
@@ -60,7 +61,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 	assert.Nil(t, valueHash)
 	assert.Nil(t, metadataBytes)
 	assert.Error(t, err)
-	assert.IsType(t, &errCollConfigNotDefined{}, err)
+	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
 
 func TestPvtPutNoCollection(t *testing.T) {
@@ -72,5 +73,5 @@ func TestPvtPutNoCollection(t *testing.T) {
 	assert.NoError(t, err)
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
 	assert.Error(t, err)
-	assert.IsType(t, &errCollConfigNotDefined{}, err)
+	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
