@@ -44,7 +44,7 @@ message APIResource {
     string policy_ref = 1; // The policy name to use for this API
 }
 
-// ACLs provides mappings for resources in a channel. APIResource encpasulates
+// ACLs provides mappings for resources in a channel. APIResource encapsulates
 // reference to a policy used to determine ACL for the resource
 message ACLs {
     map<string, APIResource> acls = 1;
