@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/pkg/errors"
+	"time"
 )
 
 // ChainSupport holds the resources for a particular channel.
@@ -35,7 +36,20 @@ func newChainSupport(
 	signer crypto.LocalSigner,
 ) *ChainSupport {
 	// Read in the last block and metadata for the channel
-	lastBlock := blockledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
+	
+	// fixed the bug when create a channel, the ledgerResources.Height() may got 0
+	// ledgerResources.Height()-1 = 18446744073709551615
+	// get block is nil, channel create error
+	lastBlockHeight := ledgerResources.Height();
+	if lastBlockHeight == 0 {
+		// if block has not write to ledger, retry one more time
+		time.Sleep(100 * time.Millisecond)
+		lastBlockHeight = ledgerResources.Height()
+	}
+	if lastBlockHeight > 0 {
+		lastBlockHeight = lastBlockHeight - 1;
+	}
+	lastBlock := blockledger.GetBlock(ledgerResources, lastBlockHeight)
 
 	metadata, err := utils.GetMetadataFromBlock(lastBlock, cb.BlockMetadataIndex_ORDERER)
 	// Assuming a block created with cb.NewBlock(), this should not
