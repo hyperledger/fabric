@@ -84,8 +84,7 @@ func TestBuildQueryResponse(t *testing.T) {
 			}
 			resultsIterator.NextReturnsOnCall(tc.recordCount, nil, nil)
 			responseGenerator := &chaincode.QueryResponseGenerator{
-				MaxResultLimit:  tc.maxResultLimit,
-				TotalQueryLimit: tc.totalQueryLimit,
+				MaxResultLimit: tc.maxResultLimit,
 			}
 			totalResultCount := 0
 			for hasMoreCount := 0; hasMoreCount <= tc.expectedHasMoreCount; hasMoreCount++ {
@@ -148,8 +147,7 @@ func TestBuildQueryResponseErrors(t *testing.T) {
 
 			transactionContext.InitializeQueryContext("query-id", resultsIterator)
 			responseGenerator := &chaincode.QueryResponseGenerator{
-				MaxResultLimit:  3,
-				TotalQueryLimit: totalQueryLimit,
+				MaxResultLimit: 3,
 			}
 
 			resp, err := responseGenerator.BuildQueryResponse(transactionContext, resultsIterator, "query-id", false, totalQueryLimit)
