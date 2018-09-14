@@ -18,8 +18,11 @@
 // peer chaincode query -C myc1 -n marbles -c '{"Args":["getHistoryForMarble","marble1"]}'
 
 // Rich Query (Only supported if CouchDB is used as state database):
-//   peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarblesByOwner","tom"]}'
-//   peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
+// peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarblesByOwner","tom"]}'
+// peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
+
+// Rich Query with Pagination (Only supported if CouchDB is used as state database):
+// peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarblesWithPagination","{\"selector\":{\"owner\":\"tom\"}}","3",""]}'
 
 // INDEXES TO SUPPORT COUCHDB RICH QUERIES
 //
@@ -59,17 +62,11 @@
 
 // Index for docType, owner.
 //
-// Index definition for use with Fauxton interface
-// {"index":{"fields":["docType","owner"]},"ddoc":"indexOwnerDoc", "name":"indexOwner","type":"json"}
-//
 // Example curl command line to define index in the CouchDB channel_chaincode database
 // curl -i -X POST -H "Content-Type: application/json" -d "{\"index\":{\"fields\":[\"docType\",\"owner\"]},\"name\":\"indexOwner\",\"ddoc\":\"indexOwnerDoc\",\"type\":\"json\"}" http://hostname:port/myc1_marbles/_index
 //
 
 // Index for docType, owner, size (descending order).
-//
-// Index definition for use with Fauxton interface
-// {"index":{"fields":[{"size":"desc"},{"docType":"desc"},{"owner":"desc"}]},"ddoc":"indexSizeSortDoc", "name":"indexSizeSortDesc","type":"json"}
 //
 // Example curl command line to define index in the CouchDB channel_chaincode database
 // curl -i -X POST -H "Content-Type: application/json" -d "{\"index\":{\"fields\":[{\"size\":\"desc\"},{\"docType\":\"desc\"},{\"owner\":\"desc\"}]},\"ddoc\":\"indexSizeSortDoc\", \"name\":\"indexSizeSortDesc\",\"type\":\"json\"}" http://hostname:port/myc1_marbles/_index
@@ -583,21 +580,23 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 }
 
 // ====== Pagination =========================================================================
-// TODO: Explain what is pagination and where it can be used
+// Pagination provides a method to retrieve records with a defined pagesize and
+// start point (bookmark).  An empty string bookmark defines the first "page" of a query
+// result.  Paginated queries return a bookmark that can be used in
+// the next query to retrieve the next page of results.  Paginated queries extend
+// rich queries and range queries to include a pagesize and bookmark.
+//
+// Two examples are provided in this example.  The first is getMarblesByRangeWithPagination
+// which executes a paginated range query.
+// The second example is a paginated query for rich ad-hoc queries.
 // =========================================================================================
 
 // ====== Example: Pagination with Range Query ===============================================
 // getMarblesByRangeWithPagination performs a range query based on the start & end key,
 // page size and a bookmark.
 
-// The number of fetched records would be equal to or lesser than the page size.
-// Read-only function results are not typically submitted to ordering. If the read-only
-// results are submitted to ordering, or if the query is used in an update transaction
-// and submitted to ordering, then the committing peers will re-execute to guarantee that
-// result sets are stable between endorsement time and commit time. The transaction is
-// invalidated by the committing peers if the result set has changed between endorsement
-// time and commit time.
-// Therefore, range queries are a safe option for performing update transactions based on query results.
+// The number of fetched records will be equal to or lesser than the page size.
+// Paginated range queries are only valid for read only transactions.
 // ===========================================================================================
 func (t *SimpleChaincode) getMarblesByRangeWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
@@ -639,6 +638,7 @@ func (t *SimpleChaincode) getMarblesByRangeWithPagination(stub shim.ChaincodeStu
 // Supports ad hoc queries that can be defined at runtime by the client.
 // If this is not desired, follow the queryMarblesForOwner example for parameterized queries.
 // Only available on state databases that support rich query (e.g. CouchDB)
+// Paginated queries are only valid for read only transactions.
 // =========================================================================================
 func (t *SimpleChaincode) queryMarblesWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
