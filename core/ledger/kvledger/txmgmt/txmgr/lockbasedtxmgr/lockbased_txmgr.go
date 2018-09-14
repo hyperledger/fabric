@@ -142,6 +142,9 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 
 // Shutdown implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Shutdown() {
+	// wait for background go routine to finish else the timing issue causes a nil pointer inside goleveldb code
+	// see FAB-11974
+	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	txmgr.db.Close()
 }
 

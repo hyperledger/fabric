@@ -33,6 +33,7 @@ func TestMain(m *testing.M) {
 	flogging.SetModuleLevel("statevalidator", "debug")
 	flogging.SetModuleLevel("valimpl", "debug")
 	flogging.SetModuleLevel("confighistory", "debug")
+	flogging.SetModuleLevel("pvtstatepurgemgmt", "debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger")
 	viper.Set("ledger.history.enableHistoryDatabase", true)
 	os.Exit(m.Run())
