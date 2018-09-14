@@ -494,7 +494,7 @@ var _ = Describe("Chain", func() {
 								"ConsensusType": {
 									Version: 1,
 									Value: marshalOrPanic(&orderer.ConsensusType{
-										Metadata: []byte("new consenter"),
+										Metadata: marshalOrPanic(consenterMetadata),
 									}),
 								},
 							}
@@ -504,9 +504,32 @@ var _ = Describe("Chain", func() {
 							configSeq = 0
 						}) // BeforeEach block
 
-						It("should throw an error", func() {
+						It("should be able to process config update of type B", func() {
 							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("updates to ConsensusType not supported currently"))
+							Expect(err).NotTo(HaveOccurred())
+						})
+					})
+
+					Context("updating consenters set", func() {
+						// use to prepare the Orderer Values
+						BeforeEach(func() {
+							values := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Metadata: marshalOrPanic(createMetadata(3, tlsCA)),
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, values))
+							configSeq = 0
+						}) // BeforeEach block
+
+						It("should fail, since consenters set change is not supported yet", func() {
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).To(MatchError("update of consenters set is not supported yet"))
 						})
 					})
 				})

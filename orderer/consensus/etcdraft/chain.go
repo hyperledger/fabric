@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -196,11 +197,10 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 			return err
 		}
 
-		// TODO Consider the read-set when processing type B configuration transactions
 		// Check that only the ConsensusType is updated in the write-set
 		if ordererConfigGroup, ok := configUpdate.WriteSet.Groups["Orderer"]; ok {
-			if _, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-				return errors.Errorf("updates to ConsensusType not supported currently")
+			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
+				return c.checkConsentersSet(val)
 			}
 		}
 		return nil
@@ -602,4 +602,46 @@ func (c *Chain) pemToDER(pemBytes []byte, id uint64, certType string) ([]byte, e
 		return nil, errors.Errorf("invalid PEM block")
 	}
 	return bl.Bytes, nil
+}
+
+func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
+	consensusTypeValue := &orderer.ConsensusType{}
+	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
+		return errors.Wrap(err, "failed to unmarshal consensusType config update")
+	}
+
+	updatedMetadata := &etcdraft.Metadata{}
+	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
+		return errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
+	}
+
+	currentMetadata := &etcdraft.Metadata{}
+	if err := proto.Unmarshal(c.support.SharedConfig().ConsensusMetadata(), currentMetadata); err != nil {
+		return errors.Wrap(err, "failed to unmarshal current etcdraft metadata configuration")
+	}
+
+	if !c.consentersSetEqual(currentMetadata.Consenters, updatedMetadata.Consenters) {
+		return errors.New("update of consenters set is not supported yet")
+	}
+
+	return nil
+}
+
+func (c *Chain) consentersSetEqual(c1 []*etcdraft.Consenter, c2 []*etcdraft.Consenter) bool {
+	if len(c1) != len(c2) {
+		return false
+	}
+
+	consentersSet1 := c.consentersToMap(c1)
+	consentersSet2 := c.consentersToMap(c2)
+
+	return reflect.DeepEqual(consentersSet1, consentersSet2)
+}
+
+func (c *Chain) consentersToMap(c1 []*etcdraft.Consenter) map[string]*etcdraft.Consenter {
+	set := map[string]*etcdraft.Consenter{}
+	for _, c := range c1 {
+		set[string(c.ClientTlsCert)] = c
+	}
+	return set
 }
