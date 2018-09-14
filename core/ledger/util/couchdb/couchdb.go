@@ -1074,6 +1074,10 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 		return nil, err2
 	}
 
+	if jsonResponse.Warning != "" {
+		logger.Warningf("The query [%s] caused the following warning: [%s]", query, jsonResponse.Warning)
+	}
+
 	for _, row := range jsonResponse.Docs {
 
 		var docMetadata = &DocMetadata{}
