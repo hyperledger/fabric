@@ -313,14 +313,14 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	if coll == "" {
 		mdMap, err = state.GetStateMetadata(cc, key)
 		if err != nil {
-			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s:%s", cc, coll, key))
+			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s", cc, key))
 			logger.Errorf(err.Error())
 			return nil, err
 		}
 	} else {
 		mdMap, err = state.GetPrivateDataMetadata(cc, coll, key)
 		if err != nil {
-			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s:%s", cc, coll, key))
+			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s:%x", cc, coll, []byte(key)))
 			logger.Errorf(err.Error())
 			return nil, err
 		}
