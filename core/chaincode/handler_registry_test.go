@@ -27,27 +27,6 @@ var _ = Describe("HandlerRegistry", func() {
 		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "chaincode-name"})
 	})
 
-	Describe("HasLaunched", func() {
-		It("returns false when not launched or registered", func() {
-			launched := hr.HasLaunched("chaincode-name")
-			Expect(launched).To(BeFalse())
-		})
-
-		It("returns true when launching", func() {
-			hr.Launching("chaincode-name")
-			launched := hr.HasLaunched("chaincode-name")
-			Expect(launched).To(BeTrue())
-		})
-
-		It("returns true when registered", func() {
-			err := hr.Register(handler)
-			Expect(err).NotTo(HaveOccurred())
-
-			launched := hr.HasLaunched("chaincode-name")
-			Expect(launched).To(BeTrue())
-		})
-	})
-
 	Describe("Launching", func() {
 		It("returns a LaunchState to wait on for registration", func() {
 			launchState, _ := hr.Launching("chaincode-name")
@@ -117,8 +96,9 @@ var _ = Describe("HandlerRegistry", func() {
 
 		It("leaves the launching state in the registry", func() {
 			hr.Ready("chaincode-name")
-			launching := hr.HasLaunched("chaincode-name")
-			Expect(launching).To(BeTrue())
+			ls, exists := hr.Launching("chaincode-name")
+			Expect(exists).To(BeTrue())
+			Expect(ls).To(BeIdenticalTo(launchState))
 		})
 	})
 
@@ -143,8 +123,9 @@ var _ = Describe("HandlerRegistry", func() {
 
 		It("leaves the launching state in the registry for explicit cleanup", func() {
 			hr.Failed("chaincode-name", errors.New("mango"))
-			launching := hr.HasLaunched("chaincode-name")
-			Expect(launching).To(BeTrue())
+			ls, exists := hr.Launching("chaincode-name")
+			Expect(exists).To(BeTrue())
+			Expect(ls).To(BeIdenticalTo(launchState))
 		})
 	})
 
@@ -248,8 +229,10 @@ var _ = Describe("HandlerRegistry", func() {
 			err := hr.Deregister("chaincode-name")
 			Expect(err).NotTo(HaveOccurred())
 
-			launched := hr.HasLaunched("chaincode-name")
-			Expect(launched).To(BeFalse())
+			handler := hr.Handler("chaincode-name")
+			Expect(handler).To(BeNil())
+			_, exists := hr.Launching("chaincode-name")
+			Expect(exists).To(BeFalse())
 		})
 
 		It("closes transaction contexts", func() {

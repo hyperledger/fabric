@@ -64,24 +64,6 @@ func NewHandlerRegistry(allowUnsolicitedRegistration bool) *HandlerRegistry {
 	}
 }
 
-// HasLaunched returns true if the named chaincode is launching or running.
-func (r *HandlerRegistry) HasLaunched(chaincode string) bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	return r.hasLaunched(chaincode)
-}
-
-func (r *HandlerRegistry) hasLaunched(chaincode string) bool {
-	if _, ok := r.handlers[chaincode]; ok {
-		return true
-	}
-	if _, ok := r.launching[chaincode]; ok {
-		return true
-	}
-	return false
-}
-
 // Launching indicates that chaincode is being launched. The LaunchState that
 // is returned provides mechanisms to determine when the operation has
 // completed and whether or not it failed. The bool indicates whether or not
