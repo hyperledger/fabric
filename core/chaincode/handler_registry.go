@@ -22,8 +22,10 @@ type HandlerRegistry struct {
 }
 
 type LaunchState struct {
-	done chan struct{}
-	err  error
+	mutex    sync.Mutex
+	notified bool
+	done     chan struct{}
+	err      error
 }
 
 func NewLaunchState() *LaunchState {
@@ -32,11 +34,25 @@ func NewLaunchState() *LaunchState {
 	}
 }
 
-func (l *LaunchState) Done() <-chan struct{} { return l.done }
-func (l *LaunchState) Err() error            { return l.err }
+func (l *LaunchState) Done() <-chan struct{} {
+	return l.done
+}
+
+func (l *LaunchState) Err() error {
+	l.mutex.Lock()
+	err := l.err
+	l.mutex.Unlock()
+	return err
+}
+
 func (l *LaunchState) Notify(err error) {
-	l.err = err
-	close(l.done)
+	l.mutex.Lock()
+	if !l.notified {
+		l.notified = true
+		l.err = err
+		close(l.done)
+	}
+	l.mutex.Unlock()
 }
 
 // NewHandlerRegistry constructs a HandlerRegistry.
@@ -67,19 +83,29 @@ func (r *HandlerRegistry) hasLaunched(chaincode string) bool {
 }
 
 // Launching indicates that chaincode is being launched. The LaunchState that
-// is returned provides mechanisms to determine when the operation has completed
-// and whether or not it failed. An error will be returned if chaincode launch
-// processing has already been initated.
-func (r *HandlerRegistry) Launching(cname string) (*LaunchState, error) {
+// is returned provides mechanisms to determine when the operation has
+// completed and whether or not it failed. The bool indicates whether or not
+// the chaincode has already been started.
+func (r *HandlerRegistry) Launching(cname string) (*LaunchState, bool) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	if r.hasLaunched(cname) {
-		return nil, errors.Errorf("chaincode %s has already been launched", cname)
+
+	// launch happened or already happening
+	if launchState, ok := r.launching[cname]; ok {
+		return launchState, true
 	}
 
+	// handler registered without going through launch
+	if _, ok := r.handlers[cname]; ok {
+		launchState := NewLaunchState()
+		launchState.Notify(nil)
+		return launchState, true
+	}
+
+	// first attempt to launch so the runtime needs to start
 	launchState := NewLaunchState()
 	r.launching[cname] = launchState
-	return launchState, nil
+	return launchState, false
 }
 
 // Ready indicates that the chaincode registration has completed and the
@@ -90,7 +116,6 @@ func (r *HandlerRegistry) Ready(cname string) {
 
 	launchStatus := r.launching[cname]
 	if launchStatus != nil {
-		delete(r.launching, cname)
 		launchStatus.Notify(nil)
 	}
 }

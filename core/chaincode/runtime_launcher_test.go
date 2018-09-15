@@ -33,7 +33,7 @@ var _ = Describe("RuntimeLauncher", func() {
 	BeforeEach(func() {
 		launchState = chaincode.NewLaunchState()
 		fakeRegistry = &fake.LaunchRegistry{}
-		fakeRegistry.LaunchingReturns(launchState, nil)
+		fakeRegistry.LaunchingReturns(launchState, false)
 
 		fakeRuntime = &mock.Runtime{}
 		fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo, []byte) error {
@@ -97,17 +97,6 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(fakeRegistry.DeregisterCallCount()).To(Equal(0))
 	})
 
-	Context("when launch registration fails", func() {
-		BeforeEach(func() {
-			fakeRegistry.LaunchingReturns(nil, errors.New("gargoyle"))
-		})
-
-		It("returns an error", func() {
-			err := runtimeLauncher.Launch(ccci)
-			Expect(err).To(MatchError("failed to register chaincode-name:chaincode-version as launching: gargoyle"))
-		})
-	})
-
 	Context("when starting the runtime fails", func() {
 		BeforeEach(func() {
 			fakeRuntime.StartReturns(errors.New("banana"))
@@ -116,6 +105,12 @@ var _ = Describe("RuntimeLauncher", func() {
 		It("returns a wrapped error", func() {
 			err := runtimeLauncher.Launch(ccci)
 			Expect(err).To(MatchError("error starting container: banana"))
+		})
+
+		It("notifies the LaunchState", func() {
+			runtimeLauncher.Launch(ccci)
+			Eventually(launchState.Done()).Should(BeClosed())
+			Expect(launchState.Err()).To(MatchError("error starting container: banana"))
 		})
 
 		It("stops the runtime", func() {
@@ -176,6 +171,12 @@ var _ = Describe("RuntimeLauncher", func() {
 			Expect(err).To(MatchError("timeout expired while starting chaincode chaincode-name:chaincode-version for transaction"))
 		})
 
+		It("notifies the LaunchState", func() {
+			runtimeLauncher.Launch(ccci)
+			Eventually(launchState.Done()).Should(BeClosed())
+			Expect(launchState.Err()).To(MatchError("timeout expired while starting chaincode chaincode-name:chaincode-version for transaction"))
+		})
+
 		It("stops the runtime", func() {
 			runtimeLauncher.Launch(ccci)
 
@@ -190,6 +191,50 @@ var _ = Describe("RuntimeLauncher", func() {
 			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
 			cname := fakeRegistry.DeregisterArgsForCall(0)
 			Expect(cname).To(Equal("chaincode-name:chaincode-version"))
+		})
+	})
+
+	Context("when the registry indicates the chaincode has already been started", func() {
+		BeforeEach(func() {
+			fakeRegistry.LaunchingReturns(launchState, true)
+		})
+
+		It("does not start the runtime for the chaincode", func() {
+			launchState.Notify(nil)
+
+			err := runtimeLauncher.Launch(ccci)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeRuntime.StartCallCount()).To(Equal(0))
+		})
+
+		It("waits for the launch to complete", func() {
+			fakeRuntime.StartReturns(nil)
+
+			errCh := make(chan error, 1)
+			go func() { errCh <- runtimeLauncher.Launch(ccci) }()
+
+			Consistently(errCh).ShouldNot(Receive())
+			launchState.Notify(nil)
+			Eventually(errCh).Should(Receive(BeNil()))
+		})
+
+		Context("when the launch fails", func() {
+			BeforeEach(func() {
+				launchState.Notify(errors.New("gooey-guac"))
+			})
+
+			It("does not deregister the chaincode", func() {
+				err := runtimeLauncher.Launch(ccci)
+				Expect(err).To(MatchError("chaincode registration failed: gooey-guac"))
+				Expect(fakeRegistry.DeregisterCallCount()).To(Equal(0))
+			})
+
+			It("does not stop the runtime", func() {
+				err := runtimeLauncher.Launch(ccci)
+				Expect(err).To(MatchError("chaincode registration failed: gooey-guac"))
+				Expect(fakeRuntime.StopCallCount()).To(Equal(0))
+			})
 		})
 	})
 

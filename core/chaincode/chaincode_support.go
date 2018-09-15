@@ -157,12 +157,7 @@ func (cs *ChaincodeSupport) Launch(chainID, chaincodeName, chaincodeVersion stri
 
 // Stop stops a chaincode if running.
 func (cs *ChaincodeSupport) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	err := cs.Runtime.Stop(ccci)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return cs.Runtime.Stop(ccci)
 }
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream

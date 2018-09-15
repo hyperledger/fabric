@@ -34,9 +34,7 @@ var _ = Describe("HandlerRegistry", func() {
 		})
 
 		It("returns true when launching", func() {
-			_, err := hr.Launching("chaincode-name")
-			Expect(err).NotTo(HaveOccurred())
-
+			hr.Launching("chaincode-name")
 			launched := hr.HasLaunched("chaincode-name")
 			Expect(launched).To(BeTrue())
 		})
@@ -52,21 +50,31 @@ var _ = Describe("HandlerRegistry", func() {
 
 	Describe("Launching", func() {
 		It("returns a LaunchState to wait on for registration", func() {
-			launchState, err := hr.Launching("chaincode-name")
-			Expect(err).NotTo(HaveOccurred())
+			launchState, _ := hr.Launching("chaincode-name")
 			Consistently(launchState.Done()).ShouldNot(Receive())
 			Consistently(launchState.Done()).ShouldNot(BeClosed())
 		})
 
+		It("indicates whether or not the chaincode needs to start", func() {
+			_, started := hr.Launching("chaincode-name")
+			Expect(started).To(BeFalse())
+		})
+
 		Context("when a chaincode instance is already launching", func() {
 			BeforeEach(func() {
-				_, err := hr.Launching("chaincode-name")
-				Expect(err).NotTo(HaveOccurred())
+				_, started := hr.Launching("chaincode-name")
+				Expect(started).To(BeFalse())
 			})
 
-			It("returns an error", func() {
-				_, err := hr.Launching("chaincode-name")
-				Expect(err).To(MatchError("chaincode chaincode-name has already been launched"))
+			It("returns a LaunchState", func() {
+				launchState, _ := hr.Launching("chaincode-name")
+				Consistently(launchState.Done()).ShouldNot(Receive())
+				Consistently(launchState.Done()).ShouldNot(BeClosed())
+			})
+
+			It("indicates already started", func() {
+				_, started := hr.Launching("chaincode-name")
+				Expect(started).To(BeTrue())
 			})
 		})
 
@@ -76,9 +84,15 @@ var _ = Describe("HandlerRegistry", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns an error", func() {
-				_, err := hr.Launching("chaincode-name")
-				Expect(err).To(MatchError("chaincode chaincode-name has already been launched"))
+			It("returns a ready LaunchState", func() {
+				launchState, _ := hr.Launching("chaincode-name")
+				Expect(launchState.Done()).To(BeClosed())
+				Expect(launchState.Err()).NotTo(HaveOccurred())
+			})
+
+			It("indicates the chaincode has already been started", func() {
+				_, started := hr.Launching("chaincode-name")
+				Expect(started).To(BeTrue())
 			})
 		})
 	})
@@ -87,9 +101,7 @@ var _ = Describe("HandlerRegistry", func() {
 		var launchState *chaincode.LaunchState
 
 		BeforeEach(func() {
-			var err error
-			launchState, err = hr.Launching("chaincode-name")
-			Expect(err).NotTo(HaveOccurred())
+			launchState, _ = hr.Launching("chaincode-name")
 			Expect(launchState.Done()).NotTo(BeClosed())
 		})
 
@@ -103,10 +115,10 @@ var _ = Describe("HandlerRegistry", func() {
 			Expect(launchState.Err()).To(BeNil())
 		})
 
-		It("cleans up the launching state", func() {
+		It("leaves the launching state in the registry", func() {
 			hr.Ready("chaincode-name")
 			launching := hr.HasLaunched("chaincode-name")
-			Expect(launching).To(BeFalse())
+			Expect(launching).To(BeTrue())
 		})
 	})
 
@@ -114,9 +126,7 @@ var _ = Describe("HandlerRegistry", func() {
 		var launchState *chaincode.LaunchState
 
 		BeforeEach(func() {
-			var err error
-			launchState, err = hr.Launching("chaincode-name")
-			Expect(err).NotTo(HaveOccurred())
+			launchState, _ = hr.Launching("chaincode-name")
 			Expect(launchState.Done()).NotTo(BeClosed())
 		})
 
@@ -172,10 +182,10 @@ var _ = Describe("HandlerRegistry", func() {
 			})
 
 			It("allows registration of launching chaincode", func() {
-				_, err := hr.Launching("chaincode-name")
-				Expect(err).NotTo(HaveOccurred())
+				_, started := hr.Launching("chaincode-name")
+				Expect(started).To(BeFalse())
 
-				err = hr.Register(handler)
+				err := hr.Register(handler)
 				Expect(err).NotTo(HaveOccurred())
 
 				h := hr.Handler("chaincode-name")
@@ -227,8 +237,9 @@ var _ = Describe("HandlerRegistry", func() {
 			handler.TXContexts = transactionContexts
 			txContext.InitializeQueryContext("query-id", fakeResultsIterator)
 
-			_, err = hr.Launching("chaincode-name")
-			Expect(err).NotTo(HaveOccurred())
+			_, started := hr.Launching("chaincode-name")
+			Expect(started).To(BeFalse())
+
 			err = hr.Register(handler)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -247,5 +258,43 @@ var _ = Describe("HandlerRegistry", func() {
 
 			Expect(fakeResultsIterator.CloseCallCount()).To(Equal(1))
 		})
+	})
+})
+
+var _ = Describe("LaunchState", func() {
+	var launchState *chaincode.LaunchState
+
+	BeforeEach(func() {
+		launchState = chaincode.NewLaunchState()
+	})
+
+	It("coordinates notification and errors", func() {
+		Expect(launchState.Done()).NotTo(BeNil())
+		Consistently(launchState.Done()).ShouldNot(BeClosed())
+
+		launchState.Notify(errors.New("jelly"))
+		Eventually(launchState.Done()).Should(BeClosed())
+		Expect(launchState.Err()).To(MatchError("jelly"))
+	})
+
+	It("can notify with a nil error", func() {
+		Expect(launchState.Done()).NotTo(BeNil())
+		Consistently(launchState.Done()).ShouldNot(BeClosed())
+
+		launchState.Notify(nil)
+		Eventually(launchState.Done()).Should(BeClosed())
+		Expect(launchState.Err()).To(BeNil())
+	})
+
+	It("can be notified mulitple times but honors the first", func() {
+		Expect(launchState.Done()).NotTo(BeNil())
+		Consistently(launchState.Done()).ShouldNot(BeClosed())
+
+		launchState.Notify(errors.New("mango"))
+		launchState.Notify(errors.New("tango"))
+		launchState.Notify(errors.New("django"))
+		launchState.Notify(nil)
+		Eventually(launchState.Done()).Should(BeClosed())
+		Expect(launchState.Err()).To(MatchError("mango"))
 	})
 })
