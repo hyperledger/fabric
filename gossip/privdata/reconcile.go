@@ -57,6 +57,20 @@ type reconciler struct {
 	stopOnce  sync.Once
 }
 
+// NoOpReconciler non functional reconciler to be used
+// in case reconciliation has been disabled
+type NoOpReconciler struct {
+}
+
+func (*NoOpReconciler) Start() {
+	// do nothing
+	logger.Debug("Private data reconciliation has been disabled")
+}
+
+func (*NoOpReconciler) Stop() {
+	// do nothing
+}
+
 // ReconcilerConfig holds config flags that are read from core.yaml
 type ReconcilerConfig struct {
 	sleepInterval time.Duration
@@ -80,14 +94,12 @@ func GetReconcilerConfig() ReconcilerConfig {
 
 // NewReconciler creates a new instance of reconciler
 func NewReconciler(c committer.Committer, fetcher ReconciliationFetcher, config ReconcilerConfig) Reconciler {
-	r := &reconciler{
+	return &reconciler{
 		config:                config,
 		Committer:             c,
 		ReconciliationFetcher: fetcher,
 		stopChan:              make(chan struct{}),
 	}
-
-	return r
 }
 
 func (r *reconciler) Stop() {
