@@ -8,10 +8,10 @@ import (
 )
 
 type PolicyValidator struct {
-	IsIssuerStub        func(creator plain.Credential, tokenType string) error
+	IsIssuerStub        func(creator plain.CreatorInfo, tokenType string) error
 	isIssuerMutex       sync.RWMutex
 	isIssuerArgsForCall []struct {
-		creator   plain.Credential
+		creator   plain.CreatorInfo
 		tokenType string
 	}
 	isIssuerReturns struct {
@@ -24,11 +24,11 @@ type PolicyValidator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PolicyValidator) IsIssuer(creator plain.Credential, tokenType string) error {
+func (fake *PolicyValidator) IsIssuer(creator plain.CreatorInfo, tokenType string) error {
 	fake.isIssuerMutex.Lock()
 	ret, specificReturn := fake.isIssuerReturnsOnCall[len(fake.isIssuerArgsForCall)]
 	fake.isIssuerArgsForCall = append(fake.isIssuerArgsForCall, struct {
-		creator   plain.Credential
+		creator   plain.CreatorInfo
 		tokenType string
 	}{creator, tokenType})
 	fake.recordInvocation("IsIssuer", []interface{}{creator, tokenType})
@@ -48,7 +48,7 @@ func (fake *PolicyValidator) IsIssuerCallCount() int {
 	return len(fake.isIssuerArgsForCall)
 }
 
-func (fake *PolicyValidator) IsIssuerArgsForCall(i int) (plain.Credential, string) {
+func (fake *PolicyValidator) IsIssuerArgsForCall(i int) (plain.CreatorInfo, string) {
 	fake.isIssuerMutex.RLock()
 	defer fake.isIssuerMutex.RUnlock()
 	return fake.isIssuerArgsForCall[i].creator, fake.isIssuerArgsForCall[i].tokenType
