@@ -62,7 +62,7 @@ Here's the help text for the ``byfn.sh`` script:
       -d <delay> - delay duration in seconds (defaults to 3)
       -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)
       -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
-      -l <language> - the chaincode language: golang (default) or node
+      -l <language> - the chaincode language: golang (default), node or java
       -i <imagetag> - the tag to be used to launch the network (defaults to "latest")
       -v - verbose mode
     byfn.sh -h (print this message)
@@ -161,7 +161,8 @@ Next, you can bring the network up with one of the following commands:
 
 The above command will compile Golang chaincode images and spin up the corresponding
 containers.  Go is the default chaincode language, however there is also support
-for `Node.js <https://fabric-shim.github.io/>`__ chaincode.  If you'd like to run through this tutorial with node
+for `Node.js <https://fabric-shim.github.io/>`_ and `Java <https://fabric-chaincode-java.github.io/>`_
+chaincode.  If you'd like to run through this tutorial with node
 chaincode, pass the following command instead:
 
 .. code:: bash
@@ -171,8 +172,20 @@ chaincode, pass the following command instead:
 
   ./byfn.sh up -l node
 
-.. note:: View the `Hyperledger Fabric Shim <https://fabric-shim.github.io/ChaincodeStub.html>`__
-          documentation for more info on the node.js chaincode shim APIs.
+.. note:: For more information on the Node.js shim, please refer to its
+          `documentation <https://fabric-shim.github.io/fabric-shim.ChaincodeInterface.html>`_.
+
+.. note:: For more information on the Java shim, please refer to its
+          `documentation <https://fabric-chaincode-java.github.io/org/hyperledger/fabric/shim/Chaincode.html>`_.
+
+Тo make the sample run with Java chaincode, you have to specify ``-l java`` as follows:
+
+.. code:: bash
+
+  ./byfn.sh up -l java
+
+.. note:: Do not run both of these commands. Only one language can be tried unless
+          you bring down and recreate the network between.
 
 Once again, you will be prompted as to whether you wish to continue or abort.
 Respond with a ``y`` or hit the return key:
@@ -666,7 +679,7 @@ Applications interact with the blockchain ledger through ``chaincode``.  As
 such we need to install the chaincode on every peer that will execute and
 endorse our transactions, and then instantiate the chaincode on the channel.
 
-First, install the sample Go or Node.js chaincode onto one of the four peer nodes.  These commands
+First, install the sample Go, Node.js or Java chaincode onto one of the four peer nodes.  These commands
 place the specified source code flavor onto our peer's filesystem.
 
 .. note:: You can only install one version of the source code per chaincode name
@@ -689,6 +702,12 @@ place the specified source code flavor onto our peer's filesystem.
     # this installs the Node.js chaincode
     # make note of the -l flag; we use this to specify the language
     peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
+
+**Java**
+
+.. code:: bash
+
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
 
 Next, instantiate the chaincode on the channel. This will initialize the
 chaincode on the channel, set the endorsement policy for the chaincode, and
@@ -723,6 +742,15 @@ If we changed the syntax to ``OR`` then we would need only one endorsement.
     # notice that we must pass the -l flag after the chaincode name to identify the language
 
     peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -l node -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
+
+**Java**
+
+.. note:: Please note, Java chaincode instantiation might take time as it compiles chaincode and
+          downloads docker container with java environment.
+
+.. code:: bash
+
+    peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -l java -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
 
 See the `endorsement
 policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies.html>`__
