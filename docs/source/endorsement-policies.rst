@@ -1,21 +1,21 @@
 Endorsement policies
 ====================
 
-Every chaincode has an endorsement policy that determines the circumstances under
-which the state associated with a chaincode can be updated. These endorsement
-policies define the organizations (through their peers) who must "endorse" (i.e.,
-approve of) the execution of the transaction proposal.
+Every chaincode has an endorsement policy which specifies the set of peers on
+a channel that must execute chaincode and endorse the execution results in
+order for the transaction to be considered valid. These endorsement policies
+define the organizations (through their peers) who must "endorse" (i.e., approve
+of) the execution of a proposal.
 
 .. note :: Recall that **state**, represented by key-value pairs, is separate
            from blockchain data. For more on this, check out our :doc:`ledger/ledger`
            documentation.
 
-When an endorsed transaction is sent for ordering included in a block and
-validated by all peers, the endorsement is checked to make sure it contains the
-appropriate number of endorsements and that they are from the expected sources
-(both of these are specified in the endorsement policy). The endorsements are
-also checked to make sure they're valid (i.e., that they are valid signatures
-from valid certificates).
+As part of the transaction validation step performed by the peers, each validating
+peer checks to make sure that the transaction contains the appropriate **number**
+of endorsements and that they are from the expected sources (both of these are
+specified in the endorsement policy). The endorsements are also checked to make
+sure they're valid (i.e., that they are valid signatures from valid certificates).
 
 Two ways to require endorsement
 -------------------------------
@@ -26,7 +26,7 @@ state associated with a chaincode).
 
 However, there are cases where it may be necessary for a particular state (a
 particular key-value pair, in other words) to have a different endorsement policy.
-This *state-based endorsement* allows the default chaincode-level endorsement
+This **state-based endorsement** allows the default chaincode-level endorsement
 policies to be overridden by a different policy for the specified keys.
 
 To illustrate the circumstances in which these two types of endorsement policies
@@ -36,14 +36,15 @@ the key-value pair that represents it into the world state, in other words) woul
 have to satisfy the chaincode-level endorsement policy. To see how to set a
 chaincode-level endorsement policy, check out the section below.
 
-If the car requires a specific endorsement policy, it can be defined after the
-key-value pair has been created. There are an endless number of potential reasons
-you might need a state-specific endorsement policy. The car might have historical
-value requiring the endorsement of a licensed appraiser. It could be a special
-type of car, such as a taxi cab, that requires the endorsement of a government
-agency. In either case, **an endorsement policy is required for a particular asset
-associated with a chaincode that is different from the endorsement policies for
-the other assets associated with that chaincode.**
+If the car requires a specific endorsement policy, it can be defined either when
+the car is created or afterwards. There are a number of reasons why it might
+be necessary or preferable to set a state-specific endorsement policy. The car
+might have historical importance or value that makes it necessary to have the
+endorsement of a licensed appraiser. Also, the owner of the car (if they're a
+member of the channel) might also want to ensure that their peer signs off on a
+transaction. In both cases, **an endorsement policy is required for a particular
+asset that is different from the default endorsement policies for the other
+assets associated with that chaincode.**
 
 We'll show you how to define a state-based endorsement policy in a subsequent
 section. But first, let's see how we set a chaincode-level endorsement policy.
@@ -69,8 +70,8 @@ This command deploys chaincode ``mycc`` ("my chaincode") with the policy
 ``AND('Org1.member', 'Org2.member')`` which would require that a member of both
 Org1 and Org2 sign the transaction.
 
-Notice that, if the identity classification is enabled (see :doc:`msp.html#identity-classification`),
-one can use the PEER role to restrict endorsement to only peers.
+Notice that, if the identity classification is enabled (see :doc:`msp`),
+one can use the ``PEER`` role to restrict endorsement to only peers.
 
 For example:
 
@@ -92,7 +93,7 @@ to allow transactions to be committed with endorsements from the new organizatio
 Endorsement policy syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As you can see above, policies are expressed expressed in terms of principals
+As you can see above, policies are expressed in terms of principals
 ("principals" are identities matched to a role). Principals are described as
 ``'MSP.ROLE'``, where ``MSP`` represents the required MSP ID and ``ROLE``
 represents one of the four accepted roles: ``member``, ``admin``, ``client``, and
