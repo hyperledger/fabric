@@ -6,6 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package plain
 
+import (
+	"github.com/hyperledger/fabric/common/ledger"
+)
+
 // A MemoryLedger is an in-memory ledger of transactions and unspent outputs.
 // This implementation is only meant for testing.
 type MemoryLedger struct {
@@ -19,16 +23,22 @@ func NewMemoryLedger() *MemoryLedger {
 	}
 }
 
-// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeID
+// GetState gets the value for given namespace and Key. For a chaincode, the namespace corresponds to the chaincodeID
 func (p *MemoryLedger) GetState(namespace string, key string) ([]byte, error) {
 	value := p.entries[key]
 
 	return value, nil
 }
 
-// SetState sets the given value for the given namespace and key. For a chaincode, the namespace corresponds to the chaincodeID
+// SetState sets the given value for the given namespace and Key. For a chaincode, the namespace corresponds to the chaincodeID
 func (p *MemoryLedger) SetState(namespace string, key string, value []byte) error {
 	p.entries[key] = value
 
 	return nil
+}
+
+// GetStateRangeScanIterator gets the values for a given namespace that lie in an interval determined by startKey and endKey.
+// this is a mock function.
+func (p *MemoryLedger) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
+	return nil, nil
 }
