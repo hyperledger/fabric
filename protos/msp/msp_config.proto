@@ -135,8 +135,8 @@ message IdemixMSPSignerConfig {
     // organizational_unit_identifier defines the organizational unit the default signer is in
     string organizational_unit_identifier = 3;
 
-    // is_admin defines whether the default signer is admin or not
-    bool is_admin = 4;
+    // role defines whether the default signer is admin, peer, member or client
+    int32 role = 4;
 
     // enrollment_id contains the enrollment id of this signer
     string enrollment_id = 5;
