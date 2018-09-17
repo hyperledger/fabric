@@ -21,6 +21,7 @@ import (
 )
 
 var logger = flogging.MustGetLogger("ledgerstorage")
+var isMissingDataReconEnabled = false
 
 // Provider encapusaltes two providers 1) block store provider and 2) and pvt data store provider
 type Provider struct {
@@ -88,6 +89,8 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
 func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	blockNum := blockAndPvtdata.Block.Header.Number
+	missingDataList := blockAndPvtdata.Missing
+
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
 
@@ -105,7 +108,11 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		for _, v := range blockAndPvtdata.BlockPvtData {
 			pvtdata = append(pvtdata, v)
 		}
-		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, blockAndPvtdata.Missing); err != nil {
+		if !isMissingDataReconEnabled {
+			// should not store any entries for missing data
+			missingDataList = nil
+		}
+		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, missingDataList); err != nil {
 			return err
 		}
 		writtenToPvtStore = true
