@@ -91,6 +91,11 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 	blockNum := blockAndPvtdata.Block.Header.Number
 	missingDataList := blockAndPvtdata.Missing
 
+	if !isMissingDataReconEnabled {
+		// should not store any entries for missing data
+		missingDataList = nil
+	}
+
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
 
@@ -107,10 +112,6 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		var pvtdata []*ledger.TxPvtData
 		for _, v := range blockAndPvtdata.BlockPvtData {
 			pvtdata = append(pvtdata, v)
-		}
-		if !isMissingDataReconEnabled {
-			// should not store any entries for missing data
-			missingDataList = nil
 		}
 		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, missingDataList); err != nil {
 			return err
