@@ -71,7 +71,7 @@ func newBlockGenerator(lgr ledger.PeerLedger, t *testing.T) *blkGenerator {
 	assert := assert.New(t)
 	info, err := lgr.GetBlockchainInfo()
 	assert.NoError(err)
-	return &blkGenerator{info.Height - 1, info.PreviousBlockHash, assert}
+	return &blkGenerator{info.Height - 1, info.CurrentBlockHash, assert}
 }
 
 // nextBlockAndPvtdata cuts the next block

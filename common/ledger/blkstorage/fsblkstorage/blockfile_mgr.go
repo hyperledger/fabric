@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package fsblkstorage
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
 
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -238,8 +238,23 @@ func (mgr *blockfileMgr) moveToNextFile() {
 }
 
 func (mgr *blockfileMgr) addBlock(block *common.Block) error {
-	if block.Header.Number != mgr.getBlockchainInfo().Height {
-		return errors.Errorf("block number should have been %d but was %d", mgr.getBlockchainInfo().Height, block.Header.Number)
+	bcInfo := mgr.getBlockchainInfo()
+	if block.Header.Number != bcInfo.Height {
+		return errors.Errorf(
+			"block number should have been %d but was %d",
+			mgr.getBlockchainInfo().Height, block.Header.Number,
+		)
+	}
+
+	// Add the previous hash check - Though, not essential but may not be a bad idea to
+	// verify the field `block.Header.PreviousHash` present in the block.
+	// This check is a simple bytes comparison and hence does not cause any observable performance penalty
+	// and may help in detecting a rare scenario if there is any bug in the ordering service.
+	if !bytes.Equal(block.Header.PreviousHash, bcInfo.CurrentBlockHash) {
+		return errors.Errorf(
+			"unexpected Previous block hash. Expected PreviousHash = [%x], PreviousHash referred in the latest block= [%x]",
+			bcInfo.CurrentBlockHash, block.Header.PreviousHash,
+		)
 	}
 	blockBytes, info, err := serializeBlock(block)
 	if err != nil {
