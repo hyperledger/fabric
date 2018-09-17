@@ -196,7 +196,7 @@ func MakeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 // SetTxID generates a transaction id based on the provided signature header
 // and sets the TxId field in the channel header
 func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeader) error {
-	txid, err := ComputeProposalTxID(
+	txid, err := ComputeTxID(
 		signatureHeader.Nonce,
 		signatureHeader.Creator,
 	)
