@@ -87,7 +87,8 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 
 	//Delete the above inserted <k,v> pair
 	batch.Delete("ns1", "key2", version.NewHeight(1, 2))
-	//Exists() should return false as key2 is deleted
+	//Exists() should return true after deleting key2
+	//Exists() should return true iff the key has action(Put/Delete) in this batch
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
 	testutil.AssertEquals(t, actualResult, expectedResult)
