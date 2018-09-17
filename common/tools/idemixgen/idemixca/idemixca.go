@@ -42,7 +42,7 @@ func GenerateIssuerKey() ([]byte, []byte, error) {
 // GenerateSignerConfig creates a new signer config.
 // It generates a fresh user secret and issues a credential
 // with four attributes (described above) using the CA's key pair.
-func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, revocationHandle int, key *idemix.IssuerKey, revKey *ecdsa.PrivateKey) ([]byte, error) {
+func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, revocationHandle int, key *idemix.IssuerKey, revKey *ecdsa.PrivateKey) ([]byte, error) {
 	attrs := make([]*FP256BN.BIG, 4)
 
 	if ouString == "" {
@@ -53,14 +53,8 @@ func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, re
 		return nil, errors.Errorf("the enrollment id value is empty")
 	}
 
-	role := m.MSPRole_MEMBER
-
-	if isAdmin {
-		role = m.MSPRole_ADMIN
-	}
-
 	attrs[msp.AttributeIndexOU] = idemix.HashModOrder([]byte(ouString))
-	attrs[msp.AttributeIndexRole] = FP256BN.NewBIGint(int(role))
+	attrs[msp.AttributeIndexRole] = FP256BN.NewBIGint(roleMask)
 	attrs[msp.AttributeIndexEnrollmentId] = idemix.HashModOrder([]byte(enrollmentId))
 	attrs[msp.AttributeIndexRevocationHandle] = FP256BN.NewBIGint(revocationHandle)
 
@@ -95,7 +89,7 @@ func GenerateSignerConfig(isAdmin bool, ouString string, enrollmentId string, re
 		Cred: credBytes,
 		Sk:   idemix.BigToBytes(sk),
 		OrganizationalUnitIdentifier: ouString,
-		IsAdmin:                         isAdmin,
+		Role:                            int32(roleMask),
 		EnrollmentId:                    enrollmentId,
 		CredentialRevocationInformation: criBytes,
 	}

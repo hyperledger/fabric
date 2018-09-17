@@ -169,7 +169,8 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		MspIdentifier: msp.name,
 		Role:          m.MSPRole_MEMBER,
 	}
-	if conf.Signer.IsAdmin {
+
+	if checkRole(int(conf.Signer.Role), ADMIN) {
 		role.Role = m.MSPRole_ADMIN
 	}
 
@@ -193,7 +194,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// Check if credential contains the correct Role attribute value
-	if !bytes.Equal(idemix.BigToBytes(FP256BN.NewBIGint(int(role.Role))), cred.Attrs[AttributeIndexRole]) {
+	if !bytes.Equal(idemix.BigToBytes(FP256BN.NewBIGint(getIdemixRoleFromMSPRole(role))), cred.Attrs[AttributeIndexRole]) {
 		return errors.New("Credential does not contain the correct Role attribute value")
 	}
 
@@ -319,7 +320,7 @@ func (msp *idemixmsp) Validate(id Identity) error {
 
 func (id *idemixidentity) verifyProof() error {
 	ouBytes := []byte(id.OU.OrganizationalUnitIdentifier)
-	attributeValues := []*FP256BN.BIG{idemix.HashModOrder(ouBytes), FP256BN.NewBIGint(int(id.Role.Role))}
+	attributeValues := []*FP256BN.BIG{idemix.HashModOrder(ouBytes), FP256BN.NewBIGint(getIdemixRoleFromMSPRole(id.Role))}
 
 	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues, rhIndex, id.msp.revocationPK, id.msp.epoch)
 }
