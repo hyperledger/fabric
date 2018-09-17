@@ -39,6 +39,8 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/token/tms/manager"
+	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/semaphore"
@@ -49,8 +51,12 @@ var peerLogger = flogging.MustGetLogger("peer")
 var peerServer *comm.GRPCServer
 
 var configTxProcessor = newConfigTxProcessor()
+var tokenTxProcessor = &transaction.Processor{
+	TMSManager: &manager.Manager{
+		IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{}}}
 var ConfigTxProcessors = customtx.Processors{
-	common.HeaderType_CONFIG: configTxProcessor,
+	common.HeaderType_CONFIG:            configTxProcessor,
+	common.HeaderType_TOKEN_TRANSACTION: tokenTxProcessor,
 }
 
 // singleton instance to manage credentials for the peer across channel config changes
