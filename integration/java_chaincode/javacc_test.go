@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 )
 
-var _ = Describe("EndToEnd-JavaCC", func() {
+var _ = Describe("Java Chaincode EndToEnd Suite", func() {
 	var (
 		testDir   string
 		client    *docker.Client
@@ -40,11 +40,18 @@ var _ = Describe("EndToEnd-JavaCC", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
+		network = nwo.New(nwo.BasicSolo(), testDir, client, 40000+1000*GinkgoParallelNode(), components)
+		network.GenerateConfigTree()
+		network.Bootstrap()
+
+		networkRunner := network.NetworkGroupRunner()
+		process = ifrit.Invoke(networkRunner)
+		Eventually(process.Ready()).Should(BeClosed())
 	})
 
 	AfterEach(func() {
 		if process != nil {
-			process.Signal(syscall.SIGILL)
+			process.Signal(syscall.SIGKILL)
 			Eventually(process.Wait(), time.Minute).Should(Receive())
 		}
 		if network != nil {
@@ -53,66 +60,55 @@ var _ = Describe("EndToEnd-JavaCC", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Describe("javacc project runs on top of basic solo network with 2 org", func() {
-		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
-			network.GenerateConfigTree()
-			network.Bootstrap()
+	It("supports java chaincode from a gradle project", func() {
+		chaincode = nwo.Chaincode{
+			Name:    "mycc",
+			Version: "0.0",
+			Path:    "../chaincode/java/simple/gradle/",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
+			Lang:    "java",
+		}
 
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
-		})
+		By("getting the orderer by name")
+		orderer := network.Orderer("orderer")
 
-		It("support for java chaincode gradle project", func() {
-			chaincode = nwo.Chaincode{
-				Name:    "mycc",
-				Version: "0.0",
-				Path:    "../chaincode/java/simple/gradle/",
-				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
-				Lang:    "java",
-			}
+		By("setting up the channel")
+		network.CreateAndJoinChannel(orderer, "testchannel")
 
-			By("getting the orderer by name")
-			orderer := network.Orderer("orderer")
+		By("deploying the chaincode")
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
-			By("setting up the channel")
-			network.CreateAndJoinChannel(orderer, "testchannel")
+		By("getting the client peer by name")
+		peer := network.Peer("Org1", "peer0")
 
-			By("deploying the chaincode")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		RunQueryInvokeQuery(network, orderer, peer)
+	})
 
-			By("getting the client peer by name")
-			peer := network.Peer("Org1", "peer0")
+	It("supports private data in java chaincode", func() {
+		chaincode = nwo.Chaincode{
+			Name:              "mycc",
+			Version:           "0.0",
+			Path:              "../chaincode/java/simple_pvtdata/gradle/",
+			Ctor:              `{"Args":["init","a","100","b","200"]}`,
+			Policy:            `OR ('Org1MSP.member','Org2MSP.member')`,
+			Lang:              "java",
+			CollectionsConfig: "testdata/collection_config.json",
+		}
 
-			RunQueryInvokeQuery(network, orderer, peer)
-		})
-		It("support for private data in java chaincode", func() {
-			chaincode = nwo.Chaincode{
-				Name:              "mycc",
-				Version:           "0.0",
-				Path:              "../chaincode/java/simple_pvtdata/gradle/",
-				Ctor:              `{"Args":["init","a","100","b","200"]}`,
-				Policy:            `OR ('Org1MSP.member','Org2MSP.member')`,
-				Lang:              "java",
-				CollectionsConfig: "testdata/collection_config.json",
-			}
+		By("getting the orderer by name")
+		orderer := network.Orderer("orderer")
 
-			By("getting the orderer by name")
-			orderer := network.Orderer("orderer")
+		By("setting up the channel")
+		network.CreateAndJoinChannel(orderer, "testchannel")
 
-			By("setting up the channel")
-			network.CreateAndJoinChannel(orderer, "testchannel")
+		By("deploying the chaincode")
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
-			By("deploying the chaincode")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		By("getting the client peer by name")
+		peer := network.Peer("Org1", "peer0")
 
-			By("getting the client peer by name")
-			peer := network.Peer("Org1", "peer0")
-
-			RunQueryInvokeQuery(network, orderer, peer)
-		})
+		RunQueryInvokeQuery(network, orderer, peer)
 	})
 })
 
