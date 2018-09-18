@@ -8,6 +8,8 @@ package e2e
 
 import (
 	"io/ioutil"
+	"os"
+	"syscall"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -16,9 +18,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-
-	"os"
-	"syscall"
 
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -65,7 +64,7 @@ var _ = Describe("EndToEnd-JavaCC", func() {
 			Eventually(process.Ready()).Should(BeClosed())
 		})
 
-		PIt("gradle javacc project", func() {
+		It("support for java chaincode gradle project", func() {
 			chaincode = nwo.Chaincode{
 				Name:    "mycc",
 				Version: "0.0",
@@ -89,34 +88,7 @@ var _ = Describe("EndToEnd-JavaCC", func() {
 
 			RunQueryInvokeQuery(network, orderer, peer)
 		})
-
-		PIt("maven javacc project", func() {
-			chaincode = nwo.Chaincode{
-				Name:    "mycc",
-				Version: "0.0",
-				Path:    "../chaincode/java/simple/maven/",
-				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
-				Lang:    "java",
-			}
-
-			By("getting the orderer by name")
-			orderer := network.Orderer("orderer")
-
-			By("setting up the channel")
-			network.CreateAndJoinChannel(orderer, "testchannel")
-
-			By("deploying the chaincode")
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-
-			By("getting the client peer by name")
-			peer := network.Peer("Org1", "peer0")
-
-			RunQueryInvokeQuery(network, orderer, peer)
-		})
-
 	})
-
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
