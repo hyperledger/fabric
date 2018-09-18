@@ -45,10 +45,20 @@ type ApplicationProvider struct {
 func NewApplicationProvider(capabilities map[string]*cb.Capability) *ApplicationProvider {
 	ap := &ApplicationProvider{}
 	ap.registry = newRegistry(ap, capabilities)
-	_, ap.v11 = capabilities[ApplicationV1_1]
-	_, ap.v12 = capabilities[ApplicationV1_2]
-	_, ap.v11PvtDataExperimental = capabilities[ApplicationPvtDataExperimental]
-	_, ap.v12LifecycleExperimental = capabilities[ApplicationChaincodeLifecycleExperimental]
+	for k := range capabilities {
+		k = strings.ToUpper(k)
+		switch k {
+		case ApplicationV1_1:
+			ap.v11 = true
+		case ApplicationV1_2:
+			ap.v12 = true
+		case ApplicationPvtDataExperimental:
+			ap.v11PvtDataExperimental = true
+		case ApplicationChaincodeLifecycleExperimental:
+			ap.v12LifecycleExperimental = true
+		default:
+		}
+	}
 	return ap
 }
 
