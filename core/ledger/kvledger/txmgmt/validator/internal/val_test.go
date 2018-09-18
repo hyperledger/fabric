@@ -4,7 +4,7 @@ Copyright 2018 Hitachi, Ltd. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package valinternal
+package internal
 
 import (
 	"testing"
