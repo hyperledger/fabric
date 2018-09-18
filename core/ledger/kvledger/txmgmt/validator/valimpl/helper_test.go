@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
@@ -31,8 +31,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("valinternal", "debug")
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/validator/valinternal")
+	flogging.SetModuleLevel("internal", "debug")
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/validator/internal")
 	os.Exit(m.Run())
 }
 
@@ -93,18 +93,18 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	block := testutil.ConstructBlockWithTxid(t, 10, testutil.ConstructRandomBytes(t, 32), pubSimulationResults, txids, false)
 
 	// Construct the expected preprocessed block from preprocessProtoBlock()
-	expectedPerProcessedBlock := &valinternal.Block{Num: 10}
+	expectedPerProcessedBlock := &internal.Block{Num: 10}
 	tx1TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx1SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
-	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &valinternal.Transaction{IndexInBlock: 0, ID: "tx1", RWSet: tx1TxRWSet})
+	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &internal.Transaction{IndexInBlock: 0, ID: "tx1", RWSet: tx1TxRWSet})
 
 	tx2TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx2SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
-	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &valinternal.Transaction{IndexInBlock: 1, ID: "tx2", RWSet: tx2TxRWSet})
+	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &internal.Transaction{IndexInBlock: 1, ID: "tx2", RWSet: tx2TxRWSet})
 
 	tx3TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx3SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
-	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &valinternal.Transaction{IndexInBlock: 2, ID: "tx3", RWSet: tx3TxRWSet})
+	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &internal.Transaction{IndexInBlock: 2, ID: "tx3", RWSet: tx3TxRWSet})
 	alwaysValidKVFunc := func(key string, value []byte) error {
 		return nil
 	}
@@ -267,7 +267,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 		lutils.ComputeStringHash("value2"), []byte("metadata2_set_by_tx4"), version.NewHeight(2, 4)) // only metadata set by tx4
 	hashUpdates.PutValHashAndMetadata("ns", "coll3", lutils.ComputeStringHash("key3"),
 		lutils.ComputeStringHash("value3_set_by_tx6"), []byte("metadata3"), version.NewHeight(2, 6)) // only value set by tx6
-	pubAndHashedUpdatesBatch := &valinternal.PubAndHashUpdates{HashUpdates: hashUpdates}
+	pubAndHashedUpdatesBatch := &internal.PubAndHashUpdates{HashUpdates: hashUpdates}
 
 	// for the current block, mimic the resultant pvt updates (without metadata taking into account). Assume that Tx6 pvt data is missing
 	pvtUpdateBatch := privacyenabledstate.NewPvtUpdateBatch()

@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -97,9 +97,9 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 
 	// Construct internal block
 	transRWSets := getTestPubSimulationRWSet(t, rwsetBuilder1, rwsetBuilder2)
-	var trans []*valinternal.Transaction
+	var trans []*internal.Transaction
 	for i, tranRWSet := range transRWSets {
-		tx := &valinternal.Transaction{
+		tx := &internal.Transaction{
 			ID:             fmt.Sprintf("txid-%d", i),
 			IndexInBlock:   i,
 			ValidationCode: peer.TxValidationCode_VALID,
@@ -107,7 +107,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 		}
 		trans = append(trans, tx)
 	}
-	block := &valinternal.Block{Num: 1, Txs: trans}
+	block := &internal.Block{Num: 1, Txs: trans}
 
 	if validator.db.IsBulkOptimizable() {
 
@@ -347,9 +347,9 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 }
 
 func checkValidation(t *testing.T, val *Validator, transRWSets []*rwsetutil.TxRwSet, expectedInvalidTxIndexes []int) {
-	var trans []*valinternal.Transaction
+	var trans []*internal.Transaction
 	for i, tranRWSet := range transRWSets {
-		tx := &valinternal.Transaction{
+		tx := &internal.Transaction{
 			ID:             fmt.Sprintf("txid-%d", i),
 			IndexInBlock:   i,
 			ValidationCode: peer.TxValidationCode_VALID,
@@ -357,7 +357,7 @@ func checkValidation(t *testing.T, val *Validator, transRWSets []*rwsetutil.TxRw
 		}
 		trans = append(trans, tx)
 	}
-	block := &valinternal.Block{Num: 1, Txs: trans}
+	block := &internal.Block{Num: 1, Txs: trans}
 	_, err := val.ValidateAndPrepareBatch(block, true)
 	assert.NoError(t, err)
 	t.Logf("block.Txs[0].ValidationCode = %d", block.Txs[0].ValidationCode)
