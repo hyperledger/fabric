@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -38,6 +39,21 @@ func TestBlockfileMgrBlockReadWrite(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 	blkfileMgrWrapper.testGetBlockByHash(blocks)
 	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0)
+}
+
+func TestAddBlockWithWrongHash(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blocks := testutil.ConstructTestBlocks(t, 10)
+	blkfileMgrWrapper.addBlocks(blocks[0:9])
+	lastBlock := blocks[9]
+	lastBlock.Header.PreviousHash = []byte("someJunkHash") // set the hash to something unexpected
+	err := blkfileMgrWrapper.blockfileMgr.addBlock(lastBlock)
+	testutil.AssertError(t, err, "An error is expected when adding a block with some unexpected hash")
+	testutil.AssertEquals(t, strings.Contains(err.Error(), "unexpected Previous block hash. Expected PreviousHash"), true)
+	t.Logf("err = %s", err)
 }
 
 func TestBlockfileMgrCrashDuringWriting(t *testing.T) {

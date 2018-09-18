@@ -182,7 +182,9 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 	assert.NoError(t, err)
 	pubSimulationBytes, err := simRes.GetPubSimulationBytes()
 	assert.NoError(t, err)
-	block0 := testutil.ConstructBlock(t, 1, []byte("hash"), [][]byte{pubSimulationBytes}, true)
+	bcInfo, err := theLedger.GetBlockchainInfo()
+	assert.NoError(t, err)
+	block0 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
 	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
 		Block: block0,
 	})
@@ -202,7 +204,9 @@ func putSBEP(theLedger ledger.PeerLedger, cc, key string, policy []byte, t *test
 	assert.NoError(t, err)
 	pubSimulationBytes, err := simRes.GetPubSimulationBytes()
 	assert.NoError(t, err)
-	block0 := testutil.ConstructBlock(t, 2, []byte("hash"), [][]byte{pubSimulationBytes}, true)
+	bcInfo, err := theLedger.GetBlockchainInfo()
+	assert.NoError(t, err)
+	block0 := testutil.ConstructBlock(t, 2, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
 	err = theLedger.CommitWithPvtData(&ledger.BlockAndPvtData{
 		Block: block0,
 	})
