@@ -40,6 +40,7 @@
 #   - enable_ci_only_tests - triggers unit-tests in downstream jobs. Applicable only for CI not to
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - javaenv-docker - pulls javaenv image from nexus and re-tags to amd64-latest tag
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
@@ -60,6 +61,7 @@ endif
 EXPERIMENTAL ?= true
 
 BUILD_DIR ?= .build
+NEXUS_REPO = nexus3.hyperledger.org:10001/hyperledger
 
 ifeq ($(EXPERIMENTAL),true)
 GO_TAGS += experimental
@@ -138,6 +140,13 @@ docker-thirdparty:
 	docker pull $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG)
 	docker tag $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-kafka
 
+# Pull javenv docker image based on the stable version published to nexus
+.PHONY: javaenv-docker
+javaenv-docker:
+	docker pull $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG)
+	docker tag $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG) $(DOCKER_NS)/fabric-javaenv
+	docker tag $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG) $(DOCKER_NS)/fabric-javaenv:$(ARCH)-latest
+
 .PHONY: spelling
 spelling:
 	@scripts/check_spelling.sh
@@ -184,10 +193,10 @@ testenv: $(BUILD_DIR)/image/testenv/$(DUMMY)
 ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
 
 .PHONY: integration-test
-integration-test: gotool.ginkgo ccenv docker-thirdparty
+integration-test: gotool.ginkgo javaenv-docker ccenv docker-thirdparty
 	./scripts/run-integration-tests.sh
 
-unit-test: unit-test-clean peer-docker testenv ccenv
+unit-test: unit-test-clean peer-docker javaenv-docker testenv ccenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
@@ -420,6 +429,7 @@ docker-list: $(patsubst %,%-docker-list, $(IMAGES))
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
 	-docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-$(BASE_VERSION)$(if $(EXTRA_VERSION),-snapshot-*,)' | xargs docker rmi -f
+	-docker rmi -f $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG)
 	-@rm -rf $(BUILD_DIR)/image/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
