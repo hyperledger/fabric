@@ -8,6 +8,7 @@ package comm
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
@@ -24,7 +25,6 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"

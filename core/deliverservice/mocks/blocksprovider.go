@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package mocks
 
 import (
+	"context"
 	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
@@ -16,7 +17,6 @@ import (
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

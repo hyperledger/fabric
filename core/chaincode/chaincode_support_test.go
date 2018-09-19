@@ -10,6 +10,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -52,7 +53,6 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 var globalBlockNum map[string]uint64

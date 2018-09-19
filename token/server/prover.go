@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"context"
+
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 //go:generate counterfeiter -o mock/access_control.go -fake-name PolicyChecker . PolicyChecker

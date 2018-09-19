@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package cluster
 
 import (
+	"context"
+
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

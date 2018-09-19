@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"net"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 )
 

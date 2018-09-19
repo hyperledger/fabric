@@ -8,6 +8,7 @@ package chaincode
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"reflect"
@@ -19,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var getInstalledChaincodes bool

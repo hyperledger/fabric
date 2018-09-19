@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package deliverclient
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"math"
@@ -22,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

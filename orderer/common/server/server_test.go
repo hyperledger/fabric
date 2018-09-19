@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 )

@@ -8,6 +8,7 @@ package cluster_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -24,7 +25,6 @@ import (
 	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

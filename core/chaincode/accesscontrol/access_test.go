@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package accesscontrol
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -21,7 +22,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

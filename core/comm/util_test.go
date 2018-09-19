@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
-	context2 "golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -145,13 +144,13 @@ type inspectingServer struct {
 	inspector   comm.BindingInspector
 }
 
-func (is *inspectingServer) EmptyCall(ctx context2.Context, _ *grpc_testdata.Empty) (*grpc_testdata.Empty, error) {
+func (is *inspectingServer) EmptyCall(ctx context.Context, _ *grpc_testdata.Empty) (*grpc_testdata.Empty, error) {
 	is.lastContext.Store(ctx)
 	return &grpc_testdata.Empty{}, nil
 }
 
 func (is *inspectingServer) inspect(envelope *common.Envelope) error {
-	return is.inspector(is.lastContext.Load().(context2.Context), envelope)
+	return is.inspector(is.lastContext.Load().(context.Context), envelope)
 }
 
 func newInspectingServer(addr string, inspector comm.BindingInspector) *inspectingServer {

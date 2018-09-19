@@ -8,6 +8,7 @@ package discovery
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -27,7 +28,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

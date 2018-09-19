@@ -17,6 +17,7 @@ limitations under the License.
 package channel
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +28,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 const commandDescription = "Joins the peer to a channel."

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package admin
 
 import (
+	"context"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -15,7 +16,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/net/context"
 )
 
 var logger = flogging.MustGetLogger("server")

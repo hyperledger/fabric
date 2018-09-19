@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
+	"context"
+
 	"github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/protos/peer"
-	"golang.org/x/net/context"
 )
 
 // NewFilter creates a new Filter

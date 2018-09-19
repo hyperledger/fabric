@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 type mockEndorserServer struct {
