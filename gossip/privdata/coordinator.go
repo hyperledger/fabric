@@ -120,6 +120,7 @@ type Fetcher interface {
 // Support encapsulates set of interfaces to
 // aggregate required functionality by single struct
 type Support struct {
+	ChainID string
 	privdata.CollectionStore
 	txvalidator.Validator
 	committer.Committer
@@ -156,9 +157,10 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	if block.Header == nil {
 		return errors.New("Block header is nil")
 	}
-	logger.Infof("Received block [%d]", block.Header.Number)
 
-	logger.Debugf("Validating block [%d]", block.Header.Number)
+	logger.Infof("[%s] Received block [%d] from buffer", c.ChainID, block.Header.Number)
+
+	logger.Debugf("[%s] Validating block [%d]", c.ChainID, block.Header.Number)
 	err := c.Validator.Validate(block)
 	if err != nil {
 		logger.Errorf("Validation failed: %+v", err)
@@ -185,14 +187,14 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	retryThresh := viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
 	var bFetchFromPeers bool // defaults to false
 	if len(privateInfo.missingKeys) == 0 {
-		logger.Debug("No missing collection private write sets to fetch from remote peers")
+		logger.Debugf("[%s] No missing collection private write sets to fetch from remote peers", c.ChainID)
 	} else {
 		bFetchFromPeers = true
-		logger.Debug("Could not find all collection private write sets in local peer transient store.")
-		logger.Debug("Fetching", len(privateInfo.missingKeys), "collection private write sets from remote peers for a maximum duration of", retryThresh)
+		logger.Debugf("[%s] Could not find all collection private write sets in local peer transient store for block [%d].", c.ChainID, block.Header.Number)
+		logger.Debugf("[%s] Fetching %d collection private write sets from remote peers for a maximum duration of %s", c.ChainID, len(privateInfo.missingKeys), retryThresh)
 	}
-	start := time.Now()
-	limit := start.Add(retryThresh)
+	startPull := time.Now()
+	limit := startPull.Add(retryThresh)
 	for len(privateInfo.missingKeys) > 0 && time.Now().Before(limit) {
 		c.fetchFromPeers(block.Header.Number, ownedRWsets, privateInfo)
 		// If succeeded to fetch everything, no need to sleep before
@@ -202,20 +204,22 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		}
 		time.Sleep(pullRetrySleepInterval)
 	}
+	elapsedPull := int64(time.Since(startPull) / time.Millisecond) // duration in ms
 
 	// Only log results if we actually attempted to fetch
 	if bFetchFromPeers {
 		if len(privateInfo.missingKeys) == 0 {
-			logger.Debug("Fetched all missing collection private write sets from remote peers")
+			logger.Infof("[%s] Fetched all missing collection private write sets from remote peers for block [%d] (%dms)", c.ChainID, block.Header.Number, elapsedPull)
 		} else {
-			logger.Warning("Could not fetch all missing collection private write sets from remote peers. Will commit block with missing private write sets:", privateInfo.missingKeys)
+			logger.Warningf("[%s] Could not fetch all missing collection private write sets from remote peers. Will commit block [%d] with missing private write sets:[%v]",
+				c.ChainID, block.Header.Number, privateInfo.missingKeys)
 		}
 	}
 
 	// populate the private RWSets passed to the ledger
 	for seqInBlock, nsRWS := range ownedRWsets.bySeqsInBlock() {
 		rwsets := nsRWS.toRWSet()
-		logger.Debugf("Added %d namespace private write sets for block [%d], tran [%d]", len(rwsets.NsPvtRwset), block.Header.Number, seqInBlock)
+		logger.Debugf("[%s] Added %d namespace private write sets for block [%d], tran [%d]", c.ChainID, len(rwsets.NsPvtRwset), block.Header.Number, seqInBlock)
 		blockAndPvtData.BlockPvtData[seqInBlock] = &ledger.TxPvtData{
 			SeqInBlock: seqInBlock,
 			WriteSet:   rwsets,

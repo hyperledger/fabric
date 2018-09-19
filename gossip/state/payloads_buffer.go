@@ -72,7 +72,8 @@ func (b *PayloadsBufferImpl) Ready() chan struct{} {
 
 // Push new payload into the buffer structure in case new arrived payload
 // sequence number is below the expected next block number payload will be
-// thrown away and error will be returned.
+// thrown away.
+// TODO return bool to indicate if payload was added or not, so that caller can log result.
 func (b *PayloadsBufferImpl) Push(payload *proto.Payload) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
