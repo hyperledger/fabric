@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package txvalidator
@@ -67,7 +57,7 @@ func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	theValidator := NewTxValidator(vcs)
+	theValidator := NewTxValidator("", vcs)
 
 	return theLedger, theValidator
 }
@@ -168,7 +158,7 @@ func TestInvokeBadRWSet(t *testing.T) {
 	ccID := "mycc"
 
 	tx := getEnv(ccID, []byte("barf"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -185,7 +175,7 @@ func TestInvokeNoPolicy(t *testing.T) {
 	putCCInfo(l, ccID, nil, t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -202,7 +192,7 @@ func TestInvokeOK(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -231,7 +221,7 @@ func TestInvokeOKPvtDataOnly(t *testing.T) {
 	assert.NoError(t, err)
 
 	tx := getEnv(ccID, rwsetBytes, t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
 	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
@@ -251,7 +241,7 @@ func TestInvokeOKSCC(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -268,7 +258,7 @@ func TestInvokeNOKWritesToLSCC(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "lscc"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 2}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -285,7 +275,8 @@ func TestInvokeNOKWritesToESCC(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "escc"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{}}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -302,7 +293,9 @@ func TestInvokeNOKWritesToNotExt(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "notext"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -319,7 +312,9 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -336,7 +331,9 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -353,7 +350,9 @@ func TestInvokeNOKExpiredCC(t *testing.T) {
 	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -370,7 +369,9 @@ func TestInvokeNOKBogusActions(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, []byte("barf"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -385,7 +386,9 @@ func TestInvokeNOKCCDoesntExist(t *testing.T) {
 	ccID := "mycc"
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -402,7 +405,9 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -414,7 +419,10 @@ func TestInvokeNoBlock(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 	defer l.Close()
 
-	err := v.Validate(&common.Block{Data: &common.BlockData{Data: [][]byte{}}})
+	err := v.Validate(&common.Block{
+		Data:   &common.BlockData{Data: [][]byte{}},
+		Header: &common.BlockHeader{},
+	})
 	assert.NoError(t, err)
 }
 
@@ -590,7 +598,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	validator := NewTxValidator(vcs)
+	validator := NewTxValidator("", vcs)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
@@ -601,7 +609,10 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
 	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := validator.Validate(b)
 
@@ -618,7 +629,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
-	validator := NewTxValidator(vcs)
+	validator := NewTxValidator("", vcs)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
@@ -638,7 +649,10 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
 	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	// Keep default callback
 	c := executeChaincodeProvider.getCallback()
@@ -659,7 +673,7 @@ func TestValidationResourceUpdate(t *testing.T) {
 		*mocktxvalidator.Support
 		*semaphore.Weighted
 	}{sup, semaphore.NewWeighted(10)}
-	validator := NewTxValidator(vcs)
+	validator := NewTxValidator("", vcs)
 
 	ccID := "mycc"
 	tx := getEnvWithType(ccID, createRWset(t, ccID), common.HeaderType_PEER_RESOURCE_UPDATE, t)
@@ -679,8 +693,12 @@ func TestValidationResourceUpdate(t *testing.T) {
 	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
 	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
 
-	b1 := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
-	b2 := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b1 := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
+	b2 := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	// Keep default callback
 	c := executeChaincodeProvider.getCallback()
@@ -728,7 +746,7 @@ var executeChaincodeProvider = &ccExecuteChaincode{
 
 func TestMain(m *testing.M) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
-	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{executeChaincodeProvider})
+	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{ExecuteResultProvider: executeChaincodeProvider})
 
 	msptesttools.LoadMSPSetupForTesting()
 

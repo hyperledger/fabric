@@ -382,7 +382,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		*semaphore.Weighted
 		Support
 	}{cs, validationWorkersSemaphore, GetSupport()}
-	validator := txvalidator.NewTxValidator(vcs)
+	validator := txvalidator.NewTxValidator(cid, vcs)
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {

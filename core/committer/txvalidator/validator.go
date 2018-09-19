@@ -8,6 +8,7 @@ package txvalidator
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -88,6 +89,7 @@ type vsccValidatorImpl struct {
 // reference to the ledger to enable tx simulation
 // and execution of vscc
 type txValidator struct {
+	ChainID string
 	support Support
 	vscc    vsccValidator
 }
@@ -116,9 +118,9 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(support Support) Validator {
+func NewTxValidator(chainID string, support Support) Validator {
 	// Encapsulates interface implementation
-	return &txValidator{support,
+	return &txValidator{chainID, support,
 		&vsccValidatorImpl{
 			support:     support,
 			ccprovider:  ccprovider.GetChaincodeProvider(),
@@ -154,8 +156,9 @@ func (v *txValidator) Validate(block *common.Block) error {
 	var err error
 	var errPos int
 
-	logger.Debug("START Block Validation")
-	defer logger.Debug("END Block Validation")
+	startValidation := time.Now() // timer to log Validate block duration
+	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block.Header.Number)
+
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
 	// txsChaincodeNames records all the invoked chaincodes by tx in a block
@@ -246,6 +249,9 @@ func (v *txValidator) Validate(block *common.Block) error {
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
+	elapsedValidation := time.Since(startValidation) / time.Millisecond // duration in ms
+	logger.Infof("[%s] Validated block [%d] in %dms", v.ChainID, block.Header.Number, elapsedValidation)
+
 	return nil
 }
 
@@ -294,8 +300,8 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 		// chain binding proposal to endorsements to tx holds. We do
 		// NOT check the validity of endorsements, though. That's a
 		// job for VSCC below
-		logger.Debugf("validateTx starts for block %p env %p txn %d", block, env, tIdx)
-		defer logger.Debugf("validateTx completes for block %p env %p txn %d", block, env, tIdx)
+		logger.Debugf("[%s] validateTx starts for block %p env %p txn %d", v.ChainID, block, env, tIdx)
+		defer logger.Debugf("[%s] validateTx completes for block %p env %p txn %d", v.ChainID, block, env, tIdx)
 		var payload *common.Payload
 		var err error
 		var txResult peer.TxValidationCode
@@ -824,7 +830,7 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	if err != nil {
 		msg := fmt.Sprintf("Cannot obtain context for txid=%s, err: %s", txid, err)
 		logger.Errorf(msg)
-		return &commonerrors.VSCCExecutionFailureError{msg}
+		return &commonerrors.VSCCExecutionFailureError{Reason: msg}
 	}
 	defer txsim.Done()
 
@@ -843,10 +849,10 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
 		msg := fmt.Sprintf("Invoke VSCC failed for transaction txid=%s, error: %s", txid, err)
-		return &commonerrors.VSCCExecutionFailureError{msg}
+		return &commonerrors.VSCCExecutionFailureError{Reason: msg}
 	}
 	if res.Status != shim.OK {
-		return &commonerrors.VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
+		return &commonerrors.VSCCEndorsementPolicyError{Reason: fmt.Sprintf("%s", res.Message)}
 	}
 
 	return nil
@@ -866,7 +872,7 @@ func (v *vsccValidatorImpl) getCDataForCC(chid, ccid string) (resourcesconfig.Ch
 
 	bytes, err := qe.GetState("lscc", ccid)
 	if err != nil {
-		return nil, &commonerrors.VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
+		return nil, &commonerrors.VSCCInfoLookupFailureError{Reason: fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
 	}
 
 	if bytes == nil {
