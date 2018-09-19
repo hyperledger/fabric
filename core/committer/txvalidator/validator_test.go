@@ -111,7 +111,7 @@ func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockAp
 	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(factory)
 	factory.On("New").Return(plugin)
 
-	theValidator := txvalidator.NewTxValidator(vcs, mp, pm)
+	theValidator := txvalidator.NewTxValidator("", vcs, mp, pm)
 
 	return theLedger, theValidator
 }
@@ -333,7 +333,10 @@ func TestInvokeNoRWSet(t *testing.T) {
 		putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 		tx := getEnv(ccID, nil, createRWset(t), t)
-		b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+		b := &common.Block{
+			Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+			Header: &common.BlockHeader{},
+		}
 
 		err := v.Validate(b)
 		assert.NoError(t, err)
@@ -764,7 +767,10 @@ func testInvokeNOKWritesToESCC(t *testing.T, l ledger.PeerLedger, v txvalidator.
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID, "escc"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -795,7 +801,10 @@ func testInvokeNOKWritesToNotExt(t *testing.T, l ledger.PeerLedger, v txvalidato
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID, "notext"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -826,7 +835,10 @@ func testInvokeNOKInvokesNotExt(t *testing.T, l ledger.PeerLedger, v txvalidator
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -857,7 +869,10 @@ func testInvokeNOKInvokesEmptyCCName(t *testing.T, l ledger.PeerLedger, v txvali
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -888,7 +903,10 @@ func testInvokeNOKExpiredCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Val
 	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -919,7 +937,10 @@ func testInvokeNOKBogusActions(t *testing.T, l ledger.PeerLedger, v txvalidator.
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, []byte("barf"), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -948,7 +969,10 @@ func testInvokeNOKCCDoesntExist(t *testing.T, l ledger.PeerLedger, v txvalidator
 	ccID := "mycc"
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -979,7 +1003,10 @@ func testInvokeNOKVSCCUnspecified(t *testing.T, l ledger.PeerLedger, v txvalidat
 	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := v.Validate(b)
 	assert.NoError(t, err)
@@ -1005,7 +1032,10 @@ func TestInvokeNoBlock(t *testing.T) {
 }
 
 func testInvokeNoBlock(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
-	err := v.Validate(&common.Block{Data: &common.BlockData{Data: [][]byte{}}})
+	err := v.Validate(&common.Block{
+		Data:   &common.BlockData{Data: [][]byte{}},
+		Header: &common.BlockHeader{},
+	})
 	assert.NoError(t, err)
 }
 
@@ -1292,14 +1322,17 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	}{support, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 
-	v := txvalidator.NewTxValidator(vcs, mp, pm)
+	v := txvalidator.NewTxValidator("", vcs, mp, pm)
 
 	ccID := "mycc"
 
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	// Perform a validation of a block
 	err := v.Validate(b)
@@ -1337,7 +1370,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.PluginMapper{}
-	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+	validator := txvalidator.NewTxValidator("", vcs, mp, pm)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1348,7 +1381,10 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
 	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := validator.Validate(b)
 
@@ -1367,14 +1403,17 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.PluginMapper{}
-	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+	validator := txvalidator.NewTxValidator("", vcs, mp, pm)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
 	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Unable to connect to DB"))
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := validator.Validate(b)
 
@@ -1391,14 +1430,17 @@ func TestDuplicateTxId(t *testing.T) {
 	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
 	pm := &mocks.PluginMapper{}
-	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+	validator := txvalidator.NewTxValidator("", vcs, mp, pm)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
 	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	err := validator.Validate(b)
 
@@ -1426,7 +1468,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("invalid tx"))
 	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(factory)
-	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+	validator := txvalidator.NewTxValidator("", vcs, mp, pm)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1446,7 +1488,10 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
 	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	// Keep default callback
 	err := validator.Validate(b)
@@ -1484,7 +1529,10 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	putCCInfo(l, ccID, signedByAnyMember([]string{"SampleOrg"}), t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&validation.ExecutionFailureError{
 		Reason: "I/O error",
@@ -1504,12 +1552,15 @@ func TestValidationPluginNotFound(t *testing.T) {
 		*semaphore.Weighted
 	}{&mocktxvalidator.Support{LedgerVal: l, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
 
 	pm := &mocks.PluginMapper{}
 	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(nil)
 	mp := (&scc.MocksccProviderFactory{}).NewSystemChaincodeProvider()
-	validator := txvalidator.NewTxValidator(vcs, mp, pm)
+	validator := txvalidator.NewTxValidator("", vcs, mp, pm)
 	err := validator.Validate(b)
 	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
 	assert.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")

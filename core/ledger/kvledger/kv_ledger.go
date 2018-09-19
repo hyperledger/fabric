@@ -9,6 +9,7 @@ package kvledger
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -255,33 +256,45 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 	block := pvtdataAndBlock.Block
 	blockNo := pvtdataAndBlock.Block.Header.Number
 
-	logger.Debugf("Channel [%s]: Validating state for block [%d]", l.ledgerID, blockNo)
+	startStateValidation := time.Now()
+	logger.Debugf("[%s] Validating state for block [%d]", l.ledgerID, blockNo)
 	err = l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
 	if err != nil {
 		return err
 	}
+	elapsedStateValidation := time.Since(startStateValidation) / time.Millisecond // duration in ms
 
-	logger.Debugf("Channel [%s]: Committing block [%d] to storage", l.ledgerID, blockNo)
-
+	startCommitBlockStorage := time.Now()
+	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
 	defer l.blockAPIsRWLock.Unlock()
 	if err = l.blockStore.CommitWithPvtData(pvtdataAndBlock); err != nil {
 		return err
 	}
-	logger.Infof("Channel [%s]: Committed block [%d] with %d transaction(s)", l.ledgerID, block.Header.Number, len(block.Data.Data))
+	elapsedCommitBlockStorage := time.Since(startCommitBlockStorage) / time.Millisecond // duration in ms
 
-	logger.Debugf("Channel [%s]: Committing block [%d] transactions to state database", l.ledgerID, blockNo)
+	startCommitState := time.Now()
+	logger.Debugf("[%s] Committing block [%d] transactions to state database", l.ledgerID, blockNo)
 	if err = l.txtmgmt.Commit(); err != nil {
 		panic(errors.WithMessage(err, "error during commit to txmgr"))
 	}
+	elapsedCommitState := time.Since(startCommitState) / time.Millisecond // duration in ms
 
-	// History database could be written in parallel with state and/or async as a future optimization
+	// History database could be written in parallel with state and/or async as a future optimization,
+	// although it has not been a bottleneck...no need to clutter the log with elapsed duration.
 	if ledgerconfig.IsHistoryDBEnabled() {
-		logger.Debugf("Channel [%s]: Committing block [%d] transactions to history database", l.ledgerID, blockNo)
+		logger.Debugf("[%s] Committing block [%d] transactions to history database", l.ledgerID, blockNo)
 		if err := l.historyDB.Commit(block); err != nil {
 			panic(errors.WithMessage(err, "Error during commit to history db"))
 		}
 	}
+
+	elapsedCommitWithPvtData := time.Since(startStateValidation) / time.Millisecond // total duration in ms
+
+	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_commit=%dms state_commit=%dms)",
+		l.ledgerID, block.Header.Number, len(block.Data.Data), elapsedCommitWithPvtData,
+		elapsedStateValidation, elapsedCommitBlockStorage, elapsedCommitState)
+
 	return nil
 }
 
