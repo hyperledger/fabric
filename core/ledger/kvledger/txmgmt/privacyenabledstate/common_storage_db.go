@@ -15,13 +15,13 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/hyperledger/fabric/protos/common"
-
+	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
 
@@ -36,10 +36,11 @@ const (
 // CommonStorageDBProvider implements interface DBProvider
 type CommonStorageDBProvider struct {
 	statedb.VersionedDBProvider
+	bookkeepingProvider bookkeeping.Provider
 }
 
 // NewCommonStorageDBProvider constructs an instance of DBProvider
-func NewCommonStorageDBProvider() (DBProvider, error) {
+func NewCommonStorageDBProvider(bookkeeperProvider bookkeeping.Provider) (DBProvider, error) {
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
 	if ledgerconfig.IsCouchDBEnabled() {
@@ -49,7 +50,7 @@ func NewCommonStorageDBProvider() (DBProvider, error) {
 	} else {
 		vdbProvider = stateleveldb.NewVersionedDBProvider()
 	}
-	return &CommonStorageDBProvider{vdbProvider}, nil
+	return &CommonStorageDBProvider{vdbProvider, bookkeeperProvider}, nil
 }
 
 // GetDBHandle implements function from interface DBProvider
@@ -58,7 +59,9 @@ func (p *CommonStorageDBProvider) GetDBHandle(id string) (DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewCommonStorageDB(vdb, id)
+	bookkeeper := p.bookkeepingProvider.GetDBHandle(id, bookkeeping.MetadataPresenceIndicator)
+	metadataHint := newMetadataHint(bookkeeper)
+	return NewCommonStorageDB(vdb, id, metadataHint)
 }
 
 // Close implements function from interface DBProvider
@@ -70,12 +73,13 @@ func (p *CommonStorageDBProvider) Close() {
 // both the public and private data
 type CommonStorageDB struct {
 	statedb.VersionedDB
+	metadataHint *metadataHint
 }
 
 // NewCommonStorageDB wraps a VersionedDB instance. The public data is managed directly by the wrapped versionedDB.
 // For managing the hashed data and private data, this implementation creates separate namespaces in the wrapped db
-func NewCommonStorageDB(vdb statedb.VersionedDB, ledgerid string) (DB, error) {
-	return &CommonStorageDB{VersionedDB: vdb}, nil
+func NewCommonStorageDB(vdb statedb.VersionedDB, ledgerid string, metadataHint *metadataHint) (DB, error) {
+	return &CommonStorageDB{vdb, metadataHint}, nil
 }
 
 // IsBulkOptimizable implements corresponding function in interface DB
@@ -197,7 +201,37 @@ func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height 
 	combinedUpdates := updates.PubUpdates
 	addPvtUpdates(combinedUpdates, updates.PvtUpdates)
 	addHashedUpdates(combinedUpdates, updates.HashUpdates, !s.BytesKeySuppoted())
+	s.metadataHint.setMetadataUsedFlag(updates)
 	return s.VersionedDB.ApplyUpdates(combinedUpdates.UpdateBatch, height)
+}
+
+// GetStateMetadata implements corresponding function in interface DB. This implementation provides
+// an optimization such that it keeps track if a namespaces has never stored metadata for any of
+// its items, the value 'nil' is returned without going to the db. This is intented to be invoked
+// in the validation and commit path. This saves the chaincodes from paying unnecessary performance
+// penality if they do not use features that leverage metadata (such as key-level endorsement),
+func (s *CommonStorageDB) GetStateMetadata(namespace, key string) ([]byte, error) {
+	if !s.metadataHint.metadataEverUsedFor(namespace) {
+		return nil, nil
+	}
+	vv, err := s.GetState(namespace, key)
+	if err != nil || vv == nil {
+		return nil, err
+	}
+	return vv.Metadata, nil
+}
+
+// GetPrivateDataMetadataByHash implements corresponding function in interface DB. For additional details, see
+// decription of the similar function 'GetStateMetadata'
+func (s *CommonStorageDB) GetPrivateDataMetadataByHash(namespace, collection string, keyHash []byte) ([]byte, error) {
+	if !s.metadataHint.metadataEverUsedFor(namespace) {
+		return nil, nil
+	}
+	vv, err := s.GetValueHash(namespace, collection, keyHash)
+	if err != nil || vv == nil {
+		return nil, err
+	}
+	return vv.Metadata, nil
 }
 
 func (s *CommonStorageDB) getCollectionConfigMap(chaincodeDefinition *cceventmgmt.ChaincodeDefinition) (map[string]bool, error) {
@@ -254,17 +288,14 @@ func (s *CommonStorageDB) getCollectionConfigMap(chaincodeDefinition *cceventmgm
 // is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries
 // may be affected, until a new chaincode with fixed indexes is installed and instantiated
 func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
-
 	//Check to see if the interface for IndexCapable is implemented
 	indexCapable, ok := s.VersionedDB.(statedb.IndexCapable)
 	if !ok {
 		return nil
 	}
-
 	if chaincodeDefinition == nil {
 		return errors.New("chaincode definition not found while creating couchdb index")
 	}
-
 	dbArtifacts, err := ccprovider.ExtractFileEntries(dbArtifactsTar, indexCapable.GetDBType())
 	if err != nil {
 		logger.Errorf("Index creation: error extracting db artifacts from tar for chaincode [%s]: %s", chaincodeDefinition.Name, err)
@@ -296,7 +327,6 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 			if !ok {
 				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]", chaincodeDefinition.Name, collectionName)
 			} else {
-
 				err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
 					archiveDirectoryEntries)
 				if err != nil {

@@ -8,6 +8,7 @@ package lockbasedtxmgr
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -222,6 +223,61 @@ func (h *queryHelper) executeQueryOnPrivateData(namespace, collection, query str
 		return nil, err
 	}
 	return &pvtdataResultsItr{namespace, collection, dbItr}, nil
+}
+
+func (h *queryHelper) getStateMetadata(ns string, key string) (map[string][]byte, error) {
+	if err := h.checkDone(); err != nil {
+		return nil, err
+	}
+	var metadataBytes []byte
+	var err error
+	if h.rwsetBuilder == nil {
+		// reads versions are not getting recorded, retrieve metadata value via optimized path
+		if metadataBytes, err = h.txmgr.db.GetStateMetadata(ns, key); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, metadataBytes, err = h.getState(ns, key); err != nil {
+			return nil, err
+		}
+	}
+	return storageutil.DeserializeMetadata(metadataBytes)
+}
+
+func (h *queryHelper) getPrivateDataMetadata(ns, coll, key string) (map[string][]byte, error) {
+	if h.rwsetBuilder == nil {
+		// reads versions are not getting recorded, retrieve metadata value via optimized path
+		return h.getPrivateDataMetadataByHash(ns, coll, util.ComputeStringHash(key))
+	}
+	if err := h.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
+	if err := h.checkDone(); err != nil {
+		return nil, err
+	}
+	_, metadataBytes, err := h.getPrivateDataValueHash(ns, coll, key)
+	if err != nil {
+		return nil, err
+	}
+	return storageutil.DeserializeMetadata(metadataBytes)
+}
+
+func (h *queryHelper) getPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
+	if err := h.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
+	if err := h.checkDone(); err != nil {
+		return nil, err
+	}
+	if h.rwsetBuilder != nil {
+		// this requires to improve rwset builder to accept a keyhash
+		return nil, errors.New("retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
+	}
+	metadataBytes, err := h.txmgr.db.GetPrivateDataMetadataByHash(ns, coll, keyhash)
+	if err != nil {
+		return nil, err
+	}
+	return storageutil.DeserializeMetadata(metadataBytes)
 }
 
 func (h *queryHelper) done() {

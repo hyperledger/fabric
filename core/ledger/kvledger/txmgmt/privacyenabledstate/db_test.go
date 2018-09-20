@@ -542,9 +542,52 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 
 }
 
+func TestMetadataRetrieval(t *testing.T) {
+	for _, env := range testEnvs {
+		t.Run(env.GetName(), func(t *testing.T) {
+			testMetadataRetrieval(t, env)
+		})
+	}
+}
+
+func testMetadataRetrieval(t *testing.T, env TestEnv) {
+	env.Init(t)
+	defer env.Cleanup()
+	db := env.GetDBHandle("test-ledger-id")
+
+	updates := NewUpdateBatch()
+	updates.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata1"), version.NewHeight(1, 1))
+	updates.PubUpdates.PutValAndMetadata("ns1", "key2", []byte("value2"), nil, version.NewHeight(1, 2))
+	updates.PubUpdates.PutValAndMetadata("ns2", "key3", []byte("value3"), nil, version.NewHeight(1, 3))
+
+	putPvtUpdatesWithMetadata(t, updates, "ns1", "coll1", "key1", []byte("pvt_value1"), []byte("metadata1"), version.NewHeight(1, 4))
+	putPvtUpdatesWithMetadata(t, updates, "ns1", "coll1", "key2", []byte("pvt_value2"), nil, version.NewHeight(1, 5))
+	putPvtUpdatesWithMetadata(t, updates, "ns2", "coll1", "key3", []byte("pvt_value3"), nil, version.NewHeight(1, 6))
+	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 6))
+
+	vm, _ := db.GetStateMetadata("ns1", "key1")
+	assert.Equal(t, vm, []byte("metadata1"))
+	vm, _ = db.GetStateMetadata("ns1", "key2")
+	assert.Nil(t, vm)
+	vm, _ = db.GetStateMetadata("ns2", "key3")
+	assert.Nil(t, vm)
+
+	vm, _ = db.GetPrivateDataMetadataByHash("ns1", "coll1", util.ComputeStringHash("key1"))
+	assert.Equal(t, vm, []byte("metadata1"))
+	vm, _ = db.GetPrivateDataMetadataByHash("ns1", "coll1", util.ComputeStringHash("key2"))
+	assert.Nil(t, vm)
+	vm, _ = db.GetPrivateDataMetadataByHash("ns2", "coll1", util.ComputeStringHash("key3"))
+	assert.Nil(t, vm)
+}
+
 func putPvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), ver)
+}
+
+func putPvtUpdatesWithMetadata(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, metadata []byte, ver *version.Height) {
+	updates.PvtUpdates.Put(ns, coll, key, value, ver)
+	updates.HashUpdates.PutValHashAndMetadata(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), metadata, ver)
 }
 
 func deletePvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, ver *version.Height) {

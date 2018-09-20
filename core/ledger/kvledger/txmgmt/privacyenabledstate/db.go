@@ -35,6 +35,8 @@ type DB interface {
 	GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error)
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error)
 	GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (statedb.ResultsIterator, error)
+	GetStateMetadata(namespace, key string) ([]byte, error)
+	GetPrivateDataMetadataByHash(namespace, collection string, keyHash []byte) ([]byte, error)
 	ExecuteQueryOnPrivateData(namespace, collection, query string) (statedb.ResultsIterator, error)
 	ApplyPrivacyAwareUpdates(updates *UpdateBatch, height *version.Height) error
 }

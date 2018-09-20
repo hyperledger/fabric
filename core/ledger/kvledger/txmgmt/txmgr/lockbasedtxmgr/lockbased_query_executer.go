@@ -8,7 +8,6 @@ package lockbasedtxmgr
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
 )
 
 // LockBasedQueryExecutor is a query executor used in `LockBasedTxMgr`
@@ -31,15 +30,7 @@ func (q *lockBasedQueryExecutor) GetState(ns string, key string) (val []byte, er
 
 // GetStateMetadata implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetStateMetadata(namespace, key string) (map[string][]byte, error) {
-	_, metadataBytes, err := q.helper.getState(namespace, key)
-	if err != nil {
-		return nil, err
-	}
-	metadata, err := storageutil.DeserializeMetadata(metadataBytes)
-	if err != nil {
-		return nil, err
-	}
-	return metadata, err
+	return q.helper.getStateMetadata(namespace, key)
 }
 
 // GetStateMultipleKeys implements method in interface `ledger.QueryExecutor`
@@ -81,15 +72,11 @@ func (q *lockBasedQueryExecutor) GetPrivateData(namespace, collection, key strin
 
 // GetPrivateDataMetadata implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error) {
-	_, metadataBytes, err := q.helper.getPrivateDataValueHash(namespace, collection, key)
-	if err != nil {
-		return nil, err
-	}
-	metadata, err := storageutil.DeserializeMetadata(metadataBytes)
-	if err != nil {
-		return nil, err
-	}
-	return metadata, err
+	return q.helper.getPrivateDataMetadata(namespace, collection, key)
+}
+
+func (q *lockBasedQueryExecutor) GetPrivateDataMetadataByHash(namespace, collection string, keyhash []byte) (map[string][]byte, error) {
+	return q.helper.getPrivateDataMetadataByHash(namespace, collection, keyhash)
 }
 
 // GetPrivateDataMultipleKeys implements method in interface `ledger.QueryExecutor`
