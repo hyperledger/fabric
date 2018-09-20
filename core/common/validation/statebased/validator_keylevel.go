@@ -12,6 +12,7 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -59,9 +60,29 @@ func (p *policyChecker) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 	// see if there is a key-level validation parameter for this key
 	vp, err := p.vpmgr.GetValidationParameterForKey(cc, coll, key, blockNum, txNum)
 	if err != nil {
-		switch err := err.(type) {
+		// error handling for GetValidationParameterForKey follows this rationale:
+		switch err := errors.Cause(err).(type) {
+		// 1) if there is a conflict because validation params have been updated
+		//    by another transaction in this block, we will get ValidationParameterUpdatedError.
+		//    This should lead to invalidating the transaction by calling policyErr
 		case *ValidationParameterUpdatedError:
 			return policyErr(err)
+		// 2) if the ledger returns "determinstic" errors, that is, errors that
+		//    every peer in the channel will also return (such as errors linked to
+		//    an attempt to retrieve metadata from a non-defined collection) should be
+		//    logged and ignored. The ledger will take the most appropriate action
+		//    when performing its side of the validation.
+		case *ledger.CollConfigNotDefinedError, *ledger.InvalidCollNameError:
+			logger.Warningf(errors.WithMessage(err, "skipping key-level validation").Error())
+			err = nil
+		// 3) any other type of error should return an execution failure which will
+		//    lead to halting the processing on this channel. Note that any non-categorized
+		//    deterministic error would be caught by the default and would lead to
+		//    a processing halt. This would certainly be a bug, but - in the absence of a
+		//    single, well-defined deterministic error returned by the ledger, it is
+		//    best to err on the side of caution and rather halt processing (because a
+		//    deterministic error is treated like an I/O one) rather than risking a fork
+		//    (in case an I/O error is treated as a deterministic one).
 		default:
 			return &commonerrors.VSCCExecutionFailureError{
 				Err: err,
