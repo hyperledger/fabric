@@ -597,7 +597,7 @@ func TestInvoke(t *testing.T) {
 			DoneFunc:  errorFunc,
 			ErrorFunc: nil,
 			Responses: []*mockpeer.MockResponse{
-				{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
+				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
 			},
 		}
 		peerSide.SetResponses(respSet)
@@ -619,9 +619,9 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -637,11 +637,11 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -658,10 +658,10 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3a", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3a", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -678,8 +678,8 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3b", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3b", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3b", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3b", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3b", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3b", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -696,8 +696,8 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "4", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "4", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -714,8 +714,8 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "4a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4a", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "4a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4a", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -732,7 +732,7 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -760,10 +760,10 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "6", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "6", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -782,8 +782,8 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "6a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6a", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "6a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6a", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -802,10 +802,10 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6b", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6b", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6b", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6b", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6b", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6b", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6b", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6b", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6b", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6b", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6b", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6b", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6b", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6b", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -824,10 +824,10 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6c", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6c", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6c", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6c", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6c", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6c", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6c", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6c", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6c", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6c", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -851,10 +851,10 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payload, Txid: "7", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "7", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "7", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "7", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "7", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payload, Txid: "7", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "7", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "7", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "7", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "7", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -873,8 +873,8 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "7a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7a", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "7a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7a", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -902,10 +902,10 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: getQRRespPayload, Txid: "8", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "8", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "8", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "8", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "8", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: getQRRespPayload, Txid: "8", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "8", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "8", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "8", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "8", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -923,8 +923,8 @@ func TestInvoke(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8a", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: nil, Txid: "8a", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8a", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8a", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: nil, Txid: "8a", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8a", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -961,7 +961,7 @@ func TestSetKeyEP(t *testing.T) {
 			DoneFunc:  errorFunc,
 			ErrorFunc: nil,
 			Responses: []*mockpeer.MockResponse{
-				{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
+				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
 			},
 		}
 		peerSide.SetResponses(respSet)
@@ -983,9 +983,9 @@ func TestSetKeyEP(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelID}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelID}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelID}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelID}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelID}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelID}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -1000,8 +1000,8 @@ func TestSetKeyEP(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE_METADATA, Txid: "4", ChannelId: channelID}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: nil, Txid: "4", ChannelId: channelID}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelID}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE_METADATA, Txid: "4", ChannelId: channelID}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: nil, Txid: "4", ChannelId: channelID}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelID}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -1019,8 +1019,8 @@ func TestSetKeyEP(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_METADATA, Txid: "5", ChannelId: channelID}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("epA"), Txid: "5", ChannelId: channelID}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5", ChannelId: channelID}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_METADATA, Txid: "5", ChannelId: channelID}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("epA"), Txid: "5", ChannelId: channelID}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5", ChannelId: channelID}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -1057,7 +1057,7 @@ func TestStartInProc(t *testing.T) {
 			DoneFunc:  doneFunc,
 			ErrorFunc: nil,
 			Responses: []*mockpeer.MockResponse{
-				{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
+				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
 			},
 		}
 		peerSide.SetResponses(respSet)
@@ -1101,7 +1101,7 @@ func TestCC2CC(t *testing.T) {
 			DoneFunc:  errorFunc,
 			ErrorFunc: nil,
 			Responses: []*mockpeer.MockResponse{
-				{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
+				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}},
 			},
 		}
 		peerSide.SetResponses(respSet)
@@ -1123,9 +1123,9 @@ func TestCC2CC(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -1143,8 +1143,8 @@ func TestCC2CC(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "3", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: cc2ccresp, Txid: "3", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "3", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: cc2ccresp, Txid: "3", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)
@@ -1161,8 +1161,8 @@ func TestCC2CC(t *testing.T) {
 		DoneFunc:  errorFunc,
 		ErrorFunc: errorFunc,
 		Responses: []*mockpeer.MockResponse{
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "4", ChannelId: channelId}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: cc2ccresp, Txid: "4", ChannelId: channelId}},
-			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelId}, nil},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "4", ChannelId: channelId}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: cc2ccresp, Txid: "4", ChannelId: channelId}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4", ChannelId: channelId}, RespMsg: nil},
 		},
 	}
 	peerSide.SetResponses(respSet)

@@ -363,10 +363,10 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	//Create a tar file for test with 4 index definitions and 2 side dbs
 	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
 		[]*testutil.TarFileEntry{
-			{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", `{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`},
-			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
-			{"META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json", `{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`},
-			{"META-INF/statedb/couchdb/collections/collectionMarblesPrivateDetails/indexes/indexCollPrivDetails.json", `{"index":{"fields":["docType","price"]},"ddoc":"indexPrivateDetails", "name":"indexPrivateDetails","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/indexes/indexColorSortName.json", Body: `{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json", Body: `{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/collectionMarblesPrivateDetails/indexes/indexCollPrivDetails.json", Body: `{"index":{"fields":["docType","price"]},"ddoc":"indexPrivateDetails", "name":"indexPrivateDetails","type":"json"}`},
 		},
 	)
 
@@ -437,8 +437,8 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
 	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
 		[]*testutil.TarFileEntry{
-			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
-			{"META-INF/statedb/couchdb/indexes/badSyntax.json", badSyntaxFileContent},
+			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/indexes/badSyntax.json", Body: badSyntaxFileContent},
 		},
 	)
 
@@ -581,7 +581,7 @@ func TestPaginatedQuery(t *testing.T) {
 	// Create a tar file for test with an index for size
 	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
 		[]*testutil.TarFileEntry{
-			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
 		},
 	)
 
