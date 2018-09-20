@@ -87,7 +87,7 @@ Smart contract chaincode must be [installed](../glossary.html#install) and [inst
 
 ## Growing the network
 
-While there no theoretical limit to how big a network can get, as the network grows it is important to consider design choices that will help optimize network throughput, stability, and resilience.  Evaluations of network policies and implementation of [gossip protocol](../gossip.html#gossip-protocol) to accommodate a large number of peer nodes are potential considerations.
+While there is no theoretical limit to how big a network can get, as the network grows it is important to consider design choices that will help optimize network throughput, stability, and resilience.  Evaluations of network policies and implementation of [gossip protocol](../gossip.html#gossip-protocol) to accommodate a large number of peer nodes are potential considerations.
 
 ![network.grow](./network.diagram.7.png)
 
