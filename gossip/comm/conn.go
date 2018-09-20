@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -16,7 +17,6 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

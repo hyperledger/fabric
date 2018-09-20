@@ -16,7 +16,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	context2 "golang.org/x/net/context"
 )
 
 func init() {
@@ -27,7 +26,7 @@ type mockValidator struct {
 	mock.Mock
 }
 
-func (v *mockValidator) validate(ctx context2.Context, env *common.Envelope) (*pb.AdminOperation, error) {
+func (v *mockValidator) validate(ctx context.Context, env *common.Envelope) (*pb.AdminOperation, error) {
 	args := v.Called()
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

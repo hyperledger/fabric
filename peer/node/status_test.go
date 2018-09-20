@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -31,7 +32,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 type testServiceServer struct{}

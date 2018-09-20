@@ -10,13 +10,12 @@ SPDX-License-Identifier: Apache-2.0
 package library
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/api"

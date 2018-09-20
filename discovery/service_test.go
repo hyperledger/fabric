@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -21,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"golang.org/x/net/context"
 )
 
 func TestConfig(t *testing.T) {

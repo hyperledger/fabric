@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -30,7 +31,6 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

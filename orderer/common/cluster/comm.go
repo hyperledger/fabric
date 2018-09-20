@@ -8,6 +8,7 @@ package cluster
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 const (

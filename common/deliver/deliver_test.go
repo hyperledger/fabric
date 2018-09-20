@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package deliver_test
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -20,7 +21,6 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -26,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Support provides all of the needed to evaluate the VSCC

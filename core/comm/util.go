@@ -8,13 +8,13 @@ package comm
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )

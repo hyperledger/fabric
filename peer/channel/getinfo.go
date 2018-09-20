@@ -7,11 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"fmt"
-
-	"github.com/pkg/errors"
-
+	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/scc/qscc"
@@ -19,8 +17,8 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 func getinfoCmd(cf *ChannelCmdFactory) *cobra.Command {

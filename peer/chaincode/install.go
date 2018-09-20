@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
