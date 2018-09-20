@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -152,19 +153,19 @@ func TestUtilityFunctions(t *testing.T) {
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// BytesKeySuppoted should be false for CouchDB
 	byteKeySupported := db.BytesKeySuppoted()
-	testutil.AssertEquals(t, byteKeySupported, false)
+	assert.False(t, byteKeySupported)
 
 	// ValidateKeyValue should return nil for a valid key and value
 	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	// ValidateKey should return an error for an invalid key
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
-	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
+	assert.Error(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
 
 	reservedFields := []string{"~version", "_id", "_test"}
 
@@ -173,7 +174,7 @@ func TestUtilityFunctions(t *testing.T) {
 	for _, reservedField := range reservedFields {
 		testVal := fmt.Sprintf(`{"%s":"dummyVal"}`, reservedField)
 		err = db.ValidateKeyValue("testKey", []byte(testVal))
-		testutil.AssertError(t, err, fmt.Sprintf(
+		assert.Error(t, err, fmt.Sprintf(
 			"ValidateKey should have thrown an error for a json value %s, as contains one of the reserved fields", testVal))
 	}
 
@@ -182,13 +183,13 @@ func TestUtilityFunctions(t *testing.T) {
 	for _, reservedField := range reservedFields {
 		testVal := fmt.Sprintf(`{"data.%s":"dummyVal"}`, reservedField)
 		err = db.ValidateKeyValue("testKey", []byte(testVal))
-		testutil.AssertNoError(t, err, fmt.Sprintf(
+		assert.NoError(t, err, fmt.Sprintf(
 			"ValidateKey should not have thrown an error the json value %s since the reserved field was not at the top level", testVal))
 	}
 
 	// ValidateKeyValue should return an error for a key that begins with an underscore
 	err = db.ValidateKeyValue("_testKey", []byte("testValue"))
-	testutil.AssertError(t, err, "ValidateKey should have thrown an error for a key that begins with an underscore")
+	assert.Error(t, err, "ValidateKey should have thrown an error for a key that begins with an underscore")
 
 }
 
@@ -199,7 +200,7 @@ func TestInvalidJSONFields(t *testing.T) {
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testinvalidfields")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	db.Open()
 	defer db.Close()
@@ -210,7 +211,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint := version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field _id should have thrown an error")
+	assert.Error(t, err, "Invalid field _id should have thrown an error")
 
 	batch = statedb.NewUpdateBatch()
 	jsonValue1 = `{"_rev":"rev1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
@@ -218,7 +219,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint = version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field _rev should have thrown an error")
+	assert.Error(t, err, "Invalid field _rev should have thrown an error")
 
 	batch = statedb.NewUpdateBatch()
 	jsonValue1 = `{"_deleted":"true","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
@@ -226,7 +227,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint = version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field _deleted should have thrown an error")
+	assert.Error(t, err, "Invalid field _deleted should have thrown an error")
 
 	batch = statedb.NewUpdateBatch()
 	jsonValue1 = `{"~version":"v1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
@@ -234,7 +235,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint = version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field ~version should have thrown an error")
+	assert.Error(t, err, "Invalid field ~version should have thrown an error")
 }
 
 func TestDebugFunctions(t *testing.T) {
@@ -247,7 +248,7 @@ func TestDebugFunctions(t *testing.T) {
 	loadKeys = append(loadKeys, &compositeKey)
 	compositeKey = statedb.CompositeKey{Namespace: "ns", Key: "key4"}
 	loadKeys = append(loadKeys, &compositeKey)
-	testutil.AssertEquals(t, printCompositeKeys(loadKeys), "[ns,key4],[ns,key4]")
+	assert.Equal(t, "[ns,key4],[ns,key4]", printCompositeKeys(loadKeys))
 
 }
 
@@ -257,7 +258,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testinit")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
@@ -314,13 +315,13 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	queryString := `{"selector":{"owner":"fred"}}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Create a query with a sort
 	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
+	assert.Error(t, err, "Error should have been thrown for a missing index")
 
 	indexCapable, ok := db.(statedb.IndexCapable)
 
@@ -329,7 +330,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	}
 
 	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
-	testutil.AssertNoError(t, errExtract, "")
+	assert.NoError(t, errExtract)
 
 	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
 	//Sleep to allow time for index creation
@@ -339,24 +340,24 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 
 	//Query should complete without error
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Query namespace "ns2", index is only created in "ns1".  This should return an error.
 	_, err = db.ExecuteQuery("ns2", queryString)
-	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
+	assert.Error(t, err, "Error should have been thrown for a missing index")
 
 }
 
 func TestTryCastingToJSON(t *testing.T) {
 	sampleJSON := []byte(`{"a":"A", "b":"B"}`)
 	isJSON, jsonVal := tryCastingToJSON(sampleJSON)
-	testutil.AssertEquals(t, isJSON, true)
-	testutil.AssertEquals(t, jsonVal["a"], "A")
-	testutil.AssertEquals(t, jsonVal["b"], "B")
+	assert.True(t, isJSON)
+	assert.Equal(t, "A", jsonVal["a"])
+	assert.Equal(t, "B", jsonVal["b"])
 
 	sampleNonJSON := []byte(`This is not a json`)
 	isJSON, jsonVal = tryCastingToJSON(sampleNonJSON)
-	testutil.AssertEquals(t, isJSON, false)
+	assert.False(t, isJSON)
 }
 
 func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
@@ -364,7 +365,7 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle(channelName)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
 
@@ -387,7 +388,7 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	}
 
 	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
-	testutil.AssertNoError(t, errExtract, "")
+	assert.NoError(t, errExtract)
 
 	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
 
@@ -395,7 +396,7 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	//Query should complete without error
 	_, err = db.ExecuteQuery("ns1", `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 }
 
 func TestIsBulkOptimizable(t *testing.T) {
@@ -422,7 +423,7 @@ func TestPaginatedQuery(t *testing.T) {
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testpaginatedquery")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
 
@@ -525,7 +526,7 @@ func TestPaginatedQuery(t *testing.T) {
 	queryString := `{"selector":{"color":"red"}}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// Create a query with a sort
 	queryString = `{"selector":{"color":"red"}, "sort": [{"size": "asc"}]}`
@@ -537,7 +538,7 @@ func TestPaginatedQuery(t *testing.T) {
 	}
 
 	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
-	testutil.AssertNoError(t, errExtract, "")
+	assert.NoError(t, errExtract)
 
 	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
 	// Sleep to allow time for index creation
@@ -547,20 +548,20 @@ func TestPaginatedQuery(t *testing.T) {
 
 	// Query should complete without error
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// Test explicit paging
 	// Execute 3 page queries, there are 28 records with color red, use page size 10
 	returnKeys := []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
 	bookmark, err := executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	returnKeys = []string{"key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29"}
 	bookmark, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	returnKeys = []string{"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
 	_, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// Test explicit paging
 	// Increase pagesize to 50,  should return all values
@@ -568,7 +569,7 @@ func TestPaginatedQuery(t *testing.T) {
 		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
 		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(50), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Set queryLimit to 50
 	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 50)
@@ -577,13 +578,13 @@ func TestPaginatedQuery(t *testing.T) {
 	// Pagesize is 10, so all 28 records should be return in 3 "pages"
 	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
 	bookmark, err = executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	returnKeys = []string{"key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29"}
 	bookmark, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	returnKeys = []string{"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
 	_, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// Set queryLimit to 10
 	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 10)
@@ -593,7 +594,7 @@ func TestPaginatedQuery(t *testing.T) {
 		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
 		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(0), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Set queryLimit to 5
 	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 5)
@@ -601,7 +602,7 @@ func TestPaginatedQuery(t *testing.T) {
 	// pagesize greater than querysize will execute with implicit paging
 	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// Set queryLimit to 1000
 	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 1000)
@@ -651,41 +652,40 @@ func TestPaginatedQueryValidation(t *testing.T) {
 	queryOptions["limit"] = int32(10)
 
 	err := validateQueryMetadata(queryOptions)
-	testutil.AssertNoError(t, err, "An error was thrown for a valid options")
-
+	assert.NoError(t, err, "An error was thrown for a valid options")
 	queryOptions = make(map[string]interface{})
 	queryOptions["bookmark"] = "Test1"
 	queryOptions["limit"] = float64(10.2)
 
 	err = validateQueryMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid options")
+	assert.Error(t, err, "An should have been thrown for an invalid options")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["bookmark"] = "Test1"
 	queryOptions["limit"] = "10"
 
 	err = validateQueryMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid options")
+	assert.Error(t, err, "An should have been thrown for an invalid options")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["bookmark"] = int32(10)
 	queryOptions["limit"] = "10"
 
 	err = validateQueryMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid options")
+	assert.Error(t, err, "An should have been thrown for an invalid options")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["bookmark"] = "Test1"
 	queryOptions["limit1"] = int32(10)
 
 	err = validateQueryMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid options")
+	assert.Error(t, err, "An should have been thrown for an invalid options")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["bookmark1"] = "Test1"
 	queryOptions["limit1"] = int32(10)
 
 	err = validateQueryMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid options")
+	assert.Error(t, err, "An should have been thrown for an invalid options")
 
 }
