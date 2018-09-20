@@ -143,9 +143,14 @@ docker-thirdparty:
 # Pull javenv docker image based on the stable version published to nexus
 .PHONY: javaenv-docker
 javaenv-docker:
-	docker pull $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG)
-	docker tag $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG) $(DOCKER_NS)/fabric-javaenv
-	docker tag $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG) $(DOCKER_NS)/fabric-javaenv:$(ARCH)-latest
+	if [ "$(ARCH)" = "amd64" ]; then \
+		echo "Pull Javaenv on $(ARCH)"; \
+		docker pull $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG); \
+		docker tag $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG) $(DOCKER_NS)/fabric-javaenv; \
+		docker tag $(NEXUS_REPO)/fabric-javaenv:$(STABLE_TAG) $(DOCKER_NS)/fabric-javaenv:$(ARCH)-latest; \
+	else \
+		echo "------> Javaenv Image is not available on $(ARCH)"; \
+	fi
 
 .PHONY: spelling
 spelling:
