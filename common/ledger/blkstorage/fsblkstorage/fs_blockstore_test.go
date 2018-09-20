@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWrongBlockNumber(t *testing.T) {
@@ -33,8 +34,8 @@ func TestWrongBlockNumber(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 5)
 	for i := 0; i < 3; i++ {
 		err := store.AddBlock(blocks[i])
-		testutil.AssertNoError(t, err, "")
+		assert.NoError(t, err)
 	}
 	err := store.AddBlock(blocks[4])
-	testutil.AssertError(t, err, "Error shold have been thrown when adding block number 4 while block number 3 is expected")
+	assert.Error(t, err, "Error shold have been thrown when adding block number 4 while block number 3 is expected")
 }
