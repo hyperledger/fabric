@@ -57,7 +57,7 @@ type PayloadsBufferImpl struct {
 func NewPayloadsBuffer(next uint64) PayloadsBuffer {
 	return &PayloadsBufferImpl{
 		buf:       make(map[uint64]*proto.Payload),
-		readyChan: make(chan struct{}, 0),
+		readyChan: make(chan struct{}, 1),
 		next:      next,
 		logger:    util.GetLogger(util.LoggingStateModule, ""),
 	}
@@ -88,11 +88,8 @@ func (b *PayloadsBufferImpl) Push(payload *proto.Payload) {
 	b.buf[seqNum] = payload
 
 	// Send notification that next sequence has arrived
-	if seqNum == b.next {
-		// Do not block execution of current routine
-		go func() {
-			b.readyChan <- struct{}{}
-		}()
+	if seqNum == b.next && len(b.readyChan) == 0 {
+		b.readyChan <- struct{}{}
 	}
 }
 
@@ -115,8 +112,27 @@ func (b *PayloadsBufferImpl) Pop() *proto.Payload {
 		delete(b.buf, b.Next())
 		// Increment next expect block index
 		atomic.AddUint64(&b.next, 1)
+
+		b.drainReadChannel()
+
 	}
+
 	return result
+}
+
+// drainReadChannel empties ready channel in case last
+// payload has been poped up and there are still awaiting
+// notifications in the channel
+func (b *PayloadsBufferImpl) drainReadChannel() {
+	if len(b.buf) == 0 {
+		for {
+			if len(b.readyChan) > 0 {
+				<-b.readyChan
+			} else {
+				break
+			}
+		}
+	}
 }
 
 // Size returns current number of payloads stored within buffer
