@@ -85,7 +85,7 @@ func ConstructTransaction(_ *testing.T, simulationResults []byte, txid string, s
 	var txEnv *common.Envelope
 	var err error
 	if sign {
-		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructSignedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
 	} else {
 		txEnv, txID, err = ptestutils.ConstructUnsignedTxEnv(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
 	}
