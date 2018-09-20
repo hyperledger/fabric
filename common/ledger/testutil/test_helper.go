@@ -17,6 +17,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 //BlockGenerator generates a series of blocks for testing
@@ -30,7 +31,7 @@ type BlockGenerator struct {
 // NewBlockGenerator instantiates new BlockGenerator for testing
 func NewBlockGenerator(t *testing.T, ledgerID string, signTxs bool) (*BlockGenerator, *common.Block) {
 	gb, err := test.MakeGenesisBlock(ledgerID)
-	AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), pb.TxValidationCode_VALID)
 	return &BlockGenerator{1, gb.GetHeader().Hash(), signTxs, t}, gb
 }
