@@ -19,14 +19,14 @@ package historydb
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 var strKeySep = string(CompositeKeySep)
 
 func TestConstructCompositeKey(t *testing.T) {
 	compositeKey := ConstructCompositeHistoryKey("ns1", "key1", 1, 1)
-	testutil.AssertNotNil(t, compositeKey)
+	assert.NotNil(t, compositeKey)
 	//historyleveldb_test.go tests the actual output
 }
 
@@ -34,8 +34,8 @@ func TestConstructPartialCompositeKey(t *testing.T) {
 	compositeStartKey := ConstructPartialCompositeHistoryKey("ns1", "key1", false)
 	compositeEndKey := ConstructPartialCompositeHistoryKey("ns1", "key1", true)
 
-	testutil.AssertEquals(t, compositeStartKey, []byte("ns1"+strKeySep+"key1"+strKeySep))
-	testutil.AssertEquals(t, compositeEndKey, []byte("ns1"+strKeySep+"key1"+strKeySep+string([]byte{0xff})))
+	assert.Equal(t, []byte("ns1"+strKeySep+"key1"+strKeySep), compositeStartKey)
+	assert.Equal(t, []byte("ns1"+strKeySep+"key1"+strKeySep+string([]byte{0xff})), compositeEndKey)
 }
 
 func TestSplitCompositeKey(t *testing.T) {
@@ -44,5 +44,5 @@ func TestSplitCompositeKey(t *testing.T) {
 
 	_, extraBytes := SplitCompositeHistoryKey(compositeFullKey, compositePartialKey)
 	// second position should hold the extra bytes that were split off
-	testutil.AssertEquals(t, extraBytes, []byte("extra bytes to split"))
+	assert.Equal(t, []byte("extra bytes to split"), extraBytes)
 }
