@@ -50,7 +50,7 @@ Now generate the default BYFN artifacts:
 
 .. code:: bash
 
-  ./byfn.sh generate
+  ./byfn.sh generate -c testchannel
 
 And launch the network making use of the scripted execution within the CLI container:
 
