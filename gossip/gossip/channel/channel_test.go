@@ -16,6 +16,9 @@ import (
 	"time"
 
 	gproto "github.com/golang/protobuf/proto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -24,8 +27,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 type msgMutator func(message *proto.Envelope)
@@ -615,7 +616,7 @@ func TestChannelPull(t *testing.T) {
 	t.Parallel()
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
-	receivedBlocksChan := make(chan *proto.SignedGossipMessage)
+	receivedBlocksChan := make(chan *proto.SignedGossipMessage, 2)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
 	adapter.On("Gossip", mock.Anything)
@@ -633,11 +634,12 @@ func TestChannelPull(t *testing.T) {
 	go gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(100, pkiIDInOrg1, channelA)})
 
 	var wg sync.WaitGroup
+	wg.Add(1)
 	pullPhase := simulatePullPhase(gc, t, &wg, func(envelope *proto.Envelope) {}, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase)
 
 	wg.Wait()
-	for expectedSeq := 10; expectedSeq < 11; expectedSeq++ {
+	for expectedSeq := 10; expectedSeq <= 11; expectedSeq++ {
 		select {
 		case <-time.After(time.Second * 5):
 			t.Fatal("Haven't received blocks on time")
