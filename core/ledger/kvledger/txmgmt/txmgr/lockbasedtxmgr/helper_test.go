@@ -47,11 +47,11 @@ func TestPvtdataResultsItr(t *testing.T) {
 	queryHelper := newQueryHelper(txMgr, nil)
 
 	resItr, err := queryHelper.getPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testItr(t, resItr, "ns1", "coll1", []string{"key1", "key2"})
 
 	resItr, err = queryHelper.getPrivateDataRangeScanIterator("ns4", "coll1", "key1", "key3")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testItr(t, resItr, "ns4", "coll1", []string{})
 }
 
@@ -63,12 +63,12 @@ func testItr(t *testing.T, itr commonledger.ResultsIterator, expectedNs string, 
 		pvtdataKV := queryResult.(*queryresult.KV)
 		ns := pvtdataKV.Namespace
 		key := pvtdataKV.Key
-		testutil.AssertEquals(t, ns, expectedNs)
-		testutil.AssertEquals(t, key, expectedKey)
+		assert.Equal(t, expectedNs, ns)
+		assert.Equal(t, expectedKey, key)
 	}
 	last, err := itr.Next()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, last)
+	assert.NoError(t, err)
+	assert.Nil(t, last)
 }
 
 func TestPrivateDataMetadataRetrievalByHash(t *testing.T) {
