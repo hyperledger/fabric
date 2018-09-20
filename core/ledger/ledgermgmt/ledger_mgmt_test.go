@@ -22,11 +22,11 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -38,17 +38,17 @@ func TestLedgerMgmt(t *testing.T) {
 	// Check for error when creating/opening ledger without initialization.
 	gb, _ := test.MakeGenesisBlock(constructTestLedgerID(0))
 	l, err := CreateLedger(gb)
-	testutil.AssertNil(t, l)
-	testutil.AssertEquals(t, err, ErrLedgerMgmtNotInitialized)
+	assert.Nil(t, l)
+	assert.Equal(t, ErrLedgerMgmtNotInitialized, err)
 
 	ledgerID := constructTestLedgerID(2)
 	l, err = OpenLedger(ledgerID)
-	testutil.AssertNil(t, l)
-	testutil.AssertEquals(t, err, ErrLedgerMgmtNotInitialized)
+	assert.Nil(t, l)
+	assert.Equal(t, ErrLedgerMgmtNotInitialized, err)
 
 	ids, err := GetLedgerIDs()
-	testutil.AssertNil(t, ids)
-	testutil.AssertEquals(t, err, ErrLedgerMgmtNotInitialized)
+	assert.Nil(t, ids)
+	assert.Equal(t, ErrLedgerMgmtNotInitialized, err)
 
 	Close()
 
@@ -64,23 +64,23 @@ func TestLedgerMgmt(t *testing.T) {
 	}
 
 	ids, _ = GetLedgerIDs()
-	testutil.AssertEquals(t, len(ids), numLedgers)
+	assert.Len(t, ids, numLedgers)
 	for i := 0; i < numLedgers; i++ {
-		testutil.AssertEquals(t, ids[i], constructTestLedgerID(i))
+		assert.Equal(t, constructTestLedgerID(i), ids[i])
 	}
 
 	ledgerID = constructTestLedgerID(2)
 	t.Logf("Ledger selected for test = %s", ledgerID)
 	_, err = OpenLedger(ledgerID)
-	testutil.AssertEquals(t, err, ErrLedgerAlreadyOpened)
+	assert.Equal(t, ErrLedgerAlreadyOpened, err)
 
 	l = ledgers[2]
 	l.Close()
 	l, err = OpenLedger(ledgerID)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	l, err = OpenLedger(ledgerID)
-	testutil.AssertEquals(t, err, ErrLedgerAlreadyOpened)
+	assert.Equal(t, ErrLedgerAlreadyOpened, err)
 
 	// close all opened ledgers and ledger mgmt
 	Close()
@@ -90,7 +90,7 @@ func TestLedgerMgmt(t *testing.T) {
 		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
 	})
 	l, err = OpenLedger(ledgerID)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	Close()
 }
 
