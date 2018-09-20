@@ -10,18 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetCouchDBDefinition(t *testing.T) {
 	expectedAddress := viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
 
 	couchDBDef := GetCouchDBDefinition()
-	testutil.AssertEquals(t, couchDBDef.URL, expectedAddress)
-	testutil.AssertEquals(t, couchDBDef.Username, "")
-	testutil.AssertEquals(t, couchDBDef.Password, "")
-	testutil.AssertEquals(t, couchDBDef.MaxRetries, 3)
-	testutil.AssertEquals(t, couchDBDef.MaxRetriesOnStartup, 10)
-	testutil.AssertEquals(t, couchDBDef.RequestTimeout, time.Second*35)
+	assert.Equal(t, expectedAddress, couchDBDef.URL)
+	assert.Equal(t, "", couchDBDef.Username)
+	assert.Equal(t, "", couchDBDef.Password)
+	assert.Equal(t, 3, couchDBDef.MaxRetries)
+	assert.Equal(t, 10, couchDBDef.MaxRetriesOnStartup)
+	assert.Equal(t, time.Second*35, couchDBDef.RequestTimeout)
 }
