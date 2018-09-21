@@ -32,6 +32,18 @@ if [ -n "$OUTPUT" ]; then
     exit 1
 fi
 
+# Now that context is part of the standard library, we should use it
+# consistently. The only place where the legacy golang.org version should be
+# referenced is in the generated protos.
+echo "Checking for golang.org/x/net/context"
+TEMPLATE='{{with $d := .}}{{range $d.Imports}}{{ printf "%s:%s" $d.ImportPath . }}{{end}}{{end}}'
+OUTPUT="$(go list -f "$TEMPLATE" ./... | grep -Ev '^github.com/hyperledger/fabric/protos($|/)' | grep 'golang.org/x/net/context' | cut -f1 -d:)"
+if [ -n "$OUTPUT" ]; then
+    echo "The following packages import golang.org/x/net/context instead of context"
+    echo "$OUTPUT"
+    exit 1
+fi
+
 echo "Checking with go vet"
 PRINTFUNCS="Print,Printf,Info,Infof,Warning,Warningf,Error,Errorf,Critical,Criticalf,Sprint,Sprintf,Log,Logf,Panic,Panicf,Fatal,Fatalf,Notice,Noticef,Wrap,Wrapf,WithMessage"
 OUTPUT="$(go vet -all -lostcancel=false -printfuncs $PRINTFUNCS ./...)"
@@ -40,6 +52,7 @@ if [ -n "$OUTPUT" ]; then
     echo $OUTPUT
     exit 1
 fi
+
 # This block should removed once the lostcancel issues have been corrected and
 # the previous invocation of vet should remove the -lostcancel=false option.
 #   FAB-12082 - gossip
