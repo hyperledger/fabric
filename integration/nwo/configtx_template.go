@@ -116,6 +116,7 @@ Profiles:{{ range .Profiles }}
     Application:
       Capabilities:
         V1_3: true
+        CAPABILITY_PLACEHOLDER: false
       Organizations:{{ range .Organizations }}
       - *{{ ($w.Organization .).MSPID }}
       {{- end}}
