@@ -24,19 +24,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Storage essentially represents etcd/raft.MemoryStorage.
-//
-// This interface is defined to expose dependencies of fsm
-// so that it may be swapped in the future.
-//
-// TODO(jay) add other necessary methods to this interface
-// once we need them in implementation, e.g. ApplySnapshot
+// Storage is currently backed by etcd/raft.MemoryStorage. This interface is
+// defined to expose dependencies of fsm so that it may be swapped in the
+// future. TODO(jay) Add other necessary methods to this interface once we need
+// them in implementation, e.g. ApplySnapshot.
 type Storage interface {
 	raft.Storage
 	Append(entries []raftpb.Entry) error
 }
 
-// Options contains necessary artifacts to start raft-based chain
+// Options contains all the configurations relevant to the chain.
 type Options struct {
 	RaftID uint64
 
@@ -53,18 +50,17 @@ type Options struct {
 	Peers           []raft.Peer
 }
 
-// Chain implements consensus.Chain interface with raft-based consensus
+// Chain implements consensus.Chain interface.
 type Chain struct {
 	raftID uint64
 
 	submitC  chan *orderer.SubmitRequest
 	commitC  chan *common.Block
-	observeC chan<- uint64 // notify external observer on leader change
+	observeC chan<- uint64 // Notifies external observer on leader change
+	haltC    chan struct{}
+	doneC    chan struct{}
 
-	haltC chan struct{}
-	doneC chan struct{}
-
-	clock clock.Clock // test could inject a fake clock
+	clock clock.Clock
 
 	support consensus.ConsenterSupport
 
@@ -79,7 +75,7 @@ type Chain struct {
 	logger *flogging.FabricLogger
 }
 
-// NewChain constructs a chain object
+// NewChain returns a new chain.
 func NewChain(support consensus.ConsenterSupport, opts Options, observe chan<- uint64) (*Chain, error) {
 	return &Chain{
 		raftID:   opts.RaftID,
@@ -96,7 +92,7 @@ func NewChain(support consensus.ConsenterSupport, opts Options, observe chan<- u
 	}, nil
 }
 
-// Start starts the chain
+// Start instructs the orderer to begin serving the chain and keep it current.
 func (c *Chain) Start() {
 	config := &raft.Config{
 		ID:              c.raftID,
@@ -114,28 +110,28 @@ func (c *Chain) Start() {
 	go c.serveRequest()
 }
 
-// Order submits normal type transactions
+// Order submits normal type transactions for ordering.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Content: env}, 0)
 }
 
-// Configure submits config type transactins
+// Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	c.logger.Panicf("Configure not implemented yet")
 	return nil
 }
 
-// WaitReady is currently no-op
+// WaitReady is currently a no-op.
 func (c *Chain) WaitReady() error {
 	return nil
 }
 
-// Errored indicates if chain is still running
+// Errored returns a channel that closes when the chain stops.
 func (c *Chain) Errored() <-chan struct{} {
 	return c.doneC
 }
 
-// Halt stops chain
+// Halt stops the chain.
 func (c *Chain) Halt() {
 	select {
 	case c.haltC <- struct{}{}:
@@ -145,10 +141,10 @@ func (c *Chain) Halt() {
 	<-c.doneC
 }
 
-// Submit submits requests to
-// - local serveRequest go routine if this is leader
-// - actual leader via transport
-// - fails if there's no leader elected yet
+// Submit forwards the incoming request to:
+// - the local serveRequest goroutine if this is leader
+// - the actual leader via the transport mechanism
+// The call fails if there's no leader elected yet.
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	c.leaderLock.RLock()
 	defer c.leaderLock.RUnlock()
@@ -171,11 +167,28 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 }
 
 func (c *Chain) serveRequest() {
-	clocking := false
-	timer := c.clock.NewTimer(c.support.SharedConfig().BatchTimeout())
+	ticking := false
+	timer := c.clock.NewTimer(time.Second)
+	// we need a stopped timer rather than nil,
+	// because we will be select waiting on timer.C()
 	if !timer.Stop() {
-		// drain the channel. see godoc of time#Timer.Stop
 		<-timer.C()
+	}
+
+	// if timer is already started, this is a no-op
+	start := func() {
+		if !ticking {
+			ticking = true
+			timer.Reset(c.support.SharedConfig().BatchTimeout())
+		}
+	}
+
+	stop := func() {
+		if !timer.Stop() && ticking {
+			// we only need to drain the channel if the timer expired (not explicitly stopped)
+			<-timer.C()
+		}
+		ticking = false
 	}
 
 	for {
@@ -196,24 +209,18 @@ func (c *Chain) serveRequest() {
 
 			batches, _ := c.support.BlockCutter().Ordered(msg.Content)
 			if len(batches) == 0 {
-				if !clocking {
-					clocking = true
-					timer.Reset(c.support.SharedConfig().BatchTimeout())
-				}
+				start()
 				continue
 			}
 
-			if !timer.Stop() && clocking {
-				<-timer.C()
-			}
-			clocking = false
+			stop()
 
 			if err := c.commitBatches(batches...); err != nil {
 				c.logger.Errorf("Failed to commit block: %s", err)
 			}
 
 		case <-timer.C():
-			clocking = false
+			ticking = false
 
 			batch := c.support.BlockCutter().Cut()
 			if len(batch) == 0 {
