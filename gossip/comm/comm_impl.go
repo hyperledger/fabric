@@ -164,7 +164,8 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	dialOpts = append(dialOpts, grpc.WithBlock())
 	dialOpts = append(dialOpts, c.opts...)
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, c.dialTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.dialTimeout)
+	defer cancel()
 	cc, err = grpc.DialContext(ctx, endpoint, dialOpts...)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -172,14 +173,14 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	cl := proto.NewGossipClient(cc)
 
-	ctx, cancel := context.WithTimeout(context.Background(), defConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), defConnTimeout)
 	defer cancel()
 	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		cc.Close()
 		return nil, errors.WithStack(err)
 	}
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, cancel = context.WithCancel(context.Background())
 	if stream, err = cl.GossipStream(ctx); err == nil {
 		connInfo, err = c.authenticateRemotePeer(stream, true)
 		if err == nil {
@@ -194,6 +195,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 				if !bytes.Equal(actualOrg, oldOrg) {
 					c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
 					cc.Close()
+					cancel()
 					return nil, errors.New("authentication failure")
 				}
 			}
@@ -201,7 +203,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.pkiID = pkiID
 			conn.info = connInfo
 			conn.logger = c.logger
-			conn.cancel = cf
+			conn.cancel = cancel
 
 			h := func(m *proto.SignedGossipMessage) {
 				c.logger.Debug("Got message:", m)
@@ -218,6 +220,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 		c.logger.Warningf("Authentication failed: %+v", err)
 	}
 	cc.Close()
+	cancel()
 	return nil, errors.WithStack(err)
 }
 
@@ -271,7 +274,8 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	dialOpts = append(dialOpts, grpc.WithBlock())
 	dialOpts = append(dialOpts, c.opts...)
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, c.dialTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.dialTimeout)
+	defer cancel()
 	cc, err := grpc.DialContext(ctx, remotePeer.Endpoint, dialOpts...)
 	if err != nil {
 		c.logger.Debugf("Returning %v", err)
@@ -279,7 +283,7 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	}
 	defer cc.Close()
 	cl := proto.NewGossipClient(cc)
-	ctx, cancel := context.WithTimeout(context.Background(), defConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), defConnTimeout)
 	defer cancel()
 	_, err = cl.Ping(ctx, &proto.Empty{})
 	c.logger.Debugf("Returning %v", err)
@@ -292,7 +296,8 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	dialOpts = append(dialOpts, grpc.WithBlock())
 	dialOpts = append(dialOpts, c.opts...)
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, c.dialTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.dialTimeout)
+	defer cancel()
 	cc, err := grpc.DialContext(ctx, remotePeer.Endpoint, dialOpts...)
 	if err != nil {
 		return nil, err
@@ -300,7 +305,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	defer cc.Close()
 
 	cl := proto.NewGossipClient(cc)
-	ctx, cancel := context.WithTimeout(context.Background(), defConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), defConnTimeout)
 	defer cancel()
 	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		return nil, err
