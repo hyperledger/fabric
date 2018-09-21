@@ -404,6 +404,7 @@ func (rc *RemoteContext) SubmitStream() (orderer.Cluster_SubmitClient, error) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	submitStream, err := rc.Client.Submit(ctx)
 	if err != nil {
+		cancel()
 		return nil, errors.WithStack(err)
 	}
 	rc.submitStream = submitStream

@@ -46,18 +46,7 @@ fi
 
 echo "Checking with go vet"
 PRINTFUNCS="Print,Printf,Info,Infof,Warning,Warningf,Error,Errorf,Critical,Criticalf,Sprint,Sprintf,Log,Logf,Panic,Panicf,Fatal,Fatalf,Notice,Noticef,Wrap,Wrapf,WithMessage"
-OUTPUT="$(go vet -all -lostcancel=false -printfuncs $PRINTFUNCS ./...)"
-if [ -n "$OUTPUT" ]; then
-    echo "The following files contain go vet errors"
-    echo $OUTPUT
-    exit 1
-fi
-
-# This block should removed once the lostcancel issues have been corrected and
-# the previous invocation of vet should remove the -lostcancel=false option.
-#   FAB-12082 - gossip
-#   FAB-12083 - orderer
-OUTPUT="$(go vet -lostcancel=true ./... 2>&1 | grep -Ev '^#|(fabric/)?gossip/comm/comm_impl.go|(fabric)?orderer/common/cluster/comm.go' || true)"
+OUTPUT="$(go vet -all -printfuncs $PRINTFUNCS ./...)"
 if [ -n "$OUTPUT" ]; then
     echo "The following files contain go vet errors"
     echo $OUTPUT
