@@ -11,6 +11,8 @@ Operations Guides
    endorsement-policies
    pluggable_endorsement_and_validation
    access_control.md
+   idemix
+   idemixgen
    error-handling
    logging-control
    enable_tls

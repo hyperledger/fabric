@@ -16,12 +16,14 @@ The ``idemixgen`` tool will create directories with the following structure:
     - /ca/
         IssuerSecretKey
         IssuerPublicKey
+        RevocationKey
     - /msp/
         IssuerPublicKey
+        RevocationPublicKey
     - /user/
         SignerConfig
 
-The ``ca`` directory contains the issuer secret key and should only be present
+The ``ca`` directory contains the issuer secret key (including the revocation key) and should only be present
 for a CA. The ``msp`` directory contains the information required to set up an
 MSP verifying idemix signatures. The ``user`` directory specifies a default
 signer.
