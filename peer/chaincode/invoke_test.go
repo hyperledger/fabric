@@ -33,7 +33,6 @@ func TestInvokeCmd(t *testing.T) {
 	defer viper.Reset()
 	defer resetFlags()
 
-	InitMSP()
 	resetFlags()
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
@@ -191,7 +190,6 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 
 func TestInvokeCmdEndorsementError(t *testing.T) {
 	defer resetFlags()
-	InitMSP()
 	mockCF, err := getMockChaincodeCmdFactoryWithErr()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
 
@@ -205,7 +203,6 @@ func TestInvokeCmdEndorsementError(t *testing.T) {
 
 func TestInvokeCmdEndorsementFailure(t *testing.T) {
 	defer resetFlags()
-	InitMSP()
 	ccRespStatus := [2]int32{502, 400}
 	ccRespPayload := [][]byte{[]byte("Invalid function name"), []byte("Incorrect parameters")}
 

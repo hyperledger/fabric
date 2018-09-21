@@ -30,7 +30,6 @@ import (
 
 //helper to sign an existing package
 func signExistingPackage(env *pcommon.Envelope, infile, outfile string) error {
-	InitMSP()
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		return fmt.Errorf("Get default signer error: %v", err)

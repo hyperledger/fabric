@@ -16,8 +16,6 @@ import (
 )
 
 func TestQueryCmd(t *testing.T) {
-	InitMSP()
-
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
 	// reset channelID, it might have been set by previous test
@@ -64,7 +62,6 @@ func TestQueryCmd(t *testing.T) {
 }
 
 func TestQueryCmdEndorsementFailure(t *testing.T) {
-	InitMSP()
 	args := []string{"-C", "mychannel", "-n", "example02", "-c", "{\"Args\": [\"queryinvalid\",\"a\"]}"}
 	ccRespStatus := [2]int32{502, 400}
 	ccRespPayload := [][]byte{[]byte("Invalid function name"), []byte("Incorrect parameters")}

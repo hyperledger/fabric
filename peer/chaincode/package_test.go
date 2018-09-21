@@ -25,10 +25,20 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/msp"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+func TestMain(m *testing.M) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
+	}
+
+	os.Exit(m.Run())
+}
 
 func newTempDir() string {
 	tempDir, err := ioutil.TempDir("/tmp", "packagetest-")
@@ -88,7 +98,6 @@ func TestCDSPackage(t *testing.T) {
 
 //helper to create a SignedChaincodeDeploymentSpec
 func createSignedCDSPackage(args []string, sign bool) error {
-	InitMSP()
 	var signer msp.SigningIdentity
 	var err error
 	if sign {

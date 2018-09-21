@@ -137,8 +137,6 @@ func TestCheckInvalidJSON(t *testing.T) {
 }
 
 func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
-	initMSP()
-
 	signer, err := common.GetDefaultSigner()
 	assert.NoError(t, err)
 
@@ -162,8 +160,6 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 }
 
 func TestGetOrdererEndpointFail(t *testing.T) {
-	initMSP()
-
 	signer, err := common.GetDefaultSigner()
 	assert.NoError(t, err)
 
@@ -534,7 +530,6 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 	defer resetFlags()
 
 	// success - deliver client returns event with expected txid
-	InitMSP()
 	waitForEvent = true
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err)

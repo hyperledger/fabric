@@ -9,34 +9,16 @@ package chaincode
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
-var once sync.Once
-
-// InitMSP init MSP
-func InitMSP() {
-	once.Do(initMSP)
-}
-
-func initMSP() {
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config: %s\n", err))
-	}
-}
-
 func TestUpgradeCmd(t *testing.T) {
-	InitMSP()
-
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		t.Fatalf("Get default signer error: %v", err)
@@ -74,8 +56,6 @@ func TestUpgradeCmd(t *testing.T) {
 }
 
 func TestUpgradeCmdEndorseFail(t *testing.T) {
-	InitMSP()
-
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		t.Fatalf("Get default signer error: %v", err)
@@ -111,8 +91,6 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 }
 
 func TestUpgradeCmdSendTXFail(t *testing.T) {
-	InitMSP()
-
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		t.Fatalf("Get default signer error: %v", err)
@@ -164,7 +142,6 @@ func TestUpgradeCmdWithNilCF(t *testing.T) {
 	}()
 
 	channelID = ""
-	InitMSP()
 
 	cmd := upgradeCmd(nil)
 	addFlags(cmd)
