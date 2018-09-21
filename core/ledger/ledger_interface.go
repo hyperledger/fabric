@@ -143,6 +143,8 @@ type QueryExecutor interface {
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
 	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error)
+	// GetPrivateDataMetadataByHash gets the metadata of a private data item identified by a tuple <namespace, collection, keyhash>
+	GetPrivateDataMetadataByHash(namespace, collection string, keyhash []byte) (map[string][]byte, error)
 	// GetPrivateDataMultipleKeys gets the values for the multiple private data items in a single call
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error)
 	// GetPrivateDataRangeScanIterator returns an iterator that contains all the key-values between given key ranges.

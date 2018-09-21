@@ -141,6 +141,21 @@ type QueryExecutor struct {
 		result1 map[string][]byte
 		result2 error
 	}
+	GetPrivateDataMetadataByHashStub        func(namespace, collection string, keyhash []byte) (map[string][]byte, error)
+	getPrivateDataMetadataByHashMutex       sync.RWMutex
+	getPrivateDataMetadataByHashArgsForCall []struct {
+		namespace  string
+		collection string
+		keyhash    []byte
+	}
+	getPrivateDataMetadataByHashReturns struct {
+		result1 map[string][]byte
+		result2 error
+	}
+	getPrivateDataMetadataByHashReturnsOnCall map[int]struct {
+		result1 map[string][]byte
+		result2 error
+	}
 	GetPrivateDataMultipleKeysStub        func(namespace, collection string, keys []string) ([][]byte, error)
 	getPrivateDataMultipleKeysMutex       sync.RWMutex
 	getPrivateDataMultipleKeysArgsForCall []struct {
@@ -673,6 +688,64 @@ func (fake *QueryExecutor) GetPrivateDataMetadataReturnsOnCall(i int, result1 ma
 	}{result1, result2}
 }
 
+func (fake *QueryExecutor) GetPrivateDataMetadataByHash(namespace string, collection string, keyhash []byte) (map[string][]byte, error) {
+	var keyhashCopy []byte
+	if keyhash != nil {
+		keyhashCopy = make([]byte, len(keyhash))
+		copy(keyhashCopy, keyhash)
+	}
+	fake.getPrivateDataMetadataByHashMutex.Lock()
+	ret, specificReturn := fake.getPrivateDataMetadataByHashReturnsOnCall[len(fake.getPrivateDataMetadataByHashArgsForCall)]
+	fake.getPrivateDataMetadataByHashArgsForCall = append(fake.getPrivateDataMetadataByHashArgsForCall, struct {
+		namespace  string
+		collection string
+		keyhash    []byte
+	}{namespace, collection, keyhashCopy})
+	fake.recordInvocation("GetPrivateDataMetadataByHash", []interface{}{namespace, collection, keyhashCopy})
+	fake.getPrivateDataMetadataByHashMutex.Unlock()
+	if fake.GetPrivateDataMetadataByHashStub != nil {
+		return fake.GetPrivateDataMetadataByHashStub(namespace, collection, keyhash)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getPrivateDataMetadataByHashReturns.result1, fake.getPrivateDataMetadataByHashReturns.result2
+}
+
+func (fake *QueryExecutor) GetPrivateDataMetadataByHashCallCount() int {
+	fake.getPrivateDataMetadataByHashMutex.RLock()
+	defer fake.getPrivateDataMetadataByHashMutex.RUnlock()
+	return len(fake.getPrivateDataMetadataByHashArgsForCall)
+}
+
+func (fake *QueryExecutor) GetPrivateDataMetadataByHashArgsForCall(i int) (string, string, []byte) {
+	fake.getPrivateDataMetadataByHashMutex.RLock()
+	defer fake.getPrivateDataMetadataByHashMutex.RUnlock()
+	return fake.getPrivateDataMetadataByHashArgsForCall[i].namespace, fake.getPrivateDataMetadataByHashArgsForCall[i].collection, fake.getPrivateDataMetadataByHashArgsForCall[i].keyhash
+}
+
+func (fake *QueryExecutor) GetPrivateDataMetadataByHashReturns(result1 map[string][]byte, result2 error) {
+	fake.GetPrivateDataMetadataByHashStub = nil
+	fake.getPrivateDataMetadataByHashReturns = struct {
+		result1 map[string][]byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *QueryExecutor) GetPrivateDataMetadataByHashReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
+	fake.GetPrivateDataMetadataByHashStub = nil
+	if fake.getPrivateDataMetadataByHashReturnsOnCall == nil {
+		fake.getPrivateDataMetadataByHashReturnsOnCall = make(map[int]struct {
+			result1 map[string][]byte
+			result2 error
+		})
+	}
+	fake.getPrivateDataMetadataByHashReturnsOnCall[i] = struct {
+		result1 map[string][]byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *QueryExecutor) GetPrivateDataMultipleKeys(namespace string, collection string, keys []string) ([][]byte, error) {
 	var keysCopy []string
 	if keys != nil {
@@ -875,6 +948,8 @@ func (fake *QueryExecutor) Invocations() map[string][][]interface{} {
 	defer fake.getPrivateDataMutex.RUnlock()
 	fake.getPrivateDataMetadataMutex.RLock()
 	defer fake.getPrivateDataMetadataMutex.RUnlock()
+	fake.getPrivateDataMetadataByHashMutex.RLock()
+	defer fake.getPrivateDataMetadataByHashMutex.RUnlock()
 	fake.getPrivateDataMultipleKeysMutex.RLock()
 	defer fake.getPrivateDataMultipleKeysMutex.RUnlock()
 	fake.getPrivateDataRangeScanIteratorMutex.RLock()
