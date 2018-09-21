@@ -562,7 +562,7 @@ func TestSmallBatchSize(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	batch := statedb.NewUpdateBatch()
 	jsonValue1 := []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`)
 	batch.Put("ns1", "key1", jsonValue1, version.NewHeight(1, 1))
-	jsonValue2 := []byte(`"{"asset_name": "marble2","color": "blue","size": 2,"owner": \"jerry\"}`)
+	jsonValue2 := []byte(`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`)
 	batch.Put("ns1", "key2", jsonValue2, version.NewHeight(1, 2))
 	jsonValue3 := []byte(`{"asset_name": "marble3","color": "blue","size": 3,"owner": "fred"}`)
 	batch.Put("ns1", "key3", jsonValue3, version.NewHeight(1, 3))
