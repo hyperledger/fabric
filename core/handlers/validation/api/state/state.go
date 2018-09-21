@@ -28,6 +28,9 @@ type State interface {
 	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error)
 
+	// GetPrivateDataMetadataByHash gets the metadata of a private data item identified by a tuple <namespace, collection, keyhash>
+	GetPrivateDataMetadataByHash(namespace, collection string, keyhash []byte) (map[string][]byte, error)
+
 	// Done releases resources occupied by the State
 	Done()
 }

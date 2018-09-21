@@ -49,6 +49,10 @@ func (ms *mockState) GetPrivateDataMetadata(namespace, collection, key string) (
 	return ms.GetPrivateDataMetadataRv, ms.GetPrivateDataMetadataErr
 }
 
+func (ms *mockState) GetPrivateDataMetadataByHash(namespace, collection string, keyhash []byte) (map[string][]byte, error) {
+	return nil, nil
+}
+
 func (ms *mockState) Done() {
 	ms.DoneCalled = true
 }
