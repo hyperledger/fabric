@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -21,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/integration/runner"
-	"github.com/spf13/viper"
 )
 
 func TestMain(m *testing.M) {
@@ -49,6 +50,9 @@ func testMain(m *testing.M) int {
 	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
 	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
 	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
+	// Disable auto warm to avoid error logs when the couchdb database has been dropped
+	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
+
 	flogging.SetModuleLevel("statecouchdb", "debug")
 	//run the actual test
 	return m.Run()
@@ -70,51 +74,27 @@ func couchDBSetup() (addr string, cleanup func()) {
 
 func TestBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testbasicrw_")
-	env.Cleanup("testbasicrw_ns")
-	env.Cleanup("testbasicrw_ns1")
-	env.Cleanup("testbasicrw_ns2")
-	defer env.Cleanup("testbasicrw_")
-	defer env.Cleanup("testbasicrw_ns")
-	defer env.Cleanup("testbasicrw_ns1")
-	defer env.Cleanup("testbasicrw_ns2")
+	defer env.Cleanup()
 	commontests.TestBasicRW(t, env.DBProvider)
 
 }
 
 func TestMultiDBBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testmultidbbasicrw_")
-	env.Cleanup("testmultidbbasicrw_ns1")
-	env.Cleanup("testmultidbbasicrw2_")
-	env.Cleanup("testmultidbbasicrw2_ns1")
-	defer env.Cleanup("testmultidbbasicrw_")
-	defer env.Cleanup("testmultidbbasicrw_ns1")
-	defer env.Cleanup("testmultidbbasicrw2_")
-	defer env.Cleanup("testmultidbbasicrw2_ns1")
+	defer env.Cleanup()
 	commontests.TestMultiDBBasicRW(t, env.DBProvider)
 
 }
 
 func TestDeletes(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testdeletes_")
-	env.Cleanup("testdeletes_ns")
-	defer env.Cleanup("testdeletes_")
-	defer env.Cleanup("testdeletes_ns")
+	defer env.Cleanup()
 	commontests.TestDeletes(t, env.DBProvider)
 }
 
 func TestIterator(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testiterator_")
-	env.Cleanup("testiterator_ns1")
-	env.Cleanup("testiterator_ns2")
-	env.Cleanup("testiterator_ns3")
-	defer env.Cleanup("testiterator_")
-	defer env.Cleanup("testiterator_ns1")
-	defer env.Cleanup("testiterator_ns2")
-	defer env.Cleanup("testiterator_ns3")
+	defer env.Cleanup()
 	commontests.TestIterator(t, env.DBProvider)
 }
 
@@ -122,79 +102,46 @@ func TestIterator(t *testing.T) {
 //  query test
 func TestQuery(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testquery_")
-	env.Cleanup("testquery_ns1")
-	env.Cleanup("testquery_ns2")
-	env.Cleanup("testquery_ns3")
-	defer env.Cleanup("testquery_")
-	defer env.Cleanup("testquery_ns1")
-	defer env.Cleanup("testquery_ns2")
-	defer env.Cleanup("testquery_ns3")
+	defer env.Cleanup()
 	commontests.TestQuery(t, env.DBProvider)
 }
 
 func TestGetStateMultipleKeys(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testgetmultiplekeys_")
-	env.Cleanup("testgetmultiplekeys_ns1")
-	env.Cleanup("testgetmultiplekeys_ns2")
-	defer env.Cleanup("testgetmultiplekeys_")
-	defer env.Cleanup("testgetmultiplekeys_ns1")
-	defer env.Cleanup("testgetmultiplekeys_ns2")
+	defer env.Cleanup()
 	commontests.TestGetStateMultipleKeys(t, env.DBProvider)
 }
 
 func TestGetVersion(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testgetversion_")
-	env.Cleanup("testgetversion_ns")
-	env.Cleanup("testgetversion_ns2")
-	defer env.Cleanup("testgetversion_")
-	defer env.Cleanup("testgetversion_ns")
-	defer env.Cleanup("testgetversion_ns2")
+	defer env.Cleanup()
 	commontests.TestGetVersion(t, env.DBProvider)
 }
 
 func TestSmallBatchSize(t *testing.T) {
 	viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 2)
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testsmallbatchsize_")
-	env.Cleanup("testsmallbatchsize_ns1")
-	defer env.Cleanup("testsmallbatchsize_")
-	defer env.Cleanup("testsmallbatchsize_ns1")
+	defer env.Cleanup()
 	defer viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 1000)
 	commontests.TestSmallBatchSize(t, env.DBProvider)
 }
 
 func TestBatchRetry(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testbatchretry_")
-	env.Cleanup("testbatchretry_ns")
-	env.Cleanup("testbatchretry_ns1")
-	defer env.Cleanup("testbatchretry_")
-	defer env.Cleanup("testbatchretry_ns")
-	defer env.Cleanup("testbatchretry_ns1")
+	defer env.Cleanup()
 	commontests.TestBatchWithIndividualRetry(t, env.DBProvider)
 }
 
 func TestValueAndMetadataWrites(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testvalueandmetadata_")
-	env.Cleanup("testvalueandmetadata_ns1")
-	env.Cleanup("testvalueandmetadata_ns2")
-	defer env.Cleanup("testvalueandmetadata_")
-	defer env.Cleanup("testvalueandmetadata_ns1")
-	defer env.Cleanup("testvalueandmetadata_ns2")
+	defer env.Cleanup()
 	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
 }
 
 func TestPaginatedRangeQuery(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testpaginatedrangequery_")
-	env.Cleanup("testpaginatedrangequery_ns1")
-	defer env.Cleanup("testpaginatedrangequery_")
-	defer env.Cleanup("testpaginatedrangequery_ns1")
+	defer env.Cleanup()
 	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
 }
 
@@ -202,8 +149,7 @@ func TestPaginatedRangeQuery(t *testing.T) {
 func TestUtilityFunctions(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testutilityfunctions_")
-	defer env.Cleanup("testutilityfunctions_")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
 	testutil.AssertNoError(t, err, "")
@@ -250,8 +196,7 @@ func TestUtilityFunctions(t *testing.T) {
 func TestInvalidJSONFields(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testinvalidfields_")
-	defer env.Cleanup("testinvalidfields_")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testinvalidfields")
 	testutil.AssertNoError(t, err, "")
@@ -309,12 +254,7 @@ func TestDebugFunctions(t *testing.T) {
 func TestHandleChaincodeDeploy(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testinit_")
-	env.Cleanup("testinit_ns1")
-	env.Cleanup("testinit_ns2")
-	defer env.Cleanup("testinit_")
-	defer env.Cleanup("testinit_ns1")
-	defer env.Cleanup("testinit_ns2")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testinit")
 	testutil.AssertNoError(t, err, "")
@@ -422,8 +362,7 @@ func TestTryCastingToJSON(t *testing.T) {
 func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	channelName := "ch1"
 	env := NewTestVDBEnv(t)
-	env.Cleanup(channelName)
-	defer env.Cleanup(channelName)
+	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle(channelName)
 	testutil.AssertNoError(t, err, "")
 	db.Open()
@@ -480,10 +419,7 @@ func printCompositeKeys(keys []*statedb.CompositeKey) string {
 func TestPaginatedQuery(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testpaginatedquery_")
-	env.Cleanup("testpaginatedquery_ns1")
-	defer env.Cleanup("testpaginatedquery_")
-	defer env.Cleanup("testpaginatedquery_ns1")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testpaginatedquery")
 	testutil.AssertNoError(t, err, "")

@@ -13,6 +13,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -20,12 +23,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/privacyenabledstate")
+	// Disable auto warm to avoid error logs when the couchdb database has been dropped
+	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 	os.Exit(m.Run())
 }
 
@@ -179,7 +182,7 @@ func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 func TestGetStateRangeScanIterator(t *testing.T) {
 	for _, env := range testEnvs {
 		t.Run(env.GetName(), func(t *testing.T) {
-			testGetStateMultipleKeys(t, env)
+			testGetStateRangeScanIterator(t, env)
 		})
 	}
 }
