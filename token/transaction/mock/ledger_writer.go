@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/token/tms/plain"
+	"github.com/hyperledger/fabric/token/transaction"
 )
 
 type LedgerWriter struct {
@@ -172,4 +172,4 @@ func (fake *LedgerWriter) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ plain.LedgerWriter = new(LedgerWriter)
+var _ transaction.LedgerWriter = new(LedgerWriter)

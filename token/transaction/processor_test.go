@@ -6,108 +6,127 @@ SPDX-License-Identifier: Apache-2.0
 package transaction_test
 
 import (
-	"testing"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/transaction"
-	"github.com/hyperledger/fabric/token/transaction/mocks"
+	"github.com/hyperledger/fabric/token/transaction/mock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-func TestProcessor_GenerateSimulationResults_FailedUnmarshalTokenTransaction(t *testing.T) {
-	txp := transaction.Processor{}
-	tx := invalidTransaction()
-
-	err := txp.GenerateSimulationResults(tx, nil, false)
-	assert.EqualError(t, err, "failed unmarshalling token transaction: error unmarshaling Payload: proto: can't skip unknown wire type 7")
-}
-
-func TestProcessor_GenerateSimulationResults_FailedGetCommitter(t *testing.T) {
-	tmsManager := &mocks.TMSManager{}
-	tmsManager.On("GetTxProcessor", "wild_channel").Return(
-		nil, errors.New("wild_GetCommitter_error"),
+var _ = Describe("Processor", func() {
+	var (
+		txProcessor     *transaction.Processor
+		invalidEnvelope *common.Envelope
+		fakeManager     *mock.TMSManager
+		validEnvelope   *common.Envelope
+		validTtx        *token.TokenTransaction
 	)
 
-	txp := transaction.Processor{TMSManager: tmsManager}
-	tx := validTransaction(t)
+	BeforeEach(func() {
+		txProcessor = &transaction.Processor{}
+		invalidEnvelope = &common.Envelope{
+			Payload:   []byte("wild_payload"),
+			Signature: nil,
+		}
+		fakeManager = &mock.TMSManager{}
+		txProcessor.TMSManager = fakeManager
+		validTtx = &token.TokenTransaction{
+			Action: &token.TokenTransaction_PlainAction{
+				PlainAction: &token.PlainTokenAction{},
+			},
+		}
 
-	tmsManager.On("GetTxProcessor", "wild_channel").Return(nil, errors.New("wild_GetCommitter_error"))
+		ch := &common.ChannelHeader{
+			Type: int32(common.HeaderType_TOKEN_TRANSACTION), ChannelId: "wild_channel",
+			TxId: "tx0",
+		}
+		marshaledChannelHeader, err := proto.Marshal(ch)
+		Expect(err).ToNot(HaveOccurred())
+		hdr := &common.Header{
+			ChannelHeader: marshaledChannelHeader,
+		}
+		marshaledData, err := proto.Marshal(validTtx)
+		Expect(err).ToNot(HaveOccurred())
+		payload := &common.Payload{
+			Header: hdr,
+			Data:   marshaledData,
+		}
+		marshaledPayload, err := proto.Marshal(payload)
+		Expect(err).ToNot(HaveOccurred())
+		validEnvelope = &common.Envelope{
+			Payload:   marshaledPayload,
+			Signature: nil,
+		}
+	})
 
-	err := txp.GenerateSimulationResults(tx, nil, false)
-	assert.EqualError(t, err, "failed getting committer for channel wild_channel: wild_GetCommitter_error")
-	tmsManager.AssertCalled(t, "GetTxProcessor", "wild_channel")
-}
+	Describe("GenerateSimulationResults", func() {
+		Context("when an invalid token transaction is passed", func() {
+			It("returns an error", func() {
+				err := txProcessor.GenerateSimulationResults(invalidEnvelope, nil, false)
+				Expect(err).To(MatchError("failed unmarshalling token transaction: error unmarshaling Payload: proto: can't skip unknown wire type 7"))
+			})
+		})
 
-func TestProcessor_GenerateSimulationResults_FailedCommit(t *testing.T) {
-	committer := &mocks.TMSTxProcessor{}
-	committer.On("ProcessTx", mock.Anything, nil, false).Return(errors.New("wild_Commit_error"))
+		Context("when no TxProcessor can be retrieved for the specified channel", func() {
+			BeforeEach(func() {
+				fakeManager.GetTxProcessorReturns(nil, errors.New("no policy validator found for channel 'wild_channel'"))
+			})
+			It("returns an error", func() {
+				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
+				Expect(err).To(MatchError("failed getting committer: no policy validator found for channel 'wild_channel'"))
+				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
+				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
+			})
+		})
 
-	tmsManager := &mocks.TMSManager{}
-	tmsManager.On("GetTxProcessor", "wild_channel").Return(committer, nil)
+		Context("when a call to the channel TxProcessor fails", func() {
+			var (
+				verifier *mock.TMSTxProcessor
+			)
+			BeforeEach(func() {
+				verifier = &mock.TMSTxProcessor{}
+				verifier.ProcessTxReturns(errors.New("mock TMSTxProcessor error"))
+				fakeManager.GetTxProcessorReturns(verifier, nil)
+			})
+			It("returns an error", func() {
+				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
+				Expect(err).To(MatchError("failed committing transaction for channel wild_channel: mock TMSTxProcessor error"))
+				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
+				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
+				Expect(verifier.ProcessTxCallCount()).To(Equal(1))
+				txID, creatorInfo, ttx, simulator := verifier.ProcessTxArgsForCall(0)
+				Expect(txID).To(Equal("tx0"))
+				Expect(creatorInfo.Public()).To(BeNil())
+				Expect(proto.Equal(ttx, validTtx)).To(BeTrue())
+				Expect(simulator).To(BeNil())
+			})
+		})
 
-	txp := transaction.Processor{TMSManager: tmsManager}
-	tx := validTransaction(t)
+		Context("when valid input is passed to an existing channel TxProcessor", func() {
+			var (
+				verifier *mock.TMSTxProcessor
+			)
+			BeforeEach(func() {
+				verifier = &mock.TMSTxProcessor{}
+				verifier.ProcessTxReturns(nil)
+				fakeManager.GetTxProcessorReturns(verifier, nil)
+			})
+			It("succeeds", func() {
+				err := txProcessor.GenerateSimulationResults(validEnvelope, nil, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fakeManager.GetTxProcessorCallCount()).To(Equal(1))
+				Expect(fakeManager.GetTxProcessorArgsForCall(0)).To(Equal("wild_channel"))
+				Expect(verifier.ProcessTxCallCount()).To(Equal(1))
+				txID, creatorInfo, ttx, simulator := verifier.ProcessTxArgsForCall(0)
+				Expect(txID).To(Equal("tx0"))
+				Expect(creatorInfo.Public()).To(BeNil())
+				Expect(proto.Equal(ttx, validTtx)).To(BeTrue())
+				Expect(simulator).To(BeNil())
+			})
+		})
+	})
 
-	err := txp.GenerateSimulationResults(tx, nil, false)
-	assert.EqualError(t, err, "failed committing transaction for channel wild_channel: wild_Commit_error")
-	tmsManager.AssertCalled(t, "GetTxProcessor", "wild_channel")
-	committer.AssertCalled(t, "ProcessTx", mock.Anything, nil, false)
-}
-
-func TestProcessor_GenerateSimulationResults_Success(t *testing.T) {
-	committer := &mocks.TMSTxProcessor{}
-	committer.On("ProcessTx", mock.Anything, nil, false).Return(nil)
-
-	tmsManager := &mocks.TMSManager{}
-	tmsManager.On("GetTxProcessor", "wild_channel").Return(committer, nil)
-
-	txp := transaction.Processor{TMSManager: tmsManager}
-	tx := validTransaction(t)
-
-	err := txp.GenerateSimulationResults(tx, nil, false)
-	assert.NoError(t, err)
-	tmsManager.AssertCalled(t, "GetTxProcessor", "wild_channel")
-	committer.AssertCalled(t, "ProcessTx", mock.Anything, nil, false)
-}
-
-func invalidTransaction() *common.Envelope {
-	return &common.Envelope{
-		Payload:   []byte("wild_payload"),
-		Signature: nil,
-	}
-}
-
-func validTransaction(t *testing.T) *common.Envelope {
-	ttx := &token.TokenTransaction{
-		Action: &token.TokenTransaction_PlainAction{
-			PlainAction: &token.PlainTokenAction{},
-		},
-	}
-
-	ch := &common.ChannelHeader{
-		Type: int32(common.HeaderType_TOKEN_TRANSACTION), ChannelId: "wild_channel",
-	}
-	hdr := &common.Header{
-		ChannelHeader: marshal(t, ch),
-	}
-	payload := &common.Payload{
-		Header: hdr,
-		Data:   marshal(t, ttx),
-	}
-	payloadBytes, err := proto.Marshal(payload)
-	assert.NoError(t, err)
-	return &common.Envelope{
-		Payload:   payloadBytes,
-		Signature: nil,
-	}
-}
-
-func marshal(t *testing.T, pb proto.Message) []byte {
-	data, err := proto.Marshal(pb)
-	assert.NoError(t, err)
-	return data
-}
+})

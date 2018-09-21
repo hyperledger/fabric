@@ -4,14 +4,14 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/token/tms/plain"
+	"github.com/hyperledger/fabric/token/transaction"
 )
 
 type PolicyValidator struct {
-	IsIssuerStub        func(creator plain.CreatorInfo, tokenType string) error
+	IsIssuerStub        func(creator transaction.CreatorInfo, tokenType string) error
 	isIssuerMutex       sync.RWMutex
 	isIssuerArgsForCall []struct {
-		creator   plain.CreatorInfo
+		creator   transaction.CreatorInfo
 		tokenType string
 	}
 	isIssuerReturns struct {
@@ -24,11 +24,11 @@ type PolicyValidator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PolicyValidator) IsIssuer(creator plain.CreatorInfo, tokenType string) error {
+func (fake *PolicyValidator) IsIssuer(creator transaction.CreatorInfo, tokenType string) error {
 	fake.isIssuerMutex.Lock()
 	ret, specificReturn := fake.isIssuerReturnsOnCall[len(fake.isIssuerArgsForCall)]
 	fake.isIssuerArgsForCall = append(fake.isIssuerArgsForCall, struct {
-		creator   plain.CreatorInfo
+		creator   transaction.CreatorInfo
 		tokenType string
 	}{creator, tokenType})
 	fake.recordInvocation("IsIssuer", []interface{}{creator, tokenType})
@@ -48,7 +48,7 @@ func (fake *PolicyValidator) IsIssuerCallCount() int {
 	return len(fake.isIssuerArgsForCall)
 }
 
-func (fake *PolicyValidator) IsIssuerArgsForCall(i int) (plain.CreatorInfo, string) {
+func (fake *PolicyValidator) IsIssuerArgsForCall(i int) (transaction.CreatorInfo, string) {
 	fake.isIssuerMutex.RLock()
 	defer fake.isIssuerMutex.RUnlock()
 	return fake.isIssuerArgsForCall[i].creator, fake.isIssuerArgsForCall[i].tokenType
@@ -97,4 +97,4 @@ func (fake *PolicyValidator) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ plain.PolicyValidator = new(PolicyValidator)
+var _ transaction.PolicyValidator = new(PolicyValidator)

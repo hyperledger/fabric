@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/token/tms/plain"
+	"github.com/hyperledger/fabric/token/transaction"
 )
 
 type CreatorInfo struct {
@@ -85,4 +85,4 @@ func (fake *CreatorInfo) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ plain.CreatorInfo = new(CreatorInfo)
+var _ transaction.CreatorInfo = new(CreatorInfo)

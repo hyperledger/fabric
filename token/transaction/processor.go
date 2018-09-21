@@ -3,9 +3,12 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package transaction
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
@@ -22,21 +25,21 @@ type Processor struct {
 
 func (p *Processor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	// Extract channel header and token transaction
-	ch, ttx, err := UnmarshalTokenTransaction(txEnv.Payload)
+	ch, ttx, ci, err := UnmarshalTokenTransaction(txEnv.Payload)
 	if err != nil {
-		return errors.Errorf("failed unmarshalling token transaction: %s", err)
+		return errors.WithMessage(err, "failed unmarshalling token transaction")
 	}
 
 	// Get a TMSTxProcessor that corresponds to the channel
-	verifier, err := p.TMSManager.GetTxProcessor(ch.ChannelId)
+	txProcessor, err := p.TMSManager.GetTxProcessor(ch.ChannelId)
 	if err != nil {
-		return errors.Errorf("failed getting committer for channel %s: %s", ch.ChannelId, err)
+		return errors.WithMessage(err, "failed getting committer")
 	}
 
-	// Extract the read dependencies and leger updates associated to the transaction using simulator
-	err = verifier.ProcessTx(ttx, simulator, initializingLedger)
+	// Extract the read dependencies and ledger updates associated to the transaction using simulator
+	err = txProcessor.ProcessTx(ch.TxId, ci, ttx, simulator)
 	if err != nil {
-		return errors.Errorf("failed committing transaction for channel %s: %s", ch.ChannelId, err)
+		return errors.WithMessage(err, fmt.Sprintf("failed committing transaction for channel %s", ch.ChannelId))
 	}
 
 	return err
