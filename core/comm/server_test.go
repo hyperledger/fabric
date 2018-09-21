@@ -130,8 +130,8 @@ func (esss *emptyServiceServer) EmptyStream(stream testpb.EmptyService_EmptyStre
 
 // invoke the EmptyCall RPC
 func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	//create GRPC client conn
 	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
@@ -142,12 +142,8 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 	//create GRPC client
 	client := testpb.NewEmptyServiceClient(clientConn)
 
-	callCtx := context.Background()
-	callCtx, cancel := context.WithTimeout(callCtx, timeout)
-	defer cancel()
-
 	//invoke service
-	empty, err := client.EmptyCall(callCtx, new(testpb.Empty))
+	empty, err := client.EmptyCall(context.Background(), new(testpb.Empty))
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +153,8 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 
 // invoke the EmptyStream RPC
 func invokeEmptyStream(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	//create GRPC client conn
 	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
@@ -632,8 +628,7 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	if err != nil {
-		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
-			testAddress, err)
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v", testAddress, err)
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
@@ -1543,18 +1538,15 @@ func TestKeepaliveClientResponse(t *testing.T) {
 	defer srv.Stop()
 
 	// test that connection does not close with response to ping
-	connectCtx, cancel := context.WithDeadline(
-		context.Background(),
-		time.Now().Add(1*time.Second))
+	connectCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	clientTransport, err := transport.NewClientTransport(
 		connectCtx,
 		context.Background(),
 		transport.TargetInfo{Addr: testAddress},
 		transport.ConnectOptions{},
-		func() {})
-	if err != nil {
-		cancel()
-	}
+		func() {},
+	)
+	cancel()
 	assert.NoError(t, err, "Unexpected error creating client transport")
 	defer clientTransport.Close()
 	// sleep past keepalive timeout

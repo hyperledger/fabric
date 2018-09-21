@@ -40,3 +40,13 @@ if [ -n "$OUTPUT" ]; then
     echo $OUTPUT
     exit 1
 fi
+# This block should removed once the lostcancel issues have been corrected and
+# the previous invocation of vet should remove the -lostcancel=false option.
+#   FAB-12082 - gossip
+#   FAB-12083 - orderer
+OUTPUT="$(go vet -lostcancel=true ./... 2>&1 | grep -Ev '^#|(fabric/)?gossip/comm/comm_impl.go|(fabric)?orderer/common/cluster/comm.go' || true)"
+if [ -n "$OUTPUT" ]; then
+    echo "The following files contain go vet errors"
+    echo $OUTPUT
+    exit 1
+fi
