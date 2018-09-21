@@ -25,9 +25,6 @@ type State interface {
 	// GetStateMetadata returns the metadata for given namespace and key
 	GetStateMetadata(namespace, key string) (map[string][]byte, error)
 
-	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
-	GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error)
-
 	// GetPrivateDataMetadataByHash gets the metadata of a private data item identified by a tuple <namespace, collection, keyhash>
 	GetPrivateDataMetadataByHash(namespace, collection string, keyhash []byte) (map[string][]byte, error)
 

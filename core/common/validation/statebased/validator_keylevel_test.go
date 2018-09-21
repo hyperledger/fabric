@@ -87,7 +87,7 @@ func TestKeylevelValidation(t *testing.T) {
 	// We simulate policy check success and failure
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -128,7 +128,7 @@ func TestKeylevelValidationPvtData(t *testing.T) {
 	// We simulate policy check success and failure
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -166,7 +166,7 @@ func TestKeylevelValidationMetaUpdate(t *testing.T) {
 	// We simulate policy check success and failure
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -204,7 +204,7 @@ func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
 	// We simulate policy check success and failure
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -269,7 +269,7 @@ func TestCCEPValidation(t *testing.T) {
 	// touch any key with a state-based endorsement policy;
 	// we expect to check the normal cc-endorsement policy.
 
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataRv: map[string][]byte{}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataByHashRv: map[string][]byte{}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -309,7 +309,7 @@ func TestCCEPValidationReads(t *testing.T) {
 	// touch any key with a state-based endorsement policy;
 	// we expect to check the normal cc-endorsement policy.
 
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataRv: map[string][]byte{}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataByHashRv: map[string][]byte{}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -391,7 +391,7 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 	// touch any key with a state-based endorsement policy;
 	// we expect to check the normal cc-endorsement policy.
 
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataRv: map[string][]byte{}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{}, GetPrivateDataMetadataByHashRv: map[string][]byte{}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
@@ -431,7 +431,7 @@ func TestKeylevelValidationFailure(t *testing.T) {
 	// for that very same key.
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)

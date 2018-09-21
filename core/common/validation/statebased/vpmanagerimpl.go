@@ -318,7 +318,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 			return nil, err
 		}
 	} else {
-		mdMap, err = state.GetPrivateDataMetadata(cc, coll, key)
+		mdMap, err = state.GetPrivateDataMetadataByHash(cc, coll, []byte(key))
 		if err != nil {
 			err = errors.WithMessage(err, fmt.Sprintf("could not retrieve metadata for %s:%s:%x", cc, coll, []byte(key)))
 			logger.Errorf(err.Error())
