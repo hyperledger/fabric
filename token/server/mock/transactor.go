@@ -9,60 +9,60 @@ import (
 )
 
 type Transactor struct {
-	ListUnspentTokensStub        func() ([]*token.TokenOutput, error)
-	listUnspentTokensMutex       sync.RWMutex
-	listUnspentTokensArgsForCall []struct{}
-	listUnspentTokensReturns     struct {
-		result1 []*token.TokenOutput
+	ListTokensStub        func() (*token.UnspentTokens, error)
+	listTokensMutex       sync.RWMutex
+	listTokensArgsForCall []struct{}
+	listTokensReturns     struct {
+		result1 *token.UnspentTokens
 		result2 error
 	}
-	listUnspentTokensReturnsOnCall map[int]struct {
-		result1 []*token.TokenOutput
+	listTokensReturnsOnCall map[int]struct {
+		result1 *token.UnspentTokens
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Transactor) ListUnspentTokens() ([]*token.TokenOutput, error) {
-	fake.listUnspentTokensMutex.Lock()
-	ret, specificReturn := fake.listUnspentTokensReturnsOnCall[len(fake.listUnspentTokensArgsForCall)]
-	fake.listUnspentTokensArgsForCall = append(fake.listUnspentTokensArgsForCall, struct{}{})
-	fake.recordInvocation("ListUnspentTokens", []interface{}{})
-	fake.listUnspentTokensMutex.Unlock()
-	if fake.ListUnspentTokensStub != nil {
-		return fake.ListUnspentTokensStub()
+func (fake *Transactor) ListTokens() (*token.UnspentTokens, error) {
+	fake.listTokensMutex.Lock()
+	ret, specificReturn := fake.listTokensReturnsOnCall[len(fake.listTokensArgsForCall)]
+	fake.listTokensArgsForCall = append(fake.listTokensArgsForCall, struct{}{})
+	fake.recordInvocation("ListTokens", []interface{}{})
+	fake.listTokensMutex.Unlock()
+	if fake.ListTokensStub != nil {
+		return fake.ListTokensStub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.listUnspentTokensReturns.result1, fake.listUnspentTokensReturns.result2
+	return fake.listTokensReturns.result1, fake.listTokensReturns.result2
 }
 
-func (fake *Transactor) ListUnspentTokensCallCount() int {
-	fake.listUnspentTokensMutex.RLock()
-	defer fake.listUnspentTokensMutex.RUnlock()
-	return len(fake.listUnspentTokensArgsForCall)
+func (fake *Transactor) ListTokensCallCount() int {
+	fake.listTokensMutex.RLock()
+	defer fake.listTokensMutex.RUnlock()
+	return len(fake.listTokensArgsForCall)
 }
 
-func (fake *Transactor) ListUnspentTokensReturns(result1 []*token.TokenOutput, result2 error) {
-	fake.ListUnspentTokensStub = nil
-	fake.listUnspentTokensReturns = struct {
-		result1 []*token.TokenOutput
+func (fake *Transactor) ListTokensReturns(result1 *token.UnspentTokens, result2 error) {
+	fake.ListTokensStub = nil
+	fake.listTokensReturns = struct {
+		result1 *token.UnspentTokens
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Transactor) ListUnspentTokensReturnsOnCall(i int, result1 []*token.TokenOutput, result2 error) {
-	fake.ListUnspentTokensStub = nil
-	if fake.listUnspentTokensReturnsOnCall == nil {
-		fake.listUnspentTokensReturnsOnCall = make(map[int]struct {
-			result1 []*token.TokenOutput
+func (fake *Transactor) ListTokensReturnsOnCall(i int, result1 *token.UnspentTokens, result2 error) {
+	fake.ListTokensStub = nil
+	if fake.listTokensReturnsOnCall == nil {
+		fake.listTokensReturnsOnCall = make(map[int]struct {
+			result1 *token.UnspentTokens
 			result2 error
 		})
 	}
-	fake.listUnspentTokensReturnsOnCall[i] = struct {
-		result1 []*token.TokenOutput
+	fake.listTokensReturnsOnCall[i] = struct {
+		result1 *token.UnspentTokens
 		result2 error
 	}{result1, result2}
 }
@@ -70,8 +70,8 @@ func (fake *Transactor) ListUnspentTokensReturnsOnCall(i int, result1 []*token.T
 func (fake *Transactor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.listUnspentTokensMutex.RLock()
-	defer fake.listUnspentTokensMutex.RUnlock()
+	fake.listTokensMutex.RLock()
+	defer fake.listTokensMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

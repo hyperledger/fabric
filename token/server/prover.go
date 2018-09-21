@@ -85,20 +85,17 @@ func (s *Prover) RequestImport(ctx context.Context, header *token.Header, reques
 }
 
 func (s *Prover) ListUnspentTokens(ctxt context.Context, header *token.Header, listRequest *token.ListRequest) (*token.CommandResponse_UnspentTokens, error) {
-	trasactor, err := s.TMSManager.GetTransactor(header.ChannelId, listRequest.Credential, header.Creator)
+	transactor, err := s.TMSManager.GetTransactor(header.ChannelId, listRequest.Credential, header.Creator)
 	if err != nil {
 		return nil, err
 	}
 
-	tokens, err := trasactor.ListUnspentTokens()
+	tokens, err := transactor.ListTokens()
 	if err != nil {
 		return nil, err
 	}
 
-	return &token.CommandResponse_UnspentTokens{
-		UnspentTokens: &token.UnspentTokens{
-			Tokens: tokens,
-		}}, nil
+	return &token.CommandResponse_UnspentTokens{UnspentTokens: tokens}, nil
 }
 
 func (s *Prover) ValidateHeader(header *token.Header) error {

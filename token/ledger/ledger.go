@@ -9,6 +9,13 @@ package ledger
 import "github.com/hyperledger/fabric/common/ledger"
 
 //go:generate counterfeiter -o mock/ledger_reader.go -fake-name LedgerReader . LedgerReader
+//go:generate counterfeiter -o mock/ledger_manager.go -fake-name LedgerManager . LedgerManager
+
+// LedgerManager provides access to the ledger infrastructure
+type LedgerManager interface {
+	// Returns a LedgerReader for the passed channel, an error otherwise
+	GetLedgerReader(channel string) (LedgerReader, error)
+}
 
 // LedgerReader interface, used to read from a ledger.
 type LedgerReader interface {
