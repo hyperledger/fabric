@@ -57,14 +57,14 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	// Initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
 	ledgerStoreProvider := ledgerstorage.NewProvider()
+	bookkeepingProvider := bookkeeping.NewProvider()
 	// Initialize the versioned database (state database)
-	vdbProvider, err := privacyenabledstate.NewCommonStorageDBProvider()
+	vdbProvider, err := privacyenabledstate.NewCommonStorageDBProvider(bookkeepingProvider)
 	if err != nil {
 		return nil, err
 	}
 	// Initialize the history database (index for history of values by key)
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
-	bookkeepingProvider := bookkeeping.NewProvider()
 	logger.Info("ledger provider Initialized")
 	provider := &Provider{idStore, ledgerStoreProvider,
 		vdbProvider, historydbProvider, nil, nil, bookkeepingProvider, nil}

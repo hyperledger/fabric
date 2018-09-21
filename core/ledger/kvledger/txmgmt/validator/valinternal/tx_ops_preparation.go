@@ -27,21 +27,22 @@ func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
 			continue
 		}
 
-		latestVal, err := retrieveLatestState(ck.ns, ck.coll, ck.key, precedingUpdates, db)
-		if err != nil {
-			return nil, err
-		}
-
 		// check if only value is updated in the current transaction then merge the metadata from last committed state
 		if keyop.isOnlyUpsert() {
-			if latestVal != nil {
-				keyop.metadata = latestVal.Metadata
+			latestMetadata, err := retrieveLatestMetadata(ck.ns, ck.coll, ck.key, precedingUpdates, db)
+			if err != nil {
+				return nil, err
 			}
+			keyop.metadata = latestMetadata
 			continue
 		}
 
 		// only metadata is updated in the current transaction. Merge the value from the last committed state
 		// If the key does not exist in the last state, make this key as noop in current transaction
+		latestVal, err := retrieveLatestState(ck.ns, ck.coll, ck.key, precedingUpdates, db)
+		if err != nil {
+			return nil, err
+		}
 		if latestVal != nil {
 			keyop.value = latestVal.Value
 		} else {
@@ -135,4 +136,20 @@ func retrieveLatestState(ns, coll, key string,
 		vv, err = db.GetValueHash(ns, coll, []byte(key))
 	}
 	return vv, err
+}
+
+func retrieveLatestMetadata(ns, coll, key string,
+	precedingUpdates *PubAndHashUpdates, db privacyenabledstate.DB) ([]byte, error) {
+	if coll == "" {
+		vv := precedingUpdates.PubUpdates.Get(ns, key)
+		if vv != nil {
+			return vv.Metadata, nil
+		}
+		return db.GetStateMetadata(ns, key)
+	}
+	vv := precedingUpdates.HashUpdates.Get(ns, coll, key)
+	if vv != nil {
+		return vv.Metadata, nil
+	}
+	return db.GetPrivateDataMetadataByHash(ns, coll, []byte(key))
 }

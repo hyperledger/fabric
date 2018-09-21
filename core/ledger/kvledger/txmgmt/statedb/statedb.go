@@ -16,6 +16,7 @@ import (
 )
 
 //go:generate counterfeiter -o mock/results_iterator.go -fake-name ResultsIterator . ResultsIterator
+//go:generate counterfeiter -o mock/versioned_db.go -fake-name VersionedDB . VersionedDB
 
 // VersionedDBProvider provides an instance of an versioned DB
 type VersionedDBProvider interface {
