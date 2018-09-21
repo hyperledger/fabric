@@ -1,4 +1,4 @@
-// +build linux,go1.9,cgo
+// +build go1.9,linux,cgo go1.10,darwin,cgo
 // +build !ppc64le
 
 /*
@@ -16,12 +16,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// raceEnabled is set to true when the race build tag is enabled.
+// see race_test.go
+var raceEnabled bool
+
 func buildPlugin(lib string, t *testing.T) {
 	t.Helper()
 	// check to see if the example plugin exists
 	if _, err := os.Stat(lib); err != nil {
 		// build the example plugin
-		cmd := exec.Command("go", "build", "-buildmode=plugin", "github.com/hyperledger/fabric/examples/plugins/bccsp")
+		cmd := exec.Command("go", "build", "-buildmode=plugin")
+		if raceEnabled {
+			cmd.Args = append(cmd.Args, "-race")
+		}
+		cmd.Args = append(cmd.Args, "github.com/hyperledger/fabric/examples/plugins/bccsp")
 		err := cmd.Run()
 		if err != nil {
 			t.Fatalf("Could not build plugin: [%s]", err)
