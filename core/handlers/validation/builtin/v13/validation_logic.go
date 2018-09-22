@@ -171,7 +171,7 @@ func (vscc *Validator) Validate(
 		va.endorsements,
 	)
 	if txverr != nil {
-		logger.Errorf("VSCC error: stateBasedValidator.Validate failed, err %s", err)
+		logger.Errorf("VSCC error: stateBasedValidator.Validate failed, err %s", txverr)
 		vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), txverr)
 		return txverr
 	}
