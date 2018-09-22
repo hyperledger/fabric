@@ -261,7 +261,7 @@ func CreateConnectionDefinition(couchDBAddress, username, password string, maxRe
 //CreateDatabaseIfNotExist method provides function to create database
 func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 
-	logger.Debugf("Entering CreateDatabaseIfNotExist()")
+	logger.Debugf("[%s] Entering CreateDatabaseIfNotExist()", dbclient.DBName)
 
 	dbInfo, couchDBReturn, err := dbclient.GetDatabaseInfo()
 	if err != nil {
@@ -279,14 +279,14 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 			return errSecurity
 		}
 
-		logger.Debugf("Database %s already exists", dbclient.DBName)
+		logger.Debugf("[%s] Database already exists", dbclient.DBName)
 
-		logger.Debugf("Exiting CreateDatabaseIfNotExist()")
+		logger.Debugf("[%s] Exiting CreateDatabaseIfNotExist()", dbclient.DBName)
 
 		return nil
 	}
 
-	logger.Debugf("Database %s does not exist.", dbclient.DBName)
+	logger.Debugf("[%s] Database does not exist.", dbclient.DBName)
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -317,8 +317,8 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 				return errSecurity
 			}
 
-			logger.Infof("Created state database %s", dbclient.DBName)
-			logger.Debugf("Exiting CreateDatabaseIfNotExist()")
+			logger.Infof("[%s] Created state database", dbclient.DBName)
+			logger.Debugf("[%s] Exiting CreateDatabaseIfNotExist()", dbclient.DBName)
 			return nil
 		}
 
@@ -334,7 +334,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() error {
 
 	logger.Infof("Created state database %s", dbclient.DBName)
 
-	logger.Debugf("Exiting CreateDatabaseIfNotExist()")
+	logger.Debugf("[%s] Exiting CreateDatabaseIfNotExist()", dbclient.DBName)
 
 	return nil
 
@@ -442,7 +442,7 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 //DropDatabase provides method to drop an existing database
 func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 
-	logger.Debugf("Entering DropDatabase()")
+	logger.Debugf("[%s] Entering DropDatabase()", dbclient.DBName)
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -467,10 +467,10 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	}
 
 	if dbResponse.Ok == true {
-		logger.Debugf("Dropped database %s ", dbclient.DBName)
+		logger.Debugf("[%s] Dropped database", dbclient.DBName)
 	}
 
-	logger.Debugf("Exiting DropDatabase()")
+	logger.Debugf("[%s] Exiting DropDatabase()", dbclient.DBName)
 
 	if dbResponse.Ok == true {
 
@@ -485,7 +485,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 // EnsureFullCommit calls _ensure_full_commit for explicit fsync
 func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) {
 
-	logger.Debugf("Entering EnsureFullCommit()")
+	logger.Debugf("[%s] Entering EnsureFullCommit()", dbclient.DBName)
 
 	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -510,10 +510,6 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 		return nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
 
-	if dbResponse.Ok == true {
-		logger.Debugf("_ensure_full_commit database %s ", dbclient.DBName)
-	}
-
 	//Check to see if autoWarmIndexes is enabled
 	//If autoWarmIndexes is enabled, indexes will be refreshed after the number of blocks
 	//in GetWarmIndexesAfterNBlocks() have been committed to the state database
@@ -529,7 +525,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	}
 
-	logger.Debugf("Exiting EnsureFullCommit()")
+	logger.Debugf("[%s] Exiting EnsureFullCommit()", dbclient.DBName)
 
 	if dbResponse.Ok == true {
 
@@ -543,7 +539,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 //SaveDoc method provides a function to save a document, id and byte array
 func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc) (string, error) {
 
-	logger.Debugf("Entering SaveDoc()  id=[%s]", id)
+	logger.Debugf("[%s] Entering SaveDoc() id=[%s]", dbclient.DBName, id)
 
 	if !utf8.ValidString(id) {
 		return "", errors.Errorf("doc id [%x] not a valid utf8 string", id)
@@ -556,8 +552,6 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	}
 
 	saveURL = constructCouchDBUrl(saveURL, dbclient.DBName, id)
-
-	logger.Debugf("  rev=%s", rev)
 
 	//Set up a buffer for the data to be pushed to couchdb
 	data := []byte{}
@@ -620,7 +614,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 		return "", err
 	}
 
-	logger.Debugf("Exiting SaveDoc()")
+	logger.Debugf("[%s] Exiting SaveDoc()", dbclient.DBName)
 
 	return revision, nil
 
@@ -743,7 +737,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	var couchDoc CouchDoc
 	attachments := []*AttachmentInfo{}
 
-	logger.Debugf("Entering ReadDoc()  id=[%s]", id)
+	logger.Debugf("[%s] Entering ReadDoc()  id=[%s]", dbclient.DBName, id)
 	if !utf8.ValidString(id) {
 		return nil, "", errors.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
@@ -767,12 +761,12 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
-			logger.Debug("Document not found (404), returning nil value instead of 404 error")
+			logger.Debugf("[%s] Document not found (404), returning nil value instead of 404 error", dbclient.DBName)
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
 			return nil, "", nil
 		}
-		logger.Debugf("couchDBReturn=%v\n", couchDBReturn)
+		logger.Debugf("[%s] couchDBReturn=%v\n", dbclient.DBName, couchDBReturn)
 		return nil, "", err
 	}
 	defer closeResponseBody(resp)
@@ -804,7 +798,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 			defer p.Close()
 
-			logger.Debugf("part header=%s", p.Header)
+			logger.Debugf("[%s] part header=%s", dbclient.DBName, p.Header)
 			switch p.Header.Get("Content-Type") {
 			case "application/json":
 				partdata, err := ioutil.ReadAll(p)
@@ -833,7 +827,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 							return nil, "", errors.Wrap(err, "error reading gzip data")
 						}
 
-						logger.Debugf("Retrieved attachment data")
+						logger.Debugf("[%s] Retrieved attachment data", dbclient.DBName)
 						attachment.AttachmentBytes = respBody
 						attachment.Name = p.FileName()
 						attachments = append(attachments, attachment)
@@ -845,7 +839,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 						if err != nil {
 							return nil, "", errors.Wrap(err, "error reading multipart data")
 						}
-						logger.Debugf("Retrieved attachment data")
+						logger.Debugf("[%s] Retrieved attachment data", dbclient.DBName)
 						attachment.AttachmentBytes = partdata
 						attachment.Name = p.FileName()
 						attachments = append(attachments, attachment)
@@ -866,7 +860,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
 
-	logger.Debugf("Exiting ReadDoc()")
+	logger.Debugf("[%s] Exiting ReadDoc()", dbclient.DBName)
 	return &couchDoc, revision, nil
 }
 
@@ -876,7 +870,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 //Skip is reserved for possible future future use.
 func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32) ([]*QueryResult, string, error) {
 
-	logger.Debugf("Entering ReadDocRange()  startKey=%s, endKey=%s", startKey, endKey)
+	logger.Debugf("[%s] Entering ReadDocRange()  startKey=%s, endKey=%s", dbclient.DBName, startKey, endKey)
 
 	var results []*QueryResult
 
@@ -926,7 +920,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 		if err2 != nil {
 			log.Fatal(err2)
 		}
-		logger.Debugf("%s", dump)
+		logger.Debugf("[%s] %s", dbclient.DBName, dump)
 	}
 
 	//handle as JSON document
@@ -947,7 +941,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 		jsonResponse.TotalRows = limit
 	}
 
-	logger.Debugf("Total Rows: %d", jsonResponse.TotalRows)
+	logger.Debugf("[%s] Total Rows: %d", dbclient.DBName, jsonResponse.TotalRows)
 
 	//Use the next endKey as the starting default for the nextStartKey
 	nextStartKey := endKey
@@ -969,7 +963,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 
 		if docMetadata.AttachmentsInfo != nil {
 
-			logger.Debugf("Adding JSON document and attachments for id: %s", docMetadata.ID)
+			logger.Debugf("[%s] Adding JSON document and attachments for id: %s", dbclient.DBName, docMetadata.ID)
 
 			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
 			if err != nil {
@@ -981,7 +975,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 
 		} else {
 
-			logger.Debugf("Adding json docment for id: %s", docMetadata.ID)
+			logger.Debugf("[%s] Adding json docment for id: %s", dbclient.DBName, docMetadata.ID)
 
 			var addDocument = &QueryResult{docMetadata.ID, row.Doc, nil}
 			results = append(results, addDocument)
@@ -990,7 +984,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 
 	}
 
-	logger.Debugf("Exiting ReadDocRange()")
+	logger.Debugf("[%s] Exiting ReadDocRange()", dbclient.DBName)
 
 	return results, nextStartKey, nil
 
@@ -999,7 +993,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 //DeleteDoc method provides function to delete a document from the database by id
 func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
-	logger.Debugf("Entering DeleteDoc()  id=%s", id)
+	logger.Debugf("[%s] Entering DeleteDoc()  id=%s", dbclient.DBName, id)
 
 	deleteURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1017,7 +1011,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
 	if err != nil {
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
-			logger.Debug("Document not found (404), returning nil value instead of 404 error")
+			logger.Debugf("[%s] Document not found (404), returning nil value instead of 404 error", dbclient.DBName)
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
 			return nil
@@ -1026,7 +1020,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 	}
 	defer closeResponseBody(resp)
 
-	logger.Debugf("Exiting DeleteDoc()")
+	logger.Debugf("[%s] Exiting DeleteDoc()", dbclient.DBName)
 
 	return nil
 
@@ -1035,7 +1029,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 //QueryDocuments method provides function for processing a query
 func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, string, error) {
 
-	logger.Debugf("Entering QueryDocuments()  query=%s", query)
+	logger.Debugf("[%s] Entering QueryDocuments()  query=%s", dbclient.DBName, query)
 
 	var results []*QueryResult
 
@@ -1060,7 +1054,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, str
 		if err2 != nil {
 			log.Fatal(err2)
 		}
-		logger.Debugf("%s", dump)
+		logger.Debugf("[%s] %s", dbclient.DBName, dump)
 	}
 
 	//handle as JSON document
@@ -1090,7 +1084,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, str
 
 		if docMetadata.AttachmentsInfo != nil {
 
-			logger.Debugf("Adding JSON docment and attachments for id: %s", docMetadata.ID)
+			logger.Debugf("[%s] Adding JSON docment and attachments for id: %s", dbclient.DBName, docMetadata.ID)
 
 			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
 			if err != nil {
@@ -1100,7 +1094,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, str
 			results = append(results, addDocument)
 
 		} else {
-			logger.Debugf("Adding json docment for id: %s", docMetadata.ID)
+			logger.Debugf("[%s] Adding json docment for id: %s", dbclient.DBName, docMetadata.ID)
 			var addDocument = &QueryResult{ID: docMetadata.ID, Value: row, Attachments: nil}
 
 			results = append(results, addDocument)
@@ -1108,7 +1102,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, str
 		}
 	}
 
-	logger.Debugf("Exiting QueryDocuments()")
+	logger.Debugf("[%s] Exiting QueryDocuments()", dbclient.DBName)
 
 	return results, jsonResponse.Bookmark, nil
 
@@ -1131,7 +1125,7 @@ func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 		Indexes   []indexDefinition `json:"indexes"`
 	}
 
-	logger.Debug("Entering ListIndex()")
+	logger.Debug("[%s] Entering ListIndex()", dbclient.DBName)
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1180,7 +1174,7 @@ func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 
 	}
 
-	logger.Debugf("Exiting ListIndex()")
+	logger.Debugf("[%s] Exiting ListIndex()", dbclient.DBName)
 
 	return results, nil
 
@@ -1189,7 +1183,7 @@ func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 // CreateIndex method provides a function creating an index
 func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndexResponse, error) {
 
-	logger.Debugf("Entering CreateIndex()  indexdefinition=%s", indexdefinition)
+	logger.Debugf("[%s] Entering CreateIndex()  indexdefinition=%s", dbclient.DBName, indexdefinition)
 
 	//Test to see if this is a valid JSON
 	if IsJSON(indexdefinition) != true {
@@ -1248,7 +1242,7 @@ func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) (*CreateIndex
 // DeleteIndex method provides a function deleting an index
 func (dbclient *CouchDatabase) DeleteIndex(designdoc, indexname string) error {
 
-	logger.Debugf("Entering DeleteIndex()  designdoc=%s  indexname=%s", designdoc, indexname)
+	logger.Debugf("[%s] Entering DeleteIndex()  designdoc=%s  indexname=%s", dbclient.DBName, designdoc, indexname)
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1273,7 +1267,7 @@ func (dbclient *CouchDatabase) DeleteIndex(designdoc, indexname string) error {
 //WarmIndex method provides a function for warming a single index
 func (dbclient *CouchDatabase) WarmIndex(designdoc, indexname string) error {
 
-	logger.Debugf("Entering WarmIndex()  designdoc=%s  indexname=%s", designdoc, indexname)
+	logger.Debugf("[%s] Entering WarmIndex()  designdoc=%s  indexname=%s", dbclient.DBName, designdoc, indexname)
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1316,7 +1310,7 @@ func (dbclient *CouchDatabase) runWarmIndexAllIndexes() {
 //WarmIndexAllIndexes method provides a function for warming all indexes for a database
 func (dbclient *CouchDatabase) WarmIndexAllIndexes() error {
 
-	logger.Debugf("Entering WarmIndexAllIndexes()")
+	logger.Debugf("[%s] Entering WarmIndexAllIndexes()", dbclient.DBName)
 
 	//Retrieve all indexes
 	listResult, err := dbclient.ListIndex()
@@ -1334,7 +1328,7 @@ func (dbclient *CouchDatabase) WarmIndexAllIndexes() error {
 
 	}
 
-	logger.Debugf("Exiting WarmIndexAllIndexes()")
+	logger.Debugf("[%s] Exiting WarmIndexAllIndexes()", dbclient.DBName)
 
 	return nil
 
@@ -1343,7 +1337,7 @@ func (dbclient *CouchDatabase) WarmIndexAllIndexes() error {
 //GetDatabaseSecurity method provides function to retrieve the security config for a database
 func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) {
 
-	logger.Debugf("Entering GetDatabaseSecurity()")
+	logger.Debugf("[%s] Entering GetDatabaseSecurity()", dbclient.DBName)
 
 	securityURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1376,7 +1370,7 @@ func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) 
 		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
-	logger.Debugf("Exiting GetDatabaseSecurity()")
+	logger.Debugf("[%s] Exiting GetDatabaseSecurity()", dbclient.DBName)
 
 	return jsonResponse, nil
 
@@ -1385,7 +1379,7 @@ func (dbclient *CouchDatabase) GetDatabaseSecurity() (*DatabaseSecurity, error) 
 //ApplyDatabaseSecurity method provides function to update the security config for a database
 func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseSecurity) error {
 
-	logger.Debugf("Entering ApplyDatabaseSecurity()")
+	logger.Debugf("[%s] Entering ApplyDatabaseSecurity()", dbclient.DBName)
 
 	securityURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1416,7 +1410,7 @@ func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseS
 		return errors.Wrap(err, "error unmarshalling json data")
 	}
 
-	logger.Debugf("Applying security to database [%s]: %s", dbclient.DBName, string(databaseSecurityJSON))
+	logger.Debugf("[%s] Applying security to database: %s", dbclient.DBName, string(databaseSecurityJSON))
 
 	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, securityURL.String(), databaseSecurityJSON, "", "", maxRetries, true)
 
@@ -1425,7 +1419,7 @@ func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseS
 	}
 	defer closeResponseBody(resp)
 
-	logger.Debugf("Exiting ApplyDatabaseSecurity()")
+	logger.Debugf("[%s] Exiting ApplyDatabaseSecurity()", dbclient.DBName)
 
 	return nil
 
@@ -1435,7 +1429,7 @@ func (dbclient *CouchDatabase) ApplyDatabaseSecurity(databaseSecurity *DatabaseS
 // including ID, couchdb revision number, and ledger version
 func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*DocMetadata, error) {
 
-	logger.Debugf("Entering BatchRetrieveDocumentMetadata()  keys=%s", keys)
+	logger.Debugf("[%s] Entering BatchRetrieveDocumentMetadata()  keys=%s", dbclient.DBName, keys)
 
 	batchRetrieveURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1476,7 +1470,7 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		logger.Debugf("HTTP Response: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		logger.Debugf("[%s] HTTP Response: %s", dbclient.DBName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
 	}
 
 	//handle as JSON document
@@ -1499,7 +1493,7 @@ func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*
 		docMetadataArray = append(docMetadataArray, docMetadata)
 	}
 
-	logger.Debugf("Exiting BatchRetrieveDocumentMetadata()")
+	logger.Debugf("[%s] Exiting BatchRetrieveDocumentMetadata()", dbclient.DBName)
 
 	return docMetadataArray, nil
 
@@ -1511,9 +1505,9 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		documentIdsString, err := printDocumentIds(documents)
 		if err == nil {
-			logger.Debugf("Entering BatchUpdateDocuments()  document ids=[%s]", documentIdsString)
+			logger.Debugf("[%s] Entering BatchUpdateDocuments()  document ids=[%s]", dbclient.DBName, documentIdsString)
 		} else {
-			logger.Debugf("Entering BatchUpdateDocuments()  Could not print document ids due to error: %+v", err)
+			logger.Debugf("[%s] Entering BatchUpdateDocuments()  Could not print document ids due to error: %+v", dbclient.DBName, err)
 		}
 	}
 
@@ -1582,7 +1576,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		logger.Debugf("HTTP Response: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		logger.Debugf("[%s] HTTP Response: %s", dbclient.DBName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
 	}
 
 	//handle as JSON document
@@ -1597,7 +1591,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		return nil, errors.Wrap(err2, "error unmarshalling json data")
 	}
 
-	logger.Debugf("Exiting BatchUpdateDocuments() _bulk_docs response=[%s]", string(jsonResponseRaw))
+	logger.Debugf("[%s] Exiting BatchUpdateDocuments() _bulk_docs response=[%s]", dbclient.DBName, string(jsonResponseRaw))
 
 	return jsonResponse, nil
 
@@ -1857,15 +1851,11 @@ func IsJSON(s string) bool {
 // Note that all other URL special characters have been tested successfully without need for special handling
 func encodePathElement(str string) string {
 
-	logger.Debugf("Entering encodePathElement()  string=%s", str)
-
 	u := &url.URL{}
 	u.Path = str
 	encodedStr := u.EscapedPath() // url encode using golang url path encoding rules
 	encodedStr = strings.Replace(encodedStr, "/", "%2F", -1)
 	encodedStr = strings.Replace(encodedStr, "+", "%2B", -1)
-
-	logger.Debugf("Exiting encodePathElement()  encodedStr=%s", encodedStr)
 
 	return encodedStr
 }

@@ -196,6 +196,14 @@ func (historyDB *historyDB) ShouldRecover(lastAvailableBlock uint64) (bool, uint
 // CommitLostBlock implements method in interface kvledger.Recoverer
 func (historyDB *historyDB) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	block := blockAndPvtdata.Block
+
+	// log every 1000th block at Info level so that history rebuild progress can be tracked in production envs.
+	if block.Header.Number%1000 == 0 {
+		logger.Infof("Recommitting block [%d] to history database", block.Header.Number)
+	} else {
+		logger.Debugf("Recommitting block [%d] to history database", block.Header.Number)
+	}
+
 	if err := historyDB.Commit(block); err != nil {
 		return err
 	}
