@@ -263,27 +263,27 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
 
-	jsonValue1 := "{\"asset_name\": \"marble1\",\"color\": \"blue\",\"size\": 1,\"owner\": \"tom\"}"
+	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
-	jsonValue2 := "{\"asset_name\": \"marble2\",\"color\": \"blue\",\"size\": 2,\"owner\": \"jerry\"}"
+	jsonValue2 := `{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`
 	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 2))
-	jsonValue3 := "{\"asset_name\": \"marble3\",\"color\": \"blue\",\"size\": 3,\"owner\": \"fred\"}"
+	jsonValue3 := `{"asset_name": "marble3","color": "blue","size": 3,"owner": "fred"}`
 	batch.Put("ns1", "key3", []byte(jsonValue3), version.NewHeight(1, 3))
-	jsonValue4 := "{\"asset_name\": \"marble4\",\"color\": \"blue\",\"size\": 4,\"owner\": \"martha\"}"
+	jsonValue4 := `{"asset_name": "marble4","color": "blue","size": 4,"owner": "martha"}`
 	batch.Put("ns1", "key4", []byte(jsonValue4), version.NewHeight(1, 4))
-	jsonValue5 := "{\"asset_name\": \"marble5\",\"color\": \"blue\",\"size\": 5,\"owner\": \"fred\"}"
+	jsonValue5 := `{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`
 	batch.Put("ns1", "key5", []byte(jsonValue5), version.NewHeight(1, 5))
-	jsonValue6 := "{\"asset_name\": \"marble6\",\"color\": \"blue\",\"size\": 6,\"owner\": \"elaine\"}"
+	jsonValue6 := `{"asset_name": "marble6","color": "blue","size": 6,"owner": "elaine"}`
 	batch.Put("ns1", "key6", []byte(jsonValue6), version.NewHeight(1, 6))
-	jsonValue7 := "{\"asset_name\": \"marble7\",\"color\": \"blue\",\"size\": 7,\"owner\": \"fred\"}"
+	jsonValue7 := `{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`
 	batch.Put("ns1", "key7", []byte(jsonValue7), version.NewHeight(1, 7))
-	jsonValue8 := "{\"asset_name\": \"marble8\",\"color\": \"blue\",\"size\": 8,\"owner\": \"elaine\"}"
+	jsonValue8 := `{"asset_name": "marble8","color": "blue","size": 8,"owner": "elaine"}`
 	batch.Put("ns1", "key8", []byte(jsonValue8), version.NewHeight(1, 8))
-	jsonValue9 := "{\"asset_name\": \"marble9\",\"color\": \"green\",\"size\": 9,\"owner\": \"fred\"}"
+	jsonValue9 := `{"asset_name": "marble9","color": "green","size": 9,"owner": "fred"}`
 	batch.Put("ns1", "key9", []byte(jsonValue9), version.NewHeight(1, 9))
-	jsonValue10 := "{\"asset_name\": \"marble10\",\"color\": \"green\",\"size\": 10,\"owner\": \"mary\"}"
+	jsonValue10 := `{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`
 	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
-	jsonValue11 := "{\"asset_name\": \"marble11\",\"color\": \"cyan\",\"size\": 1000007,\"owner\": \"joe\"}"
+	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 1000007,"owner": "joe"}`
 	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
 
 	//add keys for a separate namespace
@@ -428,88 +428,88 @@ func TestPaginatedQuery(t *testing.T) {
 	defer db.Close()
 
 	batch := statedb.NewUpdateBatch()
-	jsonValue1 := "{\"asset_name\": \"marble1\",\"color\": \"blue\",\"size\": 1,\"owner\": \"tom\"}"
+	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
-	jsonValue2 := "{\"asset_name\": \"marble2\",\"color\": \"red\",\"size\": 2,\"owner\": \"jerry\"}"
+	jsonValue2 := `{"asset_name": "marble2","color": "red","size": 2,"owner": "jerry"}`
 	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 2))
-	jsonValue3 := "{\"asset_name\": \"marble3\",\"color\": \"red\",\"size\": 3,\"owner\": \"fred\"}"
+	jsonValue3 := `{"asset_name": "marble3","color": "red","size": 3,"owner": "fred"}`
 	batch.Put("ns1", "key3", []byte(jsonValue3), version.NewHeight(1, 3))
-	jsonValue4 := "{\"asset_name\": \"marble4\",\"color\": \"red\",\"size\": 4,\"owner\": \"martha\"}"
+	jsonValue4 := `{"asset_name": "marble4","color": "red","size": 4,"owner": "martha"}`
 	batch.Put("ns1", "key4", []byte(jsonValue4), version.NewHeight(1, 4))
-	jsonValue5 := "{\"asset_name\": \"marble5\",\"color\": \"blue\",\"size\": 5,\"owner\": \"fred\"}"
+	jsonValue5 := `{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`
 	batch.Put("ns1", "key5", []byte(jsonValue5), version.NewHeight(1, 5))
-	jsonValue6 := "{\"asset_name\": \"marble6\",\"color\": \"red\",\"size\": 6,\"owner\": \"elaine\"}"
+	jsonValue6 := `{"asset_name": "marble6","color": "red","size": 6,"owner": "elaine"}`
 	batch.Put("ns1", "key6", []byte(jsonValue6), version.NewHeight(1, 6))
-	jsonValue7 := "{\"asset_name\": \"marble7\",\"color\": \"blue\",\"size\": 7,\"owner\": \"fred\"}"
+	jsonValue7 := `{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`
 	batch.Put("ns1", "key7", []byte(jsonValue7), version.NewHeight(1, 7))
-	jsonValue8 := "{\"asset_name\": \"marble8\",\"color\": \"red\",\"size\": 8,\"owner\": \"elaine\"}"
+	jsonValue8 := `{"asset_name": "marble8","color": "red","size": 8,"owner": "elaine"}`
 	batch.Put("ns1", "key8", []byte(jsonValue8), version.NewHeight(1, 8))
-	jsonValue9 := "{\"asset_name\": \"marble9\",\"color\": \"green\",\"size\": 9,\"owner\": \"fred\"}"
+	jsonValue9 := `{"asset_name": "marble9","color": "green","size": 9,"owner": "fred"}`
 	batch.Put("ns1", "key9", []byte(jsonValue9), version.NewHeight(1, 9))
-	jsonValue10 := "{\"asset_name\": \"marble10\",\"color\": \"green\",\"size\": 10,\"owner\": \"mary\"}"
+	jsonValue10 := `{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`
 	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
 
-	jsonValue11 := "{\"asset_name\": \"marble11\",\"color\": \"cyan\",\"size\": 11,\"owner\": \"joe\"}"
+	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 11,"owner": "joe"}`
 	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
-	jsonValue12 := "{\"asset_name\": \"marble12\",\"color\": \"red\",\"size\": 12,\"owner\": \"martha\"}"
+	jsonValue12 := `{"asset_name": "marble12","color": "red","size": 12,"owner": "martha"}`
 	batch.Put("ns1", "key12", []byte(jsonValue12), version.NewHeight(1, 4))
-	jsonValue13 := "{\"asset_name\": \"marble13\",\"color\": \"red\",\"size\": 13,\"owner\": \"james\"}"
+	jsonValue13 := `{"asset_name": "marble13","color": "red","size": 13,"owner": "james"}`
 	batch.Put("ns1", "key13", []byte(jsonValue13), version.NewHeight(1, 4))
-	jsonValue14 := "{\"asset_name\": \"marble14\",\"color\": \"red\",\"size\": 14,\"owner\": \"fred\"}"
+	jsonValue14 := `{"asset_name": "marble14","color": "red","size": 14,"owner": "fred"}`
 	batch.Put("ns1", "key14", []byte(jsonValue14), version.NewHeight(1, 4))
-	jsonValue15 := "{\"asset_name\": \"marble15\",\"color\": \"red\",\"size\": 15,\"owner\": \"mary\"}"
+	jsonValue15 := `{"asset_name": "marble15","color": "red","size": 15,"owner": "mary"}`
 	batch.Put("ns1", "key15", []byte(jsonValue15), version.NewHeight(1, 4))
-	jsonValue16 := "{\"asset_name\": \"marble16\",\"color\": \"red\",\"size\": 16,\"owner\": \"robert\"}"
+	jsonValue16 := `{"asset_name": "marble16","color": "red","size": 16,"owner": "robert"}`
 	batch.Put("ns1", "key16", []byte(jsonValue16), version.NewHeight(1, 4))
-	jsonValue17 := "{\"asset_name\": \"marble17\",\"color\": \"red\",\"size\": 17,\"owner\": \"alan\"}"
+	jsonValue17 := `{"asset_name": "marble17","color": "red","size": 17,"owner": "alan"}`
 	batch.Put("ns1", "key17", []byte(jsonValue17), version.NewHeight(1, 4))
-	jsonValue18 := "{\"asset_name\": \"marble18\",\"color\": \"red\",\"size\": 18,\"owner\": \"elaine\"}"
+	jsonValue18 := `{"asset_name": "marble18","color": "red","size": 18,"owner": "elaine"}`
 	batch.Put("ns1", "key18", []byte(jsonValue18), version.NewHeight(1, 4))
-	jsonValue19 := "{\"asset_name\": \"marble19\",\"color\": \"red\",\"size\": 19,\"owner\": \"alan\"}"
+	jsonValue19 := `{"asset_name": "marble19","color": "red","size": 19,"owner": "alan"}`
 	batch.Put("ns1", "key19", []byte(jsonValue19), version.NewHeight(1, 4))
-	jsonValue20 := "{\"asset_name\": \"marble20\",\"color\": \"red\",\"size\": 20,\"owner\": \"elaine\"}"
+	jsonValue20 := `{"asset_name": "marble20","color": "red","size": 20,"owner": "elaine"}`
 	batch.Put("ns1", "key20", []byte(jsonValue20), version.NewHeight(1, 4))
 
-	jsonValue21 := "{\"asset_name\": \"marble21\",\"color\": \"cyan\",\"size\": 21,\"owner\": \"joe\"}"
+	jsonValue21 := `{"asset_name": "marble21","color": "cyan","size": 21,"owner": "joe"}`
 	batch.Put("ns1", "key21", []byte(jsonValue21), version.NewHeight(1, 11))
-	jsonValue22 := "{\"asset_name\": \"marble22\",\"color\": \"red\",\"size\": 22,\"owner\": \"martha\"}"
+	jsonValue22 := `{"asset_name": "marble22","color": "red","size": 22,"owner": "martha"}`
 	batch.Put("ns1", "key22", []byte(jsonValue22), version.NewHeight(1, 4))
-	jsonValue23 := "{\"asset_name\": \"marble23\",\"color\": \"blue\",\"size\": 23,\"owner\": \"james\"}"
+	jsonValue23 := `{"asset_name": "marble23","color": "blue","size": 23,"owner": "james"}`
 	batch.Put("ns1", "key23", []byte(jsonValue23), version.NewHeight(1, 4))
-	jsonValue24 := "{\"asset_name\": \"marble24\",\"color\": \"red\",\"size\": 24,\"owner\": \"fred\"}"
+	jsonValue24 := `{"asset_name": "marble24","color": "red","size": 24,"owner": "fred"}`
 	batch.Put("ns1", "key24", []byte(jsonValue24), version.NewHeight(1, 4))
-	jsonValue25 := "{\"asset_name\": \"marble25\",\"color\": \"red\",\"size\": 25,\"owner\": \"mary\"}"
+	jsonValue25 := `{"asset_name": "marble25","color": "red","size": 25,"owner": "mary"}`
 	batch.Put("ns1", "key25", []byte(jsonValue25), version.NewHeight(1, 4))
-	jsonValue26 := "{\"asset_name\": \"marble26\",\"color\": \"red\",\"size\": 26,\"owner\": \"robert\"}"
+	jsonValue26 := `{"asset_name": "marble26","color": "red","size": 26,"owner": "robert"}`
 	batch.Put("ns1", "key26", []byte(jsonValue26), version.NewHeight(1, 4))
-	jsonValue27 := "{\"asset_name\": \"marble27\",\"color\": \"green\",\"size\": 27,\"owner\": \"alan\"}"
+	jsonValue27 := `{"asset_name": "marble27","color": "green","size": 27,"owner": "alan"}`
 	batch.Put("ns1", "key27", []byte(jsonValue27), version.NewHeight(1, 4))
-	jsonValue28 := "{\"asset_name\": \"marble28\",\"color\": \"red\",\"size\": 28,\"owner\": \"elaine\"}"
+	jsonValue28 := `{"asset_name": "marble28","color": "red","size": 28,"owner": "elaine"}`
 	batch.Put("ns1", "key28", []byte(jsonValue28), version.NewHeight(1, 4))
-	jsonValue29 := "{\"asset_name\": \"marble29\",\"color\": \"red\",\"size\": 29,\"owner\": \"alan\"}"
+	jsonValue29 := `{"asset_name": "marble29","color": "red","size": 29,"owner": "alan"}`
 	batch.Put("ns1", "key29", []byte(jsonValue29), version.NewHeight(1, 4))
-	jsonValue30 := "{\"asset_name\": \"marble30\",\"color\": \"red\",\"size\": 30,\"owner\": \"elaine\"}"
+	jsonValue30 := `{"asset_name": "marble30","color": "red","size": 30,"owner": "elaine"}`
 	batch.Put("ns1", "key30", []byte(jsonValue30), version.NewHeight(1, 4))
 
-	jsonValue31 := "{\"asset_name\": \"marble31\",\"color\": \"cyan\",\"size\": 31,\"owner\": \"joe\"}"
+	jsonValue31 := `{"asset_name": "marble31","color": "cyan","size": 31,"owner": "joe"}`
 	batch.Put("ns1", "key31", []byte(jsonValue31), version.NewHeight(1, 11))
-	jsonValue32 := "{\"asset_name\": \"marble32\",\"color\": \"red\",\"size\": 32,\"owner\": \"martha\"}"
+	jsonValue32 := `{"asset_name": "marble32","color": "red","size": 32,"owner": "martha"}`
 	batch.Put("ns1", "key32", []byte(jsonValue32), version.NewHeight(1, 4))
-	jsonValue33 := "{\"asset_name\": \"marble33\",\"color\": \"red\",\"size\": 33,\"owner\": \"james\"}"
+	jsonValue33 := `{"asset_name": "marble33","color": "red","size": 33,"owner": "james"}`
 	batch.Put("ns1", "key33", []byte(jsonValue33), version.NewHeight(1, 4))
-	jsonValue34 := "{\"asset_name\": \"marble34\",\"color\": \"red\",\"size\": 34,\"owner\": \"fred\"}"
+	jsonValue34 := `{"asset_name": "marble34","color": "red","size": 34,"owner": "fred"}`
 	batch.Put("ns1", "key34", []byte(jsonValue34), version.NewHeight(1, 4))
-	jsonValue35 := "{\"asset_name\": \"marble35\",\"color\": \"red\",\"size\": 35,\"owner\": \"mary\"}"
+	jsonValue35 := `{"asset_name": "marble35","color": "red","size": 35,"owner": "mary"}`
 	batch.Put("ns1", "key35", []byte(jsonValue35), version.NewHeight(1, 4))
-	jsonValue36 := "{\"asset_name\": \"marble36\",\"color\": \"orange\",\"size\": 36,\"owner\": \"robert\"}"
+	jsonValue36 := `{"asset_name": "marble36","color": "orange","size": 36,"owner": "robert"}`
 	batch.Put("ns1", "key36", []byte(jsonValue36), version.NewHeight(1, 4))
-	jsonValue37 := "{\"asset_name\": \"marble37\",\"color\": \"red\",\"size\": 37,\"owner\": \"alan\"}"
+	jsonValue37 := `{"asset_name": "marble37","color": "red","size": 37,"owner": "alan"}`
 	batch.Put("ns1", "key37", []byte(jsonValue37), version.NewHeight(1, 4))
-	jsonValue38 := "{\"asset_name\": \"marble38\",\"color\": \"yellow\",\"size\": 38,\"owner\": \"elaine\"}"
+	jsonValue38 := `{"asset_name": "marble38","color": "yellow","size": 38,"owner": "elaine"}`
 	batch.Put("ns1", "key38", []byte(jsonValue38), version.NewHeight(1, 4))
-	jsonValue39 := "{\"asset_name\": \"marble39\",\"color\": \"red\",\"size\": 39,\"owner\": \"alan\"}"
+	jsonValue39 := `{"asset_name": "marble39","color": "red","size": 39,"owner": "alan"}`
 	batch.Put("ns1", "key39", []byte(jsonValue39), version.NewHeight(1, 4))
-	jsonValue40 := "{\"asset_name\": \"marble40\",\"color\": \"red\",\"size\": 40,\"owner\": \"elaine\"}"
+	jsonValue40 := `{"asset_name": "marble40","color": "red","size": 40,"owner": "elaine"}`
 	batch.Put("ns1", "key40", []byte(jsonValue40), version.NewHeight(1, 4))
 
 	savePoint := version.NewHeight(2, 22)
