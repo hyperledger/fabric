@@ -28,7 +28,6 @@ func newCollNameValidator(queryHelper *queryHelper) *collNameValidator {
 }
 
 func (v *collNameValidator) validateCollName(ns, coll string) error {
-	logger.Debugf("validateCollName() begin - ns=[%s], coll=[%s]", ns, coll)
 	if !v.cache.isPopulatedFor(ns) {
 		conf, err := v.retrieveCollConfigFromStateDB(ns)
 		if err != nil {
@@ -42,7 +41,6 @@ func (v *collNameValidator) validateCollName(ns, coll string) error {
 			Coll: coll,
 		}
 	}
-	logger.Debugf("validateCollName() validated successfully - ns=[%s], coll=[%s]", ns, coll)
 	return nil
 }
 
