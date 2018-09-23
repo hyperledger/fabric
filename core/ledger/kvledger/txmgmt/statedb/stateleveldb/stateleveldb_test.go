@@ -20,11 +20,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -65,8 +65,8 @@ func testCompositeKey(t *testing.T, dbName string, ns string, key string) {
 	compositeKey := constructCompositeKey(ns, key)
 	t.Logf("compositeKey=%#v", compositeKey)
 	ns1, key1 := splitCompositeKey(compositeKey)
-	testutil.AssertEquals(t, ns1, ns)
-	testutil.AssertEquals(t, key1, key)
+	assert.Equal(t, ns, ns1)
+	assert.Equal(t, key, key1)
 }
 
 // TestQueryOnLevelDB tests queries on levelDB.
@@ -74,7 +74,7 @@ func TestQueryOnLevelDB(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle("testquery")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
@@ -88,8 +88,8 @@ func TestQueryOnLevelDB(t *testing.T) {
 	// As queries are not supported in levelDB, call to ExecuteQuery()
 	// should return a error message
 	itr, err := db.ExecuteQuery("ns1", "{\"selector\":{\"owner\":\"jerry\"}}")
-	testutil.AssertError(t, err, "ExecuteQuery not supported for leveldb")
-	testutil.AssertNil(t, itr)
+	assert.Error(t, err, "ExecuteQuery not supported for leveldb")
+	assert.Nil(t, itr)
 }
 
 func TestGetStateMultipleKeys(t *testing.T) {
@@ -109,14 +109,14 @@ func TestUtilityFunctions(t *testing.T) {
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	// BytesKeySuppoted should be true for goleveldb
 	byteKeySupported := db.BytesKeySuppoted()
-	testutil.AssertEquals(t, byteKeySupported, true)
+	assert.True(t, byteKeySupported)
 
 	// ValidateKeyValue should return nil for a valid key and value
-	testutil.AssertNoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")
+	assert.NoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")
 }
 
 func TestValueAndMetadataWrites(t *testing.T) {

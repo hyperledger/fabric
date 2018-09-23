@@ -20,8 +20,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPanic(t *testing.T) {
@@ -43,29 +43,29 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 
 	//Get() should return above inserted <k,v> pair
 	actualVersionedValue := batch.Get("ns1", "key1")
-	testutil.AssertEquals(t, actualVersionedValue, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)})
+	assert.Equal(t, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, actualVersionedValue)
 	//Exists() should return false as key2 does not exist
 	actualResult := batch.Exists("ns1", "key2")
 	expectedResult := false
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 	//Exists() should return false as ns3 does not exist
 	actualResult = batch.Exists("ns3", "key2")
 	expectedResult = false
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 	//Get() should return nill as key2 does not exist
 	actualVersionedValue = batch.Get("ns1", "key2")
-	testutil.AssertNil(t, actualVersionedValue)
+	assert.Nil(t, actualVersionedValue)
 	//Get() should return nill as ns3 does not exist
 	actualVersionedValue = batch.Get("ns3", "key2")
-	testutil.AssertNil(t, actualVersionedValue)
+	assert.Nil(t, actualVersionedValue)
 
 	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	//Exists() should return true as key2 exists
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 	//GetUpdatedNamespaces should return 3 namespaces
 	batch.Put("ns2", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -73,17 +73,17 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	actualNamespaces := batch.GetUpdatedNamespaces()
 	sort.Strings(actualNamespaces)
 	expectedNamespaces := []string{"ns1", "ns2", "ns3"}
-	testutil.AssertEquals(t, actualNamespaces, expectedNamespaces)
+	assert.Equal(t, expectedNamespaces, actualNamespaces)
 
 	//GetUpdates should return two VersionedValues for the namespace ns1
 	expectedUpdates := make(map[string]*VersionedValue)
 	expectedUpdates["key1"] = &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	expectedUpdates["key2"] = &VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
 	actualUpdates := batch.GetUpdates("ns1")
-	testutil.AssertEquals(t, actualUpdates, expectedUpdates)
+	assert.Equal(t, expectedUpdates, actualUpdates)
 
 	actualUpdates = batch.GetUpdates("ns4")
-	testutil.AssertNil(t, actualUpdates)
+	assert.Nil(t, actualUpdates)
 
 	//Delete the above inserted <k,v> pair
 	batch.Delete("ns1", "key2", version.NewHeight(1, 2))
@@ -91,7 +91,7 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	//Exists() should return true iff the key has action(Put/Delete) in this batch
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 }
 
@@ -127,11 +127,11 @@ func TestUpdateBatchIterator(t *testing.T) {
 func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
 	for i := 0; i < len(expectedResults); i++ {
 		res, _ := itr.Next()
-		testutil.AssertEquals(t, res, expectedResults[i])
+		assert.Equal(t, expectedResults[i], res)
 	}
 	lastRes, err := itr.Next()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, lastRes)
+	assert.NoError(t, err)
+	assert.Nil(t, lastRes)
 	itr.Close()
 }
 
@@ -142,24 +142,24 @@ func TestPaginatedRangeValidation(t *testing.T) {
 	queryOptions["limit"] = int32(10)
 
 	err := ValidateRangeMetadata(queryOptions)
-	testutil.AssertNoError(t, err, "An error was thrown for a valid option")
+	assert.NoError(t, err, "An error was thrown for a valid option")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["limit"] = float32(10.2)
 
 	err = ValidateRangeMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid option")
+	assert.Error(t, err, "An should have been thrown for an invalid option")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["limit"] = "10"
 
 	err = ValidateRangeMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid option")
+	assert.Error(t, err, "An should have been thrown for an invalid option")
 
 	queryOptions = make(map[string]interface{})
 	queryOptions["limit1"] = int32(10)
 
 	err = ValidateRangeMetadata(queryOptions)
-	testutil.AssertError(t, err, "An should have been thrown for an invalid option")
+	assert.Error(t, err, "An should have been thrown for an invalid option")
 
 }
