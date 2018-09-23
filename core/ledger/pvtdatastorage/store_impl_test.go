@@ -17,7 +17,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
@@ -244,7 +243,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
-	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock1)
+	assert.Equal(expectedPvtdataFromBlock1, retrievedData)
 
 	// After committing block 3, the missing data of "ns1-coll1" in block1-tx1 should have expired
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
@@ -268,7 +267,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
-	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock1)
+	assert.Equal(expectedPvtdataFromBlock1, retrievedData)
 
 	// Now, for block 2, "ns-1:coll1" should also have expired
 	expectedPvtdataFromBlock2 := []*ledger.TxPvtData{
@@ -276,7 +275,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 5, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(2, nil)
-	testutil.AssertEquals(t, retrievedData, expectedPvtdataFromBlock2)
+	assert.Equal(expectedPvtdataFromBlock2, retrievedData)
 
 	// After committing block 4, the missing data of "ns1-coll1" in block2-tx1 should have expired
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
