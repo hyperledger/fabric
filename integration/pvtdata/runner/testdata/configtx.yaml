@@ -23,12 +23,12 @@ Organizations:
         Port: 8051
 
 Capabilities:
-  Global: &ChannelCapabilities
+  Channel: &ChannelCapabilities
     V1_3: true
   Orderer: &OrdererCapabilities
     V1_1: true
   Application: &ApplicationCapabilities
-    V1_2: true
+    V1_3: true
 
 Application: &ApplicationDefaults
   Organizations:
