@@ -17,13 +17,12 @@ limitations under the License.
 package fsblkstorage
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledgerutil "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -51,8 +50,8 @@ func TestAddBlockWithWrongHash(t *testing.T) {
 	lastBlock := blocks[9]
 	lastBlock.Header.PreviousHash = []byte("someJunkHash") // set the hash to something unexpected
 	err := blkfileMgrWrapper.blockfileMgr.addBlock(lastBlock)
-	testutil.AssertError(t, err, "An error is expected when adding a block with some unexpected hash")
-	testutil.AssertEquals(t, strings.Contains(err.Error(), "unexpected Previous block hash. Expected PreviousHash"), true)
+	assert.Error(t, err, "An error is expected when adding a block with some unexpected hash")
+	assert.Contains(t, err.Error(), "unexpected Previous block hash. Expected PreviousHash")
 	t.Logf("err = %s", err)
 }
 
@@ -116,7 +115,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	cpInfo3 := blkfileMgrWrapper.blockfileMgr.cpInfo
-	testutil.AssertEquals(t, cpInfo3, cpInfo2)
+	assert.Equal(t, cpInfo2, cpInfo3)
 
 	// add fresh blocks after restart
 	blkfileMgrWrapper.addBlocks(blocksAfterRestart)
@@ -137,18 +136,18 @@ func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
 	firstBlockNum int, lastBlockNum int, expectedBlocks []*common.Block) {
 	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum))
 	defer itr.Close()
-	testutil.AssertNoError(t, err, "Error while getting blocks iterator")
+	assert.NoError(t, err, "Error while getting blocks iterator")
 	numBlocksItrated := 0
 	for {
 		block, err := itr.Next()
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error while getting block number [%d] from iterator", numBlocksItrated))
-		testutil.AssertEquals(t, block, expectedBlocks[numBlocksItrated])
+		assert.NoError(t, err, "Error while getting block number [%d] from iterator", numBlocksItrated)
+		assert.Equal(t, expectedBlocks[numBlocksItrated], block)
 		numBlocksItrated++
 		if numBlocksItrated == lastBlockNum-firstBlockNum+1 {
 			break
 		}
 	}
-	testutil.AssertEquals(t, numBlocksItrated, lastBlockNum-firstBlockNum+1)
+	assert.Equal(t, lastBlockNum-firstBlockNum+1, numBlocksItrated)
 }
 
 func TestBlockfileMgrBlockchainInfo(t *testing.T) {
@@ -158,12 +157,12 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 
 	bcInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+	assert.Equal(t, &common.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil}, bcInfo)
 
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
 	bcInfo = blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo.Height, uint64(10))
+	assert.Equal(t, uint64(10), bcInfo.Height)
 }
 
 func TestBlockfileMgrGetTxById(t *testing.T) {
@@ -177,12 +176,12 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 		for j, txEnvelopeBytes := range blk.Data.Data {
 			// blockNum starts with 0
 			txID, err := extractTxID(blk.Data.Data[j])
-			testutil.AssertNoError(t, err, "")
+			assert.NoError(t, err)
 			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
-			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
+			assert.NoError(t, err, "Error while retrieving tx from blkfileMgr")
 			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
-			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
-			testutil.AssertEquals(t, txEnvelopeFromFileMgr, txEnvelope)
+			assert.NoError(t, err, "Error while unmarshalling tx")
+			assert.Equal(t, txEnvelope, txEnvelopeFromFileMgr)
 		}
 	}
 }
@@ -193,10 +192,10 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkStore, err := env.provider.OpenBlockStore("testLedger")
-	testutil.AssertNoError(env.t, err, "")
+	assert.NoError(env.t, err)
 	blkFileMgr := blkStore.(*fsBlockStore).fileMgr
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	testutil.AssertNoError(t, blkFileMgr.addBlock(gb), "")
+	assert.NoError(t, blkFileMgr.addBlock(gb))
 
 	block1 := bg.NextBlockWithTxid(
 		[][]byte{
@@ -211,7 +210,7 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 	txValidationFlags.SetFlag(1, peer.TxValidationCode_INVALID_OTHER_REASON)
 	txValidationFlags.SetFlag(2, peer.TxValidationCode_DUPLICATE_TXID)
 	block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txValidationFlags
-	testutil.AssertNoError(t, blkFileMgr.addBlock(block1), "")
+	assert.NoError(t, blkFileMgr.addBlock(block1))
 
 	block2 := bg.NextBlockWithTxid(
 		[][]byte{
@@ -224,35 +223,35 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 	txValidationFlags.SetFlag(0, peer.TxValidationCode_VALID)
 	txValidationFlags.SetFlag(1, peer.TxValidationCode_DUPLICATE_TXID)
 	block2.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txValidationFlags
-	testutil.AssertNoError(t, blkFileMgr.addBlock(block2), "")
+	assert.NoError(t, blkFileMgr.addBlock(block2))
 
 	txenvp1, err := putil.GetEnvelopeFromBlock(block1.Data.Data[0])
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	txenvp2, err := putil.GetEnvelopeFromBlock(block1.Data.Data[1])
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	txenvp3, err := putil.GetEnvelopeFromBlock(block2.Data.Data[0])
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	indexedTxenvp, _ := blkFileMgr.retrieveTransactionByID("txid-1")
-	testutil.AssertEquals(t, indexedTxenvp, txenvp1)
+	assert.Equal(t, txenvp1, indexedTxenvp)
 	indexedTxenvp, _ = blkFileMgr.retrieveTransactionByID("txid-2")
-	testutil.AssertEquals(t, indexedTxenvp, txenvp2)
+	assert.Equal(t, txenvp2, indexedTxenvp)
 	indexedTxenvp, _ = blkFileMgr.retrieveTransactionByID("txid-3")
-	testutil.AssertEquals(t, indexedTxenvp, txenvp3)
+	assert.Equal(t, txenvp3, indexedTxenvp)
 
 	blk, _ := blkFileMgr.retrieveBlockByTxID("txid-1")
-	testutil.AssertEquals(t, blk, block1)
+	assert.Equal(t, block1, blk)
 	blk, _ = blkFileMgr.retrieveBlockByTxID("txid-2")
-	testutil.AssertEquals(t, blk, block1)
+	assert.Equal(t, block1, blk)
 	blk, _ = blkFileMgr.retrieveBlockByTxID("txid-3")
-	testutil.AssertEquals(t, blk, block2)
+	assert.Equal(t, block2, blk)
 
 	validationCode, _ := blkFileMgr.retrieveTxValidationCodeByTxID("txid-1")
-	testutil.AssertEquals(t, validationCode, peer.TxValidationCode_VALID)
+	assert.Equal(t, peer.TxValidationCode_VALID, validationCode)
 	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-2")
-	testutil.AssertEquals(t, validationCode, peer.TxValidationCode_INVALID_OTHER_REASON)
+	assert.Equal(t, peer.TxValidationCode_INVALID_OTHER_REASON, validationCode)
 	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-3")
-	testutil.AssertEquals(t, validationCode, peer.TxValidationCode_VALID)
+	assert.Equal(t, peer.TxValidationCode_VALID, validationCode)
 }
 
 func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
@@ -266,10 +265,10 @@ func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
 		for tranIndex, txEnvelopeBytes := range blk.Data.Data {
 			// blockNum and tranNum both start with 0
 			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex), uint64(tranIndex))
-			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
+			assert.NoError(t, err, "Error while retrieving tx from blkfileMgr")
 			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
-			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
-			testutil.AssertEquals(t, txEnvelopeFromFileMgr, txEnvelope)
+			assert.NoError(t, err, "Error while unmarshalling tx")
+			assert.Equal(t, txEnvelope, txEnvelopeFromFileMgr)
 		}
 	}
 }
@@ -282,14 +281,14 @@ func TestBlockfileMgrRestart(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
 	expectedHeight := uint64(10)
-	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height, expectedHeight)
+	assert.Equal(t, expectedHeight, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height)
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
-	testutil.AssertEquals(t, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumber), 9)
+	assert.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumber))
 	blkfileMgrWrapper.testGetBlockByHash(blocks)
-	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height, expectedHeight)
+	assert.Equal(t, expectedHeight, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height)
 }
 
 func TestBlockfileMgrFileRolling(t *testing.T) {
@@ -297,7 +296,7 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	size := 0
 	for _, block := range blocks[:100] {
 		by, _, err := serializeBlock(block)
-		testutil.AssertNoError(t, err, "Error while serializing block")
+		assert.NoError(t, err, "Error while serializing block")
 		blockBytesSize := len(by)
 		encodedLen := proto.EncodeVarint(uint64(blockBytesSize))
 		size += blockBytesSize + len(encodedLen)
@@ -309,14 +308,14 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	blkfileMgrWrapper.addBlocks(blocks[:100])
-	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum, 1)
+	assert.Equal(t, 1, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum)
 	blkfileMgrWrapper.testGetBlockByHash(blocks[:100])
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	blkfileMgrWrapper.addBlocks(blocks[100:])
-	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum, 2)
+	assert.Equal(t, 2, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum)
 	blkfileMgrWrapper.testGetBlockByHash(blocks[100:])
 }
 
@@ -331,11 +330,11 @@ func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
 		for j := range blk.Data.Data {
 			// blockNum starts with 1
 			txID, err := extractTxID(blk.Data.Data[j])
-			testutil.AssertNoError(t, err, "")
+			assert.NoError(t, err)
 
 			blockFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveBlockByTxID(txID)
-			testutil.AssertNoError(t, err, "Error while retrieving block from blkfileMgr")
-			testutil.AssertEquals(t, blockFromFileMgr, blk)
+			assert.NoError(t, err, "Error while retrieving block from blkfileMgr")
+			assert.Equal(t, blk, blockFromFileMgr)
 		}
 	}
 }

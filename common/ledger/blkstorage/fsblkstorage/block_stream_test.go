@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBlockfileStream(t *testing.T) {
@@ -41,12 +42,12 @@ func testBlockfileStream(t *testing.T, numBlocks int) {
 
 	s, err := newBlockfileStream(w.blockfileMgr.rootDir, 0, 0)
 	defer s.close()
-	testutil.AssertNoError(t, err, "Error in constructing blockfile stream")
+	assert.NoError(t, err, "Error in constructing blockfile stream")
 
 	blockCount := 0
 	for {
 		blockBytes, err := s.nextBlockBytes()
-		testutil.AssertNoError(t, err, "Error in getting next block")
+		assert.NoError(t, err, "Error in getting next block")
 		if blockBytes == nil {
 			break
 		}
@@ -54,9 +55,9 @@ func testBlockfileStream(t *testing.T, numBlocks int) {
 	}
 	// After the stream has been exhausted, both blockBytes and err should be nil
 	blockBytes, err := s.nextBlockBytes()
-	testutil.AssertNil(t, blockBytes)
-	testutil.AssertNoError(t, err, "Error in getting next block after exhausting the file")
-	testutil.AssertEquals(t, blockCount, numBlocks)
+	assert.Nil(t, blockBytes)
+	assert.NoError(t, err, "Error in getting next block after exhausting the file")
+	assert.Equal(t, numBlocks, blockCount)
 }
 
 func TestBlockFileStreamUnexpectedEOF(t *testing.T) {
@@ -82,16 +83,16 @@ func testBlockFileStreamUnexpectedEOF(t *testing.T, numBlocks int, partialBlockB
 	w.close()
 	s, err := newBlockfileStream(blockfileMgr.rootDir, 0, 0)
 	defer s.close()
-	testutil.AssertNoError(t, err, "Error in constructing blockfile stream")
+	assert.NoError(t, err, "Error in constructing blockfile stream")
 
 	for i := 0; i < numBlocks; i++ {
 		blockBytes, err := s.nextBlockBytes()
-		testutil.AssertNotNil(t, blockBytes)
-		testutil.AssertNoError(t, err, "Error in getting next block")
+		assert.NotNil(t, blockBytes)
+		assert.NoError(t, err, "Error in getting next block")
 	}
 	blockBytes, err := s.nextBlockBytes()
-	testutil.AssertNil(t, blockBytes)
-	testutil.AssertSame(t, err, ErrUnexpectedEndOfBlockfile)
+	assert.Nil(t, blockBytes)
+	assert.Exactly(t, ErrUnexpectedEndOfBlockfile, err)
 }
 
 func TestBlockStream(t *testing.T) {
@@ -123,11 +124,11 @@ func testBlockStream(t *testing.T, numFiles int) {
 	}
 	s, err := newBlockStream(blockfileMgr.rootDir, 0, 0, numFiles-1)
 	defer s.close()
-	testutil.AssertNoError(t, err, "Error in constructing new block stream")
+	assert.NoError(t, err, "Error in constructing new block stream")
 	blockCount := 0
 	for {
 		blockBytes, err := s.nextBlockBytes()
-		testutil.AssertNoError(t, err, "Error in getting next block")
+		assert.NoError(t, err, "Error in getting next block")
 		if blockBytes == nil {
 			break
 		}
@@ -135,7 +136,7 @@ func testBlockStream(t *testing.T, numFiles int) {
 	}
 	// After the stream has been exhausted, both blockBytes and err should be nil
 	blockBytes, err := s.nextBlockBytes()
-	testutil.AssertNil(t, blockBytes)
-	testutil.AssertNoError(t, err, "Error in getting next block after exhausting the file")
-	testutil.AssertEquals(t, blockCount, numFiles*numBlocksInEachFile)
+	assert.Nil(t, blockBytes)
+	assert.NoError(t, err, "Error in getting next block after exhausting the file")
+	assert.Equal(t, numFiles*numBlocksInEachFile, blockCount)
 }
