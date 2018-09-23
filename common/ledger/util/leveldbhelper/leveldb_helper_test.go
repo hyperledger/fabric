@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -62,25 +62,25 @@ func TestLevelDBHelper(t *testing.T) {
 	db.Put([]byte("key3"), []byte("value3"), true)
 
 	val, _ := db.Get([]byte("key2"))
-	testutil.AssertEquals(t, string(val), "value2")
+	assert.Equal(t, "value2", string(val))
 
 	db.Delete([]byte("key1"), false)
 	db.Delete([]byte("key2"), true)
 
 	val1, err1 := db.Get([]byte("key1"))
-	testutil.AssertNoError(t, err1, "")
-	testutil.AssertEquals(t, string(val1), "")
+	assert.NoError(t, err1, "")
+	assert.Equal(t, "", string(val1))
 
 	val2, err2 := db.Get([]byte("key2"))
-	testutil.AssertNoError(t, err2, "")
-	testutil.AssertEquals(t, string(val2), "")
+	assert.NoError(t, err2, "")
+	assert.Equal(t, "", string(val2))
 
 	db.Close()
 	// second time open should not have any side effect
 	db.Close()
 
 	val3, err3 := db.Get([]byte("key3"))
-	testutil.AssertError(t, err3, "")
+	assert.Error(t, err3)
 
 	db.Open()
 	batch := &leveldb.Batch{}
@@ -90,28 +90,28 @@ func TestLevelDBHelper(t *testing.T) {
 	db.WriteBatch(batch, true)
 
 	val1, err1 = db.Get([]byte("key1"))
-	testutil.AssertNoError(t, err1, "")
-	testutil.AssertEquals(t, string(val1), "value1")
+	assert.NoError(t, err1, "")
+	assert.Equal(t, "value1", string(val1))
 
 	val2, err2 = db.Get([]byte("key2"))
-	testutil.AssertNoError(t, err2, "")
-	testutil.AssertEquals(t, string(val2), "value2")
+	assert.NoError(t, err2, "")
+	assert.Equal(t, "value2", string(val2))
 
 	val3, err3 = db.Get([]byte("key3"))
-	testutil.AssertNoError(t, err3, "")
-	testutil.AssertEquals(t, string(val3), "")
+	assert.NoError(t, err3, "")
+	assert.Equal(t, "", string(val3))
 
 	keys := []string{}
 	itr := db.GetIterator(nil, nil)
 	for itr.Next() {
 		keys = append(keys, string(itr.Key()))
 	}
-	testutil.AssertEquals(t, keys, []string{"key1", "key2"})
+	assert.Equal(t, []string{"key1", "key2"}, keys)
 }
 
 func TestCreateDBInEmptyDir(t *testing.T) {
-	testutil.AssertNoError(t, os.RemoveAll(testDBPath), "")
-	testutil.AssertNoError(t, os.MkdirAll(testDBPath, 0775), "")
+	assert.NoError(t, os.RemoveAll(testDBPath), "")
+	assert.NoError(t, os.MkdirAll(testDBPath, 0775), "")
 	db := CreateDB(&Conf{testDBPath})
 	defer db.Close()
 	defer func() {
@@ -123,10 +123,10 @@ func TestCreateDBInEmptyDir(t *testing.T) {
 }
 
 func TestCreateDBInNonEmptyDir(t *testing.T) {
-	testutil.AssertNoError(t, os.RemoveAll(testDBPath), "")
-	testutil.AssertNoError(t, os.MkdirAll(testDBPath, 0775), "")
+	assert.NoError(t, os.RemoveAll(testDBPath), "")
+	assert.NoError(t, os.MkdirAll(testDBPath, 0775), "")
 	file, err := os.Create(filepath.Join(testDBPath, "dummyfile.txt"))
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err, "")
 	file.Close()
 	db := CreateDB(&Conf{testDBPath})
 	defer db.Close()
