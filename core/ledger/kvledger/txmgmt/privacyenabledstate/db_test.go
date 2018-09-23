@@ -9,7 +9,6 @@ package privacyenabledstate
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -278,42 +277,42 @@ func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 
 	// query for owner=jerry, use namespace "ns1"
 	itr, err := db.ExecuteQuery("ns1", `{"selector":{"owner":"jerry"}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
 
 	// query for owner=jerry, use namespace "ns2"
 	itr, err = db.ExecuteQuery("ns2", `{"selector":{"owner":"jerry"}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
 
 	// query for pvt data owner=jerry, use namespace "ns1"
 	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", `{"selector":{"owner":"jerry"}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
 
 	// query for pvt data owner=jerry, use namespace "ns2"
 	itr, err = db.ExecuteQueryOnPrivateData("ns2", "coll1", `{"selector":{"owner":"jerry"}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
 
 	// query using bad query string
 	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", "this is an invalid query string")
-	testutil.AssertError(t, err, "Should have received an error for invalid query string")
+	assert.Error(t, err, "Should have received an error for invalid query string")
 
 	// query returns 0 records
 	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", `{"selector":{"owner":"not_a_valid_name"}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{}, []string{})
 
 	// query with embedded implicit "AND" and explicit "OR", namespace "ns1"
 	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", `{"selector":{"color":"green","$or":[{"owner":"fred"},{"owner":"mary"}]}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{testKey(8), testKey(9)}, []string{"green"}, []string{"green"})
 
 	// query with integer with digit-count equals 7 and response received is also received
 	// with same digit-count and there is no float transformation
 	itr, err = db.ExecuteQueryOnPrivateData("ns2", "coll1", `{"selector":{"$and":[{"size":{"$eq": 1000007}}]}}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	testQueryItr(t, itr, []string{testKey(10)}, []string{"joe", "1000007"})
 }
 
@@ -364,11 +363,11 @@ func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
 		queryResult, _ := itr.Next()
 		vkv := queryResult.(*statedb.VersionedKV)
 		key := vkv.Key
-		testutil.AssertEquals(t, key, expectedKey)
+		assert.Equal(t, expectedKey, key)
 	}
 	last, err := itr.Next()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, last)
+	assert.NoError(t, err)
+	assert.Nil(t, last)
 }
 
 func testQueryItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string, expectedValStrs ...[]string) {
@@ -378,14 +377,14 @@ func testQueryItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []stri
 		vkv := queryResult.(*statedb.VersionedKV)
 		key := vkv.Key
 		valStr := string(vkv.Value)
-		testutil.AssertEquals(t, key, expectedKey)
+		assert.Equal(t, expectedKey, key)
 		for _, expectedValStr := range expectedValStrs[i] {
-			testutil.AssertEquals(t, strings.Contains(valStr, expectedValStr), true)
+			assert.Contains(t, valStr, expectedValStr)
 		}
 	}
 	last, err := itr.Next()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, last)
+	assert.NoError(t, err)
+	assert.Nil(t, last)
 }
 
 func testKey(i int) string {
@@ -399,19 +398,19 @@ func TestCompositeKeyMap(t *testing.T) {
 	b.Put("ns2", "coll1", "key1", []byte("testVal3"), nil)
 	b.Put("ns2", "coll2", "key2", []byte("testVal4"), nil)
 	m := b.ToCompositeKeyMap()
-	testutil.AssertEquals(t, len(m), 4)
+	assert.Len(t, m, 4)
 	vv, ok := m[PvtdataCompositeKey{"ns1", "coll1", "key1"}]
-	testutil.AssertEquals(t, ok, true)
-	testutil.AssertEquals(t, vv.Value, []byte("testVal1"))
+	assert.True(t, ok)
+	assert.Equal(t, []byte("testVal1"), vv.Value)
 	vv, ok = m[PvtdataCompositeKey{"ns1", "coll2", "key2"}]
-	testutil.AssertNil(t, vv.Value)
-	testutil.AssertEquals(t, ok, true)
+	assert.Nil(t, vv.Value)
+	assert.True(t, ok)
 	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key1"}]
-	testutil.AssertEquals(t, ok, true)
+	assert.True(t, ok)
 	_, ok = m[PvtdataCompositeKey{"ns2", "coll2", "key2"}]
-	testutil.AssertEquals(t, ok, true)
+	assert.True(t, ok)
 	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key8888"}]
-	testutil.AssertEquals(t, ok, false)
+	assert.False(t, ok)
 }
 
 func TestHandleChainCodeDeployOnCouchDB(t *testing.T) {
@@ -470,13 +469,13 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 
 	// There should be 3 entries
-	assert.Equal(t, 3, len(fileEntries))
+	assert.Len(t, fileEntries, 3)
 
 	// There should be 2 entries for main
-	assert.Equal(t, 2, len(fileEntries["META-INF/statedb/couchdb/indexes"]))
+	assert.Len(t, fileEntries["META-INF/statedb/couchdb/indexes"], 2)
 
 	// There should be 1 entry for collectionMarbles
-	assert.Equal(t, 1, len(fileEntries["META-INF/statedb/couchdb/collections/collectionMarbles/indexes"]))
+	assert.Len(t, fileEntries["META-INF/statedb/couchdb/collections/collectionMarbles/indexes"], 1)
 
 	// Verify the content of the array item
 	expectedJSON := []byte(`{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`)
@@ -514,15 +513,15 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 
 	//Test HandleChaincodeDefinition with a nil tar file
 	err = commonStorageDB.HandleChaincodeDeploy(chaincodeDef, nil)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Test HandleChaincodeDefinition with a bad tar file
 	err = commonStorageDB.HandleChaincodeDeploy(chaincodeDef, []byte(`This is a really bad tar file`))
-	testutil.AssertNoError(t, err, "Error should not have been thrown for a bad tar file")
+	assert.NoError(t, err, "Error should not have been thrown for a bad tar file")
 
 	//Test HandleChaincodeDefinition with a nil chaincodeDef
 	err = commonStorageDB.HandleChaincodeDeploy(nil, dbArtifactsTarBytes)
-	testutil.AssertError(t, err, "Error should have been thrown for a nil chaincodeDefinition")
+	assert.Error(t, err, "Error should have been thrown for a nil chaincodeDefinition")
 
 	// Create a tar file for test with 2 index definitions - one of them being errorneous
 	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
@@ -538,7 +537,7 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 
 	// There should be 1 entry
-	assert.Equal(t, 1, len(fileEntries))
+	assert.Len(t, fileEntries, 1)
 
 	err = commonStorageDB.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
 	assert.NoError(t, err)

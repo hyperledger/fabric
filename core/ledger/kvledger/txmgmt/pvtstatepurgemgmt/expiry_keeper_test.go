@@ -12,7 +12,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,11 +22,11 @@ func TestExpiryKVEncoding(t *testing.T) {
 	expiryInfo := &expiryInfo{&expiryInfoKey{expiryBlk: 10, committingBlk: 2}, pvtdataKeys}
 	t.Logf("expiryInfo:%s", spew.Sdump(expiryInfo))
 	k, v, err := encodeKV(expiryInfo)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	expiryInfo1, err := decodeExpiryInfo(k, v)
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, expiryInfo.expiryInfoKey, expiryInfo1.expiryInfoKey)
-	testutil.AssertEquals(t, expiryInfo.pvtdataKeys, expiryInfo1.pvtdataKeys)
+	assert.NoError(t, err)
+	assert.Equal(t, expiryInfo.expiryInfoKey, expiryInfo1.expiryInfoKey)
+	assert.True(t, proto.Equal(expiryInfo.pvtdataKeys, expiryInfo1.pvtdataKeys), "proto messages are not equal")
 }
 
 func TestExpiryKeeper(t *testing.T) {
