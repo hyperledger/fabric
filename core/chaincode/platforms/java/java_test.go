@@ -159,6 +159,7 @@ func TestGenerateDockerfile(t *testing.T) {
 }
 
 func TestGenerateDockerBuild(t *testing.T) {
+	t.Skip()
 	platform := java.Platform{}
 	ccSpec := &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_JAVA,

@@ -60,7 +60,7 @@ var _ = Describe("Java Chaincode EndToEnd Suite", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("supports java chaincode from a gradle project", func() {
+	PIt("supports java chaincode from a gradle project", func() {
 		chaincode = nwo.Chaincode{
 			Name:    "mycc",
 			Version: "0.0",
@@ -85,7 +85,7 @@ var _ = Describe("Java Chaincode EndToEnd Suite", func() {
 		RunQueryInvokeQuery(network, orderer, peer)
 	})
 
-	It("supports private data in java chaincode", func() {
+	PIt("supports private data in java chaincode", func() {
 		chaincode = nwo.Chaincode{
 			Name:              "mycc",
 			Version:           "0.0",
