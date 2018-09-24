@@ -61,8 +61,8 @@ func createCertPool(rootCAs [][]byte) (*x509.CertPool, error) {
 func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
 	//add DialOptions
 	dialOptions = append(dialOptions, grpc.WithBlock())
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	//create GRPC client conn
 	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
@@ -73,12 +73,8 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 	//create GRPC client
 	client := testpb.NewTestServiceClient(clientConn)
 
-	callCtx := context.Background()
-	callCtx, cancel := context.WithTimeout(callCtx, timeout)
-	defer cancel()
-
 	//invoke service
-	empty, err := client.EmptyCall(callCtx, new(testpb.Empty))
+	empty, err := client.EmptyCall(context.Background(), new(testpb.Empty))
 	if err != nil {
 		return nil, err
 	}

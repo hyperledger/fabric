@@ -259,8 +259,8 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
-		ctx := context.Background()
-		ctx, _ = context.WithTimeout(ctx, getConnectionTimeout())
+		ctx, cancel := context.WithTimeout(context.Background(), getConnectionTimeout())
+		defer cancel()
 		return grpc.DialContext(ctx, endpoint, dialOpts...)
 	}
 }

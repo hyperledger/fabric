@@ -66,8 +66,8 @@ func TestTLSCA(t *testing.T) {
 		}
 		tlsCfg.RootCAs.AppendCertsFromPEM(ca.CertBytes())
 		tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
-		ctx := context.Background()
-		ctx, _ = context.WithTimeout(ctx, time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 		conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", randomPort), tlsOpts, grpc.WithBlock())
 		if err != nil {
 			return err

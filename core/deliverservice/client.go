@@ -172,6 +172,7 @@ func (bc *broadcastClient) connect() error {
 	if err != nil {
 		logger.Error("Connection to ", endpoint, "established but was unable to create gRPC stream:", err)
 		conn.Close()
+		cf()
 		return err
 	}
 	err = bc.afterConnect(conn, abc, cf, endpoint)

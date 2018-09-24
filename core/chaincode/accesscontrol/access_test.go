@@ -112,8 +112,8 @@ func newClient(t *testing.T, port int, cert *tls.Certificate, peerCACert []byte)
 		tlsCfg.Certificates = []tls.Certificate{*cert}
 	}
 	tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", port), tlsOpts, grpc.WithBlock())
 	if err != nil {
 		return nil, err
