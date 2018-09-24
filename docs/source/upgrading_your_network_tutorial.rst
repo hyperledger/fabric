@@ -323,11 +323,12 @@ Verify peer upgrade completion
 We’ve completed the upgrade for our first peer, but before we move on let’s check
 to ensure the upgrade has been completed properly with a chaincode invoke.
 
-.. note:: Before you attempt this, make sure you've upgraded enough peers from
-          enough organizations to satisfy your endorsement policy. Because the
-          endorsement policy for the chaincode in BYFN is ``"AND ('Org1MSP.peer','Org2MSP.peer')"``,
-          you'll need to have at least one peer from each org upgraded before
-          attempting to verify the upgrade.
+.. note:: Before you attempt this, you may want to upgrade peers from
+          enough organizations to satisfy your endorsement policy.
+          Although, this is only mandatory if you are updating your chaincode
+          as part of the upgrade process. If you are not updating your chaincode
+          as part of the upgrade process, it is possible to get endorsements
+          from peers running at different Fabric versions.
 
 Before we get into the CLI container and issue the invoke, make sure the CLI is
 updated to the most current version by issuing:
