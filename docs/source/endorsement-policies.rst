@@ -126,6 +126,8 @@ For example:
   - Similarly, ``OutOf(2, 'Org1.member', 'B.member')`` is equivalent to
     ``AND('Org1.member', 'Org2.member')``.
 
+.. _key-level-endorsement:
+
 Setting key-level endorsement policies
 --------------------------------------
 
