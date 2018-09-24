@@ -16,6 +16,7 @@ modularity and versatility for a broad set of industry use cases.
    :maxdepth: 1
 
    whatis
+   whatsnew
    key_concepts
    getting_started
    tutorials
