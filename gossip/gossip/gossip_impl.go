@@ -1107,7 +1107,7 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 		if err != nil {
 			g.logger.Warningf("Failed associating PKI-ID with certificate: %+v", errors.WithStack(err))
 		}
-		g.logger.Info("Learned of a new certificate:", idMsg.Cert)
+		g.logger.Debug("Learned of a new certificate:", idMsg.Cert)
 	}
 	adapter := &pull.PullAdapter{
 		Sndr:            g.comm,

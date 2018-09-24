@@ -549,8 +549,8 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 }
 
 func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t proto.PeerTime) {
-	d.logger.Info("Entering, AliveMessage:", am, "t:", t)
-	defer d.logger.Info("Exiting")
+	d.logger.Debug("Entering, AliveMessage:", am, "t:", t)
+	defer d.logger.Debug("Exiting")
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
