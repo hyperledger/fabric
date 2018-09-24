@@ -257,21 +257,21 @@ func (s *store) performPurgeIfScheduled(latestCommittedBlk uint64) {
 	}
 	go func() {
 		s.purgerLock.Lock()
-		logger.Infof("Purger started: Purging expired private data till block number [%d]", latestCommittedBlk)
+		logger.Debugf("Purger started: Purging expired private data till block number [%d]", latestCommittedBlk)
 		defer s.purgerLock.Unlock()
 		err := s.purgeExpiredData(0, latestCommittedBlk)
 		if err != nil {
 			logger.Warningf("Could not purge data from pvtdata store:%s", err)
 		}
-		logger.Info("Purger finished")
+		logger.Debug("Purger finished")
 	}()
 }
 
 func (s *store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 	batch := leveldbhelper.NewUpdateBatch()
 	expiryEntries, err := s.retrieveExpiryEntries(minBlkNum, maxBlkNum)
-	if err != nil {
-		return nil
+	if err != nil || len(expiryEntries) == 0 {
+		return err
 	}
 	for _, expiryEntry := range expiryEntries {
 		// this encoding could have been saved if the function retrieveExpiryEntries also returns the encoded expiry keys.
@@ -282,7 +282,7 @@ func (s *store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 		}
 		s.db.WriteBatch(batch, false)
 	}
-	logger.Debugf("[%d] Entries purged from private data storage", len(expiryEntries))
+	logger.Infof("[%s] - [%d] Entries purged from private data storage till block number [%d]", s.ledgerid, len(expiryEntries), maxBlkNum)
 	return nil
 }
 
