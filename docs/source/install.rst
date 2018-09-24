@@ -41,7 +41,7 @@ Fabric Samples and binaries, go ahead and execute the following command:
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.0
+  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.3.0-rc1
 
 .. note:: If you want to download Fabric, Fabric-ca and thirdparty Docker images
           you must pass the version identifier to the script.
@@ -49,7 +49,7 @@ Fabric Samples and binaries, go ahead and execute the following command:
 .. code:: bash
 
   curl -sSL http://bit.ly/2ysbOFE | bash -s <fabric> <fabric-ca> <thirdparty>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.0 1.2.0 0.4.10
+  curl -sSL http://bit.ly/2ysbOFE | bash -s 1.3.0-rc1 1.3.0-rc1 0.4.12
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
@@ -62,7 +62,7 @@ Fabric Samples and binaries, go ahead and execute the following command:
 	  https://github.com/hyperledger/fabric/blob/master/scripts/bootstrap.sh
 
 .. note:: You can use the command above for any published version of Hyperledger
-          Fabric. Simply replace `1.2.0` with the version identifier
+          Fabric. Simply replace `1.3.0-rc1` with the version identifier
           of the version you wish to install.
 
 The command above downloads and executes a bash script
