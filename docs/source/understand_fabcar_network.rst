@@ -101,11 +101,9 @@ to the ordering service by calling the ``channel.sendTransaction`` API. The
 ordering service bundles the transaction into a block and delivers it to all
 peers on a channel for validation (the Fabcar network has only one peer and one channel).
 
-Finally the application uses two event handler APIs: ``eh.setPeerAddr`` to
-connect to the peer's event listener port and ``eh.registerTxEvent`` to
-register for events associated with a specific transaction ID. The
-``eh.registerTxEvent`` API allows the application to be notified about the fate
-of a transaction (i.e. valid or invalid).
+Finally the application uses the :doc:`peer_event_services` to register for events
+associated with a specific transaction ID so that the application can be notified
+about the fate of a transaction (i.e. valid or invalid).
 
 For More Information
 --------------------
