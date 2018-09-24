@@ -1,0 +1,46 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package manager
+
+import (
+	"github.com/hyperledger/fabric/token/identity"
+	"github.com/hyperledger/fabric/token/tms/plain"
+	"github.com/hyperledger/fabric/token/transaction"
+	"github.com/pkg/errors"
+)
+
+// FabricIdentityDeserializerManager implements a DeserializerManager
+// by routing the call to a mapping function.
+type FabricIdentityDeserializerManager struct {
+	// Mapper maps channel names to deserializer.
+	// For example, it can be implemented by using the msp/mgmt package,
+	// i.e. mgmt.GetDeserializers()[channel]
+	Mapper func(channel string) (identity.Deserializer, bool)
+}
+
+func (m *FabricIdentityDeserializerManager) Deserializer(channel string) (identity.Deserializer, error) {
+	id, ok := m.Mapper(channel)
+	if !ok {
+		return nil, errors.New("channel not found")
+	}
+	return id, nil
+}
+
+// Manager is used to access TMS components.
+type Manager struct {
+	IdentityDeserializerManager identity.DeserializerManager
+}
+
+// GetTxProcessor returns a TMSTxProcessor that is used to process token transactions.
+func (m *Manager) GetTxProcessor(channel string) (transaction.TMSTxProcessor, error) {
+	identityDeserializerManager, err := m.IdentityDeserializerManager.Deserializer(channel)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed getting identity deserialiser manager for channel '%s'", channel)
+	}
+
+	return &plain.Verifier{IssuingValidator: &AllIssuingValidator{Deserializer: identityDeserializerManager}}, nil
+}

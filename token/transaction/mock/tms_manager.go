@@ -21,12 +21,6 @@ type TMSManager struct {
 		result1 transaction.TMSTxProcessor
 		result2 error
 	}
-	SetPolicyValidatorStub        func(channel string, validator transaction.PolicyValidator)
-	setPolicyValidatorMutex       sync.RWMutex
-	setPolicyValidatorArgsForCall []struct {
-		channel   string
-		validator transaction.PolicyValidator
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -82,38 +76,11 @@ func (fake *TMSManager) GetTxProcessorReturnsOnCall(i int, result1 transaction.T
 	}{result1, result2}
 }
 
-func (fake *TMSManager) SetPolicyValidator(channel string, validator transaction.PolicyValidator) {
-	fake.setPolicyValidatorMutex.Lock()
-	fake.setPolicyValidatorArgsForCall = append(fake.setPolicyValidatorArgsForCall, struct {
-		channel   string
-		validator transaction.PolicyValidator
-	}{channel, validator})
-	fake.recordInvocation("SetPolicyValidator", []interface{}{channel, validator})
-	fake.setPolicyValidatorMutex.Unlock()
-	if fake.SetPolicyValidatorStub != nil {
-		fake.SetPolicyValidatorStub(channel, validator)
-	}
-}
-
-func (fake *TMSManager) SetPolicyValidatorCallCount() int {
-	fake.setPolicyValidatorMutex.RLock()
-	defer fake.setPolicyValidatorMutex.RUnlock()
-	return len(fake.setPolicyValidatorArgsForCall)
-}
-
-func (fake *TMSManager) SetPolicyValidatorArgsForCall(i int) (string, transaction.PolicyValidator) {
-	fake.setPolicyValidatorMutex.RLock()
-	defer fake.setPolicyValidatorMutex.RUnlock()
-	return fake.setPolicyValidatorArgsForCall[i].channel, fake.setPolicyValidatorArgsForCall[i].validator
-}
-
 func (fake *TMSManager) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.getTxProcessorMutex.RLock()
 	defer fake.getTxProcessorMutex.RUnlock()
-	fake.setPolicyValidatorMutex.RLock()
-	defer fake.setPolicyValidatorMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

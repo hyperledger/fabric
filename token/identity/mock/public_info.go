@@ -4,10 +4,10 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/token/transaction"
+	"github.com/hyperledger/fabric/token/identity"
 )
 
-type CreatorInfo struct {
+type PublicInfo struct {
 	PublicStub        func() []byte
 	publicMutex       sync.RWMutex
 	publicArgsForCall []struct{}
@@ -21,7 +21,7 @@ type CreatorInfo struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CreatorInfo) Public() []byte {
+func (fake *PublicInfo) Public() []byte {
 	fake.publicMutex.Lock()
 	ret, specificReturn := fake.publicReturnsOnCall[len(fake.publicArgsForCall)]
 	fake.publicArgsForCall = append(fake.publicArgsForCall, struct{}{})
@@ -36,20 +36,20 @@ func (fake *CreatorInfo) Public() []byte {
 	return fake.publicReturns.result1
 }
 
-func (fake *CreatorInfo) PublicCallCount() int {
+func (fake *PublicInfo) PublicCallCount() int {
 	fake.publicMutex.RLock()
 	defer fake.publicMutex.RUnlock()
 	return len(fake.publicArgsForCall)
 }
 
-func (fake *CreatorInfo) PublicReturns(result1 []byte) {
+func (fake *PublicInfo) PublicReturns(result1 []byte) {
 	fake.PublicStub = nil
 	fake.publicReturns = struct {
 		result1 []byte
 	}{result1}
 }
 
-func (fake *CreatorInfo) PublicReturnsOnCall(i int, result1 []byte) {
+func (fake *PublicInfo) PublicReturnsOnCall(i int, result1 []byte) {
 	fake.PublicStub = nil
 	if fake.publicReturnsOnCall == nil {
 		fake.publicReturnsOnCall = make(map[int]struct {
@@ -61,7 +61,7 @@ func (fake *CreatorInfo) PublicReturnsOnCall(i int, result1 []byte) {
 	}{result1}
 }
 
-func (fake *CreatorInfo) Invocations() map[string][][]interface{} {
+func (fake *PublicInfo) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.publicMutex.RLock()
@@ -73,7 +73,7 @@ func (fake *CreatorInfo) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *CreatorInfo) recordInvocation(key string, args []interface{}) {
+func (fake *PublicInfo) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -85,4 +85,4 @@ func (fake *CreatorInfo) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ transaction.CreatorInfo = new(CreatorInfo)
+var _ identity.PublicInfo = new(PublicInfo)
