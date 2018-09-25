@@ -510,11 +510,22 @@ var _ = Describe("Deliver", func() {
 		})
 
 		Context("when the chain errors while reading from the chain", func() {
+			var doneCh chan struct{}
+
 			BeforeEach(func() {
+				doneCh = make(chan struct{})
+				fakeBlockIterator.NextStub = func() (*cb.Block, cb.Status) {
+					<-doneCh
+					return &cb.Block{}, cb.Status_INTERNAL_SERVER_ERROR
+				}
 				fakeChain.ReaderStub = func() blockledger.Reader {
 					close(errCh)
 					return fakeBlockReader
 				}
+			})
+
+			AfterEach(func() {
+				close(doneCh)
 			})
 
 			It("sends status service unavailable", func() {
