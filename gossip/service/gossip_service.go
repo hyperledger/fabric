@@ -235,6 +235,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, dataRetriever, collectionAccessFactory, chainID)
 
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
+		ChainID:         chainID,
 		CollectionStore: support.Cs,
 		Validator:       support.Validator,
 		TransientStore:  support.Store,

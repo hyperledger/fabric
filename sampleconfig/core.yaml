@@ -39,14 +39,9 @@ logging:
     # The overall default values mentioned above can be overridden for the
     # specific components listed in the override section below.
 
-    # Override levels for various peer modules. These levels will be
-    # applied once the peer has completely started. They are applied at this
-    # time in order to be sure every logger has been registered with the
-    # logging package.
-    # Note: the modules listed below are the only acceptable modules at this
-    #       time.
+    # Override log levels for various peer modules.
     cauthdsl:   warning
-    gossip:     warning
+    gossip:     info
     grpc:       error
     ledger:     info
     msp:        warning
