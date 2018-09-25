@@ -96,7 +96,6 @@ K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
-JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
@@ -319,7 +318,6 @@ $(BUILD_DIR)/goshim.tar.bz2: $(GOSHIM_DEPS)
 $(BUILD_DIR)/sampleconfig.tar.bz2: $(shell find sampleconfig -type f)
 	(cd sampleconfig && tar -jc *) > $@
 
-$(BUILD_DIR)/javashim.tar.bz2: $(JAVASHIM_DEPS)
 $(BUILD_DIR)/protos.tar.bz2: $(PROTOS)
 
 $(BUILD_DIR)/%.tar.bz2:

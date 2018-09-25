@@ -23,7 +23,6 @@ type Components struct {
 
 var RequiredImages = []string{
 	fmt.Sprintf("hyperledger/fabric-ccenv:%s-latest", runtime.GOARCH),
-	fmt.Sprintf("hyperledger/fabric-javaenv:%s-latest", runtime.GOARCH),
 	runner.CouchDBDefaultImage,
 	runner.KafkaDefaultImage,
 	runner.ZooKeeperDefaultImage,
