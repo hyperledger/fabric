@@ -117,7 +117,12 @@ type chainImpl struct {
 // Errored returns a channel which will close when a partition consumer error
 // has occurred. Checked by Deliver().
 func (chain *chainImpl) Errored() <-chan struct{} {
-	return chain.errorChan
+	select {
+	case <-chain.startChan:
+		return chain.errorChan
+	default:
+		return nil
+	}
 }
 
 // Start allocates the necessary resources for staying up to date with this
@@ -291,8 +296,8 @@ func startThread(chain *chainImpl) {
 
 	chain.doneProcessingMessagesToBlocks = make(chan struct{})
 
-	close(chain.startChan)                // Broadcast requests will now go through
 	chain.errorChan = make(chan struct{}) // Deliver requests will also go through
+	close(chain.startChan)                // Broadcast requests will now go through
 
 	logger.Infof("[channel: %s] Start phase completed successfully", chain.channel.topic())
 
