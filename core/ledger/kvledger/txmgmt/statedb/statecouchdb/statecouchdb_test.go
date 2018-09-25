@@ -243,11 +243,11 @@ func TestDebugFunctions(t *testing.T) {
 	// initialize a key list
 	loadKeys := []*statedb.CompositeKey{}
 	//create a composite key and add to the key list
-	compositeKey := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
-	loadKeys = append(loadKeys, &compositeKey)
-	compositeKey = statedb.CompositeKey{Namespace: "ns", Key: "key4"}
-	loadKeys = append(loadKeys, &compositeKey)
-	assert.Equal(t, "[ns,key4],[ns,key4]", printCompositeKeys(loadKeys))
+	compositeKey3 := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
+	loadKeys = append(loadKeys, &compositeKey3)
+	compositeKey4 := statedb.CompositeKey{Namespace: "ns", Key: "key4"}
+	loadKeys = append(loadKeys, &compositeKey4)
+	assert.Equal(t, "[ns,key3],[ns,key4]", printCompositeKeys(loadKeys))
 
 }
 
