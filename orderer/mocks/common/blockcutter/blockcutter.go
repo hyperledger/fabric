@@ -17,6 +17,8 @@ limitations under the License.
 package blockcutter
 
 import (
+	"sync"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -36,11 +38,14 @@ type Receiver struct {
 	// CutNext causes Ordered returns [][]{append(curBatch, newTx)}, false when set to true
 	CutNext bool
 
-	// SkipAppendCurBatch causes Ordered to skip appending to CurBatch
+	// SkipAppendCurBatch causes Ordered to skip appending to curBatch
 	SkipAppendCurBatch bool
 
-	// CurBatch is the currently outstanding messages in the batch
-	CurBatch []*cb.Envelope
+	// Lock to serialize writes access to curBatch
+	mutex sync.Mutex
+
+	// curBatch is the currently outstanding messages in the batch
+	curBatch []*cb.Envelope
 
 	// Block is a channel which is read from before returning from Ordered, it is useful for synchronization
 	// If you do not wish synchronization for whatever reason, simply close the channel
@@ -63,28 +68,31 @@ func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, bool) {
 		<-mbc.Block
 	}()
 
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
+
 	if mbc.IsolatedTx {
 		logger.Debugf("Receiver: Returning dual batch")
-		res := [][]*cb.Envelope{mbc.CurBatch, {env}}
-		mbc.CurBatch = nil
+		res := [][]*cb.Envelope{mbc.curBatch, {env}}
+		mbc.curBatch = nil
 		return res, false
 	}
 
 	if mbc.CutAncestors {
 		logger.Debugf("Receiver: Returning current batch and appending newest env")
-		res := [][]*cb.Envelope{mbc.CurBatch}
-		mbc.CurBatch = []*cb.Envelope{env}
+		res := [][]*cb.Envelope{mbc.curBatch}
+		mbc.curBatch = []*cb.Envelope{env}
 		return res, true
 	}
 
 	if !mbc.SkipAppendCurBatch {
-		mbc.CurBatch = append(mbc.CurBatch, env)
+		mbc.curBatch = append(mbc.curBatch, env)
 	}
 
 	if mbc.CutNext {
 		logger.Debugf("Receiver: Returning regular batch")
-		res := [][]*cb.Envelope{mbc.CurBatch}
-		mbc.CurBatch = nil
+		res := [][]*cb.Envelope{mbc.curBatch}
+		mbc.curBatch = nil
 		return res, false
 	}
 
@@ -94,8 +102,16 @@ func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, bool) {
 
 // Cut terminates the current batch, returning it
 func (mbc *Receiver) Cut() []*cb.Envelope {
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
 	logger.Debugf("Cutting batch")
-	res := mbc.CurBatch
-	mbc.CurBatch = nil
+	res := mbc.curBatch
+	mbc.curBatch = nil
 	return res
+}
+
+func (mbc *Receiver) CurBatch() []*cb.Envelope {
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
+	return mbc.curBatch
 }

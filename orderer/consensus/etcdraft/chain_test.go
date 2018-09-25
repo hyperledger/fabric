@@ -170,17 +170,13 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(m, uint64(0))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(func() int {
-					return len(cutter.CurBatch)
-				}).Should(Equal(1))
+				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 
 				err = chain.Order(m, uint64(0))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(func() int {
-					return len(cutter.CurBatch)
-				}).Should(Equal(2))
+				Eventually(cutter.CurBatch).Should(HaveLen(2))
 
 				// the second envelope should not reset the timer; it should
 				// therefore expire if we increment it by just timeout/2
@@ -195,9 +191,7 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(m, uint64(0))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(func() int {
-					return len(cutter.CurBatch)
-				}).Should(Equal(1))
+				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				// wait for timer to start
 				Eventually(clock.WatcherCount).Should(Equal(2))
@@ -215,9 +209,7 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(m, uint64(0))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(func() int {
-					return len(cutter.CurBatch)
-				}).Should(Equal(1))
+				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 
@@ -227,15 +219,13 @@ var _ = Describe("Chain", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(support.WriteBlockCallCount).Should(Equal(1))
 				Expect(support.CreateNextBlockArgsForCall(0)).To(HaveLen(2))
-				Expect(cutter.CurBatch).To(HaveLen(0))
+				Expect(cutter.CurBatch()).To(HaveLen(0))
 
 				// this should start a fresh timer
 				cutter.CutNext = false
 				err = chain.Order(m, uint64(0))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(func() int {
-					return len(cutter.CurBatch)
-				}).Should(Equal(1))
+				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 				Consistently(support.WriteBlockCallCount).Should(Equal(1))
@@ -254,9 +244,7 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(m, uint64(0))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(func() int {
-					return len(cutter.CurBatch)
-				}).Should(Equal(1))
+				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				cutter.IsolatedTx = true
 				err = chain.Order(m, uint64(0))
@@ -281,9 +269,7 @@ var _ = Describe("Chain", func() {
 
 					err := chain.Order(m, uint64(0))
 					Expect(err).NotTo(HaveOccurred())
-					Eventually(func() int {
-						return len(cutter.CurBatch)
-					}).Should(Equal(1))
+					Eventually(cutter.CurBatch).Should(HaveLen(1))
 				})
 
 				It("does not enqueue if an envelope is not valid", func() {
@@ -291,9 +277,7 @@ var _ = Describe("Chain", func() {
 
 					err := chain.Order(m, uint64(0))
 					Expect(err).NotTo(HaveOccurred())
-					Consistently(func() int {
-						return len(cutter.CurBatch)
-					}).Should(Equal(0))
+					Consistently(cutter.CurBatch).Should(HaveLen(0))
 				})
 			})
 
