@@ -126,7 +126,7 @@ supporting artifacts.
 
    export GOPATH={directory of your choice}
    mkdir -p $GOPATH/src/github.com/hyperledger
-   FABRIC=$GOPATH/src/github.hyperledger/fabric
+   FABRIC=$GOPATH/src/github.com/hyperledger/fabric
    git clone https://github.com/hyperledger/fabric $FABRIC
    cd $FABRIC
    git checkout master # <-- only if you want the master branch
