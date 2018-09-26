@@ -115,7 +115,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("invoking chaincode as a permitted Org1 Admin identity")
 		sess, err := network.PeerAdminSession(org1Peer0, invokeChaincode)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess.Err, time.Minute).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
+		Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 		//
 		// when the ACL policy for DeliverFiltered is not satisifed
@@ -128,7 +128,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("invoking chaincode as a forbidden Org1 Admin identity")
 		sess, err = network.PeerAdminSession(org1Peer0, invokeChaincode)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess.Err, time.Minute).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
+		Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
 
 		//
 		// when the ACL policy for Deliver is satisfied
@@ -141,7 +141,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("fetching the latest block from the peer as a permitted Org1 Admin identity")
 		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 		//
@@ -150,7 +150,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("fetching the latest block from the peer as a forbidden org2 Admin identity")
 		sess, err = network.PeerAdminSession(org2Peer0, fetchNewest)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 		Expect(sess.Err).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
 
 		//
@@ -166,7 +166,7 @@ var _ = Describe("EndToEndACL", func() {
 			ChannelID: "testchannel",
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say("Name: mycc, Version: 0.0, Path: .*, Escc: escc, Vscc: vscc"))
 
 		//
@@ -177,7 +177,7 @@ var _ = Describe("EndToEndACL", func() {
 			ChannelID: "testchannel",
 		})
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 		Expect(sess).NotTo(gbytes.Say("Name: mycc, Version: 0.0, Path: .*, Escc: escc, Vscc: vscc"))
 		Expect(sess.Err).To(gbytes.Say(`access denied for \[getchaincodes\]\[testchannel\](.*)signature set did not satisfy policy`))
 
@@ -188,7 +188,7 @@ var _ = Describe("EndToEndACL", func() {
 		// getting a transaction id from a block in the ledger
 		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, time.Minute).Should(gexec.Exit(0))
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess.Err).To(gbytes.Say("Received block: "))
 		txID := GetTxIDFromBlockFile(outputBlock)
 

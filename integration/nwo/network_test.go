@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"syscall"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -70,7 +69,7 @@ var _ = Describe("Network", func() {
 		AfterEach(func() {
 			// Shutodwn processes and cleanup
 			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), time.Minute).Should(Receive())
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 			network.Cleanup()
 		})
 
@@ -120,7 +119,7 @@ var _ = Describe("Network", func() {
 		AfterEach(func() {
 			for _, p := range processes {
 				p.Signal(syscall.SIGTERM)
-				Eventually(p.Wait(), time.Minute).Should(Receive())
+				Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
 			}
 			network.Cleanup()
 		})
