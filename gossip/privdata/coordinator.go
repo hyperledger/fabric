@@ -855,7 +855,7 @@ func containsWrites(txID string, namespace string, colHashedRWSet *rwsetutil.Col
 		logger.Warningf("HashedRWSet of tx %s, namespace %s, collection %s is nil", txID, namespace, colHashedRWSet.CollectionName)
 		return false
 	}
-	if len(colHashedRWSet.HashedRwSet.HashedWrites) == 0 {
+	if len(colHashedRWSet.HashedRwSet.HashedWrites) == 0 && len(colHashedRWSet.HashedRwSet.MetadataWrites) == 0 {
 		logger.Debugf("HashedRWSet of tx %s, namespace %s, collection %s doesn't contain writes", txID, namespace, colHashedRWSet.CollectionName)
 		return false
 	}
