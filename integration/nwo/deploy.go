@@ -28,9 +28,43 @@ type Chaincode struct {
 	PackageFile       string
 }
 
-// DeployChaincode is a helper that will install chaincode to all peers that
-// are connected to the specified channel, instantiate the chaincode on one of
-// the peers, and wait for the instantiation to complete on all of the peers.
+// DeployChaincodePlusLifecycle is a helper that will install chaincode to all
+// peers that are connected to the specified channel, instantiate the chaincode
+// on one of the peers, and wait for the instantiation to complete on all of
+// the peers. It uses the +lifecycle implementation.
+// TODO: add +lifecycle DefineChaincode functionality once it has been
+// be implemented server-side
+func DeployChaincodePlusLifecycle(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
+	if len(peers) == 0 {
+		peers = n.PeersWithChannel(channel)
+	}
+	if len(peers) == 0 {
+		return
+	}
+
+	// create temp file for chaincode package if not provided
+	if chaincode.PackageFile == "" {
+		tempFile, err := ioutil.TempFile("", "chaincode-package")
+		Expect(err).NotTo(HaveOccurred())
+		tempFile.Close()
+		defer os.Remove(tempFile.Name())
+		chaincode.PackageFile = tempFile.Name()
+	}
+
+	// package using the first peer
+	PackageChaincodePlusLifecycle(n, chaincode, peers[0])
+
+	// install on all peers
+	InstallChaincodePlusLifecycle(n, chaincode, peers...)
+
+	// define using the first peer
+	// DefineChaincode(n, channel, orderer, chaincode, peers[0], peers...)
+}
+
+// DeployChaincode is a helper that will install chaincode to all peers
+// that are connected to the specified channel, instantiate the chaincode on
+// one of the peers, and wait for the instantiation to complete on all of the
+// peers. It uses the legacy lifecycle (lscc) implementation.
 //
 // NOTE: This helper should not be used to deploy the same chaincode on
 // multiple channels as the install will fail on subsequent calls. Instead,
@@ -62,6 +96,16 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	InstantiateChaincode(n, channel, orderer, chaincode, peers[0], peers...)
 }
 
+func PackageChaincodePlusLifecycle(n *Network, chaincode Chaincode, peer *Peer) {
+	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackagePlusLifecycle{
+		Path:       chaincode.Path,
+		Lang:       chaincode.Lang,
+		OutputFile: chaincode.PackageFile,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+}
+
 func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackage{
 		Name:       chaincode.Name,
@@ -72,6 +116,23 @@ func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+}
+
+func InstallChaincodePlusLifecycle(n *Network, chaincode Chaincode, peers ...*Peer) {
+	for _, p := range peers {
+		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstallPlusLifecycle{
+			Name:        chaincode.Name,
+			Version:     chaincode.Version,
+			PackageFile: chaincode.PackageFile,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+		sess, err = n.PeerAdminSession(p, commands.ChaincodeListInstalledPlusLifecycle{})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", chaincode.Name, chaincode.Version)))
+	}
 }
 
 func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {

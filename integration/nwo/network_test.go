@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -87,6 +88,28 @@ var _ = Describe("Network", func() {
 			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer)
+		})
+
+		It("deploys and executes chaincode (simple) using the +lifecycle", func() {
+			orderer := network.Orderer("orderer0")
+			// TODO: uncomment once needed below
+			// peer := network.Peer("org1", "peer2")
+
+			chaincode := nwo.Chaincode{
+				Name:        "mycc",
+				Version:     "0.0",
+				Path:        "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:        "golang",
+				PackageFile: filepath.Join(tempDir, "simplecc.tar.gz"),
+				Ctor:        `{"Args":["init","a","100","b","200"]}`,
+				Policy:      `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+			}
+
+			network.CreateAndJoinChannels(orderer)
+			nwo.DeployChaincodePlusLifecycle(network, "testchannel", orderer, chaincode)
+			// TODO: uncomment once +lifecycle Define functionality is available
+			// server-side and has been added to nwo
+			// RunQueryInvokeQuery(network, orderer, peer)
 		})
 	})
 
@@ -175,6 +198,57 @@ var _ = Describe("Network", func() {
 			nwo.EnsureInstantiated(network, "testchannel", "mycc", "0.0", testPeers...)
 
 			RunQueryInvokeQuery(network, orderer, testPeers[0])
+		})
+
+		It("packages and installs chaincode (the hard way) using the +lifecycle", func() {
+			// This demonstrates how to control the processes that make up a network.
+			// If you don't care about a collection of processes (like the brokers or
+			// the orderers) use the group runner to manage those processes.
+			zookeepers := []string{}
+			for i := 0; i < network.Consensus.ZooKeepers; i++ {
+				zk := network.ZooKeeperRunner(i)
+				zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", zk.Name))
+
+				p := ifrit.Invoke(zk)
+				processes[zk.Name] = p
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			for i := 0; i < network.Consensus.Brokers; i++ {
+				b := network.BrokerRunner(i, zookeepers)
+				p := ifrit.Invoke(b)
+				processes[b.Name] = p
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			for _, o := range network.Orderers {
+				or := network.OrdererRunner(o)
+				p := ifrit.Invoke(or)
+				processes[o.ID()] = p
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			for _, peer := range network.Peers {
+				pr := network.PeerRunner(peer)
+				p := ifrit.Invoke(pr)
+				processes[peer.ID()] = p
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			orderer := network.Orderer("orderer0")
+			testPeers := network.PeersWithChannel("testchannel")
+			network.CreateChannel("testchannel", orderer, testPeers[0])
+			network.JoinChannel("testchannel", orderer, testPeers...)
+
+			chaincode := nwo.Chaincode{
+				Name:        "mycc",
+				Version:     "0.0",
+				Path:        "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:        "golang",
+				PackageFile: filepath.Join(tempDir, "simplecc.tar.gz"),
+			}
+			nwo.PackageChaincodePlusLifecycle(network, chaincode, testPeers[0])
+			nwo.InstallChaincodePlusLifecycle(network, chaincode, testPeers...)
 		})
 	})
 })

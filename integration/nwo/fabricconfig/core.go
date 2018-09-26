@@ -230,11 +230,12 @@ type Node struct {
 }
 
 type SystemFlags struct {
-	CSCC string `yaml:"cscc,omitempty"`
-	LSCC string `yaml:"lscc,omitempty"`
-	ESCC string `yaml:"escc,omitempty"`
-	VSCC string `yaml:"vscc,omitempty"`
-	QSCC string `yaml:"qscc,omitempty"`
+	NEWLIFECYCLE string `yaml:"+lifecycle,omitempty"`
+	CSCC         string `yaml:"cscc,omitempty"`
+	LSCC         string `yaml:"lscc,omitempty"`
+	ESCC         string `yaml:"escc,omitempty"`
+	VSCC         string `yaml:"vscc,omitempty"`
+	QSCC         string `yaml:"qscc,omitempty"`
 }
 
 type Ledger struct {
