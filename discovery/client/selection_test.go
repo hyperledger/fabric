@@ -15,7 +15,7 @@ import (
 )
 
 func TestShuffle(t *testing.T) {
-	endorsers := make(Endorsers, 1000000)
+	endorsers := make(Endorsers, 1000)
 	for i := 0; i < len(endorsers); i++ {
 		endorsers[i] = &Peer{
 			StateInfoMessage: stateInfoWithHeight(uint64(i)),

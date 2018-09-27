@@ -555,7 +555,7 @@ func TestClient(t *testing.T) {
 				used[name] = struct{}{}
 			}
 		}
-		fmt.Printf("Used peers: %#v\n", used)
+		t.Logf("Used peers: %#v\n", used)
 		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
 	})
 }
