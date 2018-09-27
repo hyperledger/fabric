@@ -390,7 +390,6 @@ code block where we construct our invocation:
     chaincodeId: 'fabcar',
     fcn: '',
     args: [''],
-    chainId: 'mychannel',
     txId: tx_id
   };
 
@@ -406,7 +405,6 @@ as the identifying key here. Edit this code block to look like this:
     chaincodeId: 'fabcar',
     fcn: 'createCar',
     args: ['CAR10', 'Chevy', 'Volt', 'Red', 'Nick'],
-    chainId: 'mychannel',
     txId: tx_id
   };
 
@@ -475,7 +473,6 @@ to ``changeCarOwner`` and input the arguments like this:
     chaincodeId: 'fabcar',
     fcn: 'changeCarOwner',
     args: ['CAR10', 'Dave'],
-    chainId: 'mychannel',
     txId: tx_id
   };
 
