@@ -1,0 +1,34 @@
+v1.2.1 September 27, 2018
+------------------------
+
+Release Notes
+-------------
+Bug fixes, documentation and test coverage improvements, UX improvements
+based on user feedback and changes to address a variety of static scan
+findings (unused code, static security scanning, spelling, linting and more).
+
+Known Vulnerabilities
+---------------------
+FAB-8664 - Peer does not detect his own org ejection
+This is a relatively low severity problem, because it requires a significant
+conspiracy of network admins, but it will be addressed in an upcoming release.
+
+Resolved Vulnerabilities
+------------------------
+FAB-11094 - Fix deadlock in block iterator
+Fixes possible ledger deadlock condition when using the channel event
+service.
+
+FAB-10390 - Set PKCS11 CKA_MODIFIABLE to false
+More secure default value when generating private keys when using PKCS#11.
+
+FAB-10391 - Set CKA_EXTRACTABLE to false
+More secure default value when generating private keys when using PKCS#11.
+
+Known Issues & Workarounds
+--------------------------
+none
+
+Change Log
+----------
+https://github.com/hyperledger/fabric/blob/release-1.2/CHANGELOG.md#v121

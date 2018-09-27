@@ -1,3 +1,51 @@
+## v1.2.1
+Thu Sep 27 13:58:55 EDT 2018
+
+* [e40d9c7ed](https://github.com/hyperledger/fabric/commit/e40d9c7ed) Fix historydb issue for keys containing nil bytes
+* [620392c35](https://github.com/hyperledger/fabric/commit/620392c35) Change pvtdata store purger log level to debug
+* [eba710428](https://github.com/hyperledger/fabric/commit/eba710428) [FAB-12132](https://jira.hyperledger.org/browse/FAB-12132) update goleveldb
+* [935ce5dc7](https://github.com/hyperledger/fabric/commit/935ce5dc7) [FAB-12113](https://jira.hyperledger.org/browse/FAB-12113) Reduce gossip Info messages
+* [5ab38e1b1](https://github.com/hyperledger/fabric/commit/5ab38e1b1) [FAB-12030](https://jira.hyperledger.org/browse/FAB-12030) Improve INFO log for block processing
+* [905652065](https://github.com/hyperledger/fabric/commit/905652065) [FAB-12014](https://jira.hyperledger.org/browse/FAB-12014) Log warning for missing index
+* [47ba9b95c](https://github.com/hyperledger/fabric/commit/47ba9b95c) [FAB-12060](https://jira.hyperledger.org/browse/FAB-12060) payload buf don't signal ready if empty
+* [b7aeb2104](https://github.com/hyperledger/fabric/commit/b7aeb2104) [FAB-12098](https://jira.hyperledger.org/browse/FAB-12098) Use context WithTimeout in gossip handshake
+* [bd093bc76](https://github.com/hyperledger/fabric/commit/bd093bc76) [FAB-12093](https://jira.hyperledger.org/browse/FAB-12093) Fix Priv Data Tut
+* [c232cbf8a](https://github.com/hyperledger/fabric/commit/c232cbf8a) [FAB-10970](https://jira.hyperledger.org/browse/FAB-10970) Make connection refusal more lenient
+* [4e5620d31](https://github.com/hyperledger/fabric/commit/4e5620d31) [FAB-11757](https://jira.hyperledger.org/browse/FAB-11757) Add term migrate(v1.2)
+* [3ec2839de](https://github.com/hyperledger/fabric/commit/3ec2839de) [FAB-11954](https://jira.hyperledger.org/browse/FAB-11954) Rmv state based endorse from pluggable doc
+* [316499ca5](https://github.com/hyperledger/fabric/commit/316499ca5) [FAB-11441](https://jira.hyperledger.org/browse/FAB-11441) Remove ESCC, VSCC from doc
+* [dd5589bc5](https://github.com/hyperledger/fabric/commit/dd5589bc5) [FAB-11894](https://jira.hyperledger.org/browse/FAB-11894) State request to request open range
+* [4a29e364e](https://github.com/hyperledger/fabric/commit/4a29e364e) [FAB-11870](https://jira.hyperledger.org/browse/FAB-11870) Remove KeyLevelEndorsement cap, from 1.2
+* [057fc21c2](https://github.com/hyperledger/fabric/commit/057fc21c2) [FAB-11815](https://jira.hyperledger.org/browse/FAB-11815) allow META-INF during validation
+* [0a50e839e](https://github.com/hyperledger/fabric/commit/0a50e839e) [FAB-11838](https://jira.hyperledger.org/browse/FAB-11838) Add INFO logging for anchor peers
+* [eb2c67c06](https://github.com/hyperledger/fabric/commit/eb2c67c06) [FAB-11829](https://jira.hyperledger.org/browse/FAB-11829) Log discovery requests/responses
+* [5fffc3917](https://github.com/hyperledger/fabric/commit/5fffc3917) [FAB-11820](https://jira.hyperledger.org/browse/FAB-11820) Fix typo in the document.
+* [a2a248728](https://github.com/hyperledger/fabric/commit/a2a248728) [FAB-11801](https://jira.hyperledger.org/browse/FAB-11801) fix duplicate words in the document
+* [61221aaf9](https://github.com/hyperledger/fabric/commit/61221aaf9) [FAB-11814](https://jira.hyperledger.org/browse/FAB-11814) swimlane anchor
+* [a58896e4b](https://github.com/hyperledger/fabric/commit/a58896e4b) Run pkcs11 tests for bccsp pkg
+* [79aeb9573](https://github.com/hyperledger/fabric/commit/79aeb9573) Improve error message when private data is disabled
+* [9fb7a78cb](https://github.com/hyperledger/fabric/commit/9fb7a78cb) [FAB-10390](https://jira.hyperledger.org/browse/FAB-10390) Set PKCS11 CKA_MODIFIABLE to false
+* [b444d95eb](https://github.com/hyperledger/fabric/commit/b444d95eb) Fix broken bccsp/pkcs11 tests
+* [33b0e5e34](https://github.com/hyperledger/fabric/commit/33b0e5e34) [FAB-10391](https://jira.hyperledger.org/browse/FAB-10391) Set CKA_EXTRACTABLE to false
+* [d42189192](https://github.com/hyperledger/fabric/commit/d42189192) [FAB-11575](https://jira.hyperledger.org/browse/FAB-11575) Fix collection config error msg
+* [73404f558](https://github.com/hyperledger/fabric/commit/73404f558) [FAB-11606](https://jira.hyperledger.org/browse/FAB-11606) Fix duplicate word in sentence
+* [9e9ebe651](https://github.com/hyperledger/fabric/commit/9e9ebe651) [FAB-11487](https://jira.hyperledger.org/browse/FAB-11487) provide error response when send fails
+* [559f6752e](https://github.com/hyperledger/fabric/commit/559f6752e) [FAB-11467](https://jira.hyperledger.org/browse/FAB-11467) Add client app note to FAQ
+* [bb8133490](https://github.com/hyperledger/fabric/commit/bb8133490) [FAB-11468](https://jira.hyperledger.org/browse/FAB-11468) Print error upon peer cmd failure
+* [668456b1d](https://github.com/hyperledger/fabric/commit/668456b1d) [FAB-11403](https://jira.hyperledger.org/browse/FAB-11403) Fix Typo in the document.
+* [2be396e88](https://github.com/hyperledger/fabric/commit/2be396e88) [FAB-11401](https://jira.hyperledger.org/browse/FAB-11401) Fixed broken link
+* [d4d79eac2](https://github.com/hyperledger/fabric/commit/d4d79eac2) [FAB-11314](https://jira.hyperledger.org/browse/FAB-11314) Fix link to Kafka design document
+* [d9a3309bd](https://github.com/hyperledger/fabric/commit/d9a3309bd) [FAB-10783](https://jira.hyperledger.org/browse/FAB-10783) Fix wrong pkg/lib name in devenv.rst
+* [f42e8e054](https://github.com/hyperledger/fabric/commit/f42e8e054) [FAB-11001](https://jira.hyperledger.org/browse/FAB-11001) Direct errors to stderr, not stdout
+* [9da9fc47c](https://github.com/hyperledger/fabric/commit/9da9fc47c) [FAB-11104](https://jira.hyperledger.org/browse/FAB-11104) Add line on SD to "what's new" doc
+* [812423b28](https://github.com/hyperledger/fabric/commit/812423b28) [FAB-10820](https://jira.hyperledger.org/browse/FAB-10820) What's new in v1.2 doc
+* [912e6a9ad](https://github.com/hyperledger/fabric/commit/912e6a9ad) [FAB-11094](https://jira.hyperledger.org/browse/FAB-11094) Fix deadlock in block iterator
+* [06fe694f2](https://github.com/hyperledger/fabric/commit/06fe694f2) [FAB-11042](https://jira.hyperledger.org/browse/FAB-11042) Fix broken links in documents
+* [6cefe1b2d](https://github.com/hyperledger/fabric/commit/6cefe1b2d) [FAB-10899](https://jira.hyperledger.org/browse/FAB-10899) ignore context in VMController
+* [7d4546682](https://github.com/hyperledger/fabric/commit/7d4546682) [FAB-11062](https://jira.hyperledger.org/browse/FAB-11062) Update README and bootstrap.sh for 1.2.0
+* [77c3aa6ce](https://github.com/hyperledger/fabric/commit/77c3aa6ce) Fix install.md instructions
+* [912f7320e](https://github.com/hyperledger/fabric/commit/912f7320e) Prepare release-1.2 branch for 1.2.1 dev
+
 ## v1.2.0
 Tue Jul  3 06:33:45 EDT 2018
 
