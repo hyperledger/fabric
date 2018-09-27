@@ -9,6 +9,7 @@ package metrics
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 )
 
 func TestStartSuccessStatsd(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Reporter: statsdReporterType,
@@ -37,7 +37,6 @@ func TestStartSuccessStatsd(t *testing.T) {
 }
 
 func TestStartSuccessProm(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Reporter: promReporterType,
@@ -53,7 +52,6 @@ func TestStartSuccessProm(t *testing.T) {
 }
 
 func TestStartDisabled(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled: false,
 	}
@@ -65,7 +63,6 @@ func TestStartDisabled(t *testing.T) {
 }
 
 func TestStartInvalidInterval(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Interval: 0,
@@ -76,7 +73,6 @@ func TestStartInvalidInterval(t *testing.T) {
 }
 
 func TestStartStatsdInvalidAddress(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Interval: 1 * time.Second,
@@ -93,7 +89,6 @@ func TestStartStatsdInvalidAddress(t *testing.T) {
 }
 
 func TestStartStatsdInvalidFlushInterval(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Interval: 1 * time.Second,
@@ -110,7 +105,6 @@ func TestStartStatsdInvalidFlushInterval(t *testing.T) {
 }
 
 func TestStartPromInvalidListernAddress(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Interval: 1 * time.Second,
@@ -125,7 +119,6 @@ func TestStartPromInvalidListernAddress(t *testing.T) {
 }
 
 func TestStartStatsdInvalidFlushBytes(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Interval: 1 * time.Second,
@@ -142,7 +135,6 @@ func TestStartStatsdInvalidFlushBytes(t *testing.T) {
 }
 
 func TestStartInvalidReporter(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled:  true,
 		Interval: 1 * time.Second,
@@ -154,7 +146,6 @@ func TestStartInvalidReporter(t *testing.T) {
 }
 
 func TestStartAndClose(t *testing.T) {
-	t.Parallel()
 	gt := NewGomegaWithT(t)
 	defer Shutdown()
 	opts := Opts{
@@ -165,7 +156,9 @@ func TestStartAndClose(t *testing.T) {
 			Address:       "127.0.0.1:0",
 			FlushInterval: 2 * time.Second,
 			FlushBytes:    512,
-		}}
+		},
+	}
+	once = sync.Once{} // re-enable init
 	Init(opts)
 	assert.NotNil(t, RootScope)
 	go Start()
@@ -173,7 +166,6 @@ func TestStartAndClose(t *testing.T) {
 }
 
 func TestNoOpScopeMetrics(t *testing.T) {
-	t.Parallel()
 	opts := Opts{
 		Enabled: false,
 	}
@@ -193,7 +185,6 @@ func TestNoOpScopeMetrics(t *testing.T) {
 }
 
 func TestNewOpts(t *testing.T) {
-	t.Parallel()
 	defer viper.Reset()
 	setupTestConfig()
 	opts := NewOpts()
@@ -215,7 +206,6 @@ func TestNewOpts(t *testing.T) {
 }
 
 func TestNewOptsDefaultVar(t *testing.T) {
-	t.Parallel()
 	opts := NewOpts()
 	assert.False(t, opts.Enabled)
 	assert.Equal(t, 1*time.Second, opts.Interval)
