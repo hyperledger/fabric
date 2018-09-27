@@ -447,11 +447,6 @@ development, we have a channel in which organizations R1 and R2 can fully
 transact with each other.  Specifically, this means that applications A1 and A2
 can generate transactions using smart contract S5 and ledger L1 on channel C1.
 
-It's also worth noting that S5 can have different implementations on peer nodes
-P1 and P2 -- so long as they implement the same smart contract interface.  It
-means that in principle, S5 could be implemented in GOLANG on peer node P1, and
-JavaScript on peer node P2!
-
 ### Generating and accepting transactions
 
 In contrast to peer nodes, which always host a copy of the ledger, we see that
@@ -654,7 +649,7 @@ channels. The channel configuration CC2 now contains the policies that govern
 channel resources, assigning management rights to organizations R2 and R3 over
 channel C2. It is managed exclusively by R2 and R3; R1 and R4 have no power in
 channel C2. For example, channel configuration CC2 can subsequently be updated
-to add organizations to support network growth, but this can only be done by R2 
+to add organizations to support network growth, but this can only be done by R2
 or R3.
 
 Note how the channel configurations CC1 and CC2 remain completely separate from
