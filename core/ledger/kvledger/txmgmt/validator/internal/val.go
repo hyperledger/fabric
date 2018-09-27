@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package valinternal
+package internal
 
 import (
 	"github.com/hyperledger/fabric/common/flogging"
@@ -16,9 +16,9 @@ import (
 
 var logger = flogging.MustGetLogger("valinternal")
 
-// InternalValidator is supposed to validate the transactions based on public data and hashes present in a block
+// Validator is supposed to validate the transactions based on public data and hashes present in a block
 // and returns a batch that should be used to update the state
-type InternalValidator interface {
+type Validator interface {
 	ValidateAndPrepareBatch(block *Block, doMVCCValidation bool) (*PubAndHashUpdates, error)
 }
 

@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
@@ -29,8 +29,8 @@ import (
 // validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid
 // by the internal public data validator. Finally, it validates (if not already self-endorsed) the pvt rwset against the
 // corresponding hash present in the public rwset
-func validateAndPreparePvtBatch(block *valinternal.Block, db privacyenabledstate.DB,
-	pubAndHashUpdates *valinternal.PubAndHashUpdates, pvtdata map[uint64]*ledger.TxPvtData) (*privacyenabledstate.PvtUpdateBatch, error) {
+func validateAndPreparePvtBatch(block *internal.Block, db privacyenabledstate.DB,
+	pubAndHashUpdates *internal.PubAndHashUpdates, pvtdata map[uint64]*ledger.TxPvtData) (*privacyenabledstate.PvtUpdateBatch, error) {
 	pvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
 	metadataUpdates := metadataUpdates{}
 	for _, tx := range block.Txs {
@@ -73,7 +73,7 @@ func requiresPvtdataValidation(tx *ledger.TxPvtData) bool {
 
 // validPvtdata returns true if hashes of all the collections writeset present in the pvt data
 // match with the corresponding hashes present in the public read-write set
-func validatePvtdata(tx *valinternal.Transaction, pvtdata *ledger.TxPvtData) error {
+func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error {
 	if pvtdata.WriteSet == nil {
 		return nil
 	}
@@ -96,8 +96,8 @@ func validatePvtdata(tx *valinternal.Transaction, pvtdata *ledger.TxPvtData) err
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The retuned 'Block' structure contains only transactions that are endorser transactions and are not alredy marked as invalid
 func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, value []byte) error,
-	block *common.Block, doMVCCValidation bool) (*valinternal.Block, error) {
-	b := &valinternal.Block{Num: block.Header.Number}
+	block *common.Block, doMVCCValidation bool) (*internal.Block, error) {
+	b := &internal.Block{Num: block.Header.Number}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for txIndex, envBytes := range block.Data.Data {
@@ -160,7 +160,7 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, val
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_WRITESET)
 				continue
 			}
-			b.Txs = append(b.Txs, &valinternal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
+			b.Txs = append(b.Txs, &internal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
 		}
 	}
 	return b, nil
@@ -206,7 +206,7 @@ func validateWriteset(txRWSet *rwsetutil.TxRwSet, validateKVFunc func(key string
 }
 
 // postprocessProtoBlock updates the proto block's validation flags (in metadata) by the results of validation process
-func postprocessProtoBlock(block *common.Block, validatedBlock *valinternal.Block) {
+func postprocessProtoBlock(block *common.Block, validatedBlock *internal.Block) {
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for _, tx := range validatedBlock.Txs {
 		txsFilter.SetFlag(tx.IndexInBlock, tx.ValidationCode)
@@ -236,7 +236,7 @@ func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch 
 func incrementPvtdataVersionIfNeeded(
 	metadataUpdates metadataUpdates,
 	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
-	pubAndHashUpdates *valinternal.PubAndHashUpdates,
+	pubAndHashUpdates *internal.PubAndHashUpdates,
 	db privacyenabledstate.DB) error {
 
 	for collKey := range metadataUpdates {
