@@ -292,7 +292,7 @@ func TestAccessControl(t *testing.T) {
 	assert.NoError(t, err)
 	lateCC, err := newClient(t, 7052, &cert, ca.CertBytes())
 	assert.NoError(t, err)
-	defer realCC.close()
+	defer lateCC.close()
 	time.Sleep(ttl + time.Second*2)
 	lateCC.sendMsg(registerMsg)
 	lateCC.sendMsg(putStateMsg)

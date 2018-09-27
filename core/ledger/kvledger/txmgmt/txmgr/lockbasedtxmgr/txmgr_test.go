@@ -106,14 +106,14 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	frozenSimulationResults1 := &ledger.TxSimulationResults{}
 	assert.NoError(t, gob.NewDecoder(buff1).Decode(&frozenSimulationResults1))
 
-	// use the same simulator after obtaining the simulaiton results by get/set keys in one more namespace "ns2"
+	// use the same simulator after obtaining the simulation results by get/set keys in one more namespace "ns2"
 	simulator.GetState("ns2", "key2")
 	simulator.GetPrivateData("ns2", "coll2", "key2")
 	simulator.SetState("ns2", "key2", []byte("value2"))
 	// get simulation results and verify that an error is raised when obtaining the simulation results more than once
 	_, err = simulator.GetTxSimulationResults()
 	assert.Error(t, err) // calling 'GetTxSimulationResults()' more than once should raise error
-	// Now, verify that the simulator operations did not have an effect on privously obtained results
+	// Now, verify that the simulator operations did not have an effect on previously obtained results
 	assert.Equal(t, frozenSimulationResults1, simulationResults1)
 
 	// Call 'Done' and all the data get/set operations after calling 'Done' should fail.
