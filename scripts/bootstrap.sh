@@ -6,7 +6,7 @@
 #
 
 # if version not passed in, default to latest released version
-export VERSION=1.2.0
+export VERSION=1.2.1
 # if ca version not passed in, default to latest released version
 export CA_VERSION=$VERSION
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
@@ -21,8 +21,8 @@ printHelp() {
   echo "-s - bypass fabric-samples repo clone"
   echo "-b - bypass download of platform-specific binaries"
   echo
-  echo "e.g. bootstrap.sh 1.2.0 -s"
-  echo "would download docker images and binaries for version 1.2.0"
+  echo "e.g. bootstrap.sh 1.2.1 -s"
+  echo "would download docker images and binaries for version 1.2.1"
 }
 
 dockerFabricPull() {
