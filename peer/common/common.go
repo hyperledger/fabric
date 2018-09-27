@@ -108,7 +108,7 @@ func InitConfig(cmdRoot string) error {
 		// Display a more helpful message to avoid confusing the user.
 		if strings.Contains(fmt.Sprint(err), "Unsupported Config Type") {
 			return errors.New(fmt.Sprintf("Could not find config file. "+
-				"Please make sure that FABRIC_CFG_PATH or --configPath is set to a path "+
+				"Please make sure that FABRIC_CFG_PATH is set to a path "+
 				"which contains %s.yaml", cmdRoot))
 		} else {
 			return errors.WithMessage(err, fmt.Sprintf("error when reading %s config file", cmdRoot))
