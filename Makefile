@@ -20,6 +20,7 @@
 #   - verify - runs unit tests for only the changed package tree
 #   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
+#   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
@@ -160,12 +161,12 @@ kafka: build/image/kafka/$(DUMMY)
 
 zookeeper: build/image/zookeeper/$(DUMMY)
 
-unit-test: unit-test-clean peer-docker testenv couchdb
+unit-test: unit-test-clean peer-docker testenv docker-thirdparty
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
 
-verify: unit-test-clean peer-docker testenv couchdb
+verify: unit-test-clean peer-docker testenv docker-thirdparty
 	cd unit-test && JOB_TYPE=VERIFY docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
@@ -186,6 +187,16 @@ behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
 linter: buildenv
 	@echo "LINT: Running code checks.."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
+
+ # Pull thirdparty docker images based on the latest baseimage release version
+.PHONY: docker-thirdparty
+docker-thirdparty:
+	docker pull $(BASE_DOCKER_NS)/fabric-couchdb:$(ARCH)-$(PREV_VERSION)
+	docker tag $(BASE_DOCKER_NS)/fabric-couchdb:$(ARCH)-$(PREV_VERSION) $(DOCKER_NS)/fabric-couchdb
+	docker pull $(BASE_DOCKER_NS)/fabric-zookeeper:$(ARCH)-$(PREV_VERSION)
+	docker tag $(BASE_DOCKER_NS)/fabric-zookeeper:$(ARCH)-$(PREV_VERSION) $(DOCKER_NS)/fabric-zookeeper
+	docker pull $(BASE_DOCKER_NS)/fabric-kafka:$(ARCH)-$(PREV_VERSION)
+	docker tag $(BASE_DOCKER_NS)/fabric-kafka:$(ARCH)-$(PREV_VERSION) $(DOCKER_NS)/fabric-kafka
 
 %/chaintool: Makefile
 	@echo "Installing chaintool"
