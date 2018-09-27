@@ -33,6 +33,8 @@ type blocksItr struct {
 }
 
 func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *blocksItr {
+	mgr.cpInfoCond.L.Lock()
+	defer mgr.cpInfoCond.L.Unlock()
 	return &blocksItr{mgr, mgr.cpInfo.lastBlockNumber, startBlockNum, nil, false, &sync.Mutex{}}
 }
 
