@@ -451,7 +451,7 @@ func newTableOps(s *session) *tOps {
 	if !s.o.GetDisableBlockCache() {
 		var bcacher cache.Cacher
 		if s.o.GetBlockCacheCapacity() > 0 {
-			bcacher = cache.NewLRU(s.o.GetBlockCacheCapacity())
+			bcacher = s.o.GetBlockCacher().New(s.o.GetBlockCacheCapacity())
 		}
 		bcache = cache.NewCache(bcacher)
 	}
