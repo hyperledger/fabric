@@ -8,11 +8,13 @@ package kafka
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -137,11 +139,9 @@ func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
 	topic := channelNameForTest(t)
 	partition := int32(0)
 
-	oldLogger := logger
-	defer func() { logger = oldLogger }()
-
-	l, recorder := floggingtest.NewTestLogger(t)
-	logger = l
+	buf := gbytes.NewBuffer()
+	flogging.Global.SetWriter(buf)
+	defer flogging.Global.SetWriter(os.Stderr)
 
 	broker := sarama.NewMockBroker(t, 500)
 	defer broker.Close()
@@ -180,7 +180,7 @@ func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
 	case <-partitionConsumer.Messages():
 		t.Fatalf("did not expect to receive message")
 	case <-time.After(shortTimeout):
-		entries := recorder.MessagesContaining("Kafka.Version specified in the orderer configuration is incorrectly set")
-		assert.NotEmpty(t, entries)
+		t.Logf("buffer:\n%s", buf.Contents())
+		assert.Contains(t, string(buf.Contents()), "Kafka.Version specified in the orderer configuration is incorrectly set")
 	}
 }
