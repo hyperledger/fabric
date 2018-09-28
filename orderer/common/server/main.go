@@ -255,7 +255,9 @@ func initializeMultichannelRegistrar(conf *localconfig.TopLevel, signer crypto.L
 	consenters["solo"] = solo.New()
 	consenters["kafka"] = kafka.New(conf.Kafka)
 
-	return multichannel.NewRegistrar(lf, consenters, signer, callbacks...)
+	registrar := multichannel.NewRegistrar(lf, signer, callbacks...)
+	registrar.Initialize(consenters)
+	return registrar
 }
 
 func updateTrustedRoots(srv *comm.GRPCServer, rootCASupport *comm.CASupport,

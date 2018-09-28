@@ -23,7 +23,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/pkg/errors"
 )
 
@@ -119,19 +118,23 @@ func getConfigTx(reader blockledger.Reader) *cb.Envelope {
 }
 
 // NewRegistrar produces an instance of a *Registrar.
-func NewRegistrar(ledgerFactory blockledger.Factory, consenters map[string]consensus.Consenter,
+func NewRegistrar(ledgerFactory blockledger.Factory,
 	signer crypto.LocalSigner, callbacks ...func(bundle *channelconfig.Bundle)) *Registrar {
 	r := &Registrar{
 		chains:        make(map[string]*ChainSupport),
 		ledgerFactory: ledgerFactory,
-		consenters:    consenters,
 		signer:        signer,
 		callbacks:     callbacks,
 	}
 
-	existingChains := ledgerFactory.ChainIDs()
+	return r
+}
+
+func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
+	r.consenters = consenters
+	existingChains := r.ledgerFactory.ChainIDs()
 	for _, chainID := range existingChains {
-		rl, err := ledgerFactory.GetOrCreate(chainID)
+		rl, err := r.ledgerFactory.GetOrCreate(chainID)
 		if err != nil {
 			logger.Panicf("Ledger factory reported chainID %s but could not retrieve it: %s", chainID, err)
 		}
@@ -149,8 +152,8 @@ func NewRegistrar(ledgerFactory blockledger.Factory, consenters map[string]conse
 			chain := newChainSupport(
 				r,
 				ledgerResources,
-				consenters,
-				signer)
+				r.consenters,
+				r.signer)
 			r.templator = msgprocessor.NewDefaultTemplator(chain)
 			chain.Processor = msgprocessor.NewSystemChannel(chain, r.templator, msgprocessor.CreateSystemChannelFilters(r, chain))
 
@@ -176,8 +179,8 @@ func NewRegistrar(ledgerFactory blockledger.Factory, consenters map[string]conse
 			chain := newChainSupport(
 				r,
 				ledgerResources,
-				consenters,
-				signer)
+				r.consenters,
+				r.signer)
 			r.chains[chainID] = chain
 			chain.start()
 		}
@@ -187,8 +190,6 @@ func NewRegistrar(ledgerFactory blockledger.Factory, consenters map[string]conse
 	if r.systemChannelID == "" {
 		logger.Panicf("No system chain found.  If bootstrapping, does your system channel contain a consortiums group definition?")
 	}
-
-	return r
 }
 
 // SystemChannelID returns the ChannelID for the system channel.
