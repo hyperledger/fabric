@@ -133,8 +133,8 @@ func TestDeserializeIdentity(t *testing.T) {
 	// Stress the cache and ensure concurrent operations
 	// do not result in a failure
 	var wg sync.WaitGroup
-	wg.Add(10000)
-	for i := 0; i < 10000; i++ {
+	wg.Add(100)
+	for i := 0; i < 100; i++ {
 		go func(m msp.MSP, i int) {
 			sIdentity := serializedIdentity
 			expectedIdentity := mockIdentity
