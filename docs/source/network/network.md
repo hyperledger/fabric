@@ -98,7 +98,7 @@ is the only member of the network.
 ### Certificate Authorities
 
 You can also see a Certificate Authority, CA4, which is used to issue
-certificates to administrators and network nodes. CA4 plays a a key role in our
+certificates to administrators and network nodes. CA4 plays a key role in our
 network because it dispenses X.509 certificates that can be used to identify
 components as belonging to organization R4. Certificates issued by CAs
 can also be used to sign transactions to indicate that an organization endorses
