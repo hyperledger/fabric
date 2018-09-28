@@ -99,7 +99,7 @@ func New(stub ChaincodeStubInterface) (ClientIdentity, error) {
 
 // GetID returns a unique ID associated with the invoking identity.
 func (c *clientIdentityImpl) GetID() (string, error) {
-	// The leading "x509::" distinquishes this as an X509 certificate, and
+	// The leading "x509::" distinguishes this as an X509 certificate, and
 	// the subject and issuer DNs uniquely identify the X509 certificate.
 	// The resulting ID will remain the same if the certificate is renewed.
 	id := fmt.Sprintf("x509::%s::%s", getDN(&c.cert.Subject), getDN(&c.cert.Issuer))
@@ -195,7 +195,7 @@ func (c *clientIdentityImpl) getAttributesFromIdemix() error {
 	return nil
 }
 
-// Get the DN (distinquished name) associated with a pkix.Name.
+// Get the DN (distinguished name) associated with a pkix.Name.
 // NOTE: This code is almost a direct copy of the String() function in
 // https://go-review.googlesource.com/c/go/+/67270/1/src/crypto/x509/pkix/pkix.go#26
 // which returns a DN as defined by RFC 2253.
