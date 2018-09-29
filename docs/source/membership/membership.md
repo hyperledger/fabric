@@ -251,17 +251,17 @@ Let's describe these folders in a little more detail and see why they are import
   actors who have the role of administrators for this organization. For the standard MSP type,
   there should be one or more X.509 certificates in this list.
 
-  It's worth noting that just because a actor has the role of an administrator it doesn't
+  It's worth noting that just because an actor has the role of an administrator it doesn't
   mean that they can administer particular resources! The actual power a given identity has
   with respect to administering the system is determined by the policies that manage system
   resources. For example, a channel policy might specify that `ORG1-MANUFACTURING`
   administrators have the rights to add new organizations to the channel, whereas the
   `ORG1-DISTRIBUTION` administrators have no such rights.
 
-  Even though an X.509 certificate has a `ROLE` attribute (specifying, for example, that a
-  actor is an `admin`), this refers to a actor's role within its organization
+  Even though an X.509 certificate has a `ROLE` attribute (specifying, for example, that
+  an actor is an `admin`), this refers to an actor's role within its organization
   rather than on the blockchain network. This is similar to the purpose of
-  the `OU` attribute, which --- if it has been defined --- refers to a actor's place in
+  the `OU` attribute, which --- if it has been defined --- refers to an actor's place in
   the organization.
 
   The `ROLE` attribute **can** be used to confer administrative rights at the channel level
@@ -279,7 +279,7 @@ Let's describe these folders in a little more detail and see why they are import
 
   This list is conceptually the same as a CA's Certificate Revocation List (CRL),
   but it also relates to revocation of membership from the organization. As a result,
-  the administrator of an MSP, local or channel, can quickly revoke a actor or node
+  the administrator of an MSP, local or channel, can quickly revoke an actor or node
   from an organization by advertising the updated CRL of the CA the revoked certificate
   as issued by. This "list of lists" is optional. It will only become populated
   as certificates are revoked.
