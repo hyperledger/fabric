@@ -17,7 +17,7 @@ information about the channel policies, members and anchor peers. When adding a
 new member to an existing channel, either this genesis block, or if applicable,
 a more recent reconfiguration block, is shared with the new member.
 
-.. note:: See the :doc:`configtx` section for more more details on the properties
+.. note:: See the :doc:`configtx` section for more details on the properties
           and proto structures of config transactions.
 
 The election of a ``leading peer`` for each member on a channel determines which
