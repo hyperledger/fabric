@@ -30,8 +30,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/transport"
 )
 
 // Embedded certificates for testing
@@ -1538,27 +1538,44 @@ func TestKeepaliveClientResponse(t *testing.T) {
 	}
 	testAddress := lis.Addr().String()
 	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{KaOpts: kap})
-	assert.NoError(t, err, "Unexpected error starting GRPCServer")
+	if err != nil {
+		t.Fatalf("Failed to create GRPCServer [%s]", err)
+	}
+	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
 	go srv.Start()
 	defer srv.Stop()
 
-	// test that connection does not close with response to ping
-	connectCtx, cancel := context.WithTimeout(context.Background(), time.Second)
-	clientTransport, err := transport.NewClientTransport(
-		connectCtx,
-		context.Background(),
-		transport.TargetInfo{Addr: testAddress},
-		transport.ConnectOptions{},
-		func() {},
+	//create GRPC client conn
+	clientCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	clientConn, err := grpc.DialContext(
+		clientCtx,
+		testAddress,
+		grpc.WithBlock(),
+		grpc.WithInsecure(),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			PermitWithoutStream: true,
+		}),
 	)
-	cancel()
-	assert.NoError(t, err, "Unexpected error creating client transport")
-	defer clientTransport.Close()
+	if err != nil {
+		t.Fatalf("Failed to create gRPC client conn [%s]", err)
+	}
+	defer clientConn.Close()
+
+	stream, err := testpb.NewEmptyServiceClient(clientConn).EmptyStream(
+		context.Background(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create EmptyServiceClient [%s]", err)
+	}
+	err = stream.Send(new(testpb.Empty))
+	assert.NoError(t, err, "failed to send message")
+
 	// sleep past keepalive timeout
 	time.Sleep(1500 * time.Millisecond)
-	// try to create a stream
-	_, err = clientTransport.NewStream(context.Background(), &transport.CallHdr{})
-	assert.NoError(t, err, "Unexpected error creating stream")
+	err = stream.Send(new(testpb.Empty))
+	assert.NoError(t, err, "failed to send message")
+
 }
 
 func TestUpdateTLSCert(t *testing.T) {

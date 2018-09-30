@@ -735,14 +735,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f54d3c376c155eca576de8505d04414fd69a37bd7fc0d5d20efbd2839eaf8599"
+  digest = "1:4ea08b5c4c51887a54caee2954db97b620736ae510bdc8514f691d3a9375d93a"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "cc7307a45468e49eaf2997c890f14aa03a26917b"
+  revision = "e4b3c5e9061176387e7cea65e4dc5853801f3fb7"
 
 [[projects]]
   digest = "1:8a12cbc891b7130d3f660f8a309e5c0b083f831e6ac38cdaa1f12e63c12d6bea"
@@ -788,7 +788,7 @@
   revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
 
 [[projects]]
-  digest = "1:d0e5846da58e4e20d1bbd7502b24f31d37e3ac1e02a9042d95bd93c2d0c139dd"
+  digest = "1:5b805b8e03b29399b344655cac16873f026e54dc0a7c17b381f6f4d4c7b6d741"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -804,7 +804,9 @@
     "internal",
     "internal/backoff",
     "internal/channelz",
+    "internal/envconfig",
     "internal/grpcrand",
+    "internal/transport",
     "keepalive",
     "metadata",
     "naming",
@@ -815,11 +817,10 @@
     "stats",
     "status",
     "tap",
-    "transport",
   ]
   pruneopts = "NUT"
-  revision = "168a6198bcb0ef175f7dacec0b8691fc141dc9b8"
-  version = "v1.13.0"
+  revision = "8dea3dc473e90c8179e519d91302d0597c0ca1d1"
+  version = "v1.15.0"
 
 [[projects]]
   digest = "1:22b2dee6f30bc8601f087449a2a819df8388e54e9547349c658f14d8f8c590f2"
@@ -918,7 +919,6 @@
     "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/peer",
     "google.golang.org/grpc/status",
-    "google.golang.org/grpc/transport",
     "gopkg.in/alecthomas/kingpin.v2",
     "gopkg.in/cheggaaa/pb.v1",
     "gopkg.in/yaml.v2",
