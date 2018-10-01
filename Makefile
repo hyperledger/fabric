@@ -44,10 +44,13 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
+ALPINE_VER ?= 3.8
 BASE_VERSION = 2.0.0
 PREV_VERSION = 1.4.0
-CHAINTOOL_RELEASE=1.1.3
-BASEIMAGE_RELEASE=0.4.14
+CHAINTOOL_RELEASE ?= 1.1.3
+BASEIMAGE_RELEASE = 0.4.14
+JAVA_VER ?= 8
+NODE_VER ?= 8
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
@@ -77,6 +80,7 @@ METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
+GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
 GO_TAGS ?=
@@ -96,7 +100,7 @@ PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
 	grep -v ^LICENSE | grep -v ^vendor )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
-IMAGES = peer orderer ccenv buildenv tools
+IMAGES = peer orderer baseos ccenv buildenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-s390x linux-ppc64le
 RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer orderer
 
@@ -149,13 +153,21 @@ include gotools.mk
 .PHONY: gotools
 gotools: gotools-install
 
+tools-docker: $(BUILD_DIR)/images/tools/$(DUMMY)
+
+buildenv: $(BUILD_DIR)/images/buildenv/$(DUMMY)
+
+baseos: $(BUILD_DIR)/images/baseos/$(DUMMY)
+
+ccenv: $(BUILD_DIR)/images/ccenv/$(DUMMY)
+
 .PHONY: peer
 peer: $(BUILD_DIR)/bin/peer
-peer-docker: $(BUILD_DIR)/image/peer/$(DUMMY)
+peer-docker: $(BUILD_DIR)/images/peer/$(DUMMY)
 
 .PHONY: orderer
 orderer: $(BUILD_DIR)/bin/orderer
-orderer-docker: $(BUILD_DIR)/image/orderer/$(DUMMY)
+orderer-docker: $(BUILD_DIR)/images/orderer/$(DUMMY)
 
 .PHONY: configtxgen
 configtxgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
@@ -173,17 +185,11 @@ idemixgen: $(BUILD_DIR)/bin/idemixgen
 discover: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 discover: $(BUILD_DIR)/bin/discover
 
-tools-docker: $(BUILD_DIR)/image/tools/$(DUMMY)
-
-buildenv: $(BUILD_DIR)/image/buildenv/$(DUMMY)
-
-ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
-
 .PHONY: integration-test
-integration-test: gotool.ginkgo ccenv docker-thirdparty
+integration-test: gotool.ginkgo ccenv baseos docker-thirdparty
 	./scripts/run-integration-tests.sh
 
-unit-test: unit-test-clean peer-docker docker-thirdparty ccenv
+unit-test: unit-test-clean peer-docker docker-thirdparty ccenv baseos
 	unit-test/run.sh
 
 unit-tests: unit-test
@@ -200,7 +206,7 @@ profile: unit-test
 test-cmd:
 	@echo "go test -tags \"$(GO_TAGS)\""
 
-docker: $(patsubst %,$(BUILD_DIR)/image/%/$(DUMMY), $(IMAGES))
+docker: $(patsubst %,$(BUILD_DIR)/images/%/$(DUMMY), $(IMAGES))
 
 native: peer orderer configtxgen cryptogen idemixgen configtxlator discover
 
@@ -220,108 +226,49 @@ generate-metrics-doc: buildenv
 	@echo "Generating metrics reference documentation..."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/metrics_doc.sh generate
 
-$(BUILD_DIR)/%/chaintool: Makefile
-	@echo "Installing chaintool"
-	@mkdir -p $(@D)
-	curl -fL $(CHAINTOOL_URL) > $@
-	chmod +x $@
-
-# We (re)build a package within a docker context but persist the $GOPATH/pkg
-# directory so that subsequent builds are faster
-$(BUILD_DIR)/docker/bin/%: $(PROJECT_FILES)
-	$(eval TARGET = ${patsubst $(BUILD_DIR)/docker/bin/%,%,${@}})
-	@echo "Building $@"
-	@mkdir -p $(BUILD_DIR)/docker/bin $(BUILD_DIR)/docker/$(TARGET)/pkg
-	@$(DRUN) \
-		-v $(abspath $(BUILD_DIR)/docker/bin):/opt/gopath/bin \
-		-v $(abspath $(BUILD_DIR)/docker/$(TARGET)/pkg):/opt/gopath/pkg \
-		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		go install -tags "$(GO_TAGS)" -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
-	@touch $@
-
-$(BUILD_DIR)/bin:
-	mkdir -p $@
-
 changelog:
 	./scripts/changelog.sh v$(PREV_VERSION) v$(BASE_VERSION)
 
-$(BUILD_DIR)/docker/gotools/bin/protoc-gen-go: $(BUILD_DIR)/docker/gotools
+$(BUILD_DIR)/bin:
+	@mkdir -p $@
 
-$(BUILD_DIR)/docker/gotools: gotools.mk
-	@echo "Building dockerized gotools"
-	@mkdir -p $@/bin $@/obj
-	@$(DRUN) \
-		-v $(abspath $@):/opt/gotools \
-		-w /opt/gopath/src/$(PKGNAME) \
-		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		make -f gotools.mk GOTOOLS_BINDIR=/opt/gotools/bin GOTOOLS_GOPATH=/opt/gotools/obj
-
-$(BUILD_DIR)/bin/%: $(PROJECT_FILES)
+$(BUILD_DIR)/bin/%:
 	@mkdir -p $(@D)
 	@echo "$@"
 	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 	@echo "Binary available as $@"
 	@touch $@
 
-# payload definitions'
-$(BUILD_DIR)/image/ccenv/payload:      $(BUILD_DIR)/docker/gotools/bin/protoc-gen-go \
-				$(BUILD_DIR)/bin/chaintool \
-				$(BUILD_DIR)/goshim.tar.bz2
-$(BUILD_DIR)/image/peer/payload:       $(BUILD_DIR)/docker/bin/peer \
-				$(BUILD_DIR)/sampleconfig.tar.bz2
-$(BUILD_DIR)/image/orderer/payload:    $(BUILD_DIR)/docker/bin/orderer \
-				$(BUILD_DIR)/sampleconfig.tar.bz2
-$(BUILD_DIR)/image/buildenv/payload:   $(BUILD_DIR)/gotools.tar.bz2 \
-				$(BUILD_DIR)/docker/gotools/bin/protoc-gen-go
-
-$(BUILD_DIR)/image/%/payload:
-	mkdir -p $@
-	cp $^ $@
-
-.PRECIOUS: $(BUILD_DIR)/image/%/Dockerfile
-
-$(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
-	mkdir -p $(@D)
-	@cat $< \
-		| sed -e 's|_BASE_NS_|$(BASE_DOCKER_NS)|g' \
-		| sed -e 's|_NS_|$(DOCKER_NS)|g' \
-		| sed -e 's|_BASE_TAG_|$(BASE_DOCKER_TAG)|g' \
-		| sed -e 's|_TAG_|$(DOCKER_TAG)|g' \
-		> $@
-	@echo LABEL $(BASE_DOCKER_LABEL).version=$(BASE_VERSION) \\>>$@
-	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
-
-$(BUILD_DIR)/image/tools/$(DUMMY): $(BUILD_DIR)/image/tools/Dockerfile
-	$(eval TARGET = ${patsubst $(BUILD_DIR)/image/%/$(DUMMY),%,${@}})
-	@echo "Building docker $(TARGET)-image"
-	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) -f $(@D)/Dockerfile .
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-latest
+$(BUILD_DIR)/images/baseos/$(DUMMY):
+	@mkdir -p $(@D)
+	$(eval TARGET = ${patsubst $(BUILD_DIR)/images/%/$(DUMMY),%,${@}})
+	@echo "Docker:  building $(TARGET) image"
+	$(DBUILD) -f images/peer/Dockerfile \
+		--target base \
+		--build-arg GO_VER=${GO_VER} --build-arg ALPINE_VER=${ALPINE_VER} \
+		-t $(BASE_DOCKER_NS)/fabric-$(TARGET) images/peer
+	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+		$(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
+	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+		$(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
-$(BUILD_DIR)/image/%/$(DUMMY): Makefile $(BUILD_DIR)/image/%/payload $(BUILD_DIR)/image/%/Dockerfile
-	$(eval TARGET = ${patsubst $(BUILD_DIR)/image/%/$(DUMMY),%,${@}})
-	@echo "Building docker $(TARGET)-image"
-	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) $(@D)
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-latest
+$(BUILD_DIR)/images/ccenv/$(DUMMY): BUILD_ARGS=--build-arg CHAINTOOL_RELEASE=${CHAINTOOL_RELEASE} \
+	--build-arg JAVA_VER=${JAVA_VER} --build-arg NODE_VER=${NODE_VER}
+
+$(BUILD_DIR)/images/%/$(DUMMY):
+	@mkdir -p $(@D)
+	$(eval TARGET = ${patsubst $(BUILD_DIR)/images/%/$(DUMMY),%,${@}})
+	@echo "Docker:  building $(TARGET) image"
+	$(DBUILD) -f images/$(TARGET)/Dockerfile \
+		--build-arg GO_VER=${GO_VER} --build-arg ALPINE_VER=${ALPINE_VER} \
+		${BUILD_ARGS} \
+		-t $(BASE_DOCKER_NS)/fabric-$(TARGET) .
+	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+		$(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
+	docker tag $(BASE_DOCKER_NS)/fabric-$(TARGET) \
+		$(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
-
-$(BUILD_DIR)/gotools.tar.bz2: $(BUILD_DIR)/docker/gotools
-	(cd $</bin && tar -jc *) > $@
-
-$(BUILD_DIR)/goshim.tar.bz2: $(GOSHIM_DEPS)
-	@echo "Creating $@"
-	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
-
-$(BUILD_DIR)/sampleconfig.tar.bz2: $(shell find sampleconfig -type f)
-	(cd sampleconfig && tar -jc *) > $@
-
-$(BUILD_DIR)/protos.tar.bz2: $(PROTOS)
-
-$(BUILD_DIR)/%.tar.bz2:
-	@echo "Creating $@"
-	@tar -jc $^ > $@
 
 # builds release packages for the host platform
 release: $(patsubst %,release/%, $(MARCH))
@@ -421,7 +368,7 @@ docker-list: $(patsubst %,%-docker-list, $(IMAGES))
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
 	-docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-$(BASE_VERSION)$(if $(EXTRA_VERSION),-snapshot-*,)' | xargs docker rmi -f
-	-@rm -rf $(BUILD_DIR)/image/$(TARGET) ||:
+	-@rm -rf $(BUILD_DIR)/images/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 

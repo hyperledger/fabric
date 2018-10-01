@@ -35,7 +35,6 @@ func ParseDockerfileTemplate(template string) string {
 	r := strings.NewReplacer(
 		"$(ARCH)", runtime.GOARCH,
 		"$(PROJECT_VERSION)", metadata.Version,
-		"$(BASE_VERSION)", metadata.BaseVersion,
 		"$(DOCKER_NS)", metadata.DockerNamespace,
 		"$(BASE_DOCKER_NS)", metadata.BaseDockerNamespace)
 

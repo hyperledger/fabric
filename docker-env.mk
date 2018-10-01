@@ -1,16 +1,7 @@
 # Copyright London Stock Exchange Group All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# SPDX-License-Identifier: Apache-2.0
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 ifneq ($(shell uname),Darwin)
 DOCKER_RUN_FLAGS=--user=$(shell id -u)
@@ -48,10 +39,10 @@ DOCKER_RUN_FLAGS+=-e 'NO_PROXY=$(NO_PROXY)'
 endif
 
 DRUN = docker run -i --rm $(DOCKER_RUN_FLAGS) \
-	-v $(abspath .):/opt/gopath/src/$(PKGNAME) \
-	-w /opt/gopath/src/$(PKGNAME)
+	-v $(abspath .):/go/src/$(PKGNAME) \
+	-w /go/src/$(PKGNAME)
 
-DBUILD = docker build $(DOCKER_BUILD_FLAGS)
+DBUILD = docker build --force-rm $(DOCKER_BUILD_FLAGS)
 
 BASE_DOCKER_NS ?= hyperledger
 BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)

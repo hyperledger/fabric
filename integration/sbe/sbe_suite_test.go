@@ -8,8 +8,6 @@ package e2e
 
 import (
 	"encoding/json"
-	"fmt"
-	"runtime"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -26,7 +24,7 @@ var components *nwo.Components
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	nwo.RequiredImages = []string{
-		fmt.Sprintf("hyperledger/fabric-ccenv:%s-latest", runtime.GOARCH),
+		nwo.CCEnvDefaultImage,
 	}
 	components = &nwo.Components{}
 	components.Build()

@@ -117,9 +117,8 @@ var _ = Describe("Platforms", func() {
 LABEL org.hyperledger.fabric.chaincode.id.name="cc-name" \
       org.hyperledger.fabric.chaincode.id.version="cc-version" \
       org.hyperledger.fabric.chaincode.type="fakeType" \
-      org.hyperledger.fabric.version="%s" \
-      org.hyperledger.fabric.base.version="%s"
-ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.BaseVersion, metadata.Version)
+      org.hyperledger.fabric.version="%s"
+ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			Expect(df).To(Equal(expectedDockerfile))
 		})
 
