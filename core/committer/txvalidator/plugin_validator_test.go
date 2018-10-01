@@ -90,7 +90,7 @@ func TestSamplePlugin(t *testing.T) {
 	capabilites := &mocks.Capabilities{}
 	capabilites.On("PrivateChannelData").Return(true)
 	factory := &mocks.PluginFactory{}
-	factory.On("New").Return(&testdata.SampleValidationPlugin{})
+	factory.On("New").Return(testdata.NewSampleValidationPlugin(t))
 	pm["vscc"] = factory
 
 	transaction := testdata.MarshaledSignedData{

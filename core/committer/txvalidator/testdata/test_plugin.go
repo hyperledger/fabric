@@ -30,6 +30,12 @@ type SampleValidationPlugin struct {
 	pe PolicyEvaluator
 }
 
+// NewSampleValidationPlugin returns an instance of a validation plugin setup
+// for assertions.
+func NewSampleValidationPlugin(t *testing.T) *SampleValidationPlugin {
+	return &SampleValidationPlugin{t: t}
+}
+
 type MarshaledSignedData struct {
 	Data      []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	Signature []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`

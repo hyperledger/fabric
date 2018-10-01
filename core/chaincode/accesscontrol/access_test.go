@@ -91,6 +91,7 @@ func newCCServer(t *testing.T, port int, expectedCCname string, withTLS bool, ca
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", port))
 	assert.NoError(t, err, "%v", err)
 	return &ccSrv{
+		t:              t,
 		expectedCCname: expectedCCname,
 		l:              l,
 		grpcSrv:        s,

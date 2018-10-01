@@ -1599,7 +1599,7 @@ func createCustomSupportAndLedger(t *testing.T) (*mocktxvalidator.Support, ledge
 
 func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	factory := &mocks.PluginFactory{}
-	factory.On("New").Return(&testdata.SampleValidationPlugin{})
+	factory.On("New").Return(testdata.NewSampleValidationPlugin(t))
 	pm := &mocks.PluginMapper{}
 	pm.On("PluginFactoryByName", txvalidator.PluginName("vscc")).Return(factory)
 
