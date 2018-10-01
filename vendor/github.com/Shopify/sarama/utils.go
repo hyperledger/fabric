@@ -155,6 +155,7 @@ var (
 	V0_11_0_2 = newKafkaVersion(0, 11, 0, 2)
 	V1_0_0_0  = newKafkaVersion(1, 0, 0, 0)
 	V1_1_0_0  = newKafkaVersion(1, 1, 0, 0)
+	V2_0_0_0  = newKafkaVersion(2, 0, 0, 0)
 
 	SupportedVersions = []KafkaVersion{
 		V0_8_2_0,
@@ -173,9 +174,10 @@ var (
 		V0_11_0_2,
 		V1_0_0_0,
 		V1_1_0_0,
+		V2_0_0_0,
 	}
 	MinVersion = V0_8_2_0
-	MaxVersion = V1_1_0_0
+	MaxVersion = V2_0_0_0
 )
 
 func ParseKafkaVersion(s string) (KafkaVersion, error) {

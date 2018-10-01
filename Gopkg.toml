@@ -22,7 +22,13 @@ noverify = [
 
 [[constraint]]
   name = "github.com/Shopify/sarama"
-  version = "1.17.0"
+  version = "1.19.0"
+
+# Pinned in support of sarama as newer commits have data races
+# https://github.com/rcrowley/go-metrics/issues/245
+[[override]]
+  name = "github.com/rcrowley/go-metrics"
+  revision = "8732c616f52954686704c8645fe1a9d59e9df7c1"
 
 [[constraint]]
   name = "github.com/cactus/go-statsd-client"
