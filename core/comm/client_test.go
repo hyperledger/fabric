@@ -140,7 +140,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 func TestNewConnection_Timeout(t *testing.T) {
 	t.Parallel()
-	testAddress := "localhost:11111"
+	testAddress := "localhost:20040"
 	config := comm.ClientConfig{
 		Timeout: 1 * time.Second,
 	}
@@ -163,7 +163,6 @@ func TestNewConnection(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		serverPort int
 		clientPort int
 		config     comm.ClientConfig
 		serverTLS  *tls.Config
@@ -171,9 +170,7 @@ func TestNewConnection(t *testing.T) {
 		errorMsg   string
 	}{
 		{
-			name:       "client / server same port",
-			serverPort: 8351,
-			clientPort: 8351,
+			name: "client / server same port",
 			config: comm.ClientConfig{
 				Timeout: testTimeout,
 			},
@@ -181,8 +178,7 @@ func TestNewConnection(t *testing.T) {
 		},
 		{
 			name:       "client / server wrong port",
-			serverPort: 8352,
-			clientPort: 7352,
+			clientPort: 20040,
 			config: comm.ClientConfig{
 				Timeout: time.Second,
 			},
@@ -190,9 +186,7 @@ func TestNewConnection(t *testing.T) {
 			errorMsg: "context deadline exceeded",
 		},
 		{
-			name:       "client TLS / server no TLS",
-			serverPort: 8353,
-			clientPort: 8353,
+			name: "client TLS / server no TLS",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					Certificate:       testCerts.certPEM,
@@ -207,9 +201,7 @@ func TestNewConnection(t *testing.T) {
 			errorMsg: "context deadline exceeded",
 		},
 		{
-			name:       "client TLS / server TLS match",
-			serverPort: 8354,
-			clientPort: 8354,
+			name: "client TLS / server TLS match",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
@@ -225,9 +217,7 @@ func TestNewConnection(t *testing.T) {
 			success: true,
 		},
 		{
-			name:       "client TLS / server TLS no server roots",
-			serverPort: 8355,
-			clientPort: 8355,
+			name: "client TLS / server TLS no server roots",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
@@ -244,9 +234,7 @@ func TestNewConnection(t *testing.T) {
 			errorMsg: "context deadline exceeded",
 		},
 		{
-			name:       "client TLS / server TLS missing client cert",
-			serverPort: 8356,
-			clientPort: 8356,
+			name: "client TLS / server TLS missing client cert",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
@@ -264,9 +252,7 @@ func TestNewConnection(t *testing.T) {
 			errorMsg: "context deadline exceeded",
 		},
 		{
-			name:       "client TLS / server TLS client cert",
-			serverPort: 8357,
-			clientPort: 8357,
+			name: "client TLS / server TLS client cert",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					Certificate:       testCerts.certPEM,
@@ -283,9 +269,7 @@ func TestNewConnection(t *testing.T) {
 			success: true,
 		},
 		{
-			name:       "server TLS pinning success",
-			serverPort: 8358,
-			clientPort: 8358,
+			name: "server TLS pinning success",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
@@ -308,9 +292,7 @@ func TestNewConnection(t *testing.T) {
 			success: true,
 		},
 		{
-			name:       "server TLS pinning failure",
-			serverPort: 8359,
-			clientPort: 8359,
+			name: "server TLS pinning failure",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
@@ -336,7 +318,7 @@ func TestNewConnection(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", test.serverPort))
+			lis, err := net.Listen("tcp", "127.0.0.1:0")
 			if err != nil {
 				t.Fatalf("error creating server for test: %v", err)
 			}
@@ -352,7 +334,11 @@ func TestNewConnection(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error creating client for test: %v", err)
 			}
-			conn, err := client.NewConnection(fmt.Sprintf("localhost:%d", test.clientPort), "")
+			address := lis.Addr().String()
+			if test.clientPort > 0 {
+				address = fmt.Sprintf("localhost:%d", test.clientPort)
+			}
+			conn, err := client.NewConnection(address, "")
 			if test.success {
 				assert.NoError(t, err)
 				assert.NotNil(t, conn)
@@ -381,11 +367,13 @@ func TestSetServerRootCAs(t *testing.T) {
 	}
 
 	// set up test TLS server
-	address := "localhost:18358"
-	lis, err := net.Listen("tcp", address)
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to create listener for test server: %v", err)
 	}
+	address := lis.Addr().String()
+	t.Logf("server listening on [%s]", lis.Addr().String())
+	t.Logf("client will use [%s]", address)
 	defer lis.Close()
 	srv := grpc.NewServer(grpc.Creds(credentials.NewTLS(&tls.Config{
 		Certificates: []tls.Certificate{testCerts.serverCert},
@@ -430,10 +418,13 @@ func TestSetServerRootCAs(t *testing.T) {
 
 func TestSetMessageSize(t *testing.T) {
 	t.Parallel()
-	address := "localhost:18359"
 
 	// setup test server
-	srv, err := comm.NewGRPCServer(address, comm.ServerConfig{})
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to create listener for test server: %v", err)
+	}
+	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{})
 	if err != nil {
 		t.Fatalf("failed to create test server: %v", err)
 	}
@@ -484,6 +475,7 @@ func TestSetMessageSize(t *testing.T) {
 	// run tests
 	for _, test := range tests {
 		test := test
+		address := lis.Addr().String()
 		t.Run(test.name, func(t *testing.T) {
 			t.Log(test.name)
 			if test.maxRecvSize > 0 {

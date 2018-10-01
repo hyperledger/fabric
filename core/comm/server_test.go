@@ -35,31 +35,22 @@ import (
 )
 
 // Embedded certificates for testing
-// These are the prime256v1-openssl-*.pem in testdata
-// The self-signed cert expires in 2026
-var selfSignedKeyPEM = `-----BEGIN EC PARAMETERS-----
-BggqhkjOPQMBBw==
------END EC PARAMETERS-----
------BEGIN EC PRIVATE KEY-----
-MHcCAQEEIM2rUTflEQ11m5g5yEm2Cer2yI+ziccl1NbSRVh3GUR0oAoGCCqGSM49
-AwEHoUQDQgAEu2FEZVSr30Afey6dwcypeg5P+BuYx5JSYdG0/KJIBjWKnzYo7FEm
-gMir7GbNh4pqA8KFrJZkPuxMgnEJBZTv+w==
+// The self-signed cert expires in 2028
+var selfSignedKeyPEM = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIMLemLh3+uDzww1pvqP6Xj2Z0Kc6yqf3RxyfTBNwRuuyoAoGCCqGSM49
+AwEHoUQDQgAEDB3l94vM7EqKr2L/vhqU5IsEub0rviqCAaWGiVAPp3orb/LJqFLS
+yo/k60rhUiir6iD4S4pb5TEb2ouWylQI3A==
 -----END EC PRIVATE KEY-----
 `
 var selfSignedCertPEM = `-----BEGIN CERTIFICATE-----
-MIICRDCCAemgAwIBAgIJALwW//dz2ZBvMAoGCCqGSM49BAMCMH4xCzAJBgNVBAYT
-AlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2Nv
-MRgwFgYDVQQKDA9MaW51eEZvdW5kYXRpb24xFDASBgNVBAsMC0h5cGVybGVkZ2Vy
-MRIwEAYDVQQDDAlsb2NhbGhvc3QwHhcNMTYxMjA0MjIzMDE4WhcNMjYxMjAyMjIz
-MDE4WjB+MQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UE
-BwwNU2FuIEZyYW5jaXNjbzEYMBYGA1UECgwPTGludXhGb3VuZGF0aW9uMRQwEgYD
-VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
-AQYIKoZIzj0DAQcDQgAEu2FEZVSr30Afey6dwcypeg5P+BuYx5JSYdG0/KJIBjWK
-nzYo7FEmgMir7GbNh4pqA8KFrJZkPuxMgnEJBZTv+6NQME4wHQYDVR0OBBYEFAWO
-4bfTEr2R6VYzQYrGk/2VWmtYMB8GA1UdIwQYMBaAFAWO4bfTEr2R6VYzQYrGk/2V
-WmtYMAwGA1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAIelqGdxPMHmQqRF
-zA85vv7JhfMkvZYGPELC7I2K8V7ZAiEA9KcthV3HtDXKNDsA6ULT+qUkyoHRzCzr
-A4QaL2VU6i4=
+MIIBdDCCARqgAwIBAgIRAKCiW5r6W32jGUn+l9BORMAwCgYIKoZIzj0EAwIwEjEQ
+MA4GA1UEChMHQWNtZSBDbzAeFw0xODA4MjExMDI1MzJaFw0yODA4MTgxMDI1MzJa
+MBIxEDAOBgNVBAoTB0FjbWUgQ28wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQM
+HeX3i8zsSoqvYv++GpTkiwS5vSu+KoIBpYaJUA+neitv8smoUtLKj+TrSuFSKKvq
+IPhLilvlMRvai5bKVAjco1EwTzAOBgNVHQ8BAf8EBAMCBaAwEwYDVR0lBAwwCgYI
+KwYBBQUHAwEwDAYDVR0TAQH/BAIwADAaBgNVHREEEzARgglsb2NhbGhvc3SHBH8A
+AAEwCgYIKoZIzj0EAwIDSAAwRQIgOaYc3pdGf2j0uXRyvdBJq2PlK9FkgvsUjXOT
+bQ9fWRkCIQCr1FiRRzapgtrnttDn3O2fhLlbrw67kClzY8pIIN42Qw==
 -----END CERTIFICATE-----
 `
 
@@ -221,8 +212,7 @@ var (
 )
 
 type testServer struct {
-	address string
-	config  comm.ServerConfig
+	config comm.ServerConfig
 }
 
 type serverCert struct {
@@ -245,14 +235,13 @@ func (org *testOrg) rootCertPool() *x509.CertPool {
 }
 
 // return testServers for the org
-func (org *testOrg) testServers(port int, clientRootCAs [][]byte) []testServer {
+func (org *testOrg) testServers(clientRootCAs [][]byte) []testServer {
 
 	var testServers = []testServer{}
 	clientRootCAs = append(clientRootCAs, org.rootCA)
 	// loop through the serverCerts and create testServers
-	for i, serverCert := range org.serverCerts {
+	for _, serverCert := range org.serverCerts {
 		testServer := testServer{
-			fmt.Sprintf("localhost:%d", port+i),
 			comm.ServerConfig{
 				ConnectionTimeout: 250 * time.Millisecond,
 				SecOpts: &comm.SecureOptions{
@@ -449,23 +438,38 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	}
 
 	// address in use
-	_, err = comm.NewGRPCServer(":9040", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{UseTLS: false}})
-	_, err = comm.NewGRPCServer(":9040", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{UseTLS: false}})
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener [%s]", err)
+	}
+	defer lis.Close()
+	_, err = comm.NewGRPCServerFromListener(
+		lis,
+		comm.ServerConfig{
+			SecOpts: &comm.SecureOptions{UseTLS: false}})
+	if err != nil {
+		t.Fatalf("Failed to create GRPCServer [%s]", err)
+	}
+	_, err = comm.NewGRPCServer(
+		lis.Addr().String(),
+		comm.ServerConfig{
+			SecOpts: &comm.SecureOptions{UseTLS: false}},
+	)
 	// check for error
-	msg = "listen tcp :9040: bind: address already in use"
-	assert.EqualError(t, err, msg)
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Contains(t, err.Error(), "address already in use")
 
 	// missing server Certificate
-	_, err = comm.NewGRPCServer(":9041",
+	_, err = comm.NewGRPCServerFromListener(
+		lis,
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
-				UseTLS:      true,
-				Certificate: []byte{}}})
+				UseTLS: true,
+				Key:    []byte{}},
+		},
+	)
 	// check for error
 	msg = "serverConfig.SecOpts must contain both Key and " +
 		"Certificate when UseTLS is true"
@@ -475,11 +479,14 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	}
 
 	// missing server Key
-	_, err = comm.NewGRPCServer(":9042",
+	_, err = comm.NewGRPCServerFromListener(
+		lis,
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
 				UseTLS:      true,
-				Certificate: []byte{}}})
+				Certificate: []byte{}},
+		},
+	)
 	// check for error
 	assert.EqualError(t, err, msg)
 	if err != nil {
@@ -487,12 +494,15 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	}
 
 	// bad server Key
-	_, err = comm.NewGRPCServer(":9043",
+	_, err = comm.NewGRPCServerFromListener(
+		lis,
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
 				UseTLS:      true,
 				Certificate: []byte(selfSignedCertPEM),
-				Key:         []byte{}}})
+				Key:         []byte{}},
+		},
+	)
 
 	// check for error
 	msg = "tls: failed to find any PEM data in key input"
@@ -502,12 +512,15 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	}
 
 	// bad server Certificate
-	_, err = comm.NewGRPCServer(":9044",
+	_, err = comm.NewGRPCServerFromListener(
+		lis,
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
 				UseTLS:      true,
 				Certificate: []byte{},
-				Key:         []byte(selfSignedKeyPEM)}})
+				Key:         []byte(selfSignedKeyPEM)},
+		},
+	)
 	//check for error
 	msg = "tls: failed to find any PEM data in certificate input"
 	assert.EqualError(t, err, msg)
@@ -515,13 +528,16 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		t.Log(err.Error())
 	}
 
-	srv, err := comm.NewGRPCServer(":9046",
+	srv, err := comm.NewGRPCServerFromListener(
+		lis,
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
 				UseTLS:            true,
 				Certificate:       []byte(selfSignedCertPEM),
 				Key:               []byte(selfSignedKeyPEM),
-				RequireClientCert: true}})
+				RequireClientCert: true},
+		},
+	)
 	badRootCAs := [][]byte{[]byte(badPEM)}
 	err = srv.SetClientRootCAs(badRootCAs)
 	// check for error
@@ -537,8 +553,10 @@ func TestNewGRPCServer(t *testing.T) {
 
 	t.Parallel()
 	testAddress := "localhost:9053"
-	srv, err := comm.NewGRPCServer(testAddress,
-		comm.ServerConfig{SecOpts: &comm.SecureOptions{UseTLS: false}})
+	srv, err := comm.NewGRPCServer(
+		testAddress,
+		comm.ServerConfig{SecOpts: &comm.SecureOptions{UseTLS: false}},
+	)
 	//check for error
 	if err != nil {
 		t.Fatalf("Failed to return new GRPC server: %v", err)
@@ -584,16 +602,19 @@ func TestNewGRPCServer(t *testing.T) {
 func TestNewGRPCServerFromListener(t *testing.T) {
 
 	t.Parallel()
-	testAddress := "localhost:9054"
-	// create our listener
-	lis, err := net.Listen("tcp", testAddress)
 
+	// create our listener
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Failed to create listener: %v", err)
 	}
+	testAddress := lis.Addr().String()
 
-	srv, err := comm.NewGRPCServerFromListener(lis,
-		comm.ServerConfig{SecOpts: &comm.SecureOptions{UseTLS: false}})
+	srv, err := comm.NewGRPCServerFromListener(
+		lis,
+		comm.ServerConfig{
+			SecOpts: &comm.SecureOptions{UseTLS: false}},
+	)
 	// check for error
 	if err != nil {
 		t.Fatalf("Failed to return new GRPC server: %v", err)
@@ -637,8 +658,13 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 func TestNewSecureGRPCServer(t *testing.T) {
 
 	t.Parallel()
-	testAddress := "localhost:9055"
-	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{
+	// create our listener
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
+	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
 		ConnectionTimeout: 250 * time.Millisecond,
 		SecOpts: &comm.SecureOptions{
 			UseTLS:      true,
@@ -780,77 +806,6 @@ func TestVerifyCertificateCallback(t *testing.T) {
 
 }
 
-func TestNewSecureGRPCServerFromListener(t *testing.T) {
-
-	t.Parallel()
-	testAddress := "localhost:9056"
-	// create our listener
-	lis, err := net.Listen("tcp", testAddress)
-
-	if err != nil {
-		t.Fatalf("Failed to create listener: %v", err)
-	}
-
-	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
-			UseTLS:      true,
-			Certificate: []byte(selfSignedCertPEM),
-			Key:         []byte(selfSignedKeyPEM)}})
-	// check for error
-	if err != nil {
-		t.Fatalf("Failed to return new GRPC server: %v", err)
-	}
-
-	// make sure our properties are as expected
-	// resolve the address
-	addr, err := net.ResolveTCPAddr("tcp", testAddress)
-	assert.Equal(t, srv.Address(), addr.String())
-	assert.Equal(t, srv.Listener().Addr().String(), addr.String())
-
-	// check the server certificate
-	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
-	assert.Equal(t, srv.ServerCertificate(), cert)
-
-	// TLSEnabled should be true
-	assert.Equal(t, srv.TLSEnabled(), true)
-	//MutualTLSRequired should be false
-	assert.Equal(t, srv.MutualTLSRequired(), false)
-
-	// register the GRPC test server
-	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
-
-	// start the server
-	go srv.Start()
-
-	defer srv.Stop()
-	// should not be needed
-	time.Sleep(10 * time.Millisecond)
-
-	// create the client credentials
-	certPool := x509.NewCertPool()
-
-	if !certPool.AppendCertsFromPEM([]byte(selfSignedCertPEM)) {
-
-		t.Fatal("Failed to append certificate to client credentials")
-	}
-
-	creds := credentials.NewClientTLSFromCert(certPool, "")
-
-	// GRPC client options
-	var dialOptions []grpc.DialOption
-	dialOptions = append(dialOptions, grpc.WithTransportCredentials(creds))
-
-	// invoke the EmptyCall service
-	_, err = invokeEmptyCall(testAddress, dialOptions)
-
-	if err != nil {
-		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
-			testAddress, err)
-	} else {
-		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
-	}
-}
-
 // prior tests used self-signed certficates loaded by the GRPCServer and the test client
 // here we'll use certificates signed by certificate authorities
 func TestWithSignedRootCertificates(t *testing.T) {
@@ -859,15 +814,24 @@ func TestWithSignedRootCertificates(t *testing.T) {
 	// use Org1 testdata
 	fileBase := "Org1"
 	certPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
-	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-key.pem"))
-	caPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-cert.pem"))
-
 	if err != nil {
 		t.Fatalf("Failed to load test certificates: %v", err)
 	}
-	testAddress := "localhost:9057"
+	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-key.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test certificates: %v", err)
+	}
+	caPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-cert.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test certificates: %v", err)
+	}
+
 	// create our listener
-	lis, err := net.Listen("tcp", testAddress)
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
 
 	if err != nil {
 		t.Fatalf("Failed to create listener: %v", err)
@@ -944,9 +908,12 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load test certificates: %v", err)
 	}
-	testAddress := "localhost:9058"
 	// create our listener
-	lis, err := net.Listen("tcp", testAddress)
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
 
 	if err != nil {
 		t.Fatalf("Failed to create listener: %v", err)
@@ -1018,10 +985,11 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 	// loop through all the test servers
 	for i := 0; i < len(servers); i++ {
 		//create listener
-		lis, err := net.Listen("tcp", servers[i].address)
+		lis, err := net.Listen("tcp", "localhost:0")
 		if err != nil {
 			return err
 		}
+		srvAddr := lis.Addr().String()
 
 		// create GRPCServer
 		srv, err := comm.NewGRPCServerFromListener(lis, servers[i].config)
@@ -1042,29 +1010,29 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		// loop through all the trusted clients
 		for j := 0; j < len(trustedClients); j++ {
 			// invoke the EmptyCall service
-			_, err = invokeEmptyCall(servers[i].address,
+			_, err = invokeEmptyCall(srvAddr,
 				[]grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(trustedClients[j]))})
 			// we expect success from trusted clients
 			if err != nil {
 				return err
 			} else {
-				t.Logf("Trusted client%d successfully connected to %s", j, servers[i].address)
+				t.Logf("Trusted client%d successfully connected to %s", j, srvAddr)
 			}
 		}
 		// loop through all the untrusted clients
 		for k := 0; k < len(unTrustedClients); k++ {
 			// invoke the EmptyCall service
 			_, err = invokeEmptyCall(
-				servers[i].address,
+				srvAddr,
 				[]grpc.DialOption{
 					grpc.WithTransportCredentials(
 						credentials.NewTLS(unTrustedClients[k]))})
 			// we expect failure from untrusted clients
 			if err != nil {
-				t.Logf("Untrusted client%d was correctly rejected by %s", k, servers[i].address)
+				t.Logf("Untrusted client%d was correctly rejected by %s", k, srvAddr)
 			} else {
 				return fmt.Errorf("Untrusted client %d should not have been able to connect to %s", k,
-					servers[i].address)
+					srvAddr)
 			}
 		}
 	}
@@ -1083,19 +1051,19 @@ func TestMutualAuth(t *testing.T) {
 	}{
 		{
 			name:             "ClientAuthRequiredWithSingleOrg",
-			servers:          testOrgs[0].testServers(9060, [][]byte{}),
+			servers:          testOrgs[0].testServers([][]byte{}),
 			trustedClients:   testOrgs[0].trustedClients([][]byte{}),
 			unTrustedClients: testOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA}),
 		},
 		{
 			name:             "ClientAuthRequiredWithChildClientOrg",
-			servers:          testOrgs[0].testServers(9070, [][]byte{testOrgs[0].childOrgs[0].rootCA}),
+			servers:          testOrgs[0].testServers([][]byte{testOrgs[0].childOrgs[0].rootCA}),
 			trustedClients:   testOrgs[0].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA}),
 			unTrustedClients: testOrgs[0].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA}),
 		},
 		{
 			name: "ClientAuthRequiredWithMultipleChildClientOrgs",
-			servers: testOrgs[0].testServers(9080, append([][]byte{},
+			servers: testOrgs[0].testServers(append([][]byte{},
 				testOrgs[0].childOrgs[0].rootCA, testOrgs[0].childOrgs[1].rootCA)),
 			trustedClients: append(append([]*tls.Config{},
 				testOrgs[0].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})...),
@@ -1104,13 +1072,13 @@ func TestMutualAuth(t *testing.T) {
 		},
 		{
 			name:             "ClientAuthRequiredWithDifferentServerAndClientOrgs",
-			servers:          testOrgs[0].testServers(9090, [][]byte{testOrgs[1].rootCA}),
+			servers:          testOrgs[0].testServers([][]byte{testOrgs[1].rootCA}),
 			trustedClients:   testOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA}),
 			unTrustedClients: testOrgs[0].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA}),
 		},
 		{
 			name:             "ClientAuthRequiredWithDifferentServerAndChildClientOrgs",
-			servers:          testOrgs[1].testServers(9100, [][]byte{testOrgs[0].childOrgs[0].rootCA}),
+			servers:          testOrgs[1].testServers([][]byte{testOrgs[0].childOrgs[0].rootCA}),
 			trustedClients:   testOrgs[0].childOrgs[0].trustedClients([][]byte{testOrgs[1].rootCA}),
 			unTrustedClients: testOrgs[1].childOrgs[0].trustedClients([][]byte{testOrgs[1].rootCA}),
 		},
@@ -1139,11 +1107,15 @@ func TestAppendRemoveWithInvalidBytes(t *testing.T) {
 	noPEMData := [][]byte{[]byte("badcert1"), []byte("badCert2")}
 
 	// get the config for one of our Org1 test servers
-	serverConfig := testOrgs[0].testServers(9200, [][]byte{})[0].config
-	address := testOrgs[0].testServers(9200, [][]byte{})[0].address
+	serverConfig := testOrgs[0].testServers([][]byte{})[0].config
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener [%s]", err)
+	}
+	defer lis.Close()
 
 	// create a GRPCServer
-	srv, err := comm.NewGRPCServer(address, serverConfig)
+	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	if err != nil {
 		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
 	}
@@ -1187,11 +1159,16 @@ func TestAppendClientRootCAs(t *testing.T) {
 
 	t.Parallel()
 	// get the config for one of our Org1 test servers
-	serverConfig := testOrgs[0].testServers(9300, [][]byte{})[0].config
-	address := testOrgs[0].testServers(9300, [][]byte{})[0].address
+	serverConfig := testOrgs[0].testServers([][]byte{})[0].config
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener [%s]", err)
+	}
+	defer lis.Close()
+	address := lis.Addr().String()
 
 	// create a GRPCServer
-	srv, err := comm.NewGRPCServer(address, serverConfig)
+	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	if err != nil {
 		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
 	}
@@ -1249,13 +1226,20 @@ func TestRemoveClientRootCAs(t *testing.T) {
 	t.Parallel()
 	// get the config for one of our Org1 test servers and include client CAs from
 	// Org2 child orgs
-	serverConfig := testOrgs[0].testServers(9301,
+	testServers := testOrgs[0].testServers(
 		[][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA})[0].config
-	address := testOrgs[0].testServers(9301, [][]byte{})[0].address
+			testOrgs[1].childOrgs[1].rootCA},
+	)
+	serverConfig := testServers[0].config
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener [%s]", err)
+	}
+	defer lis.Close()
+	address := lis.Addr().String()
 
-	//create a GRPCServer
-	srv, err := comm.NewGRPCServer(address, serverConfig)
+	// create a GRPCServer
+	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	if err != nil {
 		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
 	}
@@ -1315,13 +1299,19 @@ func TestConcurrentAppendRemoveSet(t *testing.T) {
 	t.Parallel()
 	// get the config for one of our Org1 test servers and include client CAs from
 	// Org2 child orgs
-	serverConfig := testOrgs[0].testServers(9302,
+	testServers := testOrgs[0].testServers(
 		[][]byte{testOrgs[1].childOrgs[0].rootCA,
-			testOrgs[1].childOrgs[1].rootCA})[0].config
-	address := testOrgs[0].testServers(9302, [][]byte{})[0].address
+			testOrgs[1].childOrgs[1].rootCA},
+	)
+	serverConfig := testServers[0].config
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener [%s]", err)
+	}
+	defer lis.Close()
 
 	// create a GRPCServer
-	srv, err := comm.NewGRPCServer(address, serverConfig)
+	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	if err != nil {
 		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
 	}
@@ -1390,11 +1380,16 @@ func TestSetClientRootCAs(t *testing.T) {
 	t.Parallel()
 
 	// get the config for one of our Org1 test servers
-	serverConfig := testOrgs[0].testServers(9303, [][]byte{})[0].config
-	address := testOrgs[0].testServers(9303, [][]byte{})[0].address
+	serverConfig := testOrgs[0].testServers([][]byte{})[0].config
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener [%s]", err)
+	}
+	defer lis.Close()
+	address := lis.Addr().String()
 
 	// create a GRPCServer
-	srv, err := comm.NewGRPCServer(address, serverConfig)
+	srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	if err != nil {
 		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
 	}
@@ -1500,8 +1495,13 @@ func TestKeepaliveNoClientResponse(t *testing.T) {
 		ServerInterval: 2 * time.Second,
 		ServerTimeout:  1 * time.Second,
 	}
-	testAddress := "localhost:9400"
-	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{KaOpts: kap})
+	// create our listener
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
+	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{KaOpts: kap})
 	assert.NoError(t, err, "Unexpected error starting GRPCServer")
 	go srv.Start()
 	defer srv.Stop()
@@ -1531,8 +1531,13 @@ func TestKeepaliveClientResponse(t *testing.T) {
 		ServerInterval: 1 * time.Second,
 		ServerTimeout:  1 * time.Second,
 	}
-	testAddress := "localhost:9401"
-	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{KaOpts: kap})
+	// create our listener
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
+	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{KaOpts: kap})
 	assert.NoError(t, err, "Unexpected error starting GRPCServer")
 	go srv.Start()
 	defer srv.Stop()
@@ -1557,6 +1562,8 @@ func TestKeepaliveClientResponse(t *testing.T) {
 }
 
 func TestUpdateTLSCert(t *testing.T) {
+	t.Parallel()
+
 	readFile := func(path string) []byte {
 		fName := filepath.Join("testdata", "dynamic_cert_update", path)
 		data, err := ioutil.ReadFile(fName)
@@ -1581,7 +1588,13 @@ func TestUpdateTLSCert(t *testing.T) {
 			Certificate: cert,
 		},
 	}
-	srv, err := comm.NewGRPCServer("localhost:8333", cfg)
+	// create our listener
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	testAddress := lis.Addr().String()
+	srv, err := comm.NewGRPCServerFromListener(lis, cfg)
 	assert.NoError(t, err)
 	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
 	go srv.Start()
@@ -1591,7 +1604,7 @@ func TestUpdateTLSCert(t *testing.T) {
 	certPool.AppendCertsFromPEM(caCert)
 
 	probeServer := func() error {
-		_, err = invokeEmptyCall("localhost:8333",
+		_, err = invokeEmptyCall(testAddress,
 			[]grpc.DialOption{grpc.WithTransportCredentials(
 				credentials.NewTLS(&tls.Config{
 					RootCAs: certPool})),
@@ -1604,7 +1617,7 @@ func TestUpdateTLSCert(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
 
-	// new TLS certificate has a SAN of "localhost" so it should succeed
+	// new TLS certificate has a SAN of "127.0.0.1" so it should succeed
 	certPath := filepath.Join("testdata", "dynamic_cert_update", "localhost", "server.crt")
 	keyPath := filepath.Join("testdata", "dynamic_cert_update", "localhost", "server.key")
 	tlsCert, err := tls.LoadX509KeyPair(certPath, keyPath)
@@ -1619,6 +1632,7 @@ func TestUpdateTLSCert(t *testing.T) {
 	tlsCert, err = tls.LoadX509KeyPair(certPath, keyPath)
 	assert.NoError(t, err)
 	srv.SetServerCertificate(tlsCert)
+
 	err = probeServer()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
@@ -1676,24 +1690,20 @@ func TestCipherSuites(t *testing.T) {
 
 	var tests = []struct {
 		name          string
-		port          int
 		clientCiphers []uint16
 		success       bool
 	}{
 		{
 			name:    "server default / client all",
-			port:    8340,
 			success: true,
 		},
 		{
 			name:          "server default / client match",
-			port:          8341,
 			clientCiphers: defaultCipherSuites,
 			success:       true,
 		},
 		{
 			name:          "server default / client no match",
-			port:          8342,
 			clientCiphers: otherCipherSuites,
 			success:       false,
 		},
@@ -1704,8 +1714,13 @@ func TestCipherSuites(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			t.Logf("Running test %s ...", test.name)
-			address := fmt.Sprintf("localhost:%d", test.port)
-			srv, err := comm.NewGRPCServer(address, serverConfig)
+			// create our listener
+			lis, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("Failed to create listener: %v", err)
+			}
+			testAddress := lis.Addr().String()
+			srv, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 			assert.NoError(t, err)
 			go srv.Start()
 			defer srv.Stop()
@@ -1713,7 +1728,7 @@ func TestCipherSuites(t *testing.T) {
 				RootCAs:      certPool,
 				CipherSuites: test.clientCiphers,
 			}
-			_, err = tls.Dial("tcp", address, tlsConfig)
+			_, err = tls.Dial("tcp", testAddress, tlsConfig)
 			if test.success {
 				assert.NoError(t, err)
 			} else {
