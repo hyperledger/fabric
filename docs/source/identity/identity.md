@@ -121,7 +121,7 @@ certificate as a digital identity card that is impossible to change.
 Authentication and message integrity are important concepts in secure
 communications. Authentication requires that parties who exchange messages
 are assured of the identity that created a specific message. For a message to have
-"integrity" means that cannot have been modified during its transmission.
+"integrity" means that it cannot have been modified during its transmission.
 For example, you might want to be sure you're communicating with the real Mary
 Morris rather than an impersonator. Or if Mary has sent you a message, you might want
 to be sure that it hasn't been tampered with by anyone else during transmission.
