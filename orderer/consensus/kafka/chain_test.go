@@ -75,10 +75,10 @@ func TestChain(t *testing.T) {
 
 		assert.NoError(t, err, "Expected newChain to return without errors")
 		select {
-		case <-chain.errorChan:
-			logger.Debug("errorChan is closed as it should be")
+		case <-chain.Errored():
+			logger.Debug("Errored() returned a closed channel as expected")
 		default:
-			t.Fatal("errorChan should have been closed")
+			t.Fatal("Errored() should have returned a closed channel")
 		}
 
 		select {
