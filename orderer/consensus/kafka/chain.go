@@ -48,9 +48,6 @@ func newChain(
 	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
 		support.ChainID(), lastOffsetPersisted, lastCutBlockNumber)
 
-	errorChan := make(chan struct{})
-	close(errorChan) // We need this closed when starting up
-
 	doneReprocessingMsgInFlight := make(chan struct{})
 	// In either one of following cases, we should unblock ingress messages:
 	// - lastResubmittedConfigOffset == 0, where we've never resubmitted any config messages
@@ -73,7 +70,6 @@ func newChain(
 		lastResubmittedConfigOffset: lastResubmittedConfigOffset,
 		lastCutBlockNumber:          lastCutBlockNumber,
 
-		errorChan:                   errorChan,
 		haltChan:                    make(chan struct{}),
 		startChan:                   make(chan struct{}),
 		doneReprocessingMsgInFlight: doneReprocessingMsgInFlight,
@@ -121,7 +117,10 @@ func (chain *chainImpl) Errored() <-chan struct{} {
 	case <-chain.startChan:
 		return chain.errorChan
 	default:
-		return nil
+		// While the consenter is starting, always return an error
+		dummyError := make(chan struct{})
+		close(dummyError)
+		return dummyError
 	}
 }
 
