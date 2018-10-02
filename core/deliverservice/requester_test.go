@@ -50,7 +50,7 @@ func TestTLSBinding(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	orderer.RegisterAtomicBroadcastServer(s.Server(), &mockOrderer{})
+	orderer.RegisterAtomicBroadcastServer(s.Server(), &mockOrderer{t: t})
 	go s.Start()
 	defer s.Stop()
 	time.Sleep(time.Second * 3)
