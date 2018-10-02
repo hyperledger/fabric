@@ -379,7 +379,7 @@ chaincode:
 
     mode: net
     # typically installpath should not be modified. Otherwise, user must ensure
-    # the chaincode executable is placed in the path specifed by installpath in
+    # the chaincode executable is placed in the path specified by installpath in
     # the image
     installpath: /opt/gopath/bin/
 
