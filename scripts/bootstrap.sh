@@ -60,12 +60,12 @@ samplesInstall() {
   # version to the binaries and docker images to be downloaded
   if [ -d first-network ]; then
     # if we are in the fabric-samples repo, checkout corresponding version
-    echo "===> Checking out v${VERSION} branch of hyperledger/fabric-samples"
+    echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
     git checkout v${VERSION}
   elif [ -d fabric-samples ]; then
     # if fabric-samples repo already cloned and in current directory,
     # cd fabric-samples and checkout corresponding version
-    echo "===> Checking out v${VERSION} branch of hyperledger/fabric-samples"
+    echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
     cd fabric-samples && git checkout v${VERSION}
   else
     echo "===> Cloning hyperledger/fabric-samples repo and checkout v${VERSION}"
