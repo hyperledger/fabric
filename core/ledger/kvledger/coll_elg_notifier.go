@@ -45,6 +45,7 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 	}
 	var existingCCInfo, postCommitCCInfo *ledger.DeployedChaincodeInfo
 	for _, ccInfo := range ccLifecycleInfo {
+		ledgerid := trigger.LedgerID
 		ccName := ccInfo.Name
 		if existingCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ccName, qe); err != nil {
 			return err
@@ -56,13 +57,16 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 			return err
 		}
 		elgEnabledCollNames, err := n.elgEnabledCollNames(
-			trigger.LedgerID,
+			ledgerid,
 			existingCCInfo.CollectionConfigPkg,
 			postCommitCCInfo.CollectionConfigPkg,
 		)
 		if err != nil {
 			return err
 		}
+		logger.Debugf("[%s] collections of chaincode [%s] for which peer was not eligible before and now the eligiblity is enabled - [%s]",
+			ledgerid, ccName, elgEnabledCollNames,
+		)
 		if len(elgEnabledCollNames) > 0 {
 			nsCollMap[ccName] = elgEnabledCollNames
 		}
@@ -96,11 +100,11 @@ func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
 
 	for _, postCommitConf := range postCommitConfs {
 		collName := postCommitConf.Name
-		_, ok := existingConfMap[collName]
+		existingConf, ok := existingConfMap[collName]
 		if !ok { // brand new collection
 			continue
 		}
-		membershipEnabled, err := n.elgEnabled(ledgerID, existingConfMap[collName].MemberOrgsPolicy, postCommitConf.MemberOrgsPolicy)
+		membershipEnabled, err := n.elgEnabled(ledgerID, existingConf.MemberOrgsPolicy, postCommitConf.MemberOrgsPolicy)
 		if err != nil {
 			return nil, err
 		}
@@ -115,15 +119,11 @@ func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
 
 // elgEnabled returns true if the peer is not eligible for a collection as per 'existingPolicy' and is eligible as per 'postCommitPolicy'
 func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommitPolicy *common.CollectionPolicyConfig) (bool, error) {
-	var existingMember, postCommitMember bool
-	var err error
-	if existingMember, err = n.membershipInfoProvider.AmMemberOf(ledgerID, existingPolicy); err != nil {
+	existingMember, err := n.membershipInfoProvider.AmMemberOf(ledgerID, existingPolicy)
+	if err != nil || existingMember {
 		return false, err
 	}
-	if postCommitMember, err = n.membershipInfoProvider.AmMemberOf(ledgerID, postCommitPolicy); err != nil {
-		return false, err
-	}
-	return !existingMember && postCommitMember, nil
+	return n.membershipInfoProvider.AmMemberOf(ledgerID, postCommitPolicy)
 }
 
 func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {

@@ -471,7 +471,7 @@ func (s *store) processCollElgEvents() {
 		for ns, colls := range CollElgInfo.NsCollMap {
 			var coll string
 			for _, coll = range colls.Entries {
-				logger.Infof("Converting missing data entries from inelligible to eligible for [ns=%s, coll=%s]", ns, coll)
+				logger.Infof("Converting missing data entries from ineligible to eligible for [ns=%s, coll=%s]", ns, coll)
 				startKey, endKey := createRangeScanKeysForIneligibleMissingData(blkNum, ns, coll)
 				collItr := s.db.GetIterator(startKey, endKey)
 				collEntriesConverted := 0
@@ -564,7 +564,7 @@ type collElgProcSync struct {
 func (sync *collElgProcSync) notify() {
 	select {
 	case sync.notification <- true:
-		logger.Debugf("Signaled to collection elgibility processing routine")
+		logger.Debugf("Signaled to collection eligibility processing routine")
 	default: //noop
 		logger.Debugf("Previous signal still pending. Skipping new signal")
 	}
