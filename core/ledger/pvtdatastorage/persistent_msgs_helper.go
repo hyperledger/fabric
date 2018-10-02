@@ -37,3 +37,16 @@ func (e *ExpiryData) addMissingData(ns, coll string) {
 	collections := e.getOrCreateCollections(ns)
 	collections.MissingDataMap[coll] = true
 }
+
+func newCollElgInfo(nsCollMap map[string][]string) *CollElgInfo {
+	m := &CollElgInfo{NsCollMap: map[string]*CollNames{}}
+	for ns, colls := range nsCollMap {
+		collNames, ok := m.NsCollMap[ns]
+		if !ok {
+			collNames = &CollNames{}
+			m.NsCollMap[ns] = collNames
+		}
+		collNames.Entries = colls
+	}
+	return m
+}

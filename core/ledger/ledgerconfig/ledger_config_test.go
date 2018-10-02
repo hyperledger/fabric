@@ -158,6 +158,22 @@ func TestPvtdataStorePurgeInterval(t *testing.T) {
 	assert.Equal(t, uint64(1000), updatedValue) //test config returns 1000
 }
 
+func TestPvtdataStoreCollElgProcMaxDbBatchSize(t *testing.T) {
+	defaultVal := confCollElgProcMaxDbBatchSize.DefaultVal
+	testVal := defaultVal + 1
+	assert.Equal(t, defaultVal, GetPvtdataStoreCollElgProcMaxDbBatchSize())
+	viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", testVal)
+	assert.Equal(t, testVal, GetPvtdataStoreCollElgProcMaxDbBatchSize())
+}
+
+func TestCollElgProcDbBatchesInterval(t *testing.T) {
+	defaultVal := confCollElgProcDbBatchesInterval.DefaultVal
+	testVal := defaultVal + 1
+	assert.Equal(t, defaultVal, GetPvtdataStoreCollElgProcDbBatchesInterval())
+	viper.Set("ledger.pvtdataStore.collElgProcDbBatchesInterval", testVal)
+	assert.Equal(t, testVal, GetPvtdataStoreCollElgProcDbBatchesInterval())
+}
+
 func TestIsHistoryDBEnabledDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defaultValue := IsHistoryDBEnabled()

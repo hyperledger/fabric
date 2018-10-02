@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -35,6 +36,7 @@ type store struct {
 	lastCommittedBlock uint64
 	batchPending       bool
 	purgerLock         sync.Mutex
+	collElgProcSync    *collElgProcSync
 }
 
 type blkTranNumKey []byte
@@ -88,10 +90,16 @@ func NewProvider() Provider {
 // OpenStore returns a handle to a store
 func (p *provider) OpenStore(ledgerid string) (Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
-	s := &store{db: dbHandle, ledgerid: ledgerid}
+	s := &store{db: dbHandle, ledgerid: ledgerid,
+		collElgProcSync: &collElgProcSync{
+			notification: make(chan bool, 1),
+			procComplete: make(chan bool, 1),
+		},
+	}
 	if err := s.initState(); err != nil {
 		return nil, err
 	}
+	s.launchCollElgProc()
 	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d], batchPending [%t]",
 		s.isEmpty, s.lastCommittedBlock, s.batchPending)
 	return s, nil
@@ -352,6 +360,22 @@ func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 	return missingPvtDataInfo, nil
 }
 
+func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
+	key := encodeCollElgKey(committingBlk)
+	m := newCollElgInfo(nsCollMap)
+	val, err := encodeCollElgVal(m)
+	if err != nil {
+		return err
+	}
+	batch := leveldbhelper.NewUpdateBatch()
+	batch.Put(key, val)
+	if err = s.db.WriteBatch(batch, true); err != nil {
+		return err
+	}
+	s.collElgProcSync.notify()
+	return nil
+}
+
 func (s *store) performPurgeIfScheduled(latestCommittedBlk uint64) {
 	if latestCommittedBlk%ledgerconfig.GetPvtdataStorePurgeInterval() != 0 {
 		return
@@ -411,6 +435,80 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 	return expiryEntries, nil
 }
 
+func (s *store) launchCollElgProc() {
+	go func() {
+		s.processCollElgEvents() // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
+		for {
+			logger.Debugf("Waiting for collection eligibility event")
+			s.collElgProcSync.waitForNotification()
+			s.processCollElgEvents()
+			s.collElgProcSync.done()
+		}
+	}()
+}
+
+func (s *store) processCollElgEvents() {
+	logger.Debugf("Starting to process collection eligibility events")
+	maxBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
+	batchesInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
+	s.purgerLock.Lock()
+	defer s.purgerLock.Unlock()
+	collElgStartKey, collElgEndKey := createRangeScanKeysForCollElg()
+	eventItr := s.db.GetIterator(collElgStartKey, collElgEndKey)
+	defer eventItr.Release()
+	batch := leveldbhelper.NewUpdateBatch()
+	totalEntriesConverted := 0
+
+	for eventItr.Next() {
+		collElgKey, collElgVal := eventItr.Key(), eventItr.Value()
+		blkNum := decodeCollElgKey(collElgKey)
+		CollElgInfo, err := decodeCollElgVal(collElgVal)
+		logger.Debugf("Processing collection eligibility event [blkNum=%d], CollElgInfo=%s", blkNum, CollElgInfo)
+		if err != nil {
+			logger.Errorf("This error is not expected %s", err)
+			continue
+		}
+		for ns, colls := range CollElgInfo.NsCollMap {
+			var coll string
+			for _, coll = range colls.Entries {
+				logger.Infof("Converting missing data entries from inelligible to eligible for [ns=%s, coll=%s]", ns, coll)
+				startKey, endKey := createRangeScanKeysForIneligibleMissingData(blkNum, ns, coll)
+				collItr := s.db.GetIterator(startKey, endKey)
+				collEntriesConverted := 0
+
+				for collItr.Next() { // each entry
+					originalKey, originalVal := collItr.Key(), collItr.Value()
+					modifiedKey := decodeMissingDataKey(originalKey)
+					modifiedKey.isEligible = true
+					batch.Delete(originalKey)
+					copyVal := make([]byte, len(originalVal))
+					copy(copyVal, originalVal)
+					batch.Put(encodeMissingDataKey(modifiedKey), copyVal)
+					collEntriesConverted++
+					if batch.Len() > maxBatchSize {
+						s.db.WriteBatch(batch, true)
+						batch = leveldbhelper.NewUpdateBatch()
+						sleepTime := time.Duration(batchesInterval)
+						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
+							sleepTime, ns, coll, collEntriesConverted)
+						s.purgerLock.Unlock()
+						time.Sleep(sleepTime * time.Millisecond)
+						s.purgerLock.Lock()
+					}
+				} // entry loop
+
+				collItr.Release()
+				logger.Infof("Converted all [%d] entries for [ns=%s, coll=%s]", collEntriesConverted, ns, coll)
+				totalEntriesConverted += collEntriesConverted
+			} // coll loop
+		} // ns loop
+		batch.Delete(collElgKey) // delete the collection eligibility event key as well
+	} // event loop
+
+	s.db.WriteBatch(batch, true)
+	logger.Debugf("Converted [%d] inelligible mising data entries to elligible", totalEntriesConverted)
+}
+
 // LastCommittedBlockHeight implements the function in the interface `Store`
 func (s *store) LastCommittedBlockHeight() (uint64, error) {
 	if s.isEmpty {
@@ -457,4 +555,32 @@ func (s *store) getLastCommittedBlockNum() (bool, uint64, error) {
 		return true, 0, err
 	}
 	return false, decodeLastCommittedBlockVal(v), nil
+}
+
+type collElgProcSync struct {
+	notification, procComplete chan bool
+}
+
+func (sync *collElgProcSync) notify() {
+	select {
+	case sync.notification <- true:
+		logger.Debugf("Signaled to collection elgibility processing routine")
+	default: //noop
+		logger.Debugf("Previous signal still pending. Skipping new signal")
+	}
+}
+
+func (sync *collElgProcSync) waitForNotification() {
+	<-sync.notification
+}
+
+func (sync *collElgProcSync) done() {
+	select {
+	case sync.procComplete <- true:
+	default:
+	}
+}
+
+func (sync *collElgProcSync) waitForDone() {
+	<-sync.procComplete
 }
