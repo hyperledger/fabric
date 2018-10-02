@@ -32,15 +32,19 @@ Security & Access Control
   that are authorized to see the data for the chaincodes that are deployed to
   that channel.
 
-  Second, within a channel you can restrict the input data to
-  chaincode to the set of endorsers only, by using visibility settings. The
-  visibility setting will determine whether input and output chaincode data is
-  included in the submitted transaction,  versus just output data.
+  Second, you can use `private-data <private-data/private-data.html>`_ to keep ledger data private from
+  other organizations on the channel. A private data collection allows a
+  defined subset of organizations on a channel the ability to endorse, commit,
+  or query private data without having to create a separate channel.
+  Other participants on the channel receive only a hash of the data.
+  For more information refer to the :doc:`private_data_tutorial` tutorial.
+  Note that the key concepts topic also explains `when to use private data instead of a channel <private-data/private-data.html#when-to-use-a-collection-within-a-channel-vs-a-separate-channel>`_.
 
-  Third, you can hash or encrypt the data before calling chaincode. If you hash
-  the data then you will need to provide a means to share the source data. If
-  you encrypt the data then you will need to provide a means to share the
-  decryption keys.
+  Third, as an alternative to Fabric hashing the data using private data,
+  the client application can hash or encrypt the data before calling
+  chaincode. If you hash the data then you will need to provide a means to
+  share the source data. If you encrypt the data then you will need to provide
+  a means to share the decryption keys.
 
   Fourth, you can restrict data access to certain roles in your organization, by
   building access control into the chaincode logic.
@@ -53,15 +57,10 @@ Security & Access Control
 
 :Answer:
   No, the orderers only order transactions, they do not open the transactions.
-  If you do not want the data to go through the orderers at all, and you are
-  only concerned about the input data, then you can use visibility settings. The
-  visibility setting will determine whether input and output chaincode data is
-  included in the submitted transaction,  versus just output data. Therefore,
-  the input data can be private to the endorsers only. If you do not want the
-  orderers to see chaincode output, then you can hash or encrypt the data before
-  calling chaincode. If you hash the data then you will need to provide a means
-  to share the source data. If you encrypt the data then you will need to
-  provide a means to share the decryption keys.
+  If you do not want the data to go through the orderers at all, then utilize
+  the private data feature of Fabric.  Alternatively, you can hash or encrypt
+  the data in the client application before calling chaincode. If you encrypt
+  the data then you will need to provide a means to share the decryption keys.
 
 Application-side Programming Model
 ----------------------------------
