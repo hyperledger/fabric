@@ -212,9 +212,57 @@ func TestValidateCCErrorPaths(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "uninitialized package", "Unexpected error returned")
 
-	cpack.depSpec = &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cpack.depSpec = &pb.ChaincodeDeploymentSpec{
+		CodePackage: []byte("code"),
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        1,
+			ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+		},
+	}
 	err = cpack.ValidateCC(ccdata)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "nil data", "Unexpected error returned")
+
+	// invalid encoded name
+	cpack = &CDSPackage{}
+	ccdata = &ChaincodeData{Name: "\027"}
+	cpack.depSpec = &pb.ChaincodeDeploymentSpec{
+		CodePackage: []byte("code"),
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{Name: ccdata.Name, Version: "0"},
+		},
+	}
+	cpack.data = &CDSData{}
+	err = cpack.ValidateCC(ccdata)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid chaincode name: "\x17"`)
+
+	// mismatched names
+	cpack = &CDSPackage{}
+	ccdata = &ChaincodeData{Name: "Tom"}
+	cpack.depSpec = &pb.ChaincodeDeploymentSpec{
+		CodePackage: []byte("code"),
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{Name: "Jerry", Version: "0"},
+		},
+	}
+	cpack.data = &CDSData{}
+	err = cpack.ValidateCC(ccdata)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid chaincode data name:"Tom"  (name:"Jerry" version:"0" )`)
+
+	// mismatched versions
+	cpack = &CDSPackage{}
+	ccdata = &ChaincodeData{Name: "Tom", Version: "1"}
+	cpack.depSpec = &pb.ChaincodeDeploymentSpec{
+		CodePackage: []byte("code"),
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{Name: ccdata.Name, Version: "0"},
+		},
+	}
+	cpack.data = &CDSData{}
+	err = cpack.ValidateCC(ccdata)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid chaincode data name:"Tom" version:"1"  (name:"Tom" version:"0" )`)
 }
