@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package ccprovider_test
 
 import (
-	"fmt"
+	"crypto/sha256"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -24,7 +23,7 @@ import (
 )
 
 func TestInstalledCCs(t *testing.T) {
-	tmpDir := setupDirectoryStructure(t)
+	tmpDir, hashes := setupDirectoryStructure(t)
 	defer func() {
 		os.RemoveAll(tmpDir)
 	}()
@@ -44,12 +43,12 @@ func TestInstalledCCs(t *testing.T) {
 				{
 					Name:    "example02",
 					Version: "1.0",
-					Id:      []byte{45, 186, 93, 188, 51, 158, 115, 22, 174, 162, 104, 63, 175, 131, 156, 27, 123, 30, 226, 49, 61, 183, 146, 17, 37, 136, 17, 141, 240, 102, 170, 53},
+					Id:      hashes["example02.1.0"],
 				},
 				{
 					Name:    "example04",
 					Version: "1",
-					Id:      []byte{45, 186, 93, 188, 51, 158, 115, 22, 174, 162, 104, 63, 175, 131, 156, 27, 123, 30, 226, 49, 61, 183, 146, 17, 37, 136, 17, 141, 240, 102, 170, 53},
+					Id:      hashes["example04.1"],
 				},
 			},
 			directory: "nonempty",
@@ -106,15 +105,15 @@ func TestInstalledCCs(t *testing.T) {
 	}
 }
 
-func setupDirectoryStructure(t *testing.T) string {
+func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 	files := []string{
 		"example02.1.0", // Version contains the delimiter '.' is a valid case
 		"example03",     // No version specified
 		"example04.1",   // Version doesn't contain the '.' delimiter
 	}
-	rand.Seed(time.Now().UnixNano())
-	tmp := path.Join(os.TempDir(), fmt.Sprintf("%d", rand.Int()))
-	assert.NoError(t, os.Mkdir(tmp, 0755))
+	hashes := map[string][]byte{}
+	tmp, err := ioutil.TempDir("", "test-installed-cc")
+	assert.NoError(t, err)
 	dir := path.Join(tmp, "empty")
 	assert.NoError(t, os.Mkdir(dir, 0755))
 	dir = path.Join(tmp, "nonempty")
@@ -124,22 +123,42 @@ func setupDirectoryStructure(t *testing.T) string {
 	dir = path.Join(tmp, "nopermissionforfiles")
 	assert.NoError(t, os.Mkdir(dir, 0755))
 	noPermissionFile := path.Join(tmp, "nopermissionforfiles", "nopermission.1")
-	_, err := os.Create(noPermissionFile)
+	_, err = os.Create(noPermissionFile)
 	assert.NoError(t, err)
 	dir = path.Join(tmp, "nonempty")
 	assert.NoError(t, os.Mkdir(path.Join(tmp, "nonempty", "directory"), 0755))
 	for _, f := range files {
+		var name, ver string
+		parts := strings.SplitN(f, ".", 2)
+		name = parts[0]
+		if len(parts) > 1 {
+			ver = parts[1]
+		}
 		file, err := os.Create(path.Join(dir, f))
 		assert.NoError(t, err)
 		cds := &peer.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &peer.ChaincodeSpec{
-				ChaincodeId: &peer.ChaincodeID{},
+				ChaincodeId: &peer.ChaincodeID{Name: name, Version: ver},
 			},
 		}
+
+		codehash := sha256.New()
+		codehash.Write(cds.CodePackage)
+
+		metahash := sha256.New()
+		metahash.Write([]byte(name))
+		metahash.Write([]byte(ver))
+
+		hash := sha256.New()
+		hash.Write(codehash.Sum(nil))
+		hash.Write(metahash.Sum(nil))
+
+		hashes[f] = hash.Sum(nil)
+
 		b, _ := proto.Marshal(cds)
 		file.Write(b)
 		file.Close()
 	}
 
-	return tmp
+	return tmp, hashes
 }

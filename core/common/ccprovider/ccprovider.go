@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -81,6 +82,16 @@ func SetChaincodesPath(path string) {
 
 func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
 	return GetChaincodePackageFromPath(ccname, ccversion, chaincodeInstallPath)
+}
+
+// isPrintable is used by CDSPackage and SignedCDSPackage validation to
+// detect garbage strings in unmarshaled proto fields where printable
+// characters are expected.
+func isPrintable(name string) bool {
+	notASCII := func(r rune) bool {
+		return !unicode.IsPrint(r)
+	}
+	return strings.IndexFunc(name, notASCII) == -1
 }
 
 // GetChaincodePackage returns the chaincode package from the file system
@@ -306,7 +317,7 @@ func GetCCPackage(buf []byte) (CCPackage, error) {
 		return scds, nil
 	}
 
-	return nil, errors.New("could not unmarshaled chaincode package to CDS or SignedCDS")
+	return nil, errors.New("could not unmarshal chaincode package to CDS or SignedCDS")
 }
 
 // GetInstalledChaincodes returns a map whose key is the chaincode id and
