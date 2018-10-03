@@ -105,7 +105,6 @@ type identifier func() (*PeerIdentification, error)
 
 // Discovery is the interface that represents a discovery module
 type Discovery interface {
-
 	// Lookup returns a network member, or nil if not found
 	Lookup(PKIID common.PKIidType) *NetworkMember
 

@@ -9,6 +9,7 @@ package channel
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -39,11 +40,11 @@ type Config struct {
 	RequestStateInfoInterval    time.Duration
 	BlockExpirationInterval     time.Duration
 	StateInfoCacheSweepInterval time.Duration
+	TimeForMembershipTracker    time.Duration
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
 type GossipChannel interface {
-
 	// Self returns a StateInfoMessage about the peer
 	Self() *proto.SignedGossipMessage
 
@@ -150,6 +151,7 @@ type gossipChannel struct {
 	ledgerHeight              uint64
 	incTime                   uint64
 	leftChannel               int32
+	membershipTracker         *membershipTracker
 }
 
 type membershipFilter struct {
@@ -162,6 +164,7 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 	if mf.hasLeftChannel() {
 		return nil
 	}
+
 	var members []discovery.NetworkMember
 	for _, mem := range mf.adapter.GetMembership() {
 		if mf.eligibleForChannelAndSameOrg(mem) {
@@ -263,12 +266,27 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	go gc.periodicalInvocation(gc.publishStateInfo, gc.stateInfoPublishScheduler.C)
 	// Periodically request state info
 	go gc.periodicalInvocation(gc.requestStateInfo, gc.stateInfoRequestScheduler.C)
+
+	ticker := time.NewTicker(gc.GetConf().TimeForMembershipTracker)
+	gc.membershipTracker = &membershipTracker{
+		getPeersToTrack: gc.GetPeers,
+		report:          gc.reportMembershipChanges,
+		stopChan:        make(chan struct{}, 1),
+		tickerChannel:   ticker.C,
+	}
+
+	go gc.membershipTracker.trackMembershipChanges()
 	return gc
+}
+
+func (gc *gossipChannel) reportMembershipChanges(input ...interface{}) {
+	gc.logger.Info(input...)
 }
 
 // Stop stop the channel operations
 func (gc *gossipChannel) Stop() {
 	gc.stopChan <- struct{}{}
+	gc.membershipTracker.stopChan <- struct{}{}
 	gc.blocksPuller.Stop()
 	gc.stateInfoPublishScheduler.Stop()
 	gc.stateInfoRequestScheduler.Stop()
@@ -957,4 +975,86 @@ func GenerateMAC(pkiID common.PKIidType, channelID common.ChainID) []byte {
 	// Hash is computed on (PKI-ID || channel ID)
 	preImage := append([]byte(pkiID), []byte(channelID)...)
 	return common_utils.ComputeSHA256(preImage)
+}
+
+//membershipTracker is a struct for tracking changes in peers of the channel
+type membershipTracker struct {
+	getPeersToTrack func() []discovery.NetworkMember
+	report          func(...interface{})
+	stopChan        chan struct{}
+	tickerChannel   <-chan time.Time
+}
+
+//endpoints return all peers by their endpoints
+func endpoints(members discovery.Members) [][]string {
+	var currView [][]string
+	for _, member := range members {
+		ep := member.Endpoint
+		epi := member.InternalEndpoint
+		var endPoints []string
+		if ep != epi {
+			endPoints = append(endPoints, ep, epi)
+		} else {
+			endPoints = append(endPoints, ep)
+		}
+		currView = append(currView, endPoints)
+	}
+	return currView
+}
+
+//checkIfPeersChanged checks which peers are offline and which are online for channel
+func (mt *membershipTracker) checkIfPeersChanged(prevPeers discovery.Members, currPeers discovery.Members,
+	prevSetPeers map[string]struct{}, currSetPeers map[string]struct{}) {
+	var currView [][]string
+
+	wereInPrev := endpoints(prevPeers.Filter(func(member discovery.NetworkMember) bool {
+		_, exists := currSetPeers[string(member.PKIid)]
+		return !exists
+	}))
+	newInCurr := endpoints(currPeers.Filter(func(member discovery.NetworkMember) bool {
+		_, exists := prevSetPeers[string(member.PKIid)]
+		return !exists
+	}))
+	currView = endpoints(currPeers)
+
+	if !reflect.DeepEqual(wereInPrev, newInCurr) {
+		if len(wereInPrev) == 0 {
+			mt.report("Membership view has changed. peers went online: ", newInCurr, ", current view: ", currView)
+		} else if len(newInCurr) == 0 {
+			mt.report("Membership view has changed. peers went offline: ", wereInPrev, ", current view: ", currView)
+		} else {
+			mt.report("Membership view has changed. peers went offline: ", wereInPrev, ", peers went online: ", newInCurr, ", current view: ", currView)
+		}
+	}
+}
+
+func (mt *membershipTracker) createSetOfPeers(peersToMakeSet []discovery.NetworkMember) map[string]struct{} {
+	setPeers := make(map[string]struct{})
+	for _, prevPeer := range peersToMakeSet {
+		prevPeerID := string(prevPeer.PKIid)
+		setPeers[prevPeerID] = struct{}{}
+	}
+	return setPeers
+}
+
+func (mt *membershipTracker) trackMembershipChanges() {
+	prevSetPeers := make(map[string]struct{})
+	prev := mt.getPeersToTrack()
+	prevSetPeers = mt.createSetOfPeers(prev)
+	for {
+		currSetPeers := make(map[string]struct{})
+		//timeout to check changes in peers
+		select {
+		case <-mt.stopChan:
+			return
+		case <-mt.tickerChannel:
+			//get current peers
+			currPeers := mt.getPeersToTrack()
+			currSetPeers = mt.createSetOfPeers(currPeers)
+			mt.checkIfPeersChanged(prev, currPeers, prevSetPeers, currSetPeers)
+			prev = currPeers
+			prevSetPeers = map[string]struct{}{}
+			prevSetPeers = mt.createSetOfPeers(prev)
+		}
+	}
 }

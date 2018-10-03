@@ -336,6 +336,7 @@ func newGossipConfig(portPrefix, id int, boot ...int) *gossip.Config {
 		PublishCertPeriod:          10 * time.Second,
 		RequestStateInfoInterval:   4 * time.Second,
 		PublishStateInfoInterval:   4 * time.Second,
+		TimeForMembershipTracker:   5 * time.Second,
 	}
 }
 

@@ -99,6 +99,9 @@ peer:
         # its own organization
         orgLeader: false
 
+        # Interval for membershipTracker polling
+        membershipTrackerInterval: 5s
+
         # Overrides the endpoint that the peer publishes to peers
         # in its organization. For peers in foreign organizations
         # see 'externalEndpoint'

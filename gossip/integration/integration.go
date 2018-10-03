@@ -52,6 +52,7 @@ func newConfig(selfEndpoint string, externalEndpoint string, certs *common.TLSCe
 		PublishStateInfoInterval:   util.GetDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
 		SkipBlockVerification:      viper.GetBool("peer.gossip.skipBlockVerification"),
 		TLSCerts:                   certs,
+		TimeForMembershipTracker:   util.GetDurationOrDefault("peer.gossip.membershipTrackerInterval", 5*time.Second),
 	}
 
 	return conf, nil

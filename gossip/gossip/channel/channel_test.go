@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -17,6 +18,7 @@ import (
 
 	gproto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -26,6 +28,8 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type msgMutator func(message *proto.Envelope)
@@ -39,6 +43,7 @@ var conf = Config{
 	RequestStateInfoInterval:    time.Millisecond * 100,
 	BlockExpirationInterval:     time.Second * 6,
 	StateInfoCacheSweepInterval: time.Second,
+	TimeForMembershipTracker:    time.Second * 5,
 }
 
 func init() {
@@ -202,6 +207,7 @@ func (ga *gossipAdapterMock) DeMultiplex(msg interface{}) {
 func (ga *gossipAdapterMock) GetMembership() []discovery.NetworkMember {
 	args := ga.Called()
 	members := args.Get(0).([]discovery.NetworkMember)
+
 	return members
 }
 
@@ -1971,5 +1977,231 @@ func sequence(start uint64, end uint64) []uint64 {
 		i++
 	}
 	return sequence
+
+}
+
+func TestChangesInPeers(t *testing.T) {
+	//TestChangesInPeers tracks after offline and online peers in channel
+	// Scenario1: no new peers - list of peers stays with no change
+	// Scenario2: new peer was added - old peers stay with no change
+	// Scenario3: new peer was added - one old peer was deleted
+	// Scenario4: new peer was added - one old peer hasn't been changed
+	// Scenario5: new peer was added and there were no other peers before
+	// Scenario6: a peer was deleted and no new peers were added
+	// Scenario7: one peer was deleted and all other peers stayed with no change
+	t.Parallel()
+	type testCase struct {
+		name                     string
+		oldMembers               map[string]struct{}
+		newMembers               map[string]struct{}
+		expected                 []string
+		entryInChannel           func(chan string)
+		expectedReportInvocation bool
+	}
+	var cases = []testCase{
+		{
+			name:       "noChanges",
+			oldMembers: map[string]struct{}{"pkiID11": {}, "pkiID22": {}, "pkiID33": {}},
+			newMembers: map[string]struct{}{"pkiID11": {}, "pkiID22": {}, "pkiID33": {}},
+			expected:   []string{""},
+			entryInChannel: func(chStr chan string) {
+				chStr <- ""
+			},
+			expectedReportInvocation: false,
+		},
+		{
+			name:       "newPeerWasAdded",
+			oldMembers: map[string]struct{}{"pkiID1": {}},
+			newMembers: map[string]struct{}{"pkiID1": {}, "pkiID3": {}},
+			expected: []string{"Membership view has changed. peers went online: [[pkiID3]], current view: [[pkiID1] [pkiID3]]",
+				"Membership view has changed. peers went online: [[pkiID3]], current view: [[pkiID3] [pkiID1]]"},
+			entryInChannel:           func(chStr chan string) {},
+			expectedReportInvocation: true,
+		},
+
+		{
+			name:       "newPeerAddedOldPeerDeleted",
+			oldMembers: map[string]struct{}{"pkiID1": {}, "pkiID2": {}},
+			newMembers: map[string]struct{}{"pkiID1": {}, "pkiID3": {}},
+			expected: []string{"Membership view has changed. peers went offline: [[pkiID2]], peers went online: [[pkiID3]], current view: [[pkiID1] [pkiID3]]",
+				"Membership view has changed. peers went offline: [[pkiID2]], peers went online: [[pkiID3]], current view: [[pkiID3] [pkiID1]]"},
+			entryInChannel:           func(chStr chan string) {},
+			expectedReportInvocation: true,
+		},
+		{
+			name:       "newPeersAddedOldPeerStayed",
+			oldMembers: map[string]struct{}{"pkiID1": {}},
+			newMembers: map[string]struct{}{"pkiID2": {}},
+			expected: []string{"Membership view has changed. peers went offline: [[pkiID1]], peers went online: [[pkiID2]], current view: [[pkiID2]]",
+				"Membership view has changed. peers went offline: [[pkiID1]], peers went online: [[pkiID2]], current view: [[pkiID2]]"},
+			entryInChannel:           func(chStr chan string) {},
+			expectedReportInvocation: true,
+		},
+		{
+			name:                     "newPeersAddedNoOldPeers",
+			oldMembers:               map[string]struct{}{},
+			newMembers:               map[string]struct{}{"pkiID1": {}},
+			expected:                 []string{"Membership view has changed. peers went online: [[pkiID1]], current view: [[pkiID1]]"},
+			entryInChannel:           func(chStr chan string) {},
+			expectedReportInvocation: true,
+		},
+		{
+			name:                     "PeerWasDeletedNoNewPeers",
+			oldMembers:               map[string]struct{}{"pkiID1": {}},
+			newMembers:               map[string]struct{}{},
+			expected:                 []string{"Membership view has changed. peers went offline: [[pkiID1]], current view: []"},
+			entryInChannel:           func(chStr chan string) {},
+			expectedReportInvocation: true,
+		},
+		{
+			name:       "onePeerWasDeletedRestStayed",
+			oldMembers: map[string]struct{}{"pkiID01": {}, "pkiID02": {}, "pkiID03": {}},
+			newMembers: map[string]struct{}{"pkiID01": {}, "pkiID02": {}},
+			expected: []string{"Membership view has changed. peers went offline: [[pkiID03]], current view: [[pkiID01] [pkiID02]]",
+				"Membership view has changed. peers went offline: [[pkiID03]], current view: [[pkiID02] [pkiID01]]"},
+			entryInChannel:           func(chStr chan string) {},
+			expectedReportInvocation: true,
+		},
+	}
+	invokedReport := false
+	//channel for holding the output of report
+	chForString := make(chan string, 1)
+	defer func() {
+		invokedReport = false
+	}()
+	funcLogger := func(a ...interface{}) {
+		invokedReport = true
+		chForString <- fmt.Sprint(a...)
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			tickChan := make(chan time.Time)
+			i := 0
+
+			buildMembers := func(rangeMembers map[string]struct{}) []discovery.NetworkMember {
+				var members []discovery.NetworkMember
+				for peerID := range rangeMembers {
+					peer := discovery.NetworkMember{
+						Endpoint:         peerID,
+						InternalEndpoint: peerID,
+					}
+					peer.PKIid = common.PKIidType(peerID)
+					members = append(members, peer)
+				}
+				return members
+			}
+
+			stopChan := make(chan struct{}, 1)
+
+			getListOfPeers := func() []discovery.NetworkMember {
+				var members []discovery.NetworkMember
+				if i == 1 {
+					members = buildMembers(test.newMembers)
+					i++
+					stopChan <- struct{}{}
+				}
+				if i == 0 {
+					members = buildMembers(test.oldMembers)
+					i++
+				}
+				return members
+			}
+
+			mt := &membershipTracker{
+				getPeersToTrack: getListOfPeers,
+				report:          funcLogger,
+				stopChan:        stopChan,
+				tickerChannel:   tickChan,
+			}
+
+			wgMT := sync.WaitGroup{}
+			wgMT.Add(1)
+			go func() {
+				mt.trackMembershipChanges()
+				wgMT.Done()
+			}()
+			defer wgMT.Wait()
+
+			tickChan <- time.Time{}
+			if test.name == "noChanges" {
+				test.entryInChannel(chForString)
+			}
+			select {
+			case actual, _ := <-chForString:
+				assert.Contains(t, test.expected, actual)
+				assert.Equal(t, test.expectedReportInvocation, invokedReport)
+			}
+		})
+	}
+}
+
+func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
+	// membershipTracker is invoked when gossip channel starts
+	// membershipTracker, as long as gossip channel was not stopped, has printed the right thing
+	// membershipTracker does not print after gossip channel was stopped
+	// membershipTracker stops running after gossip channel was stopped
+	t.Parallel()
+	checkIfStopedChan := make(chan struct{}, 1)
+	cs := &cryptoService{}
+	pkiID1 := common.PKIidType("1")
+	adapter := new(gossipAdapterMock)
+
+	jcm := &joinChanMsg{}
+
+	peerA := discovery.NetworkMember{
+		PKIid:            pkiIDInOrg1,
+		Endpoint:         "a",
+		InternalEndpoint: "a",
+	}
+	peerB := discovery.NetworkMember{
+		PKIid:            pkiIDinOrg2,
+		Endpoint:         "b",
+		InternalEndpoint: "b",
+	}
+
+	conf := conf
+	conf.RequestStateInfoInterval = time.Hour
+	conf.PullInterval = time.Hour
+	conf.TimeForMembershipTracker = time.Millisecond * 10
+
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("Forward", mock.Anything)
+	adapter.On("Send", mock.Anything, mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything)
+	adapter.On("GetConf").Return(conf)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", mock.Anything).Return(api.OrgIdentityType(nil))
+
+	waitForHandleMsgChan := make(chan struct{})
+
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{peerA}).Run(func(args mock.Arguments) {
+		waitForHandleMsgChan <- struct{}{}
+	}).Once()
+
+	gc := NewGossipChannel(pkiID1, orgInChannelA, cs, channelA, adapter, jcm)
+
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDinOrg2, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
+	<-waitForHandleMsgChan
+
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{peerB}).Run(func(args mock.Arguments) {
+		gc.(*gossipChannel).Stop()
+	}).Once()
+
+	flogging.Global.ActivateSpec("info")
+	gc.(*gossipChannel).logger = gc.(*gossipChannel).logger.(*flogging.FabricLogger).WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if !strings.Contains(entry.Message, "Membership view has changed. peers went offline:  [[a]] , peers went online:  [[b]] , current view:  [[b]]") {
+			return nil
+		}
+		checkIfStopedChan <- struct{}{}
+		return nil
+	}))
+
+	<-checkIfStopedChan
+
+	time.Sleep(conf.TimeForMembershipTracker * 2)
+	adapter.AssertNumberOfCalls(t, "GetMembership", 2)
 
 }

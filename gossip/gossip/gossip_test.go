@@ -240,6 +240,7 @@ func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs
 		PublishCertPeriod:          time.Duration(4) * time.Second,
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
+		TimeForMembershipTracker:   5 * time.Second,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs,
@@ -270,6 +271,7 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 		PublishCertPeriod:          time.Duration(0) * time.Second,
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
+		TimeForMembershipTracker:   5 * time.Second,
 	}
 
 	cryptoService := &naiveCryptoService{}

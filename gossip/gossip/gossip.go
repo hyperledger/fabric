@@ -131,6 +131,7 @@ type Config struct {
 
 	TLSCerts *common.TLSCertificates // TLS certificates of the peer
 
-	InternalEndpoint string // Endpoint we publish to peers in our organization
-	ExternalEndpoint string // Peer publishes this endpoint instead of SelfEndpoint to foreign organizations
+	InternalEndpoint         string        // Endpoint we publish to peers in our organization
+	ExternalEndpoint         string        // Peer publishes this endpoint instead of SelfEndpoint to foreign organizations
+	TimeForMembershipTracker time.Duration // Determines time for polling with membershipTracker
 }
