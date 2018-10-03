@@ -263,27 +263,26 @@ func (b *BitSet) NextSetMany(i uint, buffer []uint) (uint, []uint) {
 	if x >= len(b.set) || capacity == 0 {
 		return 0, myanswer[:0]
 	}
-	word := b.set[x]
 	skip := i & (wordSize - 1)
-	word = (word >> skip) << skip
+	word := b.set[x] >> skip
 	myanswer = myanswer[:capacity]
 	size := int(0)
 	for word != 0 {
 		r := trailingZeroes64(word)
-
 		t := word & ((^word) + 1)
-		myanswer[size] = r + uint(x<<6)
+		myanswer[size] = r + i
 		size++
 		if size == capacity {
 			goto End
 		}
 		word = word ^ t
 	}
-	for idx, word := range b.set[x+1:] {
+	x++
+	for idx, word := range b.set[x:] {
 		for word != 0 {
 			r := trailingZeroes64(word)
 			t := word & ((^word) + 1)
-			myanswer[size] = r + uint(x+idx+1)*64
+			myanswer[size] = r + (uint(x+idx) << 6)
 			size++
 			if size == capacity {
 				goto End
@@ -296,43 +295,6 @@ End:
 		return myanswer[size-1], myanswer[:size]
 	} else {
 		return 0, myanswer[:0]
-	}
-}
-
-func (b *BitSet) NextSetManyoldold(i uint, buffer []uint) (uint, []uint) {
-	myanswer := buffer[:0]
-	x := int(i >> log2WordSize)
-	if x >= len(b.set) {
-		return 0, myanswer
-	}
-	w := b.set[x]
-	skip := i & (wordSize - 1)
-	w = (w >> skip) << skip
-	base := uint(x << 6)
-	capacity := cap(buffer)
-	for len(myanswer) < capacity {
-		for w != 0 {
-			r := trailingZeroes64(w)
-
-			t := w & ((^w) + 1)
-			myanswer = append(myanswer, r+base)
-			if len(myanswer) == capacity {
-				goto End
-			}
-			w = w ^ t
-		}
-		x += 1
-		if x == len(b.set) {
-			break
-		}
-		base += 64
-		w = b.set[x]
-	}
-End:
-	if len(myanswer) > 0 {
-		return myanswer[len(myanswer)-1], myanswer
-	} else {
-		return 0, myanswer
 	}
 }
 
