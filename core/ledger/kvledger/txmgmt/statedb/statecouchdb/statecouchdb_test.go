@@ -49,7 +49,7 @@ func testMain(m *testing.M) int {
 	viper.Set("ledger.state.couchDBConfig.username", "")
 	viper.Set("ledger.state.couchDBConfig.password", "")
 	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
+	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 20)
 	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
 	// Disable auto warm to avoid error logs when the couchdb database has been dropped
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
