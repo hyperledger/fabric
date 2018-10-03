@@ -61,8 +61,8 @@ noverify = [
   version = "1.6.1"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/hashicorp/go-version"
+  version = "1.0.0"
 
 [[constraint]]
   branch = "master"
