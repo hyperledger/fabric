@@ -22,6 +22,6 @@ func TestGetCouchDBDefinition(t *testing.T) {
 	assert.Equal(t, "", couchDBDef.Username)
 	assert.Equal(t, "", couchDBDef.Password)
 	assert.Equal(t, 3, couchDBDef.MaxRetries)
-	assert.Equal(t, 10, couchDBDef.MaxRetriesOnStartup)
+	assert.Equal(t, 20, couchDBDef.MaxRetriesOnStartup)
 	assert.Equal(t, time.Second*35, couchDBDef.RequestTimeout)
 }

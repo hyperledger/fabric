@@ -109,7 +109,7 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	viper.Set("ledger.state.couchDBConfig.username", "")
 	viper.Set("ledger.state.couchDBConfig.password", "")
 	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
+	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 20)
 	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
 
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
