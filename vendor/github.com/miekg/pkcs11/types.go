@@ -13,6 +13,16 @@ CK_ULONG Index(CK_ULONG_PTR array, CK_ULONG i)
 {
 	return array[i];
 }
+
+static inline void putAttributePval(CK_ATTRIBUTE_PTR a, CK_VOID_PTR pValue)
+{
+	a->pValue = pValue;
+}
+
+static inline void putMechanismParam(CK_MECHANISM_PTR m, CK_VOID_PTR pParameter)
+{
+	m->pParameter = pParameter;
+}
 */
 import "C"
 
@@ -151,7 +161,7 @@ type Attribute struct {
 }
 
 // NewAttribute allocates a Attribute and returns a pointer to it.
-// Note that this is merely a convience function, as values returned
+// Note that this is merely a convenience function, as values returned
 // from the HSM are not converted back to Go values, those are just raw
 // byte slices.
 func NewAttribute(typ uint, x interface{}) *Attribute {
@@ -187,22 +197,22 @@ func NewAttribute(typ uint, x interface{}) *Attribute {
 }
 
 // cAttribute returns the start address and the length of an attribute list.
-func cAttributeList(a []*Attribute) (arena, C.ckAttrPtr, C.CK_ULONG) {
+func cAttributeList(a []*Attribute) (arena, C.CK_ATTRIBUTE_PTR, C.CK_ULONG) {
 	var arena arena
 	if len(a) == 0 {
 		return nil, nil, 0
 	}
-	pa := make([]C.ckAttr, len(a))
-	for i := 0; i < len(a); i++ {
-		pa[i]._type = C.CK_ATTRIBUTE_TYPE(a[i].Type)
-		//skip attribute if length is 0 to prevent panic in arena.Allocate
-		if a[i].Value == nil || len(a[i].Value) == 0 {
-			continue
+	pa := make([]C.CK_ATTRIBUTE, len(a))
+	for i, attr := range a {
+		pa[i]._type = C.CK_ATTRIBUTE_TYPE(attr.Type)
+		if len(attr.Value) != 0 {
+			buf, len := arena.Allocate(attr.Value)
+			// field is unaligned on windows so this has to call into C
+			C.putAttributePval(&pa[i], buf)
+			pa[i].ulValueLen = len
 		}
-
-		pa[i].pValue, pa[i].ulValueLen = arena.Allocate(a[i].Value)
 	}
-	return arena, C.ckAttrPtr(&pa[0]), C.CK_ULONG(len(a))
+	return arena, &pa[0], C.CK_ULONG(len(a))
 }
 
 func cDate(t time.Time) []byte {
@@ -221,6 +231,7 @@ func cDate(t time.Time) []byte {
 type Mechanism struct {
 	Mechanism uint
 	Parameter []byte
+	generator interface{}
 }
 
 // NewMechanism returns a pointer to an initialized Mechanism.
@@ -231,28 +242,42 @@ func NewMechanism(mech uint, x interface{}) *Mechanism {
 		return m
 	}
 
-	// Add any parameters passed (For now presume always bytes were passed in, is there another case?)
-	m.Parameter = x.([]byte)
+	switch p := x.(type) {
+	case *GCMParams, *OAEPParams:
+		// contains pointers; defer serialization until cMechanism
+		m.generator = p
+	case []byte:
+		m.Parameter = p
+	default:
+		panic("parameter must be one of type: []byte, *GCMParams, *OAEPParams")
+	}
 
 	return m
 }
 
-func cMechanismList(m []*Mechanism) (arena, C.ckMechPtr, C.CK_ULONG) {
+func cMechanism(mechList []*Mechanism) (arena, *C.CK_MECHANISM) {
+	if len(mechList) != 1 {
+		panic("expected exactly one mechanism")
+	}
+	mech := mechList[0]
+	cmech := &C.CK_MECHANISM{mechanism: C.CK_MECHANISM_TYPE(mech.Mechanism)}
+	// params that contain pointers are allocated here
+	param := mech.Parameter
 	var arena arena
-	if len(m) == 0 {
-		return nil, nil, 0
+	switch p := mech.generator.(type) {
+	case *GCMParams:
+		// uses its own arena because it has to outlive this function call (yuck)
+		param = cGCMParams(p)
+	case *OAEPParams:
+		param, arena = cOAEPParams(p, arena)
 	}
-	pm := make([]C.ckMech, len(m))
-	for i := 0; i < len(m); i++ {
-		pm[i].mechanism = C.CK_MECHANISM_TYPE(m[i].Mechanism)
-		//skip parameter if length is 0 to prevent panic in arena.Allocate
-		if m[i].Parameter == nil || len(m[i].Parameter) == 0 {
-			continue
-		}
-
-		pm[i].pParameter, pm[i].ulParameterLen = arena.Allocate(m[i].Parameter)
+	if len(param) != 0 {
+		buf, len := arena.Allocate(param)
+		// field is unaligned on windows so this has to call into C
+		C.putMechanismParam(cmech, buf)
+		cmech.ulParameterLen = len
 	}
-	return arena, C.ckMechPtr(&pm[0]), C.CK_ULONG(len(m))
+	return arena, cmech
 }
 
 // MechanismInfo provides information about a particular mechanism.
@@ -260,4 +285,17 @@ type MechanismInfo struct {
 	MinKeySize uint
 	MaxKeySize uint
 	Flags      uint
+}
+
+// stubData is a persistent nonempty byte array used by cMessage.
+var stubData = []byte{0}
+
+// cMessage returns the pointer/length pair corresponding to data.
+func cMessage(data []byte) (dataPtr C.CK_BYTE_PTR) {
+	l := len(data)
+	if l == 0 {
+		// &data[0] is forbidden in this case, so use a nontrivial array instead.
+		data = stubData
+	}
+	return C.CK_BYTE_PTR(unsafe.Pointer(&data[0]))
 }
