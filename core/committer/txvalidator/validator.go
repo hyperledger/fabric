@@ -602,6 +602,11 @@ func (ds *dynamicCapabilities) CollectionUpgrade() bool {
 	return ds.support.Capabilities().CollectionUpgrade()
 }
 
+// FabToken returns true if fabric token function is supported.
+func (ds *dynamicCapabilities) FabToken() bool {
+	return ds.support.Capabilities().FabToken()
+}
+
 func (ds *dynamicCapabilities) ForbidDuplicateTXIdInBlock() bool {
 	return ds.support.Capabilities().ForbidDuplicateTXIdInBlock()
 }

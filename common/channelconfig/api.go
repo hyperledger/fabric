@@ -160,6 +160,9 @@ type ApplicationCapabilities interface {
 	// KeyLevelEndorsement returns true if this channel supports endorsement
 	// policies expressible at a ledger key granularity, as described in FAB-8812
 	KeyLevelEndorsement() bool
+
+	// FabToken returns true if this channel supports FabToken functions
+	FabToken() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel

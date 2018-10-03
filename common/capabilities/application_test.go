@@ -62,6 +62,13 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 	assert.True(t, ap.PrivateChannelData())
 }
 
+func TestFabTokenExperimental(t *testing.T) {
+	ap := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationFabTokenExperimental: {},
+	})
+	assert.True(t, ap.FabToken())
+}
+
 func TestHasCapability(t *testing.T) {
 	ap := NewApplicationProvider(map[string]*cb.Capability{})
 	assert.True(t, ap.HasCapability(ApplicationV1_1))
