@@ -625,7 +625,7 @@ ledger:
        # Number of retries for CouchDB errors
        maxRetries: 3
        # Number of retries for CouchDB errors during peer startup
-       maxRetriesOnStartup: 10
+       maxRetriesOnStartup: 12
        # CouchDB request timeout (unit: duration, e.g. 20s)
        requestTimeout: 35s
        # Limit on the number of records per each CouchDB query
