@@ -711,22 +711,22 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dca743586b3492f899702d3dc09c9e13fc65a4b885bdac7ee1d1946c6ded6573"
+  digest = "1:1fcc8f83f964757cafdfd99e9439e89b30a1f775494c2c73db42be7081c5c020"
   name = "golang.org/x/net"
   packages = [
     "context",
     "html",
     "html/atom",
     "html/charset",
+    "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "lex/httplex",
     "trace",
   ]
   pruneopts = "NUT"
-  revision = "e0c57d8f86c17f0724497efcb3bc617e82834821"
+  revision = "f5e5bdd778241bfefa8627f7124c39cd6ad8d74f"
 
 [[projects]]
   branch = "master"
