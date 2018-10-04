@@ -531,7 +531,7 @@ func (child *partitionConsumer) parseRecords(batch *RecordBatch) ([]*ConsumerMes
 		child.offset = offset + 1
 	}
 	if len(messages) == 0 {
-		return nil, ErrIncompleteResponse
+		child.offset += 1
 	}
 	return messages, nil
 }
@@ -579,10 +579,6 @@ func (child *partitionConsumer) parseResponse(response *FetchResponse) ([]*Consu
 
 	messages := []*ConsumerMessage{}
 	for _, records := range block.RecordsSet {
-		if control, err := records.isControl(); err != nil || control {
-			continue
-		}
-
 		switch records.recordsType {
 		case legacyRecords:
 			messageSetMessages, err := child.parseMessages(records.MsgSet)
@@ -595,6 +591,9 @@ func (child *partitionConsumer) parseResponse(response *FetchResponse) ([]*Consu
 			recordBatchMessages, err := child.parseRecords(records.RecordBatch)
 			if err != nil {
 				return nil, err
+			}
+			if control, err := records.isControl(); err != nil || control {
+				continue
 			}
 
 			messages = append(messages, recordBatchMessages...)

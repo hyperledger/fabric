@@ -163,6 +163,27 @@ func (r *Records) isControl() (bool, error) {
 	return false, fmt.Errorf("unknown records type: %v", r.recordsType)
 }
 
+func (r *Records) isOverflow() (bool, error) {
+	if r.recordsType == unknownRecords {
+		if empty, err := r.setTypeFromFields(); err != nil || empty {
+			return false, err
+		}
+	}
+
+	switch r.recordsType {
+	case unknownRecords:
+		return false, nil
+	case legacyRecords:
+		if r.MsgSet == nil {
+			return false, nil
+		}
+		return r.MsgSet.OverflowMessage, nil
+	case defaultRecords:
+		return false, nil
+	}
+	return false, fmt.Errorf("unknown records type: %v", r.recordsType)
+}
+
 func magicValue(pd packetDecoder) (int8, error) {
 	dec, err := pd.peek(magicOffset, magicLength)
 	if err != nil {
