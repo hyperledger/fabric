@@ -61,8 +61,8 @@ noverify = [
   version = "1.6.1"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/hashicorp/go-version"
+  version = "1.0.0"
 
 [[constraint]]
   branch = "master"
@@ -77,8 +77,8 @@ noverify = [
   name = "github.com/miekg/pkcs11"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/mitchellh/mapstructure"
+  version = "v1.1.1"
 
 [[constraint]]
   branch = "master"
@@ -94,11 +94,11 @@ noverify = [
 
 [[constraint]]
   name = "github.com/spf13/cobra"
-  version = "0.0.1"
+  version = "0.0.3"
 
 [[constraint]]
   name = "github.com/spf13/pflag"
-  version = "1.0.0"
+  version = "1.0.3"
 
 [[constraint]]
   name = "github.com/spf13/viper"
