@@ -9,6 +9,7 @@ package endorser
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -25,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/protos/transientstore"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 var endorserLogger = flogging.MustGetLogger("endorser")
@@ -125,8 +127,13 @@ func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms
 
 // call specified chaincode (system or user)
 func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, version string, input *pb.ChaincodeInput, cid *pb.ChaincodeID) (*pb.Response, *pb.ChaincodeEvent, error) {
-	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s version: %s", txParams.ChannelID, txParams.TxID, cid, version)
-	defer endorserLogger.Debugf("[%s][%s] Exit", txParams.ChannelID, txParams.TxID)
+	endorserLogger.Infof("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), cid)
+	defer func(start time.Time) {
+		logger := endorserLogger.WithOptions(zap.AddCallerSkip(1))
+		elapsedMilliseconds := time.Since(start).Round(time.Millisecond) / time.Millisecond
+		logger.Infof("[%s][%s] Exit chaincode: %s (%dms)", txParams.ChannelID, shorttxid(txParams.TxID), cid, elapsedMilliseconds)
+	}(time.Now())
+
 	var err error
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent

@@ -12,7 +12,10 @@ import (
 	"os"
 	"testing"
 
+	. "github.com/onsi/gomega"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -33,6 +36,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -448,6 +452,34 @@ func TestEndorserGoodPath(t *testing.T) {
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 200, pResp.Response.Status)
+}
+
+func TestEndorserChaincodeCallLogging(t *testing.T) {
+	gt := NewGomegaWithT(t)
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
+	support := &em.MockSupport{
+		Mock: m,
+		GetApplicationConfigBoolRv: true,
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+		GetTransactionByIDErr:      errors.New(""),
+		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
+	}
+	attachPluginEndorser(support)
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+
+	buf := gbytes.NewBuffer()
+	flogging.Global.SetWriter(buf)
+	defer flogging.Global.SetWriter(os.Stderr)
+
+	es.ProcessProposal(context.Background(), getSignedProp("chaincode-name", "chaincode-version", t))
+
+	t.Logf("contents:\n%s", buf.Contents())
+	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Entry chaincode: name:"chaincode-name" version:"chaincode-version"`))
+	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Exit chaincode: name:"chaincode-name" version:"chaincode-version"  (.*ms)`))
 }
 
 func TestEndorserLSCC(t *testing.T) {
