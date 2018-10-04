@@ -66,9 +66,13 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 
 	//set up our server options
 	var serverOpts []grpc.ServerOption
+
 	//check SecOpts
-	secureConfig := serverConfig.SecOpts
-	if secureConfig != nil && secureConfig.UseTLS {
+	var secureConfig SecureOptions
+	if serverConfig.SecOpts != nil {
+		secureConfig = *serverConfig.SecOpts
+	}
+	if secureConfig.UseTLS {
 		//both key and cert are required
 		if secureConfig.Key != nil && secureConfig.Certificate != nil {
 			//load server public and private keys
@@ -112,12 +116,10 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 			}
 
 			// create credentials and add to server options
-			creds := NewServerTransportCredentials(grpcServer.tlsConfig,
-				serverConfig.Logger)
+			creds := NewServerTransportCredentials(grpcServer.tlsConfig, serverConfig.Logger)
 			serverOpts = append(serverOpts, grpc.Creds(creds))
 		} else {
-			return nil, errors.New("serverConfig.SecOpts must contain both Key and " +
-				"Certificate when UseTLS is true")
+			return nil, errors.New("serverConfig.SecOpts must contain both Key and Certificate when UseTLS is true")
 		}
 	}
 	// set max send and recv msg sizes
@@ -136,16 +138,14 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 	if len(serverConfig.StreamInterceptors) > 0 {
 		serverOpts = append(
 			serverOpts,
-			grpc.StreamInterceptor(
-				grpc_middleware.ChainStreamServer(
-					serverConfig.StreamInterceptors...)))
+			grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(serverConfig.StreamInterceptors...)),
+		)
 	}
 	if len(serverConfig.UnaryInterceptors) > 0 {
 		serverOpts = append(
 			serverOpts,
-			grpc.UnaryInterceptor(
-				grpc_middleware.ChainUnaryServer(
-					serverConfig.UnaryInterceptors...)))
+			grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(serverConfig.UnaryInterceptors...)),
+		)
 	}
 
 	grpcServer.server = grpc.NewServer(serverOpts...)
