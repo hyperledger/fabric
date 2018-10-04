@@ -128,7 +128,7 @@ func TestNewDeliverService(t *testing.T) {
 	connWG.Wait()
 
 	assertBlockDissemination(0, gossipServiceAdapter.GossipBlockDisseminations, t)
-	assert.Equal(t, atomic.LoadInt32(&blocksDeliverer.RecvCnt), atomic.LoadInt32(&gossipServiceAdapter.AddPayloadsCnt))
+	assert.Equal(t, blocksDeliverer.RecvCount(), gossipServiceAdapter.AddPayloadCount())
 	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{Height: 0}, func() {}), "Delivery service is stopping")
 	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID"), "Delivery service is stopping")
 }
