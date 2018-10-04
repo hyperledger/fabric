@@ -115,7 +115,7 @@ Here's an example of the `peer channel getinfo` command.
   ```
 
   You can see that the latest block for channel `mychannel` is block 5.  You
-  can also see the crytographic hashes for the most recent blocks in the
+  can also see the cryptographic hashes for the most recent blocks in the
   channel's blockchain.
 
 ### peer channel join example
