@@ -239,7 +239,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:6f8bed5a0e510c667026ac9b89371d833007ed373b6e95656acf90324209f545"
+  digest = "1:334de874ed09231d791dc15b76fb9b520018aa0e899df361bb257e1d4f9b5447"
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
@@ -258,8 +258,8 @@
     "ptypes/timestamp",
   ]
   pruneopts = "NUT"
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -539,7 +539,6 @@
   revision = "54d17b57dd7d4a3aa092476596b3f8a933bde349"
 
 [[projects]]
-  branch = "master"
   digest = "1:89948a031cefb021d77be478c260502337228ad35eb5e8c811eb16f0a759b9ae"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
