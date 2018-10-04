@@ -30,22 +30,26 @@ func TestTLSClient(t *testing.T) {
 	assert.NoError(t, err)
 	go srv.Start()
 	defer srv.Stop()
-	conf := Config{
-		Timeout:        time.Millisecond * 100,
-		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
-	}
+	conf := Config{}
 	cl, err := NewClient(conf)
 	assert.NoError(t, err)
 	_, port, _ := net.SplitHostPort(srv.Address())
-	dial := cl.NewDialer(fmt.Sprintf("localhost:%s", port))
+	dial := cl.NewDialer(net.JoinHostPort("localhost", port))
 	conn, err := dial()
 	assert.NoError(t, err)
 	conn.Close()
+}
 
-	dial = cl.NewDialer(fmt.Sprintf("non_existent_host.xyz.blabla:%s", port))
+func TestDialBadEndpoint(t *testing.T) {
+	conf := Config{
+		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
+		Timeout:        100 * time.Millisecond,
+	}
+	cl, err := NewClient(conf)
+	assert.NoError(t, err)
+	dial := cl.NewDialer("non_existent_host.xyz.blabla:9999")
 	_, err = dial()
 	assert.Error(t, err)
-
 }
 
 func TestNonTLSClient(t *testing.T) {
