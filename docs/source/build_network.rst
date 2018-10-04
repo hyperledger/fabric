@@ -447,7 +447,7 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
 .. code:: bash
 
-    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
 You should see an output similar to the following in your terminal:
 
@@ -459,7 +459,7 @@ You should see an output similar to the following in your terminal:
 
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
           will be output into the ``channel-artifacts`` directory at the root of this
-          project.
+          project. The `channelID` in the above command is the name of the system channel.
 
 .. _createchanneltx:
 
