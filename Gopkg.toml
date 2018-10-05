@@ -3,10 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 required = [
-    "github.com/onsi/ginkgo",
-    "github.com/onsi/gomega",
     "github.com/golang/protobuf/protoc-gen-go",
-    "github.com/coreos/etcd/raft"
 ]
 
 ignored = [
@@ -151,6 +148,10 @@ noverify = [
 [[constraint]]
   name = "github.com/onsi/ginkgo"
   revision = "a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee"
+
+[[constraint]]
+  name = "github.com/onsi/gomega"
+  version = "1.4.2"
 
 [[constraint]]
   name = "github.com/coreos/etcd"

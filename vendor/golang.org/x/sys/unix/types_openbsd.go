@@ -38,6 +38,7 @@ package unix
 #include <sys/un.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <uvm/uvmexp.h>
 #include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -263,3 +264,9 @@ const (
 // Uname
 
 type Utsname C.struct_utsname
+
+// Uvmexp
+
+const SizeofUvmexp = C.sizeof_struct_uvmexp
+
+type Uvmexp C.struct_uvmexp

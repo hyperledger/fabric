@@ -100,14 +100,14 @@ func SysctlClockinfo(name string) (*Clockinfo, error) {
 	}
 
 	n := uintptr(SizeofClockinfo)
-	buf := make([]byte, SizeofClockinfo)
-	if err := sysctl(mib, &buf[0], &n, nil, 0); err != nil {
+	var ci Clockinfo
+	if err := sysctl(mib, (*byte)(unsafe.Pointer(&ci)), &n, nil, 0); err != nil {
 		return nil, err
 	}
 	if n != SizeofClockinfo {
 		return nil, EIO
 	}
-	return (*Clockinfo)(unsafe.Pointer(&buf[0])), nil
+	return &ci, nil
 }
 
 //sysnb pipe() (fd1 int, fd2 int, err error)
