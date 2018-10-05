@@ -8,8 +8,8 @@ Developing Applications
    developapps/scenario.md
    developapps/analysis.md
    developapps/smartcontract.md
-   developapps/architecture.md
    developapps/application.md
+   developapps/architecture.md
    developapps/apis.md
    developapps/designelements
 
