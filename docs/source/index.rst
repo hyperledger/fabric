@@ -19,6 +19,7 @@ modularity and versatility for a broad set of industry use cases.
    whatsnew
    key_concepts
    getting_started
+   developing_applications
    tutorials
    ops_guide
    command_ref
