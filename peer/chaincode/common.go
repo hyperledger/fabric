@@ -125,7 +125,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 			return errors.WithMessage(err, "error while unmarshaling chaincode action")
 		}
 		if proposalResp.Endorsement == nil {
-			return errors.Errorf("endorsement failure during invoke. chaincode result: %v", ca.Response)
+			return errors.Errorf("endorsement failure during invoke. response: %v", proposalResp.Response)
 		}
 		logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
 	} else {

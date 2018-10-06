@@ -218,7 +218,7 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		err = cmd.Execute()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "endorsement failure during invoke")
-		assert.Contains(t, err.Error(), fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
+		assert.Contains(t, err.Error(), fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
 	}
 }
 
