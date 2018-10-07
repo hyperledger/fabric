@@ -171,6 +171,15 @@ func (members Members) Filter(filter func(member NetworkMember) bool) Members {
 	return res
 }
 
+// Map invokes the given function to every NetworkMember among the Members
+func (members Members) Map(f func(member NetworkMember) NetworkMember) Members {
+	var res Members
+	for _, m := range members {
+		res = append(res, f(m))
+	}
+	return res
+}
+
 // HaveExternalEndpoints selects network members that have external endpoints
 func HasExternalEndpoint(member NetworkMember) bool {
 	return member.Endpoint != ""
