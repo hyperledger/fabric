@@ -479,7 +479,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 
 	t.Logf("contents:\n%s", buf.Contents())
 	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Entry chaincode: name:"chaincode-name" version:"chaincode-version"`))
-	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Exit chaincode: name:"chaincode-name" version:"chaincode-version"  (.*s)`))
+	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Exit chaincode: name:"chaincode-name" version:"chaincode-version"  (.*ms)`))
 }
 
 func TestEndorserLSCC(t *testing.T) {
