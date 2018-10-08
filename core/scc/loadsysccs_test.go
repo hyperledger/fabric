@@ -64,7 +64,7 @@ func TestLoadSCCPluginInvalid(t *testing.T) {
 var raceEnabled bool
 
 func buildExamplePlugin(t *testing.T, path, pluginPackage string) {
-	cmd := exec.Command("go", "build", "-tags", goBuildTags, "-o", path, "-buildmode=plugin")
+	cmd := exec.Command("go", "build", "-o", path, "-buildmode=plugin")
 	if raceEnabled {
 		cmd.Args = append(cmd.Args, "-race")
 	}

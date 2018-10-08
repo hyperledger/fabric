@@ -57,14 +57,9 @@ PROJECT_NAME = $(PROJECT_NAME)/fabric
 else
 PROJECT_NAME = hyperledger/fabric
 endif
-EXPERIMENTAL ?= true
 
 BUILD_DIR ?= .build
 NEXUS_REPO = nexus3.hyperledger.org:10001/hyperledger
-
-ifeq ($(EXPERIMENTAL),true)
-GO_TAGS += experimental
-endif
 
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)
@@ -81,7 +76,6 @@ METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
-METADATA_VAR += Experimental=$(EXPERIMENTAL)
 
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 

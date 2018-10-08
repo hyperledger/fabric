@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
@@ -508,17 +507,10 @@ func (goPlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *ta
 	ldflagsOpt := getLDFlagsOpts()
 	logger.Infof("building chaincode with ldflagsOpt: '%s'", ldflagsOpt)
 
-	var gotags string
-	// check if experimental features are enabled
-	if metadata.Experimental == "true" {
-		gotags = " experimental"
-	}
-	logger.Infof("building chaincode with tags: %s", gotags)
-
 	codepackage := bytes.NewReader(code)
 	binpackage := bytes.NewBuffer(nil)
 	err = util.DockerBuild(util.DockerBuildOptions{
-		Cmd:          fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build -tags \"%s\" %s -o /chaincode/output/chaincode %s", gotags, ldflagsOpt, pkgname),
+		Cmd:          fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
 		InputStream:  codepackage,
 		OutputStream: binpackage,
 	})
