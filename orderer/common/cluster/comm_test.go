@@ -17,12 +17,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	comm_utils "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/onsi/gomega"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -208,7 +208,7 @@ func newTestNode(t *testing.T) *clusterNode {
 	}
 
 	tstSrv.c = &cluster.Comm{
-		Logger:       logging.MustGetLogger("test"),
+		Logger:       flogging.MustGetLogger("test"),
 		Chan2Members: make(cluster.MembersByChannel),
 		H:            handler,
 		ChanExt:      channelExtractor,
