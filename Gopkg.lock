@@ -861,7 +861,6 @@
     "github.com/Knetic/govaluate",
     "github.com/Shopify/sarama",
     "github.com/Shopify/sarama/mocks",
-    "github.com/alecthomas/template",
     "github.com/cactus/go-statsd-client/statsd",
     "github.com/coreos/etcd/raft",
     "github.com/coreos/etcd/raft/raftpb",
