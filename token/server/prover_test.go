@@ -9,6 +9,7 @@ package server_test
 import (
 	"context"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -850,3 +851,196 @@ var _ = Describe("ProverListUnspentTokens", func() {
 		})
 	})
 })
+
+var _ = Describe("Prover Transfer using TMS", func() {
+	var (
+		prover           *server.Prover
+		marshaler        *server.ResponseMarshaler
+		expectedResponse *token.CommandResponse_TokenTransaction
+		command          *token.Command
+		signedCommand    *token.SignedCommand
+		marshaledCommand []byte
+		transferRequest  *token.TransferRequest
+	)
+	It("initializes variables and expected responses", func() {
+
+		var err error
+		keys := make([]string, 2)
+		keys[0], err = plain.GenerateKeyForTest("1", 0)
+		Expect(err).NotTo(HaveOccurred())
+		keys[1], err = plain.GenerateKeyForTest("2", 1)
+		Expect(err).NotTo(HaveOccurred())
+
+		tokenIDs := [][]byte{[]byte(keys[0]), []byte(keys[1])}
+
+		shares := []*token.RecipientTransferShare{
+			{Recipient: []byte("Alice"), Quantity: 20},
+			{Recipient: []byte("Bob"), Quantity: 250},
+			{Recipient: []byte("Charlie"), Quantity: 30},
+		}
+		transferRequest = &token.TransferRequest{Credential: []byte("Alice"), TokenIds: tokenIDs, Shares: shares}
+
+		command = &token.Command{
+			Header: &token.Header{
+				ChannelId: "channel-id",
+				Creator:   []byte("Alice"),
+				Nonce:     []byte("nonce"),
+			},
+			Payload: &token.Command_TransferRequest{
+				TransferRequest: transferRequest,
+			},
+		}
+		marshaledCommand = ProtoMarshal(command)
+		signedCommand = &token.SignedCommand{
+			Command:   marshaledCommand,
+			Signature: []byte("command-signature"),
+		}
+
+		inputIDs, err := getInputIDs(keys)
+
+		outTokens := make([]*token.PlainOutput, 3)
+		outTokens[0] = &token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 20}
+		outTokens[1] = &token.PlainOutput{Owner: []byte("Bob"), Type: "XYZ", Quantity: 250}
+		outTokens[2] = &token.PlainOutput{Owner: []byte("Charlie"), Type: "XYZ", Quantity: 30}
+
+		tokenTx := &token.TokenTransaction{
+			Action: &token.TokenTransaction_PlainAction{
+				PlainAction: &token.PlainTokenAction{
+					Data: &token.PlainTokenAction_PlainTransfer{
+						PlainTransfer: &token.PlainTransfer{
+							Inputs:  inputIDs,
+							Outputs: outTokens,
+						},
+					},
+				},
+			},
+		}
+		expectedResponse = &token.CommandResponse_TokenTransaction{TokenTransaction: tokenTx}
+	})
+	BeforeEach(func() {
+		var err error
+		inTokens := make([][]byte, 2)
+		inTokens[0], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100})
+		Expect(err).NotTo(HaveOccurred())
+
+		inTokens[1], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 200})
+		Expect(err).NotTo(HaveOccurred())
+
+		fakePolicyChecker := &mock.PolicyChecker{}
+		fakeSigner := &mock.SignerIdentity{}
+		fakeLedgerReader := &mock2.LedgerReader{}
+		fakeLedgerManager := &mock2.LedgerManager{}
+
+		manager := &server.Manager{LedgerManager: fakeLedgerManager}
+		marshaler = &server.ResponseMarshaler{Signer: fakeSigner, Creator: []byte("creator"), Time: clock}
+
+		prover = &server.Prover{
+			Marshaler:     marshaler,
+			PolicyChecker: fakePolicyChecker,
+			TMSManager:    manager,
+		}
+
+		fakeSigner.SignReturns([]byte("it is a signature"), nil)
+		fakeSigner.SerializeReturns([]byte("Alice"), nil)
+
+		fakeLedgerManager.GetLedgerReaderReturns(fakeLedgerReader, nil)
+		fakeLedgerReader.GetStateReturns(inTokens[0], nil)
+		fakeLedgerReader.GetStateReturnsOnCall(1, inTokens[1], nil)
+	})
+
+	Describe("Transfer ", func() {
+		It("returns token.CommandResponse_TokenTransaction for transfer", func() {
+			response, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(Equal(expectedResponse))
+		})
+	})
+
+	Describe("ProcessCommand using ResponseMarshaler", func() {
+		It("marshals a Transfer response", func() {
+
+			marshaledResponse, err := marshaler.MarshalCommandResponse(marshaledCommand, expectedResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			response, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(Equal(marshaledResponse))
+		})
+	})
+	Describe("ProcessCommand with grpc service activated", func() {
+		var (
+			proverEndpoint string
+			grpcSrv        *grpc.Server
+		)
+
+		BeforeEach(func() {
+
+			// start grpc server for prover
+			listener, err := net.Listen("tcp", "127.0.0.1:")
+			Expect(err).To(BeNil())
+			grpcSrv = grpc.NewServer()
+			token.RegisterProverServer(grpcSrv, prover)
+			go grpcSrv.Serve(listener)
+
+			proverEndpoint = listener.Addr().String()
+
+		})
+
+		AfterEach(func() {
+			grpcSrv.Stop()
+		})
+
+		It("returns expected response", func() {
+			// create grpc client
+			clientConn, err := grpc.Dial(proverEndpoint, grpc.WithInsecure())
+			Expect(err).To(BeNil())
+			defer clientConn.Close()
+			proverClient := token.NewProverClient(clientConn)
+
+			response, err := proverClient.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+
+			marshaledResponse, err := marshaler.MarshalCommandResponse(marshaledCommand, expectedResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response.Signature).To(Equal(marshaledResponse.Signature))
+			Expect(response.Response).To(Equal(marshaledResponse.Response))
+		})
+	})
+})
+
+const minUnicodeRuneValue = 0 //U+0000
+
+func splitCompositeKey(compositeKey string) (string, []string, error) {
+	componentIndex := 1
+	components := []string{}
+	for i := 1; i < len(compositeKey); i++ {
+		if compositeKey[i] == minUnicodeRuneValue {
+			components = append(components, compositeKey[componentIndex:i])
+			componentIndex = i + 1
+		}
+	}
+	return components[0], components[1:], nil
+}
+
+func getInputIDs(keys []string) ([]*token.InputId, error) {
+	inputIDs := make([]*token.InputId, len(keys))
+	for i := 0; i < len(keys); i++ {
+		_, indices, err := splitCompositeKey(keys[i])
+
+		if err != nil {
+			return nil, err
+		}
+		if len(indices) != 2 {
+			return nil, errors.New("error splitting composite keys")
+		}
+
+		index, err := strconv.Atoi(indices[1])
+		if err != nil {
+			return nil, err
+		}
+		inputIDs[i] = &token.InputId{TxId: indices[0], Index: uint32(index)}
+	}
+	return inputIDs, nil
+}
