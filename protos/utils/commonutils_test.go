@@ -348,3 +348,82 @@ func TestChannelHeader(t *testing.T) {
 	_, err = ChannelHeader(&cb.Envelope{})
 	assert.Error(t, err, "Payload was missing")
 }
+
+func TestIsConfigBlock(t *testing.T) {
+	newBlock := func(env *cb.Envelope) *cb.Block {
+		return &cb.Block{
+			Data: &cb.BlockData{
+				Data: [][]byte{MarshalOrPanic(env)},
+			},
+		}
+	}
+
+	newConfigEnv := func(envType int32) *cb.Envelope {
+		return &cb.Envelope{
+			Payload: MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: MarshalOrPanic(&cb.ChannelHeader{
+						Type:      envType,
+						ChannelId: "test-chain",
+					}),
+				},
+				Data: []byte("test bytes"),
+			}), // common.Payload
+		} // LastUpdate
+	}
+
+	// scenario 1: CONFIG envelope
+	envType := int32(cb.HeaderType_CONFIG)
+	env := newConfigEnv(envType)
+	block := newBlock(env)
+
+	result := IsConfigBlock(block)
+	assert.True(t, result, "IsConfigBlock returns true for blocks with CONFIG envelope")
+
+	// scenario 2: ORDERER_TRANSACTION envelope
+	envType = int32(cb.HeaderType_ORDERER_TRANSACTION)
+	env = newConfigEnv(envType)
+	block = newBlock(env)
+
+	result = IsConfigBlock(block)
+	assert.True(t, result, "IsConfigBlock returns true for blocks with ORDERER_TRANSACTION envelope")
+
+	// scenario 3: MESSAGE envelope
+	envType = int32(cb.HeaderType_MESSAGE)
+	env = newConfigEnv(envType)
+	block = newBlock(env)
+
+	result = IsConfigBlock(block)
+	assert.False(t, result, "IsConfigBlock returns false for blocks with MESSAGE envelope")
+}
+
+func TestEnvelopeToConfigUpdate(t *testing.T) {
+
+	makeEnv := func(data []byte) *cb.Envelope {
+		return &cb.Envelope{
+			Payload: MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: MarshalOrPanic(&cb.ChannelHeader{
+						Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+						ChannelId: "test-chain",
+					}),
+				},
+				Data: data,
+			}), // common.Payload
+		} // LastUpdate
+	}
+
+	// scenario 1: for valid envelopes
+	configUpdateEnv := &cb.ConfigUpdateEnvelope{}
+	env := makeEnv(MarshalOrPanic(configUpdateEnv))
+	result, err := EnvelopeToConfigUpdate(env)
+
+	assert.NoError(t, err, "EnvelopeToConfigUpdate runs without error for valid CONFIG_UPDATE envelope")
+	assert.Equal(t, configUpdateEnv, result, "Correct configUpdateEnvelope returned")
+
+	// scenario 2: for invalid envelopes
+	env = makeEnv([]byte("test bytes"))
+	_, err = EnvelopeToConfigUpdate(env)
+
+	assert.Error(t, err, "EnvelopeToConfigUpdate fails with error for invalid CONFIG_UPDATE envelope")
+}

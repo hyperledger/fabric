@@ -11,7 +11,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/pkg/errors"
 )
@@ -201,13 +200,4 @@ func (vi *ValidatorImpl) computeUpdateResult(updatedConfig map[string]comparable
 		newConfigMap[key] = value
 	}
 	return newConfigMap
-}
-
-func envelopeToConfigUpdate(configtx *cb.Envelope) (*cb.ConfigUpdateEnvelope, error) {
-	configUpdateEnv := &cb.ConfigUpdateEnvelope{}
-	_, err := utils.UnmarshalEnvelopeOfType(configtx, cb.HeaderType_CONFIG_UPDATE, configUpdateEnv)
-	if err != nil {
-		return nil, err
-	}
-	return configUpdateEnv, nil
 }

@@ -15,6 +15,7 @@ import (
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/coreos/etcd/raft"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -24,8 +25,8 @@ import (
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/orderer"
 	raftprotos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -33,7 +34,7 @@ import (
 
 var _ = Describe("Chain", func() {
 	var (
-		m           *common.Envelope
+		env         *common.Envelope
 		normalBlock *common.Block
 		interval    time.Duration
 		channelID   string
@@ -43,9 +44,9 @@ var _ = Describe("Chain", func() {
 	BeforeEach(func() {
 		tlsCA, _ = tlsgen.NewCA()
 		channelID = "test-chain"
-		m = &common.Envelope{
-			Payload: utils.MarshalOrPanic(&common.Payload{
-				Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
+		env = &common.Envelope{
+			Payload: marshalOrPanic(&common.Payload{
+				Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
 				Data:   []byte("TEST_MESSAGE"),
 			}),
 		}
@@ -91,7 +92,7 @@ var _ = Describe("Chain", func() {
 			consenterMetadata = createMetadata(3, tlsCA)
 			support.SharedConfigReturns(&mockconfig.Orderer{
 				BatchTimeoutVal:      time.Hour,
-				ConsensusMetadataVal: utils.MarshalOrPanic(consenterMetadata),
+				ConsensusMetadataVal: marshalOrPanic(consenterMetadata),
 			})
 			cutter = mockblockcutter.NewReceiver()
 			support.BlockCutterReturns(cutter)
@@ -135,7 +136,7 @@ var _ = Describe("Chain", func() {
 
 		Context("when no raft leader is elected", func() {
 			It("fails to order envelope", func() {
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).To(MatchError("no raft leader"))
 			})
 		})
@@ -155,7 +156,7 @@ var _ = Describe("Chain", func() {
 
 			It("fails to order envelope if chain is halted", func() {
 				chain.Halt()
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).To(MatchError("chain is stopped"))
 			})
 
@@ -165,7 +166,7 @@ var _ = Describe("Chain", func() {
 
 				By("cutting next batch directly")
 				cutter.CutNext = true
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(support.WriteBlockCallCount).Should(Equal(1))
 
@@ -173,7 +174,7 @@ var _ = Describe("Chain", func() {
 				cutter.CutNext = false
 				timeout := time.Second
 				support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
-				err = chain.Order(m, 0)
+				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
 				clock.WaitForNWatchersAndIncrement(timeout, 2)
@@ -187,13 +188,13 @@ var _ = Describe("Chain", func() {
 				timeout := time.Second
 				support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 
-				err = chain.Order(m, 0)
+				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch).Should(HaveLen(2))
 
@@ -208,7 +209,7 @@ var _ = Describe("Chain", func() {
 				timeout := time.Second
 				support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
@@ -226,7 +227,7 @@ var _ = Describe("Chain", func() {
 				timeout := time.Second
 				support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
@@ -234,7 +235,7 @@ var _ = Describe("Chain", func() {
 
 				By("force a batch to be cut before timer expires")
 				cutter.CutNext = true
-				err = chain.Order(m, 0)
+				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(support.WriteBlockCallCount).Should(Equal(1))
 				Expect(support.CreateNextBlockArgsForCall(0)).To(HaveLen(2))
@@ -242,7 +243,7 @@ var _ = Describe("Chain", func() {
 
 				// this should start a fresh timer
 				cutter.CutNext = false
-				err = chain.Order(m, 0)
+				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
@@ -261,12 +262,12 @@ var _ = Describe("Chain", func() {
 				timeout := time.Second
 				support.SharedConfigReturns(&mockconfig.Orderer{BatchTimeoutVal: timeout})
 
-				err := chain.Order(m, 0)
+				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch).Should(HaveLen(1))
 
 				cutter.IsolatedTx = true
-				err = chain.Order(m, 0)
+				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(support.CreateNextBlockCallCount).Should(Equal(2))
@@ -286,7 +287,7 @@ var _ = Describe("Chain", func() {
 				It("enqueue if an envelope is still valid", func() {
 					support.ProcessNormalMsgReturns(1, nil)
 
-					err := chain.Order(m, 0)
+					err := chain.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(cutter.CurBatch).Should(HaveLen(1))
 				})
@@ -294,7 +295,7 @@ var _ = Describe("Chain", func() {
 				It("does not enqueue if an envelope is not valid", func() {
 					support.ProcessNormalMsgReturns(1, errors.Errorf("Envelope is invalid"))
 
-					err := chain.Order(m, 0)
+					err := chain.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 					Consistently(cutter.CurBatch).Should(HaveLen(0))
 				})
@@ -306,17 +307,205 @@ var _ = Describe("Chain", func() {
 				Expect(chain.Errored()).Should(BeClosed())
 			})
 
-			It("config message is not yet supported", func() {
-				c := &common.Envelope{
-					Payload: utils.MarshalOrPanic(&common.Payload{
-						Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_CONFIG), ChannelId: channelID})},
-						Data:   []byte("TEST_MESSAGE"),
-					}),
+			Describe("Config updates", func() {
+				var (
+					configEnv   *common.Envelope
+					configSeq   uint64
+					configBlock *common.Block
+				)
+
+				// sets the configEnv var declared above
+				newConfigEnv := func(chainID string, headerType common.HeaderType, configUpdateEnv *common.ConfigUpdateEnvelope) *common.Envelope {
+					return &common.Envelope{
+						Payload: marshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+									Type:      int32(headerType),
+									ChannelId: chainID,
+								}),
+							},
+							Data: marshalOrPanic(&common.ConfigEnvelope{
+								LastUpdate: &common.Envelope{
+									Payload: marshalOrPanic(&common.Payload{
+										Header: &common.Header{
+											ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+												Type:      int32(common.HeaderType_CONFIG_UPDATE),
+												ChannelId: chainID,
+											}),
+										},
+										Data: marshalOrPanic(configUpdateEnv),
+									}), // common.Payload
+								}, // LastUpdate
+							}),
+						}),
+					}
 				}
 
-				Expect(func() {
-					chain.Configure(c, 0)
-				}).To(Panic())
+				newConfigUpdateEnv := func(chainID string, values map[string]*common.ConfigValue) *common.ConfigUpdateEnvelope {
+					return &common.ConfigUpdateEnvelope{
+						ConfigUpdate: marshalOrPanic(&common.ConfigUpdate{
+							ChannelId: chainID,
+							ReadSet:   &common.ConfigGroup{},
+							WriteSet: &common.ConfigGroup{
+								Groups: map[string]*common.ConfigGroup{
+									"Orderer": {
+										Values: values,
+									},
+								},
+							}, // WriteSet
+						}),
+					}
+				}
+
+				// ensures that configBlock has the correct configEnv
+				JustBeforeEach(func() {
+					configBlock = &common.Block{
+						Data: &common.BlockData{
+							Data: [][]byte{marshalOrPanic(configEnv)},
+						},
+					}
+					support.CreateNextBlockReturns(configBlock)
+				})
+
+				Context("when a config update with invalid header comes", func() {
+
+					BeforeEach(func() {
+						configEnv = newConfigEnv(channelID,
+							common.HeaderType_CONFIG_UPDATE, // invalid header; envelopes with CONFIG_UPDATE header never reach chain
+							&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("test invalid envelope")})
+						configSeq = 0
+					})
+
+					It("should throw an error", func() {
+						err := chain.Configure(configEnv, configSeq)
+						Expect(err).To(MatchError("config transaction has unknown header type"))
+					})
+				})
+
+				Context("when a type A config update comes", func() {
+
+					Context("for existing channel", func() {
+
+						// use to prepare the Orderer Values
+						BeforeEach(func() {
+							values := map[string]*common.ConfigValue{
+								"BatchTimeout": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.BatchTimeout{
+										Timeout: "3ms",
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, values),
+							)
+							configSeq = 0
+						}) // BeforeEach block
+
+						Context("without revalidation (i.e. correct config sequence)", func() {
+
+							Context("without pending normal envelope", func() {
+								It("should create a config block and no normal block", func() {
+									err := chain.Configure(configEnv, configSeq)
+									Expect(err).NotTo(HaveOccurred())
+									Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
+									Eventually(support.WriteBlockCallCount).Should(Equal(0))
+								})
+							})
+
+							Context("with pending normal envelope", func() {
+								It("should create a normal block and a config block", func() {
+									// We do not need to block the cutter from ordering in our test case and therefore close this channel.
+									close(cutter.Block)
+									support.CreateNextBlockReturnsOnCall(0, normalBlock)
+									support.CreateNextBlockReturnsOnCall(1, configBlock)
+
+									By("adding a normal envelope")
+									err := chain.Order(env, 0)
+									Expect(err).NotTo(HaveOccurred())
+									Eventually(cutter.CurBatch).Should(HaveLen(1))
+
+									// // clock.WaitForNWatchersAndIncrement(timeout, 2)
+
+									By("adding a config envelope")
+									err = chain.Configure(configEnv, configSeq)
+									Expect(err).NotTo(HaveOccurred())
+
+									Eventually(support.CreateNextBlockCallCount).Should(Equal(2))
+									Eventually(support.WriteBlockCallCount).Should(Equal(1))
+									Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
+								})
+							})
+						})
+
+						Context("with revalidation (i.e. incorrect config sequence)", func() {
+
+							BeforeEach(func() {
+								support.SequenceReturns(1) // this causes the revalidation
+							})
+
+							It("should create config block upon correct revalidation", func() {
+								support.ProcessConfigMsgReturns(configEnv, 1, nil) // nil implies correct revalidation
+
+								err := chain.Configure(configEnv, configSeq)
+								Expect(err).NotTo(HaveOccurred())
+								Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
+							})
+
+							It("should not create config block upon incorrect revalidation", func() {
+								support.ProcessConfigMsgReturns(configEnv, 1, errors.Errorf("Invalid config envelope at changed config sequence"))
+
+								err := chain.Configure(configEnv, configSeq)
+								Expect(err).NotTo(HaveOccurred())
+								Consistently(support.WriteConfigBlockCallCount).Should(Equal(0)) // no call to WriteConfigBlock
+							})
+						})
+					})
+
+					Context("for creating a new channel", func() {
+
+						// use to prepare the Orderer Values
+						BeforeEach(func() {
+							chainID := "mychannel"
+							configEnv = newConfigEnv(chainID,
+								common.HeaderType_ORDERER_TRANSACTION,
+								&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("test channel creation envelope")})
+							configSeq = 0
+						}) // BeforeEach block
+
+						It("should throw an error", func() {
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).To(MatchError("channel creation requests not supported yet"))
+						})
+					})
+				}) // Context block for type A config
+
+				Context("when a type B config update comes", func() {
+
+					Context("for existing channel", func() {
+						// use to prepare the Orderer Values
+						BeforeEach(func() {
+							values := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Metadata: []byte("new consenter"),
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, values))
+							configSeq = 0
+						}) // BeforeEach block
+
+						It("should throw an error", func() {
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).To(MatchError("updates to ConsensusType not supported currently"))
+						})
+					})
+				})
 			})
 		})
 	})
@@ -369,4 +558,14 @@ func clientTLSCert(tlsCA tlsgen.CA) []byte {
 		panic(err)
 	}
 	return cert.Cert
+}
+
+// marshalOrPanic serializes a protobuf message and panics if this
+// operation fails
+func marshalOrPanic(pb proto.Message) []byte {
+	data, err := proto.Marshal(pb)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
