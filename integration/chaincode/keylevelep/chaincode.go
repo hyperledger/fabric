@@ -17,7 +17,7 @@ import (
 
 /*
 EndorsementCC is an example chaincode that uses state-based endorsement.
-In the init function, it creates a single KVS state "endorsed_state" that
+In the init function, it creates two KVS states, one public, one private, that
 can then be modified through chaincode functions that use the state-based
 endorsement chaincode convenience layer. The following chaincode functions
 are provided:
@@ -33,7 +33,7 @@ type EndorsementCC struct {
 
 // Init callback
 func (cc *EndorsementCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
-	err := stub.PutState("endorsed_state", []byte("foo"))
+	err := stub.PutState("pub", []byte("foo"))
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -64,12 +64,20 @@ var functions = map[string]func(stub shim.ChaincodeStubInterface) pb.Response{
 // to the state's endorsement policy
 func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
-	if len(parameters) == 0 {
+	if len(parameters) < 2 {
 		return shim.Error("No orgs to add specified")
 	}
 
 	// get the endorsement policy for the key
-	epBytes, err := stub.GetStateValidationParameter("endorsed_state")
+	var epBytes []byte
+	var err error
+	if parameters[0] == "pub" {
+		epBytes, err = stub.GetStateValidationParameter("pub")
+	} else if parameters[0] == "priv" {
+		epBytes, err = stub.GetPrivateDataValidationParameter("col", "priv")
+	} else {
+		return shim.Error("Unknown key specified")
+	}
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -79,7 +87,7 @@ func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	// add organizations to endorsement policy
-	err = ep.AddOrgs(statebased.RoleTypePeer, parameters...)
+	err = ep.AddOrgs(statebased.RoleTypePeer, parameters[1:]...)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -89,7 +97,11 @@ func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	// set the modified endorsement policy for the key
-	err = stub.SetStateValidationParameter("endorsed_state", epBytes)
+	if parameters[0] == "pub" {
+		err = stub.SetStateValidationParameter("pub", epBytes)
+	} else if parameters[0] == "priv" {
+		err = stub.SetPrivateDataValidationParameter("col", "priv", epBytes)
+	}
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -101,14 +113,19 @@ func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 // from the state's endorsement policy
 func delOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
-	if len(parameters) == 0 {
+	if len(parameters) < 2 {
 		return shim.Error("No orgs to delete specified")
 	}
 
 	// get the endorsement policy for the key
-	epBytes, err := stub.GetStateValidationParameter("endorsed_state")
-	if err != nil {
-		return shim.Error(err.Error())
+	var epBytes []byte
+	var err error
+	if parameters[0] == "pub" {
+		epBytes, err = stub.GetStateValidationParameter("pub")
+	} else if parameters[0] == "priv" {
+		epBytes, err = stub.GetPrivateDataValidationParameter("col", "priv")
+	} else {
+		return shim.Error("Unknown key specified")
 	}
 	ep, err := statebased.NewStateEP(epBytes)
 	if err != nil {
@@ -123,7 +140,11 @@ func delOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	// set the modified endorsement policy for the key
-	err = stub.SetStateValidationParameter("endorsed_state", epBytes)
+	if parameters[0] == "pub" {
+		err = stub.SetStateValidationParameter("pub", epBytes)
+	} else if parameters[0] == "priv" {
+		err = stub.SetPrivateDataValidationParameter("col", "priv", epBytes)
+	}
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -134,10 +155,20 @@ func delOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 // listOrgs returns the list of organizations currently part of
 // the state's endorsement policy
 func listOrgs(stub shim.ChaincodeStubInterface) pb.Response {
+	_, parameters := stub.GetFunctionAndParameters()
+	if len(parameters) < 1 {
+		return shim.Error("No key specified")
+	}
+
 	// get the endorsement policy for the key
-	epBytes, err := stub.GetStateValidationParameter("endorsed_state")
-	if err != nil {
-		return shim.Error(err.Error())
+	var epBytes []byte
+	var err error
+	if parameters[0] == "pub" {
+		epBytes, err = stub.GetStateValidationParameter("pub")
+	} else if parameters[0] == "priv" {
+		epBytes, err = stub.GetPrivateDataValidationParameter("col", "priv")
+	} else {
+		return shim.Error("Unknown key specified")
 	}
 	ep, err := statebased.NewStateEP(epBytes)
 	if err != nil {
@@ -156,8 +187,20 @@ func listOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 
 // delEP deletes the state-based endorsement policy for the key altogether
 func delEP(stub shim.ChaincodeStubInterface) pb.Response {
+	_, parameters := stub.GetFunctionAndParameters()
+	if len(parameters) < 1 {
+		return shim.Error("No key specified")
+	}
+
 	// set the modified endorsement policy for the key to nil
-	err := stub.SetStateValidationParameter("endorsed_state", nil)
+	var err error
+	if parameters[0] == "pub" {
+		err = stub.SetStateValidationParameter("pub", nil)
+	} else if parameters[0] == "priv" {
+		err = stub.SetPrivateDataValidationParameter("col", "priv", nil)
+	} else {
+		return shim.Error("Unknown key specified")
+	}
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -168,10 +211,17 @@ func delEP(stub shim.ChaincodeStubInterface) pb.Response {
 // setVal sets the value of the KVS key
 func setVal(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
-	if len(args) != 2 {
-		return shim.Error("setval expects one argument")
+	if len(args) != 3 {
+		return shim.Error("setval expects two arguments")
 	}
-	err := stub.PutState("endorsed_state", args[1])
+	var err error
+	if string(args[1]) == "pub" {
+		err = stub.PutState("pub", args[2])
+	} else if string(args[1]) == "priv" {
+		err = stub.PutPrivateData("col", "priv", args[2])
+	} else {
+		return shim.Error("Unknown key specified")
+	}
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -180,10 +230,23 @@ func setVal(stub shim.ChaincodeStubInterface) pb.Response {
 
 // getVal retrieves the value of the KVS key
 func getVal(stub shim.ChaincodeStubInterface) pb.Response {
-	val, err := stub.GetState("endorsed_state")
+	args := stub.GetArgs()
+	if len(args) != 2 {
+		return shim.Error("No key specified")
+	}
+	var err error
+	var val []byte
+	if string(args[1]) == "pub" {
+		val, err = stub.GetState("pub")
+	} else if string(args[1]) == "priv" {
+		val, err = stub.GetPrivateData("col", "priv")
+	} else {
+		return shim.Error("Unknown key specified")
+	}
 	if err != nil {
 		return shim.Error(err.Error())
 	}
+
 	return shim.Success(val)
 }
 
