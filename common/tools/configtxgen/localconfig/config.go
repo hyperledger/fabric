@@ -199,6 +199,15 @@ var genesisDefaults = TopLevel{
 		Kafka: Kafka{
 			Brokers: []string{"127.0.0.1:9092"},
 		},
+		EtcdRaft: &etcdraft.Metadata{
+			Options: &etcdraft.Options{
+				TickInterval:    100,
+				ElectionTick:    10,
+				HeartbeatTick:   1,
+				MaxInflightMsgs: 256,
+				MaxSizePerMsg:   1048576,
+			},
+		},
 	},
 }
 
@@ -379,8 +388,12 @@ loop:
 		}
 	}
 
+	logger.Infof("orderer type: %s", ord.OrdererType)
 	// Additional, consensus type-dependent initialization goes here
+	// Also using this to panic on unknown orderer type.
 	switch ord.OrdererType {
+	case "solo":
+		// nothing to be done here
 	case "kafka":
 		if ord.Kafka.Brokers == nil {
 			logger.Infof("Orderer.Kafka unset, setting to %v", genesisDefaults.Orderer.Kafka.Brokers)
@@ -390,7 +403,59 @@ loop:
 		if ord.EtcdRaft == nil {
 			logger.Panicf("%s raft configuration missing", etcdraft.TypeKey)
 		}
+		if ord.EtcdRaft.Options == nil {
+			logger.Infof("Orderer.EtcdRaft.Options unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options)
+			ord.EtcdRaft.Options = genesisDefaults.Orderer.EtcdRaft.Options
+		}
+	second_loop:
+		for {
+			switch {
+			case ord.EtcdRaft.Options.TickInterval == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.TickInterval unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.TickInterval)
+				ord.EtcdRaft.Options.TickInterval = genesisDefaults.Orderer.EtcdRaft.Options.TickInterval
+
+			case ord.EtcdRaft.Options.ElectionTick == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.ElectionTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.ElectionTick)
+				ord.EtcdRaft.Options.ElectionTick = genesisDefaults.Orderer.EtcdRaft.Options.ElectionTick
+
+			case ord.EtcdRaft.Options.HeartbeatTick == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.HeartbeatTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick)
+				ord.EtcdRaft.Options.HeartbeatTick = genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick
+
+			case ord.EtcdRaft.Options.MaxInflightMsgs == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.MaxInflightMsgs unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightMsgs)
+				ord.EtcdRaft.Options.MaxInflightMsgs = genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightMsgs
+
+			case ord.EtcdRaft.Options.MaxSizePerMsg == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.MaxSizePerMsg unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxSizePerMsg)
+				ord.EtcdRaft.Options.MaxSizePerMsg = genesisDefaults.Orderer.EtcdRaft.Options.MaxSizePerMsg
+
+			case len(ord.EtcdRaft.Consenters) == 0:
+				logger.Panicf("%s configuration did not specify any consenter", etcdraft.TypeKey)
+
+			default:
+				break second_loop
+			}
+		}
+
+		// validate the specified members for Options
+		if ord.EtcdRaft.Options.ElectionTick <= ord.EtcdRaft.Options.HeartbeatTick {
+			logger.Panicf("election tick must be greater than heartbeat tick")
+		}
+
 		for _, c := range ord.EtcdRaft.GetConsenters() {
+			if c.Host == "" {
+				logger.Panicf("consenter info in %s configuration did not specify host", etcdraft.TypeKey)
+			}
+			if c.Port == 0 {
+				logger.Panicf("consenter info in %s configuration did not specify port", etcdraft.TypeKey)
+			}
+			if c.ClientTlsCert == nil {
+				logger.Panicf("consenter info in %s configuration did not specify client TLS cert", etcdraft.TypeKey)
+			}
+			if c.ServerTlsCert == nil {
+				logger.Panicf("consenter info in %s configuration did not specify server TLS cert", etcdraft.TypeKey)
+			}
 			clientCertPath := string(c.GetClientTlsCert())
 			cf.TranslatePathInPlace(configDir, &clientCertPath)
 			c.ClientTlsCert = []byte(clientCertPath)
@@ -398,6 +463,8 @@ loop:
 			cf.TranslatePathInPlace(configDir, &serverCertPath)
 			c.ServerTlsCert = []byte(serverCertPath)
 		}
+	default:
+		logger.Panicf("unknown orderer type: %s", ord.OrdererType)
 	}
 }
 
