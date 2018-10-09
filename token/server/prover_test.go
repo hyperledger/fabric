@@ -32,11 +32,12 @@ func clock() time.Time {
 
 var _ = Describe("Prover", func() {
 	var (
-		fakePolicyChecker *mock.PolicyChecker
-		fakeMarshaler     *mock.Marshaler
-		fakeIssuer        *mock.Issuer
-		fakeTransactor    *mock.Transactor
-		fakeTMSManager    *mock.TMSManager
+		fakeCapabilityChecker *mock.CapabilityChecker
+		fakePolicyChecker     *mock.PolicyChecker
+		fakeMarshaler         *mock.Marshaler
+		fakeIssuer            *mock.Issuer
+		fakeTransactor        *mock.Transactor
+		fakeTMSManager        *mock.TMSManager
 
 		prover *server.Prover
 
@@ -59,6 +60,8 @@ var _ = Describe("Prover", func() {
 	)
 
 	BeforeEach(func() {
+		fakeCapabilityChecker = &mock.CapabilityChecker{}
+		fakeCapabilityChecker.FabTokenReturns(true, nil)
 		fakePolicyChecker = &mock.PolicyChecker{}
 
 		tokenTransaction = &token.TokenTransaction{
@@ -138,9 +141,10 @@ var _ = Describe("Prover", func() {
 		fakeMarshaler.MarshalCommandResponseReturns(marshaledResponse, nil)
 
 		prover = &server.Prover{
-			PolicyChecker: fakePolicyChecker,
-			Marshaler:     fakeMarshaler,
-			TMSManager:    fakeTMSManager,
+			CapabilityChecker: fakeCapabilityChecker,
+			PolicyChecker:     fakePolicyChecker,
+			Marshaler:         fakeMarshaler,
+			TMSManager:        fakeTMSManager,
 		}
 
 		importRequest = &token.ImportRequest{
@@ -339,6 +343,25 @@ var _ = Describe("Prover", func() {
 				Expect(cmd).To(Equal(ProtoMarshal(command)))
 				Expect(payload).To(Equal(&token.CommandResponse_Err{
 					Err: &token.Error{Message: "command type not recognized: <nil>"},
+				}))
+			})
+		})
+
+		Context("when fabtoken capability is not enabled", func() {
+			BeforeEach(func() {
+				fakeCapabilityChecker.FabTokenReturns(false, nil)
+			})
+
+			It("returns a response with error", func() {
+				resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(Equal(marshaledResponse))
+
+				Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+				cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+				Expect(cmd).To(Equal(ProtoMarshal(command)))
+				Expect(payload).To(Equal(&token.CommandResponse_Err{
+					Err: &token.Error{Message: "FabToken capability not enabled for channel channel-id"},
 				}))
 			})
 		})
@@ -624,9 +647,10 @@ var _ = Describe("Prover", func() {
 
 		BeforeEach(func() {
 			prover = &server.Prover{
-				PolicyChecker: fakePolicyChecker,
-				Marshaler:     fakeMarshaler,
-				TMSManager:    manager,
+				CapabilityChecker: fakeCapabilityChecker,
+				PolicyChecker:     fakePolicyChecker,
+				Marshaler:         fakeMarshaler,
+				TMSManager:        manager,
 			}
 			importRequest = &token.ImportRequest{
 				Credential: []byte("credential"),
@@ -726,11 +750,7 @@ var _ = Describe("Prover", func() {
 				fakeSignerIdentity.SignReturns([]byte("response_signature"), nil)
 				marshaler, _ = server.NewResponseMarshaler(fakeSignerIdentity)
 
-				prover = &server.Prover{
-					PolicyChecker: fakePolicyChecker,
-					Marshaler:     marshaler,
-					TMSManager:    manager,
-				}
+				prover.Marshaler = marshaler
 
 				// start grpc server for prover
 				listener, err := net.Listen("tcp", "127.0.0.1:")
@@ -846,6 +866,8 @@ var _ = Describe("ProverListUnspentTokens", func() {
 		fakeIterator := &mock2.ResultsIterator{}
 		fakePolicyChecker := &mock.PolicyChecker{}
 		fakeSigner := &mock.SignerIdentity{}
+		fakeCapabilityChecker := &mock.CapabilityChecker{}
+		fakeCapabilityChecker.FabTokenReturns(true, nil)
 
 		fakeLedgerReader := &mock2.LedgerReader{}
 		fakeLedgerManager := &mock2.LedgerManager{}
@@ -855,9 +877,10 @@ var _ = Describe("ProverListUnspentTokens", func() {
 		marshaler = &server.ResponseMarshaler{Signer: fakeSigner, Creator: []byte("Alice"), Time: clock}
 
 		prover = &server.Prover{
-			Marshaler:     marshaler,
-			PolicyChecker: fakePolicyChecker,
-			TMSManager:    manager,
+			CapabilityChecker: fakeCapabilityChecker,
+			Marshaler:         marshaler,
+			PolicyChecker:     fakePolicyChecker,
+			TMSManager:        manager,
 		}
 
 		fakeLedgerReader.GetStateRangeScanIteratorReturns(fakeIterator, nil)
@@ -964,13 +987,14 @@ var _ = Describe("ProverListUnspentTokens", func() {
 
 var _ = Describe("Prover Transfer using TMS", func() {
 	var (
-		prover           *server.Prover
-		marshaler        *server.ResponseMarshaler
-		expectedResponse *token.CommandResponse_TokenTransaction
-		command          *token.Command
-		signedCommand    *token.SignedCommand
-		marshaledCommand []byte
-		transferRequest  *token.TransferRequest
+		fakeCapabilityChecker *mock.CapabilityChecker
+		prover                *server.Prover
+		marshaler             *server.ResponseMarshaler
+		expectedResponse      *token.CommandResponse_TokenTransaction
+		command               *token.Command
+		signedCommand         *token.SignedCommand
+		marshaledCommand      []byte
+		transferRequest       *token.TransferRequest
 	)
 	It("initializes variables and expected responses", func() {
 
@@ -1036,6 +1060,8 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		inTokens[1], err = proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 200})
 		Expect(err).NotTo(HaveOccurred())
 
+		fakeCapabilityChecker = &mock.CapabilityChecker{}
+		fakeCapabilityChecker.FabTokenReturns(true, nil)
 		fakePolicyChecker := &mock.PolicyChecker{}
 		fakeSigner := &mock.SignerIdentity{}
 		fakeLedgerReader := &mock2.LedgerReader{}
@@ -1045,9 +1071,10 @@ var _ = Describe("Prover Transfer using TMS", func() {
 		marshaler = &server.ResponseMarshaler{Signer: fakeSigner, Creator: []byte("creator"), Time: clock}
 
 		prover = &server.Prover{
-			Marshaler:     marshaler,
-			PolicyChecker: fakePolicyChecker,
-			TMSManager:    manager,
+			CapabilityChecker: fakeCapabilityChecker,
+			Marshaler:         marshaler,
+			PolicyChecker:     fakePolicyChecker,
+			TMSManager:        manager,
 		}
 
 		fakeSigner.SignReturns([]byte("it is a signature"), nil)

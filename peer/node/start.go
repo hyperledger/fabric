@@ -884,6 +884,9 @@ func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLP
 	}
 
 	prover := &server.Prover{
+		CapabilityChecker: &server.TokenCapabilityChecker{
+			PeerOps: peer.Default,
+		},
 		Marshaler:     responseMarshaler,
 		PolicyChecker: policyChecker,
 		TMSManager: &server.Manager{
