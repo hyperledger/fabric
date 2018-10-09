@@ -40,20 +40,19 @@ func newConfigTxProcessor() customtx.Processor {
 func (tp *configtxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	payload := utils.UnmarshalPayloadOrPanic(txEnv.Payload)
 	channelHdr := utils.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
-	chainid := channelHdr.ChannelId
 	txType := common.HeaderType(channelHdr.GetType())
 
 	switch txType {
 	case common.HeaderType_CONFIG:
 		peerLogger.Debugf("Processing CONFIG")
-		return processChannelConfigTx(chainid, txEnv, simulator)
+		return processChannelConfigTx(txEnv, simulator)
 
 	default:
 		return fmt.Errorf("tx type [%s] is not expected", txType)
 	}
 }
 
-func processChannelConfigTx(chainid string, txEnv *common.Envelope, simulator ledger.TxSimulator) error {
+func processChannelConfigTx(txEnv *common.Envelope, simulator ledger.TxSimulator) error {
 	configEnvelope := &common.ConfigEnvelope{}
 	if _, err := utils.UnmarshalEnvelopeOfType(txEnv, common.HeaderType_CONFIG, configEnvelope); err != nil {
 		return err
