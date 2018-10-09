@@ -60,6 +60,9 @@ General:
         # DialTimeout governs the maximum duration of time after which connection
         # attempts are considered as failed.
         DialTimeout: 5s
+        # RPCTimeout governs the maximum duration of time after which RPC
+        # attempts are considered as failed.
+        RPCTimeout: 7s
         # RootCAs governs the file locations of certificates of the Certificate Authorities
         # which authorize connections to remote ordering service nodes.
         RootCAs:

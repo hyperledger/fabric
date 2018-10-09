@@ -10,33 +10,34 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // This is essentially the main package for the orderer
-
 	"os"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/performance"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/kafka"
 	"github.com/hyperledger/fabric/orderer/consensus/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/util"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/orderer/common/performance"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -51,6 +52,8 @@ var (
 	start     = app.Command("start", "Start the orderer node").Default()
 	version   = app.Command("version", "Show version information")
 	benchmark = app.Command("benchmark", "Run orderer in benchmark mode")
+
+	clusterTypes = map[string]struct{}{"etcdraft": {}}
 )
 
 // Main is the entry point of orderer process
@@ -77,6 +80,8 @@ func Main() {
 
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *localconfig.TopLevel) {
+	genesisBlock := extractGenesisBlock(conf)
+	clusterType := isClusterType(genesisBlock)
 	signer := localmsp.NewSigner()
 	serverConfig := initializeServerConfig(conf)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
@@ -85,15 +90,23 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		OrdererRootCAsByChain: make(map[string][][]byte),
 		ClientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
 	}
+
+	clusterDialer := &cluster.PredicateDialer{}
+	clusterConfig := initializeClusterConfig(conf)
+	clusterDialer.SetConfig(clusterConfig)
+
 	tlsCallback := func(bundle *channelconfig.Bundle) {
-		// only need to do this if mutual TLS is required
-		if grpcServer.MutualTLSRequired() {
+		// only need to do this if mutual TLS is required or if the orderer node is part of a cluster
+		if grpcServer.MutualTLSRequired() || clusterType {
 			logger.Debug("Executing callback to update root CAs")
 			updateTrustedRoots(grpcServer, caSupport, bundle)
+			if clusterType {
+				updateClusterDialer(caSupport, clusterDialer, clusterConfig.SecOpts.ServerRootCAs)
+			}
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(conf, signer, tlsCallback)
+	manager := initializeMultichannelRegistrar(clusterType, clusterDialer, serverConfig, grpcServer, conf, signer, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, signer, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -136,6 +149,7 @@ func initializeClusterConfig(conf *localconfig.TopLevel) comm.ClientConfig {
 	cc := comm.ClientConfig{
 		KaOpts:  comm.DefaultKeepaliveOptions,
 		Timeout: conf.General.Cluster.DialTimeout,
+		SecOpts: &comm.SecureOptions{},
 	}
 
 	if (!conf.General.TLS.Enabled) || conf.General.Cluster.ClientCertificate == "" {
@@ -165,11 +179,12 @@ func initializeClusterConfig(conf *localconfig.TopLevel) comm.ClientConfig {
 	}
 
 	cc.SecOpts = &comm.SecureOptions{
-		CipherSuites:  comm.DefaultTLSCipherSuites,
-		ServerRootCAs: serverRootCAs,
-		Certificate:   certBytes,
-		Key:           keyBytes,
-		UseTLS:        true,
+		RequireClientCert: true,
+		CipherSuites:      comm.DefaultTLSCipherSuites,
+		ServerRootCAs:     serverRootCAs,
+		Certificate:       certBytes,
+		Key:               keyBytes,
+		UseTLS:            true,
 	}
 
 	return cc
@@ -232,7 +247,7 @@ func initializeServerConfig(conf *localconfig.TopLevel) comm.ServerConfig {
 	return comm.ServerConfig{SecOpts: secureOpts, KaOpts: kaOpts}
 }
 
-func initializeBootstrapChannel(conf *localconfig.TopLevel, lf blockledger.Factory) {
+func extractGenesisBlock(conf *localconfig.TopLevel) *cb.Block {
 	var genesisBlock *cb.Block
 
 	// Select the bootstrapping mechanism
@@ -245,6 +260,10 @@ func initializeBootstrapChannel(conf *localconfig.TopLevel, lf blockledger.Facto
 		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
 	}
 
+	return genesisBlock
+}
+
+func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
 	chainID, err := utils.GetChainIDFromBlock(genesisBlock)
 	if err != nil {
 		logger.Fatal("Failed to parse chain ID from genesis block:", err)
@@ -254,10 +273,29 @@ func initializeBootstrapChannel(conf *localconfig.TopLevel, lf blockledger.Facto
 		logger.Fatal("Failed to create the system chain:", err)
 	}
 
-	err = gl.Append(genesisBlock)
-	if err != nil {
+	if err := gl.Append(genesisBlock); err != nil {
 		logger.Fatal("Could not write genesis block to ledger:", err)
 	}
+}
+
+func isClusterType(genesisBlock *cb.Block) bool {
+	if genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
+		logger.Fatalf("Empty genesis block")
+	}
+	env := &cb.Envelope{}
+	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
+		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(env)
+	if err != nil {
+		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
+	}
+	ordConf, exists := bundle.OrdererConfig()
+	if !exists {
+		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
+	}
+	_, exists = clusterTypes[ordConf.ConsensusType()]
+	return exists
 }
 
 func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
@@ -283,21 +321,32 @@ func initializeLocalMsp(conf *localconfig.TopLevel) {
 	}
 }
 
-func initializeMultichannelRegistrar(conf *localconfig.TopLevel, signer crypto.LocalSigner,
+func initializeMultichannelRegistrar(isClusterType bool,
+	clusterDialer *cluster.PredicateDialer,
+	srvConf comm.ServerConfig,
+	srv *comm.GRPCServer,
+	conf *localconfig.TopLevel,
+	signer crypto.LocalSigner,
 	callbacks ...func(bundle *channelconfig.Bundle)) *multichannel.Registrar {
 	lf, _ := createLedgerFactory(conf)
+	genesisBlock := extractGenesisBlock(conf)
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
-		initializeBootstrapChannel(conf, lf)
+		initializeBootstrapChannel(genesisBlock, lf)
 	} else {
 		logger.Info("Not bootstrapping because of existing chains")
 	}
 
 	consenters := make(map[string]consensus.Consenter)
-	consenters["solo"] = solo.New()
-	consenters["kafka"] = kafka.New(conf.Kafka)
 
 	registrar := multichannel.NewRegistrar(lf, signer, callbacks...)
+
+	consenters["solo"] = solo.New()
+	consenters["kafka"] = kafka.New(conf.Kafka)
+	if isClusterType {
+		raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar)
+		consenters["etcdraft"] = raftConsenter
+	}
 	registrar.Initialize(consenters)
 	return registrar
 }
@@ -340,62 +389,80 @@ func updateTrustedRoots(srv *comm.GRPCServer, rootCASupport *comm.CASupport,
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {
 		logger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
+		return
 	}
-	if err == nil {
-		for k, v := range msps {
-			// check to see if this is a FABRIC MSP
-			if v.GetType() == msp.FABRIC {
-				for _, root := range v.GetTLSRootCerts() {
-					// check to see of this is an app org MSP
-					if _, ok := appOrgMSPs[k]; ok {
-						logger.Debugf("adding app root CAs for MSP [%s]", k)
-						appRootCAs = append(appRootCAs, root)
-					}
-					// check to see of this is an orderer org MSP
-					if _, ok := ordOrgMSPs[k]; ok {
-						logger.Debugf("adding orderer root CAs for MSP [%s]", k)
-						ordererRootCAs = append(ordererRootCAs, root)
-					}
+	for k, v := range msps {
+		// check to see if this is a FABRIC MSP
+		if v.GetType() == msp.FABRIC {
+			for _, root := range v.GetTLSRootCerts() {
+				// check to see of this is an app org MSP
+				if _, ok := appOrgMSPs[k]; ok {
+					logger.Debugf("adding app root CAs for MSP [%s]", k)
+					appRootCAs = append(appRootCAs, root)
 				}
-				for _, intermediate := range v.GetTLSIntermediateCerts() {
-					// check to see of this is an app org MSP
-					if _, ok := appOrgMSPs[k]; ok {
-						logger.Debugf("adding app root CAs for MSP [%s]", k)
-						appRootCAs = append(appRootCAs, intermediate)
-					}
-					// check to see of this is an orderer org MSP
-					if _, ok := ordOrgMSPs[k]; ok {
-						logger.Debugf("adding orderer root CAs for MSP [%s]", k)
-						ordererRootCAs = append(ordererRootCAs, intermediate)
-					}
+				// check to see of this is an orderer org MSP
+				if _, ok := ordOrgMSPs[k]; ok {
+					logger.Debugf("adding orderer root CAs for MSP [%s]", k)
+					ordererRootCAs = append(ordererRootCAs, root)
+				}
+			}
+			for _, intermediate := range v.GetTLSIntermediateCerts() {
+				// check to see of this is an app org MSP
+				if _, ok := appOrgMSPs[k]; ok {
+					logger.Debugf("adding app root CAs for MSP [%s]", k)
+					appRootCAs = append(appRootCAs, intermediate)
+				}
+				// check to see of this is an orderer org MSP
+				if _, ok := ordOrgMSPs[k]; ok {
+					logger.Debugf("adding orderer root CAs for MSP [%s]", k)
+					ordererRootCAs = append(ordererRootCAs, intermediate)
 				}
 			}
 		}
-		rootCASupport.AppRootCAsByChain[cid] = appRootCAs
-		rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
-
-		// now iterate over all roots for all app and orderer chains
-		trustedRoots := [][]byte{}
-		for _, roots := range rootCASupport.AppRootCAsByChain {
-			trustedRoots = append(trustedRoots, roots...)
-		}
-		for _, roots := range rootCASupport.OrdererRootCAsByChain {
-			trustedRoots = append(trustedRoots, roots...)
-		}
-		// also need to append statically configured root certs
-		if len(rootCASupport.ClientRootCAs) > 0 {
-			trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
-		}
-
-		// now update the client roots for the gRPC server
-		err := srv.SetClientRootCAs(trustedRoots)
-		if err != nil {
-			msg := "Failed to update trusted roots for orderer from latest config " +
-				"block.  This orderer may not be able to communicate " +
-				"with members of channel %s (%s)"
-			logger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
-		}
 	}
+	rootCASupport.AppRootCAsByChain[cid] = appRootCAs
+	rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+
+	// now iterate over all roots for all app and orderer chains
+	trustedRoots := [][]byte{}
+	for _, roots := range rootCASupport.AppRootCAsByChain {
+		trustedRoots = append(trustedRoots, roots...)
+	}
+	for _, roots := range rootCASupport.OrdererRootCAsByChain {
+		trustedRoots = append(trustedRoots, roots...)
+	}
+	// also need to append statically configured root certs
+	if len(rootCASupport.ClientRootCAs) > 0 {
+		trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
+	}
+
+	// now update the client roots for the gRPC server
+	err = srv.SetClientRootCAs(trustedRoots)
+	if err != nil {
+		msg := "Failed to update trusted roots for orderer from latest config " +
+			"block.  This orderer may not be able to communicate " +
+			"with members of channel %s (%s)"
+		logger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
+	}
+}
+
+func updateClusterDialer(rootCASupport *comm.CASupport, clusterDialer *cluster.PredicateDialer, localClusterRootCAs [][]byte) {
+	rootCASupport.Lock()
+	defer rootCASupport.Unlock()
+
+	// Iterate over all orderer root CAs for all chains and add them
+	// to the root CAs
+	var clusterRootCAs [][]byte
+	for _, roots := range rootCASupport.OrdererRootCAsByChain {
+		clusterRootCAs = append(clusterRootCAs, roots...)
+	}
+
+	// Add the local root CAs too
+	clusterRootCAs = append(clusterRootCAs, localClusterRootCAs...)
+	// Update the cluster config with the new root CAs
+	clusterConfig := clusterDialer.Config.Load().(comm.ClientConfig)
+	clusterConfig.SecOpts.ServerRootCAs = clusterRootCAs
+	clusterDialer.SetConfig(clusterConfig)
 }
 
 func prettyPrintStruct(i interface{}) {

@@ -48,7 +48,7 @@ func TestRPCStep(t *testing.T) {
 	} {
 		testcase := testcase
 		t.Run(testcase.name, func(t *testing.T) {
-			comm := &mocks.RemoteCommunicator{}
+			comm := &mocks.Communicator{}
 			client := &mocks.ClusterClient{}
 			client.On("Step", mock.Anything, mock.Anything).Return(testcase.stepReturns...)
 			comm.On("Remote", "mychannel", uint64(1)).Return(&cluster.RemoteContext{
@@ -79,7 +79,7 @@ func TestRPCSubmitSend(t *testing.T) {
 	submitRequest := &orderer.SubmitRequest{Channel: "mychannel"}
 	submitResponse := &orderer.SubmitResponse{Status: common.Status_SUCCESS}
 
-	comm := &mocks.RemoteCommunicator{}
+	comm := &mocks.Communicator{}
 	stream := &mocks.SubmitClient{}
 	client := &mocks.ClusterClient{}
 
