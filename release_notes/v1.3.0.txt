@@ -1,0 +1,70 @@
+v1.3.0 Release Notes - October 10, 2018
+---------------------------------------
+
+What's New in Hyperledger Fabric v1.3
+-------------------------------------
+
+The following features/epics are included in this release:
+
+FAB-10120 - Identity Mixer for anonymous transactions
+Keep client identities anonymous and unlinkable through the use of
+zero-knowledge proofs.
+
+FAB-8812 - State-based endorsement
+Allows the default chaincode-level endorsement policy to be overridden by a
+per-key endorsement policy.
+
+FAB-2809 - Chaincode pagination of query results
+Clients can now page through result sets from chaincode queries, making it
+feasible to support large result sets with high performance.
+
+FAB-8779 - Java chaincode support
+As an addition to the current Fabric support for chaincode written in Go and
+Node.js, Java is now supported.
+
+
+Changes, Known Issues, and Workarounds
+--------------------------------------
+
+FAB-11122 - Removal of event hub
+
+The 'old' event hub has been removed in Hyperledger Fabric v1.3.  It is
+replaced by the peer channel-based event service which was introduced in
+Fabric v1.1.
+Applications using the old event hub must switch over to the new
+channel-based event service before upgrading to v1.3 peer or SDKs.
+
+
+FAB-12088 - Java chaincode support on s390 architecture
+
+Java chaincode support is not yet available on s390 architecture.
+
+
+FAB-12134 Same chaincode source receiving fingerprint mismatch error
+
+Chaincode installed in different ways may result in "chaincode fingerprint
+mismatch data mismatch" error upon instantiation.  This may happen when
+installing chaincode by using different SDKs. To workaround the problem,
+package the chaincode prior to installation and instantiation, by using
+the "peer chaincode package" command.
+
+
+Known Vulnerabilities
+---------------------
+FAB-8664 - Peer should detect and react when its org has been removed
+This is a relatively low severity problem, because it requires a significant
+conspiracy of network admins, but it will be addressed in a future release.
+
+
+Resolved Vulnerabilities
+------------------------
+None.
+
+
+Other improvements and fixes
+----------------------------
+Updated to Go version 1.10.4
+Updated baseimage version to 0.4.13
+
+For the full list of improvements and fixes, refer to the release change log:
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v130

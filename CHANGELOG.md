@@ -1,3 +1,28 @@
+## v1.3.0
+Wed Oct 10 03:22:56 EDT 2018
+
+* [94d6a1d](https://github.com/hyperledger/fabric/commit/94d6a1d) [FAB-12091](https://jira.hyperledger.org/browse/FAB-12091) SBE E2E test with private data
+* [595a8c2](https://github.com/hyperledger/fabric/commit/595a8c2) [FAB-12343](https://jira.hyperledger.org/browse/FAB-12343) Update fabric to baseimage 0.4.13
+* [bcc924d](https://github.com/hyperledger/fabric/commit/bcc924d) [FAB-12303](https://jira.hyperledger.org/browse/FAB-12303) info logging for chaincode invokes (ms)
+* [5edfc76](https://github.com/hyperledger/fabric/commit/5edfc76) [FAB-12327](https://jira.hyperledger.org/browse/FAB-12327) Return regular envelopes in gossip support
+* [90d0727](https://github.com/hyperledger/fabric/commit/90d0727) [FAB-12121](https://jira.hyperledger.org/browse/FAB-12121) Invoke to return useful CLI error response
+* [e9d023b](https://github.com/hyperledger/fabric/commit/e9d023b) [FAB-12303](https://jira.hyperledger.org/browse/FAB-12303) info logging for chaincode invokes
+* [383e5df](https://github.com/hyperledger/fabric/commit/383e5df) [FAB-12269](https://jira.hyperledger.org/browse/FAB-12269) FAQ Update
+* [ea87d4b](https://github.com/hyperledger/fabric/commit/ea87d4b) [FAB-12158](https://jira.hyperledger.org/browse/FAB-12158) UT under privacyenabledstate fails
+* [79ac688](https://github.com/hyperledger/fabric/commit/79ac688) [FAB-12274](https://jira.hyperledger.org/browse/FAB-12274) Increase CouchDB maxRetriesOnStartup
+* [07f2e9b](https://github.com/hyperledger/fabric/commit/07f2e9b) [FAB-12003](https://jira.hyperledger.org/browse/FAB-12003) set cut timer on pending envelope
+* [02d653d](https://github.com/hyperledger/fabric/commit/02d653d) [FAB-11041](https://jira.hyperledger.org/browse/FAB-11041) Fix bootstrap.sh messages
+* [5a493a0](https://github.com/hyperledger/fabric/commit/5a493a0) [FAB-12233](https://jira.hyperledger.org/browse/FAB-12233) Fix article issues about "a actor"
+* [a4bd45e](https://github.com/hyperledger/fabric/commit/a4bd45e) [FAB-12234](https://jira.hyperledger.org/browse/FAB-12234) Fix duplicate words in the document
+* [6f3c971](https://github.com/hyperledger/fabric/commit/6f3c971) [FAB-12222](https://jira.hyperledger.org/browse/FAB-12222) Fix duplicate words in the document
+* [656898a](https://github.com/hyperledger/fabric/commit/656898a) Rename package and merge related files
+* [7071424](https://github.com/hyperledger/fabric/commit/7071424) [FAB-12196](https://jira.hyperledger.org/browse/FAB-12196) Fix incorrect doc in network topic
+* [346f958](https://github.com/hyperledger/fabric/commit/346f958) [FAB-12188](https://jira.hyperledger.org/browse/FAB-12188) One more link in What's New
+* [9b1db8d](https://github.com/hyperledger/fabric/commit/9b1db8d) [FAB-12188](https://jira.hyperledger.org/browse/FAB-12188) Broken links in Whats new doc
+* [3c4dddc](https://github.com/hyperledger/fabric/commit/3c4dddc) [FAB-12176](https://jira.hyperledger.org/browse/FAB-12176) Private data and metadata writes
+* [f73b863](https://github.com/hyperledger/fabric/commit/f73b863) [FAB-12139](https://jira.hyperledger.org/browse/FAB-12139) Prepare for next rel (1.3.0 on release-1.3)
+* [704cada](https://github.com/hyperledger/fabric/commit/704cada) [FAB-12132](https://jira.hyperledger.org/browse/FAB-12132) update goleveldb
+
 ## v1.3.0-rc1
 Mon Sep 24 22:45:10 EDT 2018
 
