@@ -14,11 +14,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/pkg/errors"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	peercommon "github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	tk "github.com/hyperledger/fabric/token"
@@ -37,6 +39,7 @@ var _ = Describe("Token EndToEnd", func() {
 
 		tokensToIssue            []*token.TokenToIssue
 		expectedTokenTransaction *token.TokenTransaction
+		expectedUnspentTokens    *token.UnspentTokens
 	)
 
 	BeforeEach(func() {
@@ -56,6 +59,16 @@ var _ = Describe("Token EndToEnd", func() {
 							},
 						},
 					},
+				},
+			},
+		}
+
+		expectedUnspentTokens = &token.UnspentTokens{
+			Tokens: []*token.TokenOutput{
+				{
+					Quantity: 119,
+					Type:     "ABC123",
+					Id:       []byte("ledger-id"),
 				},
 			},
 		}
@@ -94,6 +107,13 @@ var _ = Describe("Token EndToEnd", func() {
 			client, err = docker.NewClientFromEnv()
 			Expect(err).NotTo(HaveOccurred())
 
+			peer := network.Peer("Org1", "peer1")
+			// Get recipient's identity
+			recipient, err := getIdentity(network, peer, "User2", "Org1MSP")
+			Expect(err).NotTo(HaveOccurred())
+			tokensToIssue[0].Recipient = recipient
+			expectedTokenTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = recipient
+
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
 			Eventually(process.Ready()).Should(BeClosed())
@@ -118,6 +138,14 @@ var _ = Describe("Token EndToEnd", func() {
 
 			By("issuing tokens")
 			RunIssueRequest(tClient, tokensToIssue, expectedTokenTransaction)
+
+			By("list tokens")
+			config = getClientConfig(network, peer, orderer, "testchannel", "User2", "Org1MSP")
+			signingIdentity, err = getSigningIdentity(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
+			Expect(err).NotTo(HaveOccurred())
+			tClient, err = tokenclient.NewClient(*config, signingIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			RunListTokens(tClient, expectedUnspentTokens)
 		})
 	})
 })
@@ -138,6 +166,19 @@ func RunIssueRequest(c *tokenclient.Client, tokens []*token.TokenToIssue, expect
 	tokenTxid, err := tokenclient.GetTransactionID(envelope)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(tokenTxid).To(Equal(txid))
+}
+
+func RunListTokens(c *tokenclient.Client, expectedUnspentTokens *token.UnspentTokens) []*token.TokenOutput {
+	tokenOutputs, err := c.ListTokens()
+	Expect(err).NotTo(HaveOccurred())
+
+	// unmarshall CommandResponse and verify the result
+	Expect(len(tokenOutputs)).To(Equal(len(expectedUnspentTokens.Tokens)))
+	for i, token := range expectedUnspentTokens.Tokens {
+		Expect(tokenOutputs[i].Type).To(Equal(token.Type))
+		Expect(tokenOutputs[i].Quantity).To(Equal(token.Quantity))
+	}
+	return tokenOutputs
 }
 
 func getClientConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channelId, user, mspID string) *tokenclient.ClientConfig {
@@ -174,12 +215,39 @@ func getClientConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, chann
 	return &config
 }
 
-func getSigningIdentity(mspConfigPath, mspID, mspType string) (tk.SigningIdentity, error) {
-	peercommon.InitCrypto(mspConfigPath, mspID, mspType)
-	signingIdentity, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+func getIdentity(n *nwo.Network, peer *nwo.Peer, user, mspId string) ([]byte, error) {
+	orderer := n.Orderer("orderer")
+	config := getClientConfig(n, peer, orderer, "testchannel", user, mspId)
+
+	localMSP, err := LoadLocalMSPAt(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
 	if err != nil {
 		return nil, err
 	}
+
+	signer, err := localMSP.GetDefaultSigningIdentity()
+	if err != nil {
+		return nil, err
+	}
+
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	return creator, nil
+}
+
+func getSigningIdentity(mspConfigPath, mspID, mspType string) (tk.SigningIdentity, error) {
+	mspInstance, err := LoadLocalMSPAt(mspConfigPath, mspID, mspType)
+	if err != nil {
+		return nil, err
+	}
+
+	signingIdentity, err := mspInstance.GetDefaultSigningIdentity()
+	if err != nil {
+		return nil, err
+	}
+
 	return signingIdentity, nil
 }
 
@@ -194,4 +262,29 @@ func updateConfigtx(network *nwo.Network) error {
 	// update the CAPABILITY_PLACEHOLDER to enable fabtoken capability
 	output := bytes.Replace(input, []byte("CAPABILITY_PLACEHOLDER: false"), []byte("V1_4_FABTOKEN_EXPERIMENTAL: true"), -1)
 	return ioutil.WriteFile(filepath, output, 0644)
+}
+
+// LoadLocalMSPAt loads an MSP whose configuration is stored at 'dir', and whose
+// id and type are the passed as arguments.
+func LoadLocalMSPAt(dir, id, mspType string) (msp.MSP, error) {
+	if mspType != "bccsp" {
+		return nil, errors.Errorf("invalid msp type, expected 'bccsp', got %s", mspType)
+	}
+	conf, err := msp.GetLocalMspConfig(dir, nil, id)
+	if err != nil {
+		return nil, err
+	}
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
+	if err != nil {
+		return nil, err
+	}
+	thisMSP, err := msp.NewBccspMspWithKeyStore(msp.MSPv1_0, ks)
+	if err != nil {
+		return nil, err
+	}
+	err = thisMSP.Setup(conf)
+	if err != nil {
+		return nil, err
+	}
+	return thisMSP, nil
 }

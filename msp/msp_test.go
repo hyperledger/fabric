@@ -1196,13 +1196,10 @@ func getLocalMSPWithVersionAndError(t *testing.T, dir string, version MSPVersion
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(version)
-	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
-	csp, err := sw.NewWithParams(256, "SHA2", ks)
+	thisMSP, err := NewBccspMspWithKeyStore(version, ks)
 	assert.NoError(t, err)
-	thisMSP.(*bccspmsp).bccsp = csp
 
 	return thisMSP, thisMSP.Setup(conf)
 }
@@ -1211,14 +1208,10 @@ func getLocalMSP(t *testing.T, dir string) MSP {
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
-	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
-	csp, err := sw.NewWithParams(256, "SHA2", ks)
-	assert.NoError(t, err)
-	thisMSP.(*bccspmsp).bccsp = csp
 
+	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks)
 	err = thisMSP.Setup(conf)
 	assert.NoError(t, err)
 
@@ -1229,13 +1222,10 @@ func getLocalMSPWithVersion(t *testing.T, dir string, version MSPVersion) MSP {
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(version)
-	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
-	csp, err := sw.NewWithParams(256, "SHA2", ks)
+	thisMSP, err := NewBccspMspWithKeyStore(version, ks)
 	assert.NoError(t, err)
-	thisMSP.(*bccspmsp).bccsp = csp
 
 	err = thisMSP.Setup(conf)
 	assert.NoError(t, err)
