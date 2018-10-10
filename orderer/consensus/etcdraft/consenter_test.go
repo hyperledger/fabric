@@ -58,12 +58,12 @@ var _ = Describe("Consenter", func() {
 			Chain: chainInstance,
 		}
 		BeforeEach(func() {
-			chainGetter.On("GetChain", "mychannel").Return(cs, true)
-			chainGetter.On("GetChain", "badChainObject").Return(&multichannel.ChainSupport{}, true)
-			chainGetter.On("GetChain", "notmychannel").Return(nil, false)
+			chainGetter.On("GetChain", "mychannel").Return(cs)
+			chainGetter.On("GetChain", "badChainObject").Return(&multichannel.ChainSupport{})
+			chainGetter.On("GetChain", "notmychannel").Return(nil)
 			chainGetter.On("GetChain", "notraftchain").Return(&multichannel.ChainSupport{
 				Chain: &multichannel.ChainSupport{},
-			}, true)
+			})
 		})
 		It("calls the chain getter and returns the reference when it is found", func() {
 			consenter := newConsenter(chainGetter)

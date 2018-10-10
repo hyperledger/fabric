@@ -98,9 +98,9 @@ type mockChainManager struct {
 	mock.Mock
 }
 
-func (m *mockChainManager) GetChain(chainID string) (deliver.Chain, bool) {
+func (m *mockChainManager) GetChain(chainID string) deliver.Chain {
 	args := m.Called(chainID)
-	return args.Get(0).(deliver.Chain), args.Get(1).(bool)
+	return args.Get(0).(deliver.Chain)
 }
 
 // mockDeliverServer mock implementation of the Deliver_DeliverServer

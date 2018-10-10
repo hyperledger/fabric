@@ -31,7 +31,7 @@ var logger = flogging.MustGetLogger("common/deliver")
 
 // ChainManager provides a way for the Handler to look up the Chain.
 type ChainManager interface {
-	GetChain(chainID string) (Chain, bool)
+	GetChain(chainID string) Chain
 }
 
 //go:generate counterfeiter -o mock/chain.go -fake-name Chain . Chain
@@ -183,8 +183,8 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
 	}
 
-	chain, ok := h.ChainManager.GetChain(chdr.ChannelId)
-	if !ok {
+	chain := h.ChainManager.GetChain(chdr.ChannelId)
+	if chain == nil {
 		// Note, we log this at DEBUG because SDKs will poll waiting for channels to be created
 		// So we would expect our log to be somewhat flooded with these
 		logger.Debugf("Rejecting deliver for %s because channel %s not found", addr, chdr.ChannelId)
