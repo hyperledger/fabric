@@ -60,18 +60,22 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	fmt.Println("ex02 Invoke")
 	function, args := stub.GetFunctionAndParameters()
-	if function == "invoke" {
+	switch function {
+	case "invoke":
 		// Make payment of X units from A to B
 		return t.invoke(stub, args)
-	} else if function == "delete" {
+	case "delete":
 		// Deletes an entity from its state
 		return t.delete(stub, args)
-	} else if function == "query" {
+	case "query":
 		// the old "Query" is now implemtned in invoke
 		return t.query(stub, args)
+	case "respond":
+		// return with an error
+		return t.respond(stub, args)
+	default:
+		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", or "respond"`)
 	}
-
-	return shim.Error("Invalid invoke function name. Expecting \"invoke\" \"delete\" \"query\"")
 }
 
 // Transaction makes payment of X units from A to B
@@ -174,4 +178,24 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 	jsonResp := "{\"Name\":\"" + A + "\",\"Amount\":\"" + string(Avalbytes) + "\"}"
 	fmt.Printf("Query Response:%s\n", jsonResp)
 	return shim.Success(Avalbytes)
+}
+
+// respond simply generates a response payload from the args
+func (t *SimpleChaincode) respond(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	if len(args) != 3 {
+		return shim.Error("expected three arguments")
+	}
+
+	status, err := strconv.ParseInt(args[0], 10, 32)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	message := args[1]
+	payload := []byte(args[2])
+
+	return pb.Response{
+		Status:  int32(status),
+		Message: message,
+		Payload: payload,
+	}
 }
