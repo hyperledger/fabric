@@ -9,6 +9,7 @@ package utils_test
 import (
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -158,16 +159,6 @@ func TestCreateSignedTx(t *testing.T) {
 	})
 	prop.Header = headerBytes
 
-	// bad status
-	responses = []*pb.ProposalResponse{{
-		Payload: []byte("payload"),
-		Response: &pb.Response{
-			Status: int32(100),
-		},
-	}}
-	_, err = utils.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with status code not equal to 200")
-
 	// non-matching responses
 	responses = []*pb.ProposalResponse{{
 		Payload: []byte("payload"),
@@ -230,6 +221,67 @@ func TestCreateSignedTx(t *testing.T) {
 	_, err = utils.CreateSignedTx(prop, signID, responses...)
 	assert.Error(t, err, "Expected error with malformed proposal header")
 
+}
+
+func TestCreateSignedTxStatus(t *testing.T) {
+	serializedExtension, err := proto.Marshal(&pb.ChaincodeHeaderExtension{})
+	assert.NoError(t, err)
+	serializedChannelHeader, err := proto.Marshal(&cb.ChannelHeader{
+		Extension: serializedExtension,
+	})
+	assert.NoError(t, err)
+
+	signingID, err := mockmsp.NewNoopMsp().GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	serializedSigningID, err := signingID.Serialize()
+	assert.NoError(t, err)
+	serializedSignatureHeader, err := proto.Marshal(&cb.SignatureHeader{
+		Creator: serializedSigningID,
+	})
+	assert.NoError(t, err)
+
+	header := &cb.Header{
+		ChannelHeader:   serializedChannelHeader,
+		SignatureHeader: serializedSignatureHeader,
+	}
+
+	serializedHeader, err := proto.Marshal(header)
+	assert.NoError(t, err)
+
+	proposal := &pb.Proposal{
+		Header: serializedHeader,
+	}
+
+	tests := []struct {
+		status      int32
+		expectedErr string
+	}{
+		{status: 0, expectedErr: "Proposal response was not successful, error code 0, msg response-message"},
+		{status: 199, expectedErr: "Proposal response was not successful, error code 199, msg response-message"},
+		{status: 200, expectedErr: ""},
+		{status: 201, expectedErr: ""},
+		{status: 399, expectedErr: ""},
+		{status: 400, expectedErr: "Proposal response was not successful, error code 400, msg response-message"},
+	}
+	for _, tc := range tests {
+		t.Run(strconv.Itoa(int(tc.status)), func(t *testing.T) {
+			response := &pb.ProposalResponse{
+				Payload:     []byte("payload"),
+				Endorsement: &pb.Endorsement{},
+				Response: &pb.Response{
+					Status:  tc.status,
+					Message: "response-message",
+				},
+			}
+
+			_, err := utils.CreateSignedTx(proposal, signingID, response)
+			if tc.expectedErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tc.expectedErr)
+			}
+		})
+	}
 }
 
 func TestCreateSignedEnvelope(t *testing.T) {

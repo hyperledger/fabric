@@ -85,6 +85,7 @@ var _ = Describe("EndToEnd", func() {
 			peer := network.Peer("Org1", "peer1")
 
 			RunQueryInvokeQuery(network, orderer, peer)
+			RunRespondWith(network, orderer, peer)
 		})
 	})
 
@@ -144,4 +145,36 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("90"))
+}
+
+func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
+	By("responding with a 300")
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: "testchannel",
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      "mycc",
+		Ctor:      `{"Args":["respond","300","response-message","response-payload"]}`,
+		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:300"))
+
+	By("responding with a 400")
+	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: "testchannel",
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      "mycc",
+		Ctor:      `{"Args":["respond","400","response-message","response-payload"]}`,
+		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, time.Minute).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(`Error: endorsement failure during invoke.`))
 }
