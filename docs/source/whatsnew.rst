@@ -58,8 +58,8 @@ that made up these changes (in addition to other hygiene/performance/bug fixes
 we did not explicitly document), check out the release notes. Note that these
 links will not work on the release candidate, only on the GA release.
 
-* `Fabric release notes <https://github.com/hyperledger/fabric/releases/tag/v1.3.0-rc1>`_.
-* `Fabric CA release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.3.0-rc1>`_.
+* `Fabric release notes <https://github.com/hyperledger/fabric/releases/tag/v1.3.0>`_.
+* `Fabric CA release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.3.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
