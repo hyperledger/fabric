@@ -32,7 +32,7 @@ import (
 func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
 	profile := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, nil, nil, profile)
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, nil, profile)
 	if err != nil {
 		t.Fatalf("MakeChannelCreationTransaction failed, err %s", err)
 		return

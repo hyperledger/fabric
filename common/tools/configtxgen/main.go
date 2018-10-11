@@ -50,7 +50,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outputChannelCreateTx string) error {
 	logger.Info("Generating new channel configtx")
 
-	configtx, err := encoder.MakeChannelCreationTransaction(channelID, nil, nil, conf)
+	configtx, err := encoder.MakeChannelCreationTransaction(channelID, nil, conf)
 	if err != nil {
 		return err
 	}
@@ -223,9 +223,9 @@ func main() {
 
 	flag.Parse()
 
-	if channelID == "" {
+	if channelID == "" && (outputBlock != "" || outputChannelCreateTx != "" || outputAnchorPeersUpdate != "") {
 		channelID = genesisconfig.TestChainID
-		logger.Warningf("Omitting the channel ID for configtxgen is deprecated.  Explicitly passing the channel ID will be required in the future, defaulting to '%s'.", channelID)
+		logger.Warningf("Omitting the channel ID for configtxgen for output operations is deprecated.  Explicitly passing the channel ID will be required in the future, defaulting to '%s'.", channelID)
 	}
 
 	// show version

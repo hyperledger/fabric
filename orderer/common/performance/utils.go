@@ -92,7 +92,7 @@ func CreateChannel(server *BenchmarkServer, channelProfile *genesisconfig.Profil
 	defer client.Close()
 
 	channelID := RandomID(10)
-	createChannelTx, err := encoder.MakeChannelCreationTransaction(channelID, localmsp.NewSigner(), nil, channelProfile)
+	createChannelTx, err := encoder.MakeChannelCreationTransaction(channelID, localmsp.NewSigner(), channelProfile)
 	if err != nil {
 		logger.Panicf("Failed to create channel creation transaction: %s", err)
 	}
