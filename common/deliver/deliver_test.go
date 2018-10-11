@@ -120,7 +120,7 @@ var _ = Describe("Deliver", func() {
 			fakeChain.ReaderReturns(fakeBlockReader)
 
 			fakeChainManager = &mock.ChainManager{}
-			fakeChainManager.GetChainReturns(fakeChain, true)
+			fakeChainManager.GetChainReturns(fakeChain)
 
 			fakePolicyChecker = &mock.PolicyChecker{}
 			fakeReceiver = &mock.Receiver{}
@@ -453,7 +453,7 @@ var _ = Describe("Deliver", func() {
 
 		Context("when the channel is not found", func() {
 			BeforeEach(func() {
-				fakeChainManager.GetChainReturns(nil, false)
+				fakeChainManager.GetChainReturns(nil)
 			})
 
 			It("sends status not found", func() {

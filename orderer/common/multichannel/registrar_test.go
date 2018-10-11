@@ -144,11 +144,11 @@ func TestManagerImpl(t *testing.T) {
 	manager := NewRegistrar(lf, mockCrypto())
 	manager.Initialize(consenters)
 
-	_, ok := manager.GetChain("Fake")
-	assert.False(t, ok, "Should not have found a chain that was not created")
+	chainSupport := manager.GetChain("Fake")
+	assert.Nilf(t, chainSupport, "Should not have found a chain that was not created")
 
-	chainSupport, ok := manager.GetChain(genesisconfig.TestChainID)
-	assert.True(t, ok, "Should have gotten chain which was initialized by ramledger")
+	chainSupport = manager.GetChain(genesisconfig.TestChainID)
+	assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ramledger")
 
 	messages := make([]*cb.Envelope, conf.Orderer.BatchSize.MaxMessageCount)
 	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
@@ -198,8 +198,8 @@ func TestNewChain(t *testing.T) {
 
 	wrapped := wrapConfigTx(ingressTx)
 
-	chainSupport, ok := manager.GetChain(manager.SystemChannelID())
-	assert.True(t, ok, "Could not find system channel")
+	chainSupport := manager.GetChain(manager.SystemChannelID())
+	assert.NotNilf(t, chainSupport, "Could not find system channel")
 
 	chainSupport.Configure(wrapped, 0)
 	func() {
@@ -216,9 +216,8 @@ func TestNewChain(t *testing.T) {
 		assert.True(t, proto.Equal(wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
 	}()
 
-	chainSupport, ok = manager.GetChain(newChainID)
-
-	if !ok {
+	chainSupport = manager.GetChain(newChainID)
+	if chainSupport == nil {
 		t.Fatalf("Should have gotten new chain which was created")
 	}
 

@@ -8,24 +8,22 @@ import (
 )
 
 type ChainManager struct {
-	GetChainStub        func(chainID string) (deliver.Chain, bool)
+	GetChainStub        func(chainID string) deliver.Chain
 	getChainMutex       sync.RWMutex
 	getChainArgsForCall []struct {
 		chainID string
 	}
 	getChainReturns struct {
 		result1 deliver.Chain
-		result2 bool
 	}
 	getChainReturnsOnCall map[int]struct {
 		result1 deliver.Chain
-		result2 bool
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChainManager) GetChain(chainID string) (deliver.Chain, bool) {
+func (fake *ChainManager) GetChain(chainID string) deliver.Chain {
 	fake.getChainMutex.Lock()
 	ret, specificReturn := fake.getChainReturnsOnCall[len(fake.getChainArgsForCall)]
 	fake.getChainArgsForCall = append(fake.getChainArgsForCall, struct {
@@ -37,9 +35,9 @@ func (fake *ChainManager) GetChain(chainID string) (deliver.Chain, bool) {
 		return fake.GetChainStub(chainID)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	return fake.getChainReturns.result1, fake.getChainReturns.result2
+	return fake.getChainReturns.result1
 }
 
 func (fake *ChainManager) GetChainCallCount() int {
@@ -54,26 +52,23 @@ func (fake *ChainManager) GetChainArgsForCall(i int) string {
 	return fake.getChainArgsForCall[i].chainID
 }
 
-func (fake *ChainManager) GetChainReturns(result1 deliver.Chain, result2 bool) {
+func (fake *ChainManager) GetChainReturns(result1 deliver.Chain) {
 	fake.GetChainStub = nil
 	fake.getChainReturns = struct {
 		result1 deliver.Chain
-		result2 bool
-	}{result1, result2}
+	}{result1}
 }
 
-func (fake *ChainManager) GetChainReturnsOnCall(i int, result1 deliver.Chain, result2 bool) {
+func (fake *ChainManager) GetChainReturnsOnCall(i int, result1 deliver.Chain) {
 	fake.GetChainStub = nil
 	if fake.getChainReturnsOnCall == nil {
 		fake.getChainReturnsOnCall = make(map[int]struct {
 			result1 deliver.Chain
-			result2 bool
 		})
 	}
 	fake.getChainReturnsOnCall[i] = struct {
 		result1 deliver.Chain
-		result2 bool
-	}{result1, result2}
+	}{result1}
 }
 
 func (fake *ChainManager) Invocations() map[string][][]interface{} {

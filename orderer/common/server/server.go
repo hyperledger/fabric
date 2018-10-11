@@ -38,7 +38,7 @@ type deliverSupport struct {
 	*multichannel.Registrar
 }
 
-func (ds deliverSupport) GetChain(chainID string) (deliver.Chain, bool) {
+func (ds deliverSupport) GetChain(chainID string) deliver.Chain {
 	return ds.Registrar.GetChain(chainID)
 }
 
@@ -159,8 +159,8 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	}()
 
 	policyChecker := func(env *cb.Envelope, channelID string) error {
-		chain, ok := s.GetChain(channelID)
-		if !ok {
+		chain := s.GetChain(channelID)
+		if chain == nil {
 			return errors.Errorf("channel %s not found", channelID)
 		}
 		sf := msgprocessor.NewSigFilter(policies.ChannelReaders, chain)

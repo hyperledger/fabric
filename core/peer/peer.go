@@ -713,12 +713,12 @@ func (*collectionSupport) GetIdentityDeserializer(chainID string) msp.IdentityDe
 type DeliverChainManager struct {
 }
 
-func (DeliverChainManager) GetChain(chainID string) (deliver.Chain, bool) {
+func (DeliverChainManager) GetChain(chainID string) deliver.Chain {
 	channel, ok := chains.list[chainID]
 	if !ok {
-		return nil, ok
+		return nil
 	}
-	return channel.cs, ok
+	return channel.cs
 }
 
 // fileLedgerBlockStore implements the interface expected by
