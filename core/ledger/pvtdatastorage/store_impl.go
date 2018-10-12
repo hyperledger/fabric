@@ -436,21 +436,21 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 }
 
 func (s *store) launchCollElgProc() {
+	maxBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
+	batchesInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
 	go func() {
-		s.processCollElgEvents() // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
+		s.processCollElgEvents(maxBatchSize, batchesInterval) // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
 		for {
 			logger.Debugf("Waiting for collection eligibility event")
 			s.collElgProcSync.waitForNotification()
-			s.processCollElgEvents()
+			s.processCollElgEvents(maxBatchSize, batchesInterval)
 			s.collElgProcSync.done()
 		}
 	}()
 }
 
-func (s *store) processCollElgEvents() {
+func (s *store) processCollElgEvents(maxBatchSize, batchesInterval int) {
 	logger.Debugf("Starting to process collection eligibility events")
-	maxBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
-	batchesInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
 	s.purgerLock.Lock()
 	defer s.purgerLock.Unlock()
 	collElgStartKey, collElgEndKey := createRangeScanKeysForCollElg()
