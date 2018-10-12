@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/pkg/errors"
 )
 

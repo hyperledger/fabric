@@ -21,7 +21,6 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 

@@ -9,10 +9,9 @@ package golang
 import (
 	"errors"
 	"fmt"
-	"strings"
-
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"

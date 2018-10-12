@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxlator/sanitycheck"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 

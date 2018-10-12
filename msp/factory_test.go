@@ -7,10 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
-	"testing"
-
 	"reflect"
 	"runtime"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

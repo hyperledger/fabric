@@ -8,7 +8,6 @@ package channelconfig
 
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/pkg/errors"
 )
 

@@ -14,9 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
-
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -34,7 +31,9 @@ import (
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
+	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"

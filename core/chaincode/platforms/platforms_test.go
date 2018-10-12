@@ -7,17 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package platforms_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"errors"
 	"fmt"
-
-	"archive/tar"
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/mock"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -7,9 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
-	"testing"
-
 	"encoding/hex"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"

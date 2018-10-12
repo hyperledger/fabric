@@ -8,9 +8,8 @@ package statecouchdb
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestVDBEnv provides a couch db backed versioned db for testing

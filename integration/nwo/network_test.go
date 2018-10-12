@@ -12,14 +12,13 @@ import (
 	"os"
 	"syscall"
 
+	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/tedsuo/ifrit"
 	yaml "gopkg.in/yaml.v2"
 )

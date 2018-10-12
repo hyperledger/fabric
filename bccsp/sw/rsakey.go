@@ -17,14 +17,11 @@ package sw
 
 import (
 	"crypto/rsa"
-	"crypto/x509"
-	"fmt"
-
 	"crypto/sha256"
-
-	"errors"
-
+	"crypto/x509"
 	"encoding/asn1"
+	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/hyperledger/fabric/bccsp"

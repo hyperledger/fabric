@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )

@@ -9,13 +9,12 @@ package plain_test
 import (
 	"errors"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/tms"
 	"github.com/hyperledger/fabric/token/tms/plain"
 	"github.com/hyperledger/fabric/token/tms/plain/mock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Verifier", func() {

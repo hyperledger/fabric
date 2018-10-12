@@ -12,13 +12,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 	fabricmsp "github.com/hyperledger/fabric/msp"
+	"gopkg.in/yaml.v2"
 )
 
 const (

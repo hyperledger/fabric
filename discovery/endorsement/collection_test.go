@@ -8,9 +8,8 @@ package endorsement
 
 import (
 	"bytes"
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/gossip/api"

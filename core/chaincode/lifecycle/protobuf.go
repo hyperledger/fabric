@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"github.com/golang/protobuf/proto"
-
 	"github.com/pkg/errors"
 )
 

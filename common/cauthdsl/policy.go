@@ -10,11 +10,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 type provider struct {

@@ -9,13 +9,12 @@ import (
 	"fmt"
 	"os"
 
-	"google.golang.org/grpc"
-
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"google.golang.org/grpc"
 )
 
 type broadcastClient struct {

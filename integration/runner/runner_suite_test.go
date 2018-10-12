@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package runner_test
 
 import (
+	"testing"
+
 	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 func TestRunner(t *testing.T) {

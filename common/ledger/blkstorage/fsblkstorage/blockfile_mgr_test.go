@@ -22,11 +22,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledgerutil "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBlockfileMgrBlockReadWrite(t *testing.T) {

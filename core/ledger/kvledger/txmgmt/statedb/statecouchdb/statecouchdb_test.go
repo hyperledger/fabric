@@ -13,9 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -24,6 +21,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {

@@ -7,10 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"encoding/hex"
 	"fmt"
 	"testing"
-
-	"encoding/hex"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"

@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/tools/protolator/testprotos"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 

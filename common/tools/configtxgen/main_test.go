@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
-
 	"github.com/stretchr/testify/assert"
 )
 

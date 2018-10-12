@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"testing"
-
 	"time"
 
 	"github.com/spf13/viper"

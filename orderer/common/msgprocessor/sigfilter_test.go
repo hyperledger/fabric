@@ -15,7 +15,6 @@ import (
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )

@@ -17,9 +17,8 @@ limitations under the License.
 package rwsetutil
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	bccspfactory "github.com/hyperledger/fabric/bccsp/factory"

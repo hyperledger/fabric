@@ -17,18 +17,16 @@ package sw
 
 import (
 	"bytes"
-	"io/ioutil"
-	"os"
-	"sync"
-
-	"errors"
-	"strings"
-
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"

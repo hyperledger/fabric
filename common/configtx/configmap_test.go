@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/stretchr/testify/assert"
 )
 

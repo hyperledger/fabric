@@ -9,15 +9,13 @@ package pvtstatepurgemgmt
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildExpirySchedule(t *testing.T) {

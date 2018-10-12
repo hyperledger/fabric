@@ -8,11 +8,10 @@ package msgstore
 
 import (
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"sync"
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"

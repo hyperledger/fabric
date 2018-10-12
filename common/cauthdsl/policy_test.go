@@ -10,10 +10,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 

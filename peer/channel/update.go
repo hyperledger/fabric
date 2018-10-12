@@ -17,14 +17,12 @@ limitations under the License.
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
-	"errors"
-
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/spf13/cobra"
 )
 

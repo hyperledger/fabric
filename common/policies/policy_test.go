@@ -7,16 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
-	"testing"
-
-	cb "github.com/hyperledger/fabric/protos/common"
-
 	"fmt"
 	"reflect"
-
 	"strconv"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )

@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/hyperledger/fabric/msp"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"

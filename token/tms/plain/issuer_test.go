@@ -9,7 +9,6 @@ package plain_test
 import (
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/tms/plain"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

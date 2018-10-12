@@ -12,14 +12,12 @@ import (
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/peer/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/spf13/cobra"
 )
 

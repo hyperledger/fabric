@@ -17,10 +17,8 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
-
-	"github.com/spf13/viper"
-
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
 )
 
 var sysccLogger = flogging.MustGetLogger("sccapi")

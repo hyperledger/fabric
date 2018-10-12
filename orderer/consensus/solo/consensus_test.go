@@ -27,7 +27,6 @@ import (
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 

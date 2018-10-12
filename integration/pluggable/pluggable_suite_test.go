@@ -10,10 +10,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/hyperledger/fabric/integration/nwo"
 )
 
 func TestPluggable(t *testing.T) {

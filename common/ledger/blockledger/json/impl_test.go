@@ -17,7 +17,6 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package encoder
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -21,8 +22,6 @@ import (
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 

@@ -18,9 +18,8 @@ package sw
 
 import (
 	"errors"
-	"testing"
-
 	"reflect"
+	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/mocks"

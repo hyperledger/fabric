@@ -8,17 +8,15 @@ package dockercontroller
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
-
-	"bufio"
-
-	"regexp"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"

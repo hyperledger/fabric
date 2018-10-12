@@ -11,7 +11,6 @@ import (
 	"net"
 	"strings"
 	"testing"
-
 	"time"
 
 	"github.com/hyperledger/fabric/core/config/configtest"

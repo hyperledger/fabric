@@ -9,11 +9,10 @@ package common
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
-	"testing"
-
 	"math/rand"
 	"os"
+	"path/filepath"
+	"testing"
 
 	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/pkg/errors"

@@ -7,10 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package plain
 
 import (
-	"sync"
-
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/token"

@@ -10,13 +10,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"go.uber.org/zap/zapcore"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 const (

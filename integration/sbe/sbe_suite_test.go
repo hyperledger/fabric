@@ -10,12 +10,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"testing"
 
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 func TestEndToEnd(t *testing.T) {

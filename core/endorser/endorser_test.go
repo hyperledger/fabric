@@ -12,8 +12,6 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/onsi/gomega"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
@@ -36,6 +34,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

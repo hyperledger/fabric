@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/tools/protolator/testprotos"
-
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,15 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package lscc_test
 
 import (
+	"testing"
+
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc/lscc"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 //go:generate counterfeiter -o mock/sysccprovider.go --fake-name SystemChaincodeProvider . systemChaincodeProvider

@@ -21,7 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/peer/common"
-
 	"github.com/spf13/cobra"
 )
 

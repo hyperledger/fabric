@@ -11,7 +11,6 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/common/flogging"
-
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"

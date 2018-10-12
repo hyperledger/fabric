@@ -16,6 +16,7 @@ import (
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
@@ -25,8 +26,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )

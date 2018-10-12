@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/spf13/cobra"
 )
 

@@ -17,9 +17,8 @@ limitations under the License.
 package fsblkstorage
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"

@@ -7,12 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package platforms_test
 
 import (
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 //go:generate counterfeiter -o mock/platform.go --fake-name Platform . platform

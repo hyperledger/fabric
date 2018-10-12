@@ -9,13 +9,12 @@ package channelconfig
 import (
 	"math"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
-	"github.com/golang/protobuf/proto"
 )
 
 const (

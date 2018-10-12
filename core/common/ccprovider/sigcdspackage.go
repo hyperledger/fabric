@@ -17,14 +17,12 @@ limitations under the License.
 package ccprovider
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
-
-	"bytes"
-
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/common/ccpackage"

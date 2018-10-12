@@ -19,10 +19,9 @@ package peer
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
-
-	"github.com/golang/protobuf/proto"
 )
 
 func init() {

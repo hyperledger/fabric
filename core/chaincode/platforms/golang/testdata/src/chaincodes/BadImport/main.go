@@ -10,6 +10,7 @@ package main
 import (
 	"bogus/package"
 	"fmt"
+
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 

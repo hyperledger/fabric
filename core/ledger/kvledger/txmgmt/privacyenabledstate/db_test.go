@@ -12,9 +12,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -22,6 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {

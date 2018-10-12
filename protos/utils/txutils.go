@@ -7,9 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package utils
 
 import (
-	"fmt"
-
 	"bytes"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"

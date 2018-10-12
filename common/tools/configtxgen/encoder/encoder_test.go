@@ -9,8 +9,7 @@ package encoder
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -20,9 +19,8 @@ import (
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -17,9 +17,8 @@ limitations under the License.
 package policy
 
 import (
-	"fmt"
-
 	"errors"
+	"fmt"
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"

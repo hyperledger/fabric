@@ -20,10 +20,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/proto"
 )
 
 type fileBootstrapper struct {

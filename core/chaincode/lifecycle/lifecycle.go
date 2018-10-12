@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-
 	"github.com/pkg/errors"
 )
 

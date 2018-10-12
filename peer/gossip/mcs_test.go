@@ -19,10 +19,9 @@ package gossip
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
-
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"

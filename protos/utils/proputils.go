@@ -8,7 +8,6 @@ package utils
 
 import (
 	"encoding/binary"
-
 	"encoding/hex"
 
 	"github.com/golang/protobuf/proto"

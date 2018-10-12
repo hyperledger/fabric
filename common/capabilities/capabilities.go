@@ -9,7 +9,6 @@ package capabilities
 import (
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/pkg/errors"
 )
 

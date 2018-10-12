@@ -8,9 +8,8 @@ package blockcutter
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/hyperledger/fabric/common/flogging"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 const pkgLogID = "orderer/common/blockcutter"

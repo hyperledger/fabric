@@ -8,7 +8,6 @@ package idemix
 
 import (
 	"crypto/ecdsa"
-
 	"sort"
 
 	"github.com/hyperledger/fabric-amcl/amcl"

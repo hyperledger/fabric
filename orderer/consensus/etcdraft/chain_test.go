@@ -11,9 +11,6 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/coreos/etcd/raft"
 	"github.com/golang/protobuf/proto"
@@ -28,6 +25,8 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	raftprotos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"

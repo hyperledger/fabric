@@ -23,7 +23,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/pkg/errors"
 )
 

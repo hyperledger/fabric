@@ -33,10 +33,9 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"reflect"
 	"testing"
 	"time"
-
-	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"

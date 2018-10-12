@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Shopify/sarama"
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
 	coreconfig "github.com/hyperledger/fabric/core/config"
-
-	"github.com/Shopify/sarama"
 	"github.com/spf13/viper"
 )
 

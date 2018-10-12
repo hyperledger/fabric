@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	ab "github.com/hyperledger/fabric/protos/orderer"
-
 	"github.com/stretchr/testify/assert"
 )
 

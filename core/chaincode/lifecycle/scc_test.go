@@ -9,15 +9,13 @@ package lifecycle_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
-
-	"github.com/golang/protobuf/proto"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("SCC", func() {

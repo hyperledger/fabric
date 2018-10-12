@@ -8,16 +8,12 @@ package msp
 
 import (
 	"bytes"
-	"encoding/hex"
-	"time"
-
 	"crypto/ecdsa"
-
 	"crypto/x509"
-
+	"encoding/hex"
 	"encoding/pem"
-
 	"reflect"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"

@@ -12,7 +12,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
 	"github.com/stretchr/testify/assert"
 )
 

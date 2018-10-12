@@ -8,12 +8,11 @@ package car
 
 import (
 	"archive/tar"
-	"io/ioutil"
-	"strings"
-
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"

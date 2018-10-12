@@ -11,7 +11,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"

@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"testing"
+
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 func TestChaincode(t *testing.T) {

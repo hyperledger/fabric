@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/stretchr/testify/assert"
 )
 

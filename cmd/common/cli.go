@@ -8,10 +8,9 @@ package common
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-
-	"io"
 
 	"github.com/hyperledger/fabric/cmd/common/comm"
 	"github.com/hyperledger/fabric/cmd/common/signer"

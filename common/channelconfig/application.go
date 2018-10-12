@@ -10,7 +10,6 @@ import (
 	"github.com/hyperledger/fabric/common/capabilities"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
 	"github.com/pkg/errors"
 )
 
