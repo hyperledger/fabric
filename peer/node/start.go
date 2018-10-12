@@ -333,6 +333,11 @@ func serve(args []string) error {
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", peerEndpoint.Id, networkID, peerEndpoint.Address)
 
+	// Get configuration before starting go routines to avoid
+	// racing in tests
+	profileEnabled := viper.GetBool("peer.profile.enabled")
+	profileListenAddress := viper.GetString("peer.profile.listenAddress")
+
 	// Start the grpc server. Done in a goroutine so we can deploy the
 	// genesis block if needed.
 	serve := make(chan error)
@@ -356,9 +361,8 @@ func serve(args []string) error {
 	}()
 
 	// Start profiling http endpoint if enabled
-	if viper.GetBool("peer.profile.enabled") {
+	if profileEnabled {
 		go func() {
-			profileListenAddress := viper.GetString("peer.profile.listenAddress")
 			logger.Infof("Starting profiling server with listenAddress = %s", profileListenAddress)
 			if profileErr := http.ListenAndServe(profileListenAddress, nil); profileErr != nil {
 				logger.Errorf("Error starting profiler: %s", profileErr)
