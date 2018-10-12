@@ -20,6 +20,7 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
+	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
@@ -148,4 +149,12 @@ func TestDeliverMsgTrace(t *testing.T) {
 			},
 		}
 	}, t)
+}
+
+func TestDeliverNoChannel(t *testing.T) {
+	r := &multichannel.Registrar{}
+	ds := &deliverSupport{Registrar: r}
+	chain := ds.GetChain("mychannel")
+	assert.Nil(t, chain)
+	assert.True(t, chain == nil)
 }

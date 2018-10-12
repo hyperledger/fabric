@@ -39,7 +39,11 @@ type deliverSupport struct {
 }
 
 func (ds deliverSupport) GetChain(chainID string) deliver.Chain {
-	return ds.Registrar.GetChain(chainID)
+	chain := ds.Registrar.GetChain(chainID)
+	if chain == nil {
+		return nil
+	}
+	return chain
 }
 
 type server struct {
