@@ -140,7 +140,7 @@ func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerP
 		timeWindow = defaultTimeWindow
 	}
 	return &server{
-		dh: deliver.NewHandler(chainManager, timeWindow, mutualTLS),
+		dh:                    deliver.NewHandler(chainManager, timeWindow, mutualTLS),
 		policyCheckerProvider: policyCheckerProvider,
 	}
 }

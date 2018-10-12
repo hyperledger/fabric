@@ -668,10 +668,10 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 
 	for orgName, p := range peersByOrg {
 		anchorUpdate := commands.OutputAnchorPeersUpdate{
-			ChannelID:  channelName,
-			Profile:    n.ProfileForChannel(channelName),
-			ConfigPath: n.RootDir,
-			AsOrg:      orgName,
+			ChannelID:               channelName,
+			Profile:                 n.ProfileForChannel(channelName),
+			ConfigPath:              n.RootDir,
+			AsOrg:                   orgName,
 			OutputAnchorPeersUpdate: tempFile.Name(),
 		}
 		sess, err := n.ConfigTxGen(anchorUpdate)

@@ -331,8 +331,8 @@ func TestTxSimulationResultWithMetadata(t *testing.T) {
 	}
 	assert.Equal(t, pubAndHashCombinedNs1, actualSimRes.PubSimulationResults.NsRwset[0])
 	pubAndHashCombinedNs2 := &rwset.NsReadWriteSet{
-		Namespace: "ns2",
-		Rwset:     serializeTestProtoMsg(t, pubNs2),
+		Namespace:             "ns2",
+		Rwset:                 serializeTestProtoMsg(t, pubNs2),
 		CollectionHashedRwset: nil,
 	}
 	expectedPubRWSet := &rwset.TxReadWriteSet{

@@ -118,9 +118,9 @@ type validateResult struct {
 func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms.Registry) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
-		s:                 s,
-		PlatformRegistry:  pr,
-		PvtRWSetAssembler: &rwSetAssembler{},
+		s:                     s,
+		PlatformRegistry:      pr,
+		PvtRWSetAssembler:     &rwSetAssembler{},
 	}
 	return e
 }

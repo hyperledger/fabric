@@ -57,7 +57,7 @@ Go Programming Language
 Hyperledger Fabric uses the Go Programming Language for many of its
 components.
 
-  - `Go <https://golang.org/dl/>`__ version 1.10.x is required.
+  - `Go <https://golang.org/dl/>`__ version 1.11.x is required.
 
 Given that we will be writing chaincode programs in Go, there are two
 environment variables you will need to set properly; you can make these

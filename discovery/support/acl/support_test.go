@@ -189,7 +189,7 @@ func TestChannelVerifier(t *testing.T) {
 	}
 
 	verifier := &acl.ChannelVerifier{
-		Policy: "some policy string",
+		Policy:                     "some policy string",
 		ChannelPolicyManagerGetter: polMgr,
 	}
 

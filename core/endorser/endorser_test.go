@@ -188,7 +188,7 @@ func TestEndorserSysCC(t *testing.T) {
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
-		Mock: m,
+		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -391,7 +391,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
-		Mock: m,
+		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -437,7 +437,7 @@ func TestEndorserGoodPath(t *testing.T) {
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
-		Mock: m,
+		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -461,7 +461,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
-		Mock: m,
+		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -488,7 +488,7 @@ func TestEndorserLSCC(t *testing.T) {
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
-		Mock: m,
+		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
@@ -535,7 +535,7 @@ func TestEndorseWithPlugin(t *testing.T) {
 	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 	support := &em.MockSupport{
-		Mock: m,
+		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New("can't find this transaction in the index"),
@@ -595,7 +595,7 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 			m.On("Serialize").Return([]byte{1, 1, 1}, nil)
 			m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
 			support := &em.MockSupport{
-				Mock: m,
+				Mock:                       m,
 				GetApplicationConfigBoolRv: true,
 				GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 				GetTransactionByIDErr:      errors.New(""),

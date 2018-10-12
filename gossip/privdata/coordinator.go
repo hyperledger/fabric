@@ -657,9 +657,9 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 	}
 
 	privateInfo := &privateDataInfo{
-		sources:            sources,
-		missingKeysByTxIDs: missing,
-		txns:               txList,
+		sources:                 sources,
+		missingKeysByTxIDs:      missing,
+		txns:                    txList,
 		missingRWSButIneligible: bi.missingRWSButIneligible,
 	}
 

@@ -24,7 +24,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/dl/>`__ - version 1.10.x
+-  `Go <https://golang.org/dl/>`__ - version 1.11.x
 -  (macOS)
    `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__
    must be installed

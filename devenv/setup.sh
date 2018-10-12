@@ -60,7 +60,7 @@ docker run --rm busybox echo All good
 # ----------------------------------------------------------------
 # Install Golang
 # ----------------------------------------------------------------
-GO_VER=1.10.4
+GO_VER=1.11.1
 GO_URL=https://storage.googleapis.com/golang/go${GO_VER}.linux-amd64.tar.gz
 
 # Set Go environment variables needed by other scripts

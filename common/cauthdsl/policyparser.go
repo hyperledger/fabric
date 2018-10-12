@@ -245,9 +245,9 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
 	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(
 		policy, map[string]govaluate.ExpressionFunction{
-			GateAnd:                  and,
-			strings.ToLower(GateAnd): and,
-			strings.ToUpper(GateAnd): and,
+			GateAnd:                    and,
+			strings.ToLower(GateAnd):   and,
+			strings.ToUpper(GateAnd):   and,
 			GateOr:                     or,
 			strings.ToLower(GateOr):    or,
 			strings.ToUpper(GateOr):    or,

@@ -86,9 +86,9 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 	}
 
 	signer := &m.IdemixMSPSignerConfig{
-		Cred: credBytes,
-		Sk:   idemix.BigToBytes(sk),
-		OrganizationalUnitIdentifier: ouString,
+		Cred:                            credBytes,
+		Sk:                              idemix.BigToBytes(sk),
+		OrganizationalUnitIdentifier:    ouString,
 		Role:                            int32(roleMask),
 		EnrollmentId:                    enrollmentId,
 		CredentialRevocationInformation: criBytes,
