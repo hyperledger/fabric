@@ -47,27 +47,52 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *am
 
 	// Place a BBS+ signature on the user key and the attribute values
 	// (For BBS+, see e.g. "Constant-Size Dynamic k-TAA" by Man Ho Au, Willy Susilo, Yi Mu)
+	// or http://eprint.iacr.org/2016/663.pdf, Sec. 4.3.
+
+	// For a credential, a BBS+ signature consists of the following three elements:
+	// 1. E, random value in the proper group
+	// 2. S, random value in the proper group
+	// 3. A as B^Exp where B=g_1 \cdot h_r^s \cdot h_sk^sk \cdot \prod_{i=1}^L h_i^{m_i} and Exp = \frac{1}{e+x}
+	// Notice that:
+	// h_r is h_0 in http://eprint.iacr.org/2016/663.pdf, Sec. 4.3.
+
+	// Pick randomness E and S
 	E := RandModOrder(rng)
 	S := RandModOrder(rng)
 
+	// Set B as g_1 \cdot h_r^s \cdot h_sk^sk \cdot \prod_{i=1}^L h_i^{m_i} and Exp = \frac{1}{e+x}
 	B := FP256BN.NewECP()
-	B.Copy(GenG1)
+	B.Copy(GenG1) // g_1
 	Nym := EcpFromProto(m.Nym)
-	B.Add(Nym)
-	B.Add(EcpFromProto(key.Ipk.HRand).Mul(S))
+	B.Add(Nym)                                // in this case, recall Nym=h_sk^sk
+	B.Add(EcpFromProto(key.Ipk.HRand).Mul(S)) // h_r^s
 
-	// Use Mul2 instead of Mul as much as possible
+	// Append attributes
+	// Use Mul2 instead of Mul as much as possible for efficiency reasones
 	for i := 0; i < len(attrs)/2; i++ {
-		B.Add(EcpFromProto(key.Ipk.HAttrs[2*i]).Mul2(attrs[2*i], EcpFromProto(key.Ipk.HAttrs[2*i+1]), attrs[2*i+1]))
+		B.Add(
+			// Add two attributes in one shot
+			EcpFromProto(key.Ipk.HAttrs[2*i]).Mul2(
+				attrs[2*i],
+				EcpFromProto(key.Ipk.HAttrs[2*i+1]),
+				attrs[2*i+1],
+			),
+		)
 	}
+	// Check for residue in case len(attrs)%2 is odd
 	if len(attrs)%2 != 0 {
 		B.Add(EcpFromProto(key.Ipk.HAttrs[len(attrs)-1]).Mul(attrs[len(attrs)-1]))
 	}
 
+	// Set Exp as \frac{1}{e+x}
 	Exp := Modadd(FP256BN.FromBytes(key.GetIsk()), E, GroupOrder)
 	Exp.Invmodp(GroupOrder)
+	// Finalise A as B^Exp
 	A := B.Mul(Exp)
+	// The signature is now generated.
 
+	// Notice that here we release also B, this does not harm security cause
+	// it can be compute publicly from the BBS+ signature itself.
 	CredAttrs := make([][]byte, len(attrs))
 	for index, attribute := range attrs {
 		CredAttrs[index] = BigToBytes(attribute)
@@ -84,26 +109,33 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *am
 // Ver cryptographically verifies the credential by verifying the signature
 // on the attribute values and user's secret key
 func (cred *Credential) Ver(sk *FP256BN.BIG, ipk *IssuerPublicKey) error {
+	// Validate Input
 
-	// parse the credential
+	// - parse the credential
 	A := EcpFromProto(cred.GetA())
 	B := EcpFromProto(cred.GetB())
 	E := FP256BN.FromBytes(cred.GetE())
 	S := FP256BN.FromBytes(cred.GetS())
 
-	// verify that all attribute values are present
+	// - verify that all attribute values are present
 	for i := 0; i < len(cred.GetAttrs()); i++ {
 		if cred.Attrs[i] == nil {
 			return errors.Errorf("credential has no value for attribute %s", ipk.AttributeNames[i])
 		}
 	}
 
-	// verify cryptographic signature on the attributes and the user secret key
+	// - verify cryptographic signature on the attributes and the user secret key
 	BPrime := FP256BN.NewECP()
 	BPrime.Copy(GenG1)
 	BPrime.Add(EcpFromProto(ipk.HSk).Mul2(sk, EcpFromProto(ipk.HRand), S))
 	for i := 0; i < len(cred.Attrs)/2; i++ {
-		BPrime.Add(EcpFromProto(ipk.HAttrs[2*i]).Mul2(FP256BN.FromBytes(cred.Attrs[2*i]), EcpFromProto(ipk.HAttrs[2*i+1]), FP256BN.FromBytes(cred.Attrs[2*i+1])))
+		BPrime.Add(
+			EcpFromProto(ipk.HAttrs[2*i]).Mul2(
+				FP256BN.FromBytes(cred.Attrs[2*i]),
+				EcpFromProto(ipk.HAttrs[2*i+1]),
+				FP256BN.FromBytes(cred.Attrs[2*i+1]),
+			),
+		)
 	}
 	if len(cred.Attrs)%2 != 0 {
 		BPrime.Add(EcpFromProto(ipk.HAttrs[len(cred.Attrs)-1]).Mul(FP256BN.FromBytes(cred.Attrs[len(cred.Attrs)-1])))
@@ -112,12 +144,17 @@ func (cred *Credential) Ver(sk *FP256BN.BIG, ipk *IssuerPublicKey) error {
 		return errors.Errorf("b-value from credential does not match the attribute values")
 	}
 
+	// Verify BBS+ signature. Namely: e(w \cdot g_2^e, A) =? e(g_2, B)
 	a := GenG2.Mul(E)
 	a.Add(Ecp2FromProto(ipk.W))
 	a.Affine()
 
-	if !FP256BN.Fexp(FP256BN.Ate(a, A)).Equals(FP256BN.Fexp(FP256BN.Ate(GenG2, B))) {
+	left := FP256BN.Fexp(FP256BN.Ate(a, A))
+	right := FP256BN.Fexp(FP256BN.Ate(GenG2, B))
+
+	if !left.Equals(right) {
 		return errors.Errorf("credential is not cryptographically valid")
 	}
+
 	return nil
 }
