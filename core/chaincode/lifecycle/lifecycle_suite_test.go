@@ -31,6 +31,11 @@ type packageParser interface {
 	lifecycle.PackageParser
 }
 
+//go:generate counterfeiter -o mock/scc_functions.go --fake-name SCCFunctions . sccFunctions
+type sccFunctions interface {
+	lifecycle.SCCFunctions
+}
+
 func TestLifecycle(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Lifecycle Suite")
