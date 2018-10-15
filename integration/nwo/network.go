@@ -28,7 +28,6 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -649,20 +648,8 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 		return
 	}
 
-	tempFile, err := ioutil.TempFile("", "genesis-block")
-	Expect(err).NotTo(HaveOccurred())
-	tempFile.Close()
-	defer os.Remove(tempFile.Name())
-
-	n.CreateChannel(channelName, o, peers[0], tempFile.Name())
-
-	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
-			BlockPath: tempFile.Name(),
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	}
+	n.CreateChannel(channelName, o, peers[0])
+	n.JoinChannel(channelName, o, peers...)
 }
 
 // UpdateChannelAnchors determines the anchor peers for the specified channel,
@@ -706,23 +693,19 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 // returned by CreateChannelTxPath.
 //
 // The orderer must be running when this is called.
-func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, outputFile string) {
-	tryToCreateChannel := func() (bool, error) {
+func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer) {
+	createChannel := func() int {
 		sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
 			ChannelID:   channelName,
 			Orderer:     n.OrdererAddress(o, ListenPort),
 			File:        n.CreateChannelTxPath(channelName),
-			OutputBlock: outputFile,
+			OutputBlock: "/dev/null",
 		})
 		Expect(err).NotTo(HaveOccurred())
-		output := sess.Wait(n.EventuallyTimeout)
-		if sess.ExitCode() == 0 {
-			return true, nil
-		}
-		return false, errors.New(string(output.Out.Contents()))
+		return sess.Wait(n.EventuallyTimeout).ExitCode()
 	}
 
-	Eventually(tryToCreateChannel, n.EventuallyTimeout).Should(BeTrue())
+	Eventually(createChannel, n.EventuallyTimeout).Should(Equal(0))
 }
 
 // JoinChannel will join peers to the specified channel. The orderer is used to
