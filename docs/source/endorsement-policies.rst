@@ -123,8 +123,11 @@ For example:
     of the ``Org2`` MSP and one signature from a member of the ``Org3`` MSP.
   - ``OutOf(1, 'Org1.member', 'Org2.member')``, which resolves to the same thing
     as ``OR('Org1.member', 'Org2.member')``.
-  - Similarly, ``OutOf(2, 'Org1.member', 'B.member')`` is equivalent to
-    ``AND('Org1.member', 'Org2.member')``.
+  - Similarly, ``OutOf(2, 'Org1.member', 'Org2.member')`` is equivalent to
+    ``AND('Org1.member', 'Org2.member')``, and ``OutOf(2, 'Org1.member',
+    'Org2.member', 'Org3.member')`` is equivalent to ``OR(AND('Org1.member',
+    'Org2.member'), AND('Org1.member', 'Org3.member'), AND('Org2.member',
+    'Org3.member'))``.
 
 .. _key-level-endorsement:
 
