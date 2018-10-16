@@ -8,6 +8,7 @@ package comm_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"net"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	grpc_testdata "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/hyperledger/fabric/protos/common"
@@ -51,7 +51,9 @@ func TestExtractCertificateHashFromContext(t *testing.T) {
 		},
 	}
 	ctx = peer.NewContext(context.Background(), p)
-	assert.Equal(t, util.ComputeSHA256([]byte{1, 2, 3}), comm.ExtractCertificateHashFromContext(ctx))
+	h := sha256.New()
+	h.Write([]byte{1, 2, 3})
+	assert.Equal(t, h.Sum(nil), comm.ExtractCertificateHashFromContext(ctx))
 }
 
 type nonTLSConnection struct {
@@ -124,7 +126,9 @@ func TestBindingInspector(t *testing.T) {
 
 	// Scenario IV: Client sends its TLS cert hash as needed, but doesn't use mutual TLS
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
-	chanHdr.TlsCertHash = util.ComputeSHA256([]byte(cert.Certificate[0]))
+	h := sha256.New()
+	h.Write([]byte(cert.Certificate[0]))
+	chanHdr.TlsCertHash = h.Sum(nil)
 	ch, _ = proto.Marshal(chanHdr)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
 	assert.Error(t, err)
