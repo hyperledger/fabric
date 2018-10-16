@@ -108,3 +108,21 @@ func BasicEtcdRaft() *Config {
 	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
 	return config
 }
+
+func MultiNodeEtcdRaft() *Config {
+	config := BasicEtcdRaft()
+	config.Orderers = []*Orderer{
+		{Name: "orderer1", Organization: "OrdererOrg"},
+		{Name: "orderer2", Organization: "OrdererOrg"},
+		{Name: "orderer3", Organization: "OrdererOrg"},
+	}
+	config.Profiles = []*Profile{{
+		Name:     "SampleDevModeEtcdRaft",
+		Orderers: []string{"orderer1", "orderer2", "orderer3"},
+	}, {
+		Name:          "TwoOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2"},
+	}}
+	return config
+}

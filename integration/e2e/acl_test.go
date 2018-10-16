@@ -110,7 +110,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("setting the filtered block event ACL policy to Org1/Admins")
 		policyName := resources.Event_FilteredBlock
 		policy := "/Channel/Application/Org1/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy)
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("invoking chaincode as a permitted Org1 Admin identity")
 		sess, err := network.PeerAdminSession(org1Peer0, invokeChaincode)
@@ -123,7 +123,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("setting the filtered block event ACL policy to org2/Admins")
 		policyName = resources.Event_FilteredBlock
 		policy = "/Channel/Application/org2/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy)
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("invoking chaincode as a forbidden Org1 Admin identity")
 		sess, err = network.PeerAdminSession(org1Peer0, invokeChaincode)
@@ -136,7 +136,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("setting the block event ACL policy to Org1/Admins")
 		policyName = resources.Event_Block
 		policy = "/Channel/Application/Org1/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy)
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("fetching the latest block from the peer as a permitted Org1 Admin identity")
 		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
@@ -159,7 +159,7 @@ var _ = Describe("EndToEndACL", func() {
 		By("setting the lscc/GetInstantiatedChaincodes ACL policy to Org1/Admins")
 		policyName = resources.Lscc_GetInstantiatedChaincodes
 		policy = "/Channel/Application/Org1/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy)
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("listing the instantiated chaincodes as a permitted Org1 Admin identity")
 		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListInstantiated{
@@ -196,7 +196,7 @@ var _ = Describe("EndToEndACL", func() {
 			policyName := fmt.Sprintf("%s/%s", scc, operation)
 			policy := "/Channel/Application/Org1/Admins"
 			By("setting " + policyName + " to Org1 Admins")
-			SetACLPolicy(network, "testchannel", policyName, policy)
+			SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 			args = append([]string{operation}, args...)
 			chaincodeQuery := commands.ChaincodeQuery{
@@ -243,8 +243,8 @@ var _ = Describe("EndToEndACL", func() {
 // previously defined ACL policies, generates the config update, signs the
 // configuration with Org2's signer, and then submits the config update using
 // Org1.
-func SetACLPolicy(network *nwo.Network, channel, policyName, policy string) {
-	orderer := network.Orderer("orderer")
+func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, ordererName string) {
+	orderer := network.Orderer(ordererName)
 	submitter := network.Peer("Org1", "peer0")
 	signer := network.Peer("Org2", "peer0")
 
