@@ -728,7 +728,7 @@ own copy of the network configuration.
 
 Both network and channel configurations are kept consistent using the same
 blockchain technology that is used for user transactions -- but for
-**configuration** transactions. To change a network or client configuration, an
+**configuration** transactions. To change a network or channel configuration, an
 administrator must submit a configuration transaction to change the network or
 channel configuration. It must be signed by the organizations identified in the
 appropriate policy as being responsible for configuration change. This policy is
@@ -804,7 +804,7 @@ follows: Client applications A1 can use channel C1 for communication with peers
 P1 and P2, and ordering service O4; client application A2 can use channel C1
 for communication with peers P1 and P2 and channel C2 for communication with
 peers P2 and P3 and ordering service O4; client application A3 can use channel
-C2 for communication with peer P3 and ordering service O4. Ordering service O4
+C2 for communication with peer P3 and P2 and ordering service O4. Ordering service O4
 can make use of the communication services of channels C1 and C2. Channel
 configuration CC1 applies to channel C1, CC2 applies to channel C2.*
 
@@ -921,7 +921,7 @@ They key point of understanding is that policy change is managed by a
 policy within the policy itself.  The **modification policy**, or
 **mod_policy** for short, is a first class policy within a network or channel
 configuration that manages change. Let's give two brief examples of how we've
-**already** used mod_policy can be used to manage change in our network!
+**already** used mod_policy to manage change in our network!
 
 The first example was when the network was initially set up. At this time, only
 organization R4 was allowed to manage the network. In practice, this was
