@@ -9,11 +9,11 @@ package comm
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -119,7 +119,9 @@ func ExtractCertificateHashFromContext(ctx context.Context) []byte {
 	if len(rawCert) == 0 {
 		return nil
 	}
-	return util.ComputeSHA256(rawCert)
+	h := sha256.New()
+	h.Write(rawCert)
+	return h.Sum(nil)
 }
 
 // ExtractCertificateFromContext returns the TLS certificate (if applicable)
