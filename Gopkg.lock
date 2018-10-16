@@ -203,6 +203,37 @@
   version = "v1.3.0"
 
 [[projects]]
+  digest = "1:f13426afea0ec993700963020bac4f3e50f97bd8741f72629a0c33c619a0f785"
+  name = "github.com/go-kit/kit"
+  packages = [
+    "log",
+    "metrics",
+    "metrics/internal/lv",
+    "metrics/internal/ratemap",
+    "metrics/statsd",
+    "util/conn",
+  ]
+  pruneopts = "NUT"
+  revision = "ca4112baa34cb55091301bdc13b1420a122b1b9e"
+  version = "v0.7.0"
+
+[[projects]]
+  digest = "1:341a7df38da99fe91ed40e4008c13cc5d02dcc98ed1a094360cb7d5df26d6d26"
+  name = "github.com/go-logfmt/logfmt"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "390ab7935ee28ec6b286364bba9b4dd6410cb3d5"
+  version = "v0.3.0"
+
+[[projects]]
+  digest = "1:91358b3a314c1ddfd4d6445ca9c1fb846842c31c153e626730594b3c95f73f4a"
+  name = "github.com/go-stack/stack"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
+  version = "v1.8.0"
+
+[[projects]]
   digest = "1:700c0988d24fac04439828af2aab8e7d1638cea3bc91ff20d2a2befc970ff165"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -303,6 +334,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "b729f2633dfe35f4d1d8a32385f6685610ce1cb5"
+
+[[projects]]
+  branch = "master"
+  digest = "1:f91bb67d051a94cf6ab2cf07eee0550432afc31655838d42cdec258db4b348f0"
+  name = "github.com/kr/logfmt"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
   branch = "master"
@@ -777,6 +816,9 @@
     "github.com/coreos/etcd/raft/raftpb",
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
+    "github.com/go-kit/kit/log",
+    "github.com/go-kit/kit/metrics",
+    "github.com/go-kit/kit/metrics/statsd",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/protoc-gen-go",

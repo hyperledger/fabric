@@ -173,3 +173,7 @@ noverify = [
   [[prune.project]]
       name = "github.com/coreos/etcd"
       non-go = false
+
+[[constraint]]
+  name = "github.com/go-kit/kit"
+  version = "0.7.0"
