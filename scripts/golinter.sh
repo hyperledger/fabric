@@ -37,15 +37,6 @@ do
         exit 1
     fi
 
-    echo "Checking with goimports"
-    OUTPUT="$(goimports -srcdir $GOPATH/src/github.com/hyperledger/fabric -l $i | grep -v testdata/ || true )"
-    if [[ $OUTPUT ]]; then
-        echo "The following files contain goimports errors"
-        echo $OUTPUT
-        echo "The goimports command 'goimports -l -w' must be run for these files"
-        exit 1
-    fi
-
     echo "Checking with go vet"
     OUTPUT="$(go vet -composites=false $i/...)"
     if [[ $OUTPUT ]]; then
