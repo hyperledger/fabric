@@ -10,45 +10,6 @@
 ###############################################################################
 logging:
 
-    # Default logging levels are specified here.
-
-    # Valid logging levels are case-insensitive strings chosen from
-
-    #     FATAL | PANIC | ERROR | WARNING | INFO | DEBUG
-
-    # The overall default logging level can be specified in various ways,
-    # listed below from strongest to weakest:
-    #
-    # 1. The --logging-level=<level> command line option overrides all other
-    #    default specifications.
-    #
-    # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
-    #    all peer commands if defined as a non-empty string.
-    #
-    # 3. The value of `level` that directly follows in this file.
-    #
-    # If no overall default level is provided via any of the above methods,
-    # the peer will default to INFO (the value of defaultLevel in
-    # common/flogging/logging.go)
-
-    # Default for all modules running within the scope of a peer.
-    # Note: this value is only used when --logging-level or CORE_LOGGING_LEVEL
-    #       are not set
-    level:       info
-
-    # The overall default values mentioned above can be overridden for the
-    # specific components listed in the override section below.
-
-    # Override log levels for various peer modules.
-    cauthdsl:   warning
-    gossip:     info
-    grpc:       error
-    ledger:     info
-    msp:        warning
-    policies:   warning
-    peer:
-        gossip: warning
-
     # Message format for the peer logs
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 

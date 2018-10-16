@@ -67,7 +67,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/peer/common"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -125,16 +124,6 @@ func serve(args []string) error {
 	mspType := mgmt.GetLocalMSP().GetType()
 	if mspType != msp.FABRIC {
 		panic("Unsupported msp type " + msp.ProviderTypeToString(mspType))
-	}
-
-	// set the logging level for specific modules defined via environment
-	// variables or core.yaml
-	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc", "peer.gossip"}
-	for _, module := range overrideLogModules {
-		err := common.SetLogLevelFromViper(module)
-		if err != nil {
-			logger.Warningf("Error setting log level for module '%s': %s", module, err.Error())
-		}
 	}
 
 	// Trace RPCs with the golang.org/x/net/trace package. This was moved out of

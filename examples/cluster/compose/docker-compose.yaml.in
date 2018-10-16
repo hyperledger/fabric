@@ -62,9 +62,9 @@ services:
       <<: *logging
     environment:
       - CORE_PEER_TLS_ENABLED=_TLS_ENABLED_
-      - CORE_LOGGING_LEVEL=WARNING
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer1:7051
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=compose_default
+      - FABRIC_LOGGING_SPEC=WARNING
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: peer node start
@@ -173,7 +173,7 @@ services:
     environment:
       - CORE_PEER_TLS_ENABLED=_TLS_ENABLED_
       - CORE_NEXT=true
-      - CORE_LOGGING_LEVEL=DEBUG
+      - FABRIC_LOGGING_SPEC=DEBUG
     volumes:
       - ./nodes/cli:/etc/hyperledger/fabric
       - .:/cli

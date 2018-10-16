@@ -8,15 +8,6 @@ package nwo
 
 const DefaultCoreTemplate = `---
 logging:
-  level:      info
-  cauthdsl:   warning
-  gossip:     warning
-  grpc:       error
-  ledger:     info
-  msp:        warning
-  policies:   warning
-  peer:
-    gossip: warning
   format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 
 peer:
