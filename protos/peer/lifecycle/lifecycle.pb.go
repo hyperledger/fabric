@@ -21,8 +21,8 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // InstallChaincodeArgs is the message used as the argument to
 // '+lifecycle.InstallChaincode'
 type InstallChaincodeArgs struct {
-	Name                    string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Version                 string   `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Name                    string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version                 string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	ChaincodeInstallPackage []byte   `protobuf:"bytes,3,opt,name=chaincode_install_package,json=chaincodeInstallPackage,proto3" json:"chaincode_install_package,omitempty"`
 	XXX_NoUnkeyedLiteral    struct{} `json:"-"`
 	XXX_unrecognized        []byte   `json:"-"`

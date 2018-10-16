@@ -77,7 +77,7 @@ func (ImplicitMetaPolicy_Rule) EnumDescriptor() ([]byte, []int) {
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
 // multiple policy engines, this is typed as a oneof for now
 type Policy struct {
-	Type                 int32    `protobuf:"varint,1,opt,name=type" json:"type,omitempty"`
+	Type                 int32    `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -124,9 +124,9 @@ func (m *Policy) GetValue() []byte {
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
 type SignaturePolicyEnvelope struct {
-	Version              int32               `protobuf:"varint,1,opt,name=version" json:"version,omitempty"`
-	Rule                 *SignaturePolicy    `protobuf:"bytes,2,opt,name=rule" json:"rule,omitempty"`
-	Identities           []*msp.MSPPrincipal `protobuf:"bytes,3,rep,name=identities" json:"identities,omitempty"`
+	Version              int32               `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Rule                 *SignaturePolicy    `protobuf:"bytes,2,opt,name=rule,proto3" json:"rule,omitempty"`
+	Identities           []*msp.MSPPrincipal `protobuf:"bytes,3,rep,name=identities,proto3" json:"identities,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
 	XXX_sizecache        int32               `json:"-"`
@@ -222,14 +222,16 @@ type isSignaturePolicy_Type interface {
 }
 
 type SignaturePolicy_SignedBy struct {
-	SignedBy int32 `protobuf:"varint,1,opt,name=signed_by,json=signedBy,oneof"`
+	SignedBy int32 `protobuf:"varint,1,opt,name=signed_by,json=signedBy,proto3,oneof"`
 }
+
 type SignaturePolicy_NOutOf_ struct {
-	NOutOf *SignaturePolicy_NOutOf `protobuf:"bytes,2,opt,name=n_out_of,json=nOutOf,oneof"`
+	NOutOf *SignaturePolicy_NOutOf `protobuf:"bytes,2,opt,name=n_out_of,json=nOutOf,proto3,oneof"`
 }
 
 func (*SignaturePolicy_SignedBy) isSignaturePolicy_Type() {}
-func (*SignaturePolicy_NOutOf_) isSignaturePolicy_Type()  {}
+
+func (*SignaturePolicy_NOutOf_) isSignaturePolicy_Type() {}
 
 func (m *SignaturePolicy) GetType() isSignaturePolicy_Type {
 	if m != nil {
@@ -322,8 +324,8 @@ func _SignaturePolicy_OneofSizer(msg proto.Message) (n int) {
 }
 
 type SignaturePolicy_NOutOf struct {
-	N                    int32              `protobuf:"varint,1,opt,name=n" json:"n,omitempty"`
-	Rules                []*SignaturePolicy `protobuf:"bytes,2,rep,name=rules" json:"rules,omitempty"`
+	N                    int32              `protobuf:"varint,1,opt,name=n,proto3" json:"n,omitempty"`
+	Rules                []*SignaturePolicy `protobuf:"bytes,2,rep,name=rules,proto3" json:"rules,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -376,8 +378,8 @@ func (m *SignaturePolicy_NOutOf) GetRules() []*SignaturePolicy {
 // each sub-group, retrieves policy "foo" for each subgroup, evaluates it, and, in the case of ANY
 // 1 satisfied is sufficient, ALL would require 4 signatures, and MAJORITY would require 3 signatures.
 type ImplicitMetaPolicy struct {
-	SubPolicy            string                  `protobuf:"bytes,1,opt,name=sub_policy,json=subPolicy" json:"sub_policy,omitempty"`
-	Rule                 ImplicitMetaPolicy_Rule `protobuf:"varint,2,opt,name=rule,enum=common.ImplicitMetaPolicy_Rule" json:"rule,omitempty"`
+	SubPolicy            string                  `protobuf:"bytes,1,opt,name=sub_policy,json=subPolicy,proto3" json:"sub_policy,omitempty"`
+	Rule                 ImplicitMetaPolicy_Rule `protobuf:"varint,2,opt,name=rule,proto3,enum=common.ImplicitMetaPolicy_Rule" json:"rule,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`

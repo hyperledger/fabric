@@ -105,17 +105,17 @@ func (ChaincodeMessage_Type) EnumDescriptor() ([]byte, []int) {
 }
 
 type ChaincodeMessage struct {
-	Type      ChaincodeMessage_Type `protobuf:"varint,1,opt,name=type,enum=protos.ChaincodeMessage_Type" json:"type,omitempty"`
-	Timestamp *timestamp.Timestamp  `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
+	Type      ChaincodeMessage_Type `protobuf:"varint,1,opt,name=type,proto3,enum=protos.ChaincodeMessage_Type" json:"type,omitempty"`
+	Timestamp *timestamp.Timestamp  `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	Payload   []byte                `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
-	Txid      string                `protobuf:"bytes,4,opt,name=txid" json:"txid,omitempty"`
-	Proposal  *SignedProposal       `protobuf:"bytes,5,opt,name=proposal" json:"proposal,omitempty"`
+	Txid      string                `protobuf:"bytes,4,opt,name=txid,proto3" json:"txid,omitempty"`
+	Proposal  *SignedProposal       `protobuf:"bytes,5,opt,name=proposal,proto3" json:"proposal,omitempty"`
 	// event emitted by chaincode. Used only with Init or Invoke.
 	// This event is then stored (currently)
 	// with Block.NonHashData.TransactionResult
-	ChaincodeEvent *ChaincodeEvent `protobuf:"bytes,6,opt,name=chaincode_event,json=chaincodeEvent" json:"chaincode_event,omitempty"`
+	ChaincodeEvent *ChaincodeEvent `protobuf:"bytes,6,opt,name=chaincode_event,json=chaincodeEvent,proto3" json:"chaincode_event,omitempty"`
 	// channel id
-	ChannelId            string   `protobuf:"bytes,7,opt,name=channel_id,json=channelId" json:"channel_id,omitempty"`
+	ChannelId            string   `protobuf:"bytes,7,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -198,8 +198,8 @@ func (m *ChaincodeMessage) GetChannelId() string {
 // is to be fetched from the ledger. If the collection is specified, the key
 // would be fetched from the collection (i.e., private state)
 type GetState struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	Collection           string   `protobuf:"bytes,2,opt,name=collection" json:"collection,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Collection           string   `protobuf:"bytes,2,opt,name=collection,proto3" json:"collection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -244,8 +244,8 @@ func (m *GetState) GetCollection() string {
 }
 
 type GetStateMetadata struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	Collection           string   `protobuf:"bytes,2,opt,name=collection" json:"collection,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Collection           string   `protobuf:"bytes,2,opt,name=collection,proto3" json:"collection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -294,9 +294,9 @@ func (m *GetStateMetadata) GetCollection() string {
 // specified, the key and value would be written to the transaction's private
 // write set.
 type PutState struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	Collection           string   `protobuf:"bytes,3,opt,name=collection" json:"collection,omitempty"`
+	Collection           string   `protobuf:"bytes,3,opt,name=collection,proto3" json:"collection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -348,9 +348,9 @@ func (m *PutState) GetCollection() string {
 }
 
 type PutStateMetadata struct {
-	Key                  string         `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	Collection           string         `protobuf:"bytes,3,opt,name=collection" json:"collection,omitempty"`
-	Metadata             *StateMetadata `protobuf:"bytes,4,opt,name=metadata" json:"metadata,omitempty"`
+	Key                  string         `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Collection           string         `protobuf:"bytes,3,opt,name=collection,proto3" json:"collection,omitempty"`
+	Metadata             *StateMetadata `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -406,8 +406,8 @@ func (m *PutStateMetadata) GetMetadata() *StateMetadata {
 // If the collection is specified, the key needs to be recorded in the
 // transaction's private write set as a delete operation.
 type DelState struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	Collection           string   `protobuf:"bytes,2,opt,name=collection" json:"collection,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Collection           string   `protobuf:"bytes,2,opt,name=collection,proto3" json:"collection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -456,9 +456,9 @@ func (m *DelState) GetCollection() string {
 // the range query needs to be executed on the private data. The metadata hold
 // the byte representation of QueryMetadata.
 type GetStateByRange struct {
-	StartKey             string   `protobuf:"bytes,1,opt,name=startKey" json:"startKey,omitempty"`
-	EndKey               string   `protobuf:"bytes,2,opt,name=endKey" json:"endKey,omitempty"`
-	Collection           string   `protobuf:"bytes,3,opt,name=collection" json:"collection,omitempty"`
+	StartKey             string   `protobuf:"bytes,1,opt,name=startKey,proto3" json:"startKey,omitempty"`
+	EndKey               string   `protobuf:"bytes,2,opt,name=endKey,proto3" json:"endKey,omitempty"`
+	Collection           string   `protobuf:"bytes,3,opt,name=collection,proto3" json:"collection,omitempty"`
 	Metadata             []byte   `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -522,8 +522,8 @@ func (m *GetStateByRange) GetMetadata() []byte {
 // If the collection is specified, the query needs to be executed on the
 // private data.  The metadata hold the byte representation of QueryMetadata.
 type GetQueryResult struct {
-	Query                string   `protobuf:"bytes,1,opt,name=query" json:"query,omitempty"`
-	Collection           string   `protobuf:"bytes,2,opt,name=collection" json:"collection,omitempty"`
+	Query                string   `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Collection           string   `protobuf:"bytes,2,opt,name=collection,proto3" json:"collection,omitempty"`
 	Metadata             []byte   `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -579,8 +579,8 @@ func (m *GetQueryResult) GetMetadata() []byte {
 // It contains a pageSize which denotes the number of records to be fetched
 // and a bookmark.
 type QueryMetadata struct {
-	PageSize             int32    `protobuf:"varint,1,opt,name=pageSize" json:"pageSize,omitempty"`
-	Bookmark             string   `protobuf:"bytes,2,opt,name=bookmark" json:"bookmark,omitempty"`
+	PageSize             int32    `protobuf:"varint,1,opt,name=pageSize,proto3" json:"pageSize,omitempty"`
+	Bookmark             string   `protobuf:"bytes,2,opt,name=bookmark,proto3" json:"bookmark,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -627,7 +627,7 @@ func (m *QueryMetadata) GetBookmark() string {
 // GetHistoryForKey is the payload of a ChaincodeMessage. It contains a key
 // for which the historical values need to be retrieved.
 type GetHistoryForKey struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -665,7 +665,7 @@ func (m *GetHistoryForKey) GetKey() string {
 }
 
 type QueryStateNext struct {
-	Id                   string   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -703,7 +703,7 @@ func (m *QueryStateNext) GetId() string {
 }
 
 type QueryStateClose struct {
-	Id                   string   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -785,9 +785,9 @@ func (m *QueryResultBytes) GetResultBytes() []byte {
 // the peer in has_more field, transaction id in id field, and a QueryResponseMetadata
 // in metadata field.
 type QueryResponse struct {
-	Results              []*QueryResultBytes `protobuf:"bytes,1,rep,name=results" json:"results,omitempty"`
-	HasMore              bool                `protobuf:"varint,2,opt,name=has_more,json=hasMore" json:"has_more,omitempty"`
-	Id                   string              `protobuf:"bytes,3,opt,name=id" json:"id,omitempty"`
+	Results              []*QueryResultBytes `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	HasMore              bool                `protobuf:"varint,2,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
+	Id                   string              `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
 	Metadata             []byte              `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
@@ -849,8 +849,8 @@ func (m *QueryResponse) GetMetadata() []byte {
 // QueryResponseMetadata is the metadata of a QueryResponse. It contains a count
 // which denotes the number of records fetched from the ledger and a bookmark.
 type QueryResponseMetadata struct {
-	FetchedRecordsCount  int32    `protobuf:"varint,1,opt,name=fetched_records_count,json=fetchedRecordsCount" json:"fetched_records_count,omitempty"`
-	Bookmark             string   `protobuf:"bytes,2,opt,name=bookmark" json:"bookmark,omitempty"`
+	FetchedRecordsCount  int32    `protobuf:"varint,1,opt,name=fetched_records_count,json=fetchedRecordsCount,proto3" json:"fetched_records_count,omitempty"`
+	Bookmark             string   `protobuf:"bytes,2,opt,name=bookmark,proto3" json:"bookmark,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -895,7 +895,7 @@ func (m *QueryResponseMetadata) GetBookmark() string {
 }
 
 type StateMetadata struct {
-	Metakey              string   `protobuf:"bytes,1,opt,name=metakey" json:"metakey,omitempty"`
+	Metakey              string   `protobuf:"bytes,1,opt,name=metakey,proto3" json:"metakey,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -941,7 +941,7 @@ func (m *StateMetadata) GetValue() []byte {
 }
 
 type StateMetadataResult struct {
-	Entries              []*StateMetadata `protobuf:"bytes,1,rep,name=entries" json:"entries,omitempty"`
+	Entries              []*StateMetadata `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -1007,8 +1007,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for ChaincodeSupport service
-
+// ChaincodeSupportClient is the client API for ChaincodeSupport service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ChaincodeSupportClient interface {
 	Register(ctx context.Context, opts ...grpc.CallOption) (ChaincodeSupport_RegisterClient, error)
 }
@@ -1022,7 +1023,7 @@ func NewChaincodeSupportClient(cc *grpc.ClientConn) ChaincodeSupportClient {
 }
 
 func (c *chaincodeSupportClient) Register(ctx context.Context, opts ...grpc.CallOption) (ChaincodeSupport_RegisterClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_ChaincodeSupport_serviceDesc.Streams[0], c.cc, "/protos.ChaincodeSupport/Register", opts...)
+	stream, err := c.cc.NewStream(ctx, &_ChaincodeSupport_serviceDesc.Streams[0], "/protos.ChaincodeSupport/Register", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1052,8 +1053,7 @@ func (x *chaincodeSupportRegisterClient) Recv() (*ChaincodeMessage, error) {
 	return m, nil
 }
 
-// Server API for ChaincodeSupport service
-
+// ChaincodeSupportServer is the server API for ChaincodeSupport service.
 type ChaincodeSupportServer interface {
 	Register(ChaincodeSupport_RegisterServer) error
 }

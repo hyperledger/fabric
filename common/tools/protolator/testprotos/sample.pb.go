@@ -21,9 +21,9 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // SimpleMsg is designed to test that all three types of message fields, plain, map,
 // and slice are handled by the protolator tool
 type SimpleMsg struct {
-	PlainField           string            `protobuf:"bytes,1,opt,name=plain_field,json=plainField" json:"plain_field,omitempty"`
-	MapField             map[string]string `protobuf:"bytes,2,rep,name=map_field,json=mapField" json:"map_field,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	SliceField           []string          `protobuf:"bytes,3,rep,name=slice_field,json=sliceField" json:"slice_field,omitempty"`
+	PlainField           string            `protobuf:"bytes,1,opt,name=plain_field,json=plainField,proto3" json:"plain_field,omitempty"`
+	MapField             map[string]string `protobuf:"bytes,2,rep,name=map_field,json=mapField,proto3" json:"map_field,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	SliceField           []string          `protobuf:"bytes,3,rep,name=slice_field,json=sliceField,proto3" json:"slice_field,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -76,9 +76,9 @@ func (m *SimpleMsg) GetSliceField() []string {
 
 // NestedMsg is designed to test the nested message component
 type NestedMsg struct {
-	PlainNestedField     *SimpleMsg            `protobuf:"bytes,1,opt,name=plain_nested_field,json=plainNestedField" json:"plain_nested_field,omitempty"`
-	MapNestedField       map[string]*SimpleMsg `protobuf:"bytes,2,rep,name=map_nested_field,json=mapNestedField" json:"map_nested_field,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	SliceNestedField     []*SimpleMsg          `protobuf:"bytes,3,rep,name=slice_nested_field,json=sliceNestedField" json:"slice_nested_field,omitempty"`
+	PlainNestedField     *SimpleMsg            `protobuf:"bytes,1,opt,name=plain_nested_field,json=plainNestedField,proto3" json:"plain_nested_field,omitempty"`
+	MapNestedField       map[string]*SimpleMsg `protobuf:"bytes,2,rep,name=map_nested_field,json=mapNestedField,proto3" json:"map_nested_field,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	SliceNestedField     []*SimpleMsg          `protobuf:"bytes,3,rep,name=slice_nested_field,json=sliceNestedField,proto3" json:"slice_nested_field,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
 	XXX_unrecognized     []byte                `json:"-"`
 	XXX_sizecache        int32                 `json:"-"`
@@ -133,7 +133,7 @@ func (m *NestedMsg) GetSliceNestedField() []*SimpleMsg {
 // All fields are statically marshaled to the NestedMsg type
 type StaticallyOpaqueMsg struct {
 	PlainOpaqueField     []byte            `protobuf:"bytes,1,opt,name=plain_opaque_field,json=plainOpaqueField,proto3" json:"plain_opaque_field,omitempty"`
-	MapOpaqueField       map[string][]byte `protobuf:"bytes,2,rep,name=map_opaque_field,json=mapOpaqueField" json:"map_opaque_field,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	MapOpaqueField       map[string][]byte `protobuf:"bytes,2,rep,name=map_opaque_field,json=mapOpaqueField,proto3" json:"map_opaque_field,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	SliceOpaqueField     [][]byte          `protobuf:"bytes,3,rep,name=slice_opaque_field,json=sliceOpaqueField,proto3" json:"slice_opaque_field,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
@@ -188,9 +188,9 @@ func (m *StaticallyOpaqueMsg) GetSliceOpaqueField() [][]byte {
 // VariablyOpaqueMsg is designed to test the staticaly opaque message component
 // The opaque type is determined by opaque_type
 type VariablyOpaqueMsg struct {
-	OpaqueType           string            `protobuf:"bytes,1,opt,name=opaque_type,json=opaqueType" json:"opaque_type,omitempty"`
+	OpaqueType           string            `protobuf:"bytes,1,opt,name=opaque_type,json=opaqueType,proto3" json:"opaque_type,omitempty"`
 	PlainOpaqueField     []byte            `protobuf:"bytes,2,opt,name=plain_opaque_field,json=plainOpaqueField,proto3" json:"plain_opaque_field,omitempty"`
-	MapOpaqueField       map[string][]byte `protobuf:"bytes,3,rep,name=map_opaque_field,json=mapOpaqueField" json:"map_opaque_field,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	MapOpaqueField       map[string][]byte `protobuf:"bytes,3,rep,name=map_opaque_field,json=mapOpaqueField,proto3" json:"map_opaque_field,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	SliceOpaqueField     [][]byte          `protobuf:"bytes,4,rep,name=slice_opaque_field,json=sliceOpaqueField,proto3" json:"slice_opaque_field,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
@@ -253,10 +253,10 @@ func (m *VariablyOpaqueMsg) GetSliceOpaqueField() [][]byte {
 // The dynamic wrapper applied to ContextlessMsg is determined by
 // dynamic_type
 type DynamicMsg struct {
-	DynamicType          string                     `protobuf:"bytes,1,opt,name=dynamic_type,json=dynamicType" json:"dynamic_type,omitempty"`
-	PlainDynamicField    *ContextlessMsg            `protobuf:"bytes,2,opt,name=plain_dynamic_field,json=plainDynamicField" json:"plain_dynamic_field,omitempty"`
-	MapDynamicField      map[string]*ContextlessMsg `protobuf:"bytes,3,rep,name=map_dynamic_field,json=mapDynamicField" json:"map_dynamic_field,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	SliceDynamicField    []*ContextlessMsg          `protobuf:"bytes,4,rep,name=slice_dynamic_field,json=sliceDynamicField" json:"slice_dynamic_field,omitempty"`
+	DynamicType          string                     `protobuf:"bytes,1,opt,name=dynamic_type,json=dynamicType,proto3" json:"dynamic_type,omitempty"`
+	PlainDynamicField    *ContextlessMsg            `protobuf:"bytes,2,opt,name=plain_dynamic_field,json=plainDynamicField,proto3" json:"plain_dynamic_field,omitempty"`
+	MapDynamicField      map[string]*ContextlessMsg `protobuf:"bytes,3,rep,name=map_dynamic_field,json=mapDynamicField,proto3" json:"map_dynamic_field,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	SliceDynamicField    []*ContextlessMsg          `protobuf:"bytes,4,rep,name=slice_dynamic_field,json=sliceDynamicField,proto3" json:"slice_dynamic_field,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
 	XXX_unrecognized     []byte                     `json:"-"`
 	XXX_sizecache        int32                      `json:"-"`
@@ -359,7 +359,7 @@ func (m *ContextlessMsg) GetOpaqueField() []byte {
 // return an error if they are asked to be deserialized.
 type UnmarshalableDeepFields struct {
 	PlainOpaqueField     []byte            `protobuf:"bytes,1,opt,name=plain_opaque_field,json=plainOpaqueField,proto3" json:"plain_opaque_field,omitempty"`
-	MapOpaqueField       map[string][]byte `protobuf:"bytes,2,rep,name=map_opaque_field,json=mapOpaqueField" json:"map_opaque_field,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	MapOpaqueField       map[string][]byte `protobuf:"bytes,2,rep,name=map_opaque_field,json=mapOpaqueField,proto3" json:"map_opaque_field,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	SliceOpaqueField     [][]byte          `protobuf:"bytes,3,rep,name=slice_opaque_field,json=sliceOpaqueField,proto3" json:"slice_opaque_field,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`

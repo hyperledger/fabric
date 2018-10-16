@@ -104,8 +104,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for TestService service
-
+// TestServiceClient is the client API for TestService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type TestServiceClient interface {
 	EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
@@ -120,15 +121,14 @@ func NewTestServiceClient(cc *grpc.ClientConn) TestServiceClient {
 
 func (c *testServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/TestService/EmptyCall", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/TestService/EmptyCall", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for TestService service
-
+// TestServiceServer is the server API for TestService service.
 type TestServiceServer interface {
 	EmptyCall(context.Context, *Empty) (*Empty, error)
 }
@@ -168,8 +168,9 @@ var _TestService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "test.proto",
 }
 
-// Client API for EmptyService service
-
+// EmptyServiceClient is the client API for EmptyService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type EmptyServiceClient interface {
 	EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	EmptyStream(ctx context.Context, opts ...grpc.CallOption) (EmptyService_EmptyStreamClient, error)
@@ -185,7 +186,7 @@ func NewEmptyServiceClient(cc *grpc.ClientConn) EmptyServiceClient {
 
 func (c *emptyServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/EmptyService/EmptyCall", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/EmptyService/EmptyCall", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +194,7 @@ func (c *emptyServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...g
 }
 
 func (c *emptyServiceClient) EmptyStream(ctx context.Context, opts ...grpc.CallOption) (EmptyService_EmptyStreamClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_EmptyService_serviceDesc.Streams[0], c.cc, "/EmptyService/EmptyStream", opts...)
+	stream, err := c.cc.NewStream(ctx, &_EmptyService_serviceDesc.Streams[0], "/EmptyService/EmptyStream", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -223,8 +224,7 @@ func (x *emptyServiceEmptyStreamClient) Recv() (*Empty, error) {
 	return m, nil
 }
 
-// Server API for EmptyService service
-
+// EmptyServiceServer is the server API for EmptyService service.
 type EmptyServiceServer interface {
 	EmptyCall(context.Context, *Empty) (*Empty, error)
 	EmptyStream(EmptyService_EmptyStreamServer) error
@@ -298,8 +298,9 @@ var _EmptyService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "test.proto",
 }
 
-// Client API for EchoService service
-
+// EchoServiceClient is the client API for EchoService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type EchoServiceClient interface {
 	EchoCall(ctx context.Context, in *Echo, opts ...grpc.CallOption) (*Echo, error)
 }
@@ -314,15 +315,14 @@ func NewEchoServiceClient(cc *grpc.ClientConn) EchoServiceClient {
 
 func (c *echoServiceClient) EchoCall(ctx context.Context, in *Echo, opts ...grpc.CallOption) (*Echo, error) {
 	out := new(Echo)
-	err := grpc.Invoke(ctx, "/EchoService/EchoCall", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/EchoService/EchoCall", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for EchoService service
-
+// EchoServiceServer is the server API for EchoService service.
 type EchoServiceServer interface {
 	EchoCall(context.Context, *Echo) (*Echo, error)
 }

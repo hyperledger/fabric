@@ -23,7 +23,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // instantiated on a channel), and GetInstalledChaincodes (returns all chaincodes
 // installed on a peer)
 type ChaincodeQueryResponse struct {
-	Chaincodes           []*ChaincodeInfo `protobuf:"bytes,1,rep,name=chaincodes" json:"chaincodes,omitempty"`
+	Chaincodes           []*ChaincodeInfo `protobuf:"bytes,1,rep,name=chaincodes,proto3" json:"chaincodes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -63,19 +63,19 @@ func (m *ChaincodeQueryResponse) GetChaincodes() []*ChaincodeInfo {
 // ChaincodeInfo contains general information about an installed/instantiated
 // chaincode
 type ChaincodeInfo struct {
-	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Version string `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Name    string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// the path as specified by the install/instantiate transaction
-	Path string `protobuf:"bytes,3,opt,name=path" json:"path,omitempty"`
+	Path string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
 	// the chaincode function upon instantiation and its arguments. This will be
 	// blank if the query is returning information about installed chaincodes.
-	Input string `protobuf:"bytes,4,opt,name=input" json:"input,omitempty"`
+	Input string `protobuf:"bytes,4,opt,name=input,proto3" json:"input,omitempty"`
 	// the name of the ESCC for this chaincode. This will be
 	// blank if the query is returning information about installed chaincodes.
-	Escc string `protobuf:"bytes,5,opt,name=escc" json:"escc,omitempty"`
+	Escc string `protobuf:"bytes,5,opt,name=escc,proto3" json:"escc,omitempty"`
 	// the name of the VSCC for this chaincode. This will be
 	// blank if the query is returning information about installed chaincodes.
-	Vscc string `protobuf:"bytes,6,opt,name=vscc" json:"vscc,omitempty"`
+	Vscc string `protobuf:"bytes,6,opt,name=vscc,proto3" json:"vscc,omitempty"`
 	// the chaincode unique id.
 	// computed as: H(
 	//                H(name || version) ||
@@ -164,7 +164,7 @@ func (m *ChaincodeInfo) GetId() []byte {
 // to a query in lscc.go, such as GetChannels (returns all channels for a
 // given peer)
 type ChannelQueryResponse struct {
-	Channels             []*ChannelInfo `protobuf:"bytes,1,rep,name=channels" json:"channels,omitempty"`
+	Channels             []*ChannelInfo `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -203,7 +203,7 @@ func (m *ChannelQueryResponse) GetChannels() []*ChannelInfo {
 
 // ChannelInfo contains general information about channels
 type ChannelInfo struct {
-	ChannelId            string   `protobuf:"bytes,1,opt,name=channel_id,json=channelId" json:"channel_id,omitempty"`
+	ChannelId            string   `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

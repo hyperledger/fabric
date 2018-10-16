@@ -42,8 +42,8 @@ func (TxReadWriteSet_DataModel) EnumDescriptor() ([]byte, []int) {
 // DataModel specifies the enum value of the data model
 // ns_rwset field specifies a list of chaincode specific read-write set (one for each chaincode)
 type TxReadWriteSet struct {
-	DataModel            TxReadWriteSet_DataModel `protobuf:"varint,1,opt,name=data_model,json=dataModel,enum=rwset.TxReadWriteSet_DataModel" json:"data_model,omitempty"`
-	NsRwset              []*NsReadWriteSet        `protobuf:"bytes,2,rep,name=ns_rwset,json=nsRwset" json:"ns_rwset,omitempty"`
+	DataModel            TxReadWriteSet_DataModel `protobuf:"varint,1,opt,name=data_model,json=dataModel,proto3,enum=rwset.TxReadWriteSet_DataModel" json:"data_model,omitempty"`
+	NsRwset              []*NsReadWriteSet        `protobuf:"bytes,2,rep,name=ns_rwset,json=nsRwset,proto3" json:"ns_rwset,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
 	XXX_sizecache        int32                    `json:"-"`
@@ -89,9 +89,9 @@ func (m *TxReadWriteSet) GetNsRwset() []*NsReadWriteSet {
 
 // NsReadWriteSet encapsulates the read-write set for a chaincode
 type NsReadWriteSet struct {
-	Namespace             string                          `protobuf:"bytes,1,opt,name=namespace" json:"namespace,omitempty"`
+	Namespace             string                          `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	Rwset                 []byte                          `protobuf:"bytes,2,opt,name=rwset,proto3" json:"rwset,omitempty"`
-	CollectionHashedRwset []*CollectionHashedReadWriteSet `protobuf:"bytes,3,rep,name=collection_hashed_rwset,json=collectionHashedRwset" json:"collection_hashed_rwset,omitempty"`
+	CollectionHashedRwset []*CollectionHashedReadWriteSet `protobuf:"bytes,3,rep,name=collection_hashed_rwset,json=collectionHashedRwset,proto3" json:"collection_hashed_rwset,omitempty"`
 	XXX_NoUnkeyedLiteral  struct{}                        `json:"-"`
 	XXX_unrecognized      []byte                          `json:"-"`
 	XXX_sizecache         int32                           `json:"-"`
@@ -144,7 +144,7 @@ func (m *NsReadWriteSet) GetCollectionHashedRwset() []*CollectionHashedReadWrite
 
 // CollectionHashedReadWriteSet encapsulate the hashed representation for the private read-write set for a collection
 type CollectionHashedReadWriteSet struct {
-	CollectionName       string   `protobuf:"bytes,1,opt,name=collection_name,json=collectionName" json:"collection_name,omitempty"`
+	CollectionName       string   `protobuf:"bytes,1,opt,name=collection_name,json=collectionName,proto3" json:"collection_name,omitempty"`
 	HashedRwset          []byte   `protobuf:"bytes,2,opt,name=hashed_rwset,json=hashedRwset,proto3" json:"hashed_rwset,omitempty"`
 	PvtRwsetHash         []byte   `protobuf:"bytes,3,opt,name=pvt_rwset_hash,json=pvtRwsetHash,proto3" json:"pvt_rwset_hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -199,8 +199,8 @@ func (m *CollectionHashedReadWriteSet) GetPvtRwsetHash() []byte {
 
 // TxPvtReadWriteSet encapsulate the private read-write set for a transaction
 type TxPvtReadWriteSet struct {
-	DataModel            TxReadWriteSet_DataModel `protobuf:"varint,1,opt,name=data_model,json=dataModel,enum=rwset.TxReadWriteSet_DataModel" json:"data_model,omitempty"`
-	NsPvtRwset           []*NsPvtReadWriteSet     `protobuf:"bytes,2,rep,name=ns_pvt_rwset,json=nsPvtRwset" json:"ns_pvt_rwset,omitempty"`
+	DataModel            TxReadWriteSet_DataModel `protobuf:"varint,1,opt,name=data_model,json=dataModel,proto3,enum=rwset.TxReadWriteSet_DataModel" json:"data_model,omitempty"`
+	NsPvtRwset           []*NsPvtReadWriteSet     `protobuf:"bytes,2,rep,name=ns_pvt_rwset,json=nsPvtRwset,proto3" json:"ns_pvt_rwset,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
 	XXX_sizecache        int32                    `json:"-"`
@@ -246,8 +246,8 @@ func (m *TxPvtReadWriteSet) GetNsPvtRwset() []*NsPvtReadWriteSet {
 
 // NsPvtReadWriteSet encapsulates the private read-write set for a chaincode
 type NsPvtReadWriteSet struct {
-	Namespace            string                       `protobuf:"bytes,1,opt,name=namespace" json:"namespace,omitempty"`
-	CollectionPvtRwset   []*CollectionPvtReadWriteSet `protobuf:"bytes,2,rep,name=collection_pvt_rwset,json=collectionPvtRwset" json:"collection_pvt_rwset,omitempty"`
+	Namespace            string                       `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	CollectionPvtRwset   []*CollectionPvtReadWriteSet `protobuf:"bytes,2,rep,name=collection_pvt_rwset,json=collectionPvtRwset,proto3" json:"collection_pvt_rwset,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                     `json:"-"`
 	XXX_unrecognized     []byte                       `json:"-"`
 	XXX_sizecache        int32                        `json:"-"`
@@ -293,7 +293,7 @@ func (m *NsPvtReadWriteSet) GetCollectionPvtRwset() []*CollectionPvtReadWriteSet
 
 // CollectionPvtReadWriteSet encapsulates the private read-write set for a collection
 type CollectionPvtReadWriteSet struct {
-	CollectionName       string   `protobuf:"bytes,1,opt,name=collection_name,json=collectionName" json:"collection_name,omitempty"`
+	CollectionName       string   `protobuf:"bytes,1,opt,name=collection_name,json=collectionName,proto3" json:"collection_name,omitempty"`
 	Rwset                []byte   `protobuf:"bytes,2,opt,name=rwset,proto3" json:"rwset,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

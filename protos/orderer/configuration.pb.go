@@ -19,7 +19,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type ConsensusType struct {
-	Type string `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Opaque metadata, dependent on the consensus type.
 	Metadata             []byte   `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -68,13 +68,13 @@ func (m *ConsensusType) GetMetadata() []byte {
 type BatchSize struct {
 	// Simply specified as number of messages for now, in the future
 	// we may want to allow this to be specified by size in bytes
-	MaxMessageCount uint32 `protobuf:"varint,1,opt,name=max_message_count,json=maxMessageCount" json:"max_message_count,omitempty"`
+	MaxMessageCount uint32 `protobuf:"varint,1,opt,name=max_message_count,json=maxMessageCount,proto3" json:"max_message_count,omitempty"`
 	// The byte count of the serialized messages in a batch cannot
 	// exceed this value.
-	AbsoluteMaxBytes uint32 `protobuf:"varint,2,opt,name=absolute_max_bytes,json=absoluteMaxBytes" json:"absolute_max_bytes,omitempty"`
+	AbsoluteMaxBytes uint32 `protobuf:"varint,2,opt,name=absolute_max_bytes,json=absoluteMaxBytes,proto3" json:"absolute_max_bytes,omitempty"`
 	// The byte count of the serialized messages in a batch should not
 	// exceed this value.
-	PreferredMaxBytes    uint32   `protobuf:"varint,3,opt,name=preferred_max_bytes,json=preferredMaxBytes" json:"preferred_max_bytes,omitempty"`
+	PreferredMaxBytes    uint32   `protobuf:"varint,3,opt,name=preferred_max_bytes,json=preferredMaxBytes,proto3" json:"preferred_max_bytes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -128,7 +128,7 @@ func (m *BatchSize) GetPreferredMaxBytes() uint32 {
 type BatchTimeout struct {
 	// Any duration string parseable by ParseDuration():
 	// https://golang.org/pkg/time/#ParseDuration
-	Timeout              string   `protobuf:"bytes,1,opt,name=timeout" json:"timeout,omitempty"`
+	Timeout              string   `protobuf:"bytes,1,opt,name=timeout,proto3" json:"timeout,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -170,7 +170,7 @@ func (m *BatchTimeout) GetTimeout() string {
 type KafkaBrokers struct {
 	// Each broker here should be identified using the (IP|host):port notation,
 	// e.g. 127.0.0.1:7050, or localhost:7050 are valid entries
-	Brokers              []string `protobuf:"bytes,1,rep,name=brokers" json:"brokers,omitempty"`
+	Brokers              []string `protobuf:"bytes,1,rep,name=brokers,proto3" json:"brokers,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -209,7 +209,7 @@ func (m *KafkaBrokers) GetBrokers() []string {
 
 // ChannelRestrictions is the mssage which conveys restrictions on channel creation for an orderer
 type ChannelRestrictions struct {
-	MaxCount             uint64   `protobuf:"varint,1,opt,name=max_count,json=maxCount" json:"max_count,omitempty"`
+	MaxCount             uint64   `protobuf:"varint,1,opt,name=max_count,json=maxCount,proto3" json:"max_count,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

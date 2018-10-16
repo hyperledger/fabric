@@ -92,7 +92,7 @@ func (GossipMessage_Tag) EnumDescriptor() ([]byte, []int) {
 type Envelope struct {
 	Payload              []byte          `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
 	Signature            []byte          `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
-	SecretEnvelope       *SecretEnvelope `protobuf:"bytes,3,opt,name=secret_envelope,json=secretEnvelope" json:"secret_envelope,omitempty"`
+	SecretEnvelope       *SecretEnvelope `protobuf:"bytes,3,opt,name=secret_envelope,json=secretEnvelope,proto3" json:"secret_envelope,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -235,7 +235,7 @@ type isSecret_Content interface {
 }
 
 type Secret_InternalEndpoint struct {
-	InternalEndpoint string `protobuf:"bytes,1,opt,name=internalEndpoint,oneof"`
+	InternalEndpoint string `protobuf:"bytes,1,opt,name=internalEndpoint,proto3,oneof"`
 }
 
 func (*Secret_InternalEndpoint) isSecret_Content() {}
@@ -309,14 +309,14 @@ func _Secret_OneofSizer(msg proto.Message) (n int) {
 type GossipMessage struct {
 	// used mainly for testing, but will might be used in the future
 	// for ensuring message delivery by acking
-	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+	Nonce uint64 `protobuf:"varint,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	// The channel of the message.
 	// Some GossipMessages may set this to nil, because
 	// they are cross-channels but some may not
 	Channel []byte `protobuf:"bytes,2,opt,name=channel,proto3" json:"channel,omitempty"`
 	// determines to which peers it is allowed
 	// to forward the message
-	Tag GossipMessage_Tag `protobuf:"varint,3,opt,name=tag,enum=gossip.GossipMessage_Tag" json:"tag,omitempty"`
+	Tag GossipMessage_Tag `protobuf:"varint,3,opt,name=tag,proto3,enum=gossip.GossipMessage_Tag" json:"tag,omitempty"`
 	// Types that are valid to be assigned to Content:
 	//	*GossipMessage_AliveMsg
 	//	*GossipMessage_MemReq
@@ -369,103 +369,6 @@ func (m *GossipMessage) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GossipMessage proto.InternalMessageInfo
 
-type isGossipMessage_Content interface {
-	isGossipMessage_Content()
-}
-
-type GossipMessage_AliveMsg struct {
-	AliveMsg *AliveMessage `protobuf:"bytes,5,opt,name=alive_msg,json=aliveMsg,oneof"`
-}
-type GossipMessage_MemReq struct {
-	MemReq *MembershipRequest `protobuf:"bytes,6,opt,name=mem_req,json=memReq,oneof"`
-}
-type GossipMessage_MemRes struct {
-	MemRes *MembershipResponse `protobuf:"bytes,7,opt,name=mem_res,json=memRes,oneof"`
-}
-type GossipMessage_DataMsg struct {
-	DataMsg *DataMessage `protobuf:"bytes,8,opt,name=data_msg,json=dataMsg,oneof"`
-}
-type GossipMessage_Hello struct {
-	Hello *GossipHello `protobuf:"bytes,9,opt,name=hello,oneof"`
-}
-type GossipMessage_DataDig struct {
-	DataDig *DataDigest `protobuf:"bytes,10,opt,name=data_dig,json=dataDig,oneof"`
-}
-type GossipMessage_DataReq struct {
-	DataReq *DataRequest `protobuf:"bytes,11,opt,name=data_req,json=dataReq,oneof"`
-}
-type GossipMessage_DataUpdate struct {
-	DataUpdate *DataUpdate `protobuf:"bytes,12,opt,name=data_update,json=dataUpdate,oneof"`
-}
-type GossipMessage_Empty struct {
-	Empty *Empty `protobuf:"bytes,13,opt,name=empty,oneof"`
-}
-type GossipMessage_Conn struct {
-	Conn *ConnEstablish `protobuf:"bytes,14,opt,name=conn,oneof"`
-}
-type GossipMessage_StateInfo struct {
-	StateInfo *StateInfo `protobuf:"bytes,15,opt,name=state_info,json=stateInfo,oneof"`
-}
-type GossipMessage_StateSnapshot struct {
-	StateSnapshot *StateInfoSnapshot `protobuf:"bytes,16,opt,name=state_snapshot,json=stateSnapshot,oneof"`
-}
-type GossipMessage_StateInfoPullReq struct {
-	StateInfoPullReq *StateInfoPullRequest `protobuf:"bytes,17,opt,name=state_info_pull_req,json=stateInfoPullReq,oneof"`
-}
-type GossipMessage_StateRequest struct {
-	StateRequest *RemoteStateRequest `protobuf:"bytes,18,opt,name=state_request,json=stateRequest,oneof"`
-}
-type GossipMessage_StateResponse struct {
-	StateResponse *RemoteStateResponse `protobuf:"bytes,19,opt,name=state_response,json=stateResponse,oneof"`
-}
-type GossipMessage_LeadershipMsg struct {
-	LeadershipMsg *LeadershipMessage `protobuf:"bytes,20,opt,name=leadership_msg,json=leadershipMsg,oneof"`
-}
-type GossipMessage_PeerIdentity struct {
-	PeerIdentity *PeerIdentity `protobuf:"bytes,21,opt,name=peer_identity,json=peerIdentity,oneof"`
-}
-type GossipMessage_Ack struct {
-	Ack *Acknowledgement `protobuf:"bytes,22,opt,name=ack,oneof"`
-}
-type GossipMessage_PrivateReq struct {
-	PrivateReq *RemotePvtDataRequest `protobuf:"bytes,23,opt,name=privateReq,oneof"`
-}
-type GossipMessage_PrivateRes struct {
-	PrivateRes *RemotePvtDataResponse `protobuf:"bytes,24,opt,name=privateRes,oneof"`
-}
-type GossipMessage_PrivateData struct {
-	PrivateData *PrivateDataMessage `protobuf:"bytes,25,opt,name=private_data,json=privateData,oneof"`
-}
-
-func (*GossipMessage_AliveMsg) isGossipMessage_Content()         {}
-func (*GossipMessage_MemReq) isGossipMessage_Content()           {}
-func (*GossipMessage_MemRes) isGossipMessage_Content()           {}
-func (*GossipMessage_DataMsg) isGossipMessage_Content()          {}
-func (*GossipMessage_Hello) isGossipMessage_Content()            {}
-func (*GossipMessage_DataDig) isGossipMessage_Content()          {}
-func (*GossipMessage_DataReq) isGossipMessage_Content()          {}
-func (*GossipMessage_DataUpdate) isGossipMessage_Content()       {}
-func (*GossipMessage_Empty) isGossipMessage_Content()            {}
-func (*GossipMessage_Conn) isGossipMessage_Content()             {}
-func (*GossipMessage_StateInfo) isGossipMessage_Content()        {}
-func (*GossipMessage_StateSnapshot) isGossipMessage_Content()    {}
-func (*GossipMessage_StateInfoPullReq) isGossipMessage_Content() {}
-func (*GossipMessage_StateRequest) isGossipMessage_Content()     {}
-func (*GossipMessage_StateResponse) isGossipMessage_Content()    {}
-func (*GossipMessage_LeadershipMsg) isGossipMessage_Content()    {}
-func (*GossipMessage_PeerIdentity) isGossipMessage_Content()     {}
-func (*GossipMessage_Ack) isGossipMessage_Content()              {}
-func (*GossipMessage_PrivateReq) isGossipMessage_Content()       {}
-func (*GossipMessage_PrivateRes) isGossipMessage_Content()       {}
-func (*GossipMessage_PrivateData) isGossipMessage_Content()      {}
-
-func (m *GossipMessage) GetContent() isGossipMessage_Content {
-	if m != nil {
-		return m.Content
-	}
-	return nil
-}
-
 func (m *GossipMessage) GetNonce() uint64 {
 	if m != nil {
 		return m.Nonce
@@ -485,6 +388,143 @@ func (m *GossipMessage) GetTag() GossipMessage_Tag {
 		return m.Tag
 	}
 	return GossipMessage_UNDEFINED
+}
+
+type isGossipMessage_Content interface {
+	isGossipMessage_Content()
+}
+
+type GossipMessage_AliveMsg struct {
+	AliveMsg *AliveMessage `protobuf:"bytes,5,opt,name=alive_msg,json=aliveMsg,proto3,oneof"`
+}
+
+type GossipMessage_MemReq struct {
+	MemReq *MembershipRequest `protobuf:"bytes,6,opt,name=mem_req,json=memReq,proto3,oneof"`
+}
+
+type GossipMessage_MemRes struct {
+	MemRes *MembershipResponse `protobuf:"bytes,7,opt,name=mem_res,json=memRes,proto3,oneof"`
+}
+
+type GossipMessage_DataMsg struct {
+	DataMsg *DataMessage `protobuf:"bytes,8,opt,name=data_msg,json=dataMsg,proto3,oneof"`
+}
+
+type GossipMessage_Hello struct {
+	Hello *GossipHello `protobuf:"bytes,9,opt,name=hello,proto3,oneof"`
+}
+
+type GossipMessage_DataDig struct {
+	DataDig *DataDigest `protobuf:"bytes,10,opt,name=data_dig,json=dataDig,proto3,oneof"`
+}
+
+type GossipMessage_DataReq struct {
+	DataReq *DataRequest `protobuf:"bytes,11,opt,name=data_req,json=dataReq,proto3,oneof"`
+}
+
+type GossipMessage_DataUpdate struct {
+	DataUpdate *DataUpdate `protobuf:"bytes,12,opt,name=data_update,json=dataUpdate,proto3,oneof"`
+}
+
+type GossipMessage_Empty struct {
+	Empty *Empty `protobuf:"bytes,13,opt,name=empty,proto3,oneof"`
+}
+
+type GossipMessage_Conn struct {
+	Conn *ConnEstablish `protobuf:"bytes,14,opt,name=conn,proto3,oneof"`
+}
+
+type GossipMessage_StateInfo struct {
+	StateInfo *StateInfo `protobuf:"bytes,15,opt,name=state_info,json=stateInfo,proto3,oneof"`
+}
+
+type GossipMessage_StateSnapshot struct {
+	StateSnapshot *StateInfoSnapshot `protobuf:"bytes,16,opt,name=state_snapshot,json=stateSnapshot,proto3,oneof"`
+}
+
+type GossipMessage_StateInfoPullReq struct {
+	StateInfoPullReq *StateInfoPullRequest `protobuf:"bytes,17,opt,name=state_info_pull_req,json=stateInfoPullReq,proto3,oneof"`
+}
+
+type GossipMessage_StateRequest struct {
+	StateRequest *RemoteStateRequest `protobuf:"bytes,18,opt,name=state_request,json=stateRequest,proto3,oneof"`
+}
+
+type GossipMessage_StateResponse struct {
+	StateResponse *RemoteStateResponse `protobuf:"bytes,19,opt,name=state_response,json=stateResponse,proto3,oneof"`
+}
+
+type GossipMessage_LeadershipMsg struct {
+	LeadershipMsg *LeadershipMessage `protobuf:"bytes,20,opt,name=leadership_msg,json=leadershipMsg,proto3,oneof"`
+}
+
+type GossipMessage_PeerIdentity struct {
+	PeerIdentity *PeerIdentity `protobuf:"bytes,21,opt,name=peer_identity,json=peerIdentity,proto3,oneof"`
+}
+
+type GossipMessage_Ack struct {
+	Ack *Acknowledgement `protobuf:"bytes,22,opt,name=ack,proto3,oneof"`
+}
+
+type GossipMessage_PrivateReq struct {
+	PrivateReq *RemotePvtDataRequest `protobuf:"bytes,23,opt,name=privateReq,proto3,oneof"`
+}
+
+type GossipMessage_PrivateRes struct {
+	PrivateRes *RemotePvtDataResponse `protobuf:"bytes,24,opt,name=privateRes,proto3,oneof"`
+}
+
+type GossipMessage_PrivateData struct {
+	PrivateData *PrivateDataMessage `protobuf:"bytes,25,opt,name=private_data,json=privateData,proto3,oneof"`
+}
+
+func (*GossipMessage_AliveMsg) isGossipMessage_Content() {}
+
+func (*GossipMessage_MemReq) isGossipMessage_Content() {}
+
+func (*GossipMessage_MemRes) isGossipMessage_Content() {}
+
+func (*GossipMessage_DataMsg) isGossipMessage_Content() {}
+
+func (*GossipMessage_Hello) isGossipMessage_Content() {}
+
+func (*GossipMessage_DataDig) isGossipMessage_Content() {}
+
+func (*GossipMessage_DataReq) isGossipMessage_Content() {}
+
+func (*GossipMessage_DataUpdate) isGossipMessage_Content() {}
+
+func (*GossipMessage_Empty) isGossipMessage_Content() {}
+
+func (*GossipMessage_Conn) isGossipMessage_Content() {}
+
+func (*GossipMessage_StateInfo) isGossipMessage_Content() {}
+
+func (*GossipMessage_StateSnapshot) isGossipMessage_Content() {}
+
+func (*GossipMessage_StateInfoPullReq) isGossipMessage_Content() {}
+
+func (*GossipMessage_StateRequest) isGossipMessage_Content() {}
+
+func (*GossipMessage_StateResponse) isGossipMessage_Content() {}
+
+func (*GossipMessage_LeadershipMsg) isGossipMessage_Content() {}
+
+func (*GossipMessage_PeerIdentity) isGossipMessage_Content() {}
+
+func (*GossipMessage_Ack) isGossipMessage_Content() {}
+
+func (*GossipMessage_PrivateReq) isGossipMessage_Content() {}
+
+func (*GossipMessage_PrivateRes) isGossipMessage_Content() {}
+
+func (*GossipMessage_PrivateData) isGossipMessage_Content() {}
+
+func (m *GossipMessage) GetContent() isGossipMessage_Content {
+	if m != nil {
+		return m.Content
+	}
+	return nil
 }
 
 func (m *GossipMessage) GetAliveMsg() *AliveMessage {
@@ -1072,13 +1112,13 @@ func _GossipMessage_OneofSizer(msg proto.Message) (n int) {
 // StateInfo is used for a peer to relay its state information
 // to other peers
 type StateInfo struct {
-	Timestamp *PeerTime `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp *PeerTime `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	PkiId     []byte    `protobuf:"bytes,3,opt,name=pki_id,json=pkiId,proto3" json:"pki_id,omitempty"`
 	// channel_MAC is an authentication code that proves
 	// that the peer that sent this message knows
 	// the name of the channel.
 	Channel_MAC          []byte      `protobuf:"bytes,4,opt,name=channel_MAC,json=channelMAC,proto3" json:"channel_MAC,omitempty"`
-	Properties           *Properties `protobuf:"bytes,5,opt,name=properties" json:"properties,omitempty"`
+	Properties           *Properties `protobuf:"bytes,5,opt,name=properties,proto3" json:"properties,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -1137,9 +1177,9 @@ func (m *StateInfo) GetProperties() *Properties {
 }
 
 type Properties struct {
-	LedgerHeight         uint64       `protobuf:"varint,1,opt,name=ledger_height,json=ledgerHeight" json:"ledger_height,omitempty"`
-	LeftChannel          bool         `protobuf:"varint,2,opt,name=left_channel,json=leftChannel" json:"left_channel,omitempty"`
-	Chaincodes           []*Chaincode `protobuf:"bytes,3,rep,name=chaincodes" json:"chaincodes,omitempty"`
+	LedgerHeight         uint64       `protobuf:"varint,1,opt,name=ledger_height,json=ledgerHeight,proto3" json:"ledger_height,omitempty"`
+	LeftChannel          bool         `protobuf:"varint,2,opt,name=left_channel,json=leftChannel,proto3" json:"left_channel,omitempty"`
+	Chaincodes           []*Chaincode `protobuf:"bytes,3,rep,name=chaincodes,proto3" json:"chaincodes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1192,7 +1232,7 @@ func (m *Properties) GetChaincodes() []*Chaincode {
 
 // StateInfoSnapshot is an aggregation of StateInfo messages
 type StateInfoSnapshot struct {
-	Elements             []*Envelope `protobuf:"bytes,1,rep,name=elements" json:"elements,omitempty"`
+	Elements             []*Envelope `protobuf:"bytes,1,rep,name=elements,proto3" json:"elements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -1389,9 +1429,9 @@ func (m *PeerIdentity) GetMetadata() []byte {
 // DataRequest is a message used for a peer to request
 // certain data blocks from a remote peer
 type DataRequest struct {
-	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	Digests              [][]byte    `protobuf:"bytes,2,rep,name=digests,proto3" json:"digests,omitempty"`
-	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
+	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,proto3,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -1445,9 +1485,9 @@ func (m *DataRequest) GetMsgType() PullMsgType {
 // GossipHello is the message that is used for the peer to initiate
 // a pull round with another peer
 type GossipHello struct {
-	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	Metadata             []byte      `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
+	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,proto3,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -1501,9 +1541,9 @@ func (m *GossipHello) GetMsgType() PullMsgType {
 // DataUpdate is the final message in the pull phase
 // sent from the receiver to the initiator
 type DataUpdate struct {
-	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
-	Data                 []*Envelope `protobuf:"bytes,2,rep,name=data" json:"data,omitempty"`
-	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
+	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	Data                 []*Envelope `protobuf:"bytes,2,rep,name=data,proto3" json:"data,omitempty"`
+	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,proto3,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -1557,9 +1597,9 @@ func (m *DataUpdate) GetMsgType() PullMsgType {
 // DataDigest is the message sent from the receiver peer
 // to the initator peer and contains the data items it has
 type DataDigest struct {
-	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+	Nonce                uint64      `protobuf:"varint,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	Digests              [][]byte    `protobuf:"bytes,2,rep,name=digests,proto3" json:"digests,omitempty"`
-	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
+	MsgType              PullMsgType `protobuf:"varint,3,opt,name=msg_type,json=msgType,proto3,enum=gossip.PullMsgType" json:"msg_type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -1612,7 +1652,7 @@ func (m *DataDigest) GetMsgType() PullMsgType {
 
 // DataMessage is the message that contains a block
 type DataMessage struct {
-	Payload              *Payload `protobuf:"bytes,1,opt,name=payload" json:"payload,omitempty"`
+	Payload              *Payload `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1653,7 +1693,7 @@ func (m *DataMessage) GetPayload() *Payload {
 // data information to distributed once transaction
 // has been endorsed
 type PrivateDataMessage struct {
-	Payload              *PrivatePayload `protobuf:"bytes,1,opt,name=payload" json:"payload,omitempty"`
+	Payload              *PrivatePayload `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -1692,7 +1732,7 @@ func (m *PrivateDataMessage) GetPayload() *PrivatePayload {
 
 // Payload contains a block
 type Payload struct {
-	SeqNum               uint64   `protobuf:"varint,1,opt,name=seq_num,json=seqNum" json:"seq_num,omitempty"`
+	SeqNum               uint64   `protobuf:"varint,1,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
 	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	PrivateData          [][]byte `protobuf:"bytes,3,rep,name=private_data,json=privateData,proto3" json:"private_data,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -1749,12 +1789,12 @@ func (m *Payload) GetPrivateData() [][]byte {
 // data with collection name to enable routing
 // based on collection partitioning
 type PrivatePayload struct {
-	CollectionName       string                          `protobuf:"bytes,1,opt,name=collection_name,json=collectionName" json:"collection_name,omitempty"`
-	Namespace            string                          `protobuf:"bytes,2,opt,name=namespace" json:"namespace,omitempty"`
-	TxId                 string                          `protobuf:"bytes,3,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
+	CollectionName       string                          `protobuf:"bytes,1,opt,name=collection_name,json=collectionName,proto3" json:"collection_name,omitempty"`
+	Namespace            string                          `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	TxId                 string                          `protobuf:"bytes,3,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
 	PrivateRwset         []byte                          `protobuf:"bytes,4,opt,name=private_rwset,json=privateRwset,proto3" json:"private_rwset,omitempty"`
-	PrivateSimHeight     uint64                          `protobuf:"varint,5,opt,name=private_sim_height,json=privateSimHeight" json:"private_sim_height,omitempty"`
-	CollectionConfigs    *common.CollectionConfigPackage `protobuf:"bytes,6,opt,name=collection_configs,json=collectionConfigs" json:"collection_configs,omitempty"`
+	PrivateSimHeight     uint64                          `protobuf:"varint,5,opt,name=private_sim_height,json=privateSimHeight,proto3" json:"private_sim_height,omitempty"`
+	CollectionConfigs    *common.CollectionConfigPackage `protobuf:"bytes,6,opt,name=collection_configs,json=collectionConfigs,proto3" json:"collection_configs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
 	XXX_unrecognized     []byte                          `json:"-"`
 	XXX_sizecache        int32                           `json:"-"`
@@ -1829,8 +1869,8 @@ func (m *PrivatePayload) GetCollectionConfigs() *common.CollectionConfigPackage 
 // AliveMessage is sent to inform remote peers
 // of a peer's existence and activity
 type AliveMessage struct {
-	Membership           *Member   `protobuf:"bytes,1,opt,name=membership" json:"membership,omitempty"`
-	Timestamp            *PeerTime `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
+	Membership           *Member   `protobuf:"bytes,1,opt,name=membership,proto3" json:"membership,omitempty"`
+	Timestamp            *PeerTime `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	Identity             []byte    `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
@@ -1886,8 +1926,8 @@ func (m *AliveMessage) GetIdentity() []byte {
 // remote peers about intent of peer to proclaim itself as leader
 type LeadershipMessage struct {
 	PkiId                []byte    `protobuf:"bytes,1,opt,name=pki_id,json=pkiId,proto3" json:"pki_id,omitempty"`
-	Timestamp            *PeerTime `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
-	IsDeclaration        bool      `protobuf:"varint,3,opt,name=is_declaration,json=isDeclaration" json:"is_declaration,omitempty"`
+	Timestamp            *PeerTime `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	IsDeclaration        bool      `protobuf:"varint,3,opt,name=is_declaration,json=isDeclaration,proto3" json:"is_declaration,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -1940,8 +1980,8 @@ func (m *LeadershipMessage) GetIsDeclaration() bool {
 
 // PeerTime defines the logical time of a peer's life
 type PeerTime struct {
-	IncNum               uint64   `protobuf:"varint,1,opt,name=inc_num,json=incNum" json:"inc_num,omitempty"`
-	SeqNum               uint64   `protobuf:"varint,2,opt,name=seq_num,json=seqNum" json:"seq_num,omitempty"`
+	IncNum               uint64   `protobuf:"varint,1,opt,name=inc_num,json=incNum,proto3" json:"inc_num,omitempty"`
+	SeqNum               uint64   `protobuf:"varint,2,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1988,7 +2028,7 @@ func (m *PeerTime) GetSeqNum() uint64 {
 // MembershipRequest is used to ask membership information
 // from a remote peer
 type MembershipRequest struct {
-	SelfInformation      *Envelope `protobuf:"bytes,1,opt,name=self_information,json=selfInformation" json:"self_information,omitempty"`
+	SelfInformation      *Envelope `protobuf:"bytes,1,opt,name=self_information,json=selfInformation,proto3" json:"self_information,omitempty"`
 	Known                [][]byte  `protobuf:"bytes,2,rep,name=known,proto3" json:"known,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
@@ -2035,8 +2075,8 @@ func (m *MembershipRequest) GetKnown() [][]byte {
 
 // MembershipResponse is used for replying to MembershipRequests
 type MembershipResponse struct {
-	Alive                []*Envelope `protobuf:"bytes,1,rep,name=alive" json:"alive,omitempty"`
-	Dead                 []*Envelope `protobuf:"bytes,2,rep,name=dead" json:"dead,omitempty"`
+	Alive                []*Envelope `protobuf:"bytes,1,rep,name=alive,proto3" json:"alive,omitempty"`
+	Dead                 []*Envelope `protobuf:"bytes,2,rep,name=dead,proto3" json:"dead,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -2083,7 +2123,7 @@ func (m *MembershipResponse) GetDead() []*Envelope {
 // Member holds membership-related information
 // about a peer
 type Member struct {
-	Endpoint             string   `protobuf:"bytes,1,opt,name=endpoint" json:"endpoint,omitempty"`
+	Endpoint             string   `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 	Metadata             []byte   `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	PkiId                []byte   `protobuf:"bytes,3,opt,name=pki_id,json=pkiId,proto3" json:"pki_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -2170,8 +2210,8 @@ var xxx_messageInfo_Empty proto.InternalMessageInfo
 // RemoteStateRequest is used to ask a set of blocks
 // from a remote peer
 type RemoteStateRequest struct {
-	StartSeqNum          uint64   `protobuf:"varint,1,opt,name=start_seq_num,json=startSeqNum" json:"start_seq_num,omitempty"`
-	EndSeqNum            uint64   `protobuf:"varint,2,opt,name=end_seq_num,json=endSeqNum" json:"end_seq_num,omitempty"`
+	StartSeqNum          uint64   `protobuf:"varint,1,opt,name=start_seq_num,json=startSeqNum,proto3" json:"start_seq_num,omitempty"`
+	EndSeqNum            uint64   `protobuf:"varint,2,opt,name=end_seq_num,json=endSeqNum,proto3" json:"end_seq_num,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2218,7 +2258,7 @@ func (m *RemoteStateRequest) GetEndSeqNum() uint64 {
 // RemoteStateResponse is used to send a set of blocks
 // to a remote peer
 type RemoteStateResponse struct {
-	Payloads             []*Payload `protobuf:"bytes,1,rep,name=payloads" json:"payloads,omitempty"`
+	Payloads             []*Payload `protobuf:"bytes,1,rep,name=payloads,proto3" json:"payloads,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
 	XXX_unrecognized     []byte     `json:"-"`
 	XXX_sizecache        int32      `json:"-"`
@@ -2258,7 +2298,7 @@ func (m *RemoteStateResponse) GetPayloads() []*Payload {
 // RemotePrivateDataRequest message used to request
 // missing private rwset
 type RemotePvtDataRequest struct {
-	Digests              []*PvtDataDigest `protobuf:"bytes,1,rep,name=digests" json:"digests,omitempty"`
+	Digests              []*PvtDataDigest `protobuf:"bytes,1,rep,name=digests,proto3" json:"digests,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -2297,11 +2337,11 @@ func (m *RemotePvtDataRequest) GetDigests() []*PvtDataDigest {
 
 // PvtDataDigest defines a digest of private data
 type PvtDataDigest struct {
-	TxId                 string   `protobuf:"bytes,1,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
-	Namespace            string   `protobuf:"bytes,2,opt,name=namespace" json:"namespace,omitempty"`
-	Collection           string   `protobuf:"bytes,3,opt,name=collection" json:"collection,omitempty"`
-	BlockSeq             uint64   `protobuf:"varint,4,opt,name=block_seq,json=blockSeq" json:"block_seq,omitempty"`
-	SeqInBlock           uint64   `protobuf:"varint,5,opt,name=seq_in_block,json=seqInBlock" json:"seq_in_block,omitempty"`
+	TxId                 string   `protobuf:"bytes,1,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
+	Namespace            string   `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Collection           string   `protobuf:"bytes,3,opt,name=collection,proto3" json:"collection,omitempty"`
+	BlockSeq             uint64   `protobuf:"varint,4,opt,name=block_seq,json=blockSeq,proto3" json:"block_seq,omitempty"`
+	SeqInBlock           uint64   `protobuf:"varint,5,opt,name=seq_in_block,json=seqInBlock,proto3" json:"seq_in_block,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2369,7 +2409,7 @@ func (m *PvtDataDigest) GetSeqInBlock() uint64 {
 // RemotePrivateData message to response on private
 // data replication request
 type RemotePvtDataResponse struct {
-	Elements             []*PvtDataElement `protobuf:"bytes,1,rep,name=elements" json:"elements,omitempty"`
+	Elements             []*PvtDataElement `protobuf:"bytes,1,rep,name=elements,proto3" json:"elements,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -2407,7 +2447,7 @@ func (m *RemotePvtDataResponse) GetElements() []*PvtDataElement {
 }
 
 type PvtDataElement struct {
-	Digest *PvtDataDigest `protobuf:"bytes,1,opt,name=digest" json:"digest,omitempty"`
+	Digest *PvtDataDigest `protobuf:"bytes,1,opt,name=digest,proto3" json:"digest,omitempty"`
 	// the payload is a marshaled kvrwset.KVRWSet
 	Payload              [][]byte `protobuf:"bytes,2,rep,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -2456,7 +2496,7 @@ func (m *PvtDataElement) GetPayload() [][]byte {
 // PvtPayload augments private rwset data and tx index
 // inside the block
 type PvtDataPayload struct {
-	TxSeqInBlock uint64 `protobuf:"varint,1,opt,name=tx_seq_in_block,json=txSeqInBlock" json:"tx_seq_in_block,omitempty"`
+	TxSeqInBlock uint64 `protobuf:"varint,1,opt,name=tx_seq_in_block,json=txSeqInBlock,proto3" json:"tx_seq_in_block,omitempty"`
 	// Encodes marhslaed bytes of rwset.TxPvtReadWriteSet
 	// defined in rwset.proto
 	Payload              []byte   `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
@@ -2504,7 +2544,7 @@ func (m *PvtDataPayload) GetPayload() []byte {
 }
 
 type Acknowledgement struct {
-	Error                string   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                string   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2544,8 +2584,8 @@ func (m *Acknowledgement) GetError() string {
 // Chaincode represents a Chaincode that is installed
 // on a peer
 type Chaincode struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Version              string   `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	Metadata             []byte   `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -2644,8 +2684,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Gossip service
-
+// GossipClient is the client API for Gossip service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type GossipClient interface {
 	// GossipStream is the gRPC stream used for sending and receiving messages
 	GossipStream(ctx context.Context, opts ...grpc.CallOption) (Gossip_GossipStreamClient, error)
@@ -2662,7 +2703,7 @@ func NewGossipClient(cc *grpc.ClientConn) GossipClient {
 }
 
 func (c *gossipClient) GossipStream(ctx context.Context, opts ...grpc.CallOption) (Gossip_GossipStreamClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Gossip_serviceDesc.Streams[0], c.cc, "/gossip.Gossip/GossipStream", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Gossip_serviceDesc.Streams[0], "/gossip.Gossip/GossipStream", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2694,15 +2735,14 @@ func (x *gossipGossipStreamClient) Recv() (*Envelope, error) {
 
 func (c *gossipClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/gossip.Gossip/Ping", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/gossip.Gossip/Ping", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Gossip service
-
+// GossipServer is the server API for Gossip service.
 type GossipServer interface {
 	// GossipStream is the gRPC stream used for sending and receiving messages
 	GossipStream(Gossip_GossipStreamServer) error

@@ -24,7 +24,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // included with the install command.
 type ChaincodeIdentifier struct {
 	Hash                 []byte   `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	Version              string   `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -74,7 +74,7 @@ func (m *ChaincodeIdentifier) GetVersion() string {
 // which checks that a sufficient number of signatures have been included.  The 'arguement'
 // field encodes any parameters required by the validation implementation.
 type ChaincodeValidation struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Argument             []byte   `protobuf:"bytes,2,opt,name=argument,proto3" json:"argument,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -122,7 +122,7 @@ func (m *ChaincodeValidation) GetArgument() []byte {
 // VSCCArgs is passed (marshaled) as a parameter to the VSCC imlementation via the
 // argument field of the ChaincodeValidation message.
 type VSCCArgs struct {
-	EndorsementPolicyRef string   `protobuf:"bytes,1,opt,name=endorsement_policy_ref,json=endorsementPolicyRef" json:"endorsement_policy_ref,omitempty"`
+	EndorsementPolicyRef string   `protobuf:"bytes,1,opt,name=endorsement_policy_ref,json=endorsementPolicyRef,proto3" json:"endorsement_policy_ref,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -164,7 +164,7 @@ func (m *VSCCArgs) GetEndorsementPolicyRef() string {
 // This code simply simulates the proposal to generate a RW set, then signs the result
 // using the peer's local signing identity.
 type ChaincodeEndorsement struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -204,8 +204,8 @@ func (m *ChaincodeEndorsement) GetName() string {
 // ConfigTree encapsulates channel and resources configuration of a channel.
 // Both configurations are represented as common.Config
 type ConfigTree struct {
-	ChannelConfig        *common.Config `protobuf:"bytes,1,opt,name=channel_config,json=channelConfig" json:"channel_config,omitempty"`
-	ResourcesConfig      *common.Config `protobuf:"bytes,2,opt,name=resources_config,json=resourcesConfig" json:"resources_config,omitempty"`
+	ChannelConfig        *common.Config `protobuf:"bytes,1,opt,name=channel_config,json=channelConfig,proto3" json:"channel_config,omitempty"`
+	ResourcesConfig      *common.Config `protobuf:"bytes,2,opt,name=resources_config,json=resourcesConfig,proto3" json:"resources_config,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`

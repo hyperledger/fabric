@@ -22,7 +22,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // messages; the extra struct is required because repeated oneof is
 // forbidden by the protobuf syntax
 type CollectionConfigPackage struct {
-	Config               []*CollectionConfig `protobuf:"bytes,1,rep,name=config" json:"config,omitempty"`
+	Config               []*CollectionConfig `protobuf:"bytes,1,rep,name=config,proto3" json:"config,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
 	XXX_sizecache        int32               `json:"-"`
@@ -100,7 +100,7 @@ type isCollectionConfig_Payload interface {
 }
 
 type CollectionConfig_StaticCollectionConfig struct {
-	StaticCollectionConfig *StaticCollectionConfig `protobuf:"bytes,1,opt,name=static_collection_config,json=staticCollectionConfig,oneof"`
+	StaticCollectionConfig *StaticCollectionConfig `protobuf:"bytes,1,opt,name=static_collection_config,json=staticCollectionConfig,proto3,oneof"`
 }
 
 func (*CollectionConfig_StaticCollectionConfig) isCollectionConfig_Payload() {}
@@ -180,21 +180,21 @@ func _CollectionConfig_OneofSizer(msg proto.Message) (n int) {
 // Dynamic collections are deferred.
 type StaticCollectionConfig struct {
 	// the name of the collection inside the denoted chaincode
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// a reference to a policy residing / managed in the config block
 	// to define which orgs have access to this collection’s private data
-	MemberOrgsPolicy *CollectionPolicyConfig `protobuf:"bytes,2,opt,name=member_orgs_policy,json=memberOrgsPolicy" json:"member_orgs_policy,omitempty"`
+	MemberOrgsPolicy *CollectionPolicyConfig `protobuf:"bytes,2,opt,name=member_orgs_policy,json=memberOrgsPolicy,proto3" json:"member_orgs_policy,omitempty"`
 	// The minimum number of peers private data will be sent to upon
 	// endorsement. The endorsement would fail if dissemination to at least
 	// this number of peers is not achieved.
-	RequiredPeerCount int32 `protobuf:"varint,3,opt,name=required_peer_count,json=requiredPeerCount" json:"required_peer_count,omitempty"`
+	RequiredPeerCount int32 `protobuf:"varint,3,opt,name=required_peer_count,json=requiredPeerCount,proto3" json:"required_peer_count,omitempty"`
 	// The maximum number of peers that private data will be sent to
 	// upon endorsement. This number has to be bigger than required_peer_count.
-	MaximumPeerCount int32 `protobuf:"varint,4,opt,name=maximum_peer_count,json=maximumPeerCount" json:"maximum_peer_count,omitempty"`
+	MaximumPeerCount int32 `protobuf:"varint,4,opt,name=maximum_peer_count,json=maximumPeerCount,proto3" json:"maximum_peer_count,omitempty"`
 	// The number of blocks after which the collection data expires.
 	// For instance if the value is set to 10, a key last modified by block number 100
 	// will be purged at block number 111. A zero value is treated same as MaxUint64
-	BlockToLive          uint64   `protobuf:"varint,5,opt,name=block_to_live,json=blockToLive" json:"block_to_live,omitempty"`
+	BlockToLive          uint64   `protobuf:"varint,5,opt,name=block_to_live,json=blockToLive,proto3" json:"block_to_live,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -301,7 +301,7 @@ type isCollectionPolicyConfig_Payload interface {
 }
 
 type CollectionPolicyConfig_SignaturePolicy struct {
-	SignaturePolicy *SignaturePolicyEnvelope `protobuf:"bytes,1,opt,name=signature_policy,json=signaturePolicy,oneof"`
+	SignaturePolicy *SignaturePolicyEnvelope `protobuf:"bytes,1,opt,name=signature_policy,json=signaturePolicy,proto3,oneof"`
 }
 
 func (*CollectionPolicyConfig_SignaturePolicy) isCollectionPolicyConfig_Payload() {}
@@ -378,10 +378,10 @@ func _CollectionPolicyConfig_OneofSizer(msg proto.Message) (n int) {
 // CollectionCriteria defines an element of a private data that corresponds
 // to a certain transaction and collection
 type CollectionCriteria struct {
-	Channel              string   `protobuf:"bytes,1,opt,name=channel" json:"channel,omitempty"`
-	TxId                 string   `protobuf:"bytes,2,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
-	Collection           string   `protobuf:"bytes,3,opt,name=collection" json:"collection,omitempty"`
-	Namespace            string   `protobuf:"bytes,4,opt,name=namespace" json:"namespace,omitempty"`
+	Channel              string   `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
+	TxId                 string   `protobuf:"bytes,2,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
+	Collection           string   `protobuf:"bytes,3,opt,name=collection,proto3" json:"collection,omitempty"`
+	Namespace            string   `protobuf:"bytes,4,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
