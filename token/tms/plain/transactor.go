@@ -106,6 +106,11 @@ func (t *Transactor) RequestTransfer(request *token.TransferRequest) (*token.Tok
 	return transaction, nil
 }
 
+// RequestRedeem creates a TokenTransaction of type redeem request
+func (t *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTransaction, error) {
+	panic("not implemented yet")
+}
+
 // ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
 func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 	iterator, err := t.Ledger.GetStateRangeScanIterator(namespace, "", "")

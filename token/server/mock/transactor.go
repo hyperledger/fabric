@@ -22,6 +22,19 @@ type Transactor struct {
 		result1 *token.TokenTransaction
 		result2 error
 	}
+	RequestRedeemStub        func(request *token.RedeemRequest) (*token.TokenTransaction, error)
+	requestRedeemMutex       sync.RWMutex
+	requestRedeemArgsForCall []struct {
+		request *token.RedeemRequest
+	}
+	requestRedeemReturns struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
+	requestRedeemReturnsOnCall map[int]struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
 	ListTokensStub        func() (*token.UnspentTokens, error)
 	listTokensMutex       sync.RWMutex
 	listTokensArgsForCall []struct{}
@@ -88,6 +101,57 @@ func (fake *Transactor) RequestTransferReturnsOnCall(i int, result1 *token.Token
 	}{result1, result2}
 }
 
+func (fake *Transactor) RequestRedeem(request *token.RedeemRequest) (*token.TokenTransaction, error) {
+	fake.requestRedeemMutex.Lock()
+	ret, specificReturn := fake.requestRedeemReturnsOnCall[len(fake.requestRedeemArgsForCall)]
+	fake.requestRedeemArgsForCall = append(fake.requestRedeemArgsForCall, struct {
+		request *token.RedeemRequest
+	}{request})
+	fake.recordInvocation("RequestRedeem", []interface{}{request})
+	fake.requestRedeemMutex.Unlock()
+	if fake.RequestRedeemStub != nil {
+		return fake.RequestRedeemStub(request)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.requestRedeemReturns.result1, fake.requestRedeemReturns.result2
+}
+
+func (fake *Transactor) RequestRedeemCallCount() int {
+	fake.requestRedeemMutex.RLock()
+	defer fake.requestRedeemMutex.RUnlock()
+	return len(fake.requestRedeemArgsForCall)
+}
+
+func (fake *Transactor) RequestRedeemArgsForCall(i int) *token.RedeemRequest {
+	fake.requestRedeemMutex.RLock()
+	defer fake.requestRedeemMutex.RUnlock()
+	return fake.requestRedeemArgsForCall[i].request
+}
+
+func (fake *Transactor) RequestRedeemReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.RequestRedeemStub = nil
+	fake.requestRedeemReturns = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Transactor) RequestRedeemReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.RequestRedeemStub = nil
+	if fake.requestRedeemReturnsOnCall == nil {
+		fake.requestRedeemReturnsOnCall = make(map[int]struct {
+			result1 *token.TokenTransaction
+			result2 error
+		})
+	}
+	fake.requestRedeemReturnsOnCall[i] = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *Transactor) ListTokens() (*token.UnspentTokens, error) {
 	fake.listTokensMutex.Lock()
 	ret, specificReturn := fake.listTokensReturnsOnCall[len(fake.listTokensArgsForCall)]
@@ -136,6 +200,8 @@ func (fake *Transactor) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.requestTransferMutex.RLock()
 	defer fake.requestTransferMutex.RUnlock()
+	fake.requestRedeemMutex.RLock()
+	defer fake.requestRedeemMutex.RUnlock()
 	fake.listTokensMutex.RLock()
 	defer fake.listTokensMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

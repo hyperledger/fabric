@@ -67,6 +67,8 @@ message PlainTokenAction {
         PlainImport plain_import = 1;
         // A plaintext token transfer transaction
         PlainTransfer plain_transfer = 2;
+        // A plaintext token redeem transaction
+        PlainTransfer plain_redeem = 3;
     }
 }
 

@@ -36,7 +36,7 @@ func (m *TokenTransaction) Reset()         { *m = TokenTransaction{} }
 func (m *TokenTransaction) String() string { return proto.CompactTextString(m) }
 func (*TokenTransaction) ProtoMessage()    {}
 func (*TokenTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_e0328d3afd4f7f06, []int{0}
+	return fileDescriptor_transaction_26436d18589330e1, []int{0}
 }
 func (m *TokenTransaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TokenTransaction.Unmarshal(m, b)
@@ -61,7 +61,7 @@ type isTokenTransaction_Action interface {
 }
 
 type TokenTransaction_PlainAction struct {
-	PlainAction *PlainTokenAction `protobuf:"bytes,1,opt,name=plain_action,json=plainAction,proto3,oneof"`
+	PlainAction *PlainTokenAction `protobuf:"bytes,1,opt,name=plain_action,json=plainAction,oneof"`
 }
 
 func (*TokenTransaction_PlainAction) isTokenTransaction_Action() {}
@@ -141,6 +141,7 @@ type PlainTokenAction struct {
 	// Types that are valid to be assigned to Data:
 	//	*PlainTokenAction_PlainImport
 	//	*PlainTokenAction_PlainTransfer
+	//	*PlainTokenAction_PlainRedeem
 	Data                 isPlainTokenAction_Data `protobuf_oneof:"data"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
@@ -151,7 +152,7 @@ func (m *PlainTokenAction) Reset()         { *m = PlainTokenAction{} }
 func (m *PlainTokenAction) String() string { return proto.CompactTextString(m) }
 func (*PlainTokenAction) ProtoMessage()    {}
 func (*PlainTokenAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_e0328d3afd4f7f06, []int{1}
+	return fileDescriptor_transaction_26436d18589330e1, []int{1}
 }
 func (m *PlainTokenAction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PlainTokenAction.Unmarshal(m, b)
@@ -176,16 +177,20 @@ type isPlainTokenAction_Data interface {
 }
 
 type PlainTokenAction_PlainImport struct {
-	PlainImport *PlainImport `protobuf:"bytes,1,opt,name=plain_import,json=plainImport,proto3,oneof"`
+	PlainImport *PlainImport `protobuf:"bytes,1,opt,name=plain_import,json=plainImport,oneof"`
 }
 
 type PlainTokenAction_PlainTransfer struct {
-	PlainTransfer *PlainTransfer `protobuf:"bytes,2,opt,name=plain_transfer,json=plainTransfer,proto3,oneof"`
+	PlainTransfer *PlainTransfer `protobuf:"bytes,2,opt,name=plain_transfer,json=plainTransfer,oneof"`
+}
+type PlainTokenAction_PlainRedeem struct {
+	PlainRedeem *PlainTransfer `protobuf:"bytes,3,opt,name=plain_redeem,json=plainRedeem,oneof"`
 }
 
 func (*PlainTokenAction_PlainImport) isPlainTokenAction_Data() {}
 
 func (*PlainTokenAction_PlainTransfer) isPlainTokenAction_Data() {}
+func (*PlainTokenAction_PlainRedeem) isPlainTokenAction_Data()   {}
 
 func (m *PlainTokenAction) GetData() isPlainTokenAction_Data {
 	if m != nil {
@@ -208,11 +213,19 @@ func (m *PlainTokenAction) GetPlainTransfer() *PlainTransfer {
 	return nil
 }
 
+func (m *PlainTokenAction) GetPlainRedeem() *PlainTransfer {
+	if x, ok := m.GetData().(*PlainTokenAction_PlainRedeem); ok {
+		return x.PlainRedeem
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*PlainTokenAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
 	return _PlainTokenAction_OneofMarshaler, _PlainTokenAction_OneofUnmarshaler, _PlainTokenAction_OneofSizer, []interface{}{
 		(*PlainTokenAction_PlainImport)(nil),
 		(*PlainTokenAction_PlainTransfer)(nil),
+		(*PlainTokenAction_PlainRedeem)(nil),
 	}
 }
 
@@ -228,6 +241,11 @@ func _PlainTokenAction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error 
 	case *PlainTokenAction_PlainTransfer:
 		b.EncodeVarint(2<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.PlainTransfer); err != nil {
+			return err
+		}
+	case *PlainTokenAction_PlainRedeem:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.PlainRedeem); err != nil {
 			return err
 		}
 	case nil:
@@ -256,6 +274,14 @@ func _PlainTokenAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *pro
 		err := b.DecodeMessage(msg)
 		m.Data = &PlainTokenAction_PlainTransfer{msg}
 		return true, err
+	case 3: // data.plain_redeem
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(PlainTransfer)
+		err := b.DecodeMessage(msg)
+		m.Data = &PlainTokenAction_PlainRedeem{msg}
+		return true, err
 	default:
 		return false, nil
 	}
@@ -275,6 +301,11 @@ func _PlainTokenAction_OneofSizer(msg proto.Message) (n int) {
 		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
+	case *PlainTokenAction_PlainRedeem:
+		s := proto.Size(x.PlainRedeem)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
 	case nil:
 	default:
 		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
@@ -285,7 +316,7 @@ func _PlainTokenAction_OneofSizer(msg proto.Message) (n int) {
 // PlainImport specifies an import of one or more tokens in plaintext format
 type PlainImport struct {
 	// An import transaction may contain one or more outputs
-	Outputs              []*PlainOutput `protobuf:"bytes,1,rep,name=outputs,proto3" json:"outputs,omitempty"`
+	Outputs              []*PlainOutput `protobuf:"bytes,1,rep,name=outputs" json:"outputs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -295,7 +326,7 @@ func (m *PlainImport) Reset()         { *m = PlainImport{} }
 func (m *PlainImport) String() string { return proto.CompactTextString(m) }
 func (*PlainImport) ProtoMessage()    {}
 func (*PlainImport) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_e0328d3afd4f7f06, []int{2}
+	return fileDescriptor_transaction_26436d18589330e1, []int{2}
 }
 func (m *PlainImport) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PlainImport.Unmarshal(m, b)
@@ -325,9 +356,9 @@ func (m *PlainImport) GetOutputs() []*PlainOutput {
 // PlainTransfer specifies a transfer or one or more plaintext tokens to one or more outputs
 type PlainTransfer struct {
 	// The inputs to the transfer transaction are specified by their ID
-	Inputs []*InputId `protobuf:"bytes,1,rep,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs []*InputId `protobuf:"bytes,1,rep,name=inputs" json:"inputs,omitempty"`
 	// A transfer transaction may contain one or more outputs
-	Outputs              []*PlainOutput `protobuf:"bytes,2,rep,name=outputs,proto3" json:"outputs,omitempty"`
+	Outputs              []*PlainOutput `protobuf:"bytes,2,rep,name=outputs" json:"outputs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -337,7 +368,7 @@ func (m *PlainTransfer) Reset()         { *m = PlainTransfer{} }
 func (m *PlainTransfer) String() string { return proto.CompactTextString(m) }
 func (*PlainTransfer) ProtoMessage()    {}
 func (*PlainTransfer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_e0328d3afd4f7f06, []int{3}
+	return fileDescriptor_transaction_26436d18589330e1, []int{3}
 }
 func (m *PlainTransfer) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PlainTransfer.Unmarshal(m, b)
@@ -376,9 +407,9 @@ type PlainOutput struct {
 	// The owner is the serialization of a SerializedIdentity struct
 	Owner []byte `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
 	// The token type
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
 	// The quantity of tokens
-	Quantity             uint64   `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Quantity             uint64   `protobuf:"varint,3,opt,name=quantity" json:"quantity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -388,7 +419,7 @@ func (m *PlainOutput) Reset()         { *m = PlainOutput{} }
 func (m *PlainOutput) String() string { return proto.CompactTextString(m) }
 func (*PlainOutput) ProtoMessage()    {}
 func (*PlainOutput) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_e0328d3afd4f7f06, []int{4}
+	return fileDescriptor_transaction_26436d18589330e1, []int{4}
 }
 func (m *PlainOutput) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PlainOutput.Unmarshal(m, b)
@@ -432,9 +463,9 @@ func (m *PlainOutput) GetQuantity() uint64 {
 // An InputId specifies an output using the transaction ID and the index of the output in the transaction
 type InputId struct {
 	// The transaction ID
-	TxId string `protobuf:"bytes,1,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
+	TxId string `protobuf:"bytes,1,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
 	// The index of the output in the transaction
-	Index                uint32   `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	Index                uint32   `protobuf:"varint,2,opt,name=index" json:"index,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -444,7 +475,7 @@ func (m *InputId) Reset()         { *m = InputId{} }
 func (m *InputId) String() string { return proto.CompactTextString(m) }
 func (*InputId) ProtoMessage()    {}
 func (*InputId) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transaction_e0328d3afd4f7f06, []int{5}
+	return fileDescriptor_transaction_26436d18589330e1, []int{5}
 }
 func (m *InputId) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InputId.Unmarshal(m, b)
@@ -488,31 +519,32 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("token/transaction.proto", fileDescriptor_transaction_e0328d3afd4f7f06)
+	proto.RegisterFile("token/transaction.proto", fileDescriptor_transaction_26436d18589330e1)
 }
 
-var fileDescriptor_transaction_e0328d3afd4f7f06 = []byte{
-	// 343 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0x4b, 0x6f, 0xea, 0x30,
-	0x10, 0x85, 0x09, 0x8f, 0xc0, 0x1d, 0x1e, 0xe2, 0xfa, 0x5e, 0xa9, 0x51, 0x57, 0x51, 0x16, 0x15,
-	0xaa, 0xaa, 0x44, 0x7d, 0xaf, 0xcb, 0x8a, 0xac, 0x5a, 0xb9, 0x6c, 0xda, 0x0d, 0x0a, 0xc4, 0x80,
-	0x55, 0xb0, 0x5d, 0xe3, 0xa8, 0xf0, 0x07, 0xfa, 0xbb, 0xab, 0x8c, 0x03, 0xa4, 0x5d, 0x74, 0x97,
-	0x73, 0x66, 0xce, 0x37, 0x13, 0x6b, 0xe0, 0xc4, 0xc8, 0x37, 0x26, 0x22, 0xa3, 0x13, 0xb1, 0x49,
-	0x66, 0x86, 0x4b, 0x11, 0x2a, 0x2d, 0x8d, 0x0c, 0xc6, 0xd0, 0x1f, 0xe7, 0xa5, 0xf1, 0xb1, 0x42,
-	0xee, 0xa0, 0xa3, 0x56, 0x09, 0x17, 0x13, 0xab, 0x3d, 0xc7, 0x77, 0x06, 0xed, 0xab, 0xbf, 0xe1,
-	0x53, 0x6e, 0x62, 0xf7, 0x03, 0x16, 0x46, 0x15, 0xda, 0xc6, 0x46, 0x2b, 0x87, 0x2d, 0x70, 0x6d,
-	0x22, 0xf8, 0x74, 0xa0, 0xff, 0xb3, 0x9b, 0x5c, 0xee, 0xb1, 0x7c, 0xad, 0xa4, 0x36, 0x05, 0xb6,
-	0x63, 0xb1, 0x31, 0x7a, 0x07, 0xa2, 0x95, 0xe4, 0x1e, 0x7a, 0x36, 0x82, 0x8b, 0xcf, 0x99, 0xf6,
-	0xaa, 0x18, 0xea, 0x15, 0xbb, 0x14, 0xee, 0xa8, 0x42, 0xbb, 0xaa, 0x6c, 0x0c, 0x5d, 0xa8, 0xa7,
-	0x89, 0x49, 0x82, 0x5b, 0x68, 0x97, 0xf0, 0xe4, 0x0c, 0x9a, 0x32, 0x33, 0x2a, 0x33, 0x1b, 0xcf,
-	0xf1, 0x6b, 0xc7, 0xe9, 0x8f, 0x68, 0xd2, 0x7d, 0x31, 0x78, 0x81, 0xee, 0xb7, 0x01, 0xc4, 0x07,
-	0x97, 0x8b, 0x52, 0xae, 0x15, 0xc6, 0xb9, 0x8c, 0x53, 0x5a, 0xf8, 0x65, 0x74, 0xf5, 0x37, 0xf4,
-	0x73, 0xb1, 0x91, 0xf5, 0xc9, 0x7f, 0x68, 0xc8, 0x0f, 0xc1, 0x34, 0xbe, 0x46, 0x87, 0x5a, 0x41,
-	0x08, 0xd4, 0xcd, 0x4e, 0x31, 0xfc, 0xdb, 0x3f, 0x14, 0xbf, 0xc9, 0x29, 0xb4, 0xde, 0xb3, 0x44,
-	0x18, 0x6e, 0x76, 0x5e, 0xcd, 0x77, 0x06, 0x75, 0x7a, 0xd0, 0xc1, 0x0d, 0x34, 0x8b, 0x7d, 0xc8,
-	0x3f, 0x68, 0x98, 0xed, 0x84, 0xa7, 0x08, 0xcc, 0xb3, 0xdb, 0x38, 0xcd, 0xa7, 0x70, 0x91, 0xb2,
-	0x2d, 0x02, 0xbb, 0xd4, 0x8a, 0xe1, 0xc5, 0xeb, 0xf9, 0x82, 0x9b, 0x65, 0x36, 0x0d, 0x67, 0x72,
-	0x1d, 0x2d, 0x77, 0x8a, 0xe9, 0x15, 0x4b, 0x17, 0x4c, 0x47, 0xf3, 0x64, 0xaa, 0xf9, 0x2c, 0xc2,
-	0x13, 0xd9, 0x44, 0x78, 0x3b, 0x53, 0x17, 0xd5, 0xf5, 0x57, 0x00, 0x00, 0x00, 0xff, 0xff, 0x17,
-	0xe9, 0x14, 0xa0, 0x4b, 0x02, 0x00, 0x00,
+var fileDescriptor_transaction_26436d18589330e1 = []byte{
+	// 355 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x52, 0x4b, 0x4f, 0xf2, 0x40,
+	0x14, 0xa5, 0x3c, 0x0a, 0xdf, 0xe5, 0x11, 0xbe, 0xd1, 0xc4, 0xc6, 0x15, 0xe9, 0xc2, 0x18, 0x63,
+	0xda, 0x28, 0x3e, 0xd6, 0xb2, 0xa2, 0x2b, 0xcd, 0xc8, 0x46, 0x37, 0xa4, 0xd0, 0x01, 0x26, 0xc2,
+	0xcc, 0x38, 0x4c, 0x23, 0xfc, 0x36, 0xff, 0x9c, 0xe9, 0x9d, 0x02, 0xd5, 0x44, 0x77, 0x73, 0xce,
+	0x3d, 0xe7, 0xdc, 0x93, 0x9b, 0x81, 0x13, 0x23, 0xdf, 0x98, 0x08, 0x8d, 0x8e, 0xc5, 0x3a, 0x9e,
+	0x1a, 0x2e, 0x45, 0xa0, 0xb4, 0x34, 0xd2, 0x1f, 0x41, 0x77, 0x94, 0x8d, 0x46, 0x87, 0x09, 0xb9,
+	0x83, 0x96, 0x5a, 0xc6, 0x5c, 0x8c, 0x2d, 0xf6, 0x9c, 0x9e, 0x73, 0xde, 0xbc, 0xfe, 0x1f, 0x3c,
+	0x65, 0x24, 0xaa, 0x1f, 0x70, 0x30, 0x2c, 0xd1, 0x26, 0x0a, 0x2d, 0x1c, 0x34, 0xc0, 0xb5, 0x0e,
+	0xff, 0xd3, 0x81, 0xee, 0x4f, 0x35, 0xb9, 0xda, 0xc5, 0xf2, 0x95, 0x92, 0xda, 0xe4, 0xb1, 0x2d,
+	0x1b, 0x1b, 0x21, 0xb7, 0x4f, 0xb4, 0x90, 0xdc, 0x43, 0xc7, 0x5a, 0xb0, 0xf8, 0x8c, 0x69, 0xaf,
+	0x8c, 0xa6, 0x4e, 0xde, 0x25, 0x67, 0x87, 0x25, 0xda, 0x56, 0x45, 0x82, 0xf4, 0x77, 0xbb, 0x34,
+	0x4b, 0x18, 0x5b, 0x79, 0x95, 0x5f, 0x6c, 0x76, 0x1b, 0x45, 0xd1, 0xc0, 0x85, 0x6a, 0x12, 0x9b,
+	0xd8, 0xbf, 0x85, 0x66, 0xa1, 0x13, 0x39, 0x83, 0xba, 0x4c, 0x8d, 0x4a, 0xcd, 0xda, 0x73, 0x7a,
+	0x95, 0x43, 0xe5, 0x47, 0x24, 0xe9, 0x6e, 0xe8, 0xbf, 0x40, 0xfb, 0x5b, 0x3c, 0xe9, 0x81, 0xcb,
+	0x45, 0xc1, 0xd7, 0x08, 0xa2, 0x0c, 0x46, 0x09, 0xcd, 0xf9, 0x62, 0x74, 0xf9, 0xaf, 0xe8, 0xe7,
+	0xbc, 0x91, 0xe5, 0xc9, 0x31, 0xd4, 0xe4, 0x87, 0x60, 0x1a, 0x4f, 0xd8, 0xa2, 0x16, 0x10, 0x02,
+	0x55, 0xb3, 0x55, 0x0c, 0x4f, 0xf4, 0x8f, 0xe2, 0x9b, 0x9c, 0x42, 0xe3, 0x3d, 0x8d, 0x85, 0xe1,
+	0x66, 0x8b, 0x37, 0xa8, 0xd2, 0x3d, 0xf6, 0x6f, 0xa0, 0x9e, 0xf7, 0x21, 0x47, 0x50, 0x33, 0x9b,
+	0x31, 0x4f, 0x30, 0x30, 0xf3, 0x6e, 0xa2, 0x24, 0xdb, 0xc2, 0x45, 0xc2, 0x36, 0x18, 0xd8, 0xa6,
+	0x16, 0x0c, 0x2e, 0x5f, 0x2f, 0xe6, 0xdc, 0x2c, 0xd2, 0x49, 0x30, 0x95, 0xab, 0x70, 0xb1, 0x55,
+	0x4c, 0x2f, 0x59, 0x32, 0x67, 0x3a, 0x9c, 0xc5, 0x13, 0xcd, 0xa7, 0x21, 0xfe, 0xab, 0x75, 0x88,
+	0x1f, 0x6e, 0xe2, 0x22, 0xea, 0x7f, 0x05, 0x00, 0x00, 0xff, 0xff, 0x56, 0x69, 0x33, 0x85, 0x80,
+	0x02, 0x00, 0x00,
 }
