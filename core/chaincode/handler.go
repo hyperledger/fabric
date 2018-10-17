@@ -1137,7 +1137,7 @@ func (h *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.P
 		return errors.New("failed getting proposal context. Signed proposal is nil")
 	}
 	// TODO: This doesn't make a lot of sense. Feels like both are required or
-	// neither should be set. Check with a knowledable expert.
+	// neither should be set. Check with a knowledgeable expert.
 	if prop != nil {
 		msg.Proposal = signedProp
 	}

@@ -26,8 +26,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("statecouchdb", "debug")
-	flogging.SetModuleLevel("couchdb", "debug")
 	os.Exit(testMain(m))
 }
 
@@ -53,7 +51,7 @@ func testMain(m *testing.M) int {
 	// Disable auto warm to avoid error logs when the couchdb database has been dropped
 	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
 
-	flogging.SetModuleLevel("statecouchdb", "debug")
+	flogging.ActivateSpec("statecouchdb,couchdb=debug")
 	//run the actual test
 	return m.Run()
 }

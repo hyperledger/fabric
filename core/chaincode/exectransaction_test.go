@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -1398,6 +1399,7 @@ func TestMain(m *testing.M) {
 	}
 
 	setupTestConfig()
+	flogging.ActivateSpec("chaincode=debug")
 	os.Exit(m.Run())
 }
 

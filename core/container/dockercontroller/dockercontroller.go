@@ -311,8 +311,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID,
 			is := bufio.NewReader(r)
 
 			// Acquire a custom logger for our chaincode, inheriting the level from the peer
-			containerLogger := flogging.MustGetLogger(containerName)
-			flogging.SetModuleLevel(flogging.GetModuleLevel("peer"), containerName)
+			containerLogger := flogging.MustGetLogger("peer.chaincode." + containerName)
 
 			for {
 				// Loop forever dumping lines of text into the containerLogger

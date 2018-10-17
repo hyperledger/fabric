@@ -23,8 +23,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("pvtstatepurgemgmt", "debug")
-	flogging.SetModuleLevel("privacyenabledstate", "debug")
+	flogging.ActivateSpec("pvtstatepurgemgmt,privacyenabledstate=debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/pvtstatepurgemgmt")
 	os.Exit(m.Run())
 }

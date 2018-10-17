@@ -14,15 +14,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("lockbasedtxmgr", "debug")
-	flogging.SetModuleLevel("statevalidator", "debug")
-	flogging.SetModuleLevel("statebasedval", "debug")
-	flogging.SetModuleLevel("statecouchdb", "debug")
-	flogging.SetModuleLevel("valimpl", "debug")
-	flogging.SetModuleLevel("pvtstatepurgemgmt", "debug")
-	flogging.SetModuleLevel("confighistory", "debug")
-	flogging.SetModuleLevel("kvledger", "debug")
-
+	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,confighistory,kvledger=debug")
 	os.Exit(m.Run())
 }
 

@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 		return
 	}
-	flogging.SetModuleLevel("valinternal", "debug")
+	flogging.ActivateSpec("valinternal=debug")
 	viper.Set("peer.fileSystemPath", tempDir)
 	os.Exit(m.Run())
 }

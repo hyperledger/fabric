@@ -8,6 +8,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -15,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
-	"go.uber.org/zap/zapcore"
 )
 
 var logger = flogging.MustGetLogger("server")
@@ -38,7 +38,7 @@ func NewAdminServer(ace AccessControlEvaluator) *ServerAdmin {
 		v: &validator{
 			ace: ace,
 		},
-		levelsAtStartup: flogging.GetModuleLevels(),
+		specAtStartup: flogging.Global.Spec(),
 	}
 	return s
 }
@@ -47,7 +47,7 @@ func NewAdminServer(ace AccessControlEvaluator) *ServerAdmin {
 type ServerAdmin struct {
 	v requestValidator
 
-	levelsAtStartup map[string]zapcore.Level
+	specAtStartup string
 }
 
 func (s *ServerAdmin) GetStatus(ctx context.Context, env *common.Envelope) (*pb.ServerStatus, error) {
@@ -91,7 +91,11 @@ func (s *ServerAdmin) SetModuleLogLevel(ctx context.Context, env *common.Envelop
 	if request == nil {
 		return nil, errors.New("request is nil")
 	}
-	err = flogging.SetModuleLevels(request.LogModule, request.LogLevel)
+	// TODO: FAB-12488
+	// err = flogging.SetModuleLevels(request.LogModule, request.LogLevel)
+	spec := fmt.Sprintf("%s:%s=%s", flogging.Global.Spec(), request.LogModule, request.LogLevel)
+	flogging.ActivateSpec(spec)
+
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: strings.ToUpper(request.LogLevel)}
 	return logResponse, err
 }
@@ -100,6 +104,6 @@ func (s *ServerAdmin) RevertLogLevels(ctx context.Context, env *common.Envelope)
 	if _, err := s.v.validate(ctx, env); err != nil {
 		return nil, err
 	}
-	flogging.RestoreLevels(s.levelsAtStartup)
+	flogging.ActivateSpec(s.specAtStartup)
 	return &empty.Empty{}, nil
 }

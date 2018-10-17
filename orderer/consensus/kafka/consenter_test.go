@@ -189,8 +189,9 @@ func setupTestLogging(logLevel string) {
 	// This call allows us to (a) get the logging backend initialization that
 	// takes place in the `flogging` package, and (b) adjust the verbosity of
 	// the logs when running tests on this package.
-	flogging.SetModuleLevel(pkgLogID, logLevel)
-	flogging.SetModuleLevel(saramaLogID, logLevel)
+	spec := fmt.Sprintf("%s,%s=%s", pkgLogID, saramaLogID, logLevel)
+	spec = strings.Replace(spec, "/", ".", -1)
+	flogging.ActivateSpec(spec)
 }
 
 func tamperBytes(original []byte) []byte {

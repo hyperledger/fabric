@@ -29,7 +29,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("fsblkstorage", "debug")
+	flogging.ActivateSpec("fsblkstorage=debug")
 	os.Exit(m.Run())
 }
 

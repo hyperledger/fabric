@@ -24,7 +24,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("pvtdatastorage", "debug")
+	flogging.ActivateSpec("pvtdatastorage=debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/core/ledger/pvtdatastorage")
 	os.Exit(m.Run())
 }

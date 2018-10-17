@@ -20,7 +20,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("confighistory", "debug")
+	flogging.ActivateSpec("confighistory=debug")
 	os.Exit(m.Run())
 }
 

@@ -189,8 +189,6 @@ func (s *Logging) Encoding() Encoding {
 func (s *Logging) ZapLogger(module string) *zap.Logger {
 	s.mutex.RLock()
 	module = strings.Replace(module, "/", ".", -1)
-	level := s.ModuleLevels.Level(module)
-	s.ModuleLevels.SetLevel(module, level)
 	core := &Core{
 		LevelEnabler: s.ModuleLevels.LevelEnabler(module),
 		Encoders: map[Encoding]zapcore.Encoder{

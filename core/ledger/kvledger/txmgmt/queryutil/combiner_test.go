@@ -22,8 +22,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("util", "debug")
-	flogging.SetModuleLevel("statedb", "debug")
+	flogging.ActivateSpec("util,statedb=debug")
 	os.Exit(m.Run())
 }
 

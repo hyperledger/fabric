@@ -18,6 +18,7 @@ package solo
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ import (
 )
 
 func init() {
-	flogging.SetModuleLevel(pkgLogID, "DEBUG")
+	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
 }
 
 var testMessage = &cb.Envelope{

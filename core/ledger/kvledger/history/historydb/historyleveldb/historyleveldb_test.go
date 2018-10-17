@@ -26,8 +26,7 @@ import (
 
 func TestMain(m *testing.M) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/history/historydb/historyleveldb")
-	flogging.SetModuleLevel("leveldbhelper", "debug")
-	flogging.SetModuleLevel("historyleveldb", "debug")
+	flogging.ActivateSpec("leveldbhelper,historyleveldb=debug")
 	os.Exit(m.Run())
 }
 

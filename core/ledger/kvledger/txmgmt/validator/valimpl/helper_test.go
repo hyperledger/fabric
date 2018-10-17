@@ -31,7 +31,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("internal", "debug")
+	flogging.ActivateSpec("internal=debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/validator/internal")
 	os.Exit(m.Run())
 }

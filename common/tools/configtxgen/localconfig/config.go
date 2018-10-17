@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	pkgLogID = "common/tools/configtxgen/localconfig"
+	pkgLogID = "common.tools.configtxgen.localconfig"
 
 	// Prefix identifies the prefix for the configtxgen-related ENV vars.
 	Prefix string = "CONFIGTX"
@@ -32,7 +32,7 @@ var logger = flogging.MustGetLogger(pkgLogID)
 var configName = strings.ToLower(Prefix)
 
 func init() {
-	flogging.SetModuleLevel(pkgLogID, "error")
+	flogging.InitFromSpec(pkgLogID + "=error")
 }
 
 const (

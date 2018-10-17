@@ -18,9 +18,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.SetModuleLevel("eventmgmt", "debug")
+	flogging.ActivateSpec("eventmgmt=debug")
 	os.Exit(m.Run())
 }
+
 func TestCCEventMgmt(t *testing.T) {
 	cc1Def := &ChaincodeDefinition{Name: "cc1", Version: "v1", Hash: []byte("cc1")}
 	cc1DBArtifactsTar := []byte("cc1DBArtifacts")

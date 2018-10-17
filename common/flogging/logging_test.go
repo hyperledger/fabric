@@ -7,9 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package flogging_test
 
 import (
-	"bytes"
 	"errors"
-	"regexp"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -22,76 +20,11 @@ func TestNew(t *testing.T) {
 	logging, err := flogging.New(flogging.Config{})
 	assert.NoError(t, err)
 	assert.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
-	assert.Empty(t, logging.Levels())
 
 	_, err = flogging.New(flogging.Config{
 		LogSpec: "::=borken=::",
 	})
 	assert.EqualError(t, err, "invalid logging specification '::=borken=::': bad segment '=borken='")
-}
-
-func TestLoggingReset(t *testing.T) {
-	logging, err := flogging.New(flogging.Config{})
-	assert.NoError(t, err)
-
-	var tests = []struct {
-		desc string
-		flogging.Config
-		err            error
-		expectedRegexp string
-	}{
-		{
-			desc:           "implicit log spec",
-			Config:         flogging.Config{Format: "%{message}"},
-			expectedRegexp: regexp.QuoteMeta("this is a warning message\n"),
-		},
-		{
-			desc:           "simple debug config",
-			Config:         flogging.Config{LogSpec: "debug", Format: "%{message}"},
-			expectedRegexp: regexp.QuoteMeta("this is a debug message\nthis is a warning message\n"),
-		},
-		{
-			desc:           "module error config",
-			Config:         flogging.Config{LogSpec: "test-module=error:info", Format: "%{message}"},
-			expectedRegexp: "^$",
-		},
-		{
-			desc:           "json",
-			Config:         flogging.Config{LogSpec: "info", Format: "json"},
-			expectedRegexp: `{"level":"warn","ts":\d+\.\d+,"name":"test-module","caller":"flogging/logging_test.go:\d+","msg":"this is a warning message"}`,
-		},
-		{
-			desc:   "bad log spec",
-			Config: flogging.Config{LogSpec: "::=borken=::", Format: "%{message}"},
-			err:    errors.New("invalid logging specification '::=borken=::': bad segment '=borken='"),
-		},
-		{
-			desc:   "bad format",
-			Config: flogging.Config{LogSpec: "info", Format: "%{color:bad}"},
-			err:    errors.New("invalid color option: bad"),
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			buf := &bytes.Buffer{}
-			tc.Config.Writer = buf
-
-			logging.ResetLevels()
-			err := logging.Apply(tc.Config)
-			if tc.err != nil {
-				assert.EqualError(t, err, tc.err.Error())
-				return
-			}
-			assert.NoError(t, err)
-
-			logger := logging.Logger("test-module")
-			logger.Debug("this is a debug message")
-			logger.Warn("this is a warning message")
-
-			assert.Regexp(t, tc.expectedRegexp, buf.String())
-		})
-	}
 }
 
 //go:generate counterfeiter -o mock/write_syncer.go -fake-name WriteSyncer . writeSyncer
@@ -119,14 +52,14 @@ func TestLoggingSetWriter(t *testing.T) {
 }
 
 func TestZapLoggerNameConversion(t *testing.T) {
-	logging, err := flogging.New(flogging.Config{})
+	logging, err := flogging.New(flogging.Config{
+		LogSpec: "fatal:test=debug",
+	})
 	assert.NoError(t, err)
 
-	logging.Logger("test/module/name")
+	assert.Equal(t, zapcore.FatalLevel, logging.Level("test/module/name"))
+	assert.Equal(t, zapcore.DebugLevel, logging.Level("test.module.name"))
 
-	levels := logging.Levels()
-	_, ok := levels["test.module.name"]
-	assert.True(t, ok)
-	_, ok = levels["test/module/name"]
-	assert.False(t, ok)
+	logger := logging.Logger("test/module/name")
+	assert.True(t, logger.IsEnabledFor(zapcore.DebugLevel))
 }

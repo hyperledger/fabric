@@ -27,11 +27,7 @@ import (
 
 func TestMain(m *testing.M) {
 	ledgertestutil.SetupCoreYAMLConfig()
-	flogging.SetModuleLevel("lockbasedtxmgr", "debug")
-	flogging.SetModuleLevel("statevalidator", "debug")
-	flogging.SetModuleLevel("valimpl", "debug")
-	flogging.SetModuleLevel("confighistory", "debug")
-	flogging.SetModuleLevel("pvtstatepurgemgmt", "debug")
+	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger")
 	viper.Set("ledger.history.enableHistoryDatabase", true)
 	os.Exit(m.Run())
