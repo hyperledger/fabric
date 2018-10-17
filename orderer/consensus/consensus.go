@@ -84,6 +84,10 @@ type ConsenterSupport interface {
 	// Note that either WriteBlock or WriteConfigBlock must be called before invoking this method a second time.
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 
+	// Block returns a block with the following number,
+	// or nil if such a block doesn't exist.
+	Block(number uint64) *cb.Block
+
 	// WriteBlock commits a block to the ledger.
 	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
 

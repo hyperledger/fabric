@@ -3634,6 +3634,11 @@ type mockConsenterSupport struct {
 	mock.Mock
 }
 
+func (c *mockConsenterSupport) Block(seq uint64) *cb.Block {
+	// TODO: implement this
+	return nil
+}
+
 func (c *mockConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 	args := c.Called()
 	return args.Get(0).(*cb.SignatureHeader), args.Error(1)
