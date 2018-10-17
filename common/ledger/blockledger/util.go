@@ -79,12 +79,16 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 
 // GetBlock is a utility method for retrieving a single block
 func GetBlock(rl Reader, index uint64) *cb.Block {
-	i, _ := rl.Iterator(&ab.SeekPosition{
+	iterator, _ := rl.Iterator(&ab.SeekPosition{
 		Type: &ab.SeekPosition_Specified{
 			Specified: &ab.SeekSpecified{Number: index},
 		},
 	})
-	block, status := i.Next()
+	if iterator == nil {
+		return nil
+	}
+	defer iterator.Close()
+	block, status := iterator.Next()
 	if status != cb.Status_SUCCESS {
 		return nil
 	}
