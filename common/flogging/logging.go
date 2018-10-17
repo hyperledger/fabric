@@ -9,6 +9,7 @@ package flogging
 import (
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
@@ -187,6 +188,7 @@ func (s *Logging) Encoding() Encoding {
 // enabled.
 func (s *Logging) ZapLogger(module string) *zap.Logger {
 	s.mutex.RLock()
+	module = strings.Replace(module, "/", ".", -1)
 	level := s.ModuleLevels.Level(module)
 	s.ModuleLevels.SetLevel(module, level)
 	core := &Core{
