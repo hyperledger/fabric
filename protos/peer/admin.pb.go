@@ -61,7 +61,7 @@ func (ServerStatus_StatusCode) EnumDescriptor() ([]byte, []int) {
 }
 
 type ServerStatus struct {
-	Status               ServerStatus_StatusCode `protobuf:"varint,1,opt,name=status,enum=protos.ServerStatus_StatusCode" json:"status,omitempty"`
+	Status               ServerStatus_StatusCode `protobuf:"varint,1,opt,name=status,proto3,enum=protos.ServerStatus_StatusCode" json:"status,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`
@@ -99,8 +99,8 @@ func (m *ServerStatus) GetStatus() ServerStatus_StatusCode {
 }
 
 type LogLevelRequest struct {
-	LogModule            string   `protobuf:"bytes,1,opt,name=log_module,json=logModule" json:"log_module,omitempty"`
-	LogLevel             string   `protobuf:"bytes,2,opt,name=log_level,json=logLevel" json:"log_level,omitempty"`
+	LogModule            string   `protobuf:"bytes,1,opt,name=log_module,json=logModule,proto3" json:"log_module,omitempty"`
+	LogLevel             string   `protobuf:"bytes,2,opt,name=log_level,json=logLevel,proto3" json:"log_level,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -145,8 +145,8 @@ func (m *LogLevelRequest) GetLogLevel() string {
 }
 
 type LogLevelResponse struct {
-	LogModule            string   `protobuf:"bytes,1,opt,name=log_module,json=logModule" json:"log_module,omitempty"`
-	LogLevel             string   `protobuf:"bytes,2,opt,name=log_level,json=logLevel" json:"log_level,omitempty"`
+	LogModule            string   `protobuf:"bytes,1,opt,name=log_module,json=logModule,proto3" json:"log_module,omitempty"`
+	LogLevel             string   `protobuf:"bytes,2,opt,name=log_level,json=logLevel,proto3" json:"log_level,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -228,7 +228,7 @@ type isAdminOperation_Content interface {
 }
 
 type AdminOperation_LogReq struct {
-	LogReq *LogLevelRequest `protobuf:"bytes,1,opt,name=logReq,oneof"`
+	LogReq *LogLevelRequest `protobuf:"bytes,1,opt,name=logReq,proto3,oneof"`
 }
 
 func (*AdminOperation_LogReq) isAdminOperation_Content() {}
@@ -318,8 +318,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Admin service
-
+// AdminClient is the client API for Admin service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type AdminClient interface {
 	GetStatus(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*ServerStatus, error)
 	StartServer(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*ServerStatus, error)
@@ -338,7 +339,7 @@ func NewAdminClient(cc *grpc.ClientConn) AdminClient {
 
 func (c *adminClient) GetStatus(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*ServerStatus, error) {
 	out := new(ServerStatus)
-	err := grpc.Invoke(ctx, "/protos.Admin/GetStatus", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Admin/GetStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +348,7 @@ func (c *adminClient) GetStatus(ctx context.Context, in *common.Envelope, opts .
 
 func (c *adminClient) StartServer(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*ServerStatus, error) {
 	out := new(ServerStatus)
-	err := grpc.Invoke(ctx, "/protos.Admin/StartServer", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Admin/StartServer", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +357,7 @@ func (c *adminClient) StartServer(ctx context.Context, in *common.Envelope, opts
 
 func (c *adminClient) GetModuleLogLevel(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*LogLevelResponse, error) {
 	out := new(LogLevelResponse)
-	err := grpc.Invoke(ctx, "/protos.Admin/GetModuleLogLevel", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Admin/GetModuleLogLevel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +366,7 @@ func (c *adminClient) GetModuleLogLevel(ctx context.Context, in *common.Envelope
 
 func (c *adminClient) SetModuleLogLevel(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*LogLevelResponse, error) {
 	out := new(LogLevelResponse)
-	err := grpc.Invoke(ctx, "/protos.Admin/SetModuleLogLevel", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Admin/SetModuleLogLevel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -374,15 +375,14 @@ func (c *adminClient) SetModuleLogLevel(ctx context.Context, in *common.Envelope
 
 func (c *adminClient) RevertLogLevels(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
-	err := grpc.Invoke(ctx, "/protos.Admin/RevertLogLevels", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Admin/RevertLogLevels", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Admin service
-
+// AdminServer is the server API for Admin service.
 type AdminServer interface {
 	GetStatus(context.Context, *common.Envelope) (*ServerStatus, error)
 	StartServer(context.Context, *common.Envelope) (*ServerStatus, error)

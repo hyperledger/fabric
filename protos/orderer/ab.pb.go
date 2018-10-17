@@ -49,9 +49,9 @@ func (SeekInfo_SeekBehavior) EnumDescriptor() ([]byte, []int) {
 
 type BroadcastResponse struct {
 	// Status code, which may be used to programatically respond to success/failure
-	Status common.Status `protobuf:"varint,1,opt,name=status,enum=common.Status" json:"status,omitempty"`
+	Status common.Status `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
 	// Info string which may contain additional information about the status returned
-	Info                 string   `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
+	Info                 string   `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -156,7 +156,7 @@ func (m *SeekOldest) XXX_DiscardUnknown() {
 var xxx_messageInfo_SeekOldest proto.InternalMessageInfo
 
 type SeekSpecified struct {
-	Number               uint64   `protobuf:"varint,1,opt,name=number" json:"number,omitempty"`
+	Number               uint64   `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -233,17 +233,21 @@ type isSeekPosition_Type interface {
 }
 
 type SeekPosition_Newest struct {
-	Newest *SeekNewest `protobuf:"bytes,1,opt,name=newest,oneof"`
-}
-type SeekPosition_Oldest struct {
-	Oldest *SeekOldest `protobuf:"bytes,2,opt,name=oldest,oneof"`
-}
-type SeekPosition_Specified struct {
-	Specified *SeekSpecified `protobuf:"bytes,3,opt,name=specified,oneof"`
+	Newest *SeekNewest `protobuf:"bytes,1,opt,name=newest,proto3,oneof"`
 }
 
-func (*SeekPosition_Newest) isSeekPosition_Type()    {}
-func (*SeekPosition_Oldest) isSeekPosition_Type()    {}
+type SeekPosition_Oldest struct {
+	Oldest *SeekOldest `protobuf:"bytes,2,opt,name=oldest,proto3,oneof"`
+}
+
+type SeekPosition_Specified struct {
+	Specified *SeekSpecified `protobuf:"bytes,3,opt,name=specified,proto3,oneof"`
+}
+
+func (*SeekPosition_Newest) isSeekPosition_Type() {}
+
+func (*SeekPosition_Oldest) isSeekPosition_Type() {}
+
 func (*SeekPosition_Specified) isSeekPosition_Type() {}
 
 func (m *SeekPosition) GetType() isSeekPosition_Type {
@@ -376,9 +380,9 @@ func _SeekPosition_OneofSizer(msg proto.Message) (n int) {
 // as they are created, behavior should be set to BLOCK_UNTIL_READY and the stop should be set to
 // specified with a number of MAX_UINT64
 type SeekInfo struct {
-	Start                *SeekPosition         `protobuf:"bytes,1,opt,name=start" json:"start,omitempty"`
-	Stop                 *SeekPosition         `protobuf:"bytes,2,opt,name=stop" json:"stop,omitempty"`
-	Behavior             SeekInfo_SeekBehavior `protobuf:"varint,3,opt,name=behavior,enum=orderer.SeekInfo_SeekBehavior" json:"behavior,omitempty"`
+	Start                *SeekPosition         `protobuf:"bytes,1,opt,name=start,proto3" json:"start,omitempty"`
+	Stop                 *SeekPosition         `protobuf:"bytes,2,opt,name=stop,proto3" json:"stop,omitempty"`
+	Behavior             SeekInfo_SeekBehavior `protobuf:"varint,3,opt,name=behavior,proto3,enum=orderer.SeekInfo_SeekBehavior" json:"behavior,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
 	XXX_unrecognized     []byte                `json:"-"`
 	XXX_sizecache        int32                 `json:"-"`
@@ -468,14 +472,16 @@ type isDeliverResponse_Type interface {
 }
 
 type DeliverResponse_Status struct {
-	Status common.Status `protobuf:"varint,1,opt,name=status,enum=common.Status,oneof"`
+	Status common.Status `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status,oneof"`
 }
+
 type DeliverResponse_Block struct {
-	Block *common.Block `protobuf:"bytes,2,opt,name=block,oneof"`
+	Block *common.Block `protobuf:"bytes,2,opt,name=block,proto3,oneof"`
 }
 
 func (*DeliverResponse_Status) isDeliverResponse_Type() {}
-func (*DeliverResponse_Block) isDeliverResponse_Type()  {}
+
+func (*DeliverResponse_Block) isDeliverResponse_Type() {}
 
 func (m *DeliverResponse) GetType() isDeliverResponse_Type {
 	if m != nil {
@@ -586,8 +592,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for AtomicBroadcast service
-
+// AtomicBroadcastClient is the client API for AtomicBroadcast service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type AtomicBroadcastClient interface {
 	// broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
 	Broadcast(ctx context.Context, opts ...grpc.CallOption) (AtomicBroadcast_BroadcastClient, error)
@@ -604,7 +611,7 @@ func NewAtomicBroadcastClient(cc *grpc.ClientConn) AtomicBroadcastClient {
 }
 
 func (c *atomicBroadcastClient) Broadcast(ctx context.Context, opts ...grpc.CallOption) (AtomicBroadcast_BroadcastClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_AtomicBroadcast_serviceDesc.Streams[0], c.cc, "/orderer.AtomicBroadcast/Broadcast", opts...)
+	stream, err := c.cc.NewStream(ctx, &_AtomicBroadcast_serviceDesc.Streams[0], "/orderer.AtomicBroadcast/Broadcast", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -635,7 +642,7 @@ func (x *atomicBroadcastBroadcastClient) Recv() (*BroadcastResponse, error) {
 }
 
 func (c *atomicBroadcastClient) Deliver(ctx context.Context, opts ...grpc.CallOption) (AtomicBroadcast_DeliverClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_AtomicBroadcast_serviceDesc.Streams[1], c.cc, "/orderer.AtomicBroadcast/Deliver", opts...)
+	stream, err := c.cc.NewStream(ctx, &_AtomicBroadcast_serviceDesc.Streams[1], "/orderer.AtomicBroadcast/Deliver", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -665,8 +672,7 @@ func (x *atomicBroadcastDeliverClient) Recv() (*DeliverResponse, error) {
 	return m, nil
 }
 
-// Server API for AtomicBroadcast service
-
+// AtomicBroadcastServer is the server API for AtomicBroadcast service.
 type AtomicBroadcastServer interface {
 	// broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
 	Broadcast(AtomicBroadcast_BroadcastServer) error

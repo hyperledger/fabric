@@ -135,7 +135,7 @@ type MSPPrincipal struct {
 	// "Principal" contains a specific identity. Default value
 	// denotes that Principal contains one of the groups by
 	// default supported by all MSPs ("admin" or "member").
-	PrincipalClassification MSPPrincipal_Classification `protobuf:"varint,1,opt,name=principal_classification,json=principalClassification,enum=common.MSPPrincipal_Classification" json:"principal_classification,omitempty"`
+	PrincipalClassification MSPPrincipal_Classification `protobuf:"varint,1,opt,name=principal_classification,json=principalClassification,proto3,enum=common.MSPPrincipal_Classification" json:"principal_classification,omitempty"`
 	// Principal completes the policy principal definition. For the default
 	// principal types, Principal can be either "Admin" or "Member".
 	// For the ByOrganizationUnit/ByIdentity values of Classification,
@@ -193,10 +193,10 @@ func (m *MSPPrincipal) GetPrincipal() []byte {
 type OrganizationUnit struct {
 	// MSPIdentifier represents the identifier of the MSP this organization unit
 	// refers to
-	MspIdentifier string `protobuf:"bytes,1,opt,name=msp_identifier,json=mspIdentifier" json:"msp_identifier,omitempty"`
+	MspIdentifier string `protobuf:"bytes,1,opt,name=msp_identifier,json=mspIdentifier,proto3" json:"msp_identifier,omitempty"`
 	// OrganizationUnitIdentifier defines the organizational unit under the
 	// MSP identified with MSPIdentifier
-	OrganizationalUnitIdentifier string `protobuf:"bytes,2,opt,name=organizational_unit_identifier,json=organizationalUnitIdentifier" json:"organizational_unit_identifier,omitempty"`
+	OrganizationalUnitIdentifier string `protobuf:"bytes,2,opt,name=organizational_unit_identifier,json=organizationalUnitIdentifier,proto3" json:"organizational_unit_identifier,omitempty"`
 	// CertifiersIdentifier is the hash of certificates chain of trust
 	// related to this organizational unit
 	CertifiersIdentifier []byte   `protobuf:"bytes,3,opt,name=certifiers_identifier,json=certifiersIdentifier,proto3" json:"certifiers_identifier,omitempty"`
@@ -256,10 +256,10 @@ func (m *OrganizationUnit) GetCertifiersIdentifier() []byte {
 type MSPRole struct {
 	// MSPIdentifier represents the identifier of the MSP this principal
 	// refers to
-	MspIdentifier string `protobuf:"bytes,1,opt,name=msp_identifier,json=mspIdentifier" json:"msp_identifier,omitempty"`
+	MspIdentifier string `protobuf:"bytes,1,opt,name=msp_identifier,json=mspIdentifier,proto3" json:"msp_identifier,omitempty"`
 	// MSPRoleType defines which of the available, pre-defined MSP-roles
 	// an identiy should posess inside the MSP with identifier MSPidentifier
-	Role                 MSPRole_MSPRoleType `protobuf:"varint,2,opt,name=role,enum=common.MSPRole_MSPRoleType" json:"role,omitempty"`
+	Role                 MSPRole_MSPRoleType `protobuf:"varint,2,opt,name=role,proto3,enum=common.MSPRole_MSPRoleType" json:"role,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
 	XXX_sizecache        int32               `json:"-"`
@@ -305,7 +305,7 @@ func (m *MSPRole) GetRole() MSPRole_MSPRoleType {
 
 // MSPIdentityAnonymity can be used to enforce an identity to be anonymous or nominal.
 type MSPIdentityAnonymity struct {
-	AnonymityType        MSPIdentityAnonymity_MSPIdentityAnonymityType `protobuf:"varint,1,opt,name=anonymity_type,json=anonymityType,enum=common.MSPIdentityAnonymity_MSPIdentityAnonymityType" json:"anonymity_type,omitempty"`
+	AnonymityType        MSPIdentityAnonymity_MSPIdentityAnonymityType `protobuf:"varint,1,opt,name=anonymity_type,json=anonymityType,proto3,enum=common.MSPIdentityAnonymity_MSPIdentityAnonymityType" json:"anonymity_type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                                      `json:"-"`
 	XXX_unrecognized     []byte                                        `json:"-"`
 	XXX_sizecache        int32                                         `json:"-"`
@@ -347,7 +347,7 @@ func (m *MSPIdentityAnonymity) GetAnonymityType() MSPIdentityAnonymity_MSPIdenti
 // indicated that a combined form of principals is required
 type CombinedPrincipal struct {
 	// Principals refer to combined principals
-	Principals           []*MSPPrincipal `protobuf:"bytes,1,rep,name=principals" json:"principals,omitempty"`
+	Principals           []*MSPPrincipal `protobuf:"bytes,1,rep,name=principals,proto3" json:"principals,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`

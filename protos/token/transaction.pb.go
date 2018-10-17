@@ -61,7 +61,7 @@ type isTokenTransaction_Action interface {
 }
 
 type TokenTransaction_PlainAction struct {
-	PlainAction *PlainTokenAction `protobuf:"bytes,1,opt,name=plain_action,json=plainAction,oneof"`
+	PlainAction *PlainTokenAction `protobuf:"bytes,1,opt,name=plain_action,json=plainAction,proto3,oneof"`
 }
 
 func (*TokenTransaction_PlainAction) isTokenTransaction_Action() {}
@@ -176,13 +176,15 @@ type isPlainTokenAction_Data interface {
 }
 
 type PlainTokenAction_PlainImport struct {
-	PlainImport *PlainImport `protobuf:"bytes,1,opt,name=plain_import,json=plainImport,oneof"`
-}
-type PlainTokenAction_PlainTransfer struct {
-	PlainTransfer *PlainTransfer `protobuf:"bytes,2,opt,name=plain_transfer,json=plainTransfer,oneof"`
+	PlainImport *PlainImport `protobuf:"bytes,1,opt,name=plain_import,json=plainImport,proto3,oneof"`
 }
 
-func (*PlainTokenAction_PlainImport) isPlainTokenAction_Data()   {}
+type PlainTokenAction_PlainTransfer struct {
+	PlainTransfer *PlainTransfer `protobuf:"bytes,2,opt,name=plain_transfer,json=plainTransfer,proto3,oneof"`
+}
+
+func (*PlainTokenAction_PlainImport) isPlainTokenAction_Data() {}
+
 func (*PlainTokenAction_PlainTransfer) isPlainTokenAction_Data() {}
 
 func (m *PlainTokenAction) GetData() isPlainTokenAction_Data {
@@ -283,7 +285,7 @@ func _PlainTokenAction_OneofSizer(msg proto.Message) (n int) {
 // PlainImport specifies an import of one or more tokens in plaintext format
 type PlainImport struct {
 	// An import transaction may contain one or more outputs
-	Outputs              []*PlainOutput `protobuf:"bytes,1,rep,name=outputs" json:"outputs,omitempty"`
+	Outputs              []*PlainOutput `protobuf:"bytes,1,rep,name=outputs,proto3" json:"outputs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -323,9 +325,9 @@ func (m *PlainImport) GetOutputs() []*PlainOutput {
 // PlainTransfer specifies a transfer or one or more plaintext tokens to one or more outputs
 type PlainTransfer struct {
 	// The inputs to the transfer transaction are specified by their ID
-	Inputs []*InputId `protobuf:"bytes,1,rep,name=inputs" json:"inputs,omitempty"`
+	Inputs []*InputId `protobuf:"bytes,1,rep,name=inputs,proto3" json:"inputs,omitempty"`
 	// A transfer transaction may contain one or more outputs
-	Outputs              []*PlainOutput `protobuf:"bytes,2,rep,name=outputs" json:"outputs,omitempty"`
+	Outputs              []*PlainOutput `protobuf:"bytes,2,rep,name=outputs,proto3" json:"outputs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -374,9 +376,9 @@ type PlainOutput struct {
 	// The owner is the serialization of a SerializedIdentity struct
 	Owner []byte `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
 	// The token type
-	Type string `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	// The quantity of tokens
-	Quantity             uint64   `protobuf:"varint,3,opt,name=quantity" json:"quantity,omitempty"`
+	Quantity             uint64   `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -432,7 +434,7 @@ type InputId struct {
 	// The transaction ID
 	TxId []byte `protobuf:"bytes,1,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
 	// The index of the output in the transaction
-	Index                uint32   `protobuf:"varint,2,opt,name=index" json:"index,omitempty"`
+	Index                uint32   `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

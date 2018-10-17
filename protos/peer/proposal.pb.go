@@ -188,7 +188,7 @@ type ChaincodeHeaderExtension struct {
 	// this field impacts the content of ProposalResponsePayload.proposalHash.
 	PayloadVisibility []byte `protobuf:"bytes,1,opt,name=payload_visibility,json=payloadVisibility,proto3" json:"payload_visibility,omitempty"`
 	// The ID of the chaincode to target.
-	ChaincodeId          *ChaincodeID `protobuf:"bytes,2,opt,name=chaincode_id,json=chaincodeId" json:"chaincode_id,omitempty"`
+	ChaincodeId          *ChaincodeID `protobuf:"bytes,2,opt,name=chaincode_id,json=chaincodeId,proto3" json:"chaincode_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -244,7 +244,7 @@ type ChaincodeProposalPayload struct {
 	// to implement some form of application-level confidentiality. The contents
 	// of this field are supposed to always be omitted from the transaction and
 	// excluded from the ledger.
-	TransientMap         map[string][]byte `protobuf:"bytes,2,rep,name=TransientMap" json:"TransientMap,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	TransientMap         map[string][]byte `protobuf:"bytes,2,rep,name=TransientMap,proto3" json:"TransientMap,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -298,13 +298,13 @@ type ChaincodeAction struct {
 	// invocation.
 	Events []byte `protobuf:"bytes,2,opt,name=events,proto3" json:"events,omitempty"`
 	// This field contains the result of executing this invocation.
-	Response *Response `protobuf:"bytes,3,opt,name=response" json:"response,omitempty"`
+	Response *Response `protobuf:"bytes,3,opt,name=response,proto3" json:"response,omitempty"`
 	// This field contains the ChaincodeID of executing this invocation. Endorser
 	// will set it with the ChaincodeID called by endorser while simulating proposal.
 	// Committer will validate the version matching with latest chaincode version.
 	// Adding ChaincodeID to keep version opens up the possibility of multiple
 	// ChaincodeAction per transaction.
-	ChaincodeId          *ChaincodeID `protobuf:"bytes,4,opt,name=chaincode_id,json=chaincodeId" json:"chaincode_id,omitempty"`
+	ChaincodeId          *ChaincodeID `protobuf:"bytes,4,opt,name=chaincode_id,json=chaincodeId,proto3" json:"chaincode_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`

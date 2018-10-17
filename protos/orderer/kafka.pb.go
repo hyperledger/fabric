@@ -86,18 +86,22 @@ type isKafkaMessage_Type interface {
 }
 
 type KafkaMessage_Regular struct {
-	Regular *KafkaMessageRegular `protobuf:"bytes,1,opt,name=regular,oneof"`
-}
-type KafkaMessage_TimeToCut struct {
-	TimeToCut *KafkaMessageTimeToCut `protobuf:"bytes,2,opt,name=time_to_cut,json=timeToCut,oneof"`
-}
-type KafkaMessage_Connect struct {
-	Connect *KafkaMessageConnect `protobuf:"bytes,3,opt,name=connect,oneof"`
+	Regular *KafkaMessageRegular `protobuf:"bytes,1,opt,name=regular,proto3,oneof"`
 }
 
-func (*KafkaMessage_Regular) isKafkaMessage_Type()   {}
+type KafkaMessage_TimeToCut struct {
+	TimeToCut *KafkaMessageTimeToCut `protobuf:"bytes,2,opt,name=time_to_cut,json=timeToCut,proto3,oneof"`
+}
+
+type KafkaMessage_Connect struct {
+	Connect *KafkaMessageConnect `protobuf:"bytes,3,opt,name=connect,proto3,oneof"`
+}
+
+func (*KafkaMessage_Regular) isKafkaMessage_Type() {}
+
 func (*KafkaMessage_TimeToCut) isKafkaMessage_Type() {}
-func (*KafkaMessage_Connect) isKafkaMessage_Type()   {}
+
+func (*KafkaMessage_Connect) isKafkaMessage_Type() {}
 
 func (m *KafkaMessage) GetType() isKafkaMessage_Type {
 	if m != nil {
@@ -223,9 +227,9 @@ func _KafkaMessage_OneofSizer(msg proto.Message) (n int) {
 // KafkaMessageRegular wraps a marshalled envelope.
 type KafkaMessageRegular struct {
 	Payload              []byte                    `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
-	ConfigSeq            uint64                    `protobuf:"varint,2,opt,name=config_seq,json=configSeq" json:"config_seq,omitempty"`
-	Class                KafkaMessageRegular_Class `protobuf:"varint,3,opt,name=class,enum=orderer.KafkaMessageRegular_Class" json:"class,omitempty"`
-	OriginalOffset       int64                     `protobuf:"varint,4,opt,name=original_offset,json=originalOffset" json:"original_offset,omitempty"`
+	ConfigSeq            uint64                    `protobuf:"varint,2,opt,name=config_seq,json=configSeq,proto3" json:"config_seq,omitempty"`
+	Class                KafkaMessageRegular_Class `protobuf:"varint,3,opt,name=class,proto3,enum=orderer.KafkaMessageRegular_Class" json:"class,omitempty"`
+	OriginalOffset       int64                     `protobuf:"varint,4,opt,name=original_offset,json=originalOffset,proto3" json:"original_offset,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
 	XXX_unrecognized     []byte                    `json:"-"`
 	XXX_sizecache        int32                     `json:"-"`
@@ -286,7 +290,7 @@ func (m *KafkaMessageRegular) GetOriginalOffset() int64 {
 // KafkaMessageTimeToCut is used to signal to the orderers
 // that it is time to cut block <block_number>.
 type KafkaMessageTimeToCut struct {
-	BlockNumber          uint64   `protobuf:"varint,1,opt,name=block_number,json=blockNumber" json:"block_number,omitempty"`
+	BlockNumber          uint64   `protobuf:"varint,1,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -371,12 +375,12 @@ type KafkaMetadata struct {
 	// LastOffsetPersisted is the encoded value for the Metadata message
 	// which is encoded in the ORDERER block metadata index for the case
 	// of the Kafka-based orderer.
-	LastOffsetPersisted int64 `protobuf:"varint,1,opt,name=last_offset_persisted,json=lastOffsetPersisted" json:"last_offset_persisted,omitempty"`
+	LastOffsetPersisted int64 `protobuf:"varint,1,opt,name=last_offset_persisted,json=lastOffsetPersisted,proto3" json:"last_offset_persisted,omitempty"`
 	// LastOriginalOffsetProcessed is used to keep track of the newest
 	// offset processed if a message is re-validated and re-ordered.
 	// This value is used to deduplicate re-submitted messages from
 	// multiple orderer so that we don't bother re-processing it again.
-	LastOriginalOffsetProcessed int64 `protobuf:"varint,2,opt,name=last_original_offset_processed,json=lastOriginalOffsetProcessed" json:"last_original_offset_processed,omitempty"`
+	LastOriginalOffsetProcessed int64 `protobuf:"varint,2,opt,name=last_original_offset_processed,json=lastOriginalOffsetProcessed,proto3" json:"last_original_offset_processed,omitempty"`
 	// LastResubmittedConfigOffset is used to capture the newest offset of
 	// CONFIG kafka message, which is revalidated and resubmitted. By comparing
 	// this with LastOriginalOffsetProcessed, we could detemine whether there
@@ -384,7 +388,7 @@ type KafkaMetadata struct {
 	// yet. It's used as condition to block ingress messages, so we could reduce
 	// the overhead of repeatedly resubmitting messages as config seq keeps
 	// advancing.
-	LastResubmittedConfigOffset int64    `protobuf:"varint,3,opt,name=last_resubmitted_config_offset,json=lastResubmittedConfigOffset" json:"last_resubmitted_config_offset,omitempty"`
+	LastResubmittedConfigOffset int64    `protobuf:"varint,3,opt,name=last_resubmitted_config_offset,json=lastResubmittedConfigOffset,proto3" json:"last_resubmitted_config_offset,omitempty"`
 	XXX_NoUnkeyedLiteral        struct{} `json:"-"`
 	XXX_unrecognized            []byte   `json:"-"`
 	XXX_sizecache               int32    `json:"-"`

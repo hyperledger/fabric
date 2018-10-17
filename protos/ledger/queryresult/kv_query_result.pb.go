@@ -21,8 +21,8 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // KV -- QueryResult for range/execute query. Holds a key and corresponding value.
 type KV struct {
-	Namespace            string   `protobuf:"bytes,1,opt,name=namespace" json:"namespace,omitempty"`
-	Key                  string   `protobuf:"bytes,2,opt,name=key" json:"key,omitempty"`
+	Namespace            string   `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Key                  string   `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
 	Value                []byte   `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -77,10 +77,10 @@ func (m *KV) GetValue() []byte {
 // KeyModification -- QueryResult for history query. Holds a transaction ID, value,
 // timestamp, and delete marker which resulted from a history query.
 type KeyModification struct {
-	TxId                 string               `protobuf:"bytes,1,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
+	TxId                 string               `protobuf:"bytes,1,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
 	Value                []byte               `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	Timestamp            *timestamp.Timestamp `protobuf:"bytes,3,opt,name=timestamp" json:"timestamp,omitempty"`
-	IsDelete             bool                 `protobuf:"varint,4,opt,name=is_delete,json=isDelete" json:"is_delete,omitempty"`
+	Timestamp            *timestamp.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	IsDelete             bool                 `protobuf:"varint,4,opt,name=is_delete,json=isDelete,proto3" json:"is_delete,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`

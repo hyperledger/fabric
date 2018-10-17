@@ -24,9 +24,9 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // read-write set and additional information about the configurations such as
 // the latest collection config when the transaction is simulated
 type TxPvtReadWriteSetWithConfigInfo struct {
-	EndorsedAt           uint64                                     `protobuf:"varint,1,opt,name=endorsed_at,json=endorsedAt" json:"endorsed_at,omitempty"`
-	PvtRwset             *rwset.TxPvtReadWriteSet                   `protobuf:"bytes,2,opt,name=pvt_rwset,json=pvtRwset" json:"pvt_rwset,omitempty"`
-	CollectionConfigs    map[string]*common.CollectionConfigPackage `protobuf:"bytes,3,rep,name=collection_configs,json=collectionConfigs" json:"collection_configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	EndorsedAt           uint64                                     `protobuf:"varint,1,opt,name=endorsed_at,json=endorsedAt,proto3" json:"endorsed_at,omitempty"`
+	PvtRwset             *rwset.TxPvtReadWriteSet                   `protobuf:"bytes,2,opt,name=pvt_rwset,json=pvtRwset,proto3" json:"pvt_rwset,omitempty"`
+	CollectionConfigs    map[string]*common.CollectionConfigPackage `protobuf:"bytes,3,rep,name=collection_configs,json=collectionConfigs,proto3" json:"collection_configs,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}                                   `json:"-"`
 	XXX_unrecognized     []byte                                     `json:"-"`
 	XXX_sizecache        int32                                      `json:"-"`

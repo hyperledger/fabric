@@ -136,13 +136,13 @@ func (m *ECP2) GetYb() []byte {
 // proof_c, proof_s compose a zero-knowledge proof of knowledge of the secret key
 // hash is a hash of the public key appended to it
 type IssuerPublicKey struct {
-	AttributeNames       []string `protobuf:"bytes,1,rep,name=attribute_names,json=attributeNames" json:"attribute_names,omitempty"`
-	HSk                  *ECP     `protobuf:"bytes,2,opt,name=h_sk,json=hSk" json:"h_sk,omitempty"`
-	HRand                *ECP     `protobuf:"bytes,3,opt,name=h_rand,json=hRand" json:"h_rand,omitempty"`
-	HAttrs               []*ECP   `protobuf:"bytes,4,rep,name=h_attrs,json=hAttrs" json:"h_attrs,omitempty"`
-	W                    *ECP2    `protobuf:"bytes,5,opt,name=w" json:"w,omitempty"`
-	BarG1                *ECP     `protobuf:"bytes,6,opt,name=bar_g1,json=barG1" json:"bar_g1,omitempty"`
-	BarG2                *ECP     `protobuf:"bytes,7,opt,name=bar_g2,json=barG2" json:"bar_g2,omitempty"`
+	AttributeNames       []string `protobuf:"bytes,1,rep,name=attribute_names,json=attributeNames,proto3" json:"attribute_names,omitempty"`
+	HSk                  *ECP     `protobuf:"bytes,2,opt,name=h_sk,json=hSk,proto3" json:"h_sk,omitempty"`
+	HRand                *ECP     `protobuf:"bytes,3,opt,name=h_rand,json=hRand,proto3" json:"h_rand,omitempty"`
+	HAttrs               []*ECP   `protobuf:"bytes,4,rep,name=h_attrs,json=hAttrs,proto3" json:"h_attrs,omitempty"`
+	W                    *ECP2    `protobuf:"bytes,5,opt,name=w,proto3" json:"w,omitempty"`
+	BarG1                *ECP     `protobuf:"bytes,6,opt,name=bar_g1,json=barG1,proto3" json:"bar_g1,omitempty"`
+	BarG2                *ECP     `protobuf:"bytes,7,opt,name=bar_g2,json=barG2,proto3" json:"bar_g2,omitempty"`
 	ProofC               []byte   `protobuf:"bytes,8,opt,name=proof_c,json=proofC,proto3" json:"proof_c,omitempty"`
 	ProofS               []byte   `protobuf:"bytes,9,opt,name=proof_s,json=proofS,proto3" json:"proof_s,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,10,opt,name=hash,proto3" json:"hash,omitempty"`
@@ -250,7 +250,7 @@ func (m *IssuerPublicKey) GetHash() []byte {
 // IssuerPublicKey - the issuer public key
 type IssuerKey struct {
 	Isk                  []byte           `protobuf:"bytes,1,opt,name=isk,proto3" json:"isk,omitempty"`
-	Ipk                  *IssuerPublicKey `protobuf:"bytes,2,opt,name=ipk" json:"ipk,omitempty"`
+	Ipk                  *IssuerPublicKey `protobuf:"bytes,2,opt,name=ipk,proto3" json:"ipk,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -298,8 +298,8 @@ func (m *IssuerKey) GetIpk() *IssuerPublicKey {
 // a, b, e, s - signature value
 // attrs - attribute values
 type Credential struct {
-	A                    *ECP     `protobuf:"bytes,1,opt,name=a" json:"a,omitempty"`
-	B                    *ECP     `protobuf:"bytes,2,opt,name=b" json:"b,omitempty"`
+	A                    *ECP     `protobuf:"bytes,1,opt,name=a,proto3" json:"a,omitempty"`
+	B                    *ECP     `protobuf:"bytes,2,opt,name=b,proto3" json:"b,omitempty"`
 	E                    []byte   `protobuf:"bytes,3,opt,name=e,proto3" json:"e,omitempty"`
 	S                    []byte   `protobuf:"bytes,4,opt,name=s,proto3" json:"s,omitempty"`
 	Attrs                [][]byte `protobuf:"bytes,5,rep,name=attrs,proto3" json:"attrs,omitempty"`
@@ -373,7 +373,7 @@ func (m *Credential) GetAttrs() [][]byte {
 // proof_c, proof_s - a zero-knowledge proof of knowledge of the
 // user secret inside Nym
 type CredRequest struct {
-	Nym                  *ECP     `protobuf:"bytes,1,opt,name=nym" json:"nym,omitempty"`
+	Nym                  *ECP     `protobuf:"bytes,1,opt,name=nym,proto3" json:"nym,omitempty"`
 	IssuerNonce          []byte   `protobuf:"bytes,2,opt,name=issuer_nonce,json=issuerNonce,proto3" json:"issuer_nonce,omitempty"`
 	ProofC               []byte   `protobuf:"bytes,3,opt,name=proof_c,json=proofC,proto3" json:"proof_c,omitempty"`
 	ProofS               []byte   `protobuf:"bytes,4,opt,name=proof_s,json=proofS,proto3" json:"proof_s,omitempty"`
@@ -441,9 +441,9 @@ func (m *CredRequest) GetProofS() []byte {
 // nonce - a fresh nonce used for the signature
 // nym - a fresh pseudonym (a commitment to to the user secret)
 type Signature struct {
-	APrime               *ECP                `protobuf:"bytes,1,opt,name=a_prime,json=aPrime" json:"a_prime,omitempty"`
-	ABar                 *ECP                `protobuf:"bytes,2,opt,name=a_bar,json=aBar" json:"a_bar,omitempty"`
-	BPrime               *ECP                `protobuf:"bytes,3,opt,name=b_prime,json=bPrime" json:"b_prime,omitempty"`
+	APrime               *ECP                `protobuf:"bytes,1,opt,name=a_prime,json=aPrime,proto3" json:"a_prime,omitempty"`
+	ABar                 *ECP                `protobuf:"bytes,2,opt,name=a_bar,json=aBar,proto3" json:"a_bar,omitempty"`
+	BPrime               *ECP                `protobuf:"bytes,3,opt,name=b_prime,json=bPrime,proto3" json:"b_prime,omitempty"`
 	ProofC               []byte              `protobuf:"bytes,4,opt,name=proof_c,json=proofC,proto3" json:"proof_c,omitempty"`
 	ProofSSk             []byte              `protobuf:"bytes,5,opt,name=proof_s_sk,json=proofSSk,proto3" json:"proof_s_sk,omitempty"`
 	ProofSE              []byte              `protobuf:"bytes,6,opt,name=proof_s_e,json=proofSE,proto3" json:"proof_s_e,omitempty"`
@@ -452,12 +452,12 @@ type Signature struct {
 	ProofSSPrime         []byte              `protobuf:"bytes,9,opt,name=proof_s_s_prime,json=proofSSPrime,proto3" json:"proof_s_s_prime,omitempty"`
 	ProofSAttrs          [][]byte            `protobuf:"bytes,10,rep,name=proof_s_attrs,json=proofSAttrs,proto3" json:"proof_s_attrs,omitempty"`
 	Nonce                []byte              `protobuf:"bytes,11,opt,name=nonce,proto3" json:"nonce,omitempty"`
-	Nym                  *ECP                `protobuf:"bytes,12,opt,name=nym" json:"nym,omitempty"`
+	Nym                  *ECP                `protobuf:"bytes,12,opt,name=nym,proto3" json:"nym,omitempty"`
 	ProofSRNym           []byte              `protobuf:"bytes,13,opt,name=proof_s_r_nym,json=proofSRNym,proto3" json:"proof_s_r_nym,omitempty"`
-	RevocationEpochPk    *ECP2               `protobuf:"bytes,14,opt,name=revocation_epoch_pk,json=revocationEpochPk" json:"revocation_epoch_pk,omitempty"`
+	RevocationEpochPk    *ECP2               `protobuf:"bytes,14,opt,name=revocation_epoch_pk,json=revocationEpochPk,proto3" json:"revocation_epoch_pk,omitempty"`
 	RevocationPkSig      []byte              `protobuf:"bytes,15,opt,name=revocation_pk_sig,json=revocationPkSig,proto3" json:"revocation_pk_sig,omitempty"`
-	Epoch                int64               `protobuf:"varint,16,opt,name=epoch" json:"epoch,omitempty"`
-	NonRevocationProof   *NonRevocationProof `protobuf:"bytes,17,opt,name=non_revocation_proof,json=nonRevocationProof" json:"non_revocation_proof,omitempty"`
+	Epoch                int64               `protobuf:"varint,16,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	NonRevocationProof   *NonRevocationProof `protobuf:"bytes,17,opt,name=non_revocation_proof,json=nonRevocationProof,proto3" json:"non_revocation_proof,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
 	XXX_sizecache        int32               `json:"-"`
@@ -608,7 +608,7 @@ func (m *Signature) GetNonRevocationProof() *NonRevocationProof {
 
 // NonRevocationProof contains proof that the credential is not revoked
 type NonRevocationProof struct {
-	RevocationAlg        int32    `protobuf:"varint,1,opt,name=revocation_alg,json=revocationAlg" json:"revocation_alg,omitempty"`
+	RevocationAlg        int32    `protobuf:"varint,1,opt,name=revocation_alg,json=revocationAlg,proto3" json:"revocation_alg,omitempty"`
 	NonRevocationProof   []byte   `protobuf:"bytes,2,opt,name=non_revocation_proof,json=nonRevocationProof,proto3" json:"non_revocation_proof,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -726,13 +726,13 @@ func (m *NymSignature) GetNonce() []byte {
 
 type CredentialRevocationInformation struct {
 	// epoch contains the epoch (time window) in which this CRI is valid
-	Epoch int64 `protobuf:"varint,1,opt,name=epoch" json:"epoch,omitempty"`
+	Epoch int64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// epoch_pk is the public key that is used by the revocation authority in this epoch
-	EpochPk *ECP2 `protobuf:"bytes,2,opt,name=epoch_pk,json=epochPk" json:"epoch_pk,omitempty"`
+	EpochPk *ECP2 `protobuf:"bytes,2,opt,name=epoch_pk,json=epochPk,proto3" json:"epoch_pk,omitempty"`
 	// epoch_pk_sig is a signature on the EpochPK valid under the revocation authority's long term key
 	EpochPkSig []byte `protobuf:"bytes,3,opt,name=epoch_pk_sig,json=epochPkSig,proto3" json:"epoch_pk_sig,omitempty"`
 	// revocation_alg denotes which revocation algorithm is used
-	RevocationAlg int32 `protobuf:"varint,4,opt,name=revocation_alg,json=revocationAlg" json:"revocation_alg,omitempty"`
+	RevocationAlg int32 `protobuf:"varint,4,opt,name=revocation_alg,json=revocationAlg,proto3" json:"revocation_alg,omitempty"`
 	// revocation_data contains data specific to the revocation algorithm used
 	RevocationData       []byte   `protobuf:"bytes,5,opt,name=revocation_data,json=revocationData,proto3" json:"revocation_data,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

@@ -29,9 +29,9 @@ type TokenToIssue struct {
 	// Recipient refers to the owner of the token to be issued
 	Recipient []byte `protobuf:"bytes,1,opt,name=recipient,proto3" json:"recipient,omitempty"`
 	// Type refers to the token type
-	Type string `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	// Quantity refers to the number of token units to be issued
-	Quantity             uint64   `protobuf:"varint,3,opt,name=quantity" json:"quantity,omitempty"`
+	Quantity             uint64   `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -88,7 +88,7 @@ type ImportRequest struct {
 	// the content of this field depends on the charateristic of the token manager system used.
 	Credential []byte `protobuf:"bytes,1,opt,name=credential,proto3" json:"credential,omitempty"`
 	// TokenToIssue contains the information about the tokens to be issued
-	TokensToIssue        []*TokenToIssue `protobuf:"bytes,2,rep,name=tokens_to_issue,json=tokensToIssue" json:"tokens_to_issue,omitempty"`
+	TokensToIssue        []*TokenToIssue `protobuf:"bytes,2,rep,name=tokens_to_issue,json=tokensToIssue,proto3" json:"tokens_to_issue,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -136,9 +136,9 @@ func (m *ImportRequest) GetTokensToIssue() []*TokenToIssue {
 type Header struct {
 	// Timestamp is the local time when the message was created
 	// by the sender
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// ChannelId identifies the channel this message is bound for
-	ChannelId string `protobuf:"bytes,2,opt,name=channel_id,json=channelId" json:"channel_id,omitempty"`
+	ChannelId string `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	// Nonce is a sufficientley long random value
 	// used to ensure the request has enough entropy.
 	Nonce []byte `protobuf:"bytes,3,opt,name=nonce,proto3" json:"nonce,omitempty"`
@@ -205,7 +205,7 @@ func (m *Header) GetCreator() []byte {
 // Command describes the type of operation that a client is requesting.
 type Command struct {
 	// Header is the header of this command
-	Header *Header `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header *Header `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
 	// Payload is the payload of this command. It can assume one of the following value
 	//
 	// Types that are valid to be assigned to Payload:
@@ -240,12 +240,19 @@ func (m *Command) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Command proto.InternalMessageInfo
 
+func (m *Command) GetHeader() *Header {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
 type isCommand_Payload interface {
 	isCommand_Payload()
 }
 
 type Command_ImportRequest struct {
-	ImportRequest *ImportRequest `protobuf:"bytes,2,opt,name=import_request,json=importRequest,oneof"`
+	ImportRequest *ImportRequest `protobuf:"bytes,2,opt,name=import_request,json=importRequest,proto3,oneof"`
 }
 
 func (*Command_ImportRequest) isCommand_Payload() {}
@@ -253,13 +260,6 @@ func (*Command_ImportRequest) isCommand_Payload() {}
 func (m *Command) GetPayload() isCommand_Payload {
 	if m != nil {
 		return m.Payload
-	}
-	return nil
-}
-
-func (m *Command) GetHeader() *Header {
-	if m != nil {
-		return m.Header
 	}
 	return nil
 }
@@ -378,7 +378,7 @@ func (m *SignedCommand) GetSignature() []byte {
 type CommandResponseHeader struct {
 	// Timestamp is the time that the message
 	// was created as  defined by the sender
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// CommandHash is the hash computed on the concatenation of the SignedCommand's command and signature fields.
 	// If not specified differently, SHA256 is used
 	// The hash is used to link a response with its request, both for bookeeping purposes on an
@@ -439,7 +439,7 @@ func (m *CommandResponseHeader) GetCreator() []byte {
 // Error reports an applicaton error
 type Error struct {
 	// Message associated with this response.
-	Message string `protobuf:"bytes,1,opt,name=message" json:"message,omitempty"`
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	// Payload that can be used to include metadata with this response.
 	Payload              []byte   `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -488,7 +488,7 @@ func (m *Error) GetPayload() []byte {
 // A CommnandResponse is returned from a prover to the command submitter.
 type CommandResponse struct {
 	// Header of the response.
-	Header *CommandResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header *CommandResponseHeader `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
 	// Payload of the response.
 	//
 	// Types that are valid to be assigned to Payload:
@@ -524,30 +524,32 @@ func (m *CommandResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CommandResponse proto.InternalMessageInfo
 
+func (m *CommandResponse) GetHeader() *CommandResponseHeader {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
 type isCommandResponse_Payload interface {
 	isCommandResponse_Payload()
 }
 
 type CommandResponse_Err struct {
-	Err *Error `protobuf:"bytes,2,opt,name=err,oneof"`
-}
-type CommandResponse_TokenTransaction struct {
-	TokenTransaction *TokenTransaction `protobuf:"bytes,3,opt,name=token_transaction,json=tokenTransaction,oneof"`
+	Err *Error `protobuf:"bytes,2,opt,name=err,proto3,oneof"`
 }
 
-func (*CommandResponse_Err) isCommandResponse_Payload()              {}
+type CommandResponse_TokenTransaction struct {
+	TokenTransaction *TokenTransaction `protobuf:"bytes,3,opt,name=token_transaction,json=tokenTransaction,proto3,oneof"`
+}
+
+func (*CommandResponse_Err) isCommandResponse_Payload() {}
+
 func (*CommandResponse_TokenTransaction) isCommandResponse_Payload() {}
 
 func (m *CommandResponse) GetPayload() isCommandResponse_Payload {
 	if m != nil {
 		return m.Payload
-	}
-	return nil
-}
-
-func (m *CommandResponse) GetHeader() *CommandResponseHeader {
-	if m != nil {
-		return m.Header
 	}
 	return nil
 }
@@ -709,8 +711,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Prover service
-
+// ProverClient is the client API for Prover service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ProverClient interface {
 	// ProcessCommand processes the passed command ensuring proper access control.
 	// The returned response allows the client to understand if the
@@ -729,15 +732,14 @@ func NewProverClient(cc *grpc.ClientConn) ProverClient {
 
 func (c *proverClient) ProcessCommand(ctx context.Context, in *SignedCommand, opts ...grpc.CallOption) (*SignedCommandResponse, error) {
 	out := new(SignedCommandResponse)
-	err := grpc.Invoke(ctx, "/protos.Prover/ProcessCommand", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Prover/ProcessCommand", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Prover service
-
+// ProverServer is the server API for Prover service.
 type ProverServer interface {
 	// ProcessCommand processes the passed command ensuring proper access control.
 	// The returned response allows the client to understand if the

@@ -21,9 +21,9 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // ChaincodeEvent is used for events and registrations that are specific to chaincode
 // string type - "chaincode"
 type ChaincodeEvent struct {
-	ChaincodeId          string   `protobuf:"bytes,1,opt,name=chaincode_id,json=chaincodeId" json:"chaincode_id,omitempty"`
-	TxId                 string   `protobuf:"bytes,2,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
-	EventName            string   `protobuf:"bytes,3,opt,name=event_name,json=eventName" json:"event_name,omitempty"`
+	ChaincodeId          string   `protobuf:"bytes,1,opt,name=chaincode_id,json=chaincodeId,proto3" json:"chaincode_id,omitempty"`
+	TxId                 string   `protobuf:"bytes,2,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
+	EventName            string   `protobuf:"bytes,3,opt,name=event_name,json=eventName,proto3" json:"event_name,omitempty"`
 	Payload              []byte   `protobuf:"bytes,4,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

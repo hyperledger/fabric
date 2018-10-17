@@ -29,18 +29,18 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // transaction can be generated and sent for ordering.
 type ProposalResponse struct {
 	// Version indicates message protocol version
-	Version int32 `protobuf:"varint,1,opt,name=version" json:"version,omitempty"`
+	Version int32 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
 	// Timestamp is the time that the message
 	// was created as  defined by the sender
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp *timestamp.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// A response message indicating whether the
 	// endorsement of the action was successful
-	Response *Response `protobuf:"bytes,4,opt,name=response" json:"response,omitempty"`
+	Response *Response `protobuf:"bytes,4,opt,name=response,proto3" json:"response,omitempty"`
 	// The payload of response. It is the bytes of ProposalResponsePayload
 	Payload []byte `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`
 	// The endorsement of the proposal, basically
 	// the endorser's signature over the payload
-	Endorsement          *Endorsement `protobuf:"bytes,6,opt,name=endorsement" json:"endorsement,omitempty"`
+	Endorsement          *Endorsement `protobuf:"bytes,6,opt,name=endorsement,proto3" json:"endorsement,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -109,9 +109,9 @@ func (m *ProposalResponse) GetEndorsement() *Endorsement {
 // be used within another message.
 type Response struct {
 	// A status code that should follow the HTTP status codes.
-	Status int32 `protobuf:"varint,1,opt,name=status" json:"status,omitempty"`
+	Status int32 `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
 	// A message associated with the response code.
-	Message string `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	// A payload that can be used to include metadata with this response.
 	Payload              []byte   `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

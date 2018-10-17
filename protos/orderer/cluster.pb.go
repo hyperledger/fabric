@@ -27,7 +27,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // StepRequest wraps a consensus implementation
 // specific message that is sent to a cluster member
 type StepRequest struct {
-	Channel              string   `protobuf:"bytes,1,opt,name=channel" json:"channel,omitempty"`
+	Channel              string   `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
 	Payload              []byte   `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -115,14 +115,14 @@ func (m *StepResponse) GetPayload() []byte {
 
 // SubmitRequest wraps a transaction to be sent for ordering
 type SubmitRequest struct {
-	Channel string `protobuf:"bytes,1,opt,name=channel" json:"channel,omitempty"`
+	Channel string `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
 	// last_validation_seq denotes the last
 	// configuration sequence at which the
 	// sender validated this message
-	LastValidationSeq uint64 `protobuf:"varint,2,opt,name=last_validation_seq,json=lastValidationSeq" json:"last_validation_seq,omitempty"`
+	LastValidationSeq uint64 `protobuf:"varint,2,opt,name=last_validation_seq,json=lastValidationSeq,proto3" json:"last_validation_seq,omitempty"`
 	// content is the fabric transaction
 	// that is forwarded to the cluster member
-	Content              *common.Envelope `protobuf:"bytes,3,opt,name=content" json:"content,omitempty"`
+	Content              *common.Envelope `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -177,9 +177,9 @@ func (m *SubmitRequest) GetContent() *common.Envelope {
 // or failure status to the sender
 type SubmitResponse struct {
 	// Status code, which may be used to programatically respond to success/failure
-	Status common.Status `protobuf:"varint,1,opt,name=status,enum=common.Status" json:"status,omitempty"`
+	Status common.Status `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
 	// Info string which may contain additional information about the status returned
-	Info                 string   `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
+	Info                 string   `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -238,8 +238,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Cluster service
-
+// ClusterClient is the client API for Cluster service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ClusterClient interface {
 	// Submit submits transactions to a cluster member
 	Submit(ctx context.Context, opts ...grpc.CallOption) (Cluster_SubmitClient, error)
@@ -256,7 +257,7 @@ func NewClusterClient(cc *grpc.ClientConn) ClusterClient {
 }
 
 func (c *clusterClient) Submit(ctx context.Context, opts ...grpc.CallOption) (Cluster_SubmitClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Cluster_serviceDesc.Streams[0], c.cc, "/orderer.Cluster/Submit", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Cluster_serviceDesc.Streams[0], "/orderer.Cluster/Submit", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,15 +289,14 @@ func (x *clusterSubmitClient) Recv() (*SubmitResponse, error) {
 
 func (c *clusterClient) Step(ctx context.Context, in *StepRequest, opts ...grpc.CallOption) (*StepResponse, error) {
 	out := new(StepResponse)
-	err := grpc.Invoke(ctx, "/orderer.Cluster/Step", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/orderer.Cluster/Step", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Cluster service
-
+// ClusterServer is the server API for Cluster service.
 type ClusterServer interface {
 	// Submit submits transactions to a cluster member
 	Submit(Cluster_SubmitServer) error

@@ -140,7 +140,7 @@ func (BlockMetadataIndex) EnumDescriptor() ([]byte, []int) {
 
 // LastConfig is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
 type LastConfig struct {
-	Index                uint64   `protobuf:"varint,1,opt,name=index" json:"index,omitempty"`
+	Index                uint64   `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -180,7 +180,7 @@ func (m *LastConfig) GetIndex() uint64 {
 // Metadata is a common structure to be used to encode block metadata
 type Metadata struct {
 	Value                []byte               `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Signatures           []*MetadataSignature `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty"`
+	Signatures           []*MetadataSignature `protobuf:"bytes,2,rep,name=signatures,proto3" json:"signatures,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -318,21 +318,21 @@ func (m *Header) GetSignatureHeader() []byte {
 
 // Header is a generic replay prevention and identity message to include in a signed payload
 type ChannelHeader struct {
-	Type int32 `protobuf:"varint,1,opt,name=type" json:"type,omitempty"`
+	Type int32 `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Version indicates message protocol version
-	Version int32 `protobuf:"varint,2,opt,name=version" json:"version,omitempty"`
+	Version int32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	// Timestamp is the local time when the message was created
 	// by the sender
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,3,opt,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp *timestamp.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// Identifier of the channel this message is bound for
-	ChannelId string `protobuf:"bytes,4,opt,name=channel_id,json=channelId" json:"channel_id,omitempty"`
+	ChannelId string `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	// An unique identifier that is used end-to-end.
 	//  -  set by higher layers such as end user or SDK
 	//  -  passed to the endorser (which will check for uniqueness)
 	//  -  as the header is passed along unchanged, it will be
 	//     be retrieved by the committer (uniqueness check here as well)
 	//  -  to be stored in the ledger
-	TxId string `protobuf:"bytes,5,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`
+	TxId string `protobuf:"bytes,5,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
 	// The epoch in which this header was generated, where epoch is defined based on block height
 	// Epoch in which the response has been generated. This field identifies a
 	// logical window of time. A proposal response is accepted by a peer only if
@@ -340,7 +340,7 @@ type ChannelHeader struct {
 	// 1. the epoch specified in the message is the current epoch
 	// 2. this message has been only seen once during this epoch (i.e. it hasn't
 	//    been replayed)
-	Epoch uint64 `protobuf:"varint,6,opt,name=epoch" json:"epoch,omitempty"`
+	Epoch uint64 `protobuf:"varint,6,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// Extension that may be attached based on the header type
 	Extension []byte `protobuf:"bytes,7,opt,name=extension,proto3" json:"extension,omitempty"`
 	// If mutual TLS is employed, this represents
@@ -482,7 +482,7 @@ func (m *SignatureHeader) GetNonce() []byte {
 // Payload is the message contents (and header to allow for signing)
 type Payload struct {
 	// Header is included to provide identity and prevent replay
-	Header *Header `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header *Header `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
 	// Data, the encoding of which is defined by the type in the header
 	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -582,9 +582,9 @@ func (m *Envelope) GetSignature() []byte {
 // in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
 // the Metadata is not.
 type Block struct {
-	Header               *BlockHeader   `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Data                 *BlockData     `protobuf:"bytes,2,opt,name=data" json:"data,omitempty"`
-	Metadata             *BlockMetadata `protobuf:"bytes,3,opt,name=metadata" json:"metadata,omitempty"`
+	Header               *BlockHeader   `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	Data                 *BlockData     `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Metadata             *BlockMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -639,7 +639,7 @@ func (m *Block) GetMetadata() *BlockMetadata {
 // The block header is hashed using the configured chain hashing algorithm
 // over the ASN.1 encoding of the BlockHeader
 type BlockHeader struct {
-	Number               uint64   `protobuf:"varint,1,opt,name=number" json:"number,omitempty"`
+	Number               uint64   `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
 	PreviousHash         []byte   `protobuf:"bytes,2,opt,name=previous_hash,json=previousHash,proto3" json:"previous_hash,omitempty"`
 	DataHash             []byte   `protobuf:"bytes,3,opt,name=data_hash,json=dataHash,proto3" json:"data_hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

@@ -24,7 +24,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type MSPConfig struct {
 	// Type holds the type of the MSP; the default one would
 	// be of type FABRIC implementing an X.509 based provider
-	Type int32 `protobuf:"varint,1,opt,name=type" json:"type,omitempty"`
+	Type int32 `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Config is MSP dependent configuration info
 	Config               []byte   `protobuf:"bytes,2,opt,name=config,proto3" json:"config,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -84,7 +84,7 @@ type FabricMSPConfig struct {
 	// For example, and assuming the default implementation of MSP,
 	// that is X.509-based and considers a single Issuer,
 	// this can refer to the Subject OU field or the Issuer OU field.
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// List of root certificates trusted by this MSP
 	// they are used upon certificate validation (see
 	// comment for IntermediateCerts below)
@@ -105,14 +105,14 @@ type FabricMSPConfig struct {
 	// SigningIdentity holds information on the signing identity
 	// this peer is to use, and which is to be imported by the
 	// MSP defined before
-	SigningIdentity *SigningIdentityInfo `protobuf:"bytes,6,opt,name=signing_identity,json=signingIdentity" json:"signing_identity,omitempty"`
+	SigningIdentity *SigningIdentityInfo `protobuf:"bytes,6,opt,name=signing_identity,json=signingIdentity,proto3" json:"signing_identity,omitempty"`
 	// OrganizationalUnitIdentifiers holds one or more
 	// fabric organizational unit identifiers that belong to
 	// this MSP configuration
-	OrganizationalUnitIdentifiers []*FabricOUIdentifier `protobuf:"bytes,7,rep,name=organizational_unit_identifiers,json=organizationalUnitIdentifiers" json:"organizational_unit_identifiers,omitempty"`
+	OrganizationalUnitIdentifiers []*FabricOUIdentifier `protobuf:"bytes,7,rep,name=organizational_unit_identifiers,json=organizationalUnitIdentifiers,proto3" json:"organizational_unit_identifiers,omitempty"`
 	// FabricCryptoConfig contains the configuration parameters
 	// for the cryptographic algorithms used by this MSP
-	CryptoConfig *FabricCryptoConfig `protobuf:"bytes,8,opt,name=crypto_config,json=cryptoConfig" json:"crypto_config,omitempty"`
+	CryptoConfig *FabricCryptoConfig `protobuf:"bytes,8,opt,name=crypto_config,json=cryptoConfig,proto3" json:"crypto_config,omitempty"`
 	// List of TLS root certificates trusted by this MSP.
 	// They are returned by GetTLSRootCerts.
 	TlsRootCerts [][]byte `protobuf:"bytes,9,rep,name=tls_root_certs,json=tlsRootCerts,proto3" json:"tls_root_certs,omitempty"`
@@ -121,7 +121,7 @@ type FabricMSPConfig struct {
 	TlsIntermediateCerts [][]byte `protobuf:"bytes,10,rep,name=tls_intermediate_certs,json=tlsIntermediateCerts,proto3" json:"tls_intermediate_certs,omitempty"`
 	// fabric_node_ous contains the configuration to distinguish clients from peers from orderers
 	// based on the OUs.
-	FabricNodeOus        *FabricNodeOUs `protobuf:"bytes,11,opt,name=fabric_node_ous,json=fabricNodeOus" json:"fabric_node_ous,omitempty"`
+	FabricNodeOus        *FabricNodeOUs `protobuf:"bytes,11,opt,name=fabric_node_ous,json=fabricNodeOus,proto3" json:"fabric_node_ous,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -235,11 +235,11 @@ type FabricCryptoConfig struct {
 	// SignatureHashFamily is a string representing the hash family to be used
 	// during sign and verify operations.
 	// Allowed values are "SHA2" and "SHA3".
-	SignatureHashFamily string `protobuf:"bytes,1,opt,name=signature_hash_family,json=signatureHashFamily" json:"signature_hash_family,omitempty"`
+	SignatureHashFamily string `protobuf:"bytes,1,opt,name=signature_hash_family,json=signatureHashFamily,proto3" json:"signature_hash_family,omitempty"`
 	// IdentityIdentifierHashFunction is a string representing the hash function
 	// to be used during the computation of the identity identifier of an MSP identity.
 	// Allowed values are "SHA256", "SHA384" and "SHA3_256", "SHA3_384".
-	IdentityIdentifierHashFunction string   `protobuf:"bytes,2,opt,name=identity_identifier_hash_function,json=identityIdentifierHashFunction" json:"identity_identifier_hash_function,omitempty"`
+	IdentityIdentifierHashFunction string   `protobuf:"bytes,2,opt,name=identity_identifier_hash_function,json=identityIdentifierHashFunction,proto3" json:"identity_identifier_hash_function,omitempty"`
 	XXX_NoUnkeyedLiteral           struct{} `json:"-"`
 	XXX_unrecognized               []byte   `json:"-"`
 	XXX_sizecache                  int32    `json:"-"`
@@ -287,15 +287,15 @@ func (m *FabricCryptoConfig) GetIdentityIdentifierHashFunction() string {
 // an Idemix MSP.
 type IdemixMSPConfig struct {
 	// Name holds the identifier of the MSP
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// ipk represents the (serialized) issuer public key
 	Ipk []byte `protobuf:"bytes,2,opt,name=ipk,proto3" json:"ipk,omitempty"`
 	// signer may contain crypto material to configure a default signer
-	Signer *IdemixMSPSignerConfig `protobuf:"bytes,3,opt,name=signer" json:"signer,omitempty"`
+	Signer *IdemixMSPSignerConfig `protobuf:"bytes,3,opt,name=signer,proto3" json:"signer,omitempty"`
 	// revocation_pk is the public key used for revocation of credentials
 	RevocationPk []byte `protobuf:"bytes,4,opt,name=revocation_pk,json=revocationPk,proto3" json:"revocation_pk,omitempty"`
 	// epoch represents the current epoch (time interval) used for revocation
-	Epoch                int64    `protobuf:"varint,5,opt,name=epoch" json:"epoch,omitempty"`
+	Epoch                int64    `protobuf:"varint,5,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -367,11 +367,11 @@ type IdemixMSPSignerConfig struct {
 	// sk is the secret key of the default signer, corresponding to credential Cred
 	Sk []byte `protobuf:"bytes,2,opt,name=sk,proto3" json:"sk,omitempty"`
 	// organizational_unit_identifier defines the organizational unit the default signer is in
-	OrganizationalUnitIdentifier string `protobuf:"bytes,3,opt,name=organizational_unit_identifier,json=organizationalUnitIdentifier" json:"organizational_unit_identifier,omitempty"`
+	OrganizationalUnitIdentifier string `protobuf:"bytes,3,opt,name=organizational_unit_identifier,json=organizationalUnitIdentifier,proto3" json:"organizational_unit_identifier,omitempty"`
 	// role defines whether the default signer is admin, peer, member or client
-	Role int32 `protobuf:"varint,4,opt,name=role" json:"role,omitempty"`
+	Role int32 `protobuf:"varint,4,opt,name=role,proto3" json:"role,omitempty"`
 	// enrollment_id contains the enrollment id of this signer
-	EnrollmentId string `protobuf:"bytes,5,opt,name=enrollment_id,json=enrollmentId" json:"enrollment_id,omitempty"`
+	EnrollmentId string `protobuf:"bytes,5,opt,name=enrollment_id,json=enrollmentId,proto3" json:"enrollment_id,omitempty"`
 	// credential_revocation_information contains a serialized CredentialRevocationInformation
 	CredentialRevocationInformation []byte   `protobuf:"bytes,6,opt,name=credential_revocation_information,json=credentialRevocationInformation,proto3" json:"credential_revocation_information,omitempty"`
 	XXX_NoUnkeyedLiteral            struct{} `json:"-"`
@@ -455,7 +455,7 @@ type SigningIdentityInfo struct {
 	PublicSigner []byte `protobuf:"bytes,1,opt,name=public_signer,json=publicSigner,proto3" json:"public_signer,omitempty"`
 	// PrivateSigner denotes a reference to the private key of the
 	// peer's signing identity
-	PrivateSigner        *KeyInfo `protobuf:"bytes,2,opt,name=private_signer,json=privateSigner" json:"private_signer,omitempty"`
+	PrivateSigner        *KeyInfo `protobuf:"bytes,2,opt,name=private_signer,json=privateSigner,proto3" json:"private_signer,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -507,7 +507,7 @@ type KeyInfo struct {
 	// Identifier of the key inside the default keystore; this for
 	// the case of Software BCCSP as well as the HSM BCCSP would be
 	// the SKI of the key
-	KeyIdentifier string `protobuf:"bytes,1,opt,name=key_identifier,json=keyIdentifier" json:"key_identifier,omitempty"`
+	KeyIdentifier string `protobuf:"bytes,1,opt,name=key_identifier,json=keyIdentifier,proto3" json:"key_identifier,omitempty"`
 	// KeyMaterial (optional) for the key to be imported; this is
 	// properly encoded key bytes, prefixed by the type of the key
 	KeyMaterial          []byte   `protobuf:"bytes,2,opt,name=key_material,json=keyMaterial,proto3" json:"key_material,omitempty"`
@@ -567,7 +567,7 @@ type FabricOUIdentifier struct {
 	Certificate []byte `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
 	// OrganizationUnitIdentifier defines the organizational unit under the
 	// MSP identified with MSPIdentifier
-	OrganizationalUnitIdentifier string   `protobuf:"bytes,2,opt,name=organizational_unit_identifier,json=organizationalUnitIdentifier" json:"organizational_unit_identifier,omitempty"`
+	OrganizationalUnitIdentifier string   `protobuf:"bytes,2,opt,name=organizational_unit_identifier,json=organizationalUnitIdentifier,proto3" json:"organizational_unit_identifier,omitempty"`
 	XXX_NoUnkeyedLiteral         struct{} `json:"-"`
 	XXX_unrecognized             []byte   `json:"-"`
 	XXX_sizecache                int32    `json:"-"`
@@ -616,11 +616,11 @@ func (m *FabricOUIdentifier) GetOrganizationalUnitIdentifier() string {
 // that does not contain any of the specified OU will be considered invalid.
 type FabricNodeOUs struct {
 	// If true then an msp identity that does not contain any of the specified OU will be considered invalid.
-	Enable bool `protobuf:"varint,1,opt,name=enable" json:"enable,omitempty"`
+	Enable bool `protobuf:"varint,1,opt,name=enable,proto3" json:"enable,omitempty"`
 	// OU Identifier of the clients
-	ClientOuIdentifier *FabricOUIdentifier `protobuf:"bytes,2,opt,name=client_ou_identifier,json=clientOuIdentifier" json:"client_ou_identifier,omitempty"`
+	ClientOuIdentifier *FabricOUIdentifier `protobuf:"bytes,2,opt,name=client_ou_identifier,json=clientOuIdentifier,proto3" json:"client_ou_identifier,omitempty"`
 	// OU Identifier of the peers
-	PeerOuIdentifier     *FabricOUIdentifier `protobuf:"bytes,3,opt,name=peer_ou_identifier,json=peerOuIdentifier" json:"peer_ou_identifier,omitempty"`
+	PeerOuIdentifier     *FabricOUIdentifier `protobuf:"bytes,3,opt,name=peer_ou_identifier,json=peerOuIdentifier,proto3" json:"peer_ou_identifier,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
 	XXX_sizecache        int32               `json:"-"`

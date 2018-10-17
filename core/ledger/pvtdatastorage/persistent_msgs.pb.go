@@ -19,7 +19,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type ExpiryData struct {
-	Map                  map[string]*Collections `protobuf:"bytes,1,rep,name=map" json:"map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Map                  map[string]*Collections `protobuf:"bytes,1,rep,name=map,proto3" json:"map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`
@@ -59,10 +59,10 @@ func (m *ExpiryData) GetMap() map[string]*Collections {
 type Collections struct {
 	// for pvt data, there would be an
 	// entry in TxNums
-	Map map[string]*TxNums `protobuf:"bytes,1,rep,name=map" json:"map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Map map[string]*TxNums `protobuf:"bytes,1,rep,name=map,proto3" json:"map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// for any number of missing pvt data of a collection,
 	// there would be an entry in the map
-	MissingDataMap       map[string]bool `protobuf:"bytes,2,rep,name=missingDataMap" json:"missingDataMap,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	MissingDataMap       map[string]bool `protobuf:"bytes,2,rep,name=missingDataMap,proto3" json:"missingDataMap,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -107,7 +107,7 @@ func (m *Collections) GetMissingDataMap() map[string]bool {
 }
 
 type TxNums struct {
-	List                 []uint64 `protobuf:"varint,1,rep,packed,name=list" json:"list,omitempty"`
+	List                 []uint64 `protobuf:"varint,1,rep,packed,name=list,proto3" json:"list,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -145,7 +145,7 @@ func (m *TxNums) GetList() []uint64 {
 }
 
 type CollElgInfo struct {
-	NsCollMap            map[string]*CollNames `protobuf:"bytes,1,rep,name=nsCollMap" json:"nsCollMap,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	NsCollMap            map[string]*CollNames `protobuf:"bytes,1,rep,name=nsCollMap,proto3" json:"nsCollMap,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
 	XXX_unrecognized     []byte                `json:"-"`
 	XXX_sizecache        int32                 `json:"-"`
@@ -183,7 +183,7 @@ func (m *CollElgInfo) GetNsCollMap() map[string]*CollNames {
 }
 
 type CollNames struct {
-	Entries              []string `protobuf:"bytes,1,rep,name=entries" json:"entries,omitempty"`
+	Entries              []string `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

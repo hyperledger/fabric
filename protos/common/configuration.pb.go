@@ -22,7 +22,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // with a Key of "HashingAlgorithm" and a Value of  HashingAlgorithm as marshaled protobuf bytes
 type HashingAlgorithm struct {
 	// Currently supported algorithms are: SHAKE256
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -64,7 +64,7 @@ func (m *HashingAlgorithm) GetName() string {
 type BlockDataHashingStructure struct {
 	// width specifies the width of the Merkle tree to use when computing the BlockDataHash
 	// in order to replicate flat hashing, set this width to MAX_UINT32
-	Width                uint32   `protobuf:"varint,1,opt,name=width" json:"width,omitempty"`
+	Width                uint32   `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -104,7 +104,7 @@ func (m *BlockDataHashingStructure) GetWidth() uint32 {
 // OrdererAddresses is encoded into the configuration transaction as a configuration item of type Chain
 // with a Key of "OrdererAddresses" and a Value of OrdererAddresses as marshaled protobuf bytes
 type OrdererAddresses struct {
-	Addresses            []string `protobuf:"bytes,1,rep,name=addresses" json:"addresses,omitempty"`
+	Addresses            []string `protobuf:"bytes,1,rep,name=addresses,proto3" json:"addresses,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -143,7 +143,7 @@ func (m *OrdererAddresses) GetAddresses() []string {
 
 // Consortium represents the consortium context in which the channel was created
 type Consortium struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -211,7 +211,7 @@ func (m *Consortium) GetName() string {
 // application networks to upgrade themselves independently (with the exception of any
 // new capabilities defined at the /Channel level).
 type Capabilities struct {
-	Capabilities         map[string]*Capability `protobuf:"bytes,1,rep,name=capabilities" json:"capabilities,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Capabilities         map[string]*Capability `protobuf:"bytes,1,rep,name=capabilities,proto3" json:"capabilities,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`

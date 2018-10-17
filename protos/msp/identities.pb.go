@@ -23,7 +23,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // to serialize it and deserialize it
 type SerializedIdentity struct {
 	// The identifier of the associated membership service provider
-	Mspid string `protobuf:"bytes,1,opt,name=mspid" json:"mspid,omitempty"`
+	Mspid string `protobuf:"bytes,1,opt,name=mspid,proto3" json:"mspid,omitempty"`
 	// the Identity, serialized according to the rules of its MPS
 	IdBytes              []byte   `protobuf:"bytes,2,opt,name=id_bytes,json=idBytes,proto3" json:"id_bytes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

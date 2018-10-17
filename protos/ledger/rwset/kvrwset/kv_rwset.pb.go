@@ -21,10 +21,10 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // KVRWSet encapsulates the read-write set for a chaincode that operates upon a KV or Document data model
 // This structure is used for both the public data and the private data
 type KVRWSet struct {
-	Reads                []*KVRead          `protobuf:"bytes,1,rep,name=reads" json:"reads,omitempty"`
-	RangeQueriesInfo     []*RangeQueryInfo  `protobuf:"bytes,2,rep,name=range_queries_info,json=rangeQueriesInfo" json:"range_queries_info,omitempty"`
-	Writes               []*KVWrite         `protobuf:"bytes,3,rep,name=writes" json:"writes,omitempty"`
-	MetadataWrites       []*KVMetadataWrite `protobuf:"bytes,4,rep,name=metadata_writes,json=metadataWrites" json:"metadata_writes,omitempty"`
+	Reads                []*KVRead          `protobuf:"bytes,1,rep,name=reads,proto3" json:"reads,omitempty"`
+	RangeQueriesInfo     []*RangeQueryInfo  `protobuf:"bytes,2,rep,name=range_queries_info,json=rangeQueriesInfo,proto3" json:"range_queries_info,omitempty"`
+	Writes               []*KVWrite         `protobuf:"bytes,3,rep,name=writes,proto3" json:"writes,omitempty"`
+	MetadataWrites       []*KVMetadataWrite `protobuf:"bytes,4,rep,name=metadata_writes,json=metadataWrites,proto3" json:"metadata_writes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -84,9 +84,9 @@ func (m *KVRWSet) GetMetadataWrites() []*KVMetadataWrite {
 
 // HashedRWSet encapsulates hashed representation of a private read-write set for KV or Document data model
 type HashedRWSet struct {
-	HashedReads          []*KVReadHash          `protobuf:"bytes,1,rep,name=hashed_reads,json=hashedReads" json:"hashed_reads,omitempty"`
-	HashedWrites         []*KVWriteHash         `protobuf:"bytes,2,rep,name=hashed_writes,json=hashedWrites" json:"hashed_writes,omitempty"`
-	MetadataWrites       []*KVMetadataWriteHash `protobuf:"bytes,3,rep,name=metadata_writes,json=metadataWrites" json:"metadata_writes,omitempty"`
+	HashedReads          []*KVReadHash          `protobuf:"bytes,1,rep,name=hashed_reads,json=hashedReads,proto3" json:"hashed_reads,omitempty"`
+	HashedWrites         []*KVWriteHash         `protobuf:"bytes,2,rep,name=hashed_writes,json=hashedWrites,proto3" json:"hashed_writes,omitempty"`
+	MetadataWrites       []*KVMetadataWriteHash `protobuf:"bytes,3,rep,name=metadata_writes,json=metadataWrites,proto3" json:"metadata_writes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`
@@ -140,8 +140,8 @@ func (m *HashedRWSet) GetMetadataWrites() []*KVMetadataWriteHash {
 // KVRead captures a read operation performed during transaction simulation
 // A 'nil' version indicates a non-existing key read by the transaction
 type KVRead struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	Version              *Version `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Version              *Version `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -187,8 +187,8 @@ func (m *KVRead) GetVersion() *Version {
 
 // KVWrite captures a write (update/delete) operation performed during transaction simulation
 type KVWrite struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	IsDelete             bool     `protobuf:"varint,2,opt,name=is_delete,json=isDelete" json:"is_delete,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	IsDelete             bool     `protobuf:"varint,2,opt,name=is_delete,json=isDelete,proto3" json:"is_delete,omitempty"`
 	Value                []byte   `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -242,8 +242,8 @@ func (m *KVWrite) GetValue() []byte {
 
 // KVMetadataWrite captures all the entries in the metadata associated with a key
 type KVMetadataWrite struct {
-	Key                  string             `protobuf:"bytes,1,opt,name=key" json:"key,omitempty"`
-	Entries              []*KVMetadataEntry `protobuf:"bytes,2,rep,name=entries" json:"entries,omitempty"`
+	Key                  string             `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Entries              []*KVMetadataEntry `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -292,7 +292,7 @@ func (m *KVMetadataWrite) GetEntries() []*KVMetadataEntry {
 // hash of the version and hence of 'bytes' type
 type KVReadHash struct {
 	KeyHash              []byte   `protobuf:"bytes,1,opt,name=key_hash,json=keyHash,proto3" json:"key_hash,omitempty"`
-	Version              *Version `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Version              *Version `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -339,7 +339,7 @@ func (m *KVReadHash) GetVersion() *Version {
 // KVWriteHash is similar to the KVWrite. It captures a write (update/delete) operation performed during transaction simulation
 type KVWriteHash struct {
 	KeyHash              []byte   `protobuf:"bytes,1,opt,name=key_hash,json=keyHash,proto3" json:"key_hash,omitempty"`
-	IsDelete             bool     `protobuf:"varint,2,opt,name=is_delete,json=isDelete" json:"is_delete,omitempty"`
+	IsDelete             bool     `protobuf:"varint,2,opt,name=is_delete,json=isDelete,proto3" json:"is_delete,omitempty"`
 	ValueHash            []byte   `protobuf:"bytes,3,opt,name=value_hash,json=valueHash,proto3" json:"value_hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -394,7 +394,7 @@ func (m *KVWriteHash) GetValueHash() []byte {
 // KVMetadataWriteHash captures all the upserts to the metadata associated with a key hash
 type KVMetadataWriteHash struct {
 	KeyHash              []byte             `protobuf:"bytes,1,opt,name=key_hash,json=keyHash,proto3" json:"key_hash,omitempty"`
-	Entries              []*KVMetadataEntry `protobuf:"bytes,2,rep,name=entries" json:"entries,omitempty"`
+	Entries              []*KVMetadataEntry `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -440,7 +440,7 @@ func (m *KVMetadataWriteHash) GetEntries() []*KVMetadataEntry {
 
 // KVMetadataEntry captures a 'name'ed entry in the metadata of a key/key-hash.
 type KVMetadataEntry struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -490,8 +490,8 @@ func (m *KVMetadataEntry) GetValue() []byte {
 // The height is represenetd as a tuple <blockNum, txNum> where the txNum is the position of the transaction
 // (starting with 0) within block
 type Version struct {
-	BlockNum             uint64   `protobuf:"varint,1,opt,name=block_num,json=blockNum" json:"block_num,omitempty"`
-	TxNum                uint64   `protobuf:"varint,2,opt,name=tx_num,json=txNum" json:"tx_num,omitempty"`
+	BlockNum             uint64   `protobuf:"varint,1,opt,name=block_num,json=blockNum,proto3" json:"block_num,omitempty"`
+	TxNum                uint64   `protobuf:"varint,2,opt,name=tx_num,json=txNum,proto3" json:"tx_num,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -542,9 +542,9 @@ func (m *Version) GetTxNum() uint64 {
 // readInfo field contains either the KVReads (for the items read by the range query) or a merkle-tree hash
 // if the KVReads exceeds a pre-configured numbers
 type RangeQueryInfo struct {
-	StartKey     string `protobuf:"bytes,1,opt,name=start_key,json=startKey" json:"start_key,omitempty"`
-	EndKey       string `protobuf:"bytes,2,opt,name=end_key,json=endKey" json:"end_key,omitempty"`
-	ItrExhausted bool   `protobuf:"varint,3,opt,name=itr_exhausted,json=itrExhausted" json:"itr_exhausted,omitempty"`
+	StartKey     string `protobuf:"bytes,1,opt,name=start_key,json=startKey,proto3" json:"start_key,omitempty"`
+	EndKey       string `protobuf:"bytes,2,opt,name=end_key,json=endKey,proto3" json:"end_key,omitempty"`
+	ItrExhausted bool   `protobuf:"varint,3,opt,name=itr_exhausted,json=itrExhausted,proto3" json:"itr_exhausted,omitempty"`
 	// Types that are valid to be assigned to ReadsInfo:
 	//	*RangeQueryInfo_RawReads
 	//	*RangeQueryInfo_ReadsMerkleHashes
@@ -578,27 +578,6 @@ func (m *RangeQueryInfo) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RangeQueryInfo proto.InternalMessageInfo
 
-type isRangeQueryInfo_ReadsInfo interface {
-	isRangeQueryInfo_ReadsInfo()
-}
-
-type RangeQueryInfo_RawReads struct {
-	RawReads *QueryReads `protobuf:"bytes,4,opt,name=raw_reads,json=rawReads,oneof"`
-}
-type RangeQueryInfo_ReadsMerkleHashes struct {
-	ReadsMerkleHashes *QueryReadsMerkleSummary `protobuf:"bytes,5,opt,name=reads_merkle_hashes,json=readsMerkleHashes,oneof"`
-}
-
-func (*RangeQueryInfo_RawReads) isRangeQueryInfo_ReadsInfo()          {}
-func (*RangeQueryInfo_ReadsMerkleHashes) isRangeQueryInfo_ReadsInfo() {}
-
-func (m *RangeQueryInfo) GetReadsInfo() isRangeQueryInfo_ReadsInfo {
-	if m != nil {
-		return m.ReadsInfo
-	}
-	return nil
-}
-
 func (m *RangeQueryInfo) GetStartKey() string {
 	if m != nil {
 		return m.StartKey
@@ -618,6 +597,29 @@ func (m *RangeQueryInfo) GetItrExhausted() bool {
 		return m.ItrExhausted
 	}
 	return false
+}
+
+type isRangeQueryInfo_ReadsInfo interface {
+	isRangeQueryInfo_ReadsInfo()
+}
+
+type RangeQueryInfo_RawReads struct {
+	RawReads *QueryReads `protobuf:"bytes,4,opt,name=raw_reads,json=rawReads,proto3,oneof"`
+}
+
+type RangeQueryInfo_ReadsMerkleHashes struct {
+	ReadsMerkleHashes *QueryReadsMerkleSummary `protobuf:"bytes,5,opt,name=reads_merkle_hashes,json=readsMerkleHashes,proto3,oneof"`
+}
+
+func (*RangeQueryInfo_RawReads) isRangeQueryInfo_ReadsInfo() {}
+
+func (*RangeQueryInfo_ReadsMerkleHashes) isRangeQueryInfo_ReadsInfo() {}
+
+func (m *RangeQueryInfo) GetReadsInfo() isRangeQueryInfo_ReadsInfo {
+	if m != nil {
+		return m.ReadsInfo
+	}
+	return nil
 }
 
 func (m *RangeQueryInfo) GetRawReads() *QueryReads {
@@ -710,7 +712,7 @@ func _RangeQueryInfo_OneofSizer(msg proto.Message) (n int) {
 
 // QueryReads encapsulates the KVReads for the items read by a transaction as a result of a query execution
 type QueryReads struct {
-	KvReads              []*KVRead `protobuf:"bytes,1,rep,name=kv_reads,json=kvReads" json:"kv_reads,omitempty"`
+	KvReads              []*KVRead `protobuf:"bytes,1,rep,name=kv_reads,json=kvReads,proto3" json:"kv_reads,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -753,8 +755,8 @@ func (m *QueryReads) GetKvReads() []*KVRead {
 // maxDegree field refers to the maximum number of children in the tree at any level
 // maxLevel field contains the lowest level which has lesser nodes than maxDegree (starting from leaf level)
 type QueryReadsMerkleSummary struct {
-	MaxDegree            uint32   `protobuf:"varint,1,opt,name=max_degree,json=maxDegree" json:"max_degree,omitempty"`
-	MaxLevel             uint32   `protobuf:"varint,2,opt,name=max_level,json=maxLevel" json:"max_level,omitempty"`
+	MaxDegree            uint32   `protobuf:"varint,1,opt,name=max_degree,json=maxDegree,proto3" json:"max_degree,omitempty"`
+	MaxLevel             uint32   `protobuf:"varint,2,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
 	MaxLevelHashes       [][]byte `protobuf:"bytes,3,rep,name=max_level_hashes,json=maxLevelHashes,proto3" json:"max_level_hashes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

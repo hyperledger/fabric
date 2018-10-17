@@ -24,7 +24,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type PeerID struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -62,8 +62,8 @@ func (m *PeerID) GetName() string {
 }
 
 type PeerEndpoint struct {
-	Id                   *PeerID  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Address              string   `protobuf:"bytes,2,opt,name=address" json:"address,omitempty"`
+	Id                   *PeerID  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Address              string   `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -120,8 +120,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Endorser service
-
+// EndorserClient is the client API for Endorser service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type EndorserClient interface {
 	ProcessProposal(ctx context.Context, in *SignedProposal, opts ...grpc.CallOption) (*ProposalResponse, error)
 }
@@ -136,15 +137,14 @@ func NewEndorserClient(cc *grpc.ClientConn) EndorserClient {
 
 func (c *endorserClient) ProcessProposal(ctx context.Context, in *SignedProposal, opts ...grpc.CallOption) (*ProposalResponse, error) {
 	out := new(ProposalResponse)
-	err := grpc.Invoke(ctx, "/protos.Endorser/ProcessProposal", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/protos.Endorser/ProcessProposal", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Endorser service
-
+// EndorserServer is the server API for Endorser service.
 type EndorserServer interface {
 	ProcessProposal(context.Context, *SignedProposal) (*ProposalResponse, error)
 }

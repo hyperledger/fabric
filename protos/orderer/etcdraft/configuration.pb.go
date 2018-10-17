@@ -21,8 +21,8 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // Metadata is serialized and set as the value of ConsensusType.Metadata in
 // a channel configuration when the ConsensusType.Type is set "etcdraft".
 type Metadata struct {
-	Consenters           []*Consenter `protobuf:"bytes,1,rep,name=consenters" json:"consenters,omitempty"`
-	Options              *Options     `protobuf:"bytes,2,opt,name=options" json:"options,omitempty"`
+	Consenters           []*Consenter `protobuf:"bytes,1,rep,name=consenters,proto3" json:"consenters,omitempty"`
+	Options              *Options     `protobuf:"bytes,2,opt,name=options,proto3" json:"options,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -68,8 +68,8 @@ func (m *Metadata) GetOptions() *Options {
 
 // Consenter represents a consenting node (i.e. replica).
 type Consenter struct {
-	Host                 string   `protobuf:"bytes,1,opt,name=host" json:"host,omitempty"`
-	Port                 uint32   `protobuf:"varint,2,opt,name=port" json:"port,omitempty"`
+	Host                 string   `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	Port                 uint32   `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
 	ClientTlsCert        []byte   `protobuf:"bytes,3,opt,name=client_tls_cert,json=clientTlsCert,proto3" json:"client_tls_cert,omitempty"`
 	ServerTlsCert        []byte   `protobuf:"bytes,4,opt,name=server_tls_cert,json=serverTlsCert,proto3" json:"server_tls_cert,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -132,11 +132,11 @@ func (m *Consenter) GetServerTlsCert() []byte {
 // Options to be specified for all the etcd/raft nodes. These can be modified on a
 // per-channel basis.
 type Options struct {
-	TickInterval         uint64   `protobuf:"varint,1,opt,name=tick_interval,json=tickInterval" json:"tick_interval,omitempty"`
-	ElectionTick         uint32   `protobuf:"varint,2,opt,name=election_tick,json=electionTick" json:"election_tick,omitempty"`
-	HeartbeatTick        uint32   `protobuf:"varint,3,opt,name=heartbeat_tick,json=heartbeatTick" json:"heartbeat_tick,omitempty"`
-	MaxInflightMsgs      uint32   `protobuf:"varint,4,opt,name=max_inflight_msgs,json=maxInflightMsgs" json:"max_inflight_msgs,omitempty"`
-	MaxSizePerMsg        uint64   `protobuf:"varint,5,opt,name=max_size_per_msg,json=maxSizePerMsg" json:"max_size_per_msg,omitempty"`
+	TickInterval         uint64   `protobuf:"varint,1,opt,name=tick_interval,json=tickInterval,proto3" json:"tick_interval,omitempty"`
+	ElectionTick         uint32   `protobuf:"varint,2,opt,name=election_tick,json=electionTick,proto3" json:"election_tick,omitempty"`
+	HeartbeatTick        uint32   `protobuf:"varint,3,opt,name=heartbeat_tick,json=heartbeatTick,proto3" json:"heartbeat_tick,omitempty"`
+	MaxInflightMsgs      uint32   `protobuf:"varint,4,opt,name=max_inflight_msgs,json=maxInflightMsgs,proto3" json:"max_inflight_msgs,omitempty"`
+	MaxSizePerMsg        uint64   `protobuf:"varint,5,opt,name=max_size_per_msg,json=maxSizePerMsg,proto3" json:"max_size_per_msg,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
