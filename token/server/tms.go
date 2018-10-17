@@ -34,6 +34,10 @@ type Transactor interface {
 
 	// ListTokens returns a slice of unspent tokens owned by this transactor
 	ListTokens() (*token.UnspentTokens, error)
+
+	// RequestApprove creates a token transaction that includes the data necessary
+	// for approve
+	RequestApprove(request *token.ApproveRequest) (*token.TokenTransaction, error)
 }
 
 //go:generate counterfeiter -o mock/tms_manager.go -fake-name TMSManager . TMSManager

@@ -88,6 +88,8 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (*
 		payload, err = s.RequestRedeem(ctx, command.Header, t.RedeemRequest)
 	case *token.Command_ListRequest:
 		payload, err = s.ListUnspentTokens(ctx, command.Header, t.ListRequest)
+	case *token.Command_ApproveRequest:
+		payload, err = s.RequestApprove(ctx, command.Header, t.ApproveRequest)
 	default:
 		err = errors.Errorf("command type not recognized: %T", t)
 	}
@@ -155,6 +157,20 @@ func (s *Prover) ListUnspentTokens(ctxt context.Context, header *token.Header, l
 	}
 
 	return &token.CommandResponse_UnspentTokens{UnspentTokens: tokens}, nil
+}
+
+func (s *Prover) RequestApprove(ctx context.Context, header *token.Header, request *token.ApproveRequest) (*token.CommandResponse_TokenTransaction, error) {
+	transactor, err := s.TMSManager.GetTransactor(header.ChannelId, request.Credential, header.Creator)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenTransaction, err := transactor.RequestApprove(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return &token.CommandResponse_TokenTransaction{TokenTransaction: tokenTransaction}, nil
 }
 
 func (s *Prover) ValidateHeader(header *token.Header) error {

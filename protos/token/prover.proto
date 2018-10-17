@@ -89,6 +89,27 @@ message RedeemRequest {
     uint64 quantity_to_redeem = 3;
 }
 
+// ALlowance defines how many and what tokens a recipient can transfer on behalf of their actual owner
+message AllowanceRecipientShare {
+    // Recipient refers to the entity allowed to spend the specified quantity from the tokens identified by token IDs
+    bytes recipient = 1;
+
+    // Quantity is how many tokens are delegated to the recipient
+    uint64 quantity = 2;
+}
+
+// ApproveRequest is used to request the creation of allowance from one owner to another
+message ApproveRequest{
+    // Credential refers to the public credential of the request creator
+    bytes credential = 1;
+
+    // Allowance describes the tokens the creator of the request is willing to delegate
+    repeated AllowanceRecipientShare allowance_shares = 2;
+
+    // TokenIds are the token identifiers used to create the allowance
+    repeated bytes token_ids = 3;
+}
+
 // Header is a generic replay prevention and identity message to include in a signed command
 message Header {
     // Timestamp is the local time when the message was created
@@ -119,6 +140,7 @@ message Command {
         TransferRequest transfer_request = 3;
         ListRequest list_request = 4;
         RedeemRequest redeem_request = 5;
+        ApproveRequest approve_request = 6;
     }
 }
 

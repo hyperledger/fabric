@@ -46,6 +46,19 @@ type Transactor struct {
 		result1 *token.UnspentTokens
 		result2 error
 	}
+	RequestApproveStub        func(request *token.ApproveRequest) (*token.TokenTransaction, error)
+	requestApproveMutex       sync.RWMutex
+	requestApproveArgsForCall []struct {
+		request *token.ApproveRequest
+	}
+	requestApproveReturns struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
+	requestApproveReturnsOnCall map[int]struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -195,6 +208,57 @@ func (fake *Transactor) ListTokensReturnsOnCall(i int, result1 *token.UnspentTok
 	}{result1, result2}
 }
 
+func (fake *Transactor) RequestApprove(request *token.ApproveRequest) (*token.TokenTransaction, error) {
+	fake.requestApproveMutex.Lock()
+	ret, specificReturn := fake.requestApproveReturnsOnCall[len(fake.requestApproveArgsForCall)]
+	fake.requestApproveArgsForCall = append(fake.requestApproveArgsForCall, struct {
+		request *token.ApproveRequest
+	}{request})
+	fake.recordInvocation("RequestApprove", []interface{}{request})
+	fake.requestApproveMutex.Unlock()
+	if fake.RequestApproveStub != nil {
+		return fake.RequestApproveStub(request)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.requestApproveReturns.result1, fake.requestApproveReturns.result2
+}
+
+func (fake *Transactor) RequestApproveCallCount() int {
+	fake.requestApproveMutex.RLock()
+	defer fake.requestApproveMutex.RUnlock()
+	return len(fake.requestApproveArgsForCall)
+}
+
+func (fake *Transactor) RequestApproveArgsForCall(i int) *token.ApproveRequest {
+	fake.requestApproveMutex.RLock()
+	defer fake.requestApproveMutex.RUnlock()
+	return fake.requestApproveArgsForCall[i].request
+}
+
+func (fake *Transactor) RequestApproveReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.RequestApproveStub = nil
+	fake.requestApproveReturns = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Transactor) RequestApproveReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.RequestApproveStub = nil
+	if fake.requestApproveReturnsOnCall == nil {
+		fake.requestApproveReturnsOnCall = make(map[int]struct {
+			result1 *token.TokenTransaction
+			result2 error
+		})
+	}
+	fake.requestApproveReturnsOnCall[i] = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *Transactor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -204,6 +268,8 @@ func (fake *Transactor) Invocations() map[string][][]interface{} {
 	defer fake.requestRedeemMutex.RUnlock()
 	fake.listTokensMutex.RLock()
 	defer fake.listTokensMutex.RUnlock()
+	fake.requestApproveMutex.RLock()
+	defer fake.requestApproveMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

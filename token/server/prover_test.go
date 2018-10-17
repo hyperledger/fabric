@@ -1147,6 +1147,159 @@ var _ = Describe("Prover Transfer using TMS", func() {
 	})
 })
 
+var _ = Describe("Prover Approve using mock TMS", func() {
+
+	var (
+		fakeMarshaler         *mock.Marshaler
+		fakeTransactor        *mock.Transactor
+		fakeTMSManager        *mock.TMSManager
+		fakePolicyChecker     *mock.PolicyChecker
+		fakeCapabilityChecker *mock.CapabilityChecker
+		prover                *server.Prover
+		command               *token.Command
+		approveRequest        *token.ApproveRequest
+		tokenTransaction      *token.TokenTransaction
+	)
+
+	It("initializes variables and expected responses", func() {
+		approveRequest = &token.ApproveRequest{
+			Credential: []byte("credential"),
+			AllowanceShares: []*token.AllowanceRecipientShare{{
+				Quantity:  100,
+				Recipient: []byte("Alice"),
+			}},
+		}
+
+		tokenTransaction = &token.TokenTransaction{Action: &token.TokenTransaction_PlainAction{
+			PlainAction: &token.PlainTokenAction{
+				Data: &token.PlainTokenAction_PlainApprove{
+					PlainApprove: &token.PlainApprove{
+						Inputs: []*token.InputId{{
+							TxId:  "txid",
+							Index: 0,
+						}},
+						DelegatedOutputs: []*token.PlainDelegatedOutput{{
+							Owner:      []byte("credential"),
+							Delegatees: [][]byte{[]byte("Alice")},
+							Quantity:   100,
+							Type:       "XYZ",
+						}},
+					},
+				},
+			},
+		}}
+
+		command = &token.Command{
+			Header: &token.Header{
+				ChannelId: "channel-id",
+				Creator:   []byte("creator"),
+				Nonce:     []byte("nonce"),
+			},
+			Payload: &token.Command_ApproveRequest{
+				ApproveRequest: approveRequest,
+			},
+		}
+	})
+
+	Describe("RequestApprove", func() {
+		BeforeEach(func() {
+			fakeMarshaler = &mock.Marshaler{}
+			fakeTransactor = &mock.Transactor{}
+			fakeTMSManager = &mock.TMSManager{}
+			fakePolicyChecker = &mock.PolicyChecker{}
+			fakeCapabilityChecker = &mock.CapabilityChecker{}
+
+			fakeTransactor.RequestApproveReturns(tokenTransaction, nil)
+			fakeTMSManager.GetTransactorReturns(fakeTransactor, nil)
+			fakePolicyChecker.CheckReturns(nil)
+			fakeCapabilityChecker.FabTokenReturns(true, nil)
+
+			prover = &server.Prover{TMSManager: fakeTMSManager, PolicyChecker: fakePolicyChecker, Marshaler: fakeMarshaler, CapabilityChecker: fakeCapabilityChecker}
+
+		})
+		It("gets a transactor", func() {
+			_, err := prover.RequestApprove(context.Background(), command.Header, approveRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(1))
+			channel, cred, creator := fakeTMSManager.GetTransactorArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(cred).To(Equal([]byte("credential")))
+			Expect(creator).To(Equal([]byte("creator")))
+		})
+
+		It("uses the transactor to request an approve", func() {
+			resp, err := prover.RequestApprove(context.Background(), command.Header, approveRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: tokenTransaction,
+			}))
+
+			Expect(fakeTransactor.RequestApproveCallCount()).To(Equal(1))
+			tr := fakeTransactor.RequestApproveArgsForCall(0)
+			Expect(tr).To(Equal(approveRequest))
+		})
+
+		Context("when the TMS manager fails to get a transactor", func() {
+			It("retuns the error", func() {
+				fakeTMSManager.GetTransactorReturns(nil, errors.New("camel"))
+				_, err := prover.RequestApprove(context.Background(), command.Header, approveRequest)
+				Expect(err).To(MatchError("camel"))
+			})
+		})
+
+		Context("when the transactor fails to approve", func() {
+			It("retuns the error", func() {
+				fakeTransactor.RequestApproveReturns(nil, errors.New("banana"))
+				_, err := prover.RequestApprove(context.Background(), command.Header, approveRequest)
+				Expect(err).To(MatchError("banana"))
+			})
+		})
+	})
+
+	Describe("ProcessCommand_RequestApprove", func() {
+		var (
+			marshaledCommand  []byte
+			signedCommand     *token.SignedCommand
+			marshaledResponse *token.SignedCommandResponse
+		)
+		BeforeEach(func() {
+			command = &token.Command{
+				Header: &token.Header{
+					ChannelId: "channel-id",
+					Creator:   []byte("creator"),
+					Nonce:     []byte("nonce"),
+				},
+				Payload: &token.Command_ApproveRequest{
+					ApproveRequest: approveRequest,
+				},
+			}
+			marshaledResponse = &token.SignedCommandResponse{Response: []byte("signed-command-response")}
+
+			marshaledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshaledCommand,
+				Signature: []byte("command-signature"),
+			}
+			fakeMarshaler.MarshalCommandResponseReturns(marshaledResponse, nil)
+			fakeTransactor.RequestApproveReturns(tokenTransaction, nil)
+		})
+
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: tokenTransaction,
+			}))
+		})
+	})
+})
+
 const minUnicodeRuneValue = 0 //U+0000
 
 func splitCompositeKey(compositeKey string) (string, []string, error) {
