@@ -30,7 +30,7 @@ Determine a location on your machine where you want to place the `fabric-samples
 repository and enter that directory in a terminal window. The
 command that follows will perform the following steps:
 
-#. If needed, clone the `hyperledger/fabric-samples` repository
+#. If needed, clone the `hyperledger/fabric-samples <https://github.com/hyperledger/fabric-samples>`_ repository
 #. Checkout the appropriate version tag
 #. Install the Hyperledger Fabric platform-specific binaries and config files
    for the version specified into the root of the fabric-samples repository
