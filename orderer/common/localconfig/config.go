@@ -57,11 +57,14 @@ type General struct {
 }
 
 type Cluster struct {
-	RootCAs           []string
-	ClientCertificate string
-	ClientPrivateKey  string
-	DialTimeout       time.Duration
-	RPCTimeout        time.Duration
+	RootCAs                 []string
+	ClientCertificate       string
+	ClientPrivateKey        string
+	DialTimeout             time.Duration
+	RPCTimeout              time.Duration
+	ReplicationBufferSize   int
+	ReplicationPullTimeout  time.Duration
+	ReplicationRetryTimeout time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.

@@ -67,6 +67,15 @@ General:
         # which authorize connections to remote ordering service nodes.
         RootCAs:
           - tls/ca.crt
+        # ReplicationBuffersSize is the maximum number of bytes that can be allocated
+        # for each in-memory buffer used for block replication from other cluster nodes.
+        ReplicationBufferSize: 20971520 # 20MB
+        # PullTimeout is the maximum duration the ordering node will wait for a block
+        # to be received before it aborts.
+        ReplicationPullTimeout: 5s
+        # ReplicationRetryTimeout is the maximum duration the ordering node will wait
+        # between 2 consecutive attempts.
+        ReplicationRetryTimeout: 5s
     # Log Level: The level at which to log. This accepts logging specifications
     # per: fabric/docs/Setup/logging-control.md
     LogLevel: info

@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/pem"
+	"reflect"
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -106,6 +107,31 @@ func NewTLSPinningDialer(config comm.ClientConfig) *PredicateDialer {
 	return d
 }
 
+// ClientConfig returns the comm.ClientConfig, or an error
+// if they cannot be extracted.
+func (dialer *PredicateDialer) ClientConfig() (comm.ClientConfig, error) {
+	val := dialer.Config.Load()
+	if val == nil {
+		return comm.ClientConfig{}, errors.New("client config not initialized")
+	}
+	if cc, isClientConfig := val.(comm.ClientConfig); !isClientConfig {
+		err := errors.Errorf("value stored is %v, not comm.ClientConfig",
+			reflect.TypeOf(val))
+		return comm.ClientConfig{}, err
+	} else {
+		if cc.SecOpts == nil {
+			return comm.ClientConfig{}, errors.New("SecOpts is nil")
+		}
+		// Copy by value the secure options
+		secOpts := *cc.SecOpts
+		return comm.ClientConfig{
+			Timeout: cc.Timeout,
+			SecOpts: &secOpts,
+			KaOpts:  cc.KaOpts,
+		}, nil
+	}
+}
+
 // SetConfig sets the configuration of the PredicateDialer
 func (dialer *PredicateDialer) SetConfig(config comm.ClientConfig) {
 	configCopy := comm.ClientConfig{
@@ -147,13 +173,13 @@ func DERtoPEM(der []byte) string {
 	}))
 }
 
-// StandardDialerDialer wraps a PredicateDialer
+// StandardDialer wraps a PredicateDialer
 // to a standard cluster.Dialer that passes in a nil verify function
-type StandardDialerDialer struct {
+type StandardDialer struct {
 	Dialer *PredicateDialer
 }
 
-func (bdp *StandardDialerDialer) Dial(address string) (*grpc.ClientConn, error) {
+func (bdp *StandardDialer) Dial(address string) (*grpc.ClientConn, error) {
 	return bdp.Dialer.Dial(address, nil)
 }
 
@@ -264,9 +290,16 @@ func VerifyBlockSignature(block *common.Block, verifier BlockVerifier) error {
 	return verifier.VerifyBlockSignature(signatureSet)
 }
 
-// TLSCACertsFromConfigBlock retrieves TLS CA certificates
+// EndpointConfig defines a configuration
+// of endpoints of ordering service nodes
+type EndpointConfig struct {
+	TLSRootCAs [][]byte
+	Endpoints  []string
+}
+
+// EndpointconfigFromConfigBlock retrieves TLS CA certificates and endpoints
 // from a config block.
-func TLSCACertsFromConfigBlock(block *common.Block) ([][]byte, error) {
+func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -274,7 +307,7 @@ func TLSCACertsFromConfigBlock(block *common.Block) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var res [][]byte
+	var tlsCACerts [][]byte
 	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
@@ -292,7 +325,10 @@ func TLSCACertsFromConfigBlock(block *common.Block) ([][]byte, error) {
 		if msp == nil {
 			return nil, errors.Errorf("no MSP found for MSP with ID of %s", org.MSPID())
 		}
-		res = append(res, msp.GetTLSRootCerts()...)
+		tlsCACerts = append(tlsCACerts, msp.GetTLSRootCerts()...)
 	}
-	return res, nil
+	return &EndpointConfig{
+		Endpoints:  bundle.ChannelConfig().OrdererAddresses(),
+		TLSRootCAs: tlsCACerts,
+	}, nil
 }
