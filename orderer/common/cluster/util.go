@@ -8,10 +8,14 @@ package cluster
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/pem"
 	"sync/atomic"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -140,4 +144,121 @@ func DERtoPEM(der []byte) string {
 		Type:  "CERTIFICATE",
 		Bytes: der,
 	}))
+}
+
+// StandardDialerDialer wraps a PredicateDialer
+// to a standard cluster.Dialer that passes in a nil verify function
+type StandardDialerDialer struct {
+	Dialer *PredicateDialer
+}
+
+func (bdp *StandardDialerDialer) Dial(address string) (*grpc.ClientConn, error) {
+	return bdp.Dialer.Dial(address, nil)
+}
+
+//go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/
+
+// BlockVerifier verifies block signatures.
+type BlockVerifier interface {
+	// VerifyBlockSignature verifies a signature of a block
+	VerifyBlockSignature(sd []*common.SignedData) error
+}
+
+// BlockSequenceVerifier verifies that the given consecutive sequence
+// of blocks is valid.
+type BlockSequenceVerifier func([]*common.Block) error
+
+// Dialer creates a gRPC connection to a remote address
+type Dialer interface {
+	Dial(address string) (*grpc.ClientConn, error)
+}
+
+// VerifyBlocks verifies the given consecutive sequence of blocks is valid,
+// and returns nil if it's valid, else an error.
+func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) error {
+	if len(blockBuff) == 0 {
+		return errors.New("buffer is empty")
+	}
+	// First, we verify that the block hash in every block is:
+	// Equal to the hash in the header
+	// Equal to the previous hash in the succeeding block
+	for i := range blockBuff {
+		if err := VerifyBlockHash(i, blockBuff); err != nil {
+			return err
+		}
+	}
+
+	// Verify the last block's signature
+	lastBlock := blockBuff[len(blockBuff)-1]
+	return VerifyBlockSignature(lastBlock, signatureVerifier)
+}
+
+// VerifyBlockHash verifies the hash chain of the block with the given index
+// among the blocks of the given block buffer.
+func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
+	if len(blockBuff) <= indexInBuffer {
+		return errors.Errorf("index %d out of bounds (total %d blocks)", indexInBuffer, len(blockBuff))
+	}
+	block := blockBuff[indexInBuffer]
+	if block.Header == nil {
+		return errors.New("missing block header")
+	}
+	seq := block.Header.Number
+	dataHash := block.Data.Hash()
+	// Verify data hash matches the hash in the header
+	if !bytes.Equal(dataHash, block.Header.DataHash) {
+		computedHash := hex.EncodeToString(dataHash)
+		claimedHash := hex.EncodeToString(block.Header.DataHash)
+		return errors.Errorf("computed hash of block (%d) (%s) doesn't match claimed hash (%s)",
+			seq, computedHash, claimedHash)
+	}
+	// We have a previous block in the buffer, ensure current block's previous hash matches the previous one.
+	if indexInBuffer > 0 {
+		prevBlock := blockBuff[indexInBuffer-1]
+		currSeq := block.Header.Number
+		if prevBlock.Header == nil {
+			return errors.New("previous block header is nil")
+		}
+		prevSeq := prevBlock.Header.Number
+		if prevSeq+1 != currSeq {
+			return errors.Errorf("sequences %d and %d were received consecutively", prevSeq, currSeq)
+		}
+		if !bytes.Equal(block.Header.PreviousHash, prevBlock.Header.Hash()) {
+			claimedPrevHash := hex.EncodeToString(block.Header.PreviousHash)
+			actualPrevHash := hex.EncodeToString(prevBlock.Header.Hash())
+			return errors.Errorf("block %d's hash (%s) mismatches %d's prev block hash (%s)",
+				currSeq, actualPrevHash, prevSeq, claimedPrevHash)
+		}
+	}
+	return nil
+}
+
+// VerifyBlockSignature verifies the signature on the block with the given BlockVerifier
+func VerifyBlockSignature(block *common.Block, verifier BlockVerifier) error {
+	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
+		return errors.New("no metadata in block")
+	}
+	metadata, err := utils.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
+	if err != nil {
+		return errors.Errorf("failed unmarshaling medatata for signatures: %v", err)
+	}
+
+	var signatureSet []*common.SignedData
+	for _, metadataSignature := range metadata.Signatures {
+		sigHdr, err := utils.GetSignatureHeader(metadataSignature.SignatureHeader)
+		if err != nil {
+			return errors.Errorf("failed unmarshaling signature header for block with id %d: %v",
+				block.Header.Number, err)
+		}
+		signatureSet = append(signatureSet,
+			&common.SignedData{
+				Identity: sigHdr.Creator,
+				Data: util.ConcatenateBytes(metadata.Value,
+					metadataSignature.SignatureHeader, block.Header.Bytes()),
+				Signature: metadataSignature.Signature,
+			},
+		)
+	}
+
+	return verifier.VerifyBlockSignature(signatureSet)
 }
