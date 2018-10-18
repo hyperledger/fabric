@@ -14,10 +14,15 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
+	orderer2 "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -209,6 +214,56 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
 		})
 	})
+
+	Describe("etcd raft, checking valid configuration update of type B", func() {
+		BeforeEach(func() {
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, 32000, components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
+		})
+
+		It("executes a basic etcdraft network with a single Raft node", func() {
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer1")
+
+			channel := "testchannel"
+			network.CreateAndJoinChannel(orderer, channel)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			RunQueryInvokeQuery(network, orderer, peer)
+
+			config := nwo.GetConfigBlock(network, peer, orderer, channel)
+			updatedConfig := proto.Clone(config).(*common.Config)
+
+			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+			consensusTypeValue := &orderer2.ConsensusType{}
+			err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+			Expect(err).NotTo(HaveOccurred())
+
+			metadata := &etcdraft.Metadata{}
+			err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
+			Expect(err).NotTo(HaveOccurred())
+
+			// update max in flight messages
+			metadata.Options.MaxInflightMsgs = 1000
+			metadata.Options.MaxSizePerMsg = 512
+
+			// write metadata back
+			consensusTypeValue.Metadata, err = proto.Marshal(metadata)
+			Expect(err).NotTo(HaveOccurred())
+
+			updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+				ModPolicy: "Admins",
+				Value:     utils.MarshalOrPanic(consensusTypeValue),
+			}
+
+			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+		})
+	})
+
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
