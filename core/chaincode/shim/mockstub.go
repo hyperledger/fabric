@@ -118,10 +118,15 @@ func (stub *MockStub) MockTransactionEnd(uuid string) {
 	stub.TxID = ""
 }
 
-// Register a peer chaincode with this MockStub
-// invokableChaincodeName is the name or hash of the peer
-// otherStub is a MockStub of the peer, already intialised
-func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub *MockStub) {
+// Register another MockStub chaincode with this MockStub.
+// invokableChaincodeName is the name of a chaincode.
+// otherStub is a MockStub of the chaincode, already initialized.
+// channel is the name of a channel on which another MockStub is called.
+func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub *MockStub, channel string) {
+	// Internally we use chaincode name as a composite name
+	if channel != "" {
+		invokableChaincodeName = invokableChaincodeName + "/" + channel
+	}
 	stub.Invokables[invokableChaincodeName] = otherStub
 }
 
@@ -339,10 +344,10 @@ func (stub *MockStub) GetQueryResultWithPagination(query string, pageSize int32,
 	return nil, nil, nil
 }
 
-// InvokeChaincode calls a peered chaincode.
-// E.g. stub1.InvokeChaincode("stub2Hash", funcArgs, channel)
-// Before calling this make sure to create another MockStub stub2, call stub2.MockInit(uuid, func, args)
-// and register it with stub1 by calling stub1.MockPeerChaincode("stub2Hash", stub2)
+// InvokeChaincode locally calls the specified chaincode `Invoke`.
+// E.g. stub1.InvokeChaincode("othercc", funcArgs, channel)
+// Before calling this make sure to create another MockStub stub2, call shim.NewMockStub("othercc", Chaincode)
+// and register it with stub1 by calling stub1.MockPeerChaincode("othercc", stub2, channel)
 func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response {
 	// Internally we use chaincode name as a composite name
 	if channel != "" {

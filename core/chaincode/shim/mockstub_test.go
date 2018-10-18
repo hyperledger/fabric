@@ -305,7 +305,7 @@ func TestMockMock(t *testing.T) {
 	stub.GetStateByRange("start", "end")
 	stub.GetQueryResult("q")
 	stub2 := NewMockStub("othercc", &shimTestCC{})
-	stub.MockPeerChaincode("othercc/mychan", stub2)
+	stub.MockPeerChaincode("othercc", stub2, "mychan")
 	stub.InvokeChaincode("othercc", nil, "mychan")
 	stub.GetCreator()
 	stub.GetTransient()
