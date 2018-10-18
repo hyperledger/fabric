@@ -144,6 +144,7 @@ func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	comm := createComm(clusterDialer, conf, consenter)
 	consenter.Communication = comm
 	svc := &cluster.Service{
+		StepLogger: flogging.MustGetLogger("orderer/common/cluster/step"),
 		Logger:     flogging.MustGetLogger("orderer/common/cluster"),
 		Dispatcher: comm,
 	}

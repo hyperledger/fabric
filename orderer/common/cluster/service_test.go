@@ -36,6 +36,7 @@ func TestStep(t *testing.T) {
 
 	svc := &cluster.Service{
 		Logger:     flogging.MustGetLogger("test"),
+		StepLogger: flogging.MustGetLogger("test"),
 		Dispatcher: dispatcher,
 	}
 
@@ -81,6 +82,7 @@ func TestSubmitSuccess(t *testing.T) {
 
 	svc := &cluster.Service{
 		Logger:     flogging.MustGetLogger("test"),
+		StepLogger: flogging.MustGetLogger("test"),
 		Dispatcher: dispatcher,
 	}
 
@@ -159,6 +161,7 @@ func TestSubmitFailure(t *testing.T) {
 			dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Return(testCase.dispatchReturns...)
 			svc := &cluster.Service{
 				Logger:     flogging.MustGetLogger("test"),
+				StepLogger: flogging.MustGetLogger("test"),
 				Dispatcher: dispatcher,
 			}
 			err := svc.Submit(stream)
@@ -173,6 +176,7 @@ func TestServiceGRPC(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
 	assert.NoError(t, err)
 	orderer.RegisterClusterServer(srv.Server(), &cluster.Service{
-		Logger: flogging.MustGetLogger("test"),
+		Logger:     flogging.MustGetLogger("test"),
+		StepLogger: flogging.MustGetLogger("test"),
 	})
 }

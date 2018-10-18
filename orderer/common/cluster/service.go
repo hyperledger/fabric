@@ -38,13 +38,14 @@ type SubmitStream interface {
 type Service struct {
 	Dispatcher Dispatcher
 	Logger     *flogging.FabricLogger
+	StepLogger *flogging.FabricLogger
 }
 
 // Step forwards a message to a raft FSM located in this server
 func (s *Service) Step(ctx context.Context, request *orderer.StepRequest) (*orderer.StepResponse, error) {
 	addr := util.ExtractRemoteAddress(ctx)
-	s.Logger.Debugf("Connection from %s", addr)
-	defer s.Logger.Debugf("Closing connection from %s", addr)
+	s.StepLogger.Debugf("Connection from %s", addr)
+	defer s.StepLogger.Debugf("Closing connection from %s", addr)
 	response, err := s.Dispatcher.DispatchStep(ctx, request)
 	if err != nil {
 		s.Logger.Warningf("Handling of Step() from %s failed: %+v", addr, err)
