@@ -110,6 +110,56 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 }
 
+// UpdateOrdererConfig computes, signs, and submits a configuration update which requires orderers signature and waits
+// for the update to complete.
+func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
+	tempDir, err := ioutil.TempDir("", "updateConfig")
+	Expect(err).NotTo(HaveOccurred())
+	defer os.RemoveAll(tempDir)
+
+	// compute update
+	configUpdate, err := update.Compute(current, updated)
+	Expect(err).NotTo(HaveOccurred())
+	configUpdate.ChannelId = channel
+
+	signedEnvelope, err := utils.CreateSignedEnvelope(
+		common.HeaderType_CONFIG_UPDATE,
+		channel,
+		nil, // local signer
+		&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(configUpdate)},
+		0, // message version
+		0, // epoch
+	)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(signedEnvelope).NotTo(BeNil())
+
+	updateFile := filepath.Join(tempDir, "update.pb")
+	err = ioutil.WriteFile(updateFile, utils.MarshalOrPanic(signedEnvelope), 0600)
+	Expect(err).NotTo(HaveOccurred())
+
+	for _, signer := range additionalSigners {
+		sess, err := n.OrdererAdminSession(signer, submitter, commands.SignConfigTx{File: updateFile})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	}
+
+	// get current configuration block number
+	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
+
+	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
+		ChannelID: channel,
+		Orderer:   n.OrdererAddress(orderer, ListenPort),
+		File:      updateFile,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+
+	// wait for the block to be committed
+	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
+	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+}
+
 // CurrentConfigBlockNumber retrieves the block number from the header of the
 // current config block. This can be used to detect whena configuration change
 // has completed.
