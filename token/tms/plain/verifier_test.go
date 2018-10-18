@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -8,9 +8,12 @@ package plain_test
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/token/tms"
 	"github.com/hyperledger/fabric/token/tms/plain"
 	"github.com/hyperledger/fabric/token/tms/plain/mock"
 	. "github.com/onsi/ginkgo"
@@ -19,82 +22,87 @@ import (
 
 var _ = Describe("Verifier", func() {
 	var (
-		fakeCred            *mock.Credential
+		fakeCreatorInfo     *mock.CreatorInfo
 		fakePolicyValidator *mock.PolicyValidator
-		fakePool            *mock.Pool
+		fakeLedger          *mock.LedgerWriter
+		memoryLedger        *plain.MemoryLedger
 
-		transactionData []tms.TransactionData
+		transaction *token.TokenTransaction
+		txID        string
 
 		verifier *plain.Verifier
 	)
 
 	BeforeEach(func() {
-		fakeCred = &mock.Credential{}
+		fakeCreatorInfo = &mock.CreatorInfo{}
 		fakePolicyValidator = &mock.PolicyValidator{}
-		fakePool = &mock.Pool{}
-		fakePool.CommitUpdateReturns(nil)
+		fakeLedger = &mock.LedgerWriter{}
+		fakeLedger.SetStateReturns(nil)
 
-		transactionData = []tms.TransactionData{{
-			TxID: "0",
-			Tx: &token.TokenTransaction{
-				Action: &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{
-						Data: &token.PlainTokenAction_PlainImport{
-							PlainImport: &token.PlainImport{
-								Outputs: []*token.PlainOutput{
-									{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 111},
-									{Owner: []byte("owner-2"), Type: "TOK2", Quantity: 222},
-								},
+		txID = "0"
+		transaction = &token.TokenTransaction{
+			Action: &token.TokenTransaction_PlainAction{
+				PlainAction: &token.PlainTokenAction{
+					Data: &token.PlainTokenAction_PlainImport{
+						PlainImport: &token.PlainImport{
+							Outputs: []*token.PlainOutput{
+								{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 111},
+								{Owner: []byte("owner-2"), Type: "TOK2", Quantity: 222},
 							},
 						},
 					},
 				},
 			},
-		}}
+		}
 
 		verifier = &plain.Verifier{
-			Pool:            fakePool,
 			PolicyValidator: fakePolicyValidator,
 		}
 	})
 
-	Describe("Validate PlainImport", func() {
-		It("does nothing", func() {
-			err := verifier.Validate(fakeCred, transactionData[0])
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
-	Describe("Commit PlainImport", func() {
+	Describe("ProcessTx PlainImport", func() {
 		It("evaluates policy for each output", func() {
-			err := verifier.Commit(fakeCred, transactionData)
+			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakePolicyValidator.IsIssuerCallCount()).To(Equal(2))
 			creator, tt := fakePolicyValidator.IsIssuerArgsForCall(0)
-			Expect(creator).To(Equal(fakeCred))
+			Expect(creator).To(Equal(fakeCreatorInfo))
 			Expect(tt).To(Equal("TOK1"))
 			creator, tt = fakePolicyValidator.IsIssuerArgsForCall(1)
-			Expect(creator).To(Equal(fakeCred))
+			Expect(creator).To(Equal(fakeCreatorInfo))
 			Expect(tt).To(Equal("TOK2"))
 		})
 
-		It("checks the pool", func() {
-			err := verifier.Commit(fakeCred, transactionData)
+		It("checks the fake ledger", func() {
+			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakePool.CommitUpdateCallCount()).To(Equal(1))
-			td := fakePool.CommitUpdateArgsForCall(0)
-			Expect(td).To(Equal(transactionData))
-		})
+			Expect(fakeLedger.SetStateCallCount()).To(Equal(3))
 
-		It("commits to the pool", func() {
-			err := verifier.Commit(fakeCred, transactionData)
+			outputBytes, err := proto.Marshal(&token.PlainOutput{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 111})
 			Expect(err).NotTo(HaveOccurred())
+			ns, k, td := fakeLedger.SetStateArgsForCall(0)
+			Expect(ns).To(Equal("tms"))
+			expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
+			Expect(k).To(Equal(expectedOutput))
+			Expect(td).To(Equal(outputBytes))
 
-			Expect(fakePool.CommitUpdateCallCount()).To(Equal(1))
-			td := fakePool.CommitUpdateArgsForCall(0)
-			Expect(td).To(Equal(transactionData))
+			outputBytes, err = proto.Marshal(&token.PlainOutput{Owner: []byte("owner-2"), Type: "TOK2", Quantity: 222})
+			Expect(err).NotTo(HaveOccurred())
+			ns, k, td = fakeLedger.SetStateArgsForCall(1)
+			Expect(ns).To(Equal("tms"))
+			expectedOutput = strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00")
+			Expect(k).To(Equal(expectedOutput))
+			Expect(td).To(Equal(outputBytes))
+
+			ttxBytes, err := proto.Marshal(transaction)
+			Expect(err).NotTo(HaveOccurred())
+			ns, k, td = fakeLedger.SetStateArgsForCall(2)
+			Expect(ns).To(Equal("tms"))
+			expectedOutput = strings.Join([]string{"", "tokenTx", "0", ""}, "\x00")
+			Expect(k).To(Equal(expectedOutput))
+			Expect(td).To(Equal(ttxBytes))
 		})
 
 		Context("when policy validation fails", func() {
@@ -102,77 +110,244 @@ var _ = Describe("Verifier", func() {
 				fakePolicyValidator.IsIssuerReturns(errors.New("no-way-man"))
 			})
 
-			It("returns an error and does not commit to the pool", func() {
-				err := verifier.Commit(fakeCred, transactionData)
+			It("returns an error and does not write to the ledger", func() {
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError("commit failed: no-way-man"))
-				Expect(fakePool.CommitUpdateCallCount()).To(Equal(0))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "import policy check failed: no-way-man"}))
+				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
 			})
 		})
 
-		Context("when the pool update check fails", func() {
+		Context("when the ledger write check fails", func() {
 			BeforeEach(func() {
-				fakePool.CommitUpdateReturns(errors.New("no-can-do"))
+				fakeLedger.SetStateReturns(errors.New("no-can-do"))
 			})
 
 			It("returns an error", func() {
-				err := verifier.Commit(fakeCred, transactionData)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError("commit failed: no-can-do"))
+				Expect(err).To(MatchError("no-can-do"))
 
-				Expect(fakePool.CommitUpdateCallCount()).To(Equal(1))
+				Expect(fakeLedger.SetStateCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when transaction does not contain any outputs", func() {
+			BeforeEach(func() {
+				transaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainImport{
+								PlainImport: &token.PlainImport{
+									Outputs: []*token.PlainOutput{},
+								},
+							},
+						},
+					},
+				}
+			})
+			It("returns an error", func() {
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "no outputs in transaction: 0"}))
+			})
+		})
+
+		Context("when the output of a transaction has quantity of 0", func() {
+			BeforeEach(func() {
+				transaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainImport{
+								PlainImport: &token.PlainImport{
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 0},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
+			It("returns an error", func() {
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "output 0 quantity is 0 in transaction: 0"}))
+			})
+		})
+
+		Context("when an output already exists", func() {
+			BeforeEach(func() {
+				memoryLedger = plain.NewMemoryLedger()
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger, false)
+				Expect(err).NotTo(HaveOccurred())
+			})
+			It("returns an error", func() {
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger, false)
+				Expect(err).To(HaveOccurred())
+				existingOutputId := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
+			})
+		})
+
+	})
+
+	Describe("Output GetState", func() {
+		BeforeEach(func() {
+			memoryLedger = plain.NewMemoryLedger()
+			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger, false)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("retrieves the PlainOutput associated with the entry ID", func() {
+			po, err := memoryLedger.GetState("tms", strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00"))
+			Expect(err).NotTo(HaveOccurred())
+
+			output := &token.PlainOutput{}
+			err = proto.Unmarshal(po, output)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(output).To(Equal(&token.PlainOutput{
+				Owner:    []byte("owner-1"),
+				Type:     "TOK1",
+				Quantity: 111,
+			}))
+
+			po, err = memoryLedger.GetState("tms", strings.Join([]string{"", "tokenOutput", "0", "1", ""}, "\x00"))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = proto.Unmarshal(po, output)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(output).To(Equal(&token.PlainOutput{
+				Owner:    []byte("owner-2"),
+				Type:     "TOK2",
+				Quantity: 222,
+			}))
+		})
+
+		Context("when the output does not exist", func() {
+			It("returns a nil and no error", func() {
+				val, err := memoryLedger.GetState("tms", strings.Join([]string{"", "tokenOutput", "george", "0", ""}, "\x00"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(val).To(BeNil())
 			})
 		})
 	})
 
-	Describe("Validate", func() {
-		Context("when an unknown action is provided", func() {
+	Describe("ProcessTx", func() {
+		Context("when a plain action is not provided", func() {
 			BeforeEach(func() {
-				transactionData[0].Tx.Action = nil
+				txID = "255"
+				transaction = &token.TokenTransaction{}
 			})
 
 			It("returns an error", func() {
-				err := verifier.Validate(fakeCred, transactionData[0])
-				Expect(err).To(MatchError("validation failed: unknown action: <nil>"))
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(MatchError("check process failed for transaction '255': missing token action"))
 			})
 		})
 
-		Context("when an unexpected plain token action is provided", func() {
+		Context("when an unknown plain token action is provided", func() {
 			BeforeEach(func() {
-				transactionData[0].Tx.Action = &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{},
+				txID = "254"
+				transaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{},
+					},
 				}
 			})
 
 			It("returns an error", func() {
-				err := verifier.Validate(fakeCred, transactionData[0])
-				Expect(err).To(MatchError("validation failed: unknown plain token action: <nil>"))
-			})
-		})
-	})
-
-	Describe("Commit", func() {
-		Context("when an unknown action is provided", func() {
-			BeforeEach(func() {
-				transactionData[0].Tx.Action = nil
-			})
-
-			It("returns an error", func() {
-				err := verifier.Commit(fakeCred, transactionData)
-				Expect(err).To(MatchError("commit failed: unknown action: <nil>"))
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "unknown plain token action: <nil>"}))
 			})
 		})
 
-		Context("when an unexpected plain token action is provided", func() {
+		Context("when a transaction has invalid characters in key", func() {
 			BeforeEach(func() {
-				transactionData[0].Tx.Action = &token.TokenTransaction_PlainAction{
-					PlainAction: &token.PlainTokenAction{},
-				}
+				txID = string(0)
+			})
+
+			It("fails when creating the ledger key for the output", func() {
+				By("returning an error")
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
+			})
+		})
+
+		Context("when a transaction has invalid characters in key", func() {
+			BeforeEach(func() {
+				txID = string(0)
+			})
+
+			It("fails when creating the ledger key for the first output", func() {
+				By("returning an error")
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
+			})
+		})
+
+		Context("when a transaction key is an invalid utf8 string", func() {
+			BeforeEach(func() {
+				txID = string([]byte{0xE0, 0x80, 0x80})
+			})
+
+			It("fails when creating the ledger key for the output", func() {
+				By("returning an error")
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: not a valid utf8 string: [e08080]"}))
+			})
+		})
+
+		Context("when the ledger read of an output fails", func() {
+			BeforeEach(func() {
+				fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("error reading output"))
 			})
 
 			It("returns an error", func() {
-				err := verifier.Commit(fakeCred, transactionData)
-				Expect(err).To(MatchError("commit failed: unknown plain token action: <nil>"))
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("error reading output"))
+
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(1))
+				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
+				ns, k := fakeLedger.GetStateArgsForCall(0)
+				expectedOutput := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
+				Expect(k).To(Equal(expectedOutput))
+				Expect(ns).To(Equal("tms"))
+			})
+		})
+
+		Context("when the ledger read of a transaction fails", func() {
+			BeforeEach(func() {
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+				fakeLedger.GetStateReturnsOnCall(1, nil, nil)
+				fakeLedger.GetStateReturnsOnCall(2, nil, errors.New("error reading transaction"))
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("error reading transaction"))
+
+				Expect(fakeLedger.GetStateCallCount()).To(Equal(3))
+				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
+				ns, k := fakeLedger.GetStateArgsForCall(2)
+				expectedTx := strings.Join([]string{"", "tokenTx", "0", ""}, "\x00")
+				Expect(k).To(Equal(expectedTx))
+				Expect(ns).To(Equal("tms"))
+			})
+		})
+
+		Context("when a tx with the same txID already exists", func() {
+			BeforeEach(func() {
+				fakeLedger.GetStateReturnsOnCall(2, []byte("fake-tx"), nil)
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transaction already exists: 0"}))
 			})
 		})
 	})
