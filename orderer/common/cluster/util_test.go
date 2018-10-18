@@ -8,6 +8,8 @@ package cluster_test
 
 import (
 	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
@@ -328,4 +330,55 @@ func createBlockChain(start, end uint64) []*common.Block {
 	}
 	assignHashes(blockchain)
 	return blockchain
+}
+
+func TestTLSCACertsFromConfigBlockGreenPath(t *testing.T) {
+	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	assert.NoError(t, err)
+
+	block := &common.Block{}
+	assert.NoError(t, proto.Unmarshal(blockBytes, block))
+
+	certs, err := cluster.TLSCACertsFromConfigBlock(block)
+	assert.NoError(t, err)
+	assert.Len(t, certs, 1)
+
+	bl, _ := pem.Decode(certs[0])
+	cert, err := x509.ParseCertificate(bl.Bytes)
+	assert.NoError(t, err)
+
+	assert.True(t, cert.IsCA)
+	assert.Equal(t, "tlsca.example.com", cert.Subject.CommonName)
+}
+
+func TestTLSCACertsFromConfigBlockFailures(t *testing.T) {
+	t.Run("nil block", func(t *testing.T) {
+		certs, err := cluster.TLSCACertsFromConfigBlock(nil)
+		assert.Nil(t, certs)
+		assert.EqualError(t, err, "nil block")
+	})
+
+	t.Run("nil block data", func(t *testing.T) {
+		certs, err := cluster.TLSCACertsFromConfigBlock(&common.Block{})
+		assert.Nil(t, certs)
+		assert.EqualError(t, err, "block data is nil")
+	})
+
+	t.Run("no envelope", func(t *testing.T) {
+		certs, err := cluster.TLSCACertsFromConfigBlock(&common.Block{
+			Data: &common.BlockData{},
+		})
+		assert.Nil(t, certs)
+		assert.EqualError(t, err, "envelope index out of bounds")
+	})
+
+	t.Run("bad envelope", func(t *testing.T) {
+		certs, err := cluster.TLSCACertsFromConfigBlock(&common.Block{
+			Data: &common.BlockData{
+				Data: [][]byte{{}},
+			},
+		})
+		assert.Nil(t, certs)
+		assert.EqualError(t, err, "failed extracting bundle from envelope: envelope header cannot be nil")
+	})
 }

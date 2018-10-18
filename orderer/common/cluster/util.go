@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"sync/atomic"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
@@ -261,4 +262,37 @@ func VerifyBlockSignature(block *common.Block, verifier BlockVerifier) error {
 	}
 
 	return verifier.VerifyBlockSignature(signatureSet)
+}
+
+// TLSCACertsFromConfigBlock retrieves TLS CA certificates
+// from a config block.
+func TLSCACertsFromConfigBlock(block *common.Block) ([][]byte, error) {
+	if block == nil {
+		return nil, errors.New("nil block")
+	}
+	envelopeConfig, err := utils.ExtractEnvelope(block, 0)
+	if err != nil {
+		return nil, err
+	}
+	var res [][]byte
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
+	}
+	msps, err := bundle.MSPManager().GetMSPs()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed obtaining MSPs from MSPManager")
+	}
+	ordererConfig, ok := bundle.OrdererConfig()
+	if !ok {
+		return nil, errors.New("failed obtaining orderer config from bundle")
+	}
+	for _, org := range ordererConfig.Organizations() {
+		msp := msps[org.MSPID()]
+		if msp == nil {
+			return nil, errors.Errorf("no MSP found for MSP with ID of %s", org.MSPID())
+		}
+		res = append(res, msp.GetTLSRootCerts()...)
+	}
+	return res, nil
 }
