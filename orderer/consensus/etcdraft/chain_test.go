@@ -79,6 +79,27 @@ var _ = Describe("Chain", func() {
 			clock = fakeclock.NewFakeClock(time.Now())
 			storage = raft.NewMemoryStorage()
 			observeC = make(chan uint64, 1)
+
+			support = &consensusmocks.FakeConsenterSupport{}
+			support.ChainIDReturns(channelID)
+			consenterMetadata = createMetadata(1, tlsCA)
+			support.SharedConfigReturns(&mockconfig.Orderer{
+				BatchTimeoutVal:      time.Hour,
+				ConsensusMetadataVal: marshalOrPanic(consenterMetadata),
+			})
+			cutter = mockblockcutter.NewReceiver()
+			support.BlockCutterReturns(cutter)
+
+			membership := &raftprotos.RaftMetadata{
+				Consenters:      map[uint64]*raftprotos.Consenter{},
+				NextConsenterID: 1,
+			}
+
+			for _, c := range consenterMetadata.Consenters {
+				membership.Consenters[membership.NextConsenterID] = c
+				membership.NextConsenterID++
+			}
+
 			opts = etcdraft.Options{
 				RaftID:          1,
 				Clock:           clock,
@@ -87,19 +108,10 @@ var _ = Describe("Chain", func() {
 				HeartbeatTick:   HEARTBEAT_TICK,
 				MaxSizePerMsg:   1024 * 1024,
 				MaxInflightMsgs: 256,
-				Peers:           []raft.Peer{{ID: 1}},
+				RaftMetadata:    membership,
 				Logger:          logger,
 				Storage:         storage,
 			}
-			support = &consensusmocks.FakeConsenterSupport{}
-			support.ChainIDReturns(channelID)
-			consenterMetadata = createMetadata(3, tlsCA)
-			support.SharedConfigReturns(&mockconfig.Orderer{
-				BatchTimeoutVal:      time.Hour,
-				ConsensusMetadataVal: marshalOrPanic(consenterMetadata),
-			})
-			cutter = mockblockcutter.NewReceiver()
-			support.BlockCutterReturns(cutter)
 
 			var err error
 			chain, err = etcdraft.NewChain(support, opts, configurator, nil, observeC)
@@ -487,7 +499,7 @@ var _ = Describe("Chain", func() {
 
 				Context("when a type B config update comes", func() {
 
-					Context("for existing channel", func() {
+					Context("updating protocol values", func() {
 						// use to prepare the Orderer Values
 						BeforeEach(func() {
 							values := map[string]*common.ConfigValue{
@@ -842,11 +854,25 @@ func newChain(timeout time.Duration, channel string, id uint64, all []uint64) *c
 	rpc := &mocks.FakeRPC{}
 	clock := fakeclock.NewFakeClock(time.Now())
 	storage := raft.NewMemoryStorage()
+	tlsCA, _ := tlsgen.NewCA()
 
-	peers := []raft.Peer{}
-	for _, i := range all {
-		peers = append(peers, raft.Peer{ID: i})
+	membership := &raftprotos.RaftMetadata{
+		Consenters:      map[uint64]*raftprotos.Consenter{},
+		NextConsenterID: 1,
 	}
+
+	for _, raftID := range all {
+		membership.Consenters[uint64(raftID)] = &raftprotos.Consenter{
+			Host:          "localhost",
+			Port:          7051,
+			ClientTlsCert: clientTLSCert(tlsCA),
+			ServerTlsCert: serverTLSCert(tlsCA),
+		}
+		if uint64(raftID) > membership.NextConsenterID {
+			membership.NextConsenterID = uint64(raftID)
+		}
+	}
+	membership.NextConsenterID++
 
 	opts := etcdraft.Options{
 		RaftID:          uint64(id),
@@ -856,7 +882,7 @@ func newChain(timeout time.Duration, channel string, id uint64, all []uint64) *c
 		HeartbeatTick:   HEARTBEAT_TICK,
 		MaxSizePerMsg:   1024 * 1024,
 		MaxInflightMsgs: 256,
-		Peers:           peers,
+		RaftMetadata:    membership,
 		Logger:          flogging.NewFabricLogger(zap.NewNop()),
 		Storage:         storage,
 	}
@@ -965,6 +991,7 @@ func (n *network) start(ids ...uint64) {
 	wg.Add(len(nodes))
 	for _, i := range nodes {
 		go func(id uint64) {
+			defer GinkgoRecover()
 			n.chains[id].Start()
 			n.chains[id].unstarted = nil
 

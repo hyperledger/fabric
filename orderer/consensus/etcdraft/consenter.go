@@ -75,12 +75,12 @@ func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
 	return nil
 }
 
-func (c *Consenter) detectSelfID(m *etcdraft.Metadata) (uint64, error) {
+func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uint64, error) {
 	var serverCertificates []string
-	for i, cst := range m.Consenters {
+	for nodeID, cst := range consenters {
 		serverCertificates = append(serverCertificates, string(cst.ServerTlsCert))
 		if bytes.Equal(c.Cert, cst.ServerTlsCert) {
-			return uint64(i + 1), nil
+			return nodeID, nil
 		}
 	}
 
@@ -99,14 +99,17 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return nil, errors.New("etcdraft options have not been provided")
 	}
 
-	id, err := c.detectSelfID(m)
+	// determine raft replica set mapping for each node to its id
+	// for newly started chain we need to read and initialize raft
+	// metadata by creating mapping between conseter and its id.
+	// In case chain has been restarted we restore raft metadata
+	// information from the recently committed block meta data
+	// field.
+	raftMetadata, err := raftMetadata(metadata, m)
+
+	id, err := c.detectSelfID(raftMetadata.Consenters)
 	if err != nil {
 		return nil, errors.WithStack(err)
-	}
-
-	peers := make([]raft.Peer, len(m.Consenters))
-	for i := range peers {
-		peers[i].ID = uint64(i + 1)
 	}
 
 	opts := Options{
@@ -121,11 +124,32 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		MaxInflightMsgs: int(m.Options.MaxInflightMsgs),
 		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
 
-		Peers: peers,
+		RaftMetadata: raftMetadata,
 	}
 
 	rpc := &cluster.RPC{Channel: support.ChainID(), Comm: c.Communication}
 	return NewChain(support, opts, c.Communication, rpc, nil)
+}
+
+func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
+	membership := &etcdraft.RaftMetadata{
+		Consenters:      map[uint64]*etcdraft.Consenter{},
+		NextConsenterID: 1,
+	}
+	if blockMetadata != nil && len(blockMetadata.Value) != 0 { // we have consenters mapping from block
+		if err := proto.Unmarshal(blockMetadata.Value, membership); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal block's metadata")
+		}
+		return membership, nil
+	}
+
+	// need to read consenters from the configuration
+	for _, consenter := range configMetadata.Consenters {
+		membership.Consenters[membership.NextConsenterID] = consenter
+		membership.NextConsenterID++
+	}
+
+	return membership, nil
 }
 
 func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,

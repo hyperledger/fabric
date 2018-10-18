@@ -8,12 +8,15 @@ package etcdraft
 
 import (
 	"encoding/pem"
+	"reflect"
 
+	"github.com/coreos/etcd/raft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -110,4 +113,45 @@ func newBlockPuller(support consensus.ConsenterSupport,
 		Channel:             support.ChainID(),
 		Dialer:              stdDialer,
 	}, nil
+}
+
+// RaftPeers maps consenters to slice of raft.Peer
+func RaftPeers(consenters map[uint64]*etcdraft.Consenter) []raft.Peer {
+	var peers []raft.Peer
+
+	for raftID := range consenters {
+		peers = append(peers, raft.Peer{ID: raftID})
+	}
+	return peers
+}
+
+// ConsentersToMap maps consenters into set where key is client TLS certificate
+func ConsentersToMap(consenters []*etcdraft.Consenter) map[string]struct{} {
+	set := map[string]struct{}{}
+	for _, c := range consenters {
+		set[string(c.ClientTlsCert)] = struct{}{}
+	}
+	return set
+}
+
+// MembershipByCert convert consenters map into set encapsulated by map
+// where key is client TLS certificate
+func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]struct{} {
+	set := map[string]struct{}{}
+	for _, c := range consenters {
+		set[string(c.ClientTlsCert)] = struct{}{}
+	}
+	return set
+}
+
+// ConsentersChanged cheks whenever slice of new consenters contains changes for consenters mapping
+func ConsentersChanged(oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) bool {
+	if len(oldConsenters) != len(newConsenters) {
+		return false
+	}
+
+	consentersSet1 := MembershipByCert(oldConsenters)
+	consentersSet2 := ConsentersToMap(newConsenters)
+
+	return reflect.DeepEqual(consentersSet1, consentersSet2)
 }
