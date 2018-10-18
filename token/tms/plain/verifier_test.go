@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/tms/plain"
-	"github.com/hyperledger/fabric/token/tms/plain/mock"
+	"github.com/hyperledger/fabric/token/transaction/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -62,7 +62,7 @@ var _ = Describe("Verifier", func() {
 
 	Describe("ProcessTx PlainImport", func() {
 		It("evaluates policy for each output", func() {
-			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakePolicyValidator.IsIssuerCallCount()).To(Equal(2))
@@ -75,7 +75,7 @@ var _ = Describe("Verifier", func() {
 		})
 
 		It("checks the fake ledger", func() {
-			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeLedger.SetStateCallCount()).To(Equal(3))
@@ -111,7 +111,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error and does not write to the ledger", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "import policy check failed: no-way-man"}))
 				Expect(fakeLedger.SetStateCallCount()).To(Equal(0))
@@ -124,7 +124,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("no-can-do"))
 
@@ -147,7 +147,7 @@ var _ = Describe("Verifier", func() {
 				}
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "no outputs in transaction: 0"}))
 			})
@@ -170,7 +170,7 @@ var _ = Describe("Verifier", func() {
 				}
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "output 0 quantity is 0 in transaction: 0"}))
 			})
@@ -179,11 +179,11 @@ var _ = Describe("Verifier", func() {
 		Context("when an output already exists", func() {
 			BeforeEach(func() {
 				memoryLedger = plain.NewMemoryLedger()
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger)
 				Expect(err).To(HaveOccurred())
 				existingOutputId := strings.Join([]string{"", "tokenOutput", "0", "0", ""}, "\x00")
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
@@ -195,7 +195,7 @@ var _ = Describe("Verifier", func() {
 	Describe("Output GetState", func() {
 		BeforeEach(func() {
 			memoryLedger = plain.NewMemoryLedger()
-			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger, false)
+			err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, memoryLedger)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -243,7 +243,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(MatchError("check process failed for transaction '255': missing token action"))
 			})
 		})
@@ -259,7 +259,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "unknown plain token action: <nil>"}))
 			})
 		})
@@ -271,7 +271,7 @@ var _ = Describe("Verifier", func() {
 
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
@@ -283,7 +283,7 @@ var _ = Describe("Verifier", func() {
 
 			It("fails when creating the ledger key for the first output", func() {
 				By("returning an error")
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: input contain unicode U+0000 starting at position [0]. U+0000 and U+10FFFF are not allowed in the input attribute of a composite key"}))
 			})
 		})
@@ -295,7 +295,7 @@ var _ = Describe("Verifier", func() {
 
 			It("fails when creating the ledger key for the output", func() {
 				By("returning an error")
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error creating output ID: not a valid utf8 string: [e08080]"}))
 			})
 		})
@@ -306,7 +306,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("error reading output"))
 
@@ -327,7 +327,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("error reading transaction"))
 
@@ -346,7 +346,7 @@ var _ = Describe("Verifier", func() {
 			})
 
 			It("returns an error", func() {
-				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger, false)
+				err := verifier.ProcessTx(txID, fakeCreatorInfo, transaction, fakeLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transaction already exists: 0"}))
 			})
 		})
