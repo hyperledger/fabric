@@ -58,7 +58,7 @@ func TestForbidden(t *testing.T) {
 	adminServer := NewAdminServer(nil)
 	adminServer.v = &mockValidator{}
 	mv := adminServer.v.(*mockValidator)
-	mv.On("validate").Return(nil, accessDenied).Times(5)
+	mv.On("validate").Return(nil, accessDenied).Times(6)
 
 	ctx := context.Background()
 	status, err := adminServer.GetStatus(ctx, nil)
@@ -74,6 +74,9 @@ func TestForbidden(t *testing.T) {
 	assert.Equal(t, accessDenied, err)
 
 	_, err = adminServer.RevertLogLevels(ctx, nil)
+	assert.Equal(t, accessDenied, err)
+
+	_, err = adminServer.GetLogSpec(ctx, nil)
 	assert.Equal(t, accessDenied, err)
 
 	_, err = adminServer.StartServer(ctx, nil)
@@ -128,5 +131,9 @@ func TestLoggingCalls(t *testing.T) {
 	logResponse, err := adminServer.GetModuleLogLevel(context.Background(), nil)
 	assert.NotNil(t, logResponse, "logResponse should have been set")
 	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "logger level should have been the default")
+	assert.Nil(t, err, "Error should have been nil")
+
+	mv.On("validate").Return(nil, nil).Once()
+	_, err = adminServer.GetLogSpec(context.Background(), nil)
 	assert.Nil(t, err, "Error should have been nil")
 }

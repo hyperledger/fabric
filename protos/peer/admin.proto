@@ -22,6 +22,7 @@ service Admin {
     rpc GetModuleLogLevel(common.Envelope) returns (LogLevelResponse) {}
     rpc SetModuleLogLevel(common.Envelope) returns (LogLevelResponse) {}
     rpc RevertLogLevels(common.Envelope) returns (google.protobuf.Empty) {}
+    rpc GetLogSpec(common.Envelope) returns (LogSpecResponse) {}
 }
 
 message ServerStatus {
@@ -46,6 +47,10 @@ message LogLevelRequest {
 message LogLevelResponse {
 	string log_module = 1;
 	string log_level = 2;
+}
+
+message LogSpecResponse {
+	string log_spec = 1;
 }
 
 message AdminOperation {

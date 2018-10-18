@@ -103,3 +103,8 @@ func (m *mockAdminClient) SetModuleLogLevel(ctx context.Context, env *cb.Envelop
 func (m *mockAdminClient) RevertLogLevels(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*empty.Empty, error) {
 	return &empty.Empty{}, m.err
 }
+
+func (m *mockAdminClient) GetLogSpec(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*pb.LogSpecResponse, error) {
+	response := &pb.LogSpecResponse{LogSpec: "info"}
+	return response, m.err
+}

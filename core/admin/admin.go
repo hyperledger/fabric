@@ -91,10 +91,12 @@ func (s *ServerAdmin) SetModuleLogLevel(ctx context.Context, env *common.Envelop
 	if request == nil {
 		return nil, errors.New("request is nil")
 	}
-	// TODO: FAB-12488
-	// err = flogging.SetModuleLevels(request.LogModule, request.LogLevel)
+
 	spec := fmt.Sprintf("%s:%s=%s", flogging.Global.Spec(), request.LogModule, request.LogLevel)
-	flogging.ActivateSpec(spec)
+	err = flogging.Global.ActivateSpec(spec)
+	if err != nil {
+		return nil, err
+	}
 
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: strings.ToUpper(request.LogLevel)}
 	return logResponse, err
@@ -106,4 +108,13 @@ func (s *ServerAdmin) RevertLogLevels(ctx context.Context, env *common.Envelope)
 	}
 	flogging.ActivateSpec(s.specAtStartup)
 	return &empty.Empty{}, nil
+}
+
+func (s *ServerAdmin) GetLogSpec(ctx context.Context, env *common.Envelope) (*pb.LogSpecResponse, error) {
+	if _, err := s.v.validate(ctx, env); err != nil {
+		return nil, err
+	}
+	logSpec := flogging.Global.Spec()
+	logResponse := &pb.LogSpecResponse{LogSpec: logSpec}
+	return logResponse, nil
 }

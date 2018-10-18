@@ -57,7 +57,7 @@ func InitCmdFactory() (*LoggingCmdFactory, error) {
 
 func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 	var err error
-	if cmd.Name() == "revertlevels" {
+	if cmd.Name() == "revertlevels" || cmd.Name() == "getlogspec" {
 		if len(args) > 0 {
 			err = errors.Errorf("more parameters than necessary were provided. Expected 0, received %d", len(args))
 			return err
