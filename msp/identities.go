@@ -99,7 +99,7 @@ func (id *identity) GetMSPIdentifier() string {
 	return id.id.Mspid
 }
 
-// IsValid returns nil if this instance is a valid identity or an error otherwise
+// Validate returns nil if this instance is a valid identity or an error otherwise
 func (id *identity) Validate() error {
 	return id.msp.Validate(id)
 }
@@ -128,6 +128,7 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 	return res
 }
 
+// Anonymous returns true if this identity provides anonymity
 func (id *identity) Anonymous() bool {
 	return false
 }
@@ -252,6 +253,8 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	return id.signer.Sign(rand.Reader, digest, nil)
 }
 
+// GetPublicVersion returns the public version of this identity,
+// namely, the one that is only able to verify messages and not sign them
 func (id *signingidentity) GetPublicVersion() Identity {
 	return &id.identity
 }
