@@ -56,6 +56,9 @@ var _ = Describe("Consenter", func() {
 		proto.Unmarshal(blockBytes, goodConfigBlock)
 
 		lastBlock := &common.Block{
+			Header: &common.BlockHeader{
+				Number: 1,
+			},
 			Data: goodConfigBlock.Data,
 			Metadata: &common.BlockMetadata{
 				Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"bytes"
 	"context"
 	"encoding/pem"
 	"fmt"
@@ -117,7 +118,8 @@ type Chain struct {
 
 	clock clock.Clock // Tests can inject a fake clock
 
-	support consensus.ConsenterSupport
+	support      consensus.ConsenterSupport
+	BlockCreator *blockCreator
 
 	leader       uint64
 	appliedIndex uint64
@@ -170,6 +172,8 @@ func NewChain(
 		snapBlkNum = b.Header.Number
 	}
 
+	lastBlock := support.Block(support.Height() - 1)
+
 	return &Chain{
 		configurator:         conf,
 		rpc:                  rpc,
@@ -187,6 +191,7 @@ func NewChain(
 		observeC:             observeC,
 		support:              support,
 		fresh:                fresh,
+		BlockCreator:         newBlockCreator(lastBlock, lg),
 		appliedIndex:         appliedi,
 		lastSnapBlockNum:     snapBlkNum,
 		puller:               puller,
@@ -448,6 +453,7 @@ func (c *Chain) serveRequest() {
 
 		case <-c.resignC:
 			_ = c.support.BlockCutter().Cut()
+			c.BlockCreator.resetCreatedBlocks()
 			stop()
 
 		case <-timer.C():
@@ -478,6 +484,7 @@ func (c *Chain) serveRequest() {
 }
 
 func (c *Chain) writeBlock(b block) {
+	c.BlockCreator.commitBlock(b.b)
 	if utils.IsConfigBlock(b.b) {
 		if err := c.writeConfigBlock(b); err != nil {
 			c.logger.Panicf("failed to write configuration block, %+v", err)
@@ -531,20 +538,32 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 
 func (c *Chain) commitBatches(batches ...[]*common.Envelope) error {
 	for _, batch := range batches {
-		b := c.support.CreateNextBlock(batch)
+		b := c.BlockCreator.createNextBlock(batch)
 		data := utils.MarshalOrPanic(b)
 		if err := c.node.Propose(context.TODO(), data); err != nil {
 			return errors.Errorf("failed to propose data to Raft node: %s", err)
 		}
 
-		select {
-		case block := <-c.commitC:
-			c.writeBlock(block)
-		case <-c.resignC:
-			return errors.Errorf("aborted block committing: lost leadership")
+		// if it is config block, then wait for the commit of the block
+		if utils.IsConfigBlock(b) {
+			// we need the loop to account for the normal blocks that might be in-flight before the arrival of the config block
+		commitConfigLoop:
+			for {
+				select {
+				case block := <-c.commitC:
+					c.writeBlock(block)
+					// since this is the config block that have been looking for, we break out of the loop
+					if bytes.Equal(b.Header.Bytes(), block.b.Header.Bytes()) {
+						break commitConfigLoop
+					}
 
-		case <-c.doneC:
-			return nil
+				case <-c.resignC:
+					return errors.Errorf("aborted block committing: lost leadership")
+
+				case <-c.doneC:
+					return nil
+				}
+			}
 		}
 	}
 
@@ -579,6 +598,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
 
+		c.BlockCreator.commitBlock(block)
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
 		} else {
