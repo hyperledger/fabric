@@ -22,6 +22,13 @@ type Prover interface {
 	// it returns a response in bytes and an error message in the case the request fails.
 	// The response corresponds to a serialized TokenTransaction protobuf message.
 	RequestImport(tokensToIssue []*token.TokenToIssue, signingIdentity tk.SigningIdentity) ([]byte, error)
+
+	// RequestTransfer allows the client to submit a transfer request to a prover peer service;
+	// the function takes as parameters a fabtoken application credential, the identifiers of the tokens
+	// to be transfererd and the shares describing how they are going to be distributed
+	// among recipients; it returns a response in bytes and an error message in the case the
+	// request fails
+	RequestTransfer(tokenIDs [][]byte, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error)
 }
 
 //go:generate mockery -dir . -name FabricTxSubmitter -case underscore -output ./mocks/
@@ -51,10 +58,28 @@ func (c *Client) Issue(tokensToIssue []*token.TokenToIssue) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	tx, err := c.createTx(serializedTokenTx)
 	if err != nil {
 		return nil, err
 	}
+
+	return tx, c.TxSubmitter.Submit(tx)
+}
+
+// Transfer is the function that the client calls to transfer his tokens.
+// Transfer takes as parameter an array of token.RecipientTransferShare that
+// identifies who receives the tokens and describes how the tokens are distributed.
+func (c *Client) Transfer(tokenIDs [][]byte, shares []*token.RecipientTransferShare) ([]byte, error) {
+	serializedTokenTx, err := c.Prover.RequestTransfer(tokenIDs, shares, c.SigningIdentity)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := c.createTx(serializedTokenTx)
+	if err != nil {
+		return nil, err
+	}
+
 	return tx, c.TxSubmitter.Submit(tx)
 }
 

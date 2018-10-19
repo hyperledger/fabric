@@ -32,3 +32,26 @@ func (_m *Prover) RequestImport(tokensToIssue []*token.TokenToIssue, signingIden
 
 	return r0, r1
 }
+
+// RequestTransfer provides a mock function with given fields: tokenIDs, shares, signingIdentity
+func (_m *Prover) RequestTransfer(tokenIDs [][]byte, shares []*token.RecipientTransferShare, signingIdentity fabrictoken.SigningIdentity) ([]byte, error) {
+	ret := _m.Called(tokenIDs, shares, signingIdentity)
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func([][]byte, []*token.RecipientTransferShare, fabrictoken.SigningIdentity) []byte); ok {
+		r0 = rf(tokenIDs, shares, signingIdentity)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([][]byte, []*token.RecipientTransferShare, fabrictoken.SigningIdentity) error); ok {
+		r1 = rf(tokenIDs, shares, signingIdentity)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}

@@ -26,6 +26,15 @@ message TokenToIssue {
     uint64 quantity = 3;
 }
 
+// RecipientTransferShare describes how much a recipient will receive in a token transfer
+message RecipientTransferShare {
+    // Recipient refers to the prospective owner of a transferred token
+    bytes recipient = 1;
+
+    // Quantity refers to the number of token units to be transferred to the recipient
+    uint64 quantity = 2;
+}
+
 // ImportRequest is used to request creation of imports
 message ImportRequest {
     // Credential contains information about the party who is requesting the operation
