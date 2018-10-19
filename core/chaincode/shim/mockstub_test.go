@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMockStateRangeQueryIterator(t *testing.T) {
@@ -233,6 +234,64 @@ func TestGetTxTimestamp(t *testing.T) {
 	}
 
 	stub.MockTransactionEnd("init")
+}
+
+// TestPutEmptyState confirms that setting a key value to empty or nil in the mock state deletes the key
+// instead of storing an empty key.
+func TestPutEmptyState(t *testing.T) {
+	stub := NewMockStub("FAB-12545", nil)
+
+	// Put an empty and nil state value
+	stub.MockTransactionStart("1")
+	err := stub.PutState("empty", []byte{})
+	assert.NoError(t, err)
+	err = stub.PutState("nil", nil)
+	assert.NoError(t, err)
+	stub.MockTransactionEnd("1")
+
+	// Confirm both are nil
+	stub.MockTransactionStart("2")
+	val, err := stub.GetState("empty")
+	assert.NoError(t, err)
+	assert.Nil(t, val)
+	val, err = stub.GetState("nil")
+	assert.NoError(t, err)
+	assert.Nil(t, val)
+	// Add a value to both empty and nil
+	err = stub.PutState("empty", []byte{0})
+	assert.NoError(t, err)
+	err = stub.PutState("nil", []byte{0})
+	assert.NoError(t, err)
+	stub.MockTransactionEnd("2")
+
+	// Confirm the value is in both
+	stub.MockTransactionStart("3")
+	val, err = stub.GetState("empty")
+	assert.NoError(t, err)
+	assert.Equal(t, val, []byte{0})
+	val, err = stub.GetState("nil")
+	assert.NoError(t, err)
+	assert.Equal(t, val, []byte{0})
+	stub.MockTransactionEnd("3")
+
+	// Set both back to empty / nil
+	stub.MockTransactionStart("4")
+	err = stub.PutState("empty", []byte{})
+	assert.NoError(t, err)
+	err = stub.PutState("nil", nil)
+	assert.NoError(t, err)
+	stub.MockTransactionEnd("4")
+
+	// Confirm both are nil
+	stub.MockTransactionStart("5")
+	val, err = stub.GetState("empty")
+	assert.NoError(t, err)
+	assert.Nil(t, val)
+	val, err = stub.GetState("nil")
+	assert.NoError(t, err)
+	assert.Nil(t, val)
+	stub.MockTransactionEnd("5")
+
 }
 
 //TestMockMock clearly cheating for coverage... but not. Mock should
