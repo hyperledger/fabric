@@ -8,6 +8,11 @@ package etcdraft_test
 
 import (
 	"encoding/pem"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/user"
+	"path"
 	"sync"
 	"time"
 
@@ -37,6 +42,16 @@ const (
 	ELECTION_TICK  = 2
 	HEARTBEAT_TICK = 1
 )
+
+// for some test cases we chmod file/dir to test failures caused by exotic permissions.
+// however this does not work if tests are running as root, i.e. in a container.
+func skipIfRoot() {
+	u, err := user.Current()
+	Expect(err).NotTo(HaveOccurred())
+	if u.Uid == "0" {
+		Skip("you are running test as root, there's no way to make files unreadable")
+	}
+}
 
 var _ = Describe("Chain", func() {
 	var (
@@ -71,13 +86,18 @@ var _ = Describe("Chain", func() {
 			storage           *raft.MemoryStorage
 			observeC          chan uint64
 			chain             *etcdraft.Chain
+			walDir            string
 		)
 
 		BeforeEach(func() {
+			var err error
+
 			configurator = &mocks.Configurator{}
 			configurator.On("Configure", mock.Anything, mock.Anything)
 			clock = fakeclock.NewFakeClock(time.Now())
 			storage = raft.NewMemoryStorage()
+			walDir, err = ioutil.TempDir("", "wal-")
+			Expect(err).NotTo(HaveOccurred())
 			observeC = make(chan uint64, 1)
 
 			support = &consensusmocks.FakeConsenterSupport{}
@@ -111,12 +131,24 @@ var _ = Describe("Chain", func() {
 				RaftMetadata:    membership,
 				Logger:          logger,
 				Storage:         storage,
+				WALDir:          walDir,
 			}
 
-			var err error
 			chain, err = etcdraft.NewChain(support, opts, configurator, nil, observeC)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		campaign := func(clock *fakeclock.FakeClock, observeC <-chan uint64) {
+			Eventually(func() bool {
+				clock.Increment(interval)
+				select {
+				case <-observeC:
+					return true
+				default:
+					return false
+				}
+			}).Should(BeTrue())
+		}
 
 		JustBeforeEach(func() {
 			chain.Start()
@@ -141,6 +173,7 @@ var _ = Describe("Chain", func() {
 
 		AfterEach(func() {
 			chain.Halt()
+			os.RemoveAll(walDir)
 		})
 
 		Context("when a node starts up", func() {
@@ -159,15 +192,7 @@ var _ = Describe("Chain", func() {
 
 		Context("when Raft leader is elected", func() {
 			JustBeforeEach(func() {
-				Eventually(func() bool {
-					clock.Increment(interval)
-					select {
-					case <-observeC:
-						return true
-					default:
-						return false
-					}
-				}).Should(BeTrue())
+				campaign(clock, observeC)
 			})
 
 			It("fails to order envelope if chain is halted", func() {
@@ -546,7 +571,216 @@ var _ = Describe("Chain", func() {
 					})
 				})
 			})
+
+			Describe("Crash Fault Tolerance", func() {
+				Describe("when a chain is started with existing WAL", func() {
+					var (
+						m1      *raftprotos.RaftMetadata
+						m2      *raftprotos.RaftMetadata
+						newOpts etcdraft.Options
+					)
+
+					BeforeEach(func() {
+						newOpts = opts                            // make a copy of Options
+						newOpts.Storage = raft.NewMemoryStorage() // create a fresh MemoryStorage
+					})
+
+					JustBeforeEach(func() {
+						// to generate WAL data, we start a chain,
+						// order several envelopes and then halt the chain.
+						close(cutter.Block)
+						cutter.CutNext = true
+						support.CreateNextBlockReturns(normalBlock)
+
+						// enque some data to be persisted on disk by raft
+						err := chain.Order(env, uint64(0))
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(support.WriteBlockCallCount).Should(Equal(1))
+
+						_, metadata := support.WriteBlockArgsForCall(0)
+						m1 = &raftprotos.RaftMetadata{}
+						proto.Unmarshal(metadata, m1)
+
+						err = chain.Order(env, uint64(0))
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(support.WriteBlockCallCount).Should(Equal(2))
+
+						_, metadata = support.WriteBlockArgsForCall(1)
+						m2 = &raftprotos.RaftMetadata{}
+						proto.Unmarshal(metadata, m2)
+
+						chain.Halt()
+					})
+
+					It("replays blocks from committed entries", func() {
+						c := newChain(10*time.Second, channelID, walDir, 0, 1, []uint64{1})
+						c.Start()
+						defer c.Halt()
+
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+
+						_, metadata := c.support.WriteBlockArgsForCall(0)
+						m := &raftprotos.RaftMetadata{}
+						proto.Unmarshal(metadata, m)
+						Expect(m.RaftIndex).To(Equal(m1.RaftIndex))
+
+						_, metadata = c.support.WriteBlockArgsForCall(1)
+						m = &raftprotos.RaftMetadata{}
+						proto.Unmarshal(metadata, m)
+						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
+
+						// chain should keep functioning
+						campaign(c.clock, c.observe)
+
+						c.cutter.CutNext = true
+						c.support.CreateNextBlockReturns(normalBlock)
+
+						err := c.Order(env, uint64(0))
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(3))
+					})
+
+					It("only replays blocks after Applied index", func() {
+						c := newChain(10*time.Second, channelID, walDir, m1.RaftIndex, 1, []uint64{1})
+						c.Start()
+						defer c.Halt()
+
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(1))
+
+						_, metadata := c.support.WriteBlockArgsForCall(0)
+						m := &raftprotos.RaftMetadata{}
+						proto.Unmarshal(metadata, m)
+						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
+
+						// chain should keep functioning
+						campaign(c.clock, c.observe)
+
+						c.cutter.CutNext = true
+						c.support.CreateNextBlockReturns(normalBlock)
+
+						err := c.Order(env, uint64(0))
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+					})
+
+					It("does not replay any block if already in sync", func() {
+						c := newChain(10*time.Second, channelID, walDir, m2.RaftIndex, 1, []uint64{1})
+						c.Start()
+						defer c.Halt()
+
+						Consistently(c.support.WriteBlockCallCount).Should(Equal(0))
+
+						// chain should keep functioning
+						campaign(c.clock, c.observe)
+
+						c.cutter.CutNext = true
+						c.support.CreateNextBlockReturns(normalBlock)
+
+						err := c.Order(env, uint64(0))
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(1))
+					})
+
+					Context("WAL file is not readable", func() {
+						It("fails to load wal", func() {
+							skipIfRoot()
+
+							files, err := ioutil.ReadDir(walDir)
+							Expect(err).NotTo(HaveOccurred())
+							for _, f := range files {
+								os.Chmod(path.Join(walDir, f.Name()), 0300)
+							}
+
+							c, err := etcdraft.NewChain(support, opts, configurator, nil, observeC)
+							Expect(c).To(BeNil())
+							Expect(err).To(MatchError(ContainSubstring("failed to open existing WAL")))
+						})
+					})
+				})
+			})
+
+			Context("Invalid WAL dir", func() {
+				var support = &consensusmocks.FakeConsenterSupport{}
+
+				When("WAL dir is a file", func() {
+					It("replaces file with fresh WAL dir", func() {
+						f, err := ioutil.TempFile("", "wal-")
+						Expect(err).NotTo(HaveOccurred())
+						defer os.RemoveAll(f.Name())
+
+						chain, err := etcdraft.NewChain(
+							support,
+							etcdraft.Options{
+								WALDir:       f.Name(),
+								Logger:       logger,
+								Storage:      storage,
+								RaftMetadata: &raftprotos.RaftMetadata{},
+							},
+							configurator,
+							nil,
+							observeC)
+						Expect(chain).NotTo(BeNil())
+						Expect(err).NotTo(HaveOccurred())
+
+						info, err := os.Stat(f.Name())
+						Expect(err).NotTo(HaveOccurred())
+						Expect(info.IsDir()).To(BeTrue())
+					})
+				})
+
+				When("WAL dir is not writeable", func() {
+					It("replace it with fresh WAL dir", func() {
+						d, err := ioutil.TempDir("", "wal-")
+						Expect(err).NotTo(HaveOccurred())
+						defer os.RemoveAll(d)
+
+						err = os.Chmod(d, 0500)
+						Expect(err).NotTo(HaveOccurred())
+
+						chain, err := etcdraft.NewChain(
+							support,
+							etcdraft.Options{
+								WALDir:       d,
+								Logger:       logger,
+								Storage:      storage,
+								RaftMetadata: &raftprotos.RaftMetadata{},
+							},
+							nil,
+							nil,
+							nil)
+						Expect(chain).NotTo(BeNil())
+						Expect(err).ToNot(HaveOccurred())
+					})
+				})
+
+				When("WAL parent dir is not writeable", func() {
+					It("fails to bootstrap fresh raft node", func() {
+						skipIfRoot()
+
+						d, err := ioutil.TempDir("", "wal-")
+						Expect(err).NotTo(HaveOccurred())
+						defer os.RemoveAll(d)
+
+						err = os.Chmod(d, 0500)
+						Expect(err).NotTo(HaveOccurred())
+
+						chain, err := etcdraft.NewChain(
+							support,
+							etcdraft.Options{
+								WALDir:       path.Join(d, "wal-dir"),
+								Logger:       logger,
+								RaftMetadata: &raftprotos.RaftMetadata{},
+							},
+							nil,
+							nil,
+							nil)
+						Expect(chain).To(BeNil())
+						Expect(err).To(MatchError(ContainSubstring("failed to initialize WAL: mkdir")))
+					})
+				})
+			})
 		})
+
 	})
 
 	Describe("Multiple Raft nodes", func() {
@@ -554,17 +788,27 @@ var _ = Describe("Chain", func() {
 			network    *network
 			channelID  string
 			timeout    time.Duration
+			dataDir    string
 			c1, c2, c3 *chain
 		)
 
 		BeforeEach(func() {
+			var err error
+
 			channelID = "multi-node-channel"
 			timeout = 10 * time.Second
 
-			network = createNetwork(timeout, channelID, []uint64{1, 2, 3})
+			dataDir, err = ioutil.TempDir("", "raft-test-")
+			Expect(err).NotTo(HaveOccurred())
+
+			network = createNetwork(timeout, channelID, dataDir, []uint64{1, 2, 3})
 			c1 = network.chains[1]
 			c2 = network.chains[2]
 			c3 = network.chains[3]
+		})
+
+		AfterEach(func() {
+			os.RemoveAll(dataDir)
 		})
 
 		When("2/3 nodes are running", func() {
@@ -772,7 +1016,7 @@ var _ = Describe("Chain", func() {
 					Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(0))
 					Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(0))
 
-					c1.clock.Increment(3 * interval)
+					c1.clock.Increment(time.Duration(n * int(interval/time.Millisecond)))
 					Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(1))
 					Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(1))
 				})
@@ -884,6 +1128,7 @@ type chain struct {
 	configurator *mocks.Configurator
 	rpc          *mocks.FakeRPC
 	storage      *raft.MemoryStorage
+	walDir       string
 	clock        *fakeclock.FakeClock
 	opts         etcdraft.Options
 
@@ -893,29 +1138,30 @@ type chain struct {
 	*etcdraft.Chain
 }
 
-func newChain(timeout time.Duration, channel string, id uint64, all []uint64) *chain {
+func newChain(timeout time.Duration, channel string, walDir string, applied uint64, id uint64, all []uint64) *chain {
 	rpc := &mocks.FakeRPC{}
 	clock := fakeclock.NewFakeClock(time.Now())
 	storage := raft.NewMemoryStorage()
 	tlsCA, _ := tlsgen.NewCA()
 
-	membership := &raftprotos.RaftMetadata{
+	meta := &raftprotos.RaftMetadata{
 		Consenters:      map[uint64]*raftprotos.Consenter{},
 		NextConsenterID: 1,
+		RaftIndex:       applied,
 	}
 
 	for _, raftID := range all {
-		membership.Consenters[uint64(raftID)] = &raftprotos.Consenter{
+		meta.Consenters[uint64(raftID)] = &raftprotos.Consenter{
 			Host:          "localhost",
 			Port:          7051,
 			ClientTlsCert: clientTLSCert(tlsCA),
 			ServerTlsCert: serverTLSCert(tlsCA),
 		}
-		if uint64(raftID) > membership.NextConsenterID {
-			membership.NextConsenterID = uint64(raftID)
+		if uint64(raftID) > meta.NextConsenterID {
+			meta.NextConsenterID = uint64(raftID)
 		}
 	}
-	membership.NextConsenterID++
+	meta.NextConsenterID++
 
 	opts := etcdraft.Options{
 		RaftID:          uint64(id),
@@ -925,9 +1171,10 @@ func newChain(timeout time.Duration, channel string, id uint64, all []uint64) *c
 		HeartbeatTick:   HEARTBEAT_TICK,
 		MaxSizePerMsg:   1024 * 1024,
 		MaxInflightMsgs: 256,
-		RaftMetadata:    membership,
+		RaftMetadata:    meta,
 		Logger:          flogging.NewFabricLogger(zap.NewNop()),
 		Storage:         storage,
+		WALDir:          walDir,
 	}
 
 	support := &consensusmocks.FakeConsenterSupport{}
@@ -979,7 +1226,7 @@ type network struct {
 	connectivity map[uint64]chan struct{}
 }
 
-func createNetwork(timeout time.Duration, channel string, ids []uint64) *network {
+func createNetwork(timeout time.Duration, channel string, dataDir string, ids []uint64) *network {
 	n := &network{
 		chains:       make(map[uint64]*chain),
 		connectivity: make(map[uint64]chan struct{}),
@@ -988,7 +1235,10 @@ func createNetwork(timeout time.Duration, channel string, ids []uint64) *network
 	for _, i := range ids {
 		n.connectivity[i] = make(chan struct{})
 
-		c := newChain(timeout, channel, i, ids)
+		dir, err := ioutil.TempDir(dataDir, fmt.Sprintf("node-%d-", i))
+		Expect(err).NotTo(HaveOccurred())
+
+		c := newChain(timeout, channel, dir, 0, i, ids)
 
 		c.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
 			n.connLock.RLock()
@@ -1118,7 +1368,7 @@ func (n *network) elect(id uint64) (tick int) {
 	// results in undeterministic behavior. Therefore
 	// we are going to wait for enough time after each
 	// tick so it could take effect.
-	t := 100 * time.Millisecond
+	t := 1000 * time.Millisecond
 
 	c := n.chains[id]
 

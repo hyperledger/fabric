@@ -89,5 +89,7 @@ Kafka:
 Debug:
     BroadcastTraceDir:
     DeliverTraceDir:
+Consensus:
+  WALDir: {{ .OrdererDir Orderer }}/etcdraft/wal
 {{- end }}
 `
