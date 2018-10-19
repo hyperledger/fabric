@@ -46,7 +46,7 @@
 
 BASE_VERSION = 1.3.1
 PREV_VERSION = 1.3.0
-CHAINTOOL_RELEASE=1.1.1
+CHAINTOOL_RELEASE=1.1.3
 BASEIMAGE_RELEASE=0.4.13
 
 # Allow to build as a submodule setting the main project to
