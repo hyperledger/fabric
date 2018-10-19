@@ -22,4 +22,6 @@ type SigningIdentity interface {
 	Identity //extends Identity
 
 	Sign(msg []byte) ([]byte, error)
+
+	GetPublicVersion() Identity
 }
