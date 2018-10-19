@@ -374,8 +374,8 @@ func (s *GossipStateProviderImpl) processStateRequests() {
 	}
 }
 
-// Handle state request message, validate batch size, read current leader state to
-// obtain required blocks, build response message and send it back
+// handleStateRequest handles state request message, validate batch size, reads current leader state to
+// obtain required blocks, builds response message and send it back
 func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) {
 	if msg == nil {
 		return
@@ -488,7 +488,7 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 	return max, nil
 }
 
-// Stop function send halting signal to all go routines
+// Stop function sends halting signal to all go routines
 func (s *GossipStateProviderImpl) Stop() {
 	// Make sure stop won't be executed twice
 	// and stop channel won't be used again
@@ -504,7 +504,7 @@ func (s *GossipStateProviderImpl) Stop() {
 	})
 }
 
-// New message notification/handler
+// queueNewMessage makes new message notification/handler
 func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 	if !bytes.Equal(msg.Channel, []byte(s.chainID)) {
 		logger.Warning("Received enqueue for channel",
@@ -601,7 +601,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 	}
 }
 
-// Iterate over all available peers and check advertised meta state to
+// maxAvailableLedgerHeight iterates over all available peers and checks advertised meta state to
 // find maximum available ledger height across peers
 func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	max := uint64(0)
@@ -618,7 +618,7 @@ func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	return max
 }
 
-// GetBlocksInRange capable to acquire blocks with sequence
+// requestBlocksInRange capable to acquire blocks with sequence
 // numbers in the range [start...end).
 func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64) {
 	atomic.StoreInt32(&s.stateTransferActive, 1)
@@ -676,7 +676,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 	}
 }
 
-// Generate state request message for given blocks in range [beginSeq...endSeq]
+// stateRequestMessage generates state request message for given blocks in range [beginSeq...endSeq]
 func (s *GossipStateProviderImpl) stateRequestMessage(beginSeq uint64, endSeq uint64) *proto.GossipMessage {
 	return &proto.GossipMessage{
 		Nonce:   util.RandomUInt64(),
@@ -691,7 +691,7 @@ func (s *GossipStateProviderImpl) stateRequestMessage(beginSeq uint64, endSeq ui
 	}
 }
 
-// Select peer which has required blocks to ask missing blocks from
+// selectPeerToRequestFrom selects peer which has required blocks to ask missing blocks from
 func (s *GossipStateProviderImpl) selectPeerToRequestFrom(height uint64) (*comm.RemotePeer, error) {
 	// Filter peers which posses required range of missing blocks
 	peers := s.filterPeers(s.hasRequiredHeight(height))
@@ -705,7 +705,7 @@ func (s *GossipStateProviderImpl) selectPeerToRequestFrom(height uint64) (*comm.
 	return peers[util.RandomInt(n)], nil
 }
 
-// filterPeers return list of peers which aligns the predicate provided
+// filterPeers returns list of peers which aligns the predicate provided
 func (s *GossipStateProviderImpl) filterPeers(predicate func(peer discovery.NetworkMember) bool) []*comm.RemotePeer {
 	var peers []*comm.RemotePeer
 
@@ -730,7 +730,7 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 	}
 }
 
-// AddPayload add new payload into state.
+// AddPayload adds new payload into state.
 func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 	blockingMode := blocking
 	if viper.GetBool("peer.gossip.nonBlockingCommitMode") {
@@ -739,7 +739,7 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 	return s.addPayload(payload, blockingMode)
 }
 
-// addPayload add new payload into state. It may (or may not) block according to the
+// addPayload adds new payload into state. It may (or may not) block according to the
 // given parameter. If it gets a block while in blocking mode - it would wait until
 // the block is sent into the payloads buffer.
 // Else - it may drop the block, if the payload buffer is too full.
