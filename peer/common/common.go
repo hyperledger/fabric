@@ -222,26 +222,6 @@ func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endor
 	return bundle.ChannelConfig().OrdererAddresses(), nil
 }
 
-// SetLogLevelFromViper sets the log level for 'module' logger to the value in
-// core.yaml
-func SetLogLevelFromViper(module string) error {
-	var err error
-	if module == "" {
-		return errors.New("log level not set, no module name provided")
-	}
-	logLevelFromViper := viper.GetString("logging." + module)
-	err = CheckLogLevel(logLevelFromViper)
-	if err != nil {
-		return err
-	}
-	// replace period in module name with forward slash to allow override
-	// of logging submodules
-	module = strings.Replace(module, ".", "/", -1)
-	// only set logging modules that begin with the supplied module name here
-	err = flogging.SetModuleLevels("^"+module, logLevelFromViper)
-	return err
-}
-
 // CheckLogLevel checks that a given log level string is valid
 func CheckLogLevel(level string) error {
 	if !flogging.IsValidLevel(level) {
@@ -302,12 +282,17 @@ func InitCmd(cmd *cobra.Command, args []string) {
 	// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
 	// (environment variable takes priority; otherwise, the value set in
 	// core.yaml)
-	var loggingSpec string
+	var loggingLevel string
 	if viper.GetString("logging_level") != "" {
-		loggingSpec = viper.GetString("logging_level")
+		loggingLevel = viper.GetString("logging_level")
 	} else {
-		loggingSpec = viper.GetString("logging.level")
+		loggingLevel = viper.GetString("logging.level")
 	}
+	loggingSpec := os.Getenv("FABRIC_LOGGING_SPEC")
+	if loggingLevel != "" {
+		mainLogger.Warning("CORE_LOGGING_LEVEL is no longer supported, please use FABRIC_LOGGING_SPEC environment variable.")
+	}
+
 	flogging.Init(flogging.Config{
 		Format:  viper.GetString("logging.format"),
 		Writer:  logOutput,

@@ -22,7 +22,6 @@ type Core struct {
 }
 
 type Logging struct {
-	Level  string `yaml:"level,omitempty"`
 	Format string `yaml:"format,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
