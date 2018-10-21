@@ -9,13 +9,13 @@ type BlockVerifier struct {
 	mock.Mock
 }
 
-// VerifyBlockSignature provides a mock function with given fields: sd
-func (_m *BlockVerifier) VerifyBlockSignature(sd []*common.SignedData) error {
-	ret := _m.Called(sd)
+// VerifyBlockSignature provides a mock function with given fields: sd, config
+func (_m *BlockVerifier) VerifyBlockSignature(sd []*common.SignedData, config *common.ConfigEnvelope) error {
+	ret := _m.Called(sd, config)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]*common.SignedData) error); ok {
-		r0 = rf(sd)
+	if rf, ok := ret.Get(0).(func([]*common.SignedData, *common.ConfigEnvelope) error); ok {
+		r0 = rf(sd, config)
 	} else {
 		r0 = ret.Error(0)
 	}

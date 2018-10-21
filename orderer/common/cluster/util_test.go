@@ -9,6 +9,7 @@ package cluster_test
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"io/ioutil"
 	"sync"
 	"testing"
@@ -21,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -112,12 +112,13 @@ func TestStandardDialerDialer(t *testing.T) {
 
 func TestVerifyBlockSignature(t *testing.T) {
 	verifier := &mocks.BlockVerifier{}
-	verifier.On("VerifyBlockSignature", mock.Anything).Return(nil)
+	var nilConfigEnvelope *common.ConfigEnvelope
+	verifier.On("VerifyBlockSignature", mock.Anything, nilConfigEnvelope).Return(nil)
 
 	block := createBlockChain(3, 3)[0]
 
 	// The block should have a valid structure
-	err := cluster.VerifyBlockSignature(block, verifier)
+	err := cluster.VerifyBlockSignature(block, verifier, nil)
 	assert.NoError(t, err)
 
 	for _, testCase := range []struct {
@@ -168,7 +169,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 			assert.NoError(t, err)
 			// Mutate the block to sabotage it
 			blockCopy = testCase.mutateBlock(blockCopy)
-			err = cluster.VerifyBlockSignature(blockCopy, verifier)
+			err = cluster.VerifyBlockSignature(blockCopy, verifier, nil)
 			assert.Contains(t, err.Error(), testCase.errorContains)
 		})
 	}
@@ -216,7 +217,7 @@ func TestVerifyBlockHash(t *testing.T) {
 		},
 		{
 			name: "data hash mismatch",
-			errorContains: "computed hash of block (13) (cd00e292c5970d3c5e2f0ffa5171e555bc46bfc4faddfb4a418b6840b86e79a3)" +
+			errorContains: "computed hash of block (13) (dcb2ec1c5e482e4914cb953ff8eedd12774b244b12912afbe6001ba5de9ff800)" +
 				" doesn't match claimed hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.DataHash = []byte{7}
@@ -226,7 +227,7 @@ func TestVerifyBlockHash(t *testing.T) {
 		{
 			name: "prev hash mismatch",
 			errorContains: "block 13's hash " +
-				"(89c561fb407ef3e7feb5f0140d83cec7f6c8f9ace2e38b59ae6373c72304a386) " +
+				"(866351705f1c2f13e10d52ead9d0ca3b80689ede8cc8bf70a6d60c67578323f4) " +
 				"mismatches 12's prev block hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.PreviousHash = []byte{7}
@@ -253,9 +254,35 @@ func TestVerifyBlockHash(t *testing.T) {
 }
 
 func TestVerifyBlocks(t *testing.T) {
+	var sigSet1 []*common.SignedData
+	var sigSet2 []*common.SignedData
+
+	configEnvelope1 := &common.ConfigEnvelope{
+		Config: &common.Config{
+			Sequence: 1,
+		},
+	}
+	configEnvelope2 := &common.ConfigEnvelope{
+		Config: &common.Config{
+			Sequence: 2,
+		},
+	}
+	configTransaction := func(envelope *common.ConfigEnvelope) *common.Envelope {
+		return &common.Envelope{
+			Payload: utils.MarshalOrPanic(&common.Payload{
+				Data: utils.MarshalOrPanic(envelope),
+				Header: &common.Header{
+					ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+						Type: int32(common.HeaderType_CONFIG),
+					}),
+				},
+			}),
+		}
+	}
+
 	for _, testCase := range []struct {
 		name                string
-		verifierReturns     error
+		configureVerifier   func(*mocks.BlockVerifier)
 		mutateBlockSequence func([]*common.Block) []*common.Block
 		expectedError       string
 	}{
@@ -273,7 +300,7 @@ func TestVerifyBlocks(t *testing.T) {
 				return blockSequence
 			},
 			expectedError: "block 75's hash " +
-				"(0515ada3e221589634db8be7f3b614e955f7af283cbcdc4fed6c9cbbe9984c98) " +
+				"(5cb4bd1b6a73f81afafd96387bb7ff4473c2425929d0862586f5fbfa12d762dd) " +
 				"mismatches 74's prev block hash (07)",
 		},
 		{
@@ -281,18 +308,101 @@ func TestVerifyBlocks(t *testing.T) {
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				return blockSequence
 			},
-			verifierReturns: errors.New("bad signature"),
-			expectedError:   "bad signature",
+			configureVerifier: func(verifier *mocks.BlockVerifier) {
+				var nilEnvelope *common.ConfigEnvelope
+				verifier.On("VerifyBlockSignature", mock.Anything, nilEnvelope).Return(errors.New("bad signature"))
+			},
+			expectedError: "bad signature",
+		},
+		{
+			name: "block that its type cannot be classified",
+			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
+				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{})},
+				}
+				blockSequence[len(blockSequence)/2].Header.DataHash = blockSequence[len(blockSequence)/2].Data.Hash()
+				assignHashes(blockSequence)
+				return blockSequence
+			},
+			expectedError: "nil header in payload",
+		},
+		{
+			name: "config blocks in the sequence need to be verified and one of them is improperly signed",
+			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
+				var err error
+				// Put a config transaction in block n / 4
+				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope1))},
+				}
+				blockSequence[len(blockSequence)/4].Header.DataHash = blockSequence[len(blockSequence)/4].Data.Hash()
+
+				// Put a config transaction in block n / 2
+				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope2))},
+				}
+				blockSequence[len(blockSequence)/2].Header.DataHash = blockSequence[len(blockSequence)/2].Data.Hash()
+
+				assignHashes(blockSequence)
+
+				sigSet1, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)/4])
+				assert.NoError(t, err)
+				sigSet2, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)/2])
+				assert.NoError(t, err)
+
+				return blockSequence
+			},
+			configureVerifier: func(verifier *mocks.BlockVerifier) {
+				var nilEnvelope *common.ConfigEnvelope
+				// The first config block, validates correctly.
+				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
+				// However, the second config block - validates incorrectly.
+				confEnv1 := &common.ConfigEnvelope{}
+				proto.Unmarshal(utils.MarshalOrPanic(configEnvelope1), confEnv1)
+				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(errors.New("bad signature")).Once()
+			},
+			expectedError: "bad signature",
+		},
+		{
+			name: "config block in the sequence needs to be verified, and it isproperly signed",
+			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
+				var err error
+				// Put a config transaction in block n / 4
+				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope1))},
+				}
+				blockSequence[len(blockSequence)/4].Header.DataHash = blockSequence[len(blockSequence)/4].Data.Hash()
+
+				assignHashes(blockSequence)
+
+				sigSet1, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)/4])
+				assert.NoError(t, err)
+
+				sigSet2, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)-1])
+				assert.NoError(t, err)
+
+				return blockSequence
+			},
+			configureVerifier: func(verifier *mocks.BlockVerifier) {
+				var nilEnvelope *common.ConfigEnvelope
+				confEnv1 := &common.ConfigEnvelope{}
+				proto.Unmarshal(utils.MarshalOrPanic(configEnvelope1), confEnv1)
+				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
+				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(nil).Once()
+			},
 		},
 	} {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			verifier := &mocks.BlockVerifier{}
-			verifier.On("VerifyBlockSignature", mock.Anything).Return(testCase.verifierReturns)
 			blockchain := createBlockChain(50, 100)
 			blockchain = testCase.mutateBlockSequence(blockchain)
+			verifier := &mocks.BlockVerifier{}
+			if testCase.configureVerifier != nil {
+				testCase.configureVerifier(verifier)
+			}
 			err := cluster.VerifyBlocks(blockchain, verifier)
-			assert.EqualError(t, err, testCase.expectedError)
+			if testCase.expectedError != "" {
+				assert.EqualError(t, err, testCase.expectedError)
+			}
 		})
 	}
 }
@@ -319,6 +429,13 @@ func createBlockChain(start, end uint64) []*common.Block {
 				blockSignature,
 			},
 		})
+
+		txn := utils.MarshalOrPanic(&common.Envelope{
+			Payload: utils.MarshalOrPanic(&common.Payload{
+				Header: &common.Header{},
+			}),
+		})
+		block.Data.Data = append(block.Data.Data, txn)
 		return block
 	}
 	var blockchain []*common.Block
@@ -418,4 +535,76 @@ func TestClientConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{1, 2, 3}, cc.SecOpts.Key)
 	})
+}
+
+func TestConfigFromBlockBadInput(t *testing.T) {
+	for _, testCase := range []struct {
+		name          string
+		block         *common.Block
+		expectedError string
+	}{
+		{
+			name:          "nil block",
+			expectedError: "empty block",
+			block:         nil,
+		},
+		{
+			name:          "nil block data",
+			expectedError: "empty block",
+			block:         &common.Block{},
+		},
+		{
+			name:          "no data in block",
+			expectedError: "empty block",
+			block:         &common.Block{Data: &common.BlockData{}},
+		},
+		{
+			name:          "invalid envelope in block",
+			expectedError: "error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
+			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
+		},
+		{
+			name:          "invalid payload in block envelope",
+			expectedError: "error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
+			block: &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+				Payload: []byte{1, 2, 3},
+			})}}},
+		},
+		{
+			name:          "nil header in payload",
+			expectedError: "nil header in payload",
+			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{})}}},
+		},
+		{
+			name:          "invalid channel header",
+			expectedError: "error unmarshaling ChannelHeader: proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
+			block: &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+				Payload: utils.MarshalOrPanic(&common.Payload{
+					Header: &common.Header{
+						ChannelHeader: []byte{1, 2, 3},
+					},
+				}),
+			})}}},
+		},
+		{
+			name:          "invalid config block",
+			expectedError: "invalid config envelope: proto: common.ConfigEnvelope: illegal tag 0 (wire type 1)",
+			block: &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+				Payload: utils.MarshalOrPanic(&common.Payload{
+					Data: []byte{1, 2, 3},
+					Header: &common.Header{
+						ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+							Type: int32(common.HeaderType_CONFIG),
+						}),
+					},
+				}),
+			})}}},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			conf, err := cluster.ConfigFromBlock(testCase.block)
+			assert.Nil(t, conf)
+			assert.EqualError(t, err, testCase.expectedError)
+		})
+	}
 }

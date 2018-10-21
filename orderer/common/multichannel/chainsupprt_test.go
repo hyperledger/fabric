@@ -13,8 +13,12 @@ import (
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	"github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
@@ -51,7 +55,8 @@ func TestVerifyBlockSignature(t *testing.T) {
 	}
 	ms := &mutableResourcesMock{
 		Resources: config.Resources{
-			PolicyManagerVal: policyMgr,
+			ConfigtxValidatorVal: &configtx.Validator{ChainIDVal: "mychannel"},
+			PolicyManagerVal:     policyMgr,
 		},
 	}
 	cs := &ChainSupport{
@@ -64,7 +69,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 
 	// Scenario I: Policy manager isn't initialized
 	// and thus policy cannot be found
-	err := cs.VerifyBlockSignature([]*common.SignedData{})
+	err := cs.VerifyBlockSignature([]*common.SignedData{}, nil)
 	assert.EqualError(t, err, "policy /Channel/Orderer/BlockValidation wasn't found")
 
 	// Scenario II: Policy manager finds policy, but it evaluates
@@ -72,12 +77,32 @@ func TestVerifyBlockSignature(t *testing.T) {
 	policyMgr.PolicyMap["/Channel/Orderer/BlockValidation"] = &mockpolicies.Policy{
 		Err: errors.New("invalid signature"),
 	}
-	err = cs.VerifyBlockSignature([]*common.SignedData{})
+	err = cs.VerifyBlockSignature([]*common.SignedData{}, nil)
 	assert.EqualError(t, err, "block verification failed: invalid signature")
 
 	// Scenario III: Policy manager finds policy, and it evaluates to success
 	policyMgr.PolicyMap["/Channel/Orderer/BlockValidation"] = &mockpolicies.Policy{
 		Err: nil,
 	}
-	assert.NoError(t, cs.VerifyBlockSignature([]*common.SignedData{}))
+	assert.NoError(t, cs.VerifyBlockSignature([]*common.SignedData{}, nil))
+
+	// Scenario IV: A bad config envelope is passed
+	err = cs.VerifyBlockSignature([]*common.SignedData{}, &common.ConfigEnvelope{})
+	assert.EqualError(t, err, "channelconfig Config cannot be nil")
+
+	// Scenario V: A valid config envelope is passed
+	assert.NoError(t, cs.VerifyBlockSignature([]*common.SignedData{}, testConfigEnvelope(t)))
+
+}
+
+func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
+	config := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	group, err := encoder.NewChannelGroup(config)
+	assert.NoError(t, err)
+	assert.NotNil(t, group)
+	return &common.ConfigEnvelope{
+		Config: &common.Config{
+			ChannelGroup: group,
+		},
+	}
 }

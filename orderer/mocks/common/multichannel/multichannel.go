@@ -155,6 +155,6 @@ func (mcs *ConsenterSupport) Sequence() uint64 {
 }
 
 // VerifyBlockSignature verifies a signature of a block
-func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*cb.SignedData) error {
+func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*cb.SignedData, _ *cb.ConfigEnvelope) error {
 	return mcs.BlockVerificationErr
 }

@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
@@ -187,8 +188,13 @@ func (bdp *StandardDialer) Dial(address string) (*grpc.ClientConn, error) {
 
 // BlockVerifier verifies block signatures.
 type BlockVerifier interface {
-	// VerifyBlockSignature verifies a signature of a block
-	VerifyBlockSignature(sd []*common.SignedData) error
+	// VerifyBlockSignature verifies a signature of a block.
+	// It has an optional argument of a configuration envelope
+	// which would make the block verification to use validation rules
+	// based on the given configuration in the ConfigEnvelope.
+	// If the config envelope passed is nil, then the validation rules used
+	// are the ones that were applied at commit of previous blocks.
+	VerifyBlockSignature(sd []*common.SignedData, config *common.ConfigEnvelope) error
 }
 
 // BlockSequenceVerifier verifies that the given consecutive sequence
@@ -215,9 +221,62 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 		}
 	}
 
+	var config *common.ConfigEnvelope
+	// Verify all configuration blocks that are found inside the block batch,
+	// with the configuration that was committed (nil) or with one that is picked up
+	// during iteration over the block batch.
+	for _, block := range blockBuff {
+		configFromBlock, err := ConfigFromBlock(block)
+		if err == notAConfig {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		// The block is a configuration block, so verify it
+		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
+			return err
+		}
+		config = configFromBlock
+	}
+
 	// Verify the last block's signature
 	lastBlock := blockBuff[len(blockBuff)-1]
-	return VerifyBlockSignature(lastBlock, signatureVerifier)
+	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
+}
+
+var notAConfig = errors.New("not a config block")
+
+// ConfigFromBlock returns a ConfigEnvelope if exists, or a *NotAConfigBlock error.
+// It may also return some other error in case parsing failed.
+func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
+	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, errors.New("empty block")
+	}
+	txn := block.Data.Data[0]
+	env, err := utils.GetEnvelopeFromBlock(txn)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	payload, err := utils.GetPayload(env)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if payload.Header == nil {
+		return nil, errors.New("nil header in payload")
+	}
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
+		return nil, notAConfig
+	}
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid config envelope")
+	}
+	return configEnvelope, nil
 }
 
 // VerifyBlockHash verifies the hash chain of the block with the given index
@@ -260,21 +319,21 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	return nil
 }
 
-// VerifyBlockSignature verifies the signature on the block with the given BlockVerifier
-func VerifyBlockSignature(block *common.Block, verifier BlockVerifier) error {
+// SignatureSetFromBlock creates a signature set out of a block.
+func SignatureSetFromBlock(block *common.Block) ([]*common.SignedData, error) {
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
-		return errors.New("no metadata in block")
+		return nil, errors.New("no metadata in block")
 	}
 	metadata, err := utils.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
 	if err != nil {
-		return errors.Errorf("failed unmarshaling medatata for signatures: %v", err)
+		return nil, errors.Errorf("failed unmarshaling medatata for signatures: %v", err)
 	}
 
 	var signatureSet []*common.SignedData
 	for _, metadataSignature := range metadata.Signatures {
 		sigHdr, err := utils.GetSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
-			return errors.Errorf("failed unmarshaling signature header for block with id %d: %v",
+			return nil, errors.Errorf("failed unmarshaling signature header for block with id %d: %v",
 				block.Header.Number, err)
 		}
 		signatureSet = append(signatureSet,
@@ -286,8 +345,16 @@ func VerifyBlockSignature(block *common.Block, verifier BlockVerifier) error {
 			},
 		)
 	}
+	return signatureSet, nil
+}
 
-	return verifier.VerifyBlockSignature(signatureSet)
+// VerifyBlockSignature verifies the signature on the block with the given BlockVerifier and the given config.
+func VerifyBlockSignature(block *common.Block, verifier BlockVerifier, config *common.ConfigEnvelope) error {
+	signatureSet, err := SignatureSetFromBlock(block)
+	if err != nil {
+		return err
+	}
+	return verifier.VerifyBlockSignature(signatureSet, config)
 }
 
 // EndpointConfig defines a configuration

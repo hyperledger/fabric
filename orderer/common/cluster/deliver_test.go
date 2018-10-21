@@ -610,12 +610,6 @@ func TestBlockPullerFailures(t *testing.T) {
 		osn.Unlock()
 	}
 
-	malformBlockSignature := func(_ *deliverServer, bp *cluster.BlockPuller) {
-		bp.VerifyBlockSequence = func([]*common.Block) error {
-			return errors.New("bad signature")
-		}
-	}
-
 	malformBlockSignatureAndRecreateOSNBuffer := func(osn *deliverServer, bp *cluster.BlockPuller) {
 		bp.VerifyBlockSequence = func([]*common.Block) error {
 			close(osn.blockResponses)
@@ -689,23 +683,6 @@ func TestBlockPullerFailures(t *testing.T) {
 				osn.addExpectPullAssert(1)
 			},
 			failFunc: failStream,
-		},
-		{
-			name:       "failure at verifying probe block",
-			logTrigger: "skip this for this test case",
-			beforeFunc: func(osn *deliverServer, bp *cluster.BlockPuller) {
-				malformBlockSignature(nil, bp)
-				// The first seek request asks for the latest block but it's signature is malformed
-				osn.addExpectProbeAssert()
-				osn.enqueueResponse(3)
-				// So it asks again
-				osn.addExpectProbeAssert()
-				// And the last block sequence is returned
-				osn.enqueueResponse(3)
-				// The next seek request is for block 1
-				osn.addExpectPullAssert(1)
-			},
-			failFunc: noFailFunc,
 		},
 		{
 			name:       "failure at verifying pulled block",
