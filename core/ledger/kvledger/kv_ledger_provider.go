@@ -74,7 +74,7 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 
 // Initialize implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Initialize(initializer *ledger.Initializer) {
-	configHistoryMgr := confighistory.NewMgr()
+	configHistoryMgr := confighistory.NewMgr(initializer.DeployedChaincodeInfoProvider)
 	collElgNotifier := &collElgNotifier{
 		initializer.DeployedChaincodeInfoProvider,
 		initializer.MembershipInfoProvider,

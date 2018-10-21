@@ -12,9 +12,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
@@ -25,9 +25,29 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestWithNoCollectionConfig(t *testing.T) {
+	dbPath := "/tmp/fabric/core/ledger/confighistory"
+	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	env := newTestEnv(t, dbPath, mockCCInfoProvider)
+	mgr := env.mgr
+	defer env.cleanup()
+	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, "chaincode1", nil)
+	err := mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
+		LedgerID:           "ledger1",
+		CommittingBlockNum: 50},
+	)
+	assert.NoError(t, err)
+	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{info: &common.BlockchainInfo{Height: 100}}
+	retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+	collConfig, err := retriever.MostRecentCollectionConfigBelow(90, "chaincode1")
+	assert.NoError(t, err)
+	assert.Nil(t, collConfig)
+}
+
 func TestMgr(t *testing.T) {
 	dbPath := "/tmp/fabric/core/ledger/confighistory"
-	env := newTestEnv(t, dbPath)
+	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	env := newTestEnv(t, dbPath, mockCCInfoProvider)
 	mgr := env.mgr
 	defer env.cleanup()
 	chaincodeName := "chaincode1"
@@ -41,10 +61,9 @@ func TestMgr(t *testing.T) {
 		for _, committingBlockNum := range configCommittingBlockNums {
 			// for each ledgerid and commitHeight combination, construct a unique collConfigPackage and induce a stateUpdate
 			collConfigPackage := sampleCollectionConfigPackage(ledgerid, committingBlockNum)
-			stateUpdate := sampleStateUpdate(t, chaincodeName, collConfigPackage)
+			testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, chaincodeName, collConfigPackage)
 			mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 				LedgerID:           ledgerid,
-				StateUpdates:       stateUpdate,
 				CommittingBlockNum: committingBlockNum},
 			)
 		}
@@ -103,10 +122,10 @@ type testEnv struct {
 	t      *testing.T
 }
 
-func newTestEnv(t *testing.T, dbPath string) *testEnv {
+func newTestEnv(t *testing.T, dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) *testEnv {
 	env := &testEnv{dbPath: dbPath, t: t}
 	env.cleanup()
-	env.mgr = newMgr(dbPath)
+	env.mgr = newMgr(ccInfoProvider, dbPath)
 	return env
 }
 
@@ -123,15 +142,20 @@ func sampleCollectionConfigPackage(collNamePart1 string, collNamePart2 uint64) *
 	return collConfigPackage
 }
 
-func sampleStateUpdate(t *testing.T, ccName string, collConfigPackage *common.CollectionConfigPackage) ledger.StateUpdates {
-	b, err := proto.Marshal(collConfigPackage)
-	assert.NoError(t, err)
-	return ledger.StateUpdates{
-		lsccNamespace: []*kvrwset.KVWrite{
-			{Key: ccName, Value: []byte("ccHash")},
-			{Key: constructCollectionConfigKey(ccName), Value: b},
+func testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
+	mockCCInfoProvider *mock.DeployedChaincodeInfoProvider,
+	chaincodeName string,
+	collConfigPackage *common.CollectionConfigPackage) {
+	mockCCInfoProvider.UpdatedChaincodesReturns(
+		[]*ledger.ChaincodeLifecycleInfo{
+			{Name: chaincodeName},
 		},
-	}
+		nil,
+	)
+	mockCCInfoProvider.ChaincodeInfoReturns(
+		&ledger.DeployedChaincodeInfo{Name: chaincodeName, CollectionConfigPkg: collConfigPackage},
+		nil,
+	)
 }
 
 type dummyLedgerInfoRetriever struct {
