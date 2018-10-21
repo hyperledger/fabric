@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -1059,9 +1058,12 @@ func TestDeleteOnCursor(t *testing.T) {
 func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	ledgerid := "TestTxSimulatorMissingPvtdataExpiry"
 	testEnv := testEnvs[0]
-	cs := btltestutil.NewMockCollectionStore()
-	cs.SetBTL("ns", "coll", 1)
-	testEnv.init(t, ledgerid, pvtdatapolicy.ConstructBTLPolicy(cs))
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns", "coll"}: 1,
+		},
+	)
+	testEnv.init(t, ledgerid, btlPolicy)
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
@@ -1157,9 +1159,11 @@ func testTxWithPubMetadata(t *testing.T, env testEnv) {
 
 func TestTxWithPvtdataMetadata(t *testing.T) {
 	ledgerid, ns, coll := "testtxwithpvtdatametadata", "ns", "coll"
-	cs := btltestutil.NewMockCollectionStore()
-	cs.SetBTL("ns", "coll", 1000)
-	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(cs)
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns", "coll"}: 1000,
+		},
+	)
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testEnv.init(t, ledgerid, btlPolicy)

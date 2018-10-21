@@ -192,7 +192,9 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 func TestKVLedgerDBRecovery(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	provider := testutilNewProvider(t)
+	provider := testutilNewProviderWithCollectionConfig(t,
+		"ns", map[string]uint64{"coll": 0},
+	)
 	defer provider.Close()
 	testLedgerid := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, testLedgerid, false)
@@ -264,7 +266,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	// Here the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// StateDB and HistoryDB should be recovered before returning from NewKVLedger call
-	provider = testutilNewProvider(t)
+	provider = testutilNewProviderWithCollectionConfig(t,
+		"ns", map[string]uint64{"coll": 0},
+	)
 	ledger, _ = provider.Open(testLedgerid)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
@@ -312,7 +316,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	// we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// history DB should be recovered before returning from NewKVLedger call
-	provider = testutilNewProvider(t)
+	provider = testutilNewProviderWithCollectionConfig(t,
+		"ns", map[string]uint64{"coll": 0},
+	)
 	ledger, _ = provider.Open(testLedgerid)
 
 	checkBCSummaryForTest(t, ledger,
@@ -361,7 +367,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	// we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// state DB should be recovered before returning from NewKVLedger call
-	provider = testutilNewProvider(t)
+	provider = testutilNewProviderWithCollectionConfig(t,
+		"ns", map[string]uint64{"coll": 0},
+	)
 	ledger, _ = provider.Open(testLedgerid)
 	checkBCSummaryForTest(t, ledger,
 		&bcSummary{
