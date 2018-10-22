@@ -211,6 +211,12 @@ func (stub *MockStub) PutState(key string, value []byte) error {
 		return err
 	}
 
+	// If the value is nil or empty, delete the key
+	if len(value) == 0 {
+		mockLogger.Debug("MockStub", stub.Name, "PutState called, but value is nil or empty. Delete ", key)
+		return stub.DelState(key)
+	}
+
 	mockLogger.Debug("MockStub", stub.Name, "Putting", key, value)
 	stub.State[key] = value
 
