@@ -680,6 +680,50 @@ var _ = Describe("Chain", func() {
 					Eventually(c3.support.WriteBlockCallCount).Should(Equal(2))
 				})
 
+				It("follower cannot be elected if its log is not up-to-date", func() {
+					network.disconnect(2)
+
+					c1.cutter.CutNext = true
+					err := c1.Order(env, 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					Eventually(c1.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+
+					network.disconnect(1)
+					network.connect(2)
+
+					// node 2 has not caught up with other nodes
+					for tick := 0; tick < 2*ELECTION_TICK-1; tick++ {
+						c2.clock.Increment(interval)
+						Consistently(c2.observe).ShouldNot(Receive(Equal(2)))
+					}
+
+					Eventually(c3.observe).Should(Receive(Equal(uint64(0))))
+					network.elect(3) // node 3 has newest logs among 2&3, so it can be elected
+				})
+
+				It("follower can catch up and then campaign with success", func() {
+					network.disconnect(2)
+
+					c1.cutter.CutNext = true
+					for i := 0; i < 10; i++ {
+						err := c1.Order(env, 0)
+						Expect(err).NotTo(HaveOccurred())
+					}
+
+					Eventually(c1.support.WriteBlockCallCount).Should(Equal(10))
+					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c3.support.WriteBlockCallCount).Should(Equal(10))
+
+					network.rejoin(2, false)
+					Eventually(c2.support.WriteBlockCallCount).Should(Equal(10))
+
+					network.disconnect(1)
+					network.elect(2)
+				})
+
 				It("purges blockcutter and stops timer if leadership is lost", func() {
 					// enqueue one transaction into 1's blockcutter
 					err := c1.Order(env, 0)
@@ -688,13 +732,11 @@ var _ = Describe("Chain", func() {
 
 					network.disconnect(1)
 					network.elect(2)
-					network.connect(1)
+					network.rejoin(1, true)
 
-					// 1 steps down upon reconnect
-					c2.clock.Increment(interval)                             // trigger a heartbeat msg being sent from 2 to 1
-					Eventually(c1.observe).Should(Receive(Equal(uint64(2)))) // leader change
-					Expect(c1.clock.WatcherCount()).To(Equal(1))             // blockcutter time is stopped
+					Eventually(c1.clock.WatcherCount).Should(Equal(1)) // blockcutter time is stopped
 
+					Expect(c1.clock.WatcherCount()).To(Equal(1)) // blockcutter time is stopped
 					Eventually(c1.cutter.CurBatch).Should(HaveLen(0))
 
 					network.disconnect(2)
@@ -843,6 +885,7 @@ type chain struct {
 	rpc          *mocks.FakeRPC
 	storage      *raft.MemoryStorage
 	clock        *fakeclock.FakeClock
+	opts         etcdraft.Options
 
 	observe   chan uint64
 	unstarted chan struct{}
@@ -918,11 +961,13 @@ func newChain(timeout time.Duration, channel string, id uint64, all []uint64) *c
 		observe:   observe,
 		clock:     clock,
 		unstarted: ch,
+		opts:      opts,
 		Chain:     c,
 	}
 }
 
 type network struct {
+	leader uint64
 	chains map[uint64]*chain
 
 	// used to determine connectivity of a chain.
@@ -1046,16 +1091,28 @@ func (n *network) exec(f func(c *chain), ids ...uint64) {
 	}
 }
 
+// connect a node to network and tick on leader to trigger
+// a heartbeat so newly joined node can detect leader.
+func (n *network) rejoin(id uint64, wasLeader bool) {
+	n.connect(id)
+	n.chains[n.leader].clock.Increment(interval)
+
+	if wasLeader {
+		Eventually(n.chains[id].observe).Should(Receive(Equal(n.leader)))
+	} else {
+		Consistently(n.chains[id].observe).ShouldNot(Receive())
+	}
+
+	// wait for newly joined node to catch up with leader
+	i, err := n.chains[n.leader].opts.Storage.LastIndex()
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(n.chains[id].opts.Storage.LastIndex).Should(Equal(i))
+}
+
 // elect deterministically elects a node as leader
 // by only ticking timer on that node. It returns
 // the actual number of ticks in case test needs it.
 func (n *network) elect(id uint64) (tick int) {
-	// etcd/raft election timeout is randomized in
-	// [electiontimeout, 2 * electiontimeout - 1].
-	// To guarantee a leader election is triggered,
-	// we are going to tick-and-observe till node
-	// is elected or 2*ElectionTick ticks triggered.
-
 	// Also, due to the way fake clock is implemented,
 	// a slow consumer MAY skip a tick, which could
 	// results in undeterministic behavior. Therefore
@@ -1065,17 +1122,8 @@ func (n *network) elect(id uint64) (tick int) {
 
 	c := n.chains[id]
 
-	// ticks in (1, electiontimeout) should not trigger leader election
-	for tick < ELECTION_TICK-1 {
-		c.clock.Increment(interval)
-		tick++
-		Consistently(c.observe, t).ShouldNot(Receive())
-	}
-
-	// ticks in [electiontimeout, 2 * electiontimeout - 1] should trigger
-	// leader election, we listen on observe channel for every tick.
 	var elected bool
-	for tick < 2*ELECTION_TICK-1 {
+	for !elected {
 		c.clock.Increment(interval)
 		tick++
 
@@ -1100,8 +1148,6 @@ func (n *network) elect(id uint64) (tick int) {
 		}
 	}
 
-	Expect(elected).To(BeTrue())
-
 	// now observe leader change on other nodes
 	for _, c := range n.chains {
 		if c.id == id {
@@ -1117,6 +1163,7 @@ func (n *network) elect(id uint64) (tick int) {
 		}
 	}
 
+	n.leader = id
 	return tick
 }
 
