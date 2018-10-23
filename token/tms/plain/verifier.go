@@ -8,6 +8,7 @@ package plain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"unicode/utf8"
@@ -26,6 +27,7 @@ const (
 	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
 	compositeKeyNamespace = "\x00"
 	tokenOutput           = "tokenOutput"
+	tokenRedeem           = "tokenRedeem"
 	tokenTx               = "tokenTx"
 )
 
@@ -73,6 +75,8 @@ func (v *Verifier) checkAction(creator identity.PublicInfo, plainAction *token.P
 		return v.checkImportAction(creator, action.PlainImport, txID, simulator)
 	case *token.PlainTokenAction_PlainTransfer:
 		return v.checkTransferAction(creator, action.PlainTransfer, txID, simulator)
+	case *token.PlainTokenAction_PlainRedeem:
+		return v.checkRedeemAction(creator, action.PlainRedeem, txID, simulator)
 	default:
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("unknown plain token action: %T", action)}
 	}
@@ -118,6 +122,35 @@ func (v *Verifier) checkTransferAction(creator identity.PublicInfo, transferActi
 	if outputSum != inputSum {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transfer with ID %s (%d vs %d)", txID, outputSum, inputSum)}
 	}
+	return nil
+}
+
+func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *token.PlainTransfer, txID string, simulator ledger.LedgerReader) error {
+	// first perform the same checking as transfer
+	err := v.checkTransferAction(creator, redeemAction, txID, simulator)
+	if err != nil {
+		return err
+	}
+
+	// then perform additional checking for redeem outputs
+	// redeem transaction should not have more than 2 outputs.
+	outputs := redeemAction.GetOutputs()
+	if len(outputs) > 2 {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("too many outputs (%d) in a redeem transaction", len(outputs))}
+	}
+
+	// output[0] should always be a redeem output - i.e., owner should be nil
+	if outputs[0].Owner != nil {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("owner should be nil in a redeem output")}
+	}
+
+	// if output[1] presents, its owner must be same as the creator
+	if len(outputs) == 2 && !bytes.Equal(creator.Public(), outputs[1].Owner) {
+		println(hex.EncodeToString(creator.Public()))
+		println(hex.EncodeToString(outputs[1].Owner))
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("wrong owner for remaining tokens, should be original owner %s, but got %s", creator.Public(), outputs[1].Owner)}
+	}
+
 	return nil
 }
 
@@ -255,6 +288,9 @@ func (v *Verifier) commitAction(plainAction *token.PlainTokenAction, txID string
 		err = v.commitImportAction(action.PlainImport, txID, simulator)
 	case *token.PlainTokenAction_PlainTransfer:
 		err = v.commitTransferAction(action.PlainTransfer, txID, simulator)
+	case *token.PlainTokenAction_PlainRedeem:
+		// call the same commit method as transfer because PlainRedeem points to the same type of outputs as transfer
+		err = v.commitTransferAction(action.PlainRedeem, txID, simulator)
 	}
 	return
 }
@@ -274,9 +310,17 @@ func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID stri
 	return nil
 }
 
+// commitTransferAction is called for both transfer and redeem transactions
+// Check the owner of each output to determine how to generate the key
 func (v *Verifier) commitTransferAction(transferAction *token.PlainTransfer, txID string, simulator ledger.LedgerWriter) error {
+	var outputID string
+	var err error
 	for i, output := range transferAction.GetOutputs() {
-		outputID, err := createOutputKey(txID, i)
+		if output.Owner != nil {
+			outputID, err = createOutputKey(txID, i)
+		} else {
+			outputID, err = createRedeemKey(txID, i)
+		}
 		if err != nil {
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
 		}
@@ -346,6 +390,12 @@ func (v *Verifier) isSpent(spentKey string, simulator ledger.LedgerReader) (bool
 // the transaction ID, and the index of the output
 func createOutputKey(txID string, index int) (string, error) {
 	return createCompositeKey(tokenOutput, []string{txID, strconv.Itoa(index)})
+}
+
+// Create a ledger key for a redeem output in a token transaction, as a function of
+// the transaction ID, and the index of the output
+func createRedeemKey(txID string, index int) (string, error) {
+	return createCompositeKey(tokenRedeem, []string{txID, strconv.Itoa(index)})
 }
 
 // Create a ledger key for a token transaction, as a function of the transaction ID
