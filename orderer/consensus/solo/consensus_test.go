@@ -136,14 +136,14 @@ func TestBatchTimer(t *testing.T) {
 	select {
 	case <-support.Blocks:
 	case <-time.After(time.Second):
-		t.Fatalf("Did not create the second batch, indicating that the timer was not appopriately reset")
+		t.Fatalf("Did not create the second batch, indicating that the timer was not appropriately reset")
 	}
 
 	support.SharedConfigVal.BatchTimeoutVal, _ = time.ParseDuration("10s")
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	select {
 	case <-support.Blocks:
-		t.Fatalf("Created another batch, indicating that the timer was not appopriately re-read")
+		t.Fatalf("Created another batch, indicating that the timer was not appropriately re-read")
 	case <-time.After(100 * time.Millisecond):
 	}
 
