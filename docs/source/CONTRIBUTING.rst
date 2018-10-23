@@ -275,7 +275,7 @@ What makes a good change request?
    your subsequent requests may be held up because of review comments in the
    preceding requests.
 
--  Write a meaningful commit message. Include a meaningful 50 (or less)
+-  Write a meaningful commit message. Include a meaningful 55 (or less)
    character title, followed by a blank line, followed by a more
    comprehensive description of the change. Each change MUST include the JIRA
    identifier corresponding to the change (e.g. [FAB-1234]). This can be

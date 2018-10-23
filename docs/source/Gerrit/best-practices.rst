@@ -32,7 +32,7 @@ the bottom and don't contain blank lines between one another. The
 following example shows the format and content expected in a commit
 message:
 
-Brief (no more than 50 chars) one line description.
+Brief (no more than 55 chars) one line description.
 
 Elaborate summary of the changes made referencing why (motivation), what
 was changed and how it was tested. Note also any changes to
