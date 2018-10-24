@@ -40,7 +40,8 @@ type ChainGetter interface {
 
 // Config contains etcdraft configurations
 type Config struct {
-	WALDir string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	WALDir  string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
 }
 
 // Consenter implements etddraft consenter
@@ -133,11 +134,13 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
 
 		RaftMetadata: raftMetadata,
-		WALDir:       path.Join(c.Config.WALDir, support.ChainID()),
+
+		WALDir:  path.Join(c.Config.WALDir, support.ChainID()),
+		SnapDir: path.Join(c.Config.SnapDir, support.ChainID()),
 	}
 
 	rpc := &cluster.RPC{Channel: support.ChainID(), Comm: c.Communication}
-	return NewChain(support, opts, c.Communication, rpc, nil)
+	return NewChain(support, opts, c.Communication, rpc, nil, nil)
 }
 
 func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {

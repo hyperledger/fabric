@@ -9,6 +9,7 @@ package etcdraft_test
 import (
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -30,11 +31,23 @@ var _ = Describe("Consenter", func() {
 	var (
 		chainGetter *mocks.ChainGetter
 		support     *consensusmocks.FakeConsenterSupport
+		dataDir     string
+		snapDir     string
+		walDir      string
+		err         error
 	)
 
 	BeforeEach(func() {
 		chainGetter = &mocks.ChainGetter{}
 		support = &consensusmocks.FakeConsenterSupport{}
+		dataDir, err = ioutil.TempDir("", "snap-")
+		Expect(err).NotTo(HaveOccurred())
+		walDir = path.Join(dataDir, "wal-")
+		snapDir = path.Join(dataDir, "snap-")
+	})
+
+	AfterEach(func() {
+		os.RemoveAll(dataDir)
 	})
 
 	When("the consenter is extracting the channel", func() {
@@ -117,12 +130,9 @@ var _ = Describe("Consenter", func() {
 		metadata := utils.MarshalOrPanic(m)
 		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
 
-		dir, err := ioutil.TempDir("", "wal-")
-		Expect(err).NotTo(HaveOccurred())
-		defer os.RemoveAll(dir)
-
 		consenter := newConsenter(chainGetter)
-		consenter.Config.WALDir = dir
+		consenter.Config.WALDir = walDir
+		consenter.Config.SnapDir = snapDir
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(err).NotTo(HaveOccurred())
@@ -174,7 +184,8 @@ var _ = Describe("Consenter", func() {
 		defer os.RemoveAll(dir)
 
 		consenter := newConsenter(chainGetter)
-		consenter.Config.WALDir = dir
+		consenter.Config.WALDir = walDir
+		consenter.Config.SnapDir = snapDir
 
 		d := &etcdraftproto.RaftMetadata{
 			Consenters: map[uint64]*etcdraftproto.Consenter{1: c},

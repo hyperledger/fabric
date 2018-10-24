@@ -11,12 +11,14 @@ import (
 	"encoding/pem"
 	"fmt"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -28,6 +30,11 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
+
+// DefaultSnapshotCatchUpEntries is the default number of entries
+// to preserve in memory when a snapshot is taken. This is for
+// slow followers to catch up.
+const DefaultSnapshotCatchUpEntries = uint64(500)
 
 //go:generate mockery -dir . -name Configurator -case underscore -output ./mocks/
 
@@ -45,6 +52,14 @@ type RPC interface {
 	SendSubmit(dest uint64, request *orderer.SubmitRequest) error
 }
 
+//go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
+
+// BlockPuller is used to pull blocks from other OSN
+type BlockPuller interface {
+	PullBlock(seq uint64) *common.Block
+	Close()
+}
+
 type block struct {
 	b *common.Block
 
@@ -60,7 +75,14 @@ type Options struct {
 
 	Clock clock.Clock
 
-	WALDir        string
+	WALDir       string
+	SnapDir      string
+	SnapInterval uint64
+
+	// This is configurable mainly for testing purpose. Users are not
+	// expected to alter this. Instead, DefaultSnapshotCatchUpEntries is used.
+	SnapshotCatchUpEntries uint64
+
 	MemoryStorage MemoryStorage
 	Logger        *flogging.FabricLogger
 
@@ -83,11 +105,12 @@ type Chain struct {
 
 	submitC  chan *orderer.SubmitRequest
 	commitC  chan block
-	observeC chan<- uint64 // Notifies external observer on leader change (passed in optionally as an argument for tests)
-	haltC    chan struct{} // Signals to goroutines that the chain is halting
-	doneC    chan struct{} // Closes when the chain halts
-	resignC  chan struct{} // Notifies node that it is no longer the leader
-	startC   chan struct{} // Closes when the node is started
+	observeC chan<- uint64         // Notifies external observer on leader change (passed in optionally as an argument for tests)
+	haltC    chan struct{}         // Signals to goroutines that the chain is halting
+	doneC    chan struct{}         // Closes when the chain halts
+	resignC  chan struct{}         // Notifies node that it is no longer the leader
+	startC   chan struct{}         // Closes when the node is started
+	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
 
 	clock clock.Clock // Tests can inject a fake clock
 
@@ -96,7 +119,14 @@ type Chain struct {
 	leader       uint64
 	appliedIndex uint64
 
-	hasWAL bool // indicate if this is a fresh raft node
+	// needed by snapshotting
+	lastSnapBlockNum uint64
+	syncLock         sync.Mutex       // Protects the manipulation of syncC
+	syncC            chan struct{}    // Indicate sync in progress
+	confState        raftpb.ConfState // Etcdraft requires ConfState to be persisted within snapshot
+	puller           BlockPuller      // Deliver client to pull blocks from other OSNs
+
+	fresh bool // indicate if this is a fresh raft node
 
 	node    raft.Node
 	storage *RaftStorage
@@ -111,35 +141,55 @@ func NewChain(
 	opts Options,
 	conf Configurator,
 	rpc RPC,
+	puller BlockPuller,
 	observeC chan<- uint64) (*Chain, error) {
 
 	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
 
-	applied := opts.RaftMetadata.RaftIndex
-	storage, hasWAL, err := Restore(lg, applied, opts.WALDir, opts.MemoryStorage)
+	fresh := !wal.Exist(opts.WALDir)
+
+	appliedi := opts.RaftMetadata.RaftIndex
+	storage, err := CreateStorage(lg, appliedi, opts.WALDir, opts.SnapDir, opts.MemoryStorage)
 	if err != nil {
 		return nil, errors.Errorf("failed to restore persisted raft data: %s", err)
 	}
 
+	if opts.SnapshotCatchUpEntries == 0 {
+		storage.SnapshotCatchUpEntries = DefaultSnapshotCatchUpEntries
+	} else {
+		storage.SnapshotCatchUpEntries = opts.SnapshotCatchUpEntries
+	}
+
+	// get block number in last snapshot, if exists
+	var snapBlkNum uint64
+	if s := storage.Snapshot(); !raft.IsEmptySnap(s) {
+		b := utils.UnmarshalBlockOrPanic(s.Data)
+		snapBlkNum = b.Header.Number
+	}
+
 	return &Chain{
-		configurator: conf,
-		rpc:          rpc,
-		channelID:    support.ChainID(),
-		raftID:       opts.RaftID,
-		submitC:      make(chan *orderer.SubmitRequest),
-		commitC:      make(chan block),
-		haltC:        make(chan struct{}),
-		doneC:        make(chan struct{}),
-		resignC:      make(chan struct{}),
-		startC:       make(chan struct{}),
-		observeC:     observeC,
-		support:      support,
-		hasWAL:       hasWAL,
-		appliedIndex: applied,
-		clock:        opts.Clock,
-		logger:       lg,
-		storage:      storage,
-		opts:         opts,
+		configurator:     conf,
+		rpc:              rpc,
+		channelID:        support.ChainID(),
+		raftID:           opts.RaftID,
+		submitC:          make(chan *orderer.SubmitRequest),
+		commitC:          make(chan block),
+		haltC:            make(chan struct{}),
+		doneC:            make(chan struct{}),
+		resignC:          make(chan struct{}),
+		startC:           make(chan struct{}),
+		syncC:            make(chan struct{}),
+		snapC:            make(chan *raftpb.Snapshot),
+		observeC:         observeC,
+		support:          support,
+		fresh:            fresh,
+		appliedIndex:     appliedi,
+		lastSnapBlockNum: snapBlkNum,
+		puller:           puller,
+		clock:            opts.Clock,
+		logger:           lg,
+		storage:          storage,
+		opts:             opts,
 	}, nil
 }
 
@@ -168,7 +218,7 @@ func (c *Chain) Start() {
 
 	raftPeers := RaftPeers(c.opts.RaftMetadata.Consenters)
 
-	if !c.hasWAL {
+	if c.fresh {
 		c.logger.Infof("starting new raft node %d", c.raftID)
 		c.node = raft.StartNode(config, raftPeers)
 	} else {
@@ -237,8 +287,25 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 	}
 }
 
-// WaitReady is currently a no-op.
+// WaitReady blocks when the chain:
+// - is catching up with other nodes using snapshot
+//
+// In any other case, it returns right away.
 func (c *Chain) WaitReady() error {
+	if err := c.isRunning(); err != nil {
+		return err
+	}
+
+	c.syncLock.Lock()
+	ch := c.syncC
+	c.syncLock.Unlock()
+
+	select {
+	case <-ch:
+	case <-c.doneC:
+		return errors.Errorf("chain is stopped")
+	}
+
 	return nil
 }
 
@@ -351,8 +418,16 @@ func (c *Chain) serveRequest() {
 		ticking = false
 	}
 
-	for {
+	if s := c.storage.Snapshot(); !raft.IsEmptySnap(s) {
+		if err := c.catchUp(&s); err != nil {
+			c.logger.Errorf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
+				s.Metadata.Term, s.Metadata.Index, err)
+		}
+	} else {
+		close(c.syncC)
+	}
 
+	for {
 		select {
 		case msg := <-c.submitC:
 			batches, pending, err := c.ordered(msg)
@@ -388,6 +463,12 @@ func (c *Chain) serveRequest() {
 			c.logger.Debugf("Batch timer expired, creating block")
 			if err := c.commitBatches(batch); err != nil {
 				c.logger.Errorf("Failed to commit block: %s", err)
+			}
+
+		case sn := <-c.snapC:
+			if err := c.catchUp(sn); err != nil {
+				c.logger.Errorf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
+					sn.Metadata.Term, sn.Metadata.Index, err)
 			}
 
 		case <-c.doneC:
@@ -467,6 +548,47 @@ func (c *Chain) commitBatches(batches ...[]*common.Envelope) error {
 	return nil
 }
 
+func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
+	b, err := utils.UnmarshalBlock(snap.Data)
+	if err != nil {
+		return errors.Errorf("failed to unmarshal snapshot data to block: %s", err)
+	}
+
+	c.logger.Infof("Catching up with snapshot taken at block %d", b.Header.Number)
+
+	next := c.support.Height()
+	if next > b.Header.Number {
+		c.logger.Warnf("Snapshot is at block %d, local block number is %d, no sync needed", b.Header.Number, next-1)
+		return nil
+	}
+
+	c.syncLock.Lock()
+	c.syncC = make(chan struct{})
+	c.syncLock.Unlock()
+	defer func() {
+		close(c.syncC)
+		c.puller.Close()
+	}()
+
+	for next <= b.Header.Number {
+		block := c.puller.PullBlock(next)
+		if block == nil {
+			return errors.Errorf("failed to fetch block %d from cluster", next)
+		}
+
+		if utils.IsConfigBlock(block) {
+			c.support.WriteConfigBlock(block, nil)
+		} else {
+			c.support.WriteBlock(block, nil)
+		}
+
+		next++
+	}
+
+	c.logger.Infof("Finished syncing with cluster up to block %d (incl.)", b.Header.Number)
+	return nil
+}
+
 func (c *Chain) serveRaft() {
 	ticker := c.clock.NewTicker(c.opts.TickInterval)
 
@@ -476,11 +598,24 @@ func (c *Chain) serveRaft() {
 			c.node.Tick()
 
 		case rd := <-c.node.Ready():
-			if err := c.storage.Store(rd.Entries, rd.HardState); err != nil {
+			if err := c.storage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
 				c.logger.Panicf("Failed to persist etcd/raft data: %s", err)
 			}
+
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				c.snapC <- &rd.Snapshot
+
+				b := utils.UnmarshalBlockOrPanic(rd.Snapshot.Data)
+				c.lastSnapBlockNum = b.Header.Number
+				c.confState = rd.Snapshot.Metadata.ConfState
+				c.appliedIndex = rd.Snapshot.Metadata.Index
+			}
+
 			c.apply(rd.CommittedEntries)
 			c.node.Advance()
+
+			// TODO(jay_guo) leader can write to disk in parallel with replicating
+			// to the followers and them writing to their disks. Check 10.2.1 in thesis
 			c.send(rd.Messages)
 
 			if rd.SoftState != nil {
@@ -522,6 +657,8 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		c.logger.Panicf("first index of committed entry[%d] should <= appliedIndex[%d]+1", ents[0].Index, c.appliedIndex)
 	}
 
+	var appliedb uint64
+	var position int
 	for i := range ents {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
@@ -531,7 +668,10 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				break
 			}
 
-			c.commitC <- block{utils.UnmarshalBlockOrPanic(ents[i].Data), ents[i].Index}
+			b := block{utils.UnmarshalBlockOrPanic(ents[i].Data), ents[i].Index}
+			c.commitC <- b
+			appliedb = b.b.Header.Number
+			position = i
 
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
@@ -540,12 +680,27 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				continue
 			}
 
-			c.node.ApplyConfChange(cc)
+			c.confState = *c.node.ApplyConfChange(cc)
 		}
 
 		if ents[i].Index > c.appliedIndex {
 			c.appliedIndex = ents[i].Index
 		}
+	}
+
+	if c.opts.SnapInterval == 0 || appliedb == 0 {
+		// snapshot is not enabled (SnapInterval == 0) or
+		// no block has been written (appliedb == 0) in this round
+		return
+	}
+
+	if appliedb-c.lastSnapBlockNum >= c.opts.SnapInterval {
+		c.logger.Infof("Taking snapshot at block %d, last snapshotted block number is %d", appliedb, c.lastSnapBlockNum)
+		if err := c.storage.TakeSnapshot(c.appliedIndex, &c.confState, ents[position].Data); err != nil {
+			c.logger.Fatalf("Failed to create snapshot at index %d", c.appliedIndex)
+		}
+
+		c.lastSnapBlockNum = appliedb
 	}
 }
 
@@ -555,11 +710,19 @@ func (c *Chain) send(msgs []raftpb.Message) {
 			continue
 		}
 
+		status := raft.SnapshotFinish
+
 		msgBytes := utils.MarshalOrPanic(&msg)
 		_, err := c.rpc.Step(msg.To, &orderer.StepRequest{Channel: c.support.ChainID(), Payload: msgBytes})
 		if err != nil {
 			// TODO We should call ReportUnreachable if message delivery fails
 			c.logger.Errorf("Failed to send StepRequest to %d, because: %s", msg.To, err)
+
+			status = raft.SnapshotFailure
+		}
+
+		if msg.Type == raftpb.MsgSnap {
+			c.node.ReportSnapshot(msg.To, status)
 		}
 	}
 }
