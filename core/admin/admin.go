@@ -118,3 +118,22 @@ func (s *ServerAdmin) GetLogSpec(ctx context.Context, env *common.Envelope) (*pb
 	logResponse := &pb.LogSpecResponse{LogSpec: logSpec}
 	return logResponse, nil
 }
+
+func (s *ServerAdmin) SetLogSpec(ctx context.Context, env *common.Envelope) (*pb.LogSpecResponse, error) {
+	op, err := s.v.validate(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	request := op.GetLogSpecReq()
+	if request == nil {
+		return nil, errors.New("request is nil")
+	}
+	err = flogging.Global.ActivateSpec(request.LogSpec)
+	logResponse := &pb.LogSpecResponse{
+		LogSpec: request.LogSpec,
+	}
+	if err != nil {
+		logResponse.Error = err.Error()
+	}
+	return logResponse, nil
+}

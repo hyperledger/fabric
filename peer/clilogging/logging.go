@@ -27,6 +27,7 @@ func Cmd(cf *LoggingCmdFactory) *cobra.Command {
 	loggingCmd.AddCommand(setLevelCmd(cf))
 	loggingCmd.AddCommand(revertLevelsCmd(cf))
 	loggingCmd.AddCommand(getLogSpecCmd(cf))
+	loggingCmd.AddCommand(setLogSpecCmd(cf))
 
 	return loggingCmd
 }

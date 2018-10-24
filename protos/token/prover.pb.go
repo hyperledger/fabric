@@ -482,6 +482,13 @@ func (m *Command) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Command proto.InternalMessageInfo
 
+func (m *Command) GetHeader() *Header {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
 type isCommand_Payload interface {
 	isCommand_Payload()
 }
@@ -489,27 +496,24 @@ type isCommand_Payload interface {
 type Command_ImportRequest struct {
 	ImportRequest *ImportRequest `protobuf:"bytes,2,opt,name=import_request,json=importRequest,proto3,oneof"`
 }
+
 type Command_TransferRequest struct {
 	TransferRequest *TransferRequest `protobuf:"bytes,3,opt,name=transfer_request,json=transferRequest,proto3,oneof"`
 }
+
 type Command_ListRequest struct {
 	ListRequest *ListRequest `protobuf:"bytes,4,opt,name=list_request,json=listRequest,proto3,oneof"`
 }
 
-func (*Command_ImportRequest) isCommand_Payload()   {}
+func (*Command_ImportRequest) isCommand_Payload() {}
+
 func (*Command_TransferRequest) isCommand_Payload() {}
-func (*Command_ListRequest) isCommand_Payload()     {}
+
+func (*Command_ListRequest) isCommand_Payload() {}
 
 func (m *Command) GetPayload() isCommand_Payload {
 	if m != nil {
 		return m.Payload
-	}
-	return nil
-}
-
-func (m *Command) GetHeader() *Header {
-	if m != nil {
-		return m.Header
 	}
 	return nil
 }
@@ -827,6 +831,13 @@ func (m *CommandResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CommandResponse proto.InternalMessageInfo
 
+func (m *CommandResponse) GetHeader() *CommandResponseHeader {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
 type isCommandResponse_Payload interface {
 	isCommandResponse_Payload()
 }
@@ -834,27 +845,24 @@ type isCommandResponse_Payload interface {
 type CommandResponse_Err struct {
 	Err *Error `protobuf:"bytes,2,opt,name=err,proto3,oneof"`
 }
+
 type CommandResponse_TokenTransaction struct {
 	TokenTransaction *TokenTransaction `protobuf:"bytes,3,opt,name=token_transaction,json=tokenTransaction,proto3,oneof"`
 }
+
 type CommandResponse_UnspentTokens struct {
 	UnspentTokens *UnspentTokens `protobuf:"bytes,4,opt,name=unspent_tokens,json=unspentTokens,proto3,oneof"`
 }
 
-func (*CommandResponse_Err) isCommandResponse_Payload()              {}
+func (*CommandResponse_Err) isCommandResponse_Payload() {}
+
 func (*CommandResponse_TokenTransaction) isCommandResponse_Payload() {}
-func (*CommandResponse_UnspentTokens) isCommandResponse_Payload()    {}
+
+func (*CommandResponse_UnspentTokens) isCommandResponse_Payload() {}
 
 func (m *CommandResponse) GetPayload() isCommandResponse_Payload {
 	if m != nil {
 		return m.Payload
-	}
-	return nil
-}
-
-func (m *CommandResponse) GetHeader() *CommandResponseHeader {
-	if m != nil {
-		return m.Header
 	}
 	return nil
 }

@@ -46,6 +46,8 @@ func initLoggingTest(command string) (*cobra.Command, *LoggingCmdFactory) {
 		cmd = revertLevelsCmd(mockCF)
 	} else if command == "getlogspec" {
 		cmd = getLogSpecCmd(mockCF)
+	} else if command == "setlogspec" {
+		cmd = setLogSpecCmd(mockCF)
 	} else {
 		// should only happen when there's a typo in a test case below
 	}
@@ -109,4 +111,14 @@ func TestGetLogSpec(t *testing.T) {
 		testCase{"ExtraParameter", []string{"peer"}, true},
 	)
 	runTests(t, "getlogspec", tc)
+}
+
+// TestSetLogSpec tests setlogspec with various parameters
+func TestSetLogSpec(t *testing.T) {
+	var tc []testCase
+	tc = append(tc,
+		testCase{"NoParameters", []string{}, true},
+		testCase{"Valid", []string{"debug"}, false},
+	)
+	runTests(t, "setlogspec", tc)
 }

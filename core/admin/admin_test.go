@@ -58,7 +58,7 @@ func TestForbidden(t *testing.T) {
 	adminServer := NewAdminServer(nil)
 	adminServer.v = &mockValidator{}
 	mv := adminServer.v.(*mockValidator)
-	mv.On("validate").Return(nil, accessDenied).Times(6)
+	mv.On("validate").Return(nil, accessDenied).Times(7)
 
 	ctx := context.Background()
 	status, err := adminServer.GetStatus(ctx, nil)
@@ -79,6 +79,9 @@ func TestForbidden(t *testing.T) {
 	_, err = adminServer.GetLogSpec(ctx, nil)
 	assert.Equal(t, accessDenied, err)
 
+	_, err = adminServer.SetLogSpec(ctx, nil)
+	assert.Equal(t, accessDenied, err)
+
 	_, err = adminServer.StartServer(ctx, nil)
 	assert.Equal(t, accessDenied, err)
 }
@@ -93,6 +96,14 @@ func TestLoggingCalls(t *testing.T) {
 		return &pb.AdminOperation{
 			Content: &pb.AdminOperation_LogReq{
 				LogReq: llr,
+			},
+		}
+	}
+
+	wrapLogSpecRequest := func(l *pb.LogSpecRequest) *pb.AdminOperation {
+		return &pb.AdminOperation{
+			Content: &pb.AdminOperation_LogSpecReq{
+				LogSpecReq: l,
 			},
 		}
 	}
@@ -136,4 +147,41 @@ func TestLoggingCalls(t *testing.T) {
 	mv.On("validate").Return(nil, nil).Once()
 	_, err = adminServer.GetLogSpec(context.Background(), nil)
 	assert.Nil(t, err, "Error should have been nil")
+
+	type testCase struct {
+		req         *pb.LogSpecRequest
+		expectedErr string
+	}
+
+	testCases := []testCase{
+		{
+			req: &pb.LogSpecRequest{LogSpec: "info"},
+		},
+		{
+			req:         &pb.LogSpecRequest{LogSpec: "borken"},
+			expectedErr: "invalid logging specification 'borken': bad segment 'borken'",
+		},
+		{
+			req: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		mv.On("validate").Return(wrapLogSpecRequest(tc.req), nil).Once()
+		resp, err := adminServer.SetLogSpec(context.Background(), nil)
+		if tc.req == nil {
+			assert.Nil(t, resp)
+			assert.Equal(t, "request is nil", err.Error())
+			continue
+		}
+		assert.Nil(t, err, "Error should have been nil")
+		assert.Equal(t, tc.expectedErr, resp.Error)
+
+		if tc.expectedErr == "" {
+			mv.On("validate").Return(wrapLogSpecRequest(tc.req), nil).Once()
+			resp, err := adminServer.GetLogSpec(context.Background(), nil)
+			assert.Nil(t, err, "Error should have been nil")
+			assert.Equal(t, tc.req.LogSpec, resp.LogSpec)
+		}
+	}
 }

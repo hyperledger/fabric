@@ -8,7 +8,6 @@ package clilogging
 
 import (
 	"context"
-	"fmt"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -44,8 +43,7 @@ func getLogSpec(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err e
 		if err != nil {
 			return err
 		}
-		fmt.Println("Current log spec:")
-		fmt.Println(logResponse.LogSpec)
+		logger.Infof("Current logging spec: %s", logResponse.LogSpec)
 	}
 	return err
 }
