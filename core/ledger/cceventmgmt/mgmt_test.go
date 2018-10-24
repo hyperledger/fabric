@@ -10,11 +10,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
@@ -102,18 +101,27 @@ func TestLSCCListener(t *testing.T) {
 	defer clearEventMgrForTest()
 	handler1 := &mockHandler{}
 	GetMgr().Register(channelName, handler1)
-	lsccStateListener := &KVLedgerLSCCStateListener{}
+
+	mockInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	mockInfoProvider.UpdatedChaincodesStub =
+		func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
+			return []*ledger.ChaincodeLifecycleInfo{
+				{Name: cc1Def.Name},
+			}, nil
+		}
+	mockInfoProvider.ChaincodeInfoStub = func(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+		return &ledger.DeployedChaincodeInfo{
+			Name:    chaincodeName,
+			Hash:    cc1Def.Hash,
+			Version: cc1Def.Version,
+		}, nil
+	}
+	lsccStateListener := &KVLedgerLSCCStateListener{mockInfoProvider}
 
 	// test1 regular deploy lscc event gets sent to handler
 	t.Run("DeployEvent", func(t *testing.T) {
-		sampleChaincodeData1 := &ccprovider.ChaincodeData{Name: cc1Def.Name, Version: cc1Def.Version, Id: cc1Def.Hash}
-		sampleChaincodeDataBytes1, err := proto.Marshal(sampleChaincodeData1)
-		assert.NoError(t, err, "")
 		lsccStateListener.HandleStateUpdates(&ledger.StateUpdateTrigger{
-			LedgerID: channelName,
-			StateUpdates: ledger.StateUpdates{
-				lsccNamespace: []*kvrwset.KVWrite{{Key: cc1Def.Name, Value: sampleChaincodeDataBytes1}},
-			},
+			LedgerID:           channelName,
 			CommittingBlockNum: 50},
 		)
 		assert.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, ccDBArtifactsTar})
@@ -121,14 +129,8 @@ func TestLSCCListener(t *testing.T) {
 
 	// test2 delete lscc event NOT sent to handler
 	t.Run("DeleteEvent", func(t *testing.T) {
-		sampleChaincodeData2 := &ccprovider.ChaincodeData{Name: cc2Def.Name, Version: cc2Def.Version, Id: cc2Def.Hash}
-		sampleChaincodeDataBytes2, err := proto.Marshal(sampleChaincodeData2)
-		assert.NoError(t, err, "")
 		lsccStateListener.HandleStateUpdates(&ledger.StateUpdateTrigger{
-			LedgerID: channelName,
-			StateUpdates: ledger.StateUpdates{
-				lsccNamespace: []*kvrwset.KVWrite{{Key: cc2Def.Name, Value: sampleChaincodeDataBytes2, IsDelete: true}},
-			},
+			LedgerID:           channelName,
 			CommittingBlockNum: 50},
 		)
 		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc2Def, ccDBArtifactsTar})
@@ -136,14 +138,8 @@ func TestLSCCListener(t *testing.T) {
 
 	// test3 collection lscc event (with tilda separator in chaincode key) NOT sent to handler
 	t.Run("CollectionEvent", func(t *testing.T) {
-		sampleChaincodeData3 := &ccprovider.ChaincodeData{Name: cc3Def.Name, Version: cc3Def.Version, Id: cc3Def.Hash}
-		sampleChaincodeDataBytes3, err := proto.Marshal(sampleChaincodeData3)
-		assert.NoError(t, err, "")
 		lsccStateListener.HandleStateUpdates(&ledger.StateUpdateTrigger{
-			LedgerID: channelName,
-			StateUpdates: ledger.StateUpdates{
-				lsccNamespace: []*kvrwset.KVWrite{{Key: cc3Def.Name, Value: sampleChaincodeDataBytes3}},
-			},
+			LedgerID:           channelName,
 			CommittingBlockNum: 50},
 		)
 		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc3Def, ccDBArtifactsTar})
