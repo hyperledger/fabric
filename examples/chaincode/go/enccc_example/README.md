@@ -1,7 +1,7 @@
 # Using EncCC
 
-To test `EncCC` you need to first generate an AES 256 bit key as a base64 
-encoded string so that it can be passed as JSON to the peer chaincode 
+To test `EncCC` you need to first generate an AES 256 bit key as a base64
+encoded string so that it can be passed as JSON to the peer chaincode
 invoke's transient parameter.
 
 Note: Before getting started you must use govendor to add external dependencies.  Please issue the following commands inside the "enccc_example" folder:
@@ -20,7 +20,7 @@ follows:
 
 Note: the following assumes the env is initialized and peer has joined channel "my-ch".
 ```
-peer chaincode invoke -n enccc -C my-ch -c '{"Args":["ENCRYPT","key1","value1"]}' --transient "{\"ENCKEY\":\"$ENCKEY\"}" 
+peer chaincode invoke -n enccc -C my-ch -c '{"Args":["ENCRYPT","key1","value1"]}' --transient "{\"ENCKEY\":\"$ENCKEY\"}"
 ```
 
 This call will encrypt using a random IV. This may be undesirable for
@@ -36,7 +36,7 @@ IV=`openssl rand 16 -base64`
 Then, the IV may be specified in the transient field
 
 ```
-peer chaincode invoke -n enccc -C my-ch -c '{"Args":["ENCRYPT","key2","value2"]}' --transient "{\"ENCKEY\":\"$ENCKEY\",\"IV\":\"$IV\"}" 
+peer chaincode invoke -n enccc -C my-ch -c '{"Args":["ENCRYPT","key2","value2"]}' --transient "{\"ENCKEY\":\"$ENCKEY\",\"IV\":\"$IV\"}"
 ```
 
 Two such invocations will produce equal KVS writes, which can be endorsed by multiple nodes.
@@ -56,7 +56,7 @@ invocation would persist the result in the ledger for all channel readers to
 see whereas a query can be discarded and so the result remains confidential.
 
 To test signing and verifying, you also need to generate an ECDSA key for the appopriate
-curve, as follows. 
+curve, as follows.
 
 ```
 On Intel:

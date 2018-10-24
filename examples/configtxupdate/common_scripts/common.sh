@@ -7,7 +7,7 @@
 
 SDIR="$(dirname ${BASH_SOURCE[0]})"
 
-# Set default variables if they have not been set 
+# Set default variables if they have not been set
 : ${INTERACTIVE:=false}
 : ${CONFIGTXLATOR_URL:="http://127.0.0.1:7059"}
 : ${ORDERER_ADDRESS:=127.0.0.1:7050}
@@ -209,7 +209,7 @@ findConfigtxgen() {
 	fi
 
 	if [ -e "../../../build/bin/configtxgen" ] ; then
-		CONFIGTXGEN="../../../build/bin/configtxgen" 
+		CONFIGTXGEN="../../../build/bin/configtxgen"
 		return 0
 	fi
 
@@ -224,7 +224,7 @@ findConfigtxlator() {
 	fi
 
 	if [ -e "${SDIR}/../../../build/bin/configtxlator" ] ; then
-		CONFIGTXGEN="${SDIR}/../../../build/bin/configtxlator" 
+		CONFIGTXGEN="${SDIR}/../../../build/bin/configtxlator"
 		return 0
 	fi
 
@@ -239,7 +239,7 @@ findPeer() {
 	fi
 
 	if [ -e "${SDIR}/../../../build/bin/peer" ] ; then
-		PEER="${SDIR}/../../../build/bin/peer" 
+		PEER="${SDIR}/../../../build/bin/peer"
 		return 0
 	fi
 
