@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"time"
 
+	"github.com/go-kit/kit/metrics"
 	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -59,6 +60,8 @@ type ServerConfig struct {
 	UnaryInterceptors []grpc.UnaryServerInterceptor
 	// Logger specifies the logger the server will use
 	Logger *flogging.FabricLogger
+	// Metrics specifies the different metrics that are tracked for the server
+	Metrics *Metrics
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance
@@ -115,6 +118,13 @@ type KeepaliveOptions struct {
 	// ServerMinInterval is the minimum permitted time between client pings.
 	// If clients send pings more frequently, the server will disconnect them
 	ServerMinInterval time.Duration
+}
+
+type Metrics struct {
+	// OpenConnCounter keeps track of number of open connections
+	OpenConnCounter metrics.Counter
+	// ClosedConnCounter keeps track of number connections closed
+	ClosedConnCounter metrics.Counter
 }
 
 // ServerKeepaliveOptions returns gRPC keepalive options for server.  If

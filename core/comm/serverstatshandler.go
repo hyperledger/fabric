@@ -22,17 +22,17 @@ func (h *ServerStatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo)
 	return ctx
 }
 
-func (h *ServerStatsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {
-	switch s.(type) {
-	case *stats.Begin:
-		h.OpenConnCounter.Add(1)
-	case *stats.End:
-		h.ClosedConnCounter.Add(1)
-	}
-}
+func (h *ServerStatsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {}
 
 func (h *ServerStatsHandler) TagConn(ctx context.Context, info *stats.ConnTagInfo) context.Context {
 	return ctx
 }
 
-func (h *ServerStatsHandler) HandleConn(ctx context.Context, s stats.ConnStats) {}
+func (h *ServerStatsHandler) HandleConn(ctx context.Context, s stats.ConnStats) {
+	switch s.(type) {
+	case *stats.ConnBegin:
+		h.OpenConnCounter.Add(1)
+	case *stats.ConnEnd:
+		h.ClosedConnCounter.Add(1)
+	}
+}
