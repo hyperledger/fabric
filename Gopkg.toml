@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 required = [
+    "golang.org/x/lint/golint",
+    "golang.org/x/tools/cmd/goimports",
     "github.com/golang/protobuf/protoc-gen-go",
-	"golang.org/x/lint/golint",
-	"golang.org/x/tools/cmd/goimports"
 ]
 
 ignored = [
@@ -102,12 +102,20 @@ noverify = [
   name = "golang.org/x/crypto"
 
 [[constraint]]
+  name = "golang.org/x/lint"
+  revision = "c67002cb31c3a748b7688c27f20d8358b4193582"
+
+[[constraint]]
   branch = "master"
   name = "golang.org/x/net"
 
 [[constraint]]
   branch = "master"
   name = "golang.org/x/sync"
+
+[[constraint]]
+  name = "golang.org/x/tools"
+  revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
 
 [[constraint]]
   name = "google.golang.org/grpc"
@@ -154,12 +162,8 @@ noverify = [
   version = "1.1.8"
 
 [[constraint]]
-  name = "golang.org/x/lint"
-  revision = "c67002cb31c3a748b7688c27f20d8358b4193582"
-
-[[constraint]]
-  name = "golang.org/x/tools"
-  revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
+  name = "github.com/go-kit/kit"
+  version = "0.7.0"
 
 [prune]
   go-tests = true
@@ -177,7 +181,3 @@ noverify = [
   [[prune.project]]
       name = "github.com/coreos/etcd"
       non-go = false
-
-[[constraint]]
-  name = "github.com/go-kit/kit"
-  version = "0.7.0"

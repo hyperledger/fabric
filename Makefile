@@ -90,7 +90,7 @@ K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
-PROTOS = $(shell git ls-files *.proto | grep -v vendor)
+PROTOS = $(shell git ls-files *.proto | grep -Ev 'vendor/|testdata/')
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \

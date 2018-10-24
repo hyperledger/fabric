@@ -36,8 +36,13 @@ fi
 # consistently. The only place where the legacy golang.org version should be
 # referenced is in the generated protos.
 echo "Checking for golang.org/x/net/context"
-TEMPLATE='{{with $d := .}}{{range $d.Imports}}{{ printf "%s:%s" $d.ImportPath . }}{{end}}{{end}}'
-OUTPUT="$(go list -f "$TEMPLATE" ./... | grep -Ev '^github.com/hyperledger/fabric/protos($|/)' | grep 'golang.org/x/net/context' | cut -f1 -d:)"
+context_whitelist=(
+    "^github.com/hyperledger/fabric/protos(:|/.*:)"
+    "^github.com/hyperledger/fabric/common/grpclogging/fakes:"
+    "^github.com/hyperledger/fabric/common/grpclogging/testpb:"
+)
+TEMPLATE='{{with $d := .}}{{range $d.Imports}}{{ printf "%s:%s " $d.ImportPath . }}{{end}}{{end}}'
+OUTPUT="$(go list -f "$TEMPLATE" ./... | grep -Ev $(IFS='|' ; echo "${context_whitelist[*]}") | grep 'golang.org/x/net/context' | cut -f1 -d:)"
 if [ -n "$OUTPUT" ]; then
     echo "The following packages import golang.org/x/net/context instead of context"
     echo "$OUTPUT"
