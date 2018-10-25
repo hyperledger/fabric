@@ -399,7 +399,7 @@ func TestInvalidChannel(t *testing.T) {
 		gt.Eventually(func() (bool, error) {
 			_, err := node1.c.Remote(testChannel, node1.nodeInfo.ID)
 			return true, err
-		}).Should(gomega.BeTrue())
+		}, time.Minute).Should(gomega.BeTrue())
 
 		stub, err := node1.c.Remote(testChannel, node1.nodeInfo.ID)
 		assert.NoError(t, err)
@@ -508,7 +508,7 @@ func TestNoTLSCertificate(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		conn, err = cl.NewConnection(node1.srv.Address(), "")
 		return true, err
-	}).Should(gomega.BeTrue())
+	}, time.Minute).Should(gomega.BeTrue())
 
 	echoClient := orderer.NewClusterClient(conn)
 	_, err = echoClient.Step(context.Background(), testStepReq)
@@ -543,7 +543,7 @@ func TestReconnect(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		_, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 		return true, err
-	}).Should(gomega.BeTrue())
+	}, time.Minute).Should(gomega.BeTrue())
 	stub, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 	// Send a message from node 1 to node 2.
 	// Should fail.
@@ -630,7 +630,7 @@ func TestMembershipReconfiguration(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		_, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
 		return true, err
-	}).Should(gomega.BeTrue())
+	}, time.Minute).Should(gomega.BeTrue())
 
 	stub, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
 	_, err = stub.Step(testStepReq)
@@ -678,7 +678,7 @@ func TestShutdown(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		_, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
 		return true, err
-	}).Should(gomega.BeTrue())
+	}, time.Minute).Should(gomega.BeTrue())
 
 	stub, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
 	// Therefore, sending a message doesn't succeed because node 1 rejected the configuration change
