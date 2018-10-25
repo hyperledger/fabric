@@ -20,6 +20,7 @@ import (
 //go:generate counterfeiter -o mock/ecp.go -fake-name Ecp . Ecp
 //go:generate counterfeiter -o mock/credrequest.go -fake-name CredRequest . CredRequest
 //go:generate counterfeiter -o mock/credential.go -fake-name Credential . Credential
+//go:generate counterfeiter -o mock/revocation.go -fake-name Revocation . Revocation
 
 func TestPlain(t *testing.T) {
 	RegisterFailHandler(Fail)

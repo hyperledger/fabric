@@ -5,7 +5,11 @@ SPDX-License-Identifier: Apache-2.0
 */
 package idemix
 
-import "github.com/hyperledger/fabric/bccsp"
+import (
+	"crypto/ecdsa"
+
+	"github.com/hyperledger/fabric/bccsp"
+)
 
 // IssuerPublicKey is the issuer public key
 type IssuerPublicKey interface {
@@ -74,4 +78,11 @@ type Credential interface {
 	// Verify cryptographically verifies the credential by verifying the signature
 	// on the attribute values and user's secret key
 	Verify(sk Big, ipk IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error
+}
+
+// Revocation handles idemix revocation-related operations
+type Revocation interface {
+
+	// NewKey generates a long term signing key that will be used for revocation
+	NewKey() (*ecdsa.PrivateKey, error)
 }

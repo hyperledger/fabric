@@ -171,3 +171,20 @@ type IdemixNymSignerOpts struct {
 func (o *IdemixNymSignerOpts) HashFunc() crypto.Hash {
 	return o.H
 }
+
+// IdemixRevocationKeyGenOpts contains the options for the Idemix revocation key-generation.
+type IdemixRevocationKeyGenOpts struct {
+	// Temporary tells if the key is ephemeral
+	Temporary bool
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (*IdemixRevocationKeyGenOpts) Algorithm() string {
+	return IDEMIX
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (o *IdemixRevocationKeyGenOpts) Ephemeral() bool {
+	return o.Temporary
+}
