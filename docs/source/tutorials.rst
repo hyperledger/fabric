@@ -28,6 +28,7 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    :caption: Tutorials
 
    write_first_app
+   tutorial/commercial_paper
    build_network
    channel_update_tutorial
    upgrading_your_network_tutorial
