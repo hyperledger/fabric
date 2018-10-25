@@ -36,7 +36,7 @@
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - dist-clean - clean release packages for all target platforms
 #   - unit-test-clean - cleans unit test state (particularly from docker)
-#   - basic-checks - performs basic checks like license, spelling and linter
+#   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
 #   - enable_ci_only_tests - triggers unit-tests in downstream jobs. Applicable only for CI not to
 #     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
@@ -115,7 +115,7 @@ all: native docker checks
 
 checks: basic-checks unit-test integration-test
 
-basic-checks: license spelling linter
+basic-checks: license spelling trailing-spaces linter
 
 desk-check: checks verify
 
@@ -139,6 +139,10 @@ spelling:
 .PHONY: license
 license:
 	@scripts/check_license.sh
+
+.PHONY: trailing-spaces
+trailing-spaces:
+	@scripts/check_trailingspaces.sh
 
 include gotools.mk
 
