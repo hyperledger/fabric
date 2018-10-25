@@ -72,6 +72,10 @@ type revocationPublicKey struct {
 	pubKey *ecdsa.PublicKey
 }
 
+func NewRevocationPublicKey(pubKey *ecdsa.PublicKey) *revocationPublicKey {
+	return &revocationPublicKey{pubKey: pubKey}
+}
+
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *revocationPublicKey) Bytes() (raw []byte, err error) {
@@ -120,7 +124,7 @@ type RevocationKeyGen struct {
 	Revocation Revocation
 }
 
-func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	// Create a new key pair
 	key, err := g.Revocation.NewKey()
 	if err != nil {
@@ -128,4 +132,62 @@ func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error
 	}
 
 	return &revocationSecretKey{exportable: g.Exportable, privKey: key}, nil
+}
+
+type CriSigner struct {
+	Revocation Revocation
+}
+
+func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
+	revocationSecretKey, ok := k.(*revocationSecretKey)
+	if !ok {
+		return nil, errors.New("invalid key, expected *revocationSecretKey")
+	}
+	criOpts, ok := opts.(*bccsp.IdemixCRISignerOpts)
+	if !ok {
+		return nil, errors.New("invalid options, expected *IdemixCRISignerOpts")
+	}
+	if len(digest) != 0 {
+		return nil, errors.New("invalid digest, it must be empty")
+	}
+
+	return s.Revocation.Sign(
+		revocationSecretKey.privKey,
+		criOpts.UnrevokedHandles,
+		criOpts.Epoch,
+		criOpts.RevocationAlgorithm,
+	)
+}
+
+type CriVerifier struct {
+	Revocation Revocation
+}
+
+func (v *CriVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+	revocationPublicKey, ok := k.(*revocationPublicKey)
+	if !ok {
+		return false, errors.New("invalid key, expected *revocationPublicKey")
+	}
+	criOpts, ok := opts.(*bccsp.IdemixCRISignerOpts)
+	if !ok {
+		return false, errors.New("invalid options, expected *IdemixCRISignerOpts")
+	}
+	if len(digest) != 0 {
+		return false, errors.New("invalid digest, it must be empty")
+	}
+	if len(signature) == 0 {
+		return false, errors.New("invalid signature, it must not be empty")
+	}
+
+	err := v.Revocation.Verify(
+		revocationPublicKey.pubKey,
+		signature,
+		criOpts.Epoch,
+		criOpts.RevocationAlgorithm,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

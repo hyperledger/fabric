@@ -140,3 +140,242 @@ var _ = Describe("Revocation", func() {
 
 	})
 })
+
+var _ = Describe("CRI", func() {
+
+	Describe("when creating a CRI", func() {
+
+		var (
+			CriSigner      *idemix.CriSigner
+			fakeRevocation *mock.Revocation
+		)
+
+		BeforeEach(func() {
+			fakeRevocation = &mock.Revocation{}
+			CriSigner = &idemix.CriSigner{Revocation: fakeRevocation}
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+			var (
+				fakeSignature []byte
+			)
+			BeforeEach(func() {
+				fakeSignature = []byte("fake signature")
+				fakeRevocation.SignReturns(fakeSignature, nil)
+			})
+
+			It("returns no error and a signature", func() {
+				signature, err := CriSigner.Sign(
+					idemix.NewRevocationSecretKey(nil, false),
+					nil,
+					&bccsp.IdemixCRISignerOpts{},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(signature).To(BeEquivalentTo(fakeSignature))
+
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+			BeforeEach(func() {
+				fakeRevocation.SignReturns(nil, errors.New("sign error"))
+			})
+
+			It("returns an error", func() {
+				signature, err := CriSigner.Sign(
+					idemix.NewRevocationSecretKey(nil, false),
+					nil,
+					&bccsp.IdemixCRISignerOpts{},
+				)
+				Expect(err).To(MatchError("sign error"))
+				Expect(signature).To(BeNil())
+			})
+		})
+
+		Context("and the parameters are not well formed", func() {
+
+			Context("and the revocation secret key is nil", func() {
+				It("returns error", func() {
+					signature, err := CriSigner.Sign(
+						nil,
+						nil,
+						nil,
+					)
+					Expect(err).To(MatchError("invalid key, expected *revocationSecretKey"))
+					Expect(signature).To(BeNil())
+				})
+			})
+
+			Context("and the revocation secret key is not of type *revocationSecretKey", func() {
+				It("returns error", func() {
+					signature, err := CriSigner.Sign(
+						idemix.NewIssuerPublicKey(nil),
+						nil,
+						nil,
+					)
+					Expect(err).To(MatchError("invalid key, expected *revocationSecretKey"))
+					Expect(signature).To(BeNil())
+				})
+			})
+
+			Context("and the underlying cryptographic algorithm fails", func() {
+				BeforeEach(func() {
+				})
+
+				It("returns an error", func() {
+					signature, err := CriSigner.Sign(
+						idemix.NewRevocationSecretKey(nil, false),
+						nil,
+						nil,
+					)
+					Expect(err).To(MatchError("invalid options, expected *IdemixCRISignerOpts"))
+					Expect(signature).To(BeNil())
+				})
+			})
+
+			Context("and the digest is not empty", func() {
+				BeforeEach(func() {
+				})
+
+				It("returns an error", func() {
+					signature, err := CriSigner.Sign(
+						idemix.NewRevocationSecretKey(nil, false),
+						[]byte{1, 2, 3, 4},
+						&bccsp.IdemixCRISignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid digest, it must be empty"))
+					Expect(signature).To(BeNil())
+				})
+			})
+		})
+	})
+
+	Describe("when verifying a CRI", func() {
+
+		var (
+			CriVerifier    *idemix.CriVerifier
+			fakeRevocation *mock.Revocation
+		)
+
+		BeforeEach(func() {
+			fakeRevocation = &mock.Revocation{}
+			CriVerifier = &idemix.CriVerifier{Revocation: fakeRevocation}
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+			BeforeEach(func() {
+				fakeRevocation.VerifyReturns(nil)
+			})
+
+			It("returns no error and valid signature", func() {
+				valid, err := CriVerifier.Verify(
+					idemix.NewRevocationPublicKey(nil),
+					[]byte("fake signature"),
+					nil,
+					&bccsp.IdemixCRISignerOpts{},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+			BeforeEach(func() {
+				fakeRevocation.VerifyReturns(errors.New("verify error"))
+			})
+
+			It("returns an error", func() {
+				valid, err := CriVerifier.Verify(
+					idemix.NewRevocationPublicKey(nil),
+					[]byte("fake signature"),
+					nil,
+					&bccsp.IdemixCRISignerOpts{},
+				)
+				Expect(err).To(MatchError("verify error"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+
+		Context("and the parameters are not well formed", func() {
+
+			Context("and the user secret key is nil", func() {
+				It("returns error", func() {
+					valid, err := CriVerifier.Verify(
+						nil,
+						[]byte("fake signature"),
+						nil,
+						&bccsp.IdemixCRISignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid key, expected *revocationPublicKey"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the user secret key is not of type *revocationPublicKey", func() {
+				It("returns error", func() {
+					valid, err := CriVerifier.Verify(
+						idemix.NewIssuerPublicKey(nil),
+						[]byte("fake signature"),
+						nil,
+						&bccsp.IdemixCRISignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid key, expected *revocationPublicKey"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the digest is not nil", func() {
+				It("returns error", func() {
+					valid, err := CriVerifier.Verify(
+						idemix.NewRevocationPublicKey(nil),
+						[]byte("fake signature"),
+						[]byte{1, 2, 3, 4},
+						&bccsp.IdemixCRISignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid digest, it must be empty"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the signature is empty", func() {
+				It("returns error", func() {
+					valid, err := CriVerifier.Verify(
+						idemix.NewRevocationPublicKey(nil),
+						nil,
+						nil,
+						&bccsp.IdemixCRISignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid signature, it must not be empty"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the option is empty", func() {
+				It("returns error", func() {
+					valid, err := CriVerifier.Verify(
+						idemix.NewRevocationPublicKey(nil),
+						[]byte("fake signature"),
+						nil,
+						nil,
+					)
+					Expect(err).To(MatchError("invalid options, expected *IdemixCRISignerOpts"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the option is not of type *IdemixCRISignerOpts", func() {
+				It("returns error", func() {
+					valid, err := CriVerifier.Verify(
+						idemix.NewRevocationPublicKey(nil),
+						[]byte("fake signature"),
+						nil,
+						&bccsp.IdemixCredentialRequestSignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid options, expected *IdemixCRISignerOpts"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+		})
+	})
+})
