@@ -6,25 +6,20 @@ SPDX-License-Identifier: Apache-2.0
 package lockbasedtxmgr
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
-)
-
-const (
-	lsccNamespace = "lscc"
 )
 
 // collNameValidator validates the presence of a collection in a namespace
 // This is expected to be instantiated in the context of a simulator/queryexecutor
 type collNameValidator struct {
-	queryHelper *queryHelper
-	cache       collConfigCache
+	ccInfoProvider ledger.DeployedChaincodeInfoProvider
+	queryExecutor  *lockBasedQueryExecutor
+	cache          collConfigCache
 }
 
-func newCollNameValidator(queryHelper *queryHelper) *collNameValidator {
-	return &collNameValidator{queryHelper, make(collConfigCache)}
+func newCollNameValidator(ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *lockBasedQueryExecutor) *collNameValidator {
+	return &collNameValidator{ccInfoProvider, qe, make(collConfigCache)}
 }
 
 func (v *collNameValidator) validateCollName(ns, coll string) error {
@@ -46,17 +41,14 @@ func (v *collNameValidator) validateCollName(ns, coll string) error {
 
 func (v *collNameValidator) retrieveCollConfigFromStateDB(ns string) (*common.CollectionConfigPackage, error) {
 	logger.Debugf("retrieveCollConfigFromStateDB() begin - ns=[%s]", ns)
-	configPkgBytes, _, err := v.queryHelper.getState(lsccNamespace, constructCollectionConfigKey(ns))
+	ccInfo, err := v.ccInfoProvider.ChaincodeInfo(ns, v.queryExecutor)
 	if err != nil {
 		return nil, err
 	}
-	if configPkgBytes == nil {
+	if ccInfo == nil || ccInfo.CollectionConfigPkg == nil {
 		return nil, &ledger.CollConfigNotDefinedError{Ns: ns}
 	}
-	confPkg := &common.CollectionConfigPackage{}
-	if err := proto.Unmarshal(configPkgBytes, confPkg); err != nil {
-		return nil, err
-	}
+	confPkg := ccInfo.CollectionConfigPkg
 	logger.Debugf("retrieveCollConfigFromStateDB() successfully retrieved - ns=[%s], confPkg=[%s]", ns, confPkg)
 	return confPkg, nil
 }
@@ -86,8 +78,4 @@ func (c collConfigCache) isPopulatedFor(ns string) bool {
 
 func (c collConfigCache) containsCollName(ns, coll string) bool {
 	return c[collConfigkey{ns, coll}]
-}
-
-func constructCollectionConfigKey(chaincodeName string) string {
-	return privdata.BuildCollectionKVSKey(chaincodeName)
 }

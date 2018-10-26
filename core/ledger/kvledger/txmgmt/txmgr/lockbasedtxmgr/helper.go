@@ -33,7 +33,7 @@ type queryHelper struct {
 
 func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder) *queryHelper {
 	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
-	validator := newCollNameValidator(helper)
+	validator := newCollNameValidator(txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper})
 	helper.collNameValidator = validator
 	return helper
 }
