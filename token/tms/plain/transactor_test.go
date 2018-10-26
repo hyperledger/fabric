@@ -404,7 +404,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err.Error()).To(Equal("error splitting input composite key: 'invalid composite key - no components found'"))
+			Expect(err.Error()).To(Equal("error splitting input composite key: 'invalid composite key - not enough components found in key 'not a composite key''"))
 		})
 	})
 

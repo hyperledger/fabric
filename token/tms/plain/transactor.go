@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"go.uber.org/zap/zapcore"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
@@ -120,6 +122,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId,
 	for _, inKeyBytes := range tokenIds {
 		// parse the composite key bytes into a string
 		inKey := parseCompositeKeyBytes(inKeyBytes)
+		verifierLogger.Debugf("transferring token with ID: '%s'", inKey)
 
 		// check whether the composite key conforms to the composite key of an output
 		namespace, components, err := splitCompositeKey(inKey)
@@ -139,8 +142,10 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId,
 		}
 
 		// make sure the output exists in the ledger
+		verifierLogger.Debugf("getting output '%s' to spend from ledger", inKey)
 		inBytes, err := t.Ledger.GetState(tokenNameSpace, inKey)
 		if err != nil {
+			verifierLogger.Errorf("error getting output '%s' to spend from ledger: %s", inKey, err)
 			return nil, "", 0, err
 		}
 		if len(inBytes) == 0 {
@@ -213,18 +218,20 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 						return nil, err
 					}
 					if !spent {
+						verifierLogger.Debugf("adding token with ID '%s' to list of unspent tokens", result.GetKey())
 						tokens = append(tokens,
 							&token.TokenOutput{
 								Type:     output.Type,
 								Quantity: output.Quantity,
 								Id:       getCompositeKeyBytes(result.Key),
 							})
+					} else {
+						verifierLogger.Debugf("token with ID '%s' has been spent, not adding to list of unspent tokens", result.GetKey())
 					}
 				}
 			}
 		}
 	}
-
 }
 
 func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.TokenTransaction, error) {
@@ -508,16 +515,32 @@ func (t *Transactor) isSpent(outputID string) (bool, error) {
 		return false, err
 	}
 	if result == nil {
+		verifierLogger.Debugf("input '%s' has not been spent", key)
 		return false, nil
 	}
+	verifierLogger.Debugf("input '%s' has already been spent", key)
 	return true, nil
 }
 
 // Create a ledger key for an individual input in a token transaction, as a function of
-// the outputID
+// the outputID, which is a composite key (i.e., starts and ends with a minUnicodeRuneValue)
 func createInputKey(outputID string) (string, error) {
 	att := strings.Split(outputID, string(minUnicodeRuneValue))
-	return createCompositeKey(tokenInput, att[1:])
+	if len(att) < 2 {
+		return "", errors.Errorf("outputID '%s' is not a valid composite key (less than two components)", outputID)
+	}
+	if att[0] != "" {
+		return "", errors.Errorf("outputID '%s' is not a valid composite key (does not start with a component separator)", outputID)
+	}
+	if att[len(att)-1] != "" {
+		return "", errors.Errorf("outputID '%s' is not a valid composite key (does not end with a component separator)", outputID)
+	}
+	if verifierLogger.IsEnabledFor(zapcore.DebugLevel) {
+		for i, a := range att {
+			verifierLogger.Debugf("inputID composite key attribute %d: '%s'", i, a)
+		}
+	}
+	return createCompositeKey(tokenInput, att[2:len(att)-1])
 }
 
 // Create a prefix as a function of the string passed as argument
@@ -540,7 +563,7 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 		}
 	}
 	if len(components) < 2 {
-		return "", nil, errors.New("invalid composite key - no components found")
+		return "", nil, errors.Errorf("invalid composite key - not enough components found in key '%s'", compositeKey)
 	}
 	return components[0], components[1:], nil
 }

@@ -242,6 +242,9 @@ func (v *Verifier) checkInputs(creator identity.PublicInfo, inputIDs []*token.In
 		if err != nil {
 			return "", 0, err
 		}
+		if input == nil {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("input with ID %s for transfer does not exist", inputKey)}
+		}
 		err = v.checkInputOwner(creator, input, inputKey)
 		if err != nil {
 			return "", 0, err
