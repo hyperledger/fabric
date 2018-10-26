@@ -82,7 +82,7 @@ func testMain(m *testing.M) int {
 	viper.Set("ledger.state.couchDBConfig.createGlobalChangesDB", true)
 
 	//set the logging level to DEBUG to test debug only code
-	flogging.SetModuleLevel("couchdb", "Debug")
+	flogging.SetModuleLevel("couchdb", "debug")
 
 	viper.Set("logging.peer", "debug")
 
