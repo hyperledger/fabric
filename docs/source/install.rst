@@ -33,7 +33,7 @@ command that follows will perform the following steps:
 #. If needed, clone the `hyperledger/fabric-samples` repository
 #. Checkout the appropriate version tag
 #. Install the Hyperledger Fabric platform-specific binaries and config files
-   for the version specified into the root of the fabric-samples repository
+   for the version specified into the /bin and /config directories of fabric-samples
 #. Download the Hyperledger Fabric docker images for the version specified
 
 Once you are ready, and in the directory into which you will install the
@@ -43,8 +43,8 @@ Fabric Samples and binaries, go ahead and execute the following command:
 
   curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.1
 
-.. note:: If you want to download Fabric, Fabric-ca and thirdparty Docker images
-          you must pass the version identifier to the script.
+.. note:: If you want to download different versions for Fabric, Fabric-ca and thirdparty
+          Docker images, you must pass the version identifier for each.
 
 .. code:: bash
 
@@ -70,12 +70,12 @@ that will download and extract all of the platform-specific binaries you
 will need to set up your network and place them into the cloned repo you
 created above. It retrieves the following platform-specific binaries:
 
-  * ``cryptogen``,
   * ``configtxgen``,
   * ``configtxlator``,
-  * ``peer``,
+  * ``cryptogen``,
+  * ``idemixgen``
   * ``orderer``,
-  * ``idemixgen``, and
+  * ``peer``, and
   * ``fabric-ca-client``
 
 and places them in the ``bin`` sub-directory of the current working
