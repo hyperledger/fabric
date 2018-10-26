@@ -251,6 +251,15 @@ data.
     ./byfn.sh down
 
 
+ If you've already run through this tutorial, you'll also want to delete the
+ underlying docker containers for the marbles private data chaincode. Let's
+ run the following commands to clean up previous environments:
+
+ .. code:: bash
+
+    docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.marblesp.*/) {print $1}')
+    docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.marblesp.*/) {print $3}')
+
  Start up the BYFN network with CouchDB by running the following command:
 
  .. code:: bash
