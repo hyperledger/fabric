@@ -75,6 +75,7 @@ run_tests() {
 
     local race_flags=""
     if [[ "$(uname -m)" == "x86_64" ]]; then
+        export GORACE=atexit_sleep_ms=0 # reduce overhead of race
         race_flags="-race"
     fi
 
