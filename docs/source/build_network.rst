@@ -651,7 +651,7 @@ Update the anchor peers
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 The following commands are channel updates and they will propagate to the definition
-of the channel.  In essence, we adding additional configuration information on top
+of the channel.  In essence, we are adding additional configuration information on top
 of the channel's genesis block.  Note that we are not modifying the genesis block, but
 simply adding deltas into the chain that will define the anchor peers.
 
