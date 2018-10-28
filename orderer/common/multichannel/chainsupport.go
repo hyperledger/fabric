@@ -9,6 +9,7 @@ package multichannel
 import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -137,4 +138,17 @@ func (cs *ChainSupport) ConfigProto() *cb.Config {
 // Sequence passes through to the underlying configtx.Validator
 func (cs *ChainSupport) Sequence() uint64 {
 	return cs.ConfigtxValidator().Sequence()
+}
+
+// VerifyBlockSignature verifies a signature of a block
+func (cs *ChainSupport) VerifyBlockSignature(sd []*cb.SignedData) error {
+	policy, exists := cs.PolicyManager().GetPolicy(policies.BlockValidation)
+	if !exists {
+		return errors.Errorf("policy %s wasn't found", policies.BlockValidation)
+	}
+	err := policy.Evaluate(sd)
+	if err != nil {
+		return errors.Wrap(err, "block verification failed")
+	}
+	return nil
 }

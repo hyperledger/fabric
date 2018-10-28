@@ -74,6 +74,9 @@ type ConsenterSupport interface {
 	crypto.LocalSigner
 	msgprocessor.Processor
 
+	// VerifyBlockSignature verifies a signature of a block
+	VerifyBlockSignature([]*cb.SignedData) error
+
 	// BlockCutter returns the block cutting helper for this channel.
 	BlockCutter() blockcutter.Receiver
 

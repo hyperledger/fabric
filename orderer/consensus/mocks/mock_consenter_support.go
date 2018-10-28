@@ -90,6 +90,17 @@ type FakeConsenterSupport struct {
 		result2 uint64
 		result3 error
 	}
+	VerifyBlockSignatureStub        func([]*cb.SignedData) error
+	verifyBlockSignatureMutex       sync.RWMutex
+	verifyBlockSignatureArgsForCall []struct {
+		arg1 []*cb.SignedData
+	}
+	verifyBlockSignatureReturns struct {
+		result1 error
+	}
+	verifyBlockSignatureReturnsOnCall map[int]struct {
+		result1 error
+	}
 	BlockCutterStub        func() blockcutter.Receiver
 	blockCutterMutex       sync.RWMutex
 	blockCutterArgsForCall []struct{}
@@ -479,6 +490,59 @@ func (fake *FakeConsenterSupport) ProcessConfigMsgReturnsOnCall(i int, result1 *
 	}{result1, result2, result3}
 }
 
+func (fake *FakeConsenterSupport) VerifyBlockSignature(arg1 []*cb.SignedData) error {
+	var arg1Copy []*cb.SignedData
+	if arg1 != nil {
+		arg1Copy = make([]*cb.SignedData, len(arg1))
+		copy(arg1Copy, arg1)
+	}
+	fake.verifyBlockSignatureMutex.Lock()
+	ret, specificReturn := fake.verifyBlockSignatureReturnsOnCall[len(fake.verifyBlockSignatureArgsForCall)]
+	fake.verifyBlockSignatureArgsForCall = append(fake.verifyBlockSignatureArgsForCall, struct {
+		arg1 []*cb.SignedData
+	}{arg1Copy})
+	fake.recordInvocation("VerifyBlockSignature", []interface{}{arg1Copy})
+	fake.verifyBlockSignatureMutex.Unlock()
+	if fake.VerifyBlockSignatureStub != nil {
+		return fake.VerifyBlockSignatureStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.verifyBlockSignatureReturns.result1
+}
+
+func (fake *FakeConsenterSupport) VerifyBlockSignatureCallCount() int {
+	fake.verifyBlockSignatureMutex.RLock()
+	defer fake.verifyBlockSignatureMutex.RUnlock()
+	return len(fake.verifyBlockSignatureArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) VerifyBlockSignatureArgsForCall(i int) []*cb.SignedData {
+	fake.verifyBlockSignatureMutex.RLock()
+	defer fake.verifyBlockSignatureMutex.RUnlock()
+	return fake.verifyBlockSignatureArgsForCall[i].arg1
+}
+
+func (fake *FakeConsenterSupport) VerifyBlockSignatureReturns(result1 error) {
+	fake.VerifyBlockSignatureStub = nil
+	fake.verifyBlockSignatureReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) VerifyBlockSignatureReturnsOnCall(i int, result1 error) {
+	fake.VerifyBlockSignatureStub = nil
+	if fake.verifyBlockSignatureReturnsOnCall == nil {
+		fake.verifyBlockSignatureReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.verifyBlockSignatureReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeConsenterSupport) BlockCutter() blockcutter.Receiver {
 	fake.blockCutterMutex.Lock()
 	ret, specificReturn := fake.blockCutterReturnsOnCall[len(fake.blockCutterArgsForCall)]
@@ -855,6 +919,8 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.processConfigUpdateMsgMutex.RUnlock()
 	fake.processConfigMsgMutex.RLock()
 	defer fake.processConfigMsgMutex.RUnlock()
+	fake.verifyBlockSignatureMutex.RLock()
+	defer fake.verifyBlockSignatureMutex.RUnlock()
 	fake.blockCutterMutex.RLock()
 	defer fake.blockCutterMutex.RUnlock()
 	fake.sharedConfigMutex.RLock()

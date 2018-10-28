@@ -105,7 +105,7 @@ func TestStandardDialerDialer(t *testing.T) {
 	t.Parallel()
 	emptyCertificate := []byte("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----")
 	dialer := cluster.NewTLSPinningDialer(comm.ClientConfig{SecOpts: &comm.SecureOptions{UseTLS: true, ServerRootCAs: [][]byte{emptyCertificate}}})
-	standardDialer := &cluster.StandardDialerDialer{Dialer: dialer}
+	standardDialer := &cluster.StandardDialer{Dialer: dialer}
 	_, err := standardDialer.Dial("127.0.0.1:8080")
 	assert.EqualError(t, err, "error adding root certificate: asn1: syntax error: sequence truncated")
 }
@@ -332,18 +332,19 @@ func createBlockChain(start, end uint64) []*common.Block {
 	return blockchain
 }
 
-func TestTLSCACertsFromConfigBlockGreenPath(t *testing.T) {
+func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
 	assert.NoError(t, err)
 
 	block := &common.Block{}
 	assert.NoError(t, proto.Unmarshal(blockBytes, block))
 
-	certs, err := cluster.TLSCACertsFromConfigBlock(block)
+	endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block)
 	assert.NoError(t, err)
-	assert.Len(t, certs, 1)
+	assert.Len(t, endpointConfig.TLSRootCAs, 1)
+	assert.Equal(t, []string{"orderer.example.com:7050"}, endpointConfig.Endpoints)
 
-	bl, _ := pem.Decode(certs[0])
+	bl, _ := pem.Decode(endpointConfig.TLSRootCAs[0])
 	cert, err := x509.ParseCertificate(bl.Bytes)
 	assert.NoError(t, err)
 
@@ -351,21 +352,21 @@ func TestTLSCACertsFromConfigBlockGreenPath(t *testing.T) {
 	assert.Equal(t, "tlsca.example.com", cert.Subject.CommonName)
 }
 
-func TestTLSCACertsFromConfigBlockFailures(t *testing.T) {
+func TestEndpointconfigFromConfigBlockFailures(t *testing.T) {
 	t.Run("nil block", func(t *testing.T) {
-		certs, err := cluster.TLSCACertsFromConfigBlock(nil)
+		certs, err := cluster.EndpointconfigFromConfigBlock(nil)
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "nil block")
 	})
 
 	t.Run("nil block data", func(t *testing.T) {
-		certs, err := cluster.TLSCACertsFromConfigBlock(&common.Block{})
+		certs, err := cluster.EndpointconfigFromConfigBlock(&common.Block{})
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "block data is nil")
 	})
 
 	t.Run("no envelope", func(t *testing.T) {
-		certs, err := cluster.TLSCACertsFromConfigBlock(&common.Block{
+		certs, err := cluster.EndpointconfigFromConfigBlock(&common.Block{
 			Data: &common.BlockData{},
 		})
 		assert.Nil(t, certs)
@@ -373,12 +374,48 @@ func TestTLSCACertsFromConfigBlockFailures(t *testing.T) {
 	})
 
 	t.Run("bad envelope", func(t *testing.T) {
-		certs, err := cluster.TLSCACertsFromConfigBlock(&common.Block{
+		certs, err := cluster.EndpointconfigFromConfigBlock(&common.Block{
 			Data: &common.BlockData{
 				Data: [][]byte{{}},
 			},
 		})
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "failed extracting bundle from envelope: envelope header cannot be nil")
+	})
+}
+
+func TestClientConfig(t *testing.T) {
+	t.Run("Uninitialized dialer", func(t *testing.T) {
+		dialer := &cluster.PredicateDialer{}
+		_, err := dialer.ClientConfig()
+		assert.EqualError(t, err, "client config not initialized")
+	})
+
+	t.Run("Wrong type stored", func(t *testing.T) {
+		dialer := &cluster.PredicateDialer{}
+		dialer.Config.Store("foo")
+		_, err := dialer.ClientConfig()
+		assert.EqualError(t, err, "value stored is string, not comm.ClientConfig")
+	})
+
+	t.Run("Nil secure options", func(t *testing.T) {
+		dialer := &cluster.PredicateDialer{}
+		dialer.Config.Store(comm.ClientConfig{
+			SecOpts: nil,
+		})
+		_, err := dialer.ClientConfig()
+		assert.EqualError(t, err, "SecOpts is nil")
+	})
+
+	t.Run("Valid config", func(t *testing.T) {
+		dialer := &cluster.PredicateDialer{}
+		dialer.Config.Store(comm.ClientConfig{
+			SecOpts: &comm.SecureOptions{
+				Key: []byte{1, 2, 3},
+			},
+		})
+		cc, err := dialer.ClientConfig()
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{1, 2, 3}, cc.SecOpts.Key)
 	})
 }
