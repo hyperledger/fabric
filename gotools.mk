@@ -28,25 +28,28 @@ gotools-clean:
 # Special override for protoc-gen-go since we want to use the version vendored with the project
 gotool.protoc-gen-go:
 	@echo "Building github.com/golang/protobuf/protoc-gen-go -> protoc-gen-go"
-	@mkdir -p $(GOTOOLS_GOPATH)/src/github.com/golang/protobuf/
-	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/* $(GOTOOLS_GOPATH)/src/github.com/golang/protobuf
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install github.com/golang/protobuf/protoc-gen-go
+	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/github.com/golang/protobuf/protoc-gen-go
 
 # Special override for ginkgo since we want to use the version vendored with the project
 gotool.ginkgo:
 	@echo "Building github.com/onsi/ginkgo/ginkgo -> ginkgo"
-	@mkdir -p $(GOTOOLS_GOPATH)/src/github.com/onsi/ginkgo/ginkgo/
-	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/onsi/ginkgo/* $(GOTOOLS_GOPATH)/src/github.com/onsi/ginkgo
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install github.com/onsi/ginkgo/ginkgo
+	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/github.com/onsi/ginkgo/ginkgo
+
+# Special override for goimports since we want to use the version vendored with the project
+gotool.goimports:
+	@echo "Building golang.org/x/tools/cmd/goimports -> goimports"
+	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/tools/cmd/goimports
+
+# Special override for golint since we want to use the version vendored with the project
+gotool.golint:
+	@echo "Building golang.org/x/lint/golint -> golint"
+	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/lint/golint
 
 # Lock to a versioned dep
 gotool.dep: DEP_VERSION ?= "v0.5.0"
 gotool.dep:
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d -u github.com/golang/dep
-	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q $(DEP_VERSION)
-	@echo "Building github.com/golang/dep $(DEP_VERSION) -> dep"
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
-	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q master
+	@curl https://raw.githubusercontent.com/golang/dep/master/install.sh \
+		| INSTALL_DIRECTORY=$(abspath $(GOTOOLS_BINDIR)) DEP_RELEASE_TAG=$(DEP_VERSION) sh
 
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:

@@ -1,0 +1,52 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+FROM golang:1.11-alpine as builder
+
+RUN apk add --no-cache \
+	alpine-sdk \
+	autoconf \
+	automake \
+	libtool \
+	p11-kit-dev \
+	openssl-dev \
+	cppunit-dev \
+	gcc \
+	g++ \
+	musl-dev \
+	git \
+	make \
+	&& adduser -G abuild -g "Alpine Package Builder" -D builder \
+	&& echo "builder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
+	&& mkdir /packages \
+	&& chown builder:abuild /packages
+USER builder
+RUN abuild-keygen -a -i -n
+COPY images/testenv/softhsm /tmp/softhsm
+RUN sudo chown builder /tmp/softhsm \
+	&& cd /tmp/softhsm \
+	&& git init \
+	&& git config user.email "builder@builder.com" \
+	&& git commit --allow-empty --allow-empty-message --no-edit \
+	&& abuild -r
+ADD . $GOPATH/src/github.com/hyperledger/fabric
+USER root
+WORKDIR $GOPATH/src/github.com/hyperledger/fabric
+RUN EXECUTABLES= make gotools
+
+FROM golang:1.11-alpine
+RUN apk add --no-cache \
+	gcc \
+	bash \
+	musl-dev \
+	libtool \
+	git;
+COPY --from=builder /home/builder/packages/tmp/x86_64/softhsm-2.2.0-r1.apk \
+	/tmp
+RUN apk add --allow-untrusted /tmp/softhsm-2.2.0-r1.apk \
+	&& softhsm2-util --init-token --slot 0 --label "ForFabric" \
+	--so-pin 1234 --pin 98765432
+COPY --from=builder $GOPATH/bin /usr/local/bin
+WORKDIR $GOPATH/src/github.com/hyperledger/fabric
+
