@@ -365,49 +365,6 @@ var _ = Describe("Chain", func() {
 					configBlock *common.Block
 				)
 
-				// sets the configEnv var declared above
-				newConfigEnv := func(chainID string, headerType common.HeaderType, configUpdateEnv *common.ConfigUpdateEnvelope) *common.Envelope {
-					return &common.Envelope{
-						Payload: marshalOrPanic(&common.Payload{
-							Header: &common.Header{
-								ChannelHeader: marshalOrPanic(&common.ChannelHeader{
-									Type:      int32(headerType),
-									ChannelId: chainID,
-								}),
-							},
-							Data: marshalOrPanic(&common.ConfigEnvelope{
-								LastUpdate: &common.Envelope{
-									Payload: marshalOrPanic(&common.Payload{
-										Header: &common.Header{
-											ChannelHeader: marshalOrPanic(&common.ChannelHeader{
-												Type:      int32(common.HeaderType_CONFIG_UPDATE),
-												ChannelId: chainID,
-											}),
-										},
-										Data: marshalOrPanic(configUpdateEnv),
-									}), // common.Payload
-								}, // LastUpdate
-							}),
-						}),
-					}
-				}
-
-				newConfigUpdateEnv := func(chainID string, values map[string]*common.ConfigValue) *common.ConfigUpdateEnvelope {
-					return &common.ConfigUpdateEnvelope{
-						ConfigUpdate: marshalOrPanic(&common.ConfigUpdate{
-							ChannelId: chainID,
-							ReadSet:   &common.ConfigGroup{},
-							WriteSet: &common.ConfigGroup{
-								Groups: map[string]*common.ConfigGroup{
-									"Orderer": {
-										Values: values,
-									},
-								},
-							}, // WriteSet
-						}),
-					}
-				}
-
 				// ensures that configBlock has the correct configEnv
 				JustBeforeEach(func() {
 					configBlock = &common.Block{
@@ -558,7 +515,7 @@ var _ = Describe("Chain", func() {
 						})
 					})
 
-					Context("updating consenters set", func() {
+					Context("updating consenters set by more than one node", func() {
 						// use to prepare the Orderer Values
 						BeforeEach(func() {
 							values := map[string]*common.ConfigValue{
@@ -584,6 +541,26 @@ var _ = Describe("Chain", func() {
 			})
 
 			Describe("Crash Fault Tolerance", func() {
+				var (
+					raftMetadata *raftprotos.RaftMetadata
+				)
+
+				BeforeEach(func() {
+					tlsCA, _ := tlsgen.NewCA()
+
+					raftMetadata = &raftprotos.RaftMetadata{
+						Consenters: map[uint64]*raftprotos.Consenter{
+							1: {
+								Host:          "localhost",
+								Port:          7051,
+								ClientTlsCert: clientTLSCert(tlsCA),
+								ServerTlsCert: serverTLSCert(tlsCA),
+							},
+						},
+						NextConsenterID: 2,
+					}
+				})
+
 				Describe("when a chain is started with existing WAL", func() {
 					var (
 						m1 *raftprotos.RaftMetadata
@@ -617,7 +594,7 @@ var _ = Describe("Chain", func() {
 					})
 
 					It("replays blocks from committed entries", func() {
-						c := newChain(10*time.Second, channelID, dataDir, 0, 1, []uint64{1})
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 						c.init()
 						c.Start()
 						defer c.Halt()
@@ -646,7 +623,8 @@ var _ = Describe("Chain", func() {
 					})
 
 					It("only replays blocks after Applied index", func() {
-						c := newChain(10*time.Second, channelID, dataDir, m1.RaftIndex, 1, []uint64{1})
+						raftMetadata.RaftIndex = m1.RaftIndex
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 						c.init()
 						c.Start()
 						defer c.Halt()
@@ -670,7 +648,8 @@ var _ = Describe("Chain", func() {
 					})
 
 					It("does not replay any block if already in sync", func() {
-						c := newChain(10*time.Second, channelID, dataDir, m2.RaftIndex, 1, []uint64{1})
+						raftMetadata.RaftIndex = m2.RaftIndex
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 						c.init()
 						c.Start()
 						defer c.Halt()
@@ -790,7 +769,7 @@ var _ = Describe("Chain", func() {
 
 						chain.Halt()
 
-						c := newChain(10*time.Second, channelID, dataDir, 0, 1, []uint64{1})
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 						c.init()
 
 						signal := make(chan struct{})
@@ -846,7 +825,8 @@ var _ = Describe("Chain", func() {
 
 						chain.Halt()
 
-						c := newChain(10*time.Second, channelID, dataDir, m.RaftIndex, 1, []uint64{1})
+						raftMetadata.RaftIndex = m.RaftIndex
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 						c.support.HeightReturns(normalBlock.Header.Number + 1)
 
 						c.init()
@@ -903,7 +883,8 @@ var _ = Describe("Chain", func() {
 
 						chain.Halt()
 
-						c := newChain(10*time.Second, channelID, dataDir, m.RaftIndex, 1, []uint64{1})
+						raftMetadata.RaftIndex = m.RaftIndex
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 						c.support.HeightReturns(normalBlock.Header.Number + 1)
 
 						c.init()
@@ -955,7 +936,8 @@ var _ = Describe("Chain", func() {
 
 							chain.Halt()
 
-							c := newChain(10*time.Second, channelID, dataDir, m.RaftIndex, 1, []uint64{1})
+							raftMetadata.RaftIndex = m.RaftIndex
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata)
 							c.support.CreateNextBlockReturns(normalBlock)
 							// start chain at block 2 (height = 3)
 							c.support.HeightReturns(normalBlock.Header.Number)
@@ -1081,11 +1063,12 @@ var _ = Describe("Chain", func() {
 
 	Describe("Multiple Raft nodes", func() {
 		var (
-			network    *network
-			channelID  string
-			timeout    time.Duration
-			dataDir    string
-			c1, c2, c3 *chain
+			network      *network
+			channelID    string
+			timeout      time.Duration
+			dataDir      string
+			c1, c2, c3   *chain
+			raftMetadata *raftprotos.RaftMetadata
 		)
 
 		BeforeEach(func() {
@@ -1097,7 +1080,33 @@ var _ = Describe("Chain", func() {
 			dataDir, err = ioutil.TempDir("", "raft-test-")
 			Expect(err).NotTo(HaveOccurred())
 
-			network = createNetwork(timeout, channelID, dataDir, []uint64{1, 2, 3})
+			tlsCA, _ := tlsgen.NewCA()
+
+			raftMetadata = &raftprotos.RaftMetadata{
+				Consenters: map[uint64]*raftprotos.Consenter{
+					1: {
+						Host:          "localhost",
+						Port:          7051,
+						ClientTlsCert: clientTLSCert(tlsCA),
+						ServerTlsCert: serverTLSCert(tlsCA),
+					},
+					2: {
+						Host:          "localhost",
+						Port:          7051,
+						ClientTlsCert: clientTLSCert(tlsCA),
+						ServerTlsCert: serverTLSCert(tlsCA),
+					},
+					3: {
+						Host:          "localhost",
+						Port:          7051,
+						ClientTlsCert: clientTLSCert(tlsCA),
+						ServerTlsCert: serverTLSCert(tlsCA),
+					},
+				},
+				NextConsenterID: 4,
+			}
+
+			network = createNetwork(timeout, channelID, dataDir, raftMetadata)
 			c1 = network.chains[1]
 			c2 = network.chains[2]
 			c3 = network.chains[3]
@@ -1577,30 +1586,10 @@ type chain struct {
 	*etcdraft.Chain
 }
 
-func newChain(timeout time.Duration, channel string, dataDir string, applied uint64, id uint64, all []uint64) *chain {
+func newChain(timeout time.Duration, channel string, dataDir string, id uint64, raftMetadata *raftprotos.RaftMetadata) *chain {
 	rpc := &mocks.FakeRPC{}
 	clock := fakeclock.NewFakeClock(time.Now())
 	storage := raft.NewMemoryStorage()
-	tlsCA, _ := tlsgen.NewCA()
-
-	meta := &raftprotos.RaftMetadata{
-		Consenters:      map[uint64]*raftprotos.Consenter{},
-		NextConsenterID: 1,
-		RaftIndex:       applied,
-	}
-
-	for _, raftID := range all {
-		meta.Consenters[uint64(raftID)] = &raftprotos.Consenter{
-			Host:          "localhost",
-			Port:          7051,
-			ClientTlsCert: clientTLSCert(tlsCA),
-			ServerTlsCert: serverTLSCert(tlsCA),
-		}
-		if uint64(raftID) > meta.NextConsenterID {
-			meta.NextConsenterID = uint64(raftID)
-		}
-	}
-	meta.NextConsenterID++
 
 	opts := etcdraft.Options{
 		RaftID:          uint64(id),
@@ -1610,7 +1599,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, applied uin
 		HeartbeatTick:   HEARTBEAT_TICK,
 		MaxSizePerMsg:   1024 * 1024,
 		MaxInflightMsgs: 256,
-		RaftMetadata:    meta,
+		RaftMetadata:    raftMetadata,
 		Logger:          flogging.NewFabricLogger(zap.NewNop()),
 		MemoryStorage:   storage,
 		WALDir:          path.Join(dataDir, "wal"),
@@ -1681,66 +1670,81 @@ type network struct {
 	connectivity map[uint64]chan struct{}
 }
 
-func createNetwork(timeout time.Duration, channel string, dataDir string, ids []uint64) *network {
+func (n *network) appendChain(c *chain) {
+	n.connLock.Lock()
+	n.chains[c.id] = c
+	n.connLock.Unlock()
+}
+
+func (n *network) addConnection(id uint64) {
+	n.connLock.Lock()
+	n.connectivity[id] = make(chan struct{})
+	n.connLock.Unlock()
+}
+
+func (n *network) addChain(c *chain) {
+	n.addConnection(c.id)
+
+	c.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+		n.connLock.RLock()
+		defer n.connLock.RUnlock()
+
+		select {
+		case <-n.connectivity[dest]:
+		case <-n.connectivity[c.id]:
+		default:
+			go n.chains[dest].Step(msg, c.id)
+		}
+
+		return nil, nil
+	}
+
+	c.rpc.SendSubmitStub = func(dest uint64, msg *orderer.SubmitRequest) error {
+		n.connLock.RLock()
+		defer n.connLock.RUnlock()
+
+		select {
+		case <-n.connectivity[dest]:
+		case <-n.connectivity[c.id]:
+		default:
+			go n.chains[dest].Submit(msg, c.id)
+		}
+
+		return nil
+	}
+
+	c.support.WriteBlockStub = func(b *common.Block, meta []byte) {
+		bytes, err := proto.Marshal(&common.Metadata{Value: meta})
+		Expect(err).NotTo(HaveOccurred())
+		b.Metadata.Metadata[common.BlockMetadataIndex_ORDERER] = bytes
+		n.ledger.Store(b.Header.Number, b)
+	}
+
+	c.puller.PullBlockStub = func(i uint64) *common.Block {
+		b, exist := n.ledger.Load(i)
+		if !exist {
+			return nil
+		}
+
+		return b.(*common.Block)
+	}
+
+	n.appendChain(c)
+}
+
+func createNetwork(timeout time.Duration, channel string, dataDir string, raftMetadata *raftprotos.RaftMetadata) *network {
 	n := &network{
 		chains:       make(map[uint64]*chain),
 		connectivity: make(map[uint64]chan struct{}),
 		ledger:       &sync.Map{},
 	}
 
-	for _, i := range ids {
-		n.connectivity[i] = make(chan struct{})
-
-		dir, err := ioutil.TempDir(dataDir, fmt.Sprintf("node-%d-", i))
+	for nodeID := range raftMetadata.Consenters {
+		dir, err := ioutil.TempDir(dataDir, fmt.Sprintf("node-%d-", nodeID))
 		Expect(err).NotTo(HaveOccurred())
 
-		c := newChain(timeout, channel, dir, 0, i, ids)
-
-		c.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
-			n.connLock.RLock()
-			defer n.connLock.RUnlock()
-
-			select {
-			case <-n.connectivity[dest]:
-			case <-n.connectivity[c.id]:
-			default:
-				go n.chains[dest].Step(msg, c.id)
-			}
-
-			return nil, nil
-		}
-
-		c.rpc.SendSubmitStub = func(dest uint64, msg *orderer.SubmitRequest) error {
-			n.connLock.RLock()
-			defer n.connLock.RUnlock()
-
-			select {
-			case <-n.connectivity[dest]:
-			case <-n.connectivity[c.id]:
-			default:
-				go n.chains[dest].Submit(msg, c.id)
-			}
-
-			return nil
-		}
-
-		c.support.WriteBlockStub = func(b *common.Block, meta []byte) {
-			bytes, err := proto.Marshal(&common.Metadata{Value: meta})
-			Expect(err).NotTo(HaveOccurred())
-			b.Metadata.Metadata[common.BlockMetadataIndex_ORDERER] = bytes
-			n.ledger.Store(b.Header.Number, b)
-		}
-
-		c.puller.PullBlockStub = func(i uint64) *common.Block {
-			b, exist := n.ledger.Load(i)
-			if !exist {
-				return nil
-			}
-
-			return b.(*common.Block)
-		}
-
-		n.chains[i] = c
+		m := proto.Clone(raftMetadata).(*raftprotos.RaftMetadata)
+		n.addChain(newChain(timeout, channel, dir, nodeID, m))
 	}
 
 	return n
@@ -1902,4 +1906,47 @@ func (n *network) connect(i uint64) {
 	n.connLock.Lock()
 	defer n.connLock.Unlock()
 	n.connectivity[i] = make(chan struct{})
+}
+
+// sets the configEnv var declared above
+func newConfigEnv(chainID string, headerType common.HeaderType, configUpdateEnv *common.ConfigUpdateEnvelope) *common.Envelope {
+	return &common.Envelope{
+		Payload: marshalOrPanic(&common.Payload{
+			Header: &common.Header{
+				ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+					Type:      int32(headerType),
+					ChannelId: chainID,
+				}),
+			},
+			Data: marshalOrPanic(&common.ConfigEnvelope{
+				LastUpdate: &common.Envelope{
+					Payload: marshalOrPanic(&common.Payload{
+						Header: &common.Header{
+							ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+								Type:      int32(common.HeaderType_CONFIG_UPDATE),
+								ChannelId: chainID,
+							}),
+						},
+						Data: marshalOrPanic(configUpdateEnv),
+					}), // common.Payload
+				}, // LastUpdate
+			}),
+		}),
+	}
+}
+
+func newConfigUpdateEnv(chainID string, values map[string]*common.ConfigValue) *common.ConfigUpdateEnvelope {
+	return &common.ConfigUpdateEnvelope{
+		ConfigUpdate: marshalOrPanic(&common.ConfigUpdate{
+			ChannelId: chainID,
+			ReadSet:   &common.ConfigGroup{},
+			WriteSet: &common.ConfigGroup{
+				Groups: map[string]*common.ConfigGroup{
+					"Orderer": {
+						Values: values,
+					},
+				},
+			}, // WriteSet
+		}),
+	}
 }
