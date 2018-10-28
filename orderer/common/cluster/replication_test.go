@@ -15,9 +15,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -192,4 +194,382 @@ func injectTLSCACert(t *testing.T, block *common.Block, tlsCA []byte) {
 	payload.Data = utils.MarshalOrPanic(confEnv)
 	env.Payload = utils.MarshalOrPanic(payload)
 	block.Data.Data[0] = utils.MarshalOrPanic(env)
+}
+
+func TestIsNewChannelBlock(t *testing.T) {
+	for _, testCase := range []struct {
+		name         string
+		expectedErr  string
+		returnedName string
+		block        *common.Block
+	}{
+		{
+			name:        "nil block",
+			expectedErr: "nil block",
+		},
+		{
+			name:        "no data section in block",
+			expectedErr: "block data is nil",
+			block:       &common.Block{},
+		},
+		{
+			name: "corrupt envelope in block",
+			expectedErr: "block data does not carry an" +
+				" envelope at index 0: error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{{1, 2, 3}},
+				},
+			},
+		},
+		{
+			name:        "corrupt payload in envelope",
+			expectedErr: "no payload in envelope: proto: common.Payload: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: []byte{1, 2, 3},
+					})},
+				},
+			},
+		},
+		{
+			name:        "no header in block",
+			expectedErr: "nil header in payload",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{}),
+					})},
+				},
+			},
+		},
+		{
+			name: "corrupt channel header",
+			expectedErr: "error unmarshaling ChannelHeader:" +
+				" proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: []byte{1, 2, 3},
+							},
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:        "not an orderer transaction",
+			expectedErr: "",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type: int32(common.HeaderType_CONFIG_UPDATE),
+								}),
+							},
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:        "orderer transaction with corrupt inner envelope",
+			expectedErr: "error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type: int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: []byte{1, 2, 3},
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:        "orderer transaction with corrupt inner payload",
+			expectedErr: "error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type: int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&common.Envelope{
+								Payload: []byte{1, 2, 3},
+							}),
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:        "orderer transaction with nil inner header",
+			expectedErr: "inner payload's header is nil",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type: int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&common.Envelope{
+								Payload: utils.MarshalOrPanic(&common.Payload{}),
+							}),
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:        "orderer transaction with corrupt inner channel header",
+			expectedErr: "error unmarshaling ChannelHeader: proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type: int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&common.Envelope{
+								Payload: utils.MarshalOrPanic(&common.Payload{
+									Header: &common.Header{
+										ChannelHeader: []byte{1, 2, 3},
+									},
+								}),
+							}),
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:        "orderer transaction that is not a config, but a config update",
+			expectedErr: "",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type: int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&common.Envelope{
+								Payload: utils.MarshalOrPanic(&common.Payload{
+									Header: &common.Header{
+										ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+											Type: int32(common.HeaderType_CONFIG_UPDATE),
+										}),
+									},
+								}),
+							}),
+						}),
+					})},
+				},
+			},
+		},
+		{
+			expectedErr: "",
+			name:        "orderer transaction that is a system channel config block",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									ChannelId: "systemChannel",
+									Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&common.Envelope{
+								Payload: utils.MarshalOrPanic(&common.Payload{
+									Header: &common.Header{
+										ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+											Type:      int32(common.HeaderType_CONFIG),
+											ChannelId: "systemChannel",
+										}),
+									},
+								}),
+							}),
+						}),
+					})},
+				},
+			},
+		},
+		{
+			name:         "orderer transaction that creates a new application channel",
+			expectedErr:  "",
+			returnedName: "notSystemChannel",
+			block: &common.Block{
+				Data: &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									ChannelId: "systemChannel",
+									Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&common.Envelope{
+								Payload: utils.MarshalOrPanic(&common.Payload{
+									Header: &common.Header{
+										ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+											Type:      int32(common.HeaderType_CONFIG),
+											ChannelId: "notSystemChannel",
+										}),
+									},
+								}),
+							}),
+						}),
+					})},
+				},
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			channelName, err := cluster.IsNewChannelBlock(testCase.block)
+			if testCase.expectedErr != "" {
+				assert.EqualError(t, err, testCase.expectedErr)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, testCase.returnedName, channelName)
+		})
+	}
+}
+
+func TestChannels(t *testing.T) {
+	makeBlock := func(outerChannelName, innerChannelName string) *common.Block {
+		return &common.Block{
+			Header: &common.BlockHeader{},
+			Data: &common.BlockData{
+				Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+					Payload: utils.MarshalOrPanic(&common.Payload{
+						Header: &common.Header{
+							ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+								ChannelId: outerChannelName,
+								Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
+							}),
+						},
+						Data: utils.MarshalOrPanic(&common.Envelope{
+							Payload: utils.MarshalOrPanic(&common.Payload{
+								Header: &common.Header{
+									ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+										Type:      int32(common.HeaderType_CONFIG),
+										ChannelId: innerChannelName,
+									}),
+								},
+							}),
+						}),
+					}),
+				})},
+			},
+		}
+	}
+
+	for _, testCase := range []struct {
+		name               string
+		prepareSystemChain func(systemChain []*common.Block)
+		assertion          func(t *testing.T, ci *cluster.ChainInspector)
+	}{
+		{
+			name: "happy path - artificial blocks",
+			prepareSystemChain: func(systemChain []*common.Block) {
+				assignHashes(systemChain)
+			},
+			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
+				actual := ci.Channels()
+				// Assert that the returned channels are returned in any order
+				assert.Contains(t, [][]string{{"mychannel", "mychannel2"}, {"mychannel2", "mychannel"}}, actual)
+			},
+		},
+		{
+			name: "happy path - one block is not artificial but real",
+			prepareSystemChain: func(systemChain []*common.Block) {
+				blockbytes, err := ioutil.ReadFile(filepath.Join("testdata", "block3.pb"))
+				assert.NoError(t, err)
+				block := &common.Block{}
+				err = proto.Unmarshal(blockbytes, block)
+				assert.NoError(t, err)
+
+				systemChain[len(systemChain)/2] = block
+				assignHashes(systemChain)
+			},
+			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
+				actual := ci.Channels()
+				// Assert that the returned channels are returned in any order
+				assert.Contains(t, [][]string{{"mychannel", "bar"}, {"bar", "mychannel"}}, actual)
+			},
+		},
+		{
+			name:               "bad path - pulled chain's hash is mismatched",
+			prepareSystemChain: func(_ []*common.Block) {},
+			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
+				panicValue := "System channel pulled doesn't match the boot last config block:" +
+					" block 4's hash (d8553eb97aa57e3c795a185f30efdbe8d88ae4b1e44b984b311159beac9bd5f4)" +
+					" mismatches 3's prev block hash ()"
+				assert.PanicsWithValue(t, panicValue, func() {
+					ci.Channels()
+				})
+			},
+		},
+		{
+			name: "bad path - a block cannot be classified",
+			prepareSystemChain: func(systemChain []*common.Block) {
+				assignHashes(systemChain)
+				systemChain[len(systemChain)-2].Data.Data = [][]byte{{1, 2, 3}}
+			},
+			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
+				panicValue := "Failed classifying block 3 : block data does not carry" +
+					" an envelope at index 0: error unmarshaling Envelope: " +
+					"proto: common.Envelope: illegal tag 0 (wire type 1)"
+				assert.PanicsWithValue(t, panicValue, func() {
+					ci.Channels()
+				})
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			systemChain := []*common.Block{
+				makeBlock("systemChannel", "systemChannel"),
+				makeBlock("systemChannel", "mychannel"),
+				makeBlock("systemChannel", "mychannel2"),
+				makeBlock("systemChannel", "systemChannel"),
+			}
+
+			for i := 0; i < len(systemChain); i++ {
+				systemChain[i].Header.DataHash = systemChain[i].Data.Hash()
+				systemChain[i].Header.Number = uint64(i + 1)
+			}
+			testCase.prepareSystemChain(systemChain)
+			puller := &mocks.ChainPuller{}
+			for seq := uint64(1); int(seq) <= len(systemChain); seq++ {
+				puller.On("PullBlock", seq).Return(systemChain[int(seq)-1])
+			}
+
+			ci := &cluster.ChainInspector{
+				Logger:          flogging.MustGetLogger("test"),
+				Puller:          puller,
+				LastConfigBlock: systemChain[len(systemChain)-1],
+			}
+			testCase.assertion(t, ci)
+		})
+	}
 }
