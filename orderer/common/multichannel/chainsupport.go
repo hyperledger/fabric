@@ -73,6 +73,15 @@ func newChainSupport(
 	return cs
 }
 
+// Block returns a block with the following number,
+// or nil if such a block doesn't exist.
+func (cs *ChainSupport) Block(number uint64) *cb.Block {
+	if cs.Height() <= number {
+		return nil
+	}
+	return blockledger.GetBlock(cs.Reader(), number)
+}
+
 func (cs *ChainSupport) Reader() blockledger.Reader {
 	return cs
 }

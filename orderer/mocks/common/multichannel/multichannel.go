@@ -62,6 +62,11 @@ type ConsenterSupport struct {
 	SequenceVal uint64
 }
 
+func (mcs *ConsenterSupport) Block(seq uint64) *cb.Block {
+	// TODO: implement this
+	return nil
+}
+
 // BlockCutter returns BlockCutterVal
 func (mcs *ConsenterSupport) BlockCutter() blockcutter.Receiver {
 	return mcs.BlockCutterVal

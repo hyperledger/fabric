@@ -48,6 +48,8 @@ type Writer interface {
 	Append(block *cb.Block) error
 }
 
+//go:generate mockery -dir . -name ReadWriter -case underscore  -output mocks/
+
 // ReadWriter encapsulates the read/write functions of the ledger
 type ReadWriter interface {
 	Reader

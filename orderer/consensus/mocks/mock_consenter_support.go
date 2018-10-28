@@ -119,6 +119,17 @@ type FakeConsenterSupport struct {
 	createNextBlockReturnsOnCall map[int]struct {
 		result1 *cb.Block
 	}
+	BlockStub        func(seq uint64) *cb.Block
+	blockMutex       sync.RWMutex
+	blockArgsForCall []struct {
+		seq uint64
+	}
+	blockReturns struct {
+		result1 *cb.Block
+	}
+	blockReturnsOnCall map[int]struct {
+		result1 *cb.Block
+	}
 	WriteBlockStub        func(block *cb.Block, encodedMetadataValue []byte)
 	writeBlockMutex       sync.RWMutex
 	writeBlockArgsForCall []struct {
@@ -601,6 +612,54 @@ func (fake *FakeConsenterSupport) CreateNextBlockReturnsOnCall(i int, result1 *c
 	}{result1}
 }
 
+func (fake *FakeConsenterSupport) Block(seq uint64) *cb.Block {
+	fake.blockMutex.Lock()
+	ret, specificReturn := fake.blockReturnsOnCall[len(fake.blockArgsForCall)]
+	fake.blockArgsForCall = append(fake.blockArgsForCall, struct {
+		seq uint64
+	}{seq})
+	fake.recordInvocation("Block", []interface{}{seq})
+	fake.blockMutex.Unlock()
+	if fake.BlockStub != nil {
+		return fake.BlockStub(seq)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.blockReturns.result1
+}
+
+func (fake *FakeConsenterSupport) BlockCallCount() int {
+	fake.blockMutex.RLock()
+	defer fake.blockMutex.RUnlock()
+	return len(fake.blockArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) BlockArgsForCall(i int) uint64 {
+	fake.blockMutex.RLock()
+	defer fake.blockMutex.RUnlock()
+	return fake.blockArgsForCall[i].seq
+}
+
+func (fake *FakeConsenterSupport) BlockReturns(result1 *cb.Block) {
+	fake.BlockStub = nil
+	fake.blockReturns = struct {
+		result1 *cb.Block
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) BlockReturnsOnCall(i int, result1 *cb.Block) {
+	fake.BlockStub = nil
+	if fake.blockReturnsOnCall == nil {
+		fake.blockReturnsOnCall = make(map[int]struct {
+			result1 *cb.Block
+		})
+	}
+	fake.blockReturnsOnCall[i] = struct {
+		result1 *cb.Block
+	}{result1}
+}
+
 func (fake *FakeConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) {
 	var encodedMetadataValueCopy []byte
 	if encodedMetadataValue != nil {
@@ -802,6 +861,8 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.sharedConfigMutex.RUnlock()
 	fake.createNextBlockMutex.RLock()
 	defer fake.createNextBlockMutex.RUnlock()
+	fake.blockMutex.RLock()
+	defer fake.blockMutex.RUnlock()
 	fake.writeBlockMutex.RLock()
 	defer fake.writeBlockMutex.RUnlock()
 	fake.writeConfigBlockMutex.RLock()
