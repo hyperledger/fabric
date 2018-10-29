@@ -606,22 +606,22 @@ func TestProposalTxID(t *testing.T) {
 	nonce := []byte{1}
 	creator := []byte{2}
 
-	txid, err := utils.ComputeProposalTxID(nonce, creator)
+	txid, err := utils.ComputeTxID(nonce, creator)
 	assert.NotEmpty(t, txid, "TxID cannot be empty.")
 	assert.NoError(t, err, "Failed computing txID")
-	assert.Nil(t, utils.CheckProposalTxID(txid, nonce, creator))
-	assert.Error(t, utils.CheckProposalTxID("", nonce, creator))
+	assert.Nil(t, utils.CheckTxID(txid, nonce, creator))
+	assert.Error(t, utils.CheckTxID("", nonce, creator))
 
-	txid, err = utils.ComputeProposalTxID(nil, nil)
+	txid, err = utils.ComputeTxID(nil, nil)
 	assert.NotEmpty(t, txid, "TxID cannot be empty.")
 	assert.NoError(t, err, "Failed computing txID")
 }
 
 func TestComputeProposalTxID(t *testing.T) {
-	txid, err := utils.ComputeProposalTxID([]byte{1}, []byte{1})
+	txid, err := utils.ComputeTxID([]byte{1}, []byte{1})
 	assert.NoError(t, err, "Failed computing TxID")
 
-	// Compute the function computed by ComputeProposalTxID,
+	// Compute the function computed by ComputeTxID,
 	// namely, base64(sha256(nonce||creator))
 	hf := sha256.New()
 	hf.Write([]byte{1})

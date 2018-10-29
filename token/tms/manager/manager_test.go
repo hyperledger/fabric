@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package manager_test
 
 import (
-	"github.com/hyperledger/fabric/token/identity"
 	"github.com/hyperledger/fabric/token/identity/mock"
 	"github.com/hyperledger/fabric/token/tms/manager"
 	"github.com/hyperledger/fabric/token/tms/plain"
@@ -29,11 +28,11 @@ var _ = Describe("Manager", func() {
 
 	Describe("Get a TxProcessor for a non-existent channel", func() {
 		BeforeEach(func() {
-			fakeIdentityDeserializerManager.DeserializerReturns(nil, errors.New("GetIdentityDeserializerReturns no-way-man"))
+			fakeIdentityDeserializerManager.DeserializerReturns(nil, errors.New("GetDeserializerReturns no-way-man"))
 		})
 		It("returns an error", func() {
 			_, err := mgm.GetTxProcessor("boguschannel")
-			Expect(err.Error()).To(Equal("failed getting identity deserialiser manager for channel 'boguschannel': GetIdentityDeserializerReturns no-way-man"))
+			Expect(err.Error()).To(Equal("failed getting identity deserialiser manager for channel 'boguschannel': GetDeserializerReturns no-way-man"))
 		})
 	})
 
@@ -60,36 +59,12 @@ var _ = Describe("Manager", func() {
 })
 
 var _ = Describe("FabricIdentityDeserializerManager", func() {
-	var (
-		fabricIdentityDeserializerManager *manager.FabricIdentityDeserializerManager
-	)
-
-	Describe("Get an IdentityDeserializer for an existent channel", func() {
+	Describe("Get an IdentityDeserializer for a non-existent channel", func() {
 		var (
-			fakeDeserilizer *mock.Deserializer
+			fabricIdentityDeserializerManager *manager.FabricIdentityDeserializerManager
 		)
 		BeforeEach(func() {
-			fakeDeserilizer = &mock.Deserializer{}
-			fabricIdentityDeserializerManager = &manager.FabricIdentityDeserializerManager{
-				Mapper: func(channel string) (identity.Deserializer, bool) {
-					return fakeDeserilizer, true
-				},
-			}
-		})
-		It("returns a deserializer", func() {
-			d, err := fabricIdentityDeserializerManager.Deserializer("boguschannel")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(d).To(Equal(fakeDeserilizer))
-		})
-	})
-
-	Describe("Get an IdentityDeserializer for a non-existent channel", func() {
-		BeforeEach(func() {
-			fabricIdentityDeserializerManager = &manager.FabricIdentityDeserializerManager{
-				Mapper: func(channel string) (identity.Deserializer, bool) {
-					return nil, false
-				},
-			}
+			fabricIdentityDeserializerManager = &manager.FabricIdentityDeserializerManager{}
 		})
 		It("returns an error", func() {
 			_, err := fabricIdentityDeserializerManager.Deserializer("boguschannel")

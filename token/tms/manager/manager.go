@@ -7,23 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package manager
 
 import (
+	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/token/identity"
 	"github.com/hyperledger/fabric/token/tms/plain"
 	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
 )
 
-// FabricIdentityDeserializerManager implements a DeserializerManager
-// by routing the call to a mapping function.
+//go:generate counterfeiter -o mock/identity_deserializer_manager.go -fake-name DeserializerManager . DeserializerManager
+
+// FabricIdentityDeserializerManager implements an DeserializerManager
+// by routing the call to the msp/mgmt package
 type FabricIdentityDeserializerManager struct {
-	// Mapper maps channel names to deserializer.
-	// For example, it can be implemented by using the msp/mgmt package,
-	// i.e. mgmt.GetDeserializers()[channel]
-	Mapper func(channel string) (identity.Deserializer, bool)
 }
 
-func (m *FabricIdentityDeserializerManager) Deserializer(channel string) (identity.Deserializer, error) {
-	id, ok := m.Mapper(channel)
+func (*FabricIdentityDeserializerManager) Deserializer(channel string) (identity.Deserializer, error) {
+	id, ok := mgmt.GetDeserializers()[channel]
 	if !ok {
 		return nil, errors.New("channel not found")
 	}

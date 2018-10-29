@@ -27,15 +27,18 @@ const (
 
 	// ApplicationResourcesTreeExperimental is the capabilties string for private data using the experimental feature of collections/sideDB.
 	ApplicationResourcesTreeExperimental = "V1_1_RESOURCETREE_EXPERIMENTAL"
+
+	ApplicationFabTokenExperimental = "V1_4_FABTOKEN_EXPERIMENTAL"
 )
 
 // ApplicationProvider provides capabilities information for application level config.
 type ApplicationProvider struct {
 	*registry
-	v11                    bool
-	v12                    bool
-	v13                    bool
-	v11PvtDataExperimental bool
+	v11                     bool
+	v12                     bool
+	v13                     bool
+	v11PvtDataExperimental  bool
+	v14FabTokenExperimental bool
 }
 
 // NewApplicationProvider creates a application capabilities provider.
@@ -46,6 +49,7 @@ func NewApplicationProvider(capabilities map[string]*cb.Capability) *Application
 	_, ap.v12 = capabilities[ApplicationV1_2]
 	_, ap.v13 = capabilities[ApplicationV1_3]
 	_, ap.v11PvtDataExperimental = capabilities[ApplicationPvtDataExperimental]
+	_, ap.v14FabTokenExperimental = capabilities[ApplicationFabTokenExperimental]
 	return ap
 }
 
@@ -109,6 +113,11 @@ func (ap *ApplicationProvider) KeyLevelEndorsement() bool {
 	return ap.v13
 }
 
+// FabToken returns true if support for fabric token functions is enabled.
+func (ap *ApplicationProvider) FabToken() bool {
+	return ap.v14FabTokenExperimental
+}
+
 // HasCapability returns true if the capability is supported by this binary.
 func (ap *ApplicationProvider) HasCapability(capability string) bool {
 	switch capability {
@@ -122,6 +131,8 @@ func (ap *ApplicationProvider) HasCapability(capability string) bool {
 	case ApplicationPvtDataExperimental:
 		return true
 	case ApplicationResourcesTreeExperimental:
+		return true
+	case ApplicationFabTokenExperimental:
 		return true
 	default:
 		return false

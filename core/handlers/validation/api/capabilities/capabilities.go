@@ -51,4 +51,7 @@ type Capabilities interface {
 	// KeyLevelEndorsement returns true if this channel supports endorsement
 	// policies expressible at a ledger key granularity, as described in FAB-8812
 	KeyLevelEndorsement() bool
+
+	// FabToken returns true if fabric token function is supported.
+	FabToken() bool
 }
