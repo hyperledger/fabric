@@ -90,10 +90,11 @@ type FakeConsenterSupport struct {
 		result2 uint64
 		result3 error
 	}
-	VerifyBlockSignatureStub        func([]*cb.SignedData) error
+	VerifyBlockSignatureStub        func([]*cb.SignedData, *cb.ConfigEnvelope) error
 	verifyBlockSignatureMutex       sync.RWMutex
 	verifyBlockSignatureArgsForCall []struct {
 		arg1 []*cb.SignedData
+		arg2 *cb.ConfigEnvelope
 	}
 	verifyBlockSignatureReturns struct {
 		result1 error
@@ -130,10 +131,10 @@ type FakeConsenterSupport struct {
 	createNextBlockReturnsOnCall map[int]struct {
 		result1 *cb.Block
 	}
-	BlockStub        func(seq uint64) *cb.Block
+	BlockStub        func(number uint64) *cb.Block
 	blockMutex       sync.RWMutex
 	blockArgsForCall []struct {
-		seq uint64
+		number uint64
 	}
 	blockReturns struct {
 		result1 *cb.Block
@@ -490,7 +491,7 @@ func (fake *FakeConsenterSupport) ProcessConfigMsgReturnsOnCall(i int, result1 *
 	}{result1, result2, result3}
 }
 
-func (fake *FakeConsenterSupport) VerifyBlockSignature(arg1 []*cb.SignedData) error {
+func (fake *FakeConsenterSupport) VerifyBlockSignature(arg1 []*cb.SignedData, arg2 *cb.ConfigEnvelope) error {
 	var arg1Copy []*cb.SignedData
 	if arg1 != nil {
 		arg1Copy = make([]*cb.SignedData, len(arg1))
@@ -500,11 +501,12 @@ func (fake *FakeConsenterSupport) VerifyBlockSignature(arg1 []*cb.SignedData) er
 	ret, specificReturn := fake.verifyBlockSignatureReturnsOnCall[len(fake.verifyBlockSignatureArgsForCall)]
 	fake.verifyBlockSignatureArgsForCall = append(fake.verifyBlockSignatureArgsForCall, struct {
 		arg1 []*cb.SignedData
-	}{arg1Copy})
-	fake.recordInvocation("VerifyBlockSignature", []interface{}{arg1Copy})
+		arg2 *cb.ConfigEnvelope
+	}{arg1Copy, arg2})
+	fake.recordInvocation("VerifyBlockSignature", []interface{}{arg1Copy, arg2})
 	fake.verifyBlockSignatureMutex.Unlock()
 	if fake.VerifyBlockSignatureStub != nil {
-		return fake.VerifyBlockSignatureStub(arg1)
+		return fake.VerifyBlockSignatureStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -518,10 +520,10 @@ func (fake *FakeConsenterSupport) VerifyBlockSignatureCallCount() int {
 	return len(fake.verifyBlockSignatureArgsForCall)
 }
 
-func (fake *FakeConsenterSupport) VerifyBlockSignatureArgsForCall(i int) []*cb.SignedData {
+func (fake *FakeConsenterSupport) VerifyBlockSignatureArgsForCall(i int) ([]*cb.SignedData, *cb.ConfigEnvelope) {
 	fake.verifyBlockSignatureMutex.RLock()
 	defer fake.verifyBlockSignatureMutex.RUnlock()
-	return fake.verifyBlockSignatureArgsForCall[i].arg1
+	return fake.verifyBlockSignatureArgsForCall[i].arg1, fake.verifyBlockSignatureArgsForCall[i].arg2
 }
 
 func (fake *FakeConsenterSupport) VerifyBlockSignatureReturns(result1 error) {
@@ -676,16 +678,16 @@ func (fake *FakeConsenterSupport) CreateNextBlockReturnsOnCall(i int, result1 *c
 	}{result1}
 }
 
-func (fake *FakeConsenterSupport) Block(seq uint64) *cb.Block {
+func (fake *FakeConsenterSupport) Block(number uint64) *cb.Block {
 	fake.blockMutex.Lock()
 	ret, specificReturn := fake.blockReturnsOnCall[len(fake.blockArgsForCall)]
 	fake.blockArgsForCall = append(fake.blockArgsForCall, struct {
-		seq uint64
-	}{seq})
-	fake.recordInvocation("Block", []interface{}{seq})
+		number uint64
+	}{number})
+	fake.recordInvocation("Block", []interface{}{number})
 	fake.blockMutex.Unlock()
 	if fake.BlockStub != nil {
-		return fake.BlockStub(seq)
+		return fake.BlockStub(number)
 	}
 	if specificReturn {
 		return ret.result1
@@ -702,7 +704,7 @@ func (fake *FakeConsenterSupport) BlockCallCount() int {
 func (fake *FakeConsenterSupport) BlockArgsForCall(i int) uint64 {
 	fake.blockMutex.RLock()
 	defer fake.blockMutex.RUnlock()
-	return fake.blockArgsForCall[i].seq
+	return fake.blockArgsForCall[i].number
 }
 
 func (fake *FakeConsenterSupport) BlockReturns(result1 *cb.Block) {

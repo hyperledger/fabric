@@ -317,11 +317,6 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 		return 0, err
 	}
 
-	if err := p.VerifyBlockSequence([]*common.Block{block}); err != nil {
-		p.Logger.Errorf("Failed verifying latest block from %s: %v", endpoint, err)
-		return 0, err
-	}
-
 	p.Logger.Infof("%s is at block sequence of %d", endpoint, seq)
 	return block.Header.Number, nil
 }

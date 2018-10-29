@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
@@ -140,9 +141,23 @@ func (cs *ChainSupport) Sequence() uint64 {
 	return cs.ConfigtxValidator().Sequence()
 }
 
-// VerifyBlockSignature verifies a signature of a block
-func (cs *ChainSupport) VerifyBlockSignature(sd []*cb.SignedData) error {
-	policy, exists := cs.PolicyManager().GetPolicy(policies.BlockValidation)
+// VerifyBlockSignature verifies a signature of a block.
+// It has an optional argument of a configuration envelope
+// which would make the block verification to use validation rules
+// based on the given configuration in the ConfigEnvelope.
+// If the config envelope passed is nil, then the validation rules used
+// are the ones that were applied at commit of previous blocks.
+func (cs *ChainSupport) VerifyBlockSignature(sd []*cb.SignedData, envelope *cb.ConfigEnvelope) error {
+	policyMgr := cs.PolicyManager()
+	// If the envelope passed isn't nil, we should use a different policy manager.
+	if envelope != nil {
+		bundle, err := channelconfig.NewBundle(cs.ChainID(), envelope.Config)
+		if err != nil {
+			return err
+		}
+		policyMgr = bundle.PolicyManager()
+	}
+	policy, exists := policyMgr.GetPolicy(policies.BlockValidation)
 	if !exists {
 		return errors.Errorf("policy %s wasn't found", policies.BlockValidation)
 	}

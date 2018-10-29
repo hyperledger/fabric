@@ -74,8 +74,9 @@ type ConsenterSupport interface {
 	crypto.LocalSigner
 	msgprocessor.Processor
 
-	// VerifyBlockSignature verifies a signature of a block
-	VerifyBlockSignature([]*cb.SignedData) error
+	// VerifyBlockSignature verifies a signature of a block with a given optional
+	// configuration (can be nil).
+	VerifyBlockSignature([]*cb.SignedData, *cb.ConfigEnvelope) error
 
 	// BlockCutter returns the block cutting helper for this channel.
 	BlockCutter() blockcutter.Receiver
@@ -87,7 +88,7 @@ type ConsenterSupport interface {
 	// Note that either WriteBlock or WriteConfigBlock must be called before invoking this method a second time.
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 
-	// Block returns a block with the following number,
+	// Block returns a block with the given number,
 	// or nil if such a block doesn't exist.
 	Block(number uint64) *cb.Block
 
