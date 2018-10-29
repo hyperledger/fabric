@@ -14,48 +14,19 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/hyperledger/fabric/token/transaction"
+	"github.com/hyperledger/fabric/token/identity"
+	"github.com/hyperledger/fabric/token/ledger"
 	"github.com/pkg/errors"
 )
 
-//go:generate counterfeiter -o mock/creatorinfo.go -fake-name CreatorInfo . CreatorInfo
-
-// CreatorInfo is used to identify token owners.
-type CreatorInfo interface {
-	Public() []byte
-}
-
-//go:generate counterfeiter -o mock/policy_validator.go -fake-name PolicyValidator . PolicyValidator
-
-// PolicyValidator interface, used by TMS components to validate fabric channel policies.
-type PolicyValidator interface {
-	// IsIssuer returns true if the creator can issue tokens of the given type, false if not
-	IsIssuer(creator CreatorInfo, tokenType string) error
-}
-
-// LedgerReader interface, used to read from a ledger.
-type LedgerReader interface {
-	// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
-	GetState(namespace string, key string) ([]byte, error)
-}
-
-//go:generate counterfeiter -o mock/ledger_writer.go -fake-name LedgerWriter . LedgerWriter
-
-// LedgerWriter interface, used to read from, and write to, a ledger.
-type LedgerWriter interface {
-	LedgerReader
-	// SetState sets the given value for the given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId.
-	SetState(namespace string, key string, value []byte) error
-}
-
 // A Verifier validates and commits token transactions.
 type Verifier struct {
-	PolicyValidator transaction.PolicyValidator
+	IssuingValidator identity.IssuingValidator
 }
 
 // ProcessTx checks that transactions are correct wrt. the most recent ledger state.
 // ProcessTx checks are ones that shall be done sequentially, since transactions within a block may introduce dependencies.
-func (v *Verifier) ProcessTx(txID string, creator transaction.CreatorInfo, ttx *token.TokenTransaction, simulator transaction.LedgerWriter) error {
+func (v *Verifier) ProcessTx(txID string, creator identity.PublicInfo, ttx *token.TokenTransaction, simulator ledger.LedgerWriter) error {
 	err := v.checkProcess(txID, creator, ttx, simulator)
 	if err != nil {
 		return err
@@ -68,7 +39,7 @@ func (v *Verifier) ProcessTx(txID string, creator transaction.CreatorInfo, ttx *
 	return nil
 }
 
-func (v *Verifier) checkProcess(txID string, creator transaction.CreatorInfo, ttx *token.TokenTransaction, simulator transaction.LedgerReader) error {
+func (v *Verifier) checkProcess(txID string, creator identity.PublicInfo, ttx *token.TokenTransaction, simulator ledger.LedgerReader) error {
 	action := ttx.GetPlainAction()
 	if action == nil {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("check process failed for transaction '%s': missing token action", txID)}
@@ -86,7 +57,7 @@ func (v *Verifier) checkProcess(txID string, creator transaction.CreatorInfo, tt
 	return nil
 }
 
-func (v *Verifier) checkAction(creator transaction.CreatorInfo, plainAction *token.PlainTokenAction, txID string, simulator transaction.LedgerReader) error {
+func (v *Verifier) checkAction(creator identity.PublicInfo, plainAction *token.PlainTokenAction, txID string, simulator ledger.LedgerReader) error {
 	switch action := plainAction.Data.(type) {
 	case *token.PlainTokenAction_PlainImport:
 		return v.checkImportAction(creator, action.PlainImport, txID, simulator)
@@ -95,7 +66,7 @@ func (v *Verifier) checkAction(creator transaction.CreatorInfo, plainAction *tok
 	}
 }
 
-func (v *Verifier) checkImportAction(creator transaction.CreatorInfo, importAction *token.PlainImport, txID string, simulator transaction.LedgerReader) error {
+func (v *Verifier) checkImportAction(creator identity.PublicInfo, importAction *token.PlainImport, txID string, simulator ledger.LedgerReader) error {
 	err := v.checkImportOutputs(importAction.GetOutputs(), txID, simulator)
 	if err != nil {
 		return err
@@ -103,7 +74,7 @@ func (v *Verifier) checkImportAction(creator transaction.CreatorInfo, importActi
 	return v.checkImportPolicy(creator, txID, importAction)
 }
 
-func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string, simulator transaction.LedgerReader) error {
+func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string, simulator ledger.LedgerReader) error {
 	if len(outputs) == 0 {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("no outputs in transaction: %s", txID)}
 	}
@@ -120,7 +91,7 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 	return nil
 }
 
-func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator transaction.LedgerReader) error {
+func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator ledger.LedgerReader) error {
 	outputID, err := createOutputKey(txID, index)
 	if err != nil {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
@@ -137,7 +108,7 @@ func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator tra
 	return nil
 }
 
-func (v *Verifier) checkTxDoesNotExist(txID string, simulator transaction.LedgerReader) error {
+func (v *Verifier) checkTxDoesNotExist(txID string, simulator ledger.LedgerReader) error {
 	txKey, err := createTxKey(txID)
 	if err != nil {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating txID: %s", err)}
@@ -154,9 +125,9 @@ func (v *Verifier) checkTxDoesNotExist(txID string, simulator transaction.Ledger
 	return nil
 }
 
-func (v *Verifier) checkImportPolicy(creator transaction.CreatorInfo, txID string, importData *token.PlainImport) error {
+func (v *Verifier) checkImportPolicy(creator identity.PublicInfo, txID string, importData *token.PlainImport) error {
 	for _, output := range importData.Outputs {
-		err := v.PolicyValidator.IsIssuer(creator, output.Type)
+		err := v.IssuingValidator.Validate(creator, output.Type)
 		if err != nil {
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("import policy check failed: %s", err)}
 		}
@@ -167,7 +138,7 @@ func (v *Verifier) checkImportPolicy(creator transaction.CreatorInfo, txID strin
 // Namespace under which token composite keys are stored
 const tokenNamespace = "tms"
 
-func (v *Verifier) commitProcess(txID string, creator transaction.CreatorInfo, ttx *token.TokenTransaction, simulator transaction.LedgerWriter) error {
+func (v *Verifier) commitProcess(txID string, creator identity.PublicInfo, ttx *token.TokenTransaction, simulator ledger.LedgerWriter) error {
 	err := v.commitAction(ttx.GetPlainAction(), txID, simulator)
 	if err != nil {
 		return err
@@ -181,7 +152,7 @@ func (v *Verifier) commitProcess(txID string, creator transaction.CreatorInfo, t
 	return nil
 }
 
-func (v *Verifier) commitAction(plainAction *token.PlainTokenAction, txID string, simulator transaction.LedgerWriter) (err error) {
+func (v *Verifier) commitAction(plainAction *token.PlainTokenAction, txID string, simulator ledger.LedgerWriter) (err error) {
 	switch action := plainAction.Data.(type) {
 	case *token.PlainTokenAction_PlainImport:
 		err = v.commitImportAction(action.PlainImport, txID, simulator)
@@ -189,7 +160,7 @@ func (v *Verifier) commitAction(plainAction *token.PlainTokenAction, txID string
 	return
 }
 
-func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID string, simulator transaction.LedgerWriter) error {
+func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID string, simulator ledger.LedgerWriter) error {
 	for i, output := range importAction.GetOutputs() {
 		outputID, err := createOutputKey(txID, i)
 		if err != nil {
@@ -204,13 +175,13 @@ func (v *Verifier) commitImportAction(importAction *token.PlainImport, txID stri
 	return nil
 }
 
-func (v *Verifier) addOutput(outputID string, output *token.PlainOutput, simulator transaction.LedgerWriter) error {
+func (v *Verifier) addOutput(outputID string, output *token.PlainOutput, simulator ledger.LedgerWriter) error {
 	outputBytes := utils.MarshalOrPanic(output)
 
 	return simulator.SetState(tokenNamespace, outputID, outputBytes)
 }
 
-func (v *Verifier) addTransaction(txID string, ttx *token.TokenTransaction, simulator transaction.LedgerWriter) error {
+func (v *Verifier) addTransaction(txID string, ttx *token.TokenTransaction, simulator ledger.LedgerWriter) error {
 	ttxBytes := utils.MarshalOrPanic(ttx)
 
 	ttxID, err := createTxKey(txID)

@@ -12,10 +12,11 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/token/identity"
 	"github.com/pkg/errors"
 )
 
-func UnmarshalTokenTransaction(raw []byte) (*cb.ChannelHeader, *token.TokenTransaction, CreatorInfo, error) {
+func UnmarshalTokenTransaction(raw []byte) (*cb.ChannelHeader, *token.TokenTransaction, identity.PublicInfo, error) {
 	// the payload...
 	payload := &common.Payload{}
 	err := proto.Unmarshal(raw, payload)
