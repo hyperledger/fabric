@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -112,6 +111,10 @@ type Chain struct {
 	startC   chan struct{}         // Closes when the node is started
 	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
 
+	configChangeApplyC     chan struct{} // Notifies that a Raft configuration change has been applied
+	configChangeInProgress uint32        // Flag to indicate node waiting for Raft config change to be applied
+	raftMetadataLock       sync.RWMutex
+
 	clock clock.Clock // Tests can inject a fake clock
 
 	support consensus.ConsenterSupport
@@ -168,28 +171,29 @@ func NewChain(
 	}
 
 	return &Chain{
-		configurator:     conf,
-		rpc:              rpc,
-		channelID:        support.ChainID(),
-		raftID:           opts.RaftID,
-		submitC:          make(chan *orderer.SubmitRequest),
-		commitC:          make(chan block),
-		haltC:            make(chan struct{}),
-		doneC:            make(chan struct{}),
-		resignC:          make(chan struct{}),
-		startC:           make(chan struct{}),
-		syncC:            make(chan struct{}),
-		snapC:            make(chan *raftpb.Snapshot),
-		observeC:         observeC,
-		support:          support,
-		fresh:            fresh,
-		appliedIndex:     appliedi,
-		lastSnapBlockNum: snapBlkNum,
-		puller:           puller,
-		clock:            opts.Clock,
-		logger:           lg,
-		storage:          storage,
-		opts:             opts,
+		configurator:       conf,
+		rpc:                rpc,
+		channelID:          support.ChainID(),
+		raftID:             opts.RaftID,
+		submitC:            make(chan *orderer.SubmitRequest),
+		commitC:            make(chan block),
+		haltC:              make(chan struct{}),
+		doneC:              make(chan struct{}),
+		resignC:            make(chan struct{}),
+		startC:             make(chan struct{}),
+		syncC:              make(chan struct{}),
+		snapC:              make(chan *raftpb.Snapshot),
+		configChangeApplyC: make(chan struct{}),
+		observeC:           observeC,
+		support:            support,
+		fresh:              fresh,
+		appliedIndex:       appliedi,
+		lastSnapBlockNum:   snapBlkNum,
+		puller:             puller,
+		clock:              opts.Clock,
+		logger:             lg,
+		storage:            storage,
+		opts:               opts,
 	}, nil
 }
 
@@ -219,10 +223,10 @@ func (c *Chain) Start() {
 	raftPeers := RaftPeers(c.opts.RaftMetadata.Consenters)
 
 	if c.fresh {
-		c.logger.Infof("starting new raft node %d", c.raftID)
+		c.logger.Info("starting new raft node")
 		c.node = raft.StartNode(config, raftPeers)
 	} else {
-		c.logger.Infof("restarting raft node %d", c.raftID)
+		c.logger.Info("restarting raft node")
 		c.node = raft.RestartNode(config)
 	}
 
@@ -261,15 +265,7 @@ func (c *Chain) checkConfigUpdateValidity(ctx *common.Envelope) error {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
 		return nil
 	case int32(common.HeaderType_CONFIG):
-		configEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-		if err != nil {
-			return err
-		}
-		configUpdateEnv, err := utils.EnvelopeToConfigUpdate(configEnv.LastUpdate)
-		if err != nil {
-			return err
-		}
-		configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+		configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 		if err != nil {
 			return err
 		}
@@ -479,13 +475,17 @@ func (c *Chain) serveRequest() {
 }
 
 func (c *Chain) writeBlock(b block) {
-	c.opts.RaftMetadata.RaftIndex = b.i
-	m := utils.MarshalOrPanic(c.opts.RaftMetadata)
-
 	if utils.IsConfigBlock(b.b) {
-		c.support.WriteConfigBlock(b.b, m)
+		if err := c.writeConfigBlock(b); err != nil {
+			c.logger.Panicf("failed to write configuration block, %+v", err)
+		}
 		return
 	}
+
+	c.raftMetadataLock.Lock()
+	c.opts.RaftMetadata.RaftIndex = b.i
+	m := utils.MarshalOrPanic(c.opts.RaftMetadata)
+	c.raftMetadataLock.Unlock()
 
 	c.support.WriteBlock(b.b, m)
 }
@@ -668,9 +668,29 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				break
 			}
 
-			b := block{utils.UnmarshalBlockOrPanic(ents[i].Data), ents[i].Index}
-			c.commitC <- b
-			appliedb = b.b.Header.Number
+			b := utils.UnmarshalBlockOrPanic(ents[i].Data)
+			// need to check whenever given block carries updates
+			// which will lead to membership change and eventually
+			// to the cluster reconfiguration
+			c.raftMetadataLock.RLock()
+			m := c.opts.RaftMetadata
+			c.raftMetadataLock.RUnlock()
+
+			isConfigMembershipUpdate, err := IsMembershipUpdate(b, m)
+			if err != nil {
+				c.logger.Warnf("Error while attempting to determine membership update, due to %s", err)
+			}
+			// if error occurred isConfigMembershipUpdate will be false, hence will skip setting config change in
+			// progress
+			if isConfigMembershipUpdate {
+				// set flag config change is progress only if config block
+				// and has updates for raft replica set
+				atomic.StoreUint32(&c.configChangeInProgress, uint32(1))
+			}
+
+			c.commitC <- block{b, ents[i].Index}
+
+			appliedb = b.Header.Number
 			position = i
 
 		case raftpb.EntryConfChange:
@@ -681,6 +701,14 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 			}
 
 			c.confState = *c.node.ApplyConfChange(cc)
+
+			// assert that configuration changes result of the processing
+			// of configuration block of type B
+			isConfChangeInProgress := atomic.LoadUint32(&c.configChangeInProgress)
+			if isConfChangeInProgress == 1 {
+				// signal that config changes has been applied
+				c.configChangeApplyC <- struct{}{}
+			}
 		}
 
 		if ents[i].Index > c.appliedIndex {
@@ -780,56 +808,93 @@ func (c *Chain) pemToDER(pemBytes []byte, id uint64, certType string) ([]byte, e
 	return bl.Bytes, nil
 }
 
+// checkConsentersSet validates correctness of the consenters set provided within configuration value
 func (c *Chain) checkConsentersSet(configValue *common.ConfigValue) error {
-	consensusTypeValue := &orderer.ConsensusType{}
-	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
-		return errors.Wrap(err, "failed to unmarshal consensusType config update")
+	// read metadata update from configuration
+	updatedMetadata, err := MetadataFromConfigValue(configValue)
+	if err != nil {
+		return err
 	}
 
-	updatedMetadata := &etcdraft.Metadata{}
-	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
-		return errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
-	}
+	c.raftMetadataLock.RLock()
+	changes := ComputeMembershipChanges(c.opts.RaftMetadata.Consenters, updatedMetadata.Consenters)
+	c.raftMetadataLock.RUnlock()
 
-	if !ConsentersChanged(c.opts.RaftMetadata.Consenters, updatedMetadata.Consenters) {
-		return errors.New("update of consenters set is not supported yet")
+	if changes.TotalChanges > 1 {
+		return errors.New("update of more than one consenters at a time is not supported")
 	}
 
 	return nil
 }
 
-func (c *Chain) consentersChanged(newConsenters []*etcdraft.Consenter) bool {
-	if len(c.opts.RaftMetadata.Consenters) != len(newConsenters) {
-		return false
+// updateMembership updates raft metadata with new membership changes, apply raft changes to replica set
+// by proposing config change and blocking until it get applied
+func (c *Chain) updateMembership(metadata *etcdraft.RaftMetadata, change *raftpb.ConfChange) error {
+	lead := atomic.LoadUint64(&c.leader)
+	// leader to propose configuration change
+	if lead == c.raftID {
+		if err := c.node.ProposeConfChange(context.TODO(), *change); err != nil {
+			return errors.Errorf("failed to propose configuration update to Raft node: %s", err)
+		}
 	}
 
-	consentersSet1 := c.membershipByCert()
-	consentersSet2 := c.consentersToMap(newConsenters)
+	var err error
 
-	return reflect.DeepEqual(consentersSet1, consentersSet2)
+	select {
+	case <-c.configChangeApplyC:
+		// update metadata once we have block committed
+		c.raftMetadataLock.Lock()
+		c.opts.RaftMetadata = metadata
+		c.raftMetadataLock.Unlock()
+
+		// new we need to reconfigure the communication layer with new updates
+		err = c.configureComm()
+	case <-c.resignC:
+		// leadership has changed, new leader will have to take care
+		// of reading last config block re-propose config update
+		c.logger.Debug("Raft cluster leader has changed, new leader should re-propose config change based on last config block")
+	case <-c.doneC:
+		c.logger.Debug("shutting down node, aborting config change update")
+	}
+
+	// set flag back
+	atomic.StoreUint32(&c.configChangeInProgress, uint32(0))
+	return err
 }
 
-func (c *Chain) membershipByCert() map[string]struct{} {
-	set := map[string]struct{}{}
-	for _, c := range c.opts.RaftMetadata.Consenters {
-		set[string(c.ClientTlsCert)] = struct{}{}
+// writeConfigBlock writes configuration blocks into the ledger in
+// addition extracts updates about raft replica set and if there
+// are changes updates cluster membership as well
+func (c *Chain) writeConfigBlock(b block) error {
+	metadata, err := ConsensusMetadataFromConfigBlock(b.b)
+	if err != nil {
+		c.logger.Panicf("error reading consensus metadata, because of %s", err)
 	}
-	return set
-}
 
-func (c *Chain) consentersToMap(consenters []*etcdraft.Consenter) map[string]struct{} {
-	set := map[string]struct{}{}
-	for _, c := range consenters {
-		set[string(c.ClientTlsCert)] = struct{}{}
+	c.raftMetadataLock.RLock()
+	raftMetadata := proto.Clone(c.opts.RaftMetadata).(*etcdraft.RaftMetadata)
+	// proto.Clone doesn't copy an empty map, hence need to initialize it after
+	// cloning
+	if raftMetadata.Consenters == nil {
+		raftMetadata.Consenters = map[uint64]*etcdraft.Consenter{}
 	}
-	return set
-}
+	c.raftMetadataLock.RUnlock()
 
-func (c *Chain) membershipToRaftPeers() []raft.Peer {
-	var peers []raft.Peer
-
-	for raftID := range c.opts.RaftMetadata.Consenters {
-		peers = append(peers, raft.Peer{ID: raftID})
+	var changes *MembershipChanges
+	if metadata != nil {
+		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
 	}
-	return peers
+
+	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
+	raftMetadata.RaftIndex = b.i
+
+	raftMetadataBytes := utils.MarshalOrPanic(raftMetadata)
+	// write block with metadata
+	c.support.WriteConfigBlock(b.b, raftMetadataBytes)
+	if confChange != nil {
+		if err := c.updateMembership(raftMetadata, confChange); err != nil {
+			return errors.Wrap(err, "failed to update Raft with consenters membership changes")
+		}
+	}
+	return nil
 }

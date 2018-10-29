@@ -154,7 +154,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
 	m := &etcdraft.RaftMetadata{
 		Consenters:      map[uint64]*etcdraft.Consenter{},
-		NextConsenterID: 1,
+		NextConsenterId: 1,
 	}
 	if blockMetadata != nil && len(blockMetadata.Value) != 0 { // we have consenters mapping from block
 		if err := proto.Unmarshal(blockMetadata.Value, m); err != nil {
@@ -165,8 +165,8 @@ func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metad
 
 	// need to read consenters from the configuration
 	for _, consenter := range configMetadata.Consenters {
-		m.Consenters[m.NextConsenterID] = consenter
-		m.NextConsenterID++
+		m.Consenters[m.NextConsenterId] = consenter
+		m.NextConsenterId++
 	}
 
 	return m, nil
