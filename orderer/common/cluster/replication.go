@@ -105,24 +105,24 @@ type ChainInspector struct {
 
 // Channels returns the list of channels
 // that exist in the chain
-func (cw *ChainInspector) Channels() []string {
+func (ci *ChainInspector) Channels() []string {
 	channels := make(map[string]struct{})
-	lastConfigBlockNum := cw.LastConfigBlock.Header.Number
+	lastConfigBlockNum := ci.LastConfigBlock.Header.Number
 	var block *common.Block
 	for seq := uint64(1); seq < lastConfigBlockNum; seq++ {
-		block = cw.Puller.PullBlock(seq)
+		block = ci.Puller.PullBlock(seq)
 		channel, err := IsNewChannelBlock(block)
 		if err != nil {
 			// If we failed to classify a block, something is wrong in the system chain
 			// we're trying to pull, so abort.
-			cw.Logger.Panic("Failed classifying block", seq, ":", err)
+			ci.Logger.Panic("Failed classifying block", seq, ":", err)
 			continue
 		}
 		if channel == "" {
-			cw.Logger.Info("Block", seq, "doesn't contain a new channel")
+			ci.Logger.Info("Block", seq, "doesn't contain a new channel")
 			continue
 		}
-		cw.Logger.Info("Block", seq, "contains channel", channel)
+		ci.Logger.Info("Block", seq, "contains channel", channel)
 		channels[channel] = struct{}{}
 	}
 	// At this point, block holds reference to the last block pulled.
@@ -130,9 +130,9 @@ func (cw *ChainInspector) Channels() []string {
 	// of the LastConfigBlock we were initialized with.
 	// We don't need to verify the entire chain of all blocks we pulled,
 	// because the block puller calls VerifyBlockHash on all blocks it pulls.
-	last2Blocks := []*common.Block{block, cw.LastConfigBlock}
+	last2Blocks := []*common.Block{block, ci.LastConfigBlock}
 	if err := VerifyBlockHash(1, last2Blocks); err != nil {
-		cw.Logger.Panic("System channel pulled doesn't match the boot last config block:", err)
+		ci.Logger.Panic("System channel pulled doesn't match the boot last config block:", err)
 	}
 
 	return flattenChannelMap(channels)

@@ -3635,7 +3635,6 @@ type mockConsenterSupport struct {
 }
 
 func (c *mockConsenterSupport) Block(seq uint64) *cb.Block {
-	// TODO: implement this
 	return nil
 }
 
