@@ -305,3 +305,23 @@ Debug:
     # DeliverTraceDir when set will cause each request to the Deliver service
     # for this orderer to be written to a file in this directory
     DeliverTraceDir:
+
+################################################################################
+#
+#   Consensus Configuration
+#
+#   - This section contains config options for a consensus plugin. It is opaque
+#     to orderer, and completely up to consensus implementation to make use of.
+#
+################################################################################
+Consensus:
+    # The allowed key-value pairs here depend on consensus plugin. For etcd/raft,
+    # we use following options:
+
+    # WALDir specifies the location at which Write Ahead Logs for etcd/raft are
+    # stored. Each channel will have its own subdir named after channel ID.
+    WALDir: /var/hyperledger/production/orderer/etcdraft/wal
+
+    # SnapDir specifies the location at which snapshots for etcd/raft are
+    # stored. Each channel will have its own subdir named after channel ID.
+    SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
