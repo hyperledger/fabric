@@ -78,7 +78,7 @@ type TxValidator struct {
 	Vscc    vsccValidator
 }
 
-var logger = flogging.MustGetLogger("committer/txvalidator")
+var logger = flogging.MustGetLogger("committer.txvalidator")
 
 type blockValidationRequest struct {
 	block *common.Block

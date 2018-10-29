@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-var logger = flogging.MustGetLogger("policies/inquire")
+var logger = flogging.MustGetLogger("policies.inquire")
 
 type inquireableSignaturePolicy struct {
 	sigPol *common.SignaturePolicyEnvelope

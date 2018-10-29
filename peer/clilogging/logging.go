@@ -29,7 +29,7 @@ const (
 	loggingCmdDes   = "Log levels: getlevel|setlevel|revertlevels."
 )
 
-var logger = flogging.MustGetLogger("cli/logging")
+var logger = flogging.MustGetLogger("cli.logging")
 
 // Cmd returns the cobra command for Logging
 func Cmd(cf *LoggingCmdFactory) *cobra.Command {

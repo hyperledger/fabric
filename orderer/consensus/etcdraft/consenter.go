@@ -154,7 +154,7 @@ func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metad
 
 func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar) *Consenter {
-	logger := flogging.MustGetLogger("orderer/consensus/etcdraft")
+	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 	consenter := &Consenter{
 		Cert:   srvConf.SecOpts.Certificate,
 		Logger: logger,
@@ -168,8 +168,8 @@ func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	comm := createComm(clusterDialer, conf, consenter)
 	consenter.Communication = comm
 	svc := &cluster.Service{
-		StepLogger: flogging.MustGetLogger("orderer/common/cluster/step"),
-		Logger:     flogging.MustGetLogger("orderer/common/cluster"),
+		StepLogger: flogging.MustGetLogger("orderer.common.cluster.step"),
+		Logger:     flogging.MustGetLogger("orderer.common.cluster"),
 		Dispatcher: comm,
 	}
 	orderer.RegisterClusterServer(srv.Server(), svc)
@@ -180,7 +180,7 @@ func createComm(clusterDialer *cluster.PredicateDialer,
 	conf *localconfig.TopLevel,
 	c *Consenter) *cluster.Comm {
 	comm := &cluster.Comm{
-		Logger:       flogging.MustGetLogger("orderer/common/cluster"),
+		Logger:       flogging.MustGetLogger("orderer.common.cluster"),
 		Chan2Members: make(map[string]cluster.MemberMapping),
 		Connections:  cluster.NewConnectionStore(clusterDialer),
 		RPCTimeout:   conf.General.Cluster.RPCTimeout,

@@ -18,9 +18,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-const pkgLogID = "orderer/common/performance"
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("orderer.common.performance")
 
 // BenchmarkServer is a pseudo-server that grpc services could be registered to
 type BenchmarkServer struct {

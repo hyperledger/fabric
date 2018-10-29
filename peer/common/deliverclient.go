@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	logger = flogging.MustGetLogger("cli/common")
+	logger = flogging.MustGetLogger("cli.common")
 
 	seekNewest = &ab.SeekPosition{
 		Type: &ab.SeekPosition_Newest{

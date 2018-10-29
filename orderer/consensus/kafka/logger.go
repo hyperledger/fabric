@@ -16,17 +16,12 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	pkgLogID    = "orderer/consensus/kafka"
-	saramaLogID = pkgLogID + "/sarama"
-)
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("orderer.consensus.kafka")
 var saramaLogger eventLogger
 
 // init initializes the samara logger
 func init() {
-	loggingProvider := flogging.MustGetLogger(saramaLogID)
+	loggingProvider := flogging.MustGetLogger("orderer.consensus.kafka.sarama")
 	saramaEventLogger := &saramaLoggerImpl{
 		logger: loggingProvider.WithOptions(zap.AddCallerSkip(3)),
 		eventListenerSupport: &eventListenerSupport{

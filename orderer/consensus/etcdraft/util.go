@@ -103,7 +103,7 @@ func newBlockPuller(support consensus.ConsenterSupport,
 
 	return &cluster.BlockPuller{
 		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer/common/cluster/puller"),
+		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller"),
 		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
 		FetchTimeout:        clusterConfig.ReplicationPullTimeout,

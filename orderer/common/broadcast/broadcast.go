@@ -17,9 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const pkgLogID = "orderer/common/broadcast"
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("orderer.common.broadcast")
 
 // Handler defines an interface which handles broadcasts
 type Handler interface {

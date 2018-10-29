@@ -1,5 +1,8 @@
-// Copyright IBM Corp. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 
 package server
 
@@ -41,9 +44,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const pkgLogID = "orderer/common/server"
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("orderer.common.server")
 
 //command line flags
 var (

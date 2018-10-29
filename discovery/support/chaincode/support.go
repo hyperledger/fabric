@@ -15,7 +15,7 @@ import (
 	common2 "github.com/hyperledger/fabric/protos/common"
 )
 
-var logger = flogging.MustGetLogger("discovery/DiscoverySupport")
+var logger = flogging.MustGetLogger("discovery.DiscoverySupport")
 
 type MetadataRetriever interface {
 	Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata

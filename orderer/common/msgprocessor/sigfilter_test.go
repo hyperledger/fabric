@@ -8,7 +8,6 @@ package msgprocessor
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -21,7 +20,7 @@ import (
 )
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("orderer.common.msgprocessor=DEBUG")
 }
 
 func makeEnvelope() *cb.Envelope {

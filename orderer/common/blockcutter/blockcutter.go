@@ -12,9 +12,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-const pkgLogID = "orderer/common/blockcutter"
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("orderer.common.blockcutter")
 
 type OrdererConfigFetcher interface {
 	OrdererConfig() (channelconfig.Orderer, bool)

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -38,7 +37,7 @@ var mockSigningIdentity msp.SigningIdentity
 const NoConsortiumChain = "no-consortium-chain"
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("orderer.commmon.multichannel=DEBUG")
 	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 
 	conf = configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)

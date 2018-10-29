@@ -26,14 +26,13 @@ import (
 )
 
 const (
-	pkgLogID                = "common/tools/configtxgen/encoder"
 	ordererAdminsPolicyName = "/Channel/Orderer/Admins"
 
 	msgVersion = int32(0)
 	epoch      = 0
 )
 
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("common.tools.configtxgen.encoder")
 
 const (
 	// ConsensusTypeSolo identifies the solo consensus implementation.

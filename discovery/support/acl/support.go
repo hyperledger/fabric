@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	logger = flogging.MustGetLogger("discovery/acl")
+	logger = flogging.MustGetLogger("discovery.acl")
 )
 
 // ChannelConfigGetter enables to retrieve the channel config resources
