@@ -2,17 +2,17 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/token/server"
+	token "github.com/hyperledger/fabric/protos/token"
+	server "github.com/hyperledger/fabric/token/server"
 )
 
 type Issuer struct {
-	RequestImportStub        func(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error)
+	RequestImportStub        func([]*token.TokenToIssue) (*token.TokenTransaction, error)
 	requestImportMutex       sync.RWMutex
 	requestImportArgsForCall []struct {
-		tokensToIssue []*token.TokenToIssue
+		arg1 []*token.TokenToIssue
 	}
 	requestImportReturns struct {
 		result1 *token.TokenTransaction
@@ -26,26 +26,27 @@ type Issuer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error) {
-	var tokensToIssueCopy []*token.TokenToIssue
-	if tokensToIssue != nil {
-		tokensToIssueCopy = make([]*token.TokenToIssue, len(tokensToIssue))
-		copy(tokensToIssueCopy, tokensToIssue)
+func (fake *Issuer) RequestImport(arg1 []*token.TokenToIssue) (*token.TokenTransaction, error) {
+	var arg1Copy []*token.TokenToIssue
+	if arg1 != nil {
+		arg1Copy = make([]*token.TokenToIssue, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.requestImportMutex.Lock()
 	ret, specificReturn := fake.requestImportReturnsOnCall[len(fake.requestImportArgsForCall)]
 	fake.requestImportArgsForCall = append(fake.requestImportArgsForCall, struct {
-		tokensToIssue []*token.TokenToIssue
-	}{tokensToIssueCopy})
-	fake.recordInvocation("RequestImport", []interface{}{tokensToIssueCopy})
+		arg1 []*token.TokenToIssue
+	}{arg1Copy})
+	fake.recordInvocation("RequestImport", []interface{}{arg1Copy})
 	fake.requestImportMutex.Unlock()
 	if fake.RequestImportStub != nil {
-		return fake.RequestImportStub(tokensToIssue)
+		return fake.RequestImportStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.requestImportReturns.result1, fake.requestImportReturns.result2
+	fakeReturns := fake.requestImportReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Issuer) RequestImportCallCount() int {
@@ -54,13 +55,22 @@ func (fake *Issuer) RequestImportCallCount() int {
 	return len(fake.requestImportArgsForCall)
 }
 
+func (fake *Issuer) RequestImportCalls(stub func([]*token.TokenToIssue) (*token.TokenTransaction, error)) {
+	fake.requestImportMutex.Lock()
+	defer fake.requestImportMutex.Unlock()
+	fake.RequestImportStub = stub
+}
+
 func (fake *Issuer) RequestImportArgsForCall(i int) []*token.TokenToIssue {
 	fake.requestImportMutex.RLock()
 	defer fake.requestImportMutex.RUnlock()
-	return fake.requestImportArgsForCall[i].tokensToIssue
+	argsForCall := fake.requestImportArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Issuer) RequestImportReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.requestImportMutex.Lock()
+	defer fake.requestImportMutex.Unlock()
 	fake.RequestImportStub = nil
 	fake.requestImportReturns = struct {
 		result1 *token.TokenTransaction
@@ -69,6 +79,8 @@ func (fake *Issuer) RequestImportReturns(result1 *token.TokenTransaction, result
 }
 
 func (fake *Issuer) RequestImportReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.requestImportMutex.Lock()
+	defer fake.requestImportMutex.Unlock()
 	fake.RequestImportStub = nil
 	if fake.requestImportReturnsOnCall == nil {
 		fake.requestImportReturnsOnCall = make(map[int]struct {

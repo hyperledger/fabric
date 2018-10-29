@@ -291,6 +291,10 @@ func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.Token
 	return transaction, nil
 }
 
+func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token.TokenTransaction, error) {
+	panic("implement me!")
+}
+
 // isSpent checks whether an output token with identifier outputID has been spent.
 func (t *Transactor) isSpent(outputID string) (bool, error) {
 	key, err := createInputKey(outputID)

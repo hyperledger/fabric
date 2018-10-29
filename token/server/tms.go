@@ -38,6 +38,11 @@ type Transactor interface {
 	// RequestApprove creates a token transaction that includes the data necessary
 	// for approve
 	RequestApprove(request *token.ApproveRequest) (*token.TokenTransaction, error)
+
+	// RequestTransferFrom creates a token transaction that includes the data necessary
+	// for transferring the tokens of a third party that previsouly delegated the transfer
+	// via an approve request
+	RequestTransferFrom(request *token.TransferRequest) (*token.TokenTransaction, error)
 }
 
 //go:generate counterfeiter -o mock/tms_manager.go -fake-name TMSManager . TMSManager

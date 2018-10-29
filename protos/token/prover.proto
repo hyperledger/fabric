@@ -141,6 +141,7 @@ message Command {
         ListRequest list_request = 4;
         RedeemRequest redeem_request = 5;
         ApproveRequest approve_request = 6;
+        TransferRequest transfer_from_request = 7;
     }
 }
 

@@ -66,6 +66,22 @@ func (ac *PolicyBasedAccessControl) Check(sc *token.SignedCommand, c *token.Comm
 			c.Header.ChannelId,
 			signedData,
 		)
+
+	case *token.Command_ApproveRequest:
+		// Approve has the same policy as transfer
+		return ac.ACLProvider.CheckACL(
+			ac.ACLResources.TransferTokens,
+			c.Header.ChannelId,
+			signedData,
+		)
+
+	case *token.Command_TransferFromRequest:
+		// TransferFrom has the same policy as transfer
+		return ac.ACLProvider.CheckACL(
+			ac.ACLResources.TransferTokens,
+			c.Header.ChannelId,
+			signedData,
+		)
 	default:
 		return errors.Errorf("command type not recognized: %T", t)
 	}

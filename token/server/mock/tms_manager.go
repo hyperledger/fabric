@@ -2,18 +2,18 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/token/server"
+	server "github.com/hyperledger/fabric/token/server"
 )
 
 type TMSManager struct {
-	GetIssuerStub        func(channel string, privateCredential, publicCredential []byte) (server.Issuer, error)
+	GetIssuerStub        func(string, []byte, []byte) (server.Issuer, error)
 	getIssuerMutex       sync.RWMutex
 	getIssuerArgsForCall []struct {
-		channel           string
-		privateCredential []byte
-		publicCredential  []byte
+		arg1 string
+		arg2 []byte
+		arg3 []byte
 	}
 	getIssuerReturns struct {
 		result1 server.Issuer
@@ -23,12 +23,12 @@ type TMSManager struct {
 		result1 server.Issuer
 		result2 error
 	}
-	GetTransactorStub        func(channel string, privateCredential, publicCredential []byte) (server.Transactor, error)
+	GetTransactorStub        func(string, []byte, []byte) (server.Transactor, error)
 	getTransactorMutex       sync.RWMutex
 	getTransactorArgsForCall []struct {
-		channel           string
-		privateCredential []byte
-		publicCredential  []byte
+		arg1 string
+		arg2 []byte
+		arg3 []byte
 	}
 	getTransactorReturns struct {
 		result1 server.Transactor
@@ -42,33 +42,34 @@ type TMSManager struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *TMSManager) GetIssuer(channel string, privateCredential []byte, publicCredential []byte) (server.Issuer, error) {
-	var privateCredentialCopy []byte
-	if privateCredential != nil {
-		privateCredentialCopy = make([]byte, len(privateCredential))
-		copy(privateCredentialCopy, privateCredential)
+func (fake *TMSManager) GetIssuer(arg1 string, arg2 []byte, arg3 []byte) (server.Issuer, error) {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
-	var publicCredentialCopy []byte
-	if publicCredential != nil {
-		publicCredentialCopy = make([]byte, len(publicCredential))
-		copy(publicCredentialCopy, publicCredential)
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.getIssuerMutex.Lock()
 	ret, specificReturn := fake.getIssuerReturnsOnCall[len(fake.getIssuerArgsForCall)]
 	fake.getIssuerArgsForCall = append(fake.getIssuerArgsForCall, struct {
-		channel           string
-		privateCredential []byte
-		publicCredential  []byte
-	}{channel, privateCredentialCopy, publicCredentialCopy})
-	fake.recordInvocation("GetIssuer", []interface{}{channel, privateCredentialCopy, publicCredentialCopy})
+		arg1 string
+		arg2 []byte
+		arg3 []byte
+	}{arg1, arg2Copy, arg3Copy})
+	fake.recordInvocation("GetIssuer", []interface{}{arg1, arg2Copy, arg3Copy})
 	fake.getIssuerMutex.Unlock()
 	if fake.GetIssuerStub != nil {
-		return fake.GetIssuerStub(channel, privateCredential, publicCredential)
+		return fake.GetIssuerStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getIssuerReturns.result1, fake.getIssuerReturns.result2
+	fakeReturns := fake.getIssuerReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *TMSManager) GetIssuerCallCount() int {
@@ -77,13 +78,22 @@ func (fake *TMSManager) GetIssuerCallCount() int {
 	return len(fake.getIssuerArgsForCall)
 }
 
+func (fake *TMSManager) GetIssuerCalls(stub func(string, []byte, []byte) (server.Issuer, error)) {
+	fake.getIssuerMutex.Lock()
+	defer fake.getIssuerMutex.Unlock()
+	fake.GetIssuerStub = stub
+}
+
 func (fake *TMSManager) GetIssuerArgsForCall(i int) (string, []byte, []byte) {
 	fake.getIssuerMutex.RLock()
 	defer fake.getIssuerMutex.RUnlock()
-	return fake.getIssuerArgsForCall[i].channel, fake.getIssuerArgsForCall[i].privateCredential, fake.getIssuerArgsForCall[i].publicCredential
+	argsForCall := fake.getIssuerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *TMSManager) GetIssuerReturns(result1 server.Issuer, result2 error) {
+	fake.getIssuerMutex.Lock()
+	defer fake.getIssuerMutex.Unlock()
 	fake.GetIssuerStub = nil
 	fake.getIssuerReturns = struct {
 		result1 server.Issuer
@@ -92,6 +102,8 @@ func (fake *TMSManager) GetIssuerReturns(result1 server.Issuer, result2 error) {
 }
 
 func (fake *TMSManager) GetIssuerReturnsOnCall(i int, result1 server.Issuer, result2 error) {
+	fake.getIssuerMutex.Lock()
+	defer fake.getIssuerMutex.Unlock()
 	fake.GetIssuerStub = nil
 	if fake.getIssuerReturnsOnCall == nil {
 		fake.getIssuerReturnsOnCall = make(map[int]struct {
@@ -105,33 +117,34 @@ func (fake *TMSManager) GetIssuerReturnsOnCall(i int, result1 server.Issuer, res
 	}{result1, result2}
 }
 
-func (fake *TMSManager) GetTransactor(channel string, privateCredential []byte, publicCredential []byte) (server.Transactor, error) {
-	var privateCredentialCopy []byte
-	if privateCredential != nil {
-		privateCredentialCopy = make([]byte, len(privateCredential))
-		copy(privateCredentialCopy, privateCredential)
+func (fake *TMSManager) GetTransactor(arg1 string, arg2 []byte, arg3 []byte) (server.Transactor, error) {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
-	var publicCredentialCopy []byte
-	if publicCredential != nil {
-		publicCredentialCopy = make([]byte, len(publicCredential))
-		copy(publicCredentialCopy, publicCredential)
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.getTransactorMutex.Lock()
 	ret, specificReturn := fake.getTransactorReturnsOnCall[len(fake.getTransactorArgsForCall)]
 	fake.getTransactorArgsForCall = append(fake.getTransactorArgsForCall, struct {
-		channel           string
-		privateCredential []byte
-		publicCredential  []byte
-	}{channel, privateCredentialCopy, publicCredentialCopy})
-	fake.recordInvocation("GetTransactor", []interface{}{channel, privateCredentialCopy, publicCredentialCopy})
+		arg1 string
+		arg2 []byte
+		arg3 []byte
+	}{arg1, arg2Copy, arg3Copy})
+	fake.recordInvocation("GetTransactor", []interface{}{arg1, arg2Copy, arg3Copy})
 	fake.getTransactorMutex.Unlock()
 	if fake.GetTransactorStub != nil {
-		return fake.GetTransactorStub(channel, privateCredential, publicCredential)
+		return fake.GetTransactorStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getTransactorReturns.result1, fake.getTransactorReturns.result2
+	fakeReturns := fake.getTransactorReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *TMSManager) GetTransactorCallCount() int {
@@ -140,13 +153,22 @@ func (fake *TMSManager) GetTransactorCallCount() int {
 	return len(fake.getTransactorArgsForCall)
 }
 
+func (fake *TMSManager) GetTransactorCalls(stub func(string, []byte, []byte) (server.Transactor, error)) {
+	fake.getTransactorMutex.Lock()
+	defer fake.getTransactorMutex.Unlock()
+	fake.GetTransactorStub = stub
+}
+
 func (fake *TMSManager) GetTransactorArgsForCall(i int) (string, []byte, []byte) {
 	fake.getTransactorMutex.RLock()
 	defer fake.getTransactorMutex.RUnlock()
-	return fake.getTransactorArgsForCall[i].channel, fake.getTransactorArgsForCall[i].privateCredential, fake.getTransactorArgsForCall[i].publicCredential
+	argsForCall := fake.getTransactorArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *TMSManager) GetTransactorReturns(result1 server.Transactor, result2 error) {
+	fake.getTransactorMutex.Lock()
+	defer fake.getTransactorMutex.Unlock()
 	fake.GetTransactorStub = nil
 	fake.getTransactorReturns = struct {
 		result1 server.Transactor
@@ -155,6 +177,8 @@ func (fake *TMSManager) GetTransactorReturns(result1 server.Transactor, result2 
 }
 
 func (fake *TMSManager) GetTransactorReturnsOnCall(i int, result1 server.Transactor, result2 error) {
+	fake.getTransactorMutex.Lock()
+	defer fake.getTransactorMutex.Unlock()
 	fake.GetTransactorStub = nil
 	if fake.getTransactorReturnsOnCall == nil {
 		fake.getTransactorReturnsOnCall = make(map[int]struct {
