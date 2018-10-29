@@ -1,0 +1,43 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+pkgname=softhsm
+pkgver=2.2.0
+pkgrel=1
+pkgdesc="Implementation of a cryptographic store accessible through a PKCS#11 interface"
+url="https://www.opendnssec.org/softhsm/"
+arch="all"
+license="BSD-2-Clause"
+depends=""
+checkdepends="cppunit-dev"
+makedepends="autoconf automake libtool p11-kit-dev openssl-dev"
+install=""
+subpackages="$pkgname-doc"
+source="https://dist.opendnssec.org/source/$pkgname-$pkgver.tar.gz"
+builddir="$srcdir/$pkgname-$pkgver"
+
+build() {
+        cd "$builddir"
+
+        ./configure \
+                --prefix=/usr \
+                --sysconfdir=/etc \
+                --localstatedir=/var \
+                --disable-gost
+
+        make
+}
+
+check() {
+        cd "$builddir"
+
+        #make check
+}
+
+package() {
+        cd "$builddir"
+
+        make -j1 DESTDIR="$pkgdir/" install
+}
+sha512sums="6ef17deef491f7298244a3d2ddefe25843fc17534c4e5f2e08927f05cafdaf05601beb953539fce5d34fa02fe355cbd4ab3aaabb6e5a106936b04c06aae9793c  softhsm-2.2.0.tar.gz"

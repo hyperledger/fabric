@@ -665,6 +665,16 @@
   revision = "e3636079e1a4c1f337f212cc5cd2aca108f6c900"
 
 [[projects]]
+  digest = "1:a019befaac3480235e0db34bc38f5e90baefe615795eb1e5adc4633baa3f0841"
+  name = "golang.org/x/lint"
+  packages = [
+    ".",
+    "golint",
+  ]
+  pruneopts = "NUT"
+  revision = "c67002cb31c3a748b7688c27f20d8358b4193582"
+
+[[projects]]
   branch = "master"
   digest = "1:1fcc8f83f964757cafdfd99e9439e89b30a1f775494c2c73db42be7081c5c020"
   name = "golang.org/x/net"
@@ -736,6 +746,22 @@
   pruneopts = "NUT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
+
+[[projects]]
+  digest = "1:99677abdd7b156ae0ab7f0eba2f7b9257214e9959dd506d5daa423cdafb470fb"
+  name = "golang.org/x/tools"
+  packages = [
+    "cmd/goimports",
+    "go/ast/astutil",
+    "go/gcexportdata",
+    "go/internal/gcimporter",
+    "go/types/typeutil",
+    "imports",
+    "internal/fastwalk",
+    "internal/gopathwalk",
+  ]
+  pruneopts = "NUT"
+  revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
 
 [[projects]]
   branch = "master"
@@ -863,8 +889,10 @@
     "go.uber.org/zap/zapgrpc",
     "go.uber.org/zap/zaptest/observer",
     "golang.org/x/crypto/sha3",
+    "golang.org/x/lint/golint",
     "golang.org/x/net/context",
     "golang.org/x/sync/semaphore",
+    "golang.org/x/tools/cmd/goimports",
     "google.golang.org/grpc",
     "google.golang.org/grpc/balancer",
     "google.golang.org/grpc/balancer/roundrobin",

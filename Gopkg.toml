@@ -4,6 +4,8 @@
 
 required = [
     "github.com/golang/protobuf/protoc-gen-go",
+	"golang.org/x/lint/golint",
+	"golang.org/x/tools/cmd/goimports"
 ]
 
 ignored = [
@@ -150,6 +152,14 @@ noverify = [
 [[constraint]]
   name = "github.com/willf/bitset"
   version = "1.1.8"
+
+[[constraint]]
+  name = "golang.org/x/lint"
+  revision = "c67002cb31c3a748b7688c27f20d8358b4193582"
+
+[[constraint]]
+  name = "golang.org/x/tools"
+  revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
 
 [prune]
   go-tests = true
