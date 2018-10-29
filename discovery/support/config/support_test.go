@@ -82,8 +82,8 @@ func TestMSPIDMapping(t *testing.T) {
 	b, err = exec.Command(idemixgen, "ca-keygen", fmt.Sprintf("--output=%s", idemixConfigDir)).CombinedOutput()
 	assert.NoError(t, err, string(b))
 
-	profileConfig := genesisconfig.Load("TwoOrgsChannel", "../../../examples/e2e_cli/")
-	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", "../../../examples/e2e_cli/")
+	profileConfig := genesisconfig.Load("TwoOrgsChannel", "testdata/")
+	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", "testdata/")
 	profileConfig.Orderer = ordererConfig.Orderer
 
 	// Override the MSP directory with our randomly generated and populated path
