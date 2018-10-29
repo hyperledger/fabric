@@ -278,23 +278,23 @@ func InitCmd(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// check for --logging-level pflag first, which should override all other
-	// log settings. if --logging-level is not set, use CORE_LOGGING_LEVEL
-	// (environment variable takes priority; otherwise, the value set in
-	// core.yaml)
+	// read in the legacy logging level settings and, if set,
+	// notify users of the FABRIC_LOGGING_SPEC env variable
 	var loggingLevel string
 	if viper.GetString("logging_level") != "" {
 		loggingLevel = viper.GetString("logging_level")
 	} else {
 		loggingLevel = viper.GetString("logging.level")
 	}
-	loggingSpec := os.Getenv("FABRIC_LOGGING_SPEC")
 	if loggingLevel != "" {
-		mainLogger.Warning("CORE_LOGGING_LEVEL is no longer supported, please use FABRIC_LOGGING_SPEC environment variable.")
+		mainLogger.Warning("CORE_LOGGING_LEVEL is no longer supported, please use the FABRIC_LOGGING_SPEC environment variable")
 	}
 
+	loggingSpec := os.Getenv("FABRIC_LOGGING_SPEC")
+	loggingFormat := os.Getenv("FABRIC_LOGGING_FORMAT")
+
 	flogging.Init(flogging.Config{
-		Format:  viper.GetString("logging.format"),
+		Format:  loggingFormat,
 		Writer:  logOutput,
 		LogSpec: loggingSpec,
 	})
