@@ -38,7 +38,7 @@ message Options {
 
 // RaftMetadata stores data used by the Raft OSNs when
 // coordinating with each other, to be serialized into
-// block meta dta field and used after failres and restarts
+// block meta dta field and used after failres and restarts.
 message RaftMetadata {
     // Maintains a mapping between the cluster's OSNs
     // and their Raft IDs.
@@ -46,4 +46,6 @@ message RaftMetadata {
     // Carries the Raft ID value that will be assigned
     // to the next OSN that will join this cluster.
     uint64 nextConsenterID = 2;
+    // Index of etcd/raft entry for current block.
+    uint64 raftIndex = 3;
 }
