@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package encoder
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -27,7 +26,7 @@ import (
 )
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("common.tools.configtxgen.encoder=DEBUG")
 }
 
 func hasModPolicySet(t *testing.T, groupName string, cg *cb.ConfigGroup) {

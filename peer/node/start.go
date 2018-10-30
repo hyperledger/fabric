@@ -194,7 +194,7 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Fatalf("Error loading secure config for peer (%s)", err)
 	}
-	serverConfig.Logger = flogging.MustGetLogger("core/comm").With("server", "PeerServer")
+	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
 	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
@@ -451,7 +451,7 @@ func createChaincodeServer(ca tlsgen.CA, peerHostname string) (srv *comm.GRPCSer
 	}
 
 	// set the logger for the server
-	config.Logger = flogging.MustGetLogger("core/comm").With("server", "ChaincodeServer")
+	config.Logger = flogging.MustGetLogger("core.comm").With("server", "ChaincodeServer")
 
 	// Override TLS configuration if TLS is applicable
 	if config.SecOpts.UseTLS {
@@ -696,7 +696,7 @@ func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
 	if separateLsnrForAdmin {
 		logger.Info("Creating gRPC server for admin service on", adminListenAddress)
 		serverConfig, err := peer.GetServerConfig()
-		serverConfig.Logger = flogging.MustGetLogger("core/comm").With("server", "AdminServer")
+		serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "AdminServer")
 		if err != nil {
 			logger.Fatalf("Error loading secure config for admin service (%s)", err)
 		}

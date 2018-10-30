@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package ramledger
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -20,7 +19,7 @@ import (
 var genesisBlock = cb.NewBlock(0, nil)
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("common.ledger.blockledger.ram=DEBUG")
 }
 
 func newTestChain(maxSize int) *ramLedger {

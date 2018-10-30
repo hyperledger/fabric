@@ -21,9 +21,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const pkgLogID = "orderer/ledger/jsonledger"
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("common.ledger.blockledger.json")
 
 var closedChan chan struct{}
 var fileLock sync.Mutex

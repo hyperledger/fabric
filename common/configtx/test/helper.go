@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var logger = flogging.MustGetLogger("common/configtx/test")
+var logger = flogging.MustGetLogger("common.configtx.test")
 
 // MakeGenesisBlock creates a genesis block using the test templates for the given chainID
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {

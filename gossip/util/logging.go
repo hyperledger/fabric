@@ -15,16 +15,16 @@ import (
 
 // Module names for logger initialization.
 const (
-	LoggingChannelModule   = "gossip/channel"
-	LoggingCommModule      = "gossip/comm"
-	LoggingDiscoveryModule = "gossip/discovery"
-	LoggingElectionModule  = "gossip/election"
-	LoggingGossipModule    = "gossip/gossip"
-	LoggingMockModule      = "gossip/comm/mock"
-	LoggingPullModule      = "gossip/pull"
-	LoggingServiceModule   = "gossip/service"
-	LoggingStateModule     = "gossip/state"
-	LoggingPrivModule      = "gossip/privdata"
+	LoggingChannelModule   = "gossip.channel"
+	LoggingCommModule      = "gossip.comm"
+	LoggingDiscoveryModule = "gossip.discovery"
+	LoggingElectionModule  = "gossip.election"
+	LoggingGossipModule    = "gossip.gossip"
+	LoggingMockModule      = "gossip.comm.mock"
+	LoggingPullModule      = "gossip.pull"
+	LoggingServiceModule   = "gossip.service"
+	LoggingStateModule     = "gossip.state"
+	LoggingPrivModule      = "gossip.privdata"
 )
 
 var loggersByModules = make(map[string]Logger)

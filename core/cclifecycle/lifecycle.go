@@ -18,7 +18,7 @@ import (
 var (
 	// Logger is the logging instance for this package.
 	// It's exported because the tests override its backend
-	Logger = flogging.MustGetLogger("discovery/lifecycle")
+	Logger = flogging.MustGetLogger("discovery.lifecycle")
 )
 
 // Lifecycle manages information regarding chaincode lifecycle

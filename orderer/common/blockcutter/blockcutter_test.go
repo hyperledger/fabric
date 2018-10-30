@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package blockcutter
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -29,7 +28,7 @@ type ordererConfig interface {
 }
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("orderer.common.blockcutter=DEBUG")
 }
 
 var tx = &cb.Envelope{Payload: []byte("GOOD")}

@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +24,7 @@ import (
 )
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("orderer.common.broadcast=DEBUG")
 }
 
 type mockStream struct {

@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("discovery/config")
+var logger = flogging.MustGetLogger("discovery.config")
 
 // CurrentConfigBlockGetter enables to fetch the last config block
 type CurrentConfigBlockGetter interface {

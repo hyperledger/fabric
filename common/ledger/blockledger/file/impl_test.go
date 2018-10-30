@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -28,7 +27,7 @@ import (
 var genesisBlock = cb.NewBlock(0, nil)
 
 func init() {
-	flogging.ActivateSpec(strings.Replace(pkgLogID, "/", ".", -1) + "=DEBUG")
+	flogging.ActivateSpec("common.ledger.blockledger.file=DEBUG")
 }
 
 type testEnv struct {

@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	logger = flogging.MustGetLogger("discovery/endorsement")
+	logger = flogging.MustGetLogger("discovery.endorsement")
 )
 
 type principalEvaluator interface {

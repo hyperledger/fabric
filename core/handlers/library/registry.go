@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 )
 
-var logger = flogging.MustGetLogger("core/handlers")
+var logger = flogging.MustGetLogger("core.handlers")
 
 // Registry defines an object that looks up
 // handlers by name

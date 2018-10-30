@@ -14,9 +14,7 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
-const pkgLogID = "common/ledger/blockledger/file"
-
-var logger = flogging.MustGetLogger(pkgLogID)
+var logger = flogging.MustGetLogger("common.ledger.blockledger.file")
 
 // FileLedger is a struct used to interact with a node's ledger
 type FileLedger struct {

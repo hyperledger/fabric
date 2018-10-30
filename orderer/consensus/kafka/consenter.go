@@ -17,7 +17,7 @@ import (
 // New creates a Kafka-based consenter. Called by orderer's main.go.
 func New(config localconfig.Kafka) consensus.Consenter {
 	if config.Verbose {
-		logging.SetLevel(logging.DEBUG, saramaLogID)
+		logging.SetLevel(logging.DEBUG, "orderer.consensus.kafka.sarama")
 	}
 	brokerConfig := newBrokerConfig(
 		config.TLS,

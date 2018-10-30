@@ -28,7 +28,7 @@ import (
 
 var exitCode = 0
 
-var logger = flogging.MustGetLogger("common/tools/configtxgen")
+var logger = flogging.MustGetLogger("common.tools.configtxgen")
 
 func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
 	pgen := encoder.New(config)
