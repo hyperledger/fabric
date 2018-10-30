@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package flogging_test
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -62,4 +63,32 @@ func TestZapLoggerNameConversion(t *testing.T) {
 
 	logger := logging.Logger("test/module/name")
 	assert.True(t, logger.IsEnabledFor(zapcore.DebugLevel))
+}
+
+func TestNamedLogger(t *testing.T) {
+	defer flogging.Reset()
+	buf := &bytes.Buffer{}
+	flogging.Global.SetWriter(buf)
+
+	t.Run("logger and named (child) logger with different levels", func(t *testing.T) {
+		defer buf.Reset()
+		logger := flogging.MustGetLogger("eugene")
+		logger2 := logger.Named("george")
+		flogging.ActivateSpec("eugene=info:eugene.george=error")
+
+		logger.Info("from eugene")
+		logger2.Info("from george")
+		assert.Contains(t, buf.String(), "from eugene")
+		assert.NotContains(t, buf.String(), "from george")
+	})
+
+	t.Run("named logger where parent logger isn't enabled", func(t *testing.T) {
+		logger := flogging.MustGetLogger("foo")
+		logger2 := logger.Named("bar")
+		flogging.ActivateSpec("foo=fatal:foo.bar=error")
+		logger.Error("from foo")
+		logger2.Error("from bar")
+		assert.NotContains(t, buf.String(), "from foo")
+		assert.Contains(t, buf.String(), "from bar")
+	})
 }
