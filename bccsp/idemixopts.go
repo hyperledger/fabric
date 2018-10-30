@@ -124,7 +124,7 @@ type IdemixAttribute struct {
 type IdemixCredentialSignerOpts struct {
 	// Attributes to include in the credentials. IdemixHiddenAttribute is not allowed here
 	Attributes []IdemixAttribute
-	// IssuerPK is the public-key of the issuer
+	// IssuerPK is the public-keXy of the issuer
 	IssuerPK Key
 	// HashFun is the hash function to be used
 	H crypto.Hash
