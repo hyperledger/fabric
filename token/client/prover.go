@@ -18,10 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockery -dir "../../protos/token" -name ProverClient -case underscore -output ./mocks/
-
-//go:generate mockery -dir "${GOROOT}/src/io" -name Reader -case underscore -output ./mocks/
-
 type TimeFunc func() time.Time
 
 type ProverPeer struct {
