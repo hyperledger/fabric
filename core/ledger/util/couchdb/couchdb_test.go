@@ -84,8 +84,6 @@ func testMain(m *testing.M) int {
 	//set the logging level to DEBUG to test debug only code
 	flogging.ActivateSpec("couchdb=debug")
 
-	viper.Set("logging.peer", "debug")
-
 	// Create CouchDB definition from config parameters
 	couchDBDef = GetCouchDBDefinition()
 
