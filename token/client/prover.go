@@ -123,6 +123,25 @@ func (prover *ProverPeer) RequestTransfer(
 	return prover.SendCommand(context.Background(), sc)
 }
 
+// RequestRedeem allows the redemption of the tokens in the input tokenIDs
+// It queries the ledger to read detail for each token id.
+// It creates a token transaction with an output for redeemed tokens and
+// possibly another output to transfer the remaining tokens, if any, to the same user
+func (prover *ProverPeer) RequestRedeem(tokenIDs [][]byte, quantity uint64, signingIdentity tk.SigningIdentity) ([]byte, error) {
+	rr := &token.RedeemRequest{
+		QuantityToRedeem: quantity,
+		TokenIds:         tokenIDs,
+	}
+	payload := &token.Command_RedeemRequest{RedeemRequest: rr}
+
+	sc, err := prover.CreateSignedCommand(payload, signingIdentity)
+	if err != nil {
+		return nil, err
+	}
+
+	return prover.SendCommand(context.Background(), sc)
+}
+
 // ListTokens allows the client to submit a list request to a prover peer service;
 // it returns a list of TokenOutput and an error message in the case the request fails
 func (prover *ProverPeer) ListTokens(signingIdentity tk.SigningIdentity) ([]*token.TokenOutput, error) {
@@ -240,6 +259,8 @@ func (prover *ProverPeer) CreateSignedCommand(payload interface{}, signingIdenti
 func commandFromPayload(payload interface{}) (*token.Command, error) {
 	switch t := payload.(type) {
 	case *token.Command_ImportRequest:
+		return &token.Command{Payload: t}, nil
+	case *token.Command_RedeemRequest:
 		return &token.Command{Payload: t}, nil
 	case *token.Command_TransferRequest:
 		return &token.Command{Payload: t}, nil

@@ -37,6 +37,21 @@ type Prover struct {
 		result1 []byte
 		result2 error
 	}
+	RequestRedeemStub        func([][]byte, uint64, tokena.SigningIdentity) ([]byte, error)
+	requestRedeemMutex       sync.RWMutex
+	requestRedeemArgsForCall []struct {
+		arg1 [][]byte
+		arg2 uint64
+		arg3 tokena.SigningIdentity
+	}
+	requestRedeemReturns struct {
+		result1 []byte
+		result2 error
+	}
+	requestRedeemReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	RequestTransferStub        func([][]byte, []*token.RecipientTransferShare, tokena.SigningIdentity) ([]byte, error)
 	requestTransferMutex       sync.RWMutex
 	requestTransferArgsForCall []struct {
@@ -188,6 +203,76 @@ func (fake *Prover) RequestImportReturnsOnCall(i int, result1 []byte, result2 er
 	}{result1, result2}
 }
 
+func (fake *Prover) RequestRedeem(arg1 [][]byte, arg2 uint64, arg3 tokena.SigningIdentity) ([]byte, error) {
+	var arg1Copy [][]byte
+	if arg1 != nil {
+		arg1Copy = make([][]byte, len(arg1))
+		copy(arg1Copy, arg1)
+	}
+	fake.requestRedeemMutex.Lock()
+	ret, specificReturn := fake.requestRedeemReturnsOnCall[len(fake.requestRedeemArgsForCall)]
+	fake.requestRedeemArgsForCall = append(fake.requestRedeemArgsForCall, struct {
+		arg1 [][]byte
+		arg2 uint64
+		arg3 tokena.SigningIdentity
+	}{arg1Copy, arg2, arg3})
+	fake.recordInvocation("RequestRedeem", []interface{}{arg1Copy, arg2, arg3})
+	fake.requestRedeemMutex.Unlock()
+	if fake.RequestRedeemStub != nil {
+		return fake.RequestRedeemStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.requestRedeemReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Prover) RequestRedeemCallCount() int {
+	fake.requestRedeemMutex.RLock()
+	defer fake.requestRedeemMutex.RUnlock()
+	return len(fake.requestRedeemArgsForCall)
+}
+
+func (fake *Prover) RequestRedeemCalls(stub func([][]byte, uint64, tokena.SigningIdentity) ([]byte, error)) {
+	fake.requestRedeemMutex.Lock()
+	defer fake.requestRedeemMutex.Unlock()
+	fake.RequestRedeemStub = stub
+}
+
+func (fake *Prover) RequestRedeemArgsForCall(i int) ([][]byte, uint64, tokena.SigningIdentity) {
+	fake.requestRedeemMutex.RLock()
+	defer fake.requestRedeemMutex.RUnlock()
+	argsForCall := fake.requestRedeemArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Prover) RequestRedeemReturns(result1 []byte, result2 error) {
+	fake.requestRedeemMutex.Lock()
+	defer fake.requestRedeemMutex.Unlock()
+	fake.RequestRedeemStub = nil
+	fake.requestRedeemReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Prover) RequestRedeemReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.requestRedeemMutex.Lock()
+	defer fake.requestRedeemMutex.Unlock()
+	fake.RequestRedeemStub = nil
+	if fake.requestRedeemReturnsOnCall == nil {
+		fake.requestRedeemReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.requestRedeemReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *Prover) RequestTransfer(arg1 [][]byte, arg2 []*token.RecipientTransferShare, arg3 tokena.SigningIdentity) ([]byte, error) {
 	var arg1Copy [][]byte
 	if arg1 != nil {
@@ -270,6 +355,8 @@ func (fake *Prover) Invocations() map[string][][]interface{} {
 	defer fake.listTokensMutex.RUnlock()
 	fake.requestImportMutex.RLock()
 	defer fake.requestImportMutex.RUnlock()
+	fake.requestRedeemMutex.RLock()
+	defer fake.requestRedeemMutex.RUnlock()
 	fake.requestTransferMutex.RLock()
 	defer fake.requestTransferMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
