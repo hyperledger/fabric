@@ -314,7 +314,7 @@ Kafka
 :Answer:
   Consult `the end-to-end CLI example`_.
 
-.. _the end-to-end CLI example: https://github.com/hyperledger/fabric/blob/master/examples/e2e_cli/docker-compose-e2e.yaml
+.. _the end-to-end CLI example: https://github.com/hyperledger/fabric/blob/release-1.3/examples/e2e_cli/docker-compose-e2e.yaml
 
 ..
 
