@@ -48,8 +48,11 @@ gotool.golint:
 # Lock to a versioned dep
 gotool.dep: DEP_VERSION ?= "v0.5.0"
 gotool.dep:
-	@curl https://raw.githubusercontent.com/golang/dep/master/install.sh \
-		| INSTALL_DIRECTORY=$(abspath $(GOTOOLS_BINDIR)) DEP_RELEASE_TAG=$(DEP_VERSION) sh
+	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d -u github.com/golang/dep
+	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q $(DEP_VERSION)
+	@echo "Building github.com/golang/dep $(DEP_VERSION) -> dep"
+	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
+	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q master
 
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:
@@ -60,4 +63,3 @@ gotool.%:
 $(GOTOOLS_BINDIR)/%:
 	$(eval TOOL = ${subst $(GOTOOLS_BINDIR)/,,${@}})
 	@$(MAKE) -f gotools.mk gotool.$(TOOL)
-
