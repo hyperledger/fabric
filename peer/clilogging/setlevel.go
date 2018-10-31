@@ -15,9 +15,9 @@ import (
 
 func setLevelCmd(cf *LoggingCmdFactory) *cobra.Command {
 	var loggingSetLevelCmd = &cobra.Command{
-		Use:   "setlevel <module regular expression> <log level>",
-		Short: "Sets the logging level for all modules that match the regular expression.",
-		Long:  `Sets the logging level for all modules that match the regular expression.`,
+		Use:   "setlevel <module> <log level>",
+		Short: "Adds the module and log level to the current logging spec.",
+		Long:  `Adds the module and log level to the current logging specification.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return setLevel(cf, cmd, args)
 		},
@@ -50,7 +50,7 @@ func setLevel(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err err
 		if err != nil {
 			return err
 		}
-		logger.Infof("Log level set for peer modules matching regular expression '%s': %s", logResponse.LogModule, logResponse.LogLevel)
+		logger.Infof("Log level set for module name/prefix '%s': %s", logResponse.LogModule, logResponse.LogLevel)
 	}
 	return err
 }

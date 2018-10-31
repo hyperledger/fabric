@@ -16,7 +16,7 @@ import (
 
 const (
 	loggingFuncName = "logging"
-	loggingCmdDes   = "Log levels: getlevel|setlevel|revertlevels."
+	loggingCmdDes   = "Logging configuration: getlevel|setlevel|getlogspec|setlogspec|revertlevels."
 )
 
 var logger = flogging.MustGetLogger("cli.logging")
