@@ -8,7 +8,7 @@ import (
 	"github.com/hyperledger/fabric/token/ledger"
 )
 
-type LedgerWriter struct {
+type LedgerReader struct {
 	GetStateStub        func(namespace string, key string) ([]byte, error)
 	getStateMutex       sync.RWMutex
 	getStateArgsForCall []struct {
@@ -38,24 +38,11 @@ type LedgerWriter struct {
 		result1 ledgercommon.ResultsIterator
 		result2 error
 	}
-	SetStateStub        func(namespace string, key string, value []byte) error
-	setStateMutex       sync.RWMutex
-	setStateArgsForCall []struct {
-		namespace string
-		key       string
-		value     []byte
-	}
-	setStateReturns struct {
-		result1 error
-	}
-	setStateReturnsOnCall map[int]struct {
-		result1 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LedgerWriter) GetState(namespace string, key string) ([]byte, error) {
+func (fake *LedgerReader) GetState(namespace string, key string) ([]byte, error) {
 	fake.getStateMutex.Lock()
 	ret, specificReturn := fake.getStateReturnsOnCall[len(fake.getStateArgsForCall)]
 	fake.getStateArgsForCall = append(fake.getStateArgsForCall, struct {
@@ -73,19 +60,19 @@ func (fake *LedgerWriter) GetState(namespace string, key string) ([]byte, error)
 	return fake.getStateReturns.result1, fake.getStateReturns.result2
 }
 
-func (fake *LedgerWriter) GetStateCallCount() int {
+func (fake *LedgerReader) GetStateCallCount() int {
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
 	return len(fake.getStateArgsForCall)
 }
 
-func (fake *LedgerWriter) GetStateArgsForCall(i int) (string, string) {
+func (fake *LedgerReader) GetStateArgsForCall(i int) (string, string) {
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
 	return fake.getStateArgsForCall[i].namespace, fake.getStateArgsForCall[i].key
 }
 
-func (fake *LedgerWriter) GetStateReturns(result1 []byte, result2 error) {
+func (fake *LedgerReader) GetStateReturns(result1 []byte, result2 error) {
 	fake.GetStateStub = nil
 	fake.getStateReturns = struct {
 		result1 []byte
@@ -93,7 +80,7 @@ func (fake *LedgerWriter) GetStateReturns(result1 []byte, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *LedgerWriter) GetStateReturnsOnCall(i int, result1 []byte, result2 error) {
+func (fake *LedgerReader) GetStateReturnsOnCall(i int, result1 []byte, result2 error) {
 	fake.GetStateStub = nil
 	if fake.getStateReturnsOnCall == nil {
 		fake.getStateReturnsOnCall = make(map[int]struct {
@@ -107,7 +94,7 @@ func (fake *LedgerWriter) GetStateReturnsOnCall(i int, result1 []byte, result2 e
 	}{result1, result2}
 }
 
-func (fake *LedgerWriter) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledgercommon.ResultsIterator, error) {
+func (fake *LedgerReader) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledgercommon.ResultsIterator, error) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	ret, specificReturn := fake.getStateRangeScanIteratorReturnsOnCall[len(fake.getStateRangeScanIteratorArgsForCall)]
 	fake.getStateRangeScanIteratorArgsForCall = append(fake.getStateRangeScanIteratorArgsForCall, struct {
@@ -126,19 +113,19 @@ func (fake *LedgerWriter) GetStateRangeScanIterator(namespace string, startKey s
 	return fake.getStateRangeScanIteratorReturns.result1, fake.getStateRangeScanIteratorReturns.result2
 }
 
-func (fake *LedgerWriter) GetStateRangeScanIteratorCallCount() int {
+func (fake *LedgerReader) GetStateRangeScanIteratorCallCount() int {
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
 	return len(fake.getStateRangeScanIteratorArgsForCall)
 }
 
-func (fake *LedgerWriter) GetStateRangeScanIteratorArgsForCall(i int) (string, string, string) {
+func (fake *LedgerReader) GetStateRangeScanIteratorArgsForCall(i int) (string, string, string) {
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
 	return fake.getStateRangeScanIteratorArgsForCall[i].namespace, fake.getStateRangeScanIteratorArgsForCall[i].startKey, fake.getStateRangeScanIteratorArgsForCall[i].endKey
 }
 
-func (fake *LedgerWriter) GetStateRangeScanIteratorReturns(result1 ledgercommon.ResultsIterator, result2 error) {
+func (fake *LedgerReader) GetStateRangeScanIteratorReturns(result1 ledgercommon.ResultsIterator, result2 error) {
 	fake.GetStateRangeScanIteratorStub = nil
 	fake.getStateRangeScanIteratorReturns = struct {
 		result1 ledgercommon.ResultsIterator
@@ -146,7 +133,7 @@ func (fake *LedgerWriter) GetStateRangeScanIteratorReturns(result1 ledgercommon.
 	}{result1, result2}
 }
 
-func (fake *LedgerWriter) GetStateRangeScanIteratorReturnsOnCall(i int, result1 ledgercommon.ResultsIterator, result2 error) {
+func (fake *LedgerReader) GetStateRangeScanIteratorReturnsOnCall(i int, result1 ledgercommon.ResultsIterator, result2 error) {
 	fake.GetStateRangeScanIteratorStub = nil
 	if fake.getStateRangeScanIteratorReturnsOnCall == nil {
 		fake.getStateRangeScanIteratorReturnsOnCall = make(map[int]struct {
@@ -160,70 +147,13 @@ func (fake *LedgerWriter) GetStateRangeScanIteratorReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *LedgerWriter) SetState(namespace string, key string, value []byte) error {
-	var valueCopy []byte
-	if value != nil {
-		valueCopy = make([]byte, len(value))
-		copy(valueCopy, value)
-	}
-	fake.setStateMutex.Lock()
-	ret, specificReturn := fake.setStateReturnsOnCall[len(fake.setStateArgsForCall)]
-	fake.setStateArgsForCall = append(fake.setStateArgsForCall, struct {
-		namespace string
-		key       string
-		value     []byte
-	}{namespace, key, valueCopy})
-	fake.recordInvocation("SetState", []interface{}{namespace, key, valueCopy})
-	fake.setStateMutex.Unlock()
-	if fake.SetStateStub != nil {
-		return fake.SetStateStub(namespace, key, value)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.setStateReturns.result1
-}
-
-func (fake *LedgerWriter) SetStateCallCount() int {
-	fake.setStateMutex.RLock()
-	defer fake.setStateMutex.RUnlock()
-	return len(fake.setStateArgsForCall)
-}
-
-func (fake *LedgerWriter) SetStateArgsForCall(i int) (string, string, []byte) {
-	fake.setStateMutex.RLock()
-	defer fake.setStateMutex.RUnlock()
-	return fake.setStateArgsForCall[i].namespace, fake.setStateArgsForCall[i].key, fake.setStateArgsForCall[i].value
-}
-
-func (fake *LedgerWriter) SetStateReturns(result1 error) {
-	fake.SetStateStub = nil
-	fake.setStateReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *LedgerWriter) SetStateReturnsOnCall(i int, result1 error) {
-	fake.SetStateStub = nil
-	if fake.setStateReturnsOnCall == nil {
-		fake.setStateReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.setStateReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *LedgerWriter) Invocations() map[string][][]interface{} {
+func (fake *LedgerReader) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.getStateMutex.RLock()
 	defer fake.getStateMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
-	fake.setStateMutex.RLock()
-	defer fake.setStateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
@@ -231,7 +161,7 @@ func (fake *LedgerWriter) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *LedgerWriter) recordInvocation(key string, args []interface{}) {
+func (fake *LedgerReader) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -243,4 +173,4 @@ func (fake *LedgerWriter) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ ledger.LedgerWriter = new(LedgerWriter)
+var _ ledger.LedgerReader = new(LedgerReader)

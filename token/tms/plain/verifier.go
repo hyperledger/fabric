@@ -19,6 +19,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	minUnicodeRuneValue   = 0            //U+0000
+	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+	compositeKeyNamespace = "\x00"
+	tokenOutput           = "tokenOutput"
+	tokenTx               = "tokenTx"
+)
+
 // A Verifier validates and commits token transactions.
 type Verifier struct {
 	IssuingValidator identity.IssuingValidator
@@ -192,21 +200,15 @@ func (v *Verifier) addTransaction(txID string, ttx *token.TokenTransaction, simu
 	return simulator.SetState(tokenNamespace, ttxID, ttxBytes)
 }
 
-// For composite keys for outputs
-const tokenOutputKey = "tokenOutput"
-
 // Create a ledger key for an individual output in a token transaction, as a function of
 // the transaction ID, and the index of the output
 func createOutputKey(txID string, index int) (string, error) {
-	return createCompositeKey(tokenOutputKey, []string{txID, strconv.Itoa(index)})
+	return createCompositeKey(tokenOutput, []string{txID, strconv.Itoa(index)})
 }
-
-// For composite keys for transactions
-const tokenTxKey = "tokenTx"
 
 // Create a ledger key for a token transaction, as a function of the transaction ID
 func createTxKey(txID string) (string, error) {
-	return createCompositeKey(tokenTxKey, []string{txID})
+	return createCompositeKey(tokenTx, []string{txID})
 }
 
 // createCompositeKey and its related functions and consts copied from core/chaincode/shim/chaincode.go
@@ -223,12 +225,6 @@ func createCompositeKey(objectType string, attributes []string) (string, error) 
 	}
 	return ck, nil
 }
-
-const (
-	minUnicodeRuneValue   = 0            //U+0000
-	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
-	compositeKeyNamespace = "\x00"
-)
 
 func validateCompositeKeyAttribute(str string) error {
 	if !utf8.ValidString(str) {
