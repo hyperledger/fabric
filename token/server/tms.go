@@ -21,6 +21,11 @@ type Issuer interface {
 
 // Transactor allows to operate on issued tokens
 type Transactor interface {
+	// RequestTransfer Create data associated to the transfer of a token assuming
+	// an application-level identity. The inTokens bytes are the identifiers
+	// of the outputs, the details of which need to be looked up from the ledger.
+	RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error)
+
 	// ListTokens returns a slice of unspent tokens owned by this transactor
 	ListTokens() (*token.UnspentTokens, error)
 }

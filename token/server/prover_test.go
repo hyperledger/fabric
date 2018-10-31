@@ -46,6 +46,9 @@ var _ = Describe("Prover", func() {
 		tokenTransaction  *token.TokenTransaction
 		marshaledResponse *token.SignedCommandResponse
 
+		transferRequest    *token.TransferRequest
+		trTokenTransaction *token.TokenTransaction
+
 		listRequest      *token.ListRequest
 		unspentTokens    *token.UnspentTokens
 		transactorTokens []*token.TokenOutput
@@ -72,13 +75,34 @@ var _ = Describe("Prover", func() {
 		fakeIssuer = &mock.Issuer{}
 		fakeIssuer.RequestImportReturns(tokenTransaction, nil)
 
+		trTokenTransaction = &token.TokenTransaction{
+			Action: &token.TokenTransaction_PlainAction{
+				PlainAction: &token.PlainTokenAction{
+					Data: &token.PlainTokenAction_PlainTransfer{
+						PlainTransfer: &token.PlainTransfer{
+							Inputs: []*token.InputId{{
+								TxId:  []byte("txid"),
+								Index: 0,
+							}},
+							Outputs: []*token.PlainOutput{{
+								Owner:    []byte("token-owner"),
+								Type:     "PDQ",
+								Quantity: 777,
+							}},
+						},
+					},
+				},
+			},
+		}
+		fakeTransactor = &mock.Transactor{}
+		fakeTransactor.RequestTransferReturns(trTokenTransaction, nil)
+
 		transactorTokens = []*token.TokenOutput{
 			{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
 			{Id: []byte("idby"), Type: "typeby", Quantity: 79},
 		}
 		unspentTokens = &token.UnspentTokens{Tokens: transactorTokens}
 
-		fakeTransactor = &mock.Transactor{}
 		fakeTransactor.ListTokensReturns(unspentTokens, nil)
 
 		fakeTMSManager = &mock.TMSManager{}
@@ -117,6 +141,15 @@ var _ = Describe("Prover", func() {
 		signedCommand = &token.SignedCommand{
 			Command:   marshaledCommand,
 			Signature: []byte("command-signature"),
+		}
+
+		transferRequest = &token.TransferRequest{
+			Credential: []byte("credential"),
+			TokenIds:   [][]byte{},
+			Shares: []*token.RecipientTransferShare{{
+				Recipient: []byte("recipient"),
+				Quantity:  99,
+			}},
 		}
 
 		listRequest = &token.ListRequest{
@@ -281,6 +314,55 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
+	Describe("ProcessCommand_RequestImport", func() {
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: tokenTransaction,
+			}))
+		})
+	})
+
+	Describe("ProcessCommand_RequestTransfer", func() {
+		BeforeEach(func() {
+			command = &token.Command{
+				Header: &token.Header{
+					ChannelId: "channel-id",
+					Creator:   []byte("creator"),
+					Nonce:     []byte("nonce"),
+				},
+				Payload: &token.Command_TransferRequest{
+					TransferRequest: transferRequest,
+				},
+			}
+			marshaledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshaledCommand,
+				Signature: []byte("command-signature"),
+			}
+			fakeMarshaler.MarshalCommandResponseReturns(marshaledResponse, nil)
+		})
+
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: trTokenTransaction,
+			}))
+		})
+	})
+
 	Describe("Process RequestImport command", func() {
 		It("returns a signed command response", func() {
 			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
@@ -371,6 +453,53 @@ var _ = Describe("Prover", func() {
 
 			It("returns the error", func() {
 				_, err := prover.RequestImport(context.Background(), command.Header, importRequest)
+				Expect(err).To(MatchError("watermelon"))
+			})
+		})
+	})
+
+	Describe("RequestTransfer", func() {
+		It("gets a transactor", func() {
+			_, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(1))
+			channel, cred, creator := fakeTMSManager.GetTransactorArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(cred).To(Equal([]byte("credential")))
+			Expect(creator).To(Equal([]byte("creator")))
+		})
+
+		It("uses the transactor to request a transfer", func() {
+			resp, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: trTokenTransaction,
+			}))
+
+			Expect(fakeTransactor.RequestTransferCallCount()).To(Equal(1))
+			tr := fakeTransactor.RequestTransferArgsForCall(0)
+			Expect(tr).To(Equal(transferRequest))
+		})
+
+		Context("when the TMS manager fails to get a transactor", func() {
+			BeforeEach(func() {
+				fakeTMSManager.GetTransactorReturns(nil, errors.New("boing boing"))
+			})
+
+			It("retuns the error", func() {
+				_, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
+				Expect(err).To(MatchError("boing boing"))
+			})
+		})
+
+		Context("when the transactor fails to transfer", func() {
+			BeforeEach(func() {
+				fakeTransactor.RequestTransferReturns(nil, errors.New("watermelon"))
+			})
+
+			It("retuns the error", func() {
+				_, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
 		})

@@ -197,7 +197,7 @@ func prepareInputsForRequestTransfer(t *testing.T) ([][]byte, []*token.Recipient
 
 	tr := &token.TransferRequest{
 		Shares:   shares,
-		TokenIDs: tokenIDs,
+		TokenIds: tokenIDs,
 	}
 
 	nonce := make([]byte, 32)
