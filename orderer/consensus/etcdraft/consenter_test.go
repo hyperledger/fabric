@@ -11,8 +11,12 @@ import (
 	"os"
 	"path"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
@@ -44,6 +48,23 @@ var _ = Describe("Consenter", func() {
 		Expect(err).NotTo(HaveOccurred())
 		walDir = path.Join(dataDir, "wal-")
 		snapDir = path.Join(dataDir, "snap-")
+
+		blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+		Expect(err).NotTo(HaveOccurred())
+
+		goodConfigBlock := &common.Block{}
+		proto.Unmarshal(blockBytes, goodConfigBlock)
+
+		lastBlock := &common.Block{
+			Data: goodConfigBlock.Data,
+			Metadata: &common.BlockMetadata{
+				Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
+					Value: utils.MarshalOrPanic(&common.LastConfig{Index: 0}),
+				})},
+			},
+		}
+
+		support.BlockReturns(lastBlock)
 	})
 
 	AfterEach(func() {
@@ -131,8 +152,8 @@ var _ = Describe("Consenter", func() {
 		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
 
 		consenter := newConsenter(chainGetter)
-		consenter.Config.WALDir = walDir
-		consenter.Config.SnapDir = snapDir
+		consenter.EtcdRaftConfig.WALDir = walDir
+		consenter.EtcdRaftConfig.SnapDir = snapDir
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(err).NotTo(HaveOccurred())
@@ -184,8 +205,8 @@ var _ = Describe("Consenter", func() {
 		defer os.RemoveAll(dir)
 
 		consenter := newConsenter(chainGetter)
-		consenter.Config.WALDir = walDir
-		consenter.Config.SnapDir = snapDir
+		consenter.EtcdRaftConfig.WALDir = walDir
+		consenter.EtcdRaftConfig.SnapDir = snapDir
 
 		d := &etcdraftproto.RaftMetadata{
 			Consenters: map[uint64]*etcdraftproto.Consenter{1: c},
@@ -216,10 +237,12 @@ var _ = Describe("Consenter", func() {
 })
 
 func newConsenter(chainGetter *mocks.ChainGetter) *etcdraft.Consenter {
-	comm := &clustermocks.Communicator{}
-	comm.On("Configure", mock.Anything, mock.Anything)
+	communicator := &clustermocks.Communicator{}
+	ca, err := tlsgen.NewCA()
+	Expect(err).NotTo(HaveOccurred())
+	communicator.On("Configure", mock.Anything, mock.Anything)
 	consenter := &etcdraft.Consenter{
-		Communication: comm,
+		Communication: communicator,
 		Cert:          []byte("cert.orderer0.org0"),
 		Logger:        flogging.MustGetLogger("test"),
 		Chains:        chainGetter,
@@ -227,6 +250,11 @@ func newConsenter(chainGetter *mocks.ChainGetter) *etcdraft.Consenter {
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},
 		},
+		Dialer: cluster.NewTLSPinningDialer(comm.ClientConfig{
+			SecOpts: &comm.SecureOptions{
+				Certificate: ca.CertBytes(),
+			},
+		}),
 	}
 	return consenter
 }

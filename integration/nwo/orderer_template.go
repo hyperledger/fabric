@@ -91,6 +91,7 @@ Debug:
   DeliverTraceDir:
 Consensus:
   WALDir: {{ .OrdererDir Orderer }}/etcdraft/wal
+  SnapDir: {{ .OrdererDir Orderer }}/etcdraft/snapshot
 Operations:
   ListenAddress: 127.0.0.1:{{ .OrdererPort Orderer "Operations" }}
   TLS:

@@ -314,6 +314,7 @@ Orderer: &OrdererDefaults
         Options:
             # TickInterval is the time interval between two Node.Tick
             # invocations.
+            # Unit: millisecond
             TickInterval: 100
 
             # ElectionTick is the number of Node.Tick invocations that must pass
@@ -337,6 +338,9 @@ Orderer: &OrdererDefaults
             # lost during normal operation). On the other side, it might affect
             # the throughput during normal replication.
             MaxSizePerMsg: 1048576
+
+            # SnapshotInterval defines number of blocks per which a snapshot is taken
+            SnapshotInterval: 500
 
     # Organizations lists the orgs participating on the orderer side of the
     # network.
