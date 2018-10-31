@@ -23,8 +23,6 @@ type General struct {
 	ListenPort     int                    `yaml:"ListenPort,omitempty"`
 	TLS            *OrdererTLS            `yaml:"TLS,omitempty"`
 	Keepalive      *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
-	LogLevel       string                 `yaml:"LogLevel,omitempty"`
-	LogFormat      string                 `yaml:"LogFormat,omitempty"`
 	GenesisMethod  string                 `yaml:"GenesisMethod,omitempty"`
 	GenesisProfile string                 `yaml:"GenesisProfile,omitempty"`
 	GenesisFile    string                 `yaml:"GenesisFile,omitempty"`

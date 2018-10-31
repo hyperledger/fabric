@@ -49,8 +49,6 @@ type General struct {
 	SystemChannel  string
 	GenesisFile    string
 	Profile        Profile
-	LogLevel       string
-	LogFormat      string
 	LocalMSPDir    string
 	LocalMSPID     string
 	BCCSP          *bccsp.FactoryOpts
@@ -193,8 +191,6 @@ var Defaults = TopLevel{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
 		},
-		LogLevel:    "INFO",
-		LogFormat:   "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
 		BCCSP:       bccsp.GetDefaultOpts(),
@@ -301,13 +297,6 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %v", Defaults.General.ListenPort)
 			c.General.ListenPort = Defaults.General.ListenPort
-
-		case c.General.LogLevel == "":
-			logger.Infof("General.LogLevel unset, setting to %s", Defaults.General.LogLevel)
-			c.General.LogLevel = Defaults.General.LogLevel
-		case c.General.LogFormat == "":
-			logger.Infof("General.LogFormat unset, setting to %s", Defaults.General.LogFormat)
-			c.General.LogFormat = Defaults.General.LogFormat
 
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = Defaults.General.GenesisMethod

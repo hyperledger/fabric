@@ -72,7 +72,7 @@ func Main() {
 		logger.Error("failed to parse config: ", err)
 		os.Exit(1)
 	}
-	initializeLoggingLevel(conf)
+	initializeLogging()
 	initializeLocalMsp(conf)
 
 	prettyPrintStruct(conf)
@@ -126,12 +126,13 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	}
 }
 
-// Set the logging level
-func initializeLoggingLevel(conf *localconfig.TopLevel) {
+func initializeLogging() {
+	loggingSpec := os.Getenv("FABRIC_LOGGING_SPEC")
+	loggingFormat := os.Getenv("FABRIC_LOGGING_FORMAT")
 	flogging.Init(flogging.Config{
-		Format:  conf.General.LogFormat,
+		Format:  loggingFormat,
 		Writer:  os.Stderr,
-		LogSpec: conf.General.LogLevel,
+		LogSpec: loggingSpec,
 	})
 }
 
