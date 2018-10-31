@@ -5,7 +5,9 @@ SPDX-License-Identifier: Apache-2.0
 */
 package server
 
-import "github.com/hyperledger/fabric/protos/token"
+import (
+	"github.com/hyperledger/fabric/protos/token"
+)
 
 //go:generate counterfeiter -o mock/issuer.go -fake-name Issuer . Issuer
 
@@ -19,8 +21,8 @@ type Issuer interface {
 
 // Transactor allows to operate on issued tokens
 type Transactor interface {
-	// ListUnspentTokens returns a slice of unspent tokens owned by this transactor
-	ListUnspentTokens() ([]*token.TokenOutput, error)
+	// ListTokens returns a slice of unspent tokens owned by this transactor
+	ListTokens() (*token.UnspentTokens, error)
 }
 
 //go:generate counterfeiter -o mock/tms_manager.go -fake-name TMSManager . TMSManager

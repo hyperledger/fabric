@@ -9,17 +9,25 @@ package server_test
 import (
 	"context"
 	"net"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
+	mock2 "github.com/hyperledger/fabric/token/ledger/mock"
 	"github.com/hyperledger/fabric/token/server"
 	"github.com/hyperledger/fabric/token/server/mock"
+	"github.com/hyperledger/fabric/token/tms/plain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
+
+func clock() time.Time {
+	return time.Time{}
+}
 
 var _ = Describe("Prover", func() {
 	var (
@@ -71,7 +79,7 @@ var _ = Describe("Prover", func() {
 		unspentTokens = &token.UnspentTokens{Tokens: transactorTokens}
 
 		fakeTransactor = &mock.Transactor{}
-		fakeTransactor.ListUnspentTokensReturns(transactorTokens, nil)
+		fakeTransactor.ListTokensReturns(unspentTokens, nil)
 
 		fakeTMSManager = &mock.TMSManager{}
 		fakeTMSManager.GetIssuerReturns(fakeIssuer, nil)
@@ -556,7 +564,7 @@ var _ = Describe("Prover", func() {
 				UnspentTokens: unspentTokens,
 			}))
 
-			Expect(fakeTransactor.ListUnspentTokensCallCount()).To(Equal(1))
+			Expect(fakeTransactor.ListTokensCallCount()).To(Equal(1))
 		})
 
 		Context("when the TMS manager fails to get a transactor", func() {
@@ -572,13 +580,144 @@ var _ = Describe("Prover", func() {
 
 		Context("when the transactor fails to list tokens", func() {
 			BeforeEach(func() {
-				fakeTransactor.ListUnspentTokensReturns(nil, errors.New("pineapple"))
+				fakeTransactor.ListTokensReturns(nil, errors.New("pineapple"))
 			})
 
 			It("returns the error", func() {
 				_, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
 				Expect(err).To(MatchError("pineapple"))
 			})
+		})
+	})
+})
+
+var _ = Describe("ProverListUnspentTokens", func() {
+	var (
+		marshaler        *server.ResponseMarshaler
+		prover           *server.Prover
+		listRequest      *token.ListRequest
+		command          *token.Command
+		marshaledCommand []byte
+		signedCommand    *token.SignedCommand
+		queryResult      *queryresult.KV
+		expectedResponse *token.CommandResponse_UnspentTokens
+	)
+	BeforeEach(func() {
+		fakeIterator := &mock2.ResultsIterator{}
+		fakePolicyChecker := &mock.PolicyChecker{}
+		fakeSigner := &mock.SignerIdentity{}
+
+		fakeLedgerReader := &mock2.LedgerReader{}
+		fakeLedgerManager := &mock2.LedgerManager{}
+		fakeLedgerManager.GetLedgerReaderReturns(fakeLedgerReader, nil)
+
+		manager := &server.Manager{LedgerManager: fakeLedgerManager}
+		marshaler = &server.ResponseMarshaler{Signer: fakeSigner, Creator: []byte("Alice"), Time: clock}
+
+		prover = &server.Prover{
+			Marshaler:     marshaler,
+			PolicyChecker: fakePolicyChecker,
+			TMSManager:    manager,
+		}
+
+		fakeLedgerReader.GetStateRangeScanIteratorReturns(fakeIterator, nil)
+
+		fakeIterator.NextReturns(queryResult, nil)
+		fakeIterator.NextReturnsOnCall(1, nil, nil)
+
+		fakeSigner.SignReturns([]byte("it is a signature"), nil)
+		fakeSigner.SerializeReturns([]byte("creator"), nil)
+
+	})
+	It("initializes variables and expected responses", func() {
+		listRequest = &token.ListRequest{Credential: []byte("creator")}
+
+		command = &token.Command{
+			Header: &token.Header{
+				ChannelId: "channel-id",
+				Creator:   []byte("Alice"),
+				Nonce:     []byte("nonce"),
+			},
+			Payload: &token.Command_ListRequest{
+				ListRequest: listRequest,
+			},
+		}
+		marshaledCommand = ProtoMarshal(command)
+		signedCommand = &token.SignedCommand{
+			Command:   marshaledCommand,
+			Signature: []byte("command-signature"),
+		}
+		outputToken, err := proto.Marshal(&token.PlainOutput{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100})
+		Expect(err).NotTo(HaveOccurred())
+
+		key, err := plain.GenerateKeyForTest("1", 0)
+		Expect(err).NotTo(HaveOccurred())
+
+		queryResult = &queryresult.KV{Key: key, Value: outputToken}
+
+		unspentTokens := &token.UnspentTokens{Tokens: []*token.TokenOutput{{Type: "XYZ", Quantity: 100, Id: []byte(key)}}}
+		expectedResponse = &token.CommandResponse_UnspentTokens{UnspentTokens: unspentTokens}
+	})
+
+	Describe("ListUnspentTokens", func() {
+		It("returns UnspentTokens", func() {
+			response, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(Equal(expectedResponse))
+		})
+	})
+
+	Describe("ProcessCommand using ResponseMarshaler", func() {
+		It("marshals a ListTokens response", func() {
+
+			marshaledResponse, err := marshaler.MarshalCommandResponse(marshaledCommand, expectedResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+		})
+	})
+
+	Describe("ProcessCommand with grpc service activated", func() {
+		var (
+			proverEndpoint string
+			grpcSrv        *grpc.Server
+		)
+
+		BeforeEach(func() {
+
+			// start grpc server for prover
+			listener, err := net.Listen("tcp", "127.0.0.1:")
+			Expect(err).To(BeNil())
+			grpcSrv = grpc.NewServer()
+			token.RegisterProverServer(grpcSrv, prover)
+			go grpcSrv.Serve(listener)
+
+			proverEndpoint = listener.Addr().String()
+
+		})
+
+		AfterEach(func() {
+			grpcSrv.Stop()
+		})
+
+		It("returns expected response", func() {
+			// create grpc client
+			clientConn, err := grpc.Dial(proverEndpoint, grpc.WithInsecure())
+			Expect(err).To(BeNil())
+			defer clientConn.Close()
+			proverClient := token.NewProverClient(clientConn)
+
+			response, err := proverClient.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+
+			marshaledResponse, err := marshaler.MarshalCommandResponse(marshaledCommand, expectedResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response.Signature).To(Equal(marshaledResponse.Signature))
+			Expect(response.Response).To(Equal(marshaledResponse.Response))
 		})
 	})
 })

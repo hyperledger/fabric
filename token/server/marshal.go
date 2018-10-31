@@ -92,6 +92,8 @@ func commandResponseFromPayload(payload interface{}) (*token.CommandResponse, er
 		return &token.CommandResponse{Payload: t}, nil
 	case *token.CommandResponse_Err:
 		return &token.CommandResponse{Payload: t}, nil
+	case *token.CommandResponse_UnspentTokens:
+		return &token.CommandResponse{Payload: t}, nil
 	default:
 		return nil, errors.Errorf("command type not recognized: %T", t)
 	}
