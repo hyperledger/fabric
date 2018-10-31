@@ -91,8 +91,8 @@ var _ = Describe("EndToEnd", func() {
 			By("getting the client peer by name")
 			peer := network.Peer("Org1", "peer1")
 
-			RunQueryInvokeQuery(network, orderer, peer)
-			RunRespondWith(network, orderer, peer)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
+			RunRespondWith(network, orderer, peer, "testchannel")
 		})
 	})
 
@@ -113,7 +113,7 @@ var _ = Describe("EndToEnd", func() {
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 		})
 	})
 
@@ -134,7 +134,7 @@ var _ = Describe("EndToEnd", func() {
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 		})
 	})
 
@@ -181,7 +181,7 @@ var _ = Describe("EndToEnd", func() {
 			By("creating a new chain and having the peers join it to test for channel creation")
 			network.CreateAndJoinChannel(orderer1, "testchannel")
 			nwo.DeployChaincode(network, "testchannel", orderer1, chaincode)
-			RunQueryInvokeQuery(network, orderer1, peer)
+			RunQueryInvokeQuery(network, orderer1, peer, "testchannel")
 
 			// the above can work even if the orderer nodes are not in the same Raft
 			// cluster; we need to verify all the three orderer nodes are in sync wrt
@@ -233,7 +233,7 @@ var _ = Describe("EndToEnd", func() {
 			channel := "testchannel"
 			network.CreateAndJoinChannel(orderer, channel)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			config := nwo.GetConfigBlock(network, peer, orderer, channel)
 			updatedConfig := proto.Clone(config).(*common.Config)
@@ -264,12 +264,38 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
+	Describe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
+		BeforeEach(func() {
+			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, 34000, components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready()).Should(BeClosed())
+		})
+
+		It("executes a basic etcdraft network with 2 orgs and 2 channels", func() {
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer1")
+
+			network.CreateAndJoinChannel(orderer, "testchannel1")
+			nwo.DeployChaincode(network, "testchannel1", orderer, chaincode)
+
+			network.CreateAndJoinChannel(orderer, "testchannel2")
+			nwo.DeployChaincode(network, "testchannel2", orderer, chaincode)
+
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
+		})
+	})
+
 })
 
-func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
+func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
 	By("querying the chaincode")
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-		ChannelID: "testchannel",
+		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
 	})
@@ -278,7 +304,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	Expect(sess).To(gbytes.Say("100"))
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: "testchannel",
+		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
@@ -293,7 +319,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
-		ChannelID: "testchannel",
+		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
 	})
@@ -302,10 +328,10 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	Expect(sess).To(gbytes.Say("90"))
 }
 
-func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
+func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
 	By("responding with a 300")
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: "testchannel",
+		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
 		Ctor:      `{"Args":["respond","300","response-message","response-payload"]}`,
@@ -320,7 +346,7 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 
 	By("responding with a 400")
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: "testchannel",
+		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
 		Ctor:      `{"Args":["respond","400","response-message","response-payload"]}`,
