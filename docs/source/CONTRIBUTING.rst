@@ -49,8 +49,7 @@ The Fabric maintainers have settled on a quarterly (approximately) release
 cadence (see `releases <https://github.com/hyperledger/fabric#releases>`__).
 We are also actively considering adopting an LTS (long term support) release
 process, though the details of this are still being worked out by the
-maintainers. Follow the discussion on the #fabric-maintainers channel in Rocket
-Chat.
+maintainers. Follow the discussion on the #fabric-maintainers channel in Chat.
 
 Making Feature/Enhancement Proposals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -163,7 +162,7 @@ sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
 reviewed. You can also post to the relevant Hyperledger Fabric channel in
-`Hyperledger Rocket Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
+`Hyperledger Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
 be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
 and so on...
 
