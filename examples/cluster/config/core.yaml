@@ -15,52 +15,6 @@
 
 ###############################################################################
 #
-#    LOGGING section
-#
-###############################################################################
-logging:
-
-    # Default logging levels are specified here for each of the three peer
-    # commands 'node', 'network' and 'chaincode'. For commands that have
-    # subcommands, the defaults also apply to all subcommands of the command.
-    # Valid logging levels are case-insensitive strings chosen from
-
-    #     FATAL | PANIC | ERROR | WARNING | INFO | DEBUG
-
-    # The logging levels specified here can be overridden in various ways,
-    # listed below from strongest to weakest:
-    #
-    # 1. The --logging-level=<level> command line option overrides all other
-    #    specifications.
-    #
-    # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
-    #    all peer commands if defined as a non-empty string.
-    #
-    # 3. The environment variables CORE_LOGGING_[NODE|NETWORK|CHAINCODE]
-    #    otherwise apply to the respective peer commands if defined as non-empty
-    #    strings.
-    #
-    # 4. Otherwise, the specifications below apply.
-    #
-    # Developers: Please see fabric/docs/Setup/logging-control.md for more
-    # options.
-    peer:       warning
-    node:       warning
-    network:    warning
-    version:    warning
-    protoutils: warning
-    error:      warning
-    msp:        warning
-    gossip:     warning
-    grpc:       warning
-    ledger:     warning
-    policies:   warning
-    cauthdsl:   warning
-
-    format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
-
-###############################################################################
-#
 #    Peer section
 #
 ###############################################################################

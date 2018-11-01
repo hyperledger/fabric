@@ -268,7 +268,7 @@ If you'd like to learn more about the underlying tooling and bootstrap mechanics
 continue reading.  In these next sections we'll walk through the various steps
 and requirements to build a fully-functional Hyperledger Fabric network.
 
-.. note:: The manual steps outlined below assume that the ``CORE_LOGGING_LEVEL`` in
+.. note:: The manual steps outlined below assume that the ``FABRIC_LOGGING_SPEC`` in
           the ``cli`` container is set to ``DEBUG``. You can set this by modifying
           the ``docker-compose-cli.yaml`` file in the ``first-network`` directory.
           e.g.
@@ -283,8 +283,8 @@ and requirements to build a fully-functional Hyperledger Fabric network.
               environment:
                 - GOPATH=/opt/gopath
                 - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-                - CORE_LOGGING_LEVEL=DEBUG
-                #- CORE_LOGGING_LEVEL=INFO
+                - FABRIC_LOGGING_SPEC=DEBUG
+                #- FABRIC_LOGGING_SPEC=INFO
 
 Crypto Generator
 ----------------

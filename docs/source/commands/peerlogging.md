@@ -7,33 +7,39 @@ configure the log levels of a peer.
 
 The `peer logging` command has the following subcommands:
 
+  * getlogspec
+  * setlogspec
+
+and the following deprecated subcommands, which will be removed
+in a future release:
+
   * getlevel
   * setlevel
   * revertlevels
 
-The different subcommand options (getlevel, setlevel, and revertlevels) relate
-to the different logging operations that are relevant to a peer.
+The different subcommand options (`getlogspec`, `setlogspec`, `getlevel`, `setlevel`,
+and `revertlevels`) relate to the different logging operations that are relevant
+to a peer.
 
 Each peer logging subcommand is described together with its options in its own
 section in this topic.
 
 ## peer logging
 ```
-Log levels: getlevel|setlevel|revertlevels.
+Logging configuration: getlevel|setlevel|getlogspec|setlogspec|revertlevels.
 
 Usage:
   peer logging [command]
 
 Available Commands:
   getlevel     Returns the logging level of the requested module logger.
-  revertlevels Reverts the logging levels to the levels at the end of peer startup.
-  setlevel     Sets the logging level for all modules that match the regular expression.
+  getlogspec   Returns the active log spec.
+  revertlevels Reverts the logging spec to the peer's spec at startup.
+  setlevel     Adds the module and log level to the current logging spec.
+  setlogspec   Sets the logging spec.
 
 Flags:
   -h, --help   help for logging
-
-Global Flags:
-      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
 
 Use "peer logging [command] --help" for more information about a command.
 ```
@@ -48,44 +54,35 @@ Usage:
 
 Flags:
   -h, --help   help for getlevel
-
-Global Flags:
-      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
 ```
 
 
 ## peer logging revertlevels
 ```
-Reverts the logging levels to the levels at the end of peer startup
+Reverts the logging spec to the peer's spec at startup.
 
 Usage:
   peer logging revertlevels [flags]
 
 Flags:
   -h, --help   help for revertlevels
-
-Global Flags:
-      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
 ```
 
 
 ## peer logging setlevel
 ```
-Sets the logging level for all modules that match the regular expression.
+Adds the module and log level to the current logging specification.
 
 Usage:
-  peer logging setlevel <module regular expression> <log level> [flags]
+  peer logging setlevel <module> <log level> [flags]
 
 Flags:
   -h, --help   help for setlevel
-
-Global Flags:
-      --logging-level string   Default logging level and overrides, see core.yaml for full syntax
 ```
 
 ## Example Usage
 
-### peer logging getlevel example
+### Get Level Usage
 
 Here is an example of the `peer logging getlevel` command:
 
@@ -94,8 +91,20 @@ Here is an example of the `peer logging getlevel` command:
     ```
     peer logging getlevel peer
 
-    2018-02-22 19:10:08.633 UTC [cli/logging] getLevel -> INFO 001 Current log level for peer module 'peer': DEBUG
-    2018-02-22 19:10:08.633 UTC [main] main -> INFO 002 Exiting.....
+    2018-11-01 14:18:11.276 UTC [cli.logging] getLevel -> INFO 001 Current log level for module 'peer': INFO
+
+    ```
+
+### Get Log Spec Usage
+
+Here is an example of the `peer logging getlogspec` command:
+
+  * To get the active logging spec for the peer:
+
+    ```
+    peer logging getlogspec
+
+    2018-11-01 14:21:03.591 UTC [cli.logging] getLogSpec -> INFO 001 Current logging spec: info
 
     ```
 
@@ -103,38 +112,51 @@ Here is an example of the `peer logging getlevel` command:
 
 Here are some examples of the `peer logging setlevel` command:
 
-  * To set the log level for modules matching the regular expression `peer` to
+  * To set the log level for modules matching logger name prefix `gossip` to
     log level `WARNING`:
 
     ```
-    peer logging setlevel peer warning
-    2018-02-22 19:14:51.217 UTC [cli/logging] setLevel -> INFO 001 Log level set for peer modules matching regular expression 'peer': WARNING
-    2018-02-22 19:14:51.217 UTC [main] main -> INFO 002 Exiting.....
+    peer logging setlevel gossip warning
+    2018-11-01 14:21:55.509 UTC [cli.logging] setLevel -> INFO 001 Log level set for module name/prefix 'gossip': WARNING
+    ```
+
+  * To set the log level to `ERROR` for only the module that exactly matches the
+    supplied name, append a period to the module name:
+
+    ```
+    peer logging setlevel gossip. error
+
+    2018-11-01 14:27:33.080 UTC [cli.logging] setLevel -> INFO 001 Log level set for module name/prefix 'gossip.': ERROR
+    ```
+
+### Set Log Spec Usage
+
+Here is an example of the `peer logging setlogspec` command:
+
+  * To set the active logging spec for the peer where modules that begin with
+    `gossip` and `msp` are set to log level `WARNING` and the default for all
+    other modules is log level `INFO`:
+
+    ```
+    peer logging setlogspec gossip=warning:msp=warning:info
+
+    2018-11-01 14:32:12.871 UTC [cli.logging] setLogSpec -> INFO 001 Current logging spec set to: gossip=warning:msp=warning:info
 
     ```
 
-  * To set the log level for modules that match the regular expression `^gossip`
-    (i.e. all of the `gossip` logging submodules of the form
-    `gossip/<submodule>`) to log level `ERROR`:
-
-    ```
-    peer logging setlevel ^gossip error
-
-    2018-02-22 19:16:46.272 UTC [cli/logging] setLevel -> INFO 001 Log level set for peer modules matching regular expression '^gossip': ERROR
-    2018-02-22 19:16:46.272 UTC [main] main -> INFO 002 Exiting.....
-    ```
+    Note: there is only one active logging spec. Any previous spec, including
+    modules updated via 'setlevel', will no longer be applicable.
 
 ### Revert Levels Usage
 
 Here is an example of the `peer logging revertlevels` command:
 
-  * To revert the log levels to the start-up values:
+  * To revert the logging spec to the start-up value:
 
     ```
     peer logging revertlevels
 
-    2018-02-22 19:18:38.428 UTC [cli/logging] revertLevels -> INFO 001 Log levels reverted to the levels at the end of peer startup.
-    2018-02-22 19:18:38.428 UTC [main] main -> INFO 002 Exiting.....
+    2018-11-01 14:37:12.402 UTC [cli.logging] revertLevels -> INFO 001 Logging spec reverted to the peer's spec at startup.
 
     ```
 
