@@ -55,9 +55,12 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 			Timeout: DefaultKeepaliveOptions.ClientTimeout}
 	}
 	kap.PermitWithoutStream = true
-	// set keepalive and blocking
-	client.dialOpts = append(client.dialOpts, grpc.WithKeepaliveParams(kap),
-		grpc.WithBlock())
+	// set keepalive
+	client.dialOpts = append(client.dialOpts, grpc.WithKeepaliveParams(kap))
+	// Unless asynchronous connect is set, make connection establishment blocking.
+	if !config.AsyncConnect {
+		client.dialOpts = append(client.dialOpts, grpc.WithBlock())
+	}
 	client.timeout = config.Timeout
 	// set send/recv message size to package defaults
 	client.maxRecvMsgSize = MaxRecvMsgSize

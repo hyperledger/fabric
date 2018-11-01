@@ -82,6 +82,7 @@ func newBlockPuller(support consensus.ConsenterSupport,
 	if err != nil {
 		return nil, err
 	}
+	secureConfig.AsyncConnect = false
 	stdDialer := &cluster.StandardDialer{
 		Dialer: cluster.NewTLSPinningDialer(secureConfig),
 	}

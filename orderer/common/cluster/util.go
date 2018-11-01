@@ -126,9 +126,10 @@ func (dialer *PredicateDialer) ClientConfig() (comm.ClientConfig, error) {
 		// Copy by value the secure options
 		secOpts := *cc.SecOpts
 		return comm.ClientConfig{
-			Timeout: cc.Timeout,
-			SecOpts: &secOpts,
-			KaOpts:  cc.KaOpts,
+			AsyncConnect: cc.AsyncConnect,
+			Timeout:      cc.Timeout,
+			SecOpts:      &secOpts,
+			KaOpts:       cc.KaOpts,
 		}, nil
 	}
 }
@@ -136,9 +137,10 @@ func (dialer *PredicateDialer) ClientConfig() (comm.ClientConfig, error) {
 // SetConfig sets the configuration of the PredicateDialer
 func (dialer *PredicateDialer) SetConfig(config comm.ClientConfig) {
 	configCopy := comm.ClientConfig{
-		Timeout: config.Timeout,
-		SecOpts: &comm.SecureOptions{},
-		KaOpts:  &comm.KeepaliveOptions{},
+		AsyncConnect: config.AsyncConnect,
+		Timeout:      config.Timeout,
+		SecOpts:      &comm.SecureOptions{},
+		KaOpts:       &comm.KeepaliveOptions{},
 	}
 	// Explicitly copy configuration
 	if config.SecOpts != nil {
