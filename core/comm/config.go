@@ -73,6 +73,8 @@ type ClientConfig struct {
 	// Timeout specifies how long the client will block when attempting to
 	// establish a connection
 	Timeout time.Duration
+	// AsyncConnect makes connection creation non blocking
+	AsyncConnect bool
 }
 
 // SecureOptions defines the security parameters (e.g. TLS) for a

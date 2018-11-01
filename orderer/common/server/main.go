@@ -148,9 +148,10 @@ func initializeProfilingService(conf *localconfig.TopLevel) {
 
 func initializeClusterConfig(conf *localconfig.TopLevel) comm.ClientConfig {
 	cc := comm.ClientConfig{
-		KaOpts:  comm.DefaultKeepaliveOptions,
-		Timeout: conf.General.Cluster.DialTimeout,
-		SecOpts: &comm.SecureOptions{},
+		AsyncConnect: true,
+		KaOpts:       comm.DefaultKeepaliveOptions,
+		Timeout:      conf.General.Cluster.DialTimeout,
+		SecOpts:      &comm.SecureOptions{},
 	}
 
 	if (!conf.General.TLS.Enabled) || conf.General.Cluster.ClientCertificate == "" {

@@ -186,6 +186,15 @@ func TestNewConnection(t *testing.T) {
 			errorMsg: "context deadline exceeded",
 		},
 		{
+			name: "client / server wrong port but with asynchronous should succeed",
+			config: comm.ClientConfig{
+				AsyncConnect: true,
+				Timeout:      testTimeout,
+			},
+			clientPort: 20040,
+			success:    true,
+		},
+		{
 			name: "client TLS / server no TLS",
 			config: comm.ClientConfig{
 				SecOpts: &comm.SecureOptions{
