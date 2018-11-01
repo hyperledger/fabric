@@ -130,23 +130,6 @@ func TestModuleLevelsActivateSpecErrors(t *testing.T) {
 	}
 }
 
-func TestModuleLevelsEnabler(t *testing.T) {
-	ml := &flogging.ModuleLevels{}
-	err := ml.ActivateSpec("logger=error")
-	assert.NoError(t, err)
-
-	for _, name := range []string{"logger.one.two", "logger.one", "logger"} {
-		enabler := ml.LevelEnabler(name)
-		assert.False(t, enabler.Enabled(zapcore.DebugLevel))
-		assert.False(t, enabler.Enabled(zapcore.InfoLevel))
-		assert.False(t, enabler.Enabled(zapcore.WarnLevel))
-		assert.True(t, enabler.Enabled(zapcore.ErrorLevel))
-		assert.True(t, enabler.Enabled(zapcore.DPanicLevel))
-		assert.True(t, enabler.Enabled(zapcore.PanicLevel))
-		assert.True(t, enabler.Enabled(zapcore.FatalLevel))
-	}
-}
-
 func TestModuleLevelSpec(t *testing.T) {
 	var tests = []struct {
 		input  string

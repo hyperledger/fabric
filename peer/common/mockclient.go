@@ -108,3 +108,8 @@ func (m *mockAdminClient) GetLogSpec(ctx context.Context, in *cb.Envelope, opts 
 	response := &pb.LogSpecResponse{LogSpec: "info"}
 	return response, m.err
 }
+
+func (m *mockAdminClient) SetLogSpec(ctx context.Context, in *cb.Envelope, opts ...grpc.CallOption) (*pb.LogSpecResponse, error) {
+	response := &pb.LogSpecResponse{LogSpec: "info"}
+	return response, m.err
+}
