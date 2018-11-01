@@ -16,6 +16,8 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var logger = flogging.MustGetLogger("server")
@@ -95,11 +97,12 @@ func (s *ServerAdmin) SetModuleLogLevel(ctx context.Context, env *common.Envelop
 	spec := fmt.Sprintf("%s:%s=%s", flogging.Global.Spec(), request.LogModule, request.LogLevel)
 	err = flogging.Global.ActivateSpec(spec)
 	if err != nil {
+		err = status.Errorf(codes.InvalidArgument, "error setting log spec to '%s': %s", spec, err.Error())
 		return nil, err
 	}
 
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: strings.ToUpper(request.LogLevel)}
-	return logResponse, err
+	return logResponse, nil
 }
 
 func (s *ServerAdmin) RevertLogLevels(ctx context.Context, env *common.Envelope) (*empty.Empty, error) {

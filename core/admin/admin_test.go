@@ -8,6 +8,7 @@ package admin
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -121,16 +122,47 @@ func TestLoggingCalls(t *testing.T) {
 		assert.Nil(t, err, "Error should have been nil")
 	}
 
-	for _, llr := range []*pb.LogLevelRequest{{LogModule: "test", LogLevel: "debug"}, nil} {
-		mv.On("validate").Return(wrapLogLevelRequest(llr), nil).Once()
+	type levelTestCase struct {
+		req         *pb.LogLevelRequest
+		expectedErr string
+	}
+
+	levelTests := []levelTestCase{
+		{
+			req: &pb.LogLevelRequest{
+				LogModule: "test",
+				LogLevel:  "borken",
+			},
+			expectedErr: "rpc error: code = InvalidArgument desc = error setting log spec to 'info:test=borken': invalid logging specification 'info:test=borken': bad segment 'test=borken'",
+		},
+		{
+			req: &pb.LogLevelRequest{
+				LogModule: "test",
+				LogLevel:  "debug",
+			},
+		},
+		{
+			req: nil,
+		},
+	}
+
+	for _, tc := range levelTests {
+		mv.On("validate").Return(wrapLogLevelRequest(tc.req), nil).Once()
 		logResponse, err := adminServer.SetModuleLogLevel(context.Background(), nil)
-		if llr == nil {
+
+		if tc.req == nil {
 			assert.Nil(t, logResponse)
 			assert.Equal(t, "request is nil", err.Error())
 			continue
 		}
+
+		if tc.expectedErr != "" {
+			assert.Equal(t, tc.expectedErr, err.Error())
+			continue
+		}
+
 		assert.NotNil(t, logResponse, "logResponse should have been set")
-		assert.Equal(t, "DEBUG", logResponse.LogLevel, "logger level should have been set to debug")
+		assert.Equal(t, tc.req.LogLevel, strings.ToLower(logResponse.LogLevel))
 		assert.Nil(t, err, "Error should have been nil")
 	}
 
@@ -148,12 +180,15 @@ func TestLoggingCalls(t *testing.T) {
 	_, err = adminServer.GetLogSpec(context.Background(), nil)
 	assert.Nil(t, err, "Error should have been nil")
 
-	type testCase struct {
+	type specTestCase struct {
 		req         *pb.LogSpecRequest
 		expectedErr string
 	}
 
-	testCases := []testCase{
+	specTests := []specTestCase{
+		{
+			req: nil,
+		},
 		{
 			req: &pb.LogSpecRequest{LogSpec: "info"},
 		},
@@ -161,19 +196,18 @@ func TestLoggingCalls(t *testing.T) {
 			req:         &pb.LogSpecRequest{LogSpec: "borken"},
 			expectedErr: "invalid logging specification 'borken': bad segment 'borken'",
 		},
-		{
-			req: nil,
-		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range specTests {
 		mv.On("validate").Return(wrapLogSpecRequest(tc.req), nil).Once()
 		resp, err := adminServer.SetLogSpec(context.Background(), nil)
+
 		if tc.req == nil {
 			assert.Nil(t, resp)
 			assert.Equal(t, "request is nil", err.Error())
 			continue
 		}
+
 		assert.Nil(t, err, "Error should have been nil")
 		assert.Equal(t, tc.expectedErr, resp.Error)
 
