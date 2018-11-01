@@ -58,6 +58,27 @@ func TestLoadPrivateKey(t *testing.T) {
 	cleanup(testDir)
 }
 
+func TestLoadPrivateKey_wrongEncoding(t *testing.T) {
+	if err := os.Mkdir(testDir, 0755); err != nil {
+		panic("failed to create dir " + testDir + ":" + err.Error())
+	}
+	filename := testDir + "/wrong_encoding_sk"
+	file, err := os.Create(filename)
+	if err != nil {
+		panic("failed to create tmpfile " + filename + ":" + err.Error())
+	}
+	defer file.Close()
+	_, err = file.Write([]byte("wrong_encoding"))
+	if err != nil {
+		panic("failed to write to " + filename + ":" + err.Error())
+	}
+	file.Close() // To flush test file content
+	_, _, err = csp.LoadPrivateKey(testDir)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, testDir+"/wrong_encoding_sk: wrong PEM encoding")
+	cleanup(testDir)
+}
+
 func TestGeneratePrivateKey(t *testing.T) {
 
 	priv, signer, err := csp.GeneratePrivateKey(testDir)
