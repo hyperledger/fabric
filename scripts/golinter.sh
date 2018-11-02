@@ -40,6 +40,8 @@ context_whitelist=(
     "^github.com/hyperledger/fabric/protos(:|/.*:)"
     "^github.com/hyperledger/fabric/common/grpclogging/fakes:"
     "^github.com/hyperledger/fabric/common/grpclogging/testpb:"
+    "^github.com/hyperledger/fabric/common/grpcmetrics/fakes:"
+    "^github.com/hyperledger/fabric/common/grpcmetrics/testpb:"
 )
 TEMPLATE='{{with $d := .}}{{range $d.Imports}}{{ printf "%s:%s " $d.ImportPath . }}{{end}}{{end}}'
 OUTPUT="$(go list -f "$TEMPLATE" ./... | grep -Ev $(IFS='|' ; echo "${context_whitelist[*]}") | grep 'golang.org/x/net/context' | cut -f1 -d:)"
