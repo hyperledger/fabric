@@ -31,8 +31,6 @@ General:
     ServerMinInterval: 60s
     ServerInterval: 7200s
     ServerTimeout: 20s
-  LogLevel: info
-  LogFormat: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
   GenesisMethod: file
   GenesisProfile: {{ .SystemChannel.Profile }}
   GenesisFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb

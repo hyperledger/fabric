@@ -112,9 +112,9 @@ const (
 )
 
 var envvars = map[string]string{
+	"FABRIC_LOGGING_SPEC":                                         "error",
 	"ORDERER_GENERAL_GENESISPROFILE":                              genesisconfig.SampleDevModeSoloProfile,
 	"ORDERER_GENERAL_LEDGERTYPE":                                  "file",
-	"ORDERER_GENERAL_LOGLEVEL":                                    "error",
 	"ORDERER_KAFKA_VERBOSE":                                       "false",
 	genesisconfig.Prefix + "_ORDERER_BATCHSIZE_MAXMESSAGECOUNT":   strconv.Itoa(MaxMessageCount),
 	genesisconfig.Prefix + "_ORDERER_BATCHSIZE_ABSOLUTEMAXBYTES":  strconv.Itoa(AbsoluteMaxBytes) + " KB",
@@ -364,7 +364,7 @@ func benchmarkOrderer(
 		t.Fatal("failed to load config")
 	}
 
-	initializeLoggingLevel(conf)
+	initializeLogging()
 	initializeLocalMsp(conf)
 	perf.InitializeServerPool(numOfOrderer)
 
