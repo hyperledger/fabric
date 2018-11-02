@@ -233,13 +233,14 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:f13426afea0ec993700963020bac4f3e50f97bd8741f72629a0c33c619a0f785"
+  digest = "1:c244cf1dfe6a89844fd22158c361922ad1c16bd9d07e5cb98b53dff582a33d15"
   name = "github.com/go-kit/kit"
   packages = [
     "log",
     "metrics",
     "metrics/internal/lv",
     "metrics/internal/ratemap",
+    "metrics/prometheus",
     "metrics/statsd",
     "util/conn",
   ]
@@ -927,6 +928,8 @@
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
     "github.com/go-kit/kit/log",
+    "github.com/go-kit/kit/metrics",
+    "github.com/go-kit/kit/metrics/prometheus",
     "github.com/go-kit/kit/metrics/statsd",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/jsonpb",
@@ -951,6 +954,7 @@
     "github.com/onsi/gomega/ghttp",
     "github.com/op/go-logging",
     "github.com/pkg/errors",
+    "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/spf13/viper",
