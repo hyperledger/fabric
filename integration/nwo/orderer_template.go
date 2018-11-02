@@ -25,6 +25,9 @@ General:
     ClientPrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
     DialTimeout: 5s
     RPCTimeout: 7s
+    ReplicationBufferSize: 20971520
+    ReplicationPullTimeout: 5s
+    ReplicationRetryTimeout: 5s
     RootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
   Keepalive:
