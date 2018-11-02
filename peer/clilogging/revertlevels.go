@@ -16,8 +16,8 @@ import (
 func revertLevelsCmd(cf *LoggingCmdFactory) *cobra.Command {
 	var loggingRevertLevelsCmd = &cobra.Command{
 		Use:   "revertlevels",
-		Short: "Reverts the logging levels to the levels at the end of peer startup.",
-		Long:  `Reverts the logging levels to the levels at the end of peer startup`,
+		Short: "Reverts the logging spec to the peer's spec at startup.",
+		Long:  `Reverts the logging spec to the peer's spec at startup.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return revertLevels(cf, cmd, args)
 		},
@@ -42,7 +42,7 @@ func revertLevels(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err
 		if err != nil {
 			return err
 		}
-		logger.Info("Log levels reverted to the levels at the end of peer startup.")
+		logger.Info("Logging spec reverted to the peer's spec at startup.")
 	}
 	return err
 }
