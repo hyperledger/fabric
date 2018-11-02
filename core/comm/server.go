@@ -148,11 +148,8 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 		)
 	}
 
-	if serverConfig.Metrics != nil {
-		sh := &ServerStatsHandler{
-			OpenConnCounter:   serverConfig.Metrics.OpenConnCounter,
-			ClosedConnCounter: serverConfig.Metrics.ClosedConnCounter,
-		}
+	if serverConfig.MetricsProvider != nil {
+		sh := NewServerStatsHandler(serverConfig.MetricsProvider)
 		serverOpts = append(serverOpts, grpc.StatsHandler(sh))
 	}
 

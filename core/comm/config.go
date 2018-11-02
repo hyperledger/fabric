@@ -11,8 +11,8 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -60,8 +60,8 @@ type ServerConfig struct {
 	UnaryInterceptors []grpc.UnaryServerInterceptor
 	// Logger specifies the logger the server will use
 	Logger *flogging.FabricLogger
-	// Metrics specifies the different metrics that are tracked for the server
-	Metrics *Metrics
+	// Metrics Provider
+	MetricsProvider metrics.Provider
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance

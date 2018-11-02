@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
@@ -48,17 +49,25 @@ func TestConnMetricsGRPCServer(t *testing.T) {
 
 	openConn := &metricsfakes.Counter{}
 	closedConn := &metricsfakes.Counter{}
+	fakeProvider := &metricsfakes.Provider{}
+	fakeProvider.NewCounterStub = func(o metrics.CounterOpts) metrics.Counter {
+		switch o.Name {
+		case "conn_opened":
+			return openConn
+		case "conn_closed":
+			return closedConn
+		default:
+			panic("unknown counter")
+		}
+	}
 
 	listener, err := net.Listen("tcp", "localhost:0")
 	gt.Expect(err).NotTo(HaveOccurred())
 	srv, err := comm.NewGRPCServerFromListener(
 		listener,
 		comm.ServerConfig{
-			SecOpts: &comm.SecureOptions{UseTLS: false},
-			Metrics: &comm.Metrics{
-				OpenConnCounter:   openConn,
-				ClosedConnCounter: closedConn,
-			},
+			SecOpts:         &comm.SecureOptions{UseTLS: false},
+			MetricsProvider: fakeProvider,
 		},
 	)
 	gt.Expect(err).NotTo(HaveOccurred())

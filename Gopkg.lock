@@ -927,7 +927,6 @@
     "github.com/davecgh/go-spew/spew",
     "github.com/fsouza/go-dockerclient",
     "github.com/go-kit/kit/log",
-    "github.com/go-kit/kit/metrics",
     "github.com/go-kit/kit/metrics/statsd",
     "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/jsonpb",

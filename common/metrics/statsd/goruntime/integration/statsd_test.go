@@ -14,8 +14,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	kitstatsd "github.com/go-kit/kit/metrics/statsd"
-	"github.com/hyperledger/fabric/common/metrics/goruntime"
 	"github.com/hyperledger/fabric/common/metrics/statsd"
+	"github.com/hyperledger/fabric/common/metrics/statsd/goruntime"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -55,13 +55,13 @@ var _ = Describe("Statsd", func() {
 		defer statsdTicker.Stop()
 		go provider.Statsd.SendLoop(statsdTicker.C, "udp", sock.LocalAddr().String())
 
-		Eventually(datagramBuffer, 5*time.Second).Should(gbytes.Say("runtime.go.goroutine.count"))
+		Eventually(datagramBuffer, 5*time.Second).Should(gbytes.Say("go.goroutine.count"))
 		close(done)
 		Eventually(errCh).Should(Receive(BeNil()))
 
 		for _, stat := range strings.Split(string(datagramBuffer.Contents()), "\n") {
 			if stat != "" {
-				Expect(stat).To(MatchRegexp(`runtime\.go\..*:\d{1,}\.\d{1,}\|g(@.*)?`))
+				Expect(stat).To(MatchRegexp(`go\..*:\d{1,}\.\d{1,}\|g(@.*)?`))
 			}
 		}
 	})

@@ -4,7 +4,7 @@ package metricsfakes
 import (
 	"sync"
 
-	"github.com/go-kit/kit/metrics"
+	"github.com/hyperledger/fabric/common/metrics"
 )
 
 type Gauge struct {
@@ -19,15 +19,15 @@ type Gauge struct {
 	withReturnsOnCall map[int]struct {
 		result1 metrics.Gauge
 	}
-	SetStub        func(value float64)
-	setMutex       sync.RWMutex
-	setArgsForCall []struct {
-		value float64
-	}
 	AddStub        func(delta float64)
 	addMutex       sync.RWMutex
 	addArgsForCall []struct {
 		delta float64
+	}
+	SetStub        func(value float64)
+	setMutex       sync.RWMutex
+	setArgsForCall []struct {
+		value float64
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -81,30 +81,6 @@ func (fake *Gauge) WithReturnsOnCall(i int, result1 metrics.Gauge) {
 	}{result1}
 }
 
-func (fake *Gauge) Set(value float64) {
-	fake.setMutex.Lock()
-	fake.setArgsForCall = append(fake.setArgsForCall, struct {
-		value float64
-	}{value})
-	fake.recordInvocation("Set", []interface{}{value})
-	fake.setMutex.Unlock()
-	if fake.SetStub != nil {
-		fake.SetStub(value)
-	}
-}
-
-func (fake *Gauge) SetCallCount() int {
-	fake.setMutex.RLock()
-	defer fake.setMutex.RUnlock()
-	return len(fake.setArgsForCall)
-}
-
-func (fake *Gauge) SetArgsForCall(i int) float64 {
-	fake.setMutex.RLock()
-	defer fake.setMutex.RUnlock()
-	return fake.setArgsForCall[i].value
-}
-
 func (fake *Gauge) Add(delta float64) {
 	fake.addMutex.Lock()
 	fake.addArgsForCall = append(fake.addArgsForCall, struct {
@@ -129,15 +105,39 @@ func (fake *Gauge) AddArgsForCall(i int) float64 {
 	return fake.addArgsForCall[i].delta
 }
 
+func (fake *Gauge) Set(value float64) {
+	fake.setMutex.Lock()
+	fake.setArgsForCall = append(fake.setArgsForCall, struct {
+		value float64
+	}{value})
+	fake.recordInvocation("Set", []interface{}{value})
+	fake.setMutex.Unlock()
+	if fake.SetStub != nil {
+		fake.SetStub(value)
+	}
+}
+
+func (fake *Gauge) SetCallCount() int {
+	fake.setMutex.RLock()
+	defer fake.setMutex.RUnlock()
+	return len(fake.setArgsForCall)
+}
+
+func (fake *Gauge) SetArgsForCall(i int) float64 {
+	fake.setMutex.RLock()
+	defer fake.setMutex.RUnlock()
+	return fake.setArgsForCall[i].value
+}
+
 func (fake *Gauge) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.withMutex.RLock()
 	defer fake.withMutex.RUnlock()
-	fake.setMutex.RLock()
-	defer fake.setMutex.RUnlock()
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
+	fake.setMutex.RLock()
+	defer fake.setMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
@@ -156,3 +156,5 @@ func (fake *Gauge) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ metrics.Gauge = new(Gauge)

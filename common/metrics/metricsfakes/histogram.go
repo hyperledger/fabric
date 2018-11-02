@@ -4,7 +4,7 @@ package metricsfakes
 import (
 	"sync"
 
-	"github.com/go-kit/kit/metrics"
+	"github.com/hyperledger/fabric/common/metrics"
 )
 
 type Histogram struct {
@@ -125,3 +125,5 @@ func (fake *Histogram) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ metrics.Histogram = new(Histogram)

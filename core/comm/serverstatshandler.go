@@ -9,7 +9,7 @@ package comm
 import (
 	"context"
 
-	"github.com/go-kit/kit/metrics"
+	"github.com/hyperledger/fabric/common/metrics"
 	"google.golang.org/grpc/stats"
 )
 
