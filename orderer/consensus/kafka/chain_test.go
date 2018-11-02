@@ -576,7 +576,7 @@ func TestCloseKafkaObjects(t *testing.T) {
 
 		assert.Len(t, errs, 0, "Expected zero errors")
 
-		assert.Panics(t, func() {
+		assert.NotPanics(t, func() {
 			channelConsumer.Close()
 		})
 
@@ -2121,11 +2121,10 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
-			var counts []uint64
 			done := make(chan struct{})
 
 			go func() {
-				counts, err = bareMinimumChain.processMessagesToBlocks()
+				_, err = bareMinimumChain.processMessagesToBlocks()
 				done <- struct{}{}
 			}()
 

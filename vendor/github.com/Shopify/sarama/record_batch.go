@@ -40,6 +40,7 @@ type RecordBatch struct {
 	PartitionLeaderEpoch  int32
 	Version               int8
 	Codec                 CompressionCodec
+	CompressionLevel      int
 	Control               bool
 	LastOffsetDelta       int32
 	FirstTimestamp        time.Time
@@ -208,24 +209,26 @@ func (b *RecordBatch) decode(pd packetDecoder) (err error) {
 
 func (b *RecordBatch) encodeRecords(pe packetEncoder) error {
 	var raw []byte
-	if b.Codec != CompressionNone {
-		var err error
-		if raw, err = encode(recordsArray(b.Records), nil); err != nil {
-			return err
-		}
-		b.recordsLen = len(raw)
+	var err error
+	if raw, err = encode(recordsArray(b.Records), pe.metricRegistry()); err != nil {
+		return err
 	}
+	b.recordsLen = len(raw)
 
 	switch b.Codec {
 	case CompressionNone:
-		offset := pe.offset()
-		if err := recordsArray(b.Records).encode(pe); err != nil {
-			return err
-		}
-		b.recordsLen = pe.offset() - offset
+		b.compressedRecords = raw
 	case CompressionGZIP:
 		var buf bytes.Buffer
-		writer := gzip.NewWriter(&buf)
+		var writer *gzip.Writer
+		if b.CompressionLevel != CompressionLevelDefault {
+			writer, err = gzip.NewWriterLevel(&buf, b.CompressionLevel)
+			if err != nil {
+				return err
+			}
+		} else {
+			writer = gzip.NewWriter(&buf)
+		}
 		if _, err := writer.Write(raw); err != nil {
 			return err
 		}

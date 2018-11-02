@@ -78,14 +78,25 @@ func (sp *SyncProducer) SendMessages(msgs []*sarama.ProducerMessage) error {
 	defer sp.l.Unlock()
 
 	if len(sp.expectations) >= len(msgs) {
-		expectations := sp.expectations[0 : len(msgs)-1]
+		expectations := sp.expectations[0:len(msgs)]
 		sp.expectations = sp.expectations[len(msgs):]
 
-		for _, expectation := range expectations {
+		for i, expectation := range expectations {
+			if expectation.CheckFunction != nil {
+				val, err := msgs[i].Value.Encode()
+				if err != nil {
+					sp.t.Errorf("Input message encoding failed: %s", err.Error())
+					return err
+				}
+				errCheck := expectation.CheckFunction(val)
+				if errCheck != nil {
+					sp.t.Errorf("Check function returned an error: %s", errCheck.Error())
+					return errCheck
+				}
+			}
 			if expectation.Result != errProduceSuccess {
 				return expectation.Result
 			}
-
 		}
 		return nil
 	}
