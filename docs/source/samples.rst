@@ -45,11 +45,13 @@ samples above, then simply create and enter a directory into which to
 extract the contents of the platform-specific binaries.
 
 Please execute the following command from within the directory into which
-you will extract the platform-specific binaries:
+you will extract the platform-specific binaries, passing the desired
+version of fabric, fabric-ca, and third-party images to download:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0
+  curl -sSL https://goo.gl/6wtTN5 | bash -s <fabric> <fabric-ca> <thirdparty>
+  curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0 1.1.0 0.4.6
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
