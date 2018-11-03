@@ -76,4 +76,31 @@ var _ = Describe("Lifecycle", func() {
 			})
 		})
 	})
+
+	Describe("QueryInstalledChaincode", func() {
+		BeforeEach(func() {
+			fakeCCStore.RetrieveHashReturns([]byte("fake-hash"), nil)
+		})
+
+		It("passes through to the backing chaincode store", func() {
+			hash, err := l.QueryInstalledChaincode("name", "version")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hash).To(Equal([]byte("fake-hash")))
+			Expect(fakeCCStore.RetrieveHashCallCount()).To(Equal(1))
+			name, version := fakeCCStore.RetrieveHashArgsForCall(0)
+			Expect(name).To(Equal("name"))
+			Expect(version).To(Equal("version"))
+		})
+
+		Context("when the backing chaincode store fails to retrieve the hash", func() {
+			BeforeEach(func() {
+				fakeCCStore.RetrieveHashReturns(nil, fmt.Errorf("fake-error"))
+			})
+			It("wraps and returns the error", func() {
+				hash, err := l.QueryInstalledChaincode("name", "version")
+				Expect(hash).To(BeNil())
+				Expect(err).To(MatchError("could not retrieve hash for chaincode 'name:version': fake-error"))
+			})
+		})
+	})
 })

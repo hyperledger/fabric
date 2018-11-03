@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/pkg/errors"
 )
@@ -14,6 +16,7 @@ import (
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
 	Save(name, version string, ccInstallPkg []byte) (hash []byte, err error)
+	RetrieveHash(name, version string) (hash []byte, err error)
 }
 
 type PackageParser interface {
@@ -39,6 +42,16 @@ func (l *Lifecycle) InstallChaincode(name, version string, chaincodeInstallPacka
 	hash, err := l.ChaincodeStore.Save(name, version, chaincodeInstallPackage)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not save cc install package")
+	}
+
+	return hash, nil
+}
+
+// QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
+func (l *Lifecycle) QueryInstalledChaincode(name, version string) ([]byte, error) {
+	hash, err := l.ChaincodeStore.RetrieveHash(name, version)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve hash for chaincode '%s:%s'", name, version))
 	}
 
 	return hash, nil

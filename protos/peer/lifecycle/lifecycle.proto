@@ -24,3 +24,16 @@ message InstallChaincodeArgs {
 message InstallChaincodeResult {
     bytes hash = 1;
 }
+
+// QueryInstalledChaincodeArgs is the message returned by
+// '+lifecycle.QueryInstalledChaincode'
+message QueryInstalledChaincodeArgs {
+    string name = 1;
+    string version = 2;
+}
+
+// QueryInstalledChaincodeResult is the message returned by
+// '+lifecycle.QueryInstalledChaincode'
+message QueryInstalledChaincodeResult {
+    bytes hash = 1;
+}
