@@ -153,7 +153,7 @@ If Fabric CA is the credential issuer:
   and a value of ``2``.
 
 For an example of using the `cid` library to retrieve these attributes, see
-`this java SDK example <https://github.com/hyperledger/fabric-sdk-java/blob/release-1.3/src/test/fixture/sdkintegration/gocc/sample1/src/github.com/example_cc/example_cc.go>`_.
+`this java SDK example <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/fixture/sdkintegration/gocc/sampleIdemix/src/github.com/example_cc/example_cc.go>`_.
 
 Current limitations
 -------------------
