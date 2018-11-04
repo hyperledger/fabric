@@ -19,6 +19,7 @@ import (
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/coreos/etcd/raft"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -43,6 +44,10 @@ const (
 	ELECTION_TICK       = 2
 	HEARTBEAT_TICK      = 1
 )
+
+func init() {
+	factory.InitFactories(nil)
+}
 
 // for some test cases we chmod file/dir to test failures caused by exotic permissions.
 // however this does not work if tests are running as root, i.e. in a container.
@@ -1537,6 +1542,93 @@ var _ = Describe("Chain", func() {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(3))
 					})
 				})
+
+				It("stop leader and continue reconfiguration failing over to new leader", func() {
+					// Scenario: Starting replica set of 3 Raft nodes, electing node c1 to be a leader
+					// configure chain support mock to disconnect c1 right after it writes configuration block
+					// into the ledger, this to simulate failover.
+					// Next boostraping a new node c4 to join a cluster and creating config transaction, submitting
+					// it to the leader. Once leader writes configuration block it fails and leadership transferred to
+					// c2.
+					// Test asserts that new node c4, will join the cluster and c2 will handle failover of
+					// re-configuration. Later we connecting c1 back and making sure it capable of catching up with
+					// new configuration and successfully rejoins replica set.
+
+					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
+						Consenters: map[uint64]*raftprotos.Consenter{},
+					})
+					c4.init()
+
+					By("adding new node to the network")
+					Expect(c4.support.WriteBlockCallCount()).Should(Equal(0))
+					Expect(c4.support.WriteConfigBlockCallCount()).Should(Equal(0))
+
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					c1.cutter.CutNext = true
+					configBlock := &common.Block{
+						Header: &common.BlockHeader{},
+						Data:   &common.BlockData{Data: [][]byte{marshalOrPanic(configEnv)}}}
+
+					c1.support.CreateNextBlockReturns(configBlock)
+
+					c1.support.WriteConfigBlockStub = func(_ *common.Block, _ []byte) {
+						// disconnect leader after block being committed
+						network.disconnect(1)
+						// electing new leader
+						network.elect(2)
+					}
+
+					// mock Block method to return recent configuration block
+					c2.support.BlockReturns(configBlock)
+
+					By("sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					// every node has written config block to the OSN ledger
+					network.exec(
+						func(c *chain) {
+							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+						})
+
+					network.addChain(c4)
+					c4.Start()
+					// ConfChange is applied to etcd/raft asynchronously, meaning node 4 is not added
+					// to leader's node list right away. An immediate tick does not trigger a heartbeat
+					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
+					// the cluster successfully.
+					Eventually(func() <-chan uint64 {
+						c2.clock.Increment(interval)
+						return c4.observe
+					}, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
+
+					Eventually(c4.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c4.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+					By("submitting new transaction to follower")
+					c2.cutter.CutNext = true
+					c2.support.CreateNextBlockReturns(normalBlock)
+					err = c4.Order(env, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					c2.clock.Increment(interval)
+
+					// rest nodes are alive include a newly added, hence should write 2 blocks
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+					Eventually(c4.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+
+					// node 1 has been stopped should not write any block
+					Consistently(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+					network.connect(1)
+
+					c2.clock.Increment(interval)
+					// check that former leader didn't get stuck and actually got resign signal,
+					// and once connected capable of communicating with rest of the replicas set
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+				})
 			})
 		})
 
@@ -2226,7 +2318,9 @@ func (n *network) elect(id uint64) (tick int) {
 	// tick so it could take effect.
 	t := 1000 * time.Millisecond
 
+	n.connLock.RLock()
 	c := n.chains[id]
+	n.connLock.RUnlock()
 
 	var elected bool
 	for !elected {
