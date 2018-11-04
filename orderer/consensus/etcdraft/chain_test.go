@@ -1741,8 +1741,33 @@ var _ = Describe("Chain", func() {
 						Consistently(c2.observe).ShouldNot(Receive(Equal(2)))
 					}
 
-					Eventually(c3.observe, LongEventualTimeout).Should(Receive(Equal(uint64(0))))
+					// When PreVote is enabled, node 2 would fail to collect enough
+					// PreVote because its index is not up-to-date. Therefore, it
+					// does not cause leader change on other nodes.
+					Consistently(c3.observe).ShouldNot(Receive())
 					network.elect(3) // node 3 has newest logs among 2&3, so it can be elected
+				})
+
+				It("PreVote prevents reconnected node from disturbing network", func() {
+					network.disconnect(2)
+
+					c1.cutter.CutNext = true
+					err := c1.Order(env, 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					Eventually(c1.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+
+					network.connect(2)
+
+					for tick := 0; tick < 2*ELECTION_TICK-1; tick++ {
+						c2.clock.Increment(interval)
+						Consistently(c2.observe).ShouldNot(Receive(Equal(2)))
+					}
+
+					Consistently(c1.observe).ShouldNot(Receive())
+					Consistently(c3.observe).ShouldNot(Receive())
 				})
 
 				It("follower can catch up and then campaign with success", func() {

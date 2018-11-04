@@ -204,13 +204,16 @@ func (c *Chain) Start() {
 	// DO NOT use Applied option in config, see https://github.com/etcd-io/etcd/issues/10217
 	// We guard against replay of written blocks in `entriesToApply` instead.
 	config := &raft.Config{
-		ID:                        c.raftID,
-		ElectionTick:              c.opts.ElectionTick,
-		HeartbeatTick:             c.opts.HeartbeatTick,
-		MaxSizePerMsg:             c.opts.MaxSizePerMsg,
-		MaxInflightMsgs:           c.opts.MaxInflightMsgs,
-		Logger:                    c.logger,
-		Storage:                   c.opts.MemoryStorage,
+		ID:              c.raftID,
+		ElectionTick:    c.opts.ElectionTick,
+		HeartbeatTick:   c.opts.HeartbeatTick,
+		MaxSizePerMsg:   c.opts.MaxSizePerMsg,
+		MaxInflightMsgs: c.opts.MaxInflightMsgs,
+		Logger:          c.logger,
+		Storage:         c.opts.MemoryStorage,
+		// PreVote prevents reconnected node from disturbing network.
+		// See etcd/raft doc for more details.
+		PreVote:                   true,
 		DisableProposalForwarding: true, // This prevents blocks from being accidentally proposed by followers
 	}
 
