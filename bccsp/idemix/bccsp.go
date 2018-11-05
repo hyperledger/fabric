@@ -67,6 +67,18 @@ func New(keyStore bccsp.KeyStore) (*csp, error) {
 		Revocation: &bridge.Revocation{},
 	})
 
+	// importers
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}), &handlers.UserKeyImporter{
+		User: &bridge.User{},
+	})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}), &handlers.IssuerPublicKeyImporter{
+		Issuer: &bridge.Issuer{},
+	})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}), &handlers.NymPublicKeyImporter{
+		User: &bridge.User{},
+	})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}), &handlers.RevocationPublicKeyImporter{})
+
 	return csp, nil
 }
 

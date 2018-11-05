@@ -42,9 +42,6 @@ func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 	if !ok {
 		return nil, errors.New("invalid nym key, expected *nymSecretKey")
 	}
-	if len(digest) == 0 {
-		return nil, errors.New("invalid digest, it must not be empty")
-	}
 
 	sigma, err := s.SignatureScheme.Sign(
 		signerOpts.Credential,

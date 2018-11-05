@@ -7,14 +7,13 @@ package handlers_test
 
 import (
 	"crypto/sha256"
-	"errors"
-
-	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("User", func() {
@@ -295,6 +294,130 @@ var _ = Describe("User", func() {
 
 			})
 		})
+	})
+
+	Context("when importing a user key", func() {
+		var (
+			UserKeyImporter *handlers.UserKeyImporter
+		)
+
+		BeforeEach(func() {
+			UserKeyImporter = &handlers.UserKeyImporter{Exportable: true, User: fakeUser}
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+
+			BeforeEach(func() {
+				sk := &mock.Big{}
+				sk.BytesReturns([]byte("fake-pk-bytes"), nil)
+
+				fakeUser.NewKeyFromBytesReturns(sk, nil)
+			})
+
+			It("import is successful", func() {
+				k, err := UserKeyImporter.KeyImport([]byte("fake-raw"), nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				bytes, err := k.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(bytes).To(BeEquivalentTo([]byte("fake-pk-bytes")))
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+
+			BeforeEach(func() {
+				fakeUser.NewKeyFromBytesReturns(nil, errors.New("new-public-key-nym-import-err"))
+			})
+
+			It("returns an error on nil raw", func() {
+				k, err := UserKeyImporter.KeyImport(nil, nil)
+				Expect(err).To(MatchError("invalid raw, expected byte array"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error on empty raw", func() {
+				k, err := UserKeyImporter.KeyImport([]byte{}, nil)
+				Expect(err).To(MatchError("invalid raw, it must not be nil"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error on invalid raw", func() {
+				k, err := UserKeyImporter.KeyImport(UserKeyImporter, nil)
+				Expect(err).To(MatchError("invalid raw, expected byte array"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error", func() {
+				k, err := UserKeyImporter.KeyImport([]byte("fake-raw"), nil)
+				Expect(err).To(MatchError("new-public-key-nym-import-err"))
+				Expect(k).To(BeNil())
+			})
+
+		})
+
+	})
+
+	Context("when importing a nym public key", func() {
+		var (
+			NymPublicKeyImporter *handlers.NymPublicKeyImporter
+		)
+
+		BeforeEach(func() {
+			NymPublicKeyImporter = &handlers.NymPublicKeyImporter{User: fakeUser}
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+
+			BeforeEach(func() {
+				ecp := &mock.Ecp{}
+				ecp.BytesReturns([]byte("fake-pk-bytes"), nil)
+
+				fakeUser.NewPublicNymFromBytesReturns(ecp, nil)
+			})
+
+			It("import is successful", func() {
+				k, err := NymPublicKeyImporter.KeyImport([]byte("fake-raw"), nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				bytes, err := k.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(bytes).To(BeEquivalentTo([]byte("fake-pk-bytes")))
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+
+			BeforeEach(func() {
+				fakeUser.NewPublicNymFromBytesReturns(nil, errors.New("new-public-key-nym-import-err"))
+			})
+
+			It("returns an error on nil raw", func() {
+				k, err := NymPublicKeyImporter.KeyImport(nil, nil)
+				Expect(err).To(MatchError("invalid raw, expected byte array"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error on empty raw", func() {
+				k, err := NymPublicKeyImporter.KeyImport([]byte{}, nil)
+				Expect(err).To(MatchError("invalid raw, it must not be nil"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error on invalid raw", func() {
+				k, err := NymPublicKeyImporter.KeyImport(NymPublicKeyImporter, nil)
+				Expect(err).To(MatchError("invalid raw, expected byte array"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error", func() {
+				k, err := NymPublicKeyImporter.KeyImport([]byte("fake-raw"), nil)
+				Expect(err).To(MatchError("new-public-key-nym-import-err"))
+				Expect(k).To(BeNil())
+			})
+
+		})
+
 	})
 
 })

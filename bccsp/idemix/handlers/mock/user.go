@@ -19,6 +19,19 @@ type User struct {
 		result1 handlers.Big
 		result2 error
 	}
+	NewKeyFromBytesStub        func(raw []byte) (handlers.Big, error)
+	newKeyFromBytesMutex       sync.RWMutex
+	newKeyFromBytesArgsForCall []struct {
+		raw []byte
+	}
+	newKeyFromBytesReturns struct {
+		result1 handlers.Big
+		result2 error
+	}
+	newKeyFromBytesReturnsOnCall map[int]struct {
+		result1 handlers.Big
+		result2 error
+	}
 	MakeNymStub        func(sk handlers.Big, key handlers.IssuerPublicKey) (handlers.Ecp, handlers.Big, error)
 	makeNymMutex       sync.RWMutex
 	makeNymArgsForCall []struct {
@@ -34,6 +47,19 @@ type User struct {
 		result1 handlers.Ecp
 		result2 handlers.Big
 		result3 error
+	}
+	NewPublicNymFromBytesStub        func(raw []byte) (handlers.Ecp, error)
+	newPublicNymFromBytesMutex       sync.RWMutex
+	newPublicNymFromBytesArgsForCall []struct {
+		raw []byte
+	}
+	newPublicNymFromBytesReturns struct {
+		result1 handlers.Ecp
+		result2 error
+	}
+	newPublicNymFromBytesReturnsOnCall map[int]struct {
+		result1 handlers.Ecp
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -77,6 +103,62 @@ func (fake *User) NewKeyReturnsOnCall(i int, result1 handlers.Big, result2 error
 		})
 	}
 	fake.newKeyReturnsOnCall[i] = struct {
+		result1 handlers.Big
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *User) NewKeyFromBytes(raw []byte) (handlers.Big, error) {
+	var rawCopy []byte
+	if raw != nil {
+		rawCopy = make([]byte, len(raw))
+		copy(rawCopy, raw)
+	}
+	fake.newKeyFromBytesMutex.Lock()
+	ret, specificReturn := fake.newKeyFromBytesReturnsOnCall[len(fake.newKeyFromBytesArgsForCall)]
+	fake.newKeyFromBytesArgsForCall = append(fake.newKeyFromBytesArgsForCall, struct {
+		raw []byte
+	}{rawCopy})
+	fake.recordInvocation("NewKeyFromBytes", []interface{}{rawCopy})
+	fake.newKeyFromBytesMutex.Unlock()
+	if fake.NewKeyFromBytesStub != nil {
+		return fake.NewKeyFromBytesStub(raw)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.newKeyFromBytesReturns.result1, fake.newKeyFromBytesReturns.result2
+}
+
+func (fake *User) NewKeyFromBytesCallCount() int {
+	fake.newKeyFromBytesMutex.RLock()
+	defer fake.newKeyFromBytesMutex.RUnlock()
+	return len(fake.newKeyFromBytesArgsForCall)
+}
+
+func (fake *User) NewKeyFromBytesArgsForCall(i int) []byte {
+	fake.newKeyFromBytesMutex.RLock()
+	defer fake.newKeyFromBytesMutex.RUnlock()
+	return fake.newKeyFromBytesArgsForCall[i].raw
+}
+
+func (fake *User) NewKeyFromBytesReturns(result1 handlers.Big, result2 error) {
+	fake.NewKeyFromBytesStub = nil
+	fake.newKeyFromBytesReturns = struct {
+		result1 handlers.Big
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *User) NewKeyFromBytesReturnsOnCall(i int, result1 handlers.Big, result2 error) {
+	fake.NewKeyFromBytesStub = nil
+	if fake.newKeyFromBytesReturnsOnCall == nil {
+		fake.newKeyFromBytesReturnsOnCall = make(map[int]struct {
+			result1 handlers.Big
+			result2 error
+		})
+	}
+	fake.newKeyFromBytesReturnsOnCall[i] = struct {
 		result1 handlers.Big
 		result2 error
 	}{result1, result2}
@@ -137,13 +219,73 @@ func (fake *User) MakeNymReturnsOnCall(i int, result1 handlers.Ecp, result2 hand
 	}{result1, result2, result3}
 }
 
+func (fake *User) NewPublicNymFromBytes(raw []byte) (handlers.Ecp, error) {
+	var rawCopy []byte
+	if raw != nil {
+		rawCopy = make([]byte, len(raw))
+		copy(rawCopy, raw)
+	}
+	fake.newPublicNymFromBytesMutex.Lock()
+	ret, specificReturn := fake.newPublicNymFromBytesReturnsOnCall[len(fake.newPublicNymFromBytesArgsForCall)]
+	fake.newPublicNymFromBytesArgsForCall = append(fake.newPublicNymFromBytesArgsForCall, struct {
+		raw []byte
+	}{rawCopy})
+	fake.recordInvocation("NewPublicNymFromBytes", []interface{}{rawCopy})
+	fake.newPublicNymFromBytesMutex.Unlock()
+	if fake.NewPublicNymFromBytesStub != nil {
+		return fake.NewPublicNymFromBytesStub(raw)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.newPublicNymFromBytesReturns.result1, fake.newPublicNymFromBytesReturns.result2
+}
+
+func (fake *User) NewPublicNymFromBytesCallCount() int {
+	fake.newPublicNymFromBytesMutex.RLock()
+	defer fake.newPublicNymFromBytesMutex.RUnlock()
+	return len(fake.newPublicNymFromBytesArgsForCall)
+}
+
+func (fake *User) NewPublicNymFromBytesArgsForCall(i int) []byte {
+	fake.newPublicNymFromBytesMutex.RLock()
+	defer fake.newPublicNymFromBytesMutex.RUnlock()
+	return fake.newPublicNymFromBytesArgsForCall[i].raw
+}
+
+func (fake *User) NewPublicNymFromBytesReturns(result1 handlers.Ecp, result2 error) {
+	fake.NewPublicNymFromBytesStub = nil
+	fake.newPublicNymFromBytesReturns = struct {
+		result1 handlers.Ecp
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *User) NewPublicNymFromBytesReturnsOnCall(i int, result1 handlers.Ecp, result2 error) {
+	fake.NewPublicNymFromBytesStub = nil
+	if fake.newPublicNymFromBytesReturnsOnCall == nil {
+		fake.newPublicNymFromBytesReturnsOnCall = make(map[int]struct {
+			result1 handlers.Ecp
+			result2 error
+		})
+	}
+	fake.newPublicNymFromBytesReturnsOnCall[i] = struct {
+		result1 handlers.Ecp
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *User) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.newKeyMutex.RLock()
 	defer fake.newKeyMutex.RUnlock()
+	fake.newKeyFromBytesMutex.RLock()
+	defer fake.newKeyFromBytesMutex.RUnlock()
 	fake.makeNymMutex.RLock()
 	defer fake.makeNymMutex.RUnlock()
+	fake.newPublicNymFromBytesMutex.RLock()
+	defer fake.newPublicNymFromBytesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -111,21 +111,6 @@ var _ = Describe("Signature", func() {
 				})
 			})
 
-			Context("and the digest is empty", func() {
-				It("returns error", func() {
-					signature, err := Signer.Sign(
-						handlers.NewUserSecretKey(nil, false),
-						nil,
-						&bccsp.IdemixSignerOpts{
-							Nym:      nymSK,
-							IssuerPK: handlers.NewIssuerPublicKey(nil),
-						},
-					)
-					Expect(err).To(MatchError("invalid digest, it must not be empty"))
-					Expect(signature).To(BeNil())
-				})
-			})
-
 			Context("and the option is nil", func() {
 				It("returns error", func() {
 					signature, err := Signer.Sign(

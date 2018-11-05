@@ -19,6 +19,15 @@ type IssuerPublicKey struct {
 		result1 []byte
 		result2 error
 	}
+	HashStub        func() []byte
+	hashMutex       sync.RWMutex
+	hashArgsForCall []struct{}
+	hashReturns     struct {
+		result1 []byte
+	}
+	hashReturnsOnCall map[int]struct {
+		result1 []byte
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -66,11 +75,53 @@ func (fake *IssuerPublicKey) BytesReturnsOnCall(i int, result1 []byte, result2 e
 	}{result1, result2}
 }
 
+func (fake *IssuerPublicKey) Hash() []byte {
+	fake.hashMutex.Lock()
+	ret, specificReturn := fake.hashReturnsOnCall[len(fake.hashArgsForCall)]
+	fake.hashArgsForCall = append(fake.hashArgsForCall, struct{}{})
+	fake.recordInvocation("Hash", []interface{}{})
+	fake.hashMutex.Unlock()
+	if fake.HashStub != nil {
+		return fake.HashStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.hashReturns.result1
+}
+
+func (fake *IssuerPublicKey) HashCallCount() int {
+	fake.hashMutex.RLock()
+	defer fake.hashMutex.RUnlock()
+	return len(fake.hashArgsForCall)
+}
+
+func (fake *IssuerPublicKey) HashReturns(result1 []byte) {
+	fake.HashStub = nil
+	fake.hashReturns = struct {
+		result1 []byte
+	}{result1}
+}
+
+func (fake *IssuerPublicKey) HashReturnsOnCall(i int, result1 []byte) {
+	fake.HashStub = nil
+	if fake.hashReturnsOnCall == nil {
+		fake.hashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+		})
+	}
+	fake.hashReturnsOnCall[i] = struct {
+		result1 []byte
+	}{result1}
+}
+
 func (fake *IssuerPublicKey) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.bytesMutex.RLock()
 	defer fake.bytesMutex.RUnlock()
+	fake.hashMutex.RLock()
+	defer fake.hashMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

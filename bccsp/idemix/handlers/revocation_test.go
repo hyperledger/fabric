@@ -8,8 +8,10 @@ package handlers_test
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"math/big"
 
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
@@ -23,7 +25,7 @@ import (
 
 var _ = Describe("Revocation", func() {
 
-	Describe("when creating an revocation key-pair", func() {
+	Describe("when creating a revocation key-pair", func() {
 		var (
 			RevocationKeyGen *handlers.RevocationKeyGen
 
@@ -140,6 +142,77 @@ var _ = Describe("Revocation", func() {
 		})
 
 	})
+
+	Context("when importing a revocation public key", func() {
+		var (
+			RevocationPublicKeyImporter *handlers.RevocationPublicKeyImporter
+		)
+
+		BeforeEach(func() {
+			RevocationPublicKeyImporter = &handlers.RevocationPublicKeyImporter{}
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+			var (
+				raw      []byte
+				pemBytes []byte
+			)
+
+			BeforeEach(func() {
+				key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				raw, err = x509.MarshalPKIXPublicKey(key.Public())
+				Expect(err).NotTo(HaveOccurred())
+
+				pemBytes = pem.EncodeToMemory(
+					&pem.Block{
+						Type:  "PUBLIC KEY",
+						Bytes: raw,
+					},
+				)
+			})
+
+			It("import is successful", func() {
+				k, err := RevocationPublicKeyImporter.KeyImport(pemBytes, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				bytes, err := k.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(bytes).To(BeEquivalentTo(raw))
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+
+			It("returns an error on nil raw", func() {
+				k, err := RevocationPublicKeyImporter.KeyImport(nil, nil)
+				Expect(err).To(MatchError("invalid raw, expected byte array"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error on empty raw", func() {
+				k, err := RevocationPublicKeyImporter.KeyImport([]byte{}, nil)
+				Expect(err).To(MatchError("invalid raw, it must not be nil"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error on invalid raw", func() {
+				k, err := RevocationPublicKeyImporter.KeyImport(RevocationPublicKeyImporter, nil)
+				Expect(err).To(MatchError("invalid raw, expected byte array"))
+				Expect(k).To(BeNil())
+			})
+
+			It("returns an error", func() {
+				k, err := RevocationPublicKeyImporter.KeyImport([]byte("fake-raw"), nil)
+				Expect(err).To(MatchError("Failed to decode revocation ECDSA public key"))
+				Expect(k).To(BeNil())
+			})
+
+		})
+
+	})
+
 })
 
 var _ = Describe("CRI", func() {

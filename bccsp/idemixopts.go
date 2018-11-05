@@ -5,7 +5,9 @@ SPDX-License-Identifier: Apache-2.0
 */
 package bccsp
 
-import "crypto"
+import (
+	"crypto"
+)
 
 // RevocationAlgorithm identifies the revocation algorithm
 type RevocationAlgorithm int32
@@ -45,6 +47,24 @@ func (o *IdemixIssuerKeyGenOpts) Ephemeral() bool {
 	return o.Temporary
 }
 
+// IdemixIssuerPublicKeyImportOpts contains the options for importing of an Idemix issuer public key.
+type IdemixIssuerPublicKeyImportOpts struct {
+	Temporary bool
+	// AttributeNames is a list of attributes to ensure the import public key has
+	AttributeNames []string
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (*IdemixIssuerPublicKeyImportOpts) Algorithm() string {
+	return IDEMIX
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (o *IdemixIssuerPublicKeyImportOpts) Ephemeral() bool {
+	return o.Temporary
+}
+
 // IdemixUserSecretKeyGenOpts contains the options for the generation of an Idemix credential secret key.
 type IdemixUserSecretKeyGenOpts struct {
 	Temporary bool
@@ -58,6 +78,22 @@ func (*IdemixUserSecretKeyGenOpts) Algorithm() string {
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixUserSecretKeyGenOpts) Ephemeral() bool {
+	return o.Temporary
+}
+
+// IdemixUserSecretKeyImportOpts contains the options for importing of an Idemix credential secret key.
+type IdemixUserSecretKeyImportOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (*IdemixUserSecretKeyImportOpts) Algorithm() string {
+	return IDEMIX
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (o *IdemixUserSecretKeyImportOpts) Ephemeral() bool {
 	return o.Temporary
 }
 
@@ -85,6 +121,23 @@ func (o *IdemixNymKeyDerivationOpts) Ephemeral() bool {
 // a new unlinkable pseudonym from a credential secret key
 func (o *IdemixNymKeyDerivationOpts) IssuerPublicKey() Key {
 	return o.IssuerPK
+}
+
+// IdemixNymPublicKeyImportOpts contains the options to import the public part of a pseudonym
+type IdemixNymPublicKeyImportOpts struct {
+	// Temporary tells if the key is ephemeral
+	Temporary bool
+}
+
+// Algorithm returns the key derivation algorithm identifier (to be used).
+func (*IdemixNymPublicKeyImportOpts) Algorithm() string {
+	return IDEMIX
+}
+
+// Ephemeral returns true if the key to derive has to be ephemeral,
+// false otherwise.
+func (o *IdemixNymPublicKeyImportOpts) Ephemeral() bool {
+	return o.Temporary
 }
 
 // IdemixCredentialRequestSignerOpts contains the option to create a Idemix credential request.
@@ -211,6 +264,22 @@ func (*IdemixRevocationKeyGenOpts) Algorithm() string {
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixRevocationKeyGenOpts) Ephemeral() bool {
+	return o.Temporary
+}
+
+// IdemixRevocationPublicKeyImportOpts contains the options for importing of an Idemix revocation public key.
+type IdemixRevocationPublicKeyImportOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (*IdemixRevocationPublicKeyImportOpts) Algorithm() string {
+	return IDEMIX
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (o *IdemixRevocationPublicKeyImportOpts) Ephemeral() bool {
 	return o.Temporary
 }
 

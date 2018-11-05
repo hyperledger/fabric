@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/idemix/bridge"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -44,38 +45,51 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("key generation", func() {
 
-			It("does not fail with valid attributes", func() {
-				key, err := Issuer.NewKey([]string{"A", "B"})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(key).NotTo(BeNil())
+			Context("successful generation", func() {
+				var (
+					key        handlers.IssuerSecretKey
+					err        error
+					attributes []string
+				)
 
-				raw, err := key.Bytes()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(raw).NotTo(BeEmpty())
+				It("with valid attributes", func() {
+					attributes = []string{"A", "B"}
+					key, err = Issuer.NewKey(attributes)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(key).NotTo(BeNil())
+				})
 
-				pk := key.Public()
-				Expect(pk).NotTo(BeNil())
+				It("with empty attributes", func() {
+					attributes = nil
+					key, err = Issuer.NewKey(attributes)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(key).NotTo(BeNil())
+				})
 
-				raw, err = pk.Bytes()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(raw).NotTo(BeEmpty())
-			})
+				AfterEach(func() {
+					raw, err := key.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeEmpty())
 
-			It("does not fail with empty attributes", func() {
-				key, err := Issuer.NewKey(nil)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(key).NotTo(BeNil())
+					pk := key.Public()
+					Expect(pk).NotTo(BeNil())
 
-				raw, err := key.Bytes()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(raw).NotTo(BeEmpty())
+					h := pk.Hash()
+					Expect(h).NotTo(BeEmpty())
 
-				pk := key.Public()
-				Expect(pk).NotTo(BeNil())
+					raw, err = pk.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeEmpty())
 
-				raw, err = pk.Bytes()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(raw).NotTo(BeEmpty())
+					pk2, err := Issuer.NewPublicKeyFromBytes(raw, attributes)
+					Expect(err).NotTo(HaveOccurred())
+
+					raw2, err := pk2.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw2).NotTo(BeEmpty())
+					Expect(pk2.Hash()).To(BeEquivalentTo(pk.Hash()))
+					Expect(raw2).To(BeEquivalentTo(raw))
+				})
 			})
 
 			It("panic on rand failure", func() {
@@ -84,6 +98,67 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
 				Expect(key).To(BeNil())
 			})
+		})
+
+		Context("public key import", func() {
+
+			It("fails to unmarshal issuer public key", func() {
+				pk, err := Issuer.NewPublicKeyFromBytes([]byte{0, 1, 2, 3, 4}, nil)
+				Expect(err.Error()).To(BeEquivalentTo("failed to unmarshal issuer public key: proto: idemix.IssuerPublicKey: illegal tag 0 (wire type 0)"))
+				Expect(pk).To(BeNil())
+			})
+
+			It("fails to unmarshal issuer public key", func() {
+				pk, err := Issuer.NewPublicKeyFromBytes(nil, nil)
+				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: index out of range]"))
+				Expect(pk).To(BeNil())
+			})
+
+			Context("and it is modified", func() {
+				var (
+					pk handlers.IssuerPublicKey
+				)
+				BeforeEach(func() {
+					attributes := []string{"A", "B"}
+					key, err := Issuer.NewKey(attributes)
+					Expect(err).NotTo(HaveOccurred())
+					pk = key.Public()
+					Expect(pk).NotTo(BeNil())
+				})
+
+				It("fails to validate invalid issuer public key", func() {
+					pk.(*bridge.IssuerPublicKey).PK.ProofC[0] = 1
+					raw, err := pk.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeEmpty())
+
+					pk, err = Issuer.NewPublicKeyFromBytes(raw, nil)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key: zero knowledge proof in public key invalid"))
+					Expect(pk).To(BeNil())
+				})
+
+				It("fails to verify attributes, different length", func() {
+					raw, err := pk.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeEmpty())
+
+					pk, err := Issuer.NewPublicKeyFromBytes(raw, []string{"A"})
+					Expect(err.Error()).To(BeEquivalentTo("invalid number of attributes, expected [2], got [1]"))
+					Expect(pk).To(BeNil())
+				})
+
+				It("fails to verify attributes, different attributes", func() {
+					raw, err := pk.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeEmpty())
+
+					pk, err := Issuer.NewPublicKeyFromBytes(raw, []string{"A", "C"})
+					Expect(err.Error()).To(BeEquivalentTo("invalid attribute name at position [1]"))
+					Expect(pk).To(BeNil())
+				})
+			})
+
 		})
 	})
 
@@ -101,6 +176,38 @@ var _ = Describe("Idemix Bridge", func() {
 				User.NewRand = NewRandPanic
 				key, err := User.NewKey()
 				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
+				Expect(key).To(BeNil())
+			})
+		})
+
+		Context("secret key import", func() {
+			It("success", func() {
+				key, err := User.NewKey()
+				Expect(err).ToNot(HaveOccurred())
+
+				raw, err := key.Bytes()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(raw).ToNot(BeNil())
+
+				key2, err := User.NewKeyFromBytes(raw)
+				Expect(err).ToNot(HaveOccurred())
+
+				raw2, err := key2.Bytes()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(raw2).ToNot(BeNil())
+
+				Expect(raw2).To(BeEquivalentTo(raw))
+			})
+
+			It("fails on nil raw", func() {
+				key, err := User.NewKeyFromBytes(nil)
+				Expect(err.Error()).To(BeEquivalentTo("invalid length, expected [32], got [0]"))
+				Expect(key).To(BeNil())
+			})
+
+			It("fails on invalid raw", func() {
+				key, err := User.NewKeyFromBytes([]byte{0, 1, 2, 3})
+				Expect(err.Error()).To(BeEquivalentTo("invalid length, expected [32], got [4]"))
 				Expect(key).To(BeNil())
 			})
 		})
@@ -129,8 +236,8 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fails on invalid issuer public key", func() {
-				r1, r2, err := User.MakeNym(userSecretKey, userSecretKey)
-				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				r1, r2, err := User.MakeNym(userSecretKey, &mock.IssuerPublicKey{})
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*mock.IssuerPublicKey]"))
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
@@ -142,6 +249,38 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
+		})
+
+		Context("public nym import", func() {
+
+			It("success", func() {
+				npk := handlers.NewNymPublicKey(&bridge.Ecp{
+					E: FP256BN.NewECPbigs(FP256BN.NewBIGint(10), FP256BN.NewBIGint(20)),
+				})
+				raw, err := npk.Bytes()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(raw).ToNot(BeNil())
+
+				npk2, err := User.NewPublicNymFromBytes(raw)
+				raw2, err := npk2.Bytes()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(raw2).ToNot(BeNil())
+
+				Expect(raw2).To(BeEquivalentTo(raw))
+			})
+
+			It("panic on nil raw", func() {
+				key, err := User.NewPublicNymFromBytes(nil)
+				Expect(err.Error()).To(BeEquivalentTo("failure [%!s(<nil>)]"))
+				Expect(key).To(BeNil())
+			})
+
+			It("failure unmarshalling invalid raw", func() {
+				key, err := User.NewPublicNymFromBytes([]byte{0, 1, 2, 3})
+				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.ECP: illegal tag 0 (wire type 0)"))
+				Expect(key).To(BeNil())
+			})
+
 		})
 	})
 
@@ -173,8 +312,8 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fail on invalid issuer public key", func() {
-				raw, err := CredRequest.Sign(userSecretKey, userSecretKey)
-				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				raw, err := CredRequest.Sign(userSecretKey, &mock.IssuerPublicKey{})
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*mock.IssuerPublicKey]"))
 				Expect(raw).To(BeNil())
 			})
 
@@ -204,8 +343,8 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fail on invalid issuer public key", func() {
-				err := CredRequest.Verify(nil, userSecretKey)
-				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				err := CredRequest.Verify(nil, &mock.IssuerPublicKey{})
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*mock.IssuerPublicKey]"))
 			})
 		})
 	})
@@ -264,7 +403,7 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fail on invalid issuer public  key", func() {
-				err := Credential.Verify(userSecretKey, userSecretKey, nil, nil)
+				err := Credential.Verify(userSecretKey, &mock.IssuerPublicKey{}, nil, nil)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
 			})
 
@@ -423,7 +562,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid signature", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, []byte{0, 1, 2, 3, 4}, nil)
-				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.NymSignature: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("error unmarshalling signature: proto: idemix.NymSignature: illegal tag 0 (wire type 0)"))
 			})
 
 		})
@@ -1157,6 +1296,28 @@ var _ = Describe("Idemix Bridge", func() {
 				})
 			})
 
+		})
+
+		Context("importing nym key", func() {
+			var (
+				NymPublicKeyImporter *handlers.NymPublicKeyImporter
+			)
+
+			BeforeEach(func() {
+				NymPublicKeyImporter = &handlers.NymPublicKeyImporter{User: User}
+			})
+
+			It("nym key import is successful", func() {
+				raw, err := NymPublicKey.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw).NotTo(BeEmpty())
+
+				k, err := NymPublicKeyImporter.KeyImport(raw, nil)
+				Expect(err).NotTo(HaveOccurred())
+				raw2, err := k.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw2).To(BeEquivalentTo(raw))
+			})
 		})
 	})
 })

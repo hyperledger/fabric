@@ -70,3 +70,30 @@ func (g *UserKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 
 	return &userSecretKey{exportable: g.Exportable, sk: sk}, nil
 }
+
+// UserKeyImporter import user keys
+type UserKeyImporter struct {
+	// Exportable is a flag to allow a secret key to be marked as Exportable.
+	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
+	Exportable bool
+	// User implements the underlying cryptographic algorithms
+	User User
+}
+
+func (i *UserKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+	der, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("invalid raw, expected byte array")
+	}
+
+	if len(der) == 0 {
+		return nil, errors.New("invalid raw, it must not be nil")
+	}
+
+	sk, err := i.User.NewKeyFromBytes(raw.([]byte))
+	if err != nil {
+		return nil, err
+	}
+
+	return &userSecretKey{exportable: i.Exportable, sk: sk}, nil
+}

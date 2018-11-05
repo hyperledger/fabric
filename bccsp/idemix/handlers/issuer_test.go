@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package handlers_test
 
 import (
-	"crypto/sha256"
-
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 
 	"github.com/hyperledger/fabric/bccsp"
@@ -42,20 +40,17 @@ var _ = Describe("Issuer", func() {
 				pkBytes             []byte
 			)
 			BeforeEach(func() {
+				SKI = []byte("a fake SKI")
+				pkBytes = []byte("a fake public")
+
 				fakeIssuerPublicKey := &mock.IssuerPublicKey{}
-				fakeIssuerPublicKey.BytesReturns([]byte("public"), nil)
+				fakeIssuerPublicKey.BytesReturns(pkBytes, nil)
+				fakeIssuerPublicKey.HashReturns(SKI)
 
 				fakeIssuerSecretKey = &mock.IssuerSecretKey{}
 				fakeIssuerSecretKey.PublicReturns(fakeIssuerPublicKey)
 				fakeIssuerSecretKey.BytesReturns([]byte("private"), nil)
 
-				var err error
-				pkBytes, err = fakeIssuerSecretKey.Public().Bytes()
-				hash := sha256.New()
-				hash.Write(pkBytes)
-				SKI = hash.Sum(nil)
-
-				Expect(err).NotTo(HaveOccurred())
 				fakeIssuer.NewKeyReturns(fakeIssuerSecretKey, nil)
 
 				IssuerSecretKey = handlers.NewIssuerSecretKey(fakeIssuerSecretKey, false)
@@ -152,5 +147,113 @@ var _ = Describe("Issuer", func() {
 				})
 			})
 		})
+	})
+
+	Describe("when importing an issuer public key", func() {
+		var (
+			IssuerPublicKeyImporter *handlers.IssuerPublicKeyImporter
+
+			fakeIssuer      *mock.Issuer
+			IssuerPublicKey bccsp.Key
+		)
+
+		BeforeEach(func() {
+			fakeIssuer = &mock.Issuer{}
+
+			IssuerPublicKeyImporter = &handlers.IssuerPublicKeyImporter{}
+			IssuerPublicKeyImporter.Issuer = fakeIssuer
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+			var (
+				pk                  bccsp.Key
+				fakeIssuerPublicKey *mock.IssuerPublicKey
+				SKI                 []byte
+				pkBytes             []byte
+				fakeRaw             []byte
+			)
+
+			BeforeEach(func() {
+				fakeRaw = []byte("a fake raw")
+				SKI = []byte("a fake SKI")
+				pkBytes = []byte("a fake public")
+
+				fakeIssuerPublicKey = &mock.IssuerPublicKey{}
+				fakeIssuerPublicKey.BytesReturns(pkBytes, nil)
+				fakeIssuerPublicKey.HashReturns(SKI)
+
+				fakeIssuer.NewPublicKeyFromBytesReturns(fakeIssuerPublicKey, nil)
+			})
+
+			Context("and the secret key is exportable", func() {
+				BeforeEach(func() {
+					IssuerPublicKey = handlers.NewIssuerPublicKey(fakeIssuerPublicKey)
+				})
+
+				It("returns no error and a key", func() {
+					var err error
+					pk, err = IssuerPublicKeyImporter.KeyImport(fakeRaw, &bccsp.IdemixIssuerPublicKeyImportOpts{})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(pk).To(BeEquivalentTo(IssuerPublicKey))
+
+					raw, err := pk.Bytes()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(raw).NotTo(BeNil())
+					Expect(raw).To(BeEquivalentTo(pkBytes))
+
+					pk, err := pk.PublicKey()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(pk).To(BeEquivalentTo(IssuerPublicKey))
+				})
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm fails", func() {
+			BeforeEach(func() {
+				fakeIssuer.NewPublicKeyFromBytesReturns(nil, errors.New("new-key error"))
+			})
+
+			It("returns an error", func() {
+				pk, err := IssuerPublicKeyImporter.KeyImport([]byte{1, 2, 3}, &bccsp.IdemixIssuerPublicKeyImportOpts{})
+				Expect(err).To(MatchError("new-key error"))
+				Expect(pk).To(BeNil())
+			})
+		})
+
+		Context("and the arguments are not well formed", func() {
+
+			Context("and the raw is nil", func() {
+				It("returns error", func() {
+					pk, err := IssuerPublicKeyImporter.KeyImport(nil, &bccsp.IdemixIssuerPublicKeyImportOpts{})
+					Expect(err).To(MatchError("invalid raw, expected byte array"))
+					Expect(pk).To(BeNil())
+				})
+			})
+
+			Context("and the raw is empty", func() {
+				It("returns error", func() {
+					pk, err := IssuerPublicKeyImporter.KeyImport([]byte{}, &bccsp.IdemixIssuerPublicKeyImportOpts{})
+					Expect(err).To(MatchError("invalid raw, it must not be nil"))
+					Expect(pk).To(BeNil())
+				})
+			})
+
+			Context("and the option is nil", func() {
+				It("returns error", func() {
+					pk, err := IssuerPublicKeyImporter.KeyImport([]byte{1, 2, 3}, nil)
+					Expect(err).To(MatchError("invalid options, expected *bccsp.IdemixIssuerPublicKeyImportOpts"))
+					Expect(pk).To(BeNil())
+				})
+			})
+
+			Context("and the option is not of type *bccsp.IdemixIssuerPublicKeyImportOpts", func() {
+				It("returns error", func() {
+					pk, err := IssuerPublicKeyImporter.KeyImport([]byte{1, 2, 3}, &bccsp.IdemixNymPublicKeyImportOpts{})
+					Expect(err).To(MatchError("invalid options, expected *bccsp.IdemixIssuerPublicKeyImportOpts"))
+					Expect(pk).To(BeNil())
+				})
+			})
+		})
+
 	})
 })

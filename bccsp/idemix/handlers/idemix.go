@@ -16,6 +16,10 @@ type IssuerPublicKey interface {
 
 	// Bytes returns the byte representation of this key
 	Bytes() ([]byte, error)
+
+	// Hash returns the hash representation of this key.
+	// The output is supposed to be collision-resistant
+	Hash() []byte
 }
 
 // IssuerPublicKey is the issuer secret key
@@ -32,6 +36,10 @@ type IssuerSecretKey interface {
 type Issuer interface {
 	// NewKey generates a new idemix issuer key w.r.t the passed attribute names.
 	NewKey(AttributeNames []string) (IssuerSecretKey, error)
+
+	// NewPublicKeyFromBytes converts the passed bytes to an Issuer public key
+	// It makes sure that the so obtained public key has the passed attributes, if specified
+	NewPublicKeyFromBytes(raw []byte, attributes []string) (IssuerPublicKey, error)
 }
 
 // Big represent a big integer
@@ -51,8 +59,14 @@ type User interface {
 	// NewKey generates a new User secret key
 	NewKey() (Big, error)
 
+	// NewKeyFromBytes converts the passed bytes to a User secret key
+	NewKeyFromBytes(raw []byte) (Big, error)
+
 	// MakeNym creates a new unlinkable pseudonym
 	MakeNym(sk Big, key IssuerPublicKey) (Ecp, Big, error)
+
+	// NewPublicNymFromBytes converts the passed bytes to a public nym
+	NewPublicNymFromBytes(raw []byte) (Ecp, error)
 }
 
 // CredRequest is a local interface to decouple from the idemix implementation

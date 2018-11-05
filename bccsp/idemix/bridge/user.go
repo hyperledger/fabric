@@ -6,7 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
+	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	"github.com/pkg/errors"
@@ -27,6 +29,16 @@ func (u *User) NewKey() (res handlers.Big, err error) {
 	}()
 
 	res = &Big{E: cryptolib.RandModOrder(u.NewRand())}
+
+	return
+}
+
+func (*User) NewKeyFromBytes(raw []byte) (res handlers.Big, err error) {
+	if len(raw) != int(FP256BN.MODBYTES) {
+		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", FP256BN.MODBYTES, len(raw))
+	}
+
+	res = &Big{E: FP256BN.FromBytes(raw)}
 
 	return
 }
@@ -54,6 +66,25 @@ func (u *User) MakeNym(sk handlers.Big, ipk handlers.IssuerPublicKey) (r1 handle
 
 	r1 = &Ecp{E: ecp}
 	r2 = &Big{E: big}
+
+	return
+}
+
+func (*User) NewPublicNymFromBytes(raw []byte) (r handlers.Ecp, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			r = nil
+			err = errors.Errorf("failure [%s]", r)
+		}
+	}()
+
+	ecpProto := &cryptolib.ECP{}
+	err = proto.Unmarshal(raw, ecpProto)
+	if err != nil {
+		return
+	}
+
+	r = &Ecp{E: FP256BN.NewECPbigs(FP256BN.FromBytes(ecpProto.X), FP256BN.FromBytes(ecpProto.Y))}
 
 	return
 }

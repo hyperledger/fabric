@@ -82,7 +82,7 @@ func (*NymSignatureScheme) Verify(ipk handlers.IssuerPublicKey, Nym handlers.Ecp
 	sig := &cryptolib.NymSignature{}
 	err = proto.Unmarshal(signature, sig)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error unmarshalling signature")
 	}
 
 	return sig.Ver(inym.E, iipk.PK, digest)

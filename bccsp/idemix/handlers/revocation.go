@@ -10,6 +10,7 @@ import (
 	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"reflect"
 
@@ -133,6 +134,36 @@ func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	}
 
 	return &revocationSecretKey{exportable: g.Exportable, privKey: key}, nil
+}
+
+// RevocationPublicKeyImporter imports revocation public keys
+type RevocationPublicKeyImporter struct {
+}
+
+func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+	der, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("invalid raw, expected byte array")
+	}
+
+	if len(der) == 0 {
+		return nil, errors.New("invalid raw, it must not be nil")
+	}
+
+	blockPub, _ := pem.Decode(raw.([]byte))
+	if blockPub == nil {
+		return nil, errors.New("Failed to decode revocation ECDSA public key")
+	}
+	revocationPk, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to parse revocation ECDSA public key bytes")
+	}
+	ecdsaPublicKey, isECDSA := revocationPk.(*ecdsa.PublicKey)
+	if !isECDSA {
+		return nil, errors.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
+	}
+
+	return &revocationPublicKey{ecdsaPublicKey}, nil
 }
 
 type CriSigner struct {

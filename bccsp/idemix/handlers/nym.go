@@ -141,3 +141,27 @@ func (kd *NymKeyDerivation) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk b
 
 	return NewNymSecretKey(RandNym, Nym, kd.Exportable)
 }
+
+// NymPublicKeyImporter imports nym public keys
+type NymPublicKeyImporter struct {
+	// User implements the underlying cryptographic algorithms
+	User User
+}
+
+func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+	bytes, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("invalid raw, expected byte array")
+	}
+
+	if len(bytes) == 0 {
+		return nil, errors.New("invalid raw, it must not be nil")
+	}
+
+	pk, err := i.User.NewPublicNymFromBytes(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &nymPublicKey{pk: pk}, nil
+}

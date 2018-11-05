@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
-	"crypto/sha256"
-
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
 )
@@ -69,14 +67,7 @@ func (k *issuerPublicKey) Bytes() ([]byte, error) {
 }
 
 func (k *issuerPublicKey) SKI() []byte {
-	raw, err := k.Bytes()
-	if err != nil {
-		return nil
-	}
-
-	hash := sha256.New()
-	hash.Write(raw)
-	return hash.Sum(nil)
+	return k.pk.Hash()
 }
 
 func (*issuerPublicKey) Symmetric() bool {
@@ -113,4 +104,33 @@ func (g *IssuerKeyGen) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	}
 
 	return &issuerSecretKey{exportable: g.Exportable, sk: key}, nil
+}
+
+// IssuerPublicKeyImporter imports issuer public keys
+type IssuerPublicKeyImporter struct {
+	// Issuer implements the underlying cryptographic algorithms
+	Issuer Issuer
+}
+
+func (i *IssuerPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+	der, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("invalid raw, expected byte array")
+	}
+
+	if len(der) == 0 {
+		return nil, errors.New("invalid raw, it must not be nil")
+	}
+
+	o, ok := opts.(*bccsp.IdemixIssuerPublicKeyImportOpts)
+	if !ok {
+		return nil, errors.New("invalid options, expected *bccsp.IdemixIssuerPublicKeyImportOpts")
+	}
+
+	pk, err := i.Issuer.NewPublicKeyFromBytes(raw.([]byte), o.AttributeNames)
+	if err != nil {
+		return nil, err
+	}
+
+	return &issuerPublicKey{pk}, nil
 }
