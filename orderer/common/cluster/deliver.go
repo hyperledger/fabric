@@ -47,6 +47,21 @@ type BlockPuller struct {
 	cancelStream func()
 }
 
+// Clone returns a copy of this BlockPuller initialized
+// for the given channel
+func (p *BlockPuller) Clone() *BlockPuller {
+	// Clone by value
+	copy := *p
+	// Reset internal state
+	copy.stream = nil
+	copy.blockBuff = nil
+	copy.latestSeq = 0
+	copy.endpoint = ""
+	copy.conn = nil
+	copy.cancelStream = nil
+	return &copy
+}
+
 // Close makes the BlockPuller close the connection and stream
 // with the remote endpoint.
 func (p *BlockPuller) Close() {
@@ -72,6 +87,16 @@ func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
 			return block
 		}
 	}
+}
+
+// HeightsByEndpoints returns the block heights by endpoints of orderers
+func (p *BlockPuller) HeightsByEndpoints() map[string]uint64 {
+	res := make(map[string]uint64)
+	for endpoint, endpointInfo := range p.probeEndpoints(1).byEndpoints() {
+		endpointInfo.conn.Close()
+		res[endpoint] = endpointInfo.lastBlockSeq + 1
+	}
+	return res
 }
 
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {

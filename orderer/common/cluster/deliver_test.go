@@ -164,7 +164,9 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 
 	if seekInfo.GetStart().GetSpecified() != nil {
 		for resp := range ds.blockResponses {
-			stream.Send(resp)
+			if err := stream.Send(resp); err != nil {
+				return nil
+			}
 		}
 		return nil
 	}
@@ -364,6 +366,96 @@ func TestBlockPullerHeavyBlocks(t *testing.T) {
 	}
 
 	assert.Equal(t, 50, gotBlockMessageCount)
+	bp.Close()
+	dialer.assertAllConnectionsClosed(t)
+}
+
+func TestBlockPullerClone(t *testing.T) {
+	// Scenario: We have a block puller that is connected
+	// to an ordering node, and we clone it.
+	// We expect that the new block puller is a clean slate
+	// and doesn't share any internal state with its origin.
+	osn1 := newClusterNode(t)
+	defer osn1.stop()
+
+	osn1.addExpectProbeAssert()
+	osn1.addExpectPullAssert(1)
+	// last block sequence is 100
+	osn1.enqueueResponse(100)
+	osn1.enqueueResponse(1)
+
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, osn1.srv.Address())
+	// Pull a block at a time and don't buffer them
+	bp.MaxTotalBufferBytes = 1
+	// Clone the block puller
+	bpClone := bp.Clone()
+	// and override its channel
+	bpClone.Channel = "foo"
+	// Ensure the channel change doesn't reflect in the original puller
+	assert.Equal(t, "mychannel", bp.Channel)
+
+	block := bp.PullBlock(1)
+	assert.Equal(t, uint64(1), block.Header.Number)
+
+	// After the original block puller is closed, the
+	// clone should not be affected
+	bp.Close()
+	dialer.assertAllConnectionsClosed(t)
+	// Sending a block after the block puller is closed results in the server side routine to finish
+	osn1.enqueueResponse(200)
+
+	// The clone block puller should not have cached the internal state
+	// from its origin block puller, thus it should probe again for the last block
+	// sequence as if it is a new block puller.
+	osn1.addExpectProbeAssert()
+	osn1.addExpectPullAssert(2)
+	osn1.enqueueResponse(100)
+	osn1.enqueueResponse(2)
+
+	block = bpClone.PullBlock(2)
+	assert.Equal(t, uint64(2), block.Header.Number)
+
+	bpClone.Close()
+	dialer.assertAllConnectionsClosed(t)
+}
+
+func TestBlockPullerHeightsByEndpoints(t *testing.T) {
+	// Scenario: We ask for the latest block from all the known ordering nodes.
+	// One ordering node is unavailable (offline).
+	// One ordering node doesn't have blocks for that channel.
+	// The remaining node returns the latest block.
+	osn1 := newClusterNode(t)
+
+	osn2 := newClusterNode(t)
+	defer osn2.stop()
+
+	osn3 := newClusterNode(t)
+	defer osn3.stop()
+
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, osn1.srv.Address(), osn2.srv.Address(), osn3.srv.Address())
+
+	// The first seek request asks for the latest block from some ordering node
+	osn1.addExpectProbeAssert()
+	osn2.addExpectProbeAssert()
+	osn3.addExpectProbeAssert()
+
+	// The first ordering node is offline
+	osn1.stop()
+	// The second returns a bad answer
+	osn2.blockResponses <- &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Status{Status: common.Status_FORBIDDEN},
+	}
+	// The third returns the latest block
+	osn3.enqueueResponse(5)
+
+	res := bp.HeightsByEndpoints()
+	expected := map[string]uint64{
+		osn3.srv.Address(): 6,
+	}
+	assert.Equal(t, expected, res)
+
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
 }
