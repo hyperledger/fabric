@@ -21,7 +21,10 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/grpclogging"
+	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -152,6 +155,12 @@ func serve(args []string) error {
 		return mgmt.GetManagerForChain(chainID)
 	}
 
+	metricsProvider, metricsShutdown, err := initializeMetrics()
+	if err != nil {
+		return errors.WithMessage(err, "failed to initialize metrics system")
+	}
+	defer metricsShutdown()
+
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 
 	//initialize resource management exit
@@ -161,7 +170,8 @@ func serve(args []string) error {
 			PlatformRegistry:              pr,
 			DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 			MembershipInfoProvider:        membershipInfoProvider,
-		})
+		},
+	)
 
 	// Parameter overrides must be processed before any parameters are
 	// cached. Failures to cache cause the server to terminate immediately.
@@ -170,7 +180,6 @@ func serve(args []string) error {
 		logger.Info("Disable loading validity system chaincode")
 
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
-
 	}
 
 	if err := peer.CacheConfiguration(); err != nil {
@@ -182,19 +191,31 @@ func serve(args []string) error {
 		err = fmt.Errorf("Failed to get Peer Endpoint: %s", err)
 		return err
 	}
-	var peerHost string
-	peerHost, _, err = net.SplitHostPort(peerEndpoint.Address)
+
+	peerHost, _, err := net.SplitHostPort(peerEndpoint.Address)
 	if err != nil {
 		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
 	}
 
 	listenAddr := viper.GetString("peer.listenAddress")
-
 	serverConfig, err := peer.GetServerConfig()
 	if err != nil {
 		logger.Fatalf("Error loading secure config for peer (%s)", err)
 	}
+
 	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
+	serverConfig.MetricsProvider = metricsProvider
+	serverConfig.UnaryInterceptors = append(
+		serverConfig.UnaryInterceptors,
+		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
+		grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	)
+	serverConfig.StreamInterceptors = append(
+		serverConfig.StreamInterceptors,
+		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	)
+
 	peerServer, err := peer.NewPeerServer(listenAddr, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
@@ -230,7 +251,7 @@ func serve(args []string) error {
 	logger.Debugf("Running peer")
 
 	// Start the Admin server
-	startAdminServer(listenAddr, peerServer.Server())
+	startAdminServer(listenAddr, peerServer.Server(), metricsProvider)
 
 	privDataDist := func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, blkHt)
@@ -687,7 +708,7 @@ func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) 
 	return adminPort != peerPort
 }
 
-func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
+func startAdminServer(peerListenAddr string, peerServer *grpc.Server, metricsProvider metrics.Provider) {
 	adminListenAddress := viper.GetString("peer.adminService.listenAddress")
 	separateLsnrForAdmin := adminHasSeparateListener(peerListenAddr, adminListenAddress)
 	mspID := viper.GetString("peer.localMspId")
@@ -696,10 +717,21 @@ func startAdminServer(peerListenAddr string, peerServer *grpc.Server) {
 	if separateLsnrForAdmin {
 		logger.Info("Creating gRPC server for admin service on", adminListenAddress)
 		serverConfig, err := peer.GetServerConfig()
-		serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "AdminServer")
 		if err != nil {
 			logger.Fatalf("Error loading secure config for admin service (%s)", err)
 		}
+		serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "AdminServer")
+		serverConfig.MetricsProvider = metricsProvider
+		serverConfig.UnaryInterceptors = append(
+			serverConfig.UnaryInterceptors,
+			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
+			grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		)
+		serverConfig.StreamInterceptors = append(
+			serverConfig.StreamInterceptors,
+			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		)
 		adminServer, err := peer.NewPeerServer(adminListenAddress, serverConfig)
 		if err != nil {
 			logger.Fatalf("Failed to create admin server (%s)", err)
@@ -761,10 +793,19 @@ func initGossipService(policyMgr policies.ChannelPolicyManagerGetter, peerServer
 	messageCryptoService := peergossip.NewMCS(
 		policyMgr,
 		localmsp.NewSigner(),
-		mgmt.NewDeserializersManager())
+		mgmt.NewDeserializersManager(),
+	)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
-	return service.InitGossipService(serializedIdentity, peerAddr, peerServer.Server(), certs,
-		messageCryptoService, secAdv, secureDialOpts, bootstrap...)
+	return service.InitGossipService(
+		serializedIdentity,
+		peerAddr,
+		peerServer.Server(),
+		certs,
+		messageCryptoService,
+		secAdv,
+		secureDialOpts,
+		bootstrap...,
+	)
 }

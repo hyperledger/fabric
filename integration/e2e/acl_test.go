@@ -58,13 +58,13 @@ var _ = Describe("EndToEndACL", func() {
 		soloConfig.RemovePeer("Org2", "peer1")
 		Expect(soloConfig.Peers).To(HaveLen(2))
 
-		network = nwo.New(soloConfig, testDir, client, 32000, components)
+		network = nwo.New(soloConfig, testDir, client, BasePort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
 		networkRunner := network.NetworkGroupRunner()
 		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready()).Should(BeClosed())
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		orderer = network.Orderer("orderer")
 		org1Peer0 = network.Peer("Org1", "peer0")

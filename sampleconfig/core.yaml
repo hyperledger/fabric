@@ -613,29 +613,49 @@ ledger:
 #
 ###############################################################################
 metrics:
-        # enable or disable metrics server
-        enabled: false
+    # statsd, prometheus, or disabled
+    provider: disabled
 
-        # when enable metrics server, must specific metrics reporter type
-        # currently supported type: "statsd","prom"
-        reporter: statsd
+    # statsd configuration
+    statsd:
+        # network type: tcp or udp
+        network: udp
 
-        # determines frequency of report metrics(unit: second)
-        interval: 1s
+        # statsd server address
+        address: 127.0.0.1:8125
 
-        statsdReporter:
+        # the interval at which locally cached counters and gauges are pushsed
+        # to statsd; timings are pushed immediately
+        writeInterval: 10s
 
-              # statsd server address to connect
-              address: 0.0.0.0:8125
+        # prefix is prepended to all emitted statsd merics
+        prefix: peer
 
-              # determines frequency of push metrics to statsd server(unit: second)
-              flushInterval: 2s
+    prometheus:
+        # listen address for prometheus scrape endpoint
+        listenAddress: 127.0.0.1:8080
 
-              # max size bytes for each push metrics request
-              # intranet recommend 1432 and internet recommend 512
-              flushBytes: 1432
+        # path to expose the metrics handler
+        handlerPath: /metrics
 
-        promReporter:
+        tls:
+            # TLS enabled
+            enabled: true
 
-              # prometheus http server listen address for pull metrics
-              listenAddress: 0.0.0.0:8080
+            # path to PEM encoded server certificate for the scrape server
+            cert:
+                file: tls/server.crt
+
+            # path to PEM encoded server key for the scrape server
+            key:
+                file: tls/server.key
+
+            # require client certificate authentication to access metrics
+            # endpoint
+            clientAuthRequired: true
+
+            # paths to PEM encoded ca certificates to use for client
+            # authentication
+            clientRootCAs:
+                files:
+                - tls/ca.crt

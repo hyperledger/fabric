@@ -8,7 +8,11 @@ package e2e
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -68,14 +72,28 @@ var _ = Describe("EndToEnd", func() {
 	})
 
 	Describe("basic solo network with 2 orgs", func() {
+		var datagramReader *DatagramReader
+
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), testDir, client, 30000, components)
+			datagramReader = NewDatagramReader()
+			go datagramReader.Start()
+
+			network = nwo.New(nwo.BasicSolo(), testDir, client, BasePort(), components)
+			network.MetricsProvider = "statsd"
+			network.StatsdEndpoint = datagramReader.Address()
+
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		AfterEach(func() {
+			if datagramReader != nil {
+				datagramReader.Close()
+			}
 		})
 
 		It("executes a basic solo network with 2 orgs", func() {
@@ -93,18 +111,44 @@ var _ = Describe("EndToEnd", func() {
 
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 			RunRespondWith(network, orderer, peer, "testchannel")
+			CheckForStatsdMetrics(datagramReader)
 		})
 	})
 
 	Describe("basic kafka network with 2 orgs", func() {
+		var metricsClient *http.Client
+		var metricsURL string
+
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicKafka(), testDir, client, 31000, components)
+			network = nwo.New(nwo.BasicKafka(), testDir, client, BasePort(), components)
+			network.MetricsProvider = "prometheus"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			org1Peer0 := network.Peer("Org1", "peer0")
+			clientCert, err := tls.LoadX509KeyPair(
+				filepath.Join(network.PeerLocalTLSDir(org1Peer0), "server.crt"),
+				filepath.Join(network.PeerLocalTLSDir(org1Peer0), "server.key"),
+			)
+			Expect(err).NotTo(HaveOccurred())
+			clientCertPool := x509.NewCertPool()
+			caCert, err := ioutil.ReadFile(filepath.Join(network.PeerLocalTLSDir(org1Peer0), "ca.crt"))
+			Expect(err).NotTo(HaveOccurred())
+			clientCertPool.AppendCertsFromPEM(caCert)
+
+			metricsURL = fmt.Sprintf("https://127.0.0.1:%d/metrics", network.PeerPort(org1Peer0, nwo.MetricsPort))
+			metricsClient = &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						Certificates: []tls.Certificate{clientCert},
+						RootCAs:      clientCertPool,
+					},
+				},
+			}
 		})
 
 		It("executes a basic kafka network with 2 orgs", func() {
@@ -114,18 +158,19 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
+			CheckForPometheusMetrics(metricsClient, metricsURL)
 		})
 	})
 
 	Describe("basic single node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, 32000, components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
 		It("executes a basic etcdraft network with 2 orgs and a single node", func() {
@@ -140,20 +185,21 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("three node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, 33000, components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		// NOTE: This single test tests for all three of:
-		//        1. channel creation with raft orderer,
-		//        2. all the nodes on three-node raft cluster are in sync wrt blocks,
-		//        3. raft orderer processes type A config updates and delivers the
-		//           config blocks to the peers.
+		// This tests:
+		//
+		// 1. channel creation with raft orderer,
+		// 2. all the nodes on three-node raft cluster are in sync wrt blocks,
+		// 3. raft orderer processes type A config updates and delivers the
+		//    config blocks to the peers.
 		It("executes an etcdraft network with 2 orgs and three orderer nodes", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
@@ -217,13 +263,13 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("etcd raft, checking valid configuration update of type B", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, 32000, components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
 		It("executes a basic etcdraft network with a single Raft node", func() {
@@ -266,13 +312,13 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, 34000, components)
+			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
 		It("executes a basic etcdraft network with 2 orgs and 2 channels", func() {
@@ -289,7 +335,6 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
 		})
 	})
-
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
@@ -358,4 +403,44 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(1))
 	Expect(sess.Err).To(gbytes.Say(`Error: endorsement failure during invoke.`))
+}
+
+func CheckForStatsdMetrics(datagramReader *DatagramReader) {
+	By("waiting for DeliverFiltered stats to be emitted")
+	Eventually(datagramReader, 10*time.Second /* 2 * metrics.statsd.writeInterval */).Should(gbytes.Say("stream_request_duration.protos_Deliver.DeliverFiltered."))
+	buf := string(datagramReader.Buffer().Contents())
+
+	By("checking for statsd metrics")
+	Expect(buf).To(ContainSubstring("org1_peer0.go.mem.gc_completed_count:"))
+	Expect(buf).To(ContainSubstring("org1_peer1.go.mem.gc_completed_count:"))
+	Expect(buf).To(ContainSubstring("org2_peer0.go.mem.gc_completed_count:"))
+	Expect(buf).To(ContainSubstring("org2_peer1.go.mem.gc_completed_count:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.unary_request_duration.protos_Endorser.ProcessProposal.OK:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.stream_requests_received.protos_Deliver.DeliverFiltered:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.stream_requests_completed.protos_Deliver.DeliverFiltered.Unknown:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.stream_request_duration.protos_Deliver.DeliverFiltered.Unknown:"))
+	Expect(buf).To(ContainSubstring(".grpc.server.stream_messages_received.protos_Deliver.DeliverFiltered"))
+	Expect(buf).To(ContainSubstring(".grpc.server.stream_messages_sent.protos_Deliver.DeliverFiltered"))
+}
+
+func CheckForPometheusMetrics(client *http.Client, url string) {
+	By("hitting the prometheus metrics endpoint")
+	resp, err := client.Get(url)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusOK))
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	Expect(err).NotTo(HaveOccurred())
+	resp.Body.Close()
+	body := string(bodyBytes)
+
+	By("checking for some expected metrics")
+	Expect(body).To(ContainSubstring(`# TYPE go_gc_duration_seconds summary`))
+	Expect(body).To(ContainSubstring(`# TYPE grpc_server_stream_request_duration histogram`))
+	Expect(body).To(ContainSubstring(`grpc_server_stream_request_duration_count{code="Unknown",method="DeliverFiltered",service="protos_Deliver"}`))
+	Expect(body).To(ContainSubstring(`grpc_server_stream_messages_received{method="DeliverFiltered",service="protos_Deliver"}`))
+	Expect(body).To(ContainSubstring(`grpc_server_stream_messages_sent{method="DeliverFiltered",service="protos_Deliver"}`))
+	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_closed counter`))
+	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_opened counter`))
 }

@@ -87,6 +87,7 @@ func (f *FabricLogger) Noticef(template string, args ...interface{})   { f.s.Inf
 
 func (f *FabricLogger) Named(name string) *FabricLogger { return &FabricLogger{s: f.s.Named(name)} }
 func (f *FabricLogger) Sync() error                     { return f.s.Sync() }
+func (f *FabricLogger) Zap() *zap.Logger                { return f.s.Desugar() }
 
 func (f *FabricLogger) IsEnabledFor(level zapcore.Level) bool {
 	return f.s.Desugar().Core().Enabled(level)

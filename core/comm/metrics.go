@@ -13,14 +13,14 @@ var (
 		Namespace: "grpc",
 		Subsystem: "comm",
 		Name:      "conn_opened",
-		Help:      "GRPC open connection ounter. Open minus closed is the active number of connections.",
+		Help:      "gRPC connections opened. Open minus closed is the active number of connections.",
 	}
 
 	closedConnCounterOpts = metrics.CounterOpts{
 		Namespace: "grpc",
 		Subsystem: "comm",
 		Name:      "conn_closed",
-		Help:      "GRPC connection closed counter. Open minus closed is the active number of connections.",
+		Help:      "gRPC connections closed. Open minus closed is the active number of connections.",
 	}
 )
 

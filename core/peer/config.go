@@ -171,9 +171,6 @@ func GetServerConfig() (comm.ServerConfig, error) {
 	if viper.IsSet("peer.keepalive.minInterval") {
 		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.keepalive.minInterval")
 	}
-
-	serverConfig.MetricsProvider = nil
-
 	return serverConfig, nil
 }
 

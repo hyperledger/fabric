@@ -134,6 +134,8 @@ type Network struct {
 	DockerClient      *docker.Client
 	NetworkID         string
 	EventuallyTimeout time.Duration
+	MetricsProvider   string
+	StatsdEndpoint    string
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -163,6 +165,7 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 		NetworkID:         helpers.UniqueName(),
 		EventuallyTimeout: time.Minute,
+		MetricsProvider:   "disabled",
 		PortsByBrokerID:   map[string]Ports{},
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},
@@ -1162,11 +1165,12 @@ const (
 	HostPort      PortName = "HostPort"
 	ListenPort    PortName = "Listen"
 	ProfilePort   PortName = "Profile"
+	MetricsPort   PortName = "Metrics"
 )
 
 // PeerPortNames returns the list of ports that need to be reserved for a Peer.
 func PeerPortNames() []PortName {
-	return []PortName{ListenPort, ChaincodePort, EventsPort, ProfilePort}
+	return []PortName{ListenPort, ChaincodePort, EventsPort, ProfilePort, MetricsPort}
 }
 
 // OrdererPortNames  returns the list of ports that need to be reserved for an
@@ -1286,7 +1290,9 @@ func (n *Network) GenerateOrdererConfig(o *Orderer) {
 	defer orderer.Close()
 
 	t, err := template.New("orderer").Funcs(template.FuncMap{
-		"Orderer": func() *Orderer { return o },
+		"Orderer":    func() *Orderer { return o },
+		"ToLower":    func(s string) string { return strings.ToLower(s) },
+		"ReplaceAll": func(s, old, new string) string { return strings.Replace(s, old, new, -1) },
 	}).Parse(n.Templates.OrdererTemplate())
 	Expect(err).NotTo(HaveOccurred())
 
@@ -1303,8 +1309,10 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 	Expect(err).NotTo(HaveOccurred())
 	defer core.Close()
 
-	t, err := template.New("orderer").Funcs(template.FuncMap{
-		"Peer": func() *Peer { return p },
+	t, err := template.New("peer").Funcs(template.FuncMap{
+		"Peer":       func() *Peer { return p },
+		"ToLower":    func(s string) string { return strings.ToLower(s) },
+		"ReplaceAll": func(s, old, new string) string { return strings.Replace(s, old, new, -1) },
 	}).Parse(n.Templates.CoreTemplate())
 	Expect(err).NotTo(HaveOccurred())
 

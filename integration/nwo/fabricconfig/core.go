@@ -265,15 +265,20 @@ type HistoryConfig struct {
 }
 
 type Metrics struct {
-	Enabled        bool            `yaml:"enabled"`
-	Reporter       string          `yaml:"reporter,omitempty"`
-	Interval       time.Duration   `yaml:"interval,omitempty"`
-	StatsdReporter *StatsdReporter `yaml:"statsdReporter,omitempty"`
-	PromReporter   *Service        `yaml:"promReporter,omitempty"`
+	Provider   string      `yaml:"provider"`
+	Statsd     *Statsd     `yaml:"statsd,omitempty"`
+	Prometheus *Prometheus `yaml:"prometheus,omitempty"`
 }
 
-type StatsdReporter struct {
+type Statsd struct {
+	Network       string        `yaml:"network,omitempty"`
 	Address       string        `yaml:"address,omitempty"`
-	FlushInterval time.Duration `yaml:"flushInterval,omitempty"`
-	FlushBytes    int           `yaml:"flushBytes,omitempty"`
+	WriteInterval time.Duration `yaml:"writeInterval,omitempty"`
+	Prefix        string        `yaml:"prefix,omitempty"`
+}
+
+type Prometheus struct {
+	ListenAddress string `yaml:"listenAddress,omitempty"`
+	HandlerPath   string `yaml:"handlerPath"`
+	TLS           *TLS   `yaml:"tls"`
 }

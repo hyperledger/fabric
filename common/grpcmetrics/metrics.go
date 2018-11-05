@@ -71,8 +71,8 @@ var (
 		Subsystem:    "server",
 		Name:         "stream_messages_sent",
 		Help:         "The number of stream messages sent.",
-		LabelNames:   []string{"service", "method", "code"},
-		StatsdFormat: "%{#fqname}.%{service}.%{method}.%{code}",
+		LabelNames:   []string{"service", "method"},
+		StatsdFormat: "%{#fqname}.%{service}.%{method}",
 	}
 )
 
