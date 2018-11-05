@@ -38,9 +38,10 @@ import (
 )
 
 const (
-	interval       = time.Second
-	ELECTION_TICK  = 2
-	HEARTBEAT_TICK = 1
+	interval            = time.Second
+	LongEventualTimeout = 5 * time.Second
+	ELECTION_TICK       = 2
+	HEARTBEAT_TICK      = 1
 )
 
 // for some test cases we chmod file/dir to test failures caused by exotic permissions.
@@ -154,7 +155,7 @@ var _ = Describe("Chain", func() {
 				default:
 					return false
 				}
-			}).Should(BeTrue())
+			}, LongEventualTimeout).Should(BeTrue())
 		}
 
 		JustBeforeEach(func() {
@@ -178,7 +179,7 @@ var _ = Describe("Chain", func() {
 			Eventually(func() error {
 				_, err := storage.Entries(1, 1, 1)
 				return err
-			}).ShouldNot(HaveOccurred())
+			}, LongEventualTimeout).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -219,7 +220,7 @@ var _ = Describe("Chain", func() {
 				cutter.CutNext = true
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(support.WriteBlockCallCount).Should(Equal(1))
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 				By("respecting batch timeout")
 				cutter.CutNext = false
@@ -229,7 +230,7 @@ var _ = Describe("Chain", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				clock.WaitForNWatchersAndIncrement(timeout, 2)
-				Eventually(support.WriteBlockCallCount).Should(Equal(2))
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 			})
 
 			It("does not reset timer for every envelope", func() {
@@ -241,18 +242,18 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cutter.CurBatch).Should(HaveLen(1))
+				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cutter.CurBatch).Should(HaveLen(2))
+				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(2))
 
 				// the second envelope should not reset the timer; it should
 				// therefore expire if we increment it by just timeout/2
 				clock.Increment(timeout / 2)
-				Eventually(support.WriteBlockCallCount).Should(Equal(1))
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 			})
 
 			It("does not write a block if halted before timeout", func() {
@@ -262,10 +263,10 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cutter.CurBatch).Should(HaveLen(1))
+				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				// wait for timer to start
-				Eventually(clock.WatcherCount).Should(Equal(2))
+				Eventually(clock.WatcherCount, LongEventualTimeout).Should(Equal(2))
 
 				chain.Halt()
 				Consistently(support.WriteBlockCallCount).Should(Equal(0))
@@ -280,7 +281,7 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cutter.CurBatch).Should(HaveLen(1))
+				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 
@@ -288,7 +289,7 @@ var _ = Describe("Chain", func() {
 				cutter.CutNext = true
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(support.WriteBlockCallCount).Should(Equal(1))
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 				Expect(support.CreateNextBlockArgsForCall(0)).To(HaveLen(2))
 				Expect(cutter.CurBatch()).To(HaveLen(0))
 
@@ -296,13 +297,13 @@ var _ = Describe("Chain", func() {
 				cutter.CutNext = false
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cutter.CurBatch).Should(HaveLen(1))
+				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 				Consistently(support.WriteBlockCallCount).Should(Equal(1))
 
 				clock.Increment(timeout / 2)
-				Eventually(support.WriteBlockCallCount).Should(Equal(2))
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				Expect(support.CreateNextBlockArgsForCall(1)).To(HaveLen(1))
 			})
 
@@ -315,14 +316,14 @@ var _ = Describe("Chain", func() {
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cutter.CurBatch).Should(HaveLen(1))
+				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				cutter.IsolatedTx = true
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
-				Eventually(support.CreateNextBlockCallCount).Should(Equal(2))
-				Eventually(support.WriteBlockCallCount).Should(Equal(2))
+				Eventually(support.CreateNextBlockCallCount, LongEventualTimeout).Should(Equal(2))
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 			})
 
 			Context("revalidation", func() {
@@ -340,7 +341,7 @@ var _ = Describe("Chain", func() {
 
 					err := chain.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
-					Eventually(cutter.CurBatch).Should(HaveLen(1))
+					Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 				})
 
 				It("does not enqueue if envelope is not valid", func() {
@@ -418,8 +419,8 @@ var _ = Describe("Chain", func() {
 								It("should create a config block and no normal block", func() {
 									err := chain.Configure(configEnv, configSeq)
 									Expect(err).NotTo(HaveOccurred())
-									Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
-									Eventually(support.WriteBlockCallCount).Should(Equal(0))
+									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+									Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
 								})
 							})
 
@@ -433,7 +434,7 @@ var _ = Describe("Chain", func() {
 									By("adding a normal envelope")
 									err := chain.Order(env, 0)
 									Expect(err).NotTo(HaveOccurred())
-									Eventually(cutter.CurBatch).Should(HaveLen(1))
+									Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 									// // clock.WaitForNWatchersAndIncrement(timeout, 2)
 
@@ -441,9 +442,9 @@ var _ = Describe("Chain", func() {
 									err = chain.Configure(configEnv, configSeq)
 									Expect(err).NotTo(HaveOccurred())
 
-									Eventually(support.CreateNextBlockCallCount).Should(Equal(2))
-									Eventually(support.WriteBlockCallCount).Should(Equal(1))
-									Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
+									Eventually(support.CreateNextBlockCallCount, LongEventualTimeout).Should(Equal(2))
+									Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+									Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 								})
 							})
 						})
@@ -459,7 +460,7 @@ var _ = Describe("Chain", func() {
 
 								err := chain.Configure(configEnv, configSeq)
 								Expect(err).NotTo(HaveOccurred())
-								Eventually(support.WriteConfigBlockCallCount).Should(Equal(1))
+								Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							})
 
 							It("should not create config block upon incorrect revalidation", func() {
@@ -576,7 +577,7 @@ var _ = Describe("Chain", func() {
 						// enque some data to be persisted on disk by raft
 						err := chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(1))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 						_, metadata := support.WriteBlockArgsForCall(0)
 						m1 = &raftprotos.RaftMetadata{}
@@ -584,7 +585,7 @@ var _ = Describe("Chain", func() {
 
 						err = chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 
 						_, metadata = support.WriteBlockArgsForCall(1)
 						m2 = &raftprotos.RaftMetadata{}
@@ -599,7 +600,7 @@ var _ = Describe("Chain", func() {
 						c.Start()
 						defer c.Halt()
 
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 
 						_, metadata := c.support.WriteBlockArgsForCall(0)
 						m := &raftprotos.RaftMetadata{}
@@ -619,7 +620,7 @@ var _ = Describe("Chain", func() {
 
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(3))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
 					})
 
 					It("only replays blocks after Applied index", func() {
@@ -629,7 +630,7 @@ var _ = Describe("Chain", func() {
 						c.Start()
 						defer c.Halt()
 
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(1))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 						_, metadata := c.support.WriteBlockArgsForCall(0)
 						m := &raftprotos.RaftMetadata{}
@@ -644,7 +645,7 @@ var _ = Describe("Chain", func() {
 
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 
 					It("does not replay any block if already in sync", func() {
@@ -664,7 +665,7 @@ var _ = Describe("Chain", func() {
 
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(1))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					})
 
 					Context("WAL file is not readable", func() {
@@ -724,17 +725,17 @@ var _ = Describe("Chain", func() {
 					JustBeforeEach(func() {
 						err = chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(1))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 						normalBlock.Header.Number++
 						err = chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 
 						normalBlock.Header.Number++
 						err = chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(3))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
 
 						_, metadata := support.WriteBlockArgsForCall(2)
 						m = &raftprotos.RaftMetadata{}
@@ -748,14 +749,14 @@ var _ = Describe("Chain", func() {
 						// block number starts from 0, and we determine if snapshot should be taken by:
 						//        appliedBlockNum - snapBlockNum < SnapInterval
 
-						Eventually(countFiles).Should(Equal(1))
-						Eventually(opts.MemoryStorage.FirstIndex).Should(BeNumerically(">", 1))
+						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+						Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
 
 						// chain should still be functioning
 						normalBlock.Header.Number++
 						err = chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(4))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(4))
 					})
 
 					It("pauses chain if sync is in progress", func() {
@@ -765,7 +766,7 @@ var _ = Describe("Chain", func() {
 						// `WaitReady` API
 
 						// check snapshot does exit
-						Eventually(countFiles).Should(Equal(1))
+						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
 
 						chain.Halt()
 
@@ -802,7 +803,7 @@ var _ = Describe("Chain", func() {
 						Consistently(done).ShouldNot(Receive())
 						close(signal) // unblock block puller
 
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(3))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
 					})
 
 					It("restores snapshot w/o extra entries", func() {
@@ -813,8 +814,8 @@ var _ = Describe("Chain", func() {
 						// not append any entry because no extra entry was appended
 						// after snapshot was taken.
 
-						Eventually(countFiles).Should(Equal(1))
-						Eventually(opts.MemoryStorage.FirstIndex).Should(BeNumerically(">", 1))
+						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+						Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
 						snapshot, err := opts.MemoryStorage.Snapshot() // get the snapshot just created
 						Expect(err).NotTo(HaveOccurred())
 						i, err := opts.MemoryStorage.FirstIndex() // get the first index in memory
@@ -835,8 +836,8 @@ var _ = Describe("Chain", func() {
 
 						// following arithmetic reflects how etcdraft MemoryStorage is implemented
 						// when no entry is appended after snapshot being loaded.
-						Eventually(c.opts.MemoryStorage.FirstIndex).Should(Equal(snapshot.Metadata.Index + 1))
-						Eventually(c.opts.MemoryStorage.LastIndex).Should(Equal(snapshot.Metadata.Index))
+						Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
+						Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index))
 
 						// chain keeps functioning
 						Eventually(func() bool {
@@ -847,13 +848,13 @@ var _ = Describe("Chain", func() {
 							default:
 								return false
 							}
-						}).Should(BeTrue())
+						}, LongEventualTimeout).Should(BeTrue())
 
 						c.cutter.CutNext = true
 						normalBlock.Header.Number++
 						err = c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(1))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					})
 
 					It("restores snapshot w/ extra entries", func() {
@@ -864,8 +865,8 @@ var _ = Describe("Chain", func() {
 						// append some entries.
 
 						// check snapshot does exit
-						Eventually(countFiles).Should(Equal(1))
-						Eventually(opts.MemoryStorage.FirstIndex).Should(BeNumerically(">", 1))
+						Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+						Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", 1))
 						snapshot, err := opts.MemoryStorage.Snapshot() // get the snapshot just created
 						Expect(err).NotTo(HaveOccurred())
 						i, err := opts.MemoryStorage.FirstIndex() // get the first index in memory
@@ -877,7 +878,7 @@ var _ = Describe("Chain", func() {
 						normalBlock.Header.Number++
 						err = chain.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(support.WriteBlockCallCount).Should(Equal(4))
+						Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(4))
 
 						lasti, _ := opts.MemoryStorage.LastIndex()
 
@@ -891,8 +892,8 @@ var _ = Describe("Chain", func() {
 						c.Start()
 						defer c.Halt()
 
-						Eventually(c.opts.MemoryStorage.FirstIndex).Should(Equal(snapshot.Metadata.Index + 1))
-						Eventually(c.opts.MemoryStorage.LastIndex).Should(Equal(lasti))
+						Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
+						Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(lasti))
 
 						// chain keeps functioning
 						Eventually(func() bool {
@@ -903,13 +904,13 @@ var _ = Describe("Chain", func() {
 							default:
 								return false
 							}
-						}).Should(BeTrue())
+						}, LongEventualTimeout).Should(BeTrue())
 
 						c.cutter.CutNext = true
 						normalBlock.Header.Number++
 						err = c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 
 					When("local ledger is in sync with snapshot", func() {
@@ -926,13 +927,13 @@ var _ = Describe("Chain", func() {
 							// - chain should respect snapshot interval to trigger next snapshot
 
 							// check snapshot does exit
-							Eventually(countFiles).Should(Equal(1))
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
 
 							// order another envelope. this should not trigger snapshot
 							normalBlock.Header.Number++
 							err = chain.Order(env, uint64(0))
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(support.WriteBlockCallCount).Should(Equal(4))
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(4))
 
 							chain.Halt()
 
@@ -956,16 +957,16 @@ var _ = Describe("Chain", func() {
 								default:
 									return false
 								}
-							}).Should(BeTrue())
+							}, LongEventualTimeout).Should(BeTrue())
 
 							c.cutter.CutNext = true
 							normalBlock.Header.Number++
 							err = c.Order(env, uint64(0))
 							Expect(err).NotTo(HaveOccurred())
 
-							Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 							Expect(c.puller.PullBlockCallCount()).Should(BeZero())
-							Eventually(countFiles).Should(Equal(2))
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(2))
 						})
 					})
 				})
@@ -1126,14 +1127,14 @@ var _ = Describe("Chain", func() {
 				err := c1.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(1))
-				Eventually(func() int { return c2.support.WriteBlockCallCount() }).Should(Equal(1))
-				Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(0))
+				Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+				Eventually(func() int { return c2.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(0))
 
 				network.start(3)
 
 				c1.clock.Increment(interval)
-				Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(1))
+				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 
 				network.stop()
 			})
@@ -1169,22 +1170,22 @@ var _ = Describe("Chain", func() {
 				err := c1.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(1))
-				Eventually(func() int { return c2.support.WriteBlockCallCount() }).Should(Equal(1))
-				Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(0))
+				Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+				Eventually(func() int { return c2.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(0))
 
 				normalBlock.Header.Number++
 				err = c1.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(2))
-				Eventually(func() int { return c2.support.WriteBlockCallCount() }).Should(Equal(2))
-				Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(0))
+				Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
+				Eventually(func() int { return c2.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
+				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(0))
 
 				network.start(3)
 
 				c1.clock.Increment(interval)
-				Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(2))
+				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
 
 				network.stop()
 			})
@@ -1209,7 +1210,7 @@ var _ = Describe("Chain", func() {
 
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(1))
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 					})
 
 				By("respect batch timeout")
@@ -1218,12 +1219,12 @@ var _ = Describe("Chain", func() {
 
 				err = c1.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(c1.cutter.CurBatch).Should(HaveLen(1))
+				Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				c1.clock.WaitForNWatchersAndIncrement(timeout, 2)
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(2))
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
 					})
 			})
 
@@ -1235,7 +1236,7 @@ var _ = Describe("Chain", func() {
 
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(1))
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 					})
 
 				By("respect batch timeout")
@@ -1244,12 +1245,12 @@ var _ = Describe("Chain", func() {
 
 				err = c2.Order(env, 0)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(c1.cutter.CurBatch).Should(HaveLen(1))
+				Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 				c1.clock.WaitForNWatchersAndIncrement(timeout, 2)
 				network.exec(
 					func(c *chain) {
-						Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(2))
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
 					})
 			})
 
@@ -1275,10 +1276,10 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(1))
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 						})
 
-					Eventually(c1.opts.MemoryStorage.FirstIndex).Should(Equal(i))
+					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(i))
 
 					normalBlock.Header.Number++
 					err = c1.Order(env, 0)
@@ -1286,10 +1287,10 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(2))
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
 						})
 
-					Eventually(c1.opts.MemoryStorage.FirstIndex).Should(BeNumerically(">", i))
+					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 					i, err = c1.opts.MemoryStorage.FirstIndex()
 					Expect(err).NotTo(HaveOccurred())
 
@@ -1299,7 +1300,7 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(3))
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(3))
 						})
 
 					Eventually(c1.opts.MemoryStorage.FirstIndex).Should(BeNumerically(">", i))
@@ -1314,18 +1315,18 @@ var _ = Describe("Chain", func() {
 					for i := 1; i <= 10; i++ {
 						err := c1.Order(env, 0)
 						Expect(err).NotTo(HaveOccurred())
-						Eventually(c1.support.WriteBlockCallCount).Should(Equal(i))
-						Eventually(c3.support.WriteBlockCallCount).Should(Equal(i))
+						Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(i))
+						Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(i))
 
 						normalBlock.Header.Number++
 					}
 
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
 
 					network.rejoin(2, false)
 
-					Eventually(c2.puller.PullBlockCallCount).Should(Equal(10))
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(10))
+					Eventually(c2.puller.PullBlockCallCount, LongEventualTimeout).Should(Equal(10))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(10))
 
 					files, err := ioutil.ReadDir(c2.opts.SnapDir)
 					Expect(err).NotTo(HaveOccurred())
@@ -1337,7 +1338,7 @@ var _ = Describe("Chain", func() {
 
 					network.exec(
 						func(c *chain) {
-							Eventually(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(11))
+							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(11))
 						})
 				})
 			})
@@ -1353,22 +1354,22 @@ var _ = Describe("Chain", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// block should not be produced on chain 1
-					Eventually(c1.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
 
 					// block should be produced on chain 2 & 3
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(1))
-					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					By("order envelope on follower")
 					err = c3.Order(env, 0)
 					Expect(err).ToNot(HaveOccurred())
 
 					// block should not be produced on chain 1
-					Eventually(c1.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
 
 					// block should be produced on chain 2 & 3
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(2))
-					Eventually(c3.support.WriteBlockCallCount).Should(Equal(2))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				})
 
 				It("follower cannot be elected if its log is not up-to-date", func() {
@@ -1378,9 +1379,9 @@ var _ = Describe("Chain", func() {
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
-					Eventually(c1.support.WriteBlockCallCount).Should(Equal(1))
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
-					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					network.disconnect(1)
 					network.connect(2)
@@ -1391,7 +1392,7 @@ var _ = Describe("Chain", func() {
 						Consistently(c2.observe).ShouldNot(Receive(Equal(2)))
 					}
 
-					Eventually(c3.observe).Should(Receive(Equal(uint64(0))))
+					Eventually(c3.observe, LongEventualTimeout).Should(Receive(Equal(uint64(0))))
 					network.elect(3) // node 3 has newest logs among 2&3, so it can be elected
 				})
 
@@ -1404,12 +1405,12 @@ var _ = Describe("Chain", func() {
 						Expect(err).NotTo(HaveOccurred())
 					}
 
-					Eventually(c1.support.WriteBlockCallCount).Should(Equal(10))
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(0))
-					Eventually(c3.support.WriteBlockCallCount).Should(Equal(10))
+					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(10))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(0))
+					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(10))
 
 					network.rejoin(2, false)
-					Eventually(c2.support.WriteBlockCallCount).Should(Equal(10))
+					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(10))
 
 					network.disconnect(1)
 					network.elect(2)
@@ -1419,16 +1420,16 @@ var _ = Describe("Chain", func() {
 					// enqueue one transaction into 1's blockcutter
 					err := c1.Order(env, 0)
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(c1.cutter.CurBatch).Should(HaveLen(1))
+					Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
 					network.disconnect(1)
 					network.elect(2)
 					network.rejoin(1, true)
 
-					Eventually(c1.clock.WatcherCount).Should(Equal(1)) // blockcutter time is stopped
+					Eventually(c1.clock.WatcherCount, LongEventualTimeout).Should(Equal(1)) // blockcutter time is stopped
 
 					Expect(c1.clock.WatcherCount()).To(Equal(1)) // blockcutter time is stopped
-					Eventually(c1.cutter.CurBatch).Should(HaveLen(0))
+					Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(0))
 
 					network.disconnect(2)
 					n := network.elect(1) // advances 1's clock by n intervals
@@ -1460,12 +1461,12 @@ var _ = Describe("Chain", func() {
 					//                timer should not fire     at this point
 
 					c1.clock.WaitForNWatchersAndIncrement(timeout-time.Duration(n*int(interval/time.Millisecond)), 2)
-					Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(0))
-					Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(0))
+					Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(0))
+					Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(0))
 
 					c1.clock.Increment(time.Duration(n * int(interval/time.Millisecond)))
-					Eventually(func() int { return c1.support.WriteBlockCallCount() }).Should(Equal(1))
-					Eventually(func() int { return c3.support.WriteBlockCallCount() }).Should(Equal(1))
+					Eventually(func() int { return c1.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+					Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 				})
 
 				It("stale leader should not be able to propose block because of lagged term", func() {
@@ -1500,7 +1501,7 @@ var _ = Describe("Chain", func() {
 
 					c2.clock.Increment(interval)
 					// this check guarantees that signal on resignC is consumed in commitBatches method.
-					Eventually(c1.observe).Should(Receive(Equal(uint64(2))))
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
 				})
 			})
 		})
