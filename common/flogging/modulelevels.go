@@ -8,6 +8,7 @@ package flogging
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -63,8 +64,15 @@ func (m *ModuleLevels) ActivateSpec(spec string) error {
 
 			level := NameToLevel(split[1])
 			loggers := strings.Split(split[0], ",")
-			for _, loggers := range loggers {
-				specs[loggers] = level
+			for _, logger := range loggers {
+				// check if the logger name in the spec is valid. The
+				// trailing period is trimmed as logger names in specs
+				// ending with a period signifies that this part of the
+				// spec refers to the exact logger name (i.e. is not a prefix)
+				if !isValidLoggerName(strings.TrimSuffix(logger, ".")) {
+					return errors.Errorf("invalid logging specification '%s': bad logger name '%s'", spec, logger)
+				}
+				specs[logger] = level
 			}
 
 		default:
@@ -77,6 +85,17 @@ func (m *ModuleLevels) ActivateSpec(spec string) error {
 	m.levelCache = map[string]zapcore.Level{}
 
 	return nil
+}
+
+// logggerNameRegexp defines the valid logger names
+var loggerNameRegexp = regexp.MustCompile(`^[[:alnum:]_#:-]+(\.[[:alnum:]_#:-]+)*$`)
+
+// isValidLoggerName checks whether a logger name contains only valid
+// characters. Names that begin/end with periods or contain special
+// characters (other than periods, underscores, pound signs, colons
+// and dashes) are invalid.
+func isValidLoggerName(loggerName string) bool {
+	return loggerNameRegexp.MatchString(loggerName)
 }
 
 // Level returns the effective logging level for a logger. If a level has not

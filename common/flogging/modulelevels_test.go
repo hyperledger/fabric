@@ -115,6 +115,8 @@ func TestModuleLevelsActivateSpecErrors(t *testing.T) {
 		{spec: "=INFO=:DEBUG", err: errors.New("invalid logging specification '=INFO=:DEBUG': bad segment '=INFO='")},
 		{spec: "bogus", err: errors.New("invalid logging specification 'bogus': bad segment 'bogus'")},
 		{spec: "a.b=info:a=broken:c.b=info:c.=warn:debug", err: errors.New("invalid logging specification 'a.b=info:a=broken:c.b=info:c.=warn:debug': bad segment 'a=broken'")},
+		{spec: "a*=info:debug", err: errors.New("invalid logging specification 'a*=info:debug': bad logger name 'a*'")},
+		{spec: ".a=info:debug", err: errors.New("invalid logging specification '.a=info:debug': bad logger name '.a'")},
 	}
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
@@ -137,6 +139,10 @@ func TestModuleLevelSpec(t *testing.T) {
 	}{
 		{input: "", output: "info"},
 		{input: "debug", output: "debug"},
+		{input: "a.=info:warning", output: "a.=info:warn"},
+		{input: "a-b=error", output: "a-b=error:info"},
+		{input: "a#b=error", output: "a#b=error:info"},
+		{input: "a_b=error", output: "a_b=error:info"},
 		{input: "debug:a=info:b=warn", output: "a=info:b=warn:debug"},
 		{input: "b=warn:a=error", output: "a=error:b=warn:info"},
 	}
