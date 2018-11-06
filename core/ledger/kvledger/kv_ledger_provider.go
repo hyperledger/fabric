@@ -49,6 +49,7 @@ type Provider struct {
 	bookkeepingProvider bookkeeping.Provider
 	initializer         *ledger.Initializer
 	collElgNotifier     *collElgNotifier
+	stats               *stats
 }
 
 // NewProvider instantiates a new Provider.
@@ -62,7 +63,7 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	historydbProvider := historyleveldb.NewHistoryDBProvider()
 	logger.Info("ledger provider Initialized")
 	provider := &Provider{idStore, ledgerStoreProvider,
-		nil, historydbProvider, nil, nil, nil, nil, nil}
+		nil, historydbProvider, nil, nil, nil, nil, nil, nil}
 	return provider, nil
 }
 
@@ -91,6 +92,7 @@ func (provider *Provider) Initialize(initializer *ledger.Initializer) error {
 	if err != nil {
 		return err
 	}
+	provider.stats = newStats(initializer.MetricsProvider)
 	provider.recoverUnderConstructionLedger()
 	return nil
 }
@@ -168,8 +170,12 @@ func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, erro
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
 	// (id store, blockstore, state database, history database)
-	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, provider.configHistoryMgr,
-		provider.stateListeners, provider.bookkeepingProvider, provider.initializer.DeployedChaincodeInfoProvider)
+	l, err := newKVLedger(
+		ledgerID, blockStore, vDB, historyDB, provider.configHistoryMgr,
+		provider.stateListeners, provider.bookkeepingProvider,
+		provider.initializer.DeployedChaincodeInfoProvider,
+		provider.stats.ledgerStats(ledgerID),
+	)
 	if err != nil {
 		return nil, err
 	}
