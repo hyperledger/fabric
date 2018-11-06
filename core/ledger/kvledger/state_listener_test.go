@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -29,6 +30,7 @@ func TestStateListener(t *testing.T) {
 	provider.Initialize(&ledger.Initializer{
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		StateListeners:                []ledger.StateListener{mockListener},
+		MetricsProvider:               &disabled.Provider{},
 	})
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)

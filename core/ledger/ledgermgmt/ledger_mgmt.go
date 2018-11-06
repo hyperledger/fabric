@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -42,6 +43,7 @@ type Initializer struct {
 	PlatformRegistry              *platforms.Registry
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 	MembershipInfoProvider        ledger.MembershipInfoProvider
+	MetricsProvider               metrics.Provider
 }
 
 // Initialize initializes ledgermgmt
@@ -71,6 +73,7 @@ func initialize(initializer *Initializer) {
 		StateListeners:                finalStateListeners,
 		DeployedChaincodeInfoProvider: initializer.DeployedChaincodeInfoProvider,
 		MembershipInfoProvider:        initializer.MembershipInfoProvider,
+		MetricsProvider:               initializer.MetricsProvider,
 	})
 	ledgerProvider = provider
 	logger.Info("ledger mgmt initialized")
