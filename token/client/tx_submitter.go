@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("token/client")
+var logger = flogging.MustGetLogger("token.client")
 
 type TxSubmitter struct {
 	Config        *ClientConfig

@@ -9,7 +9,6 @@ package flogging
 import (
 	"io"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
@@ -188,7 +187,6 @@ func (s *Logging) Encoding() Encoding {
 // enabled.
 func (s *Logging) ZapLogger(module string) *zap.Logger {
 	s.mutex.RLock()
-	module = strings.Replace(module, "/", ".", -1)
 	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 		// always return true here because the core's Check()
 		// method computes the level for the logger name based
