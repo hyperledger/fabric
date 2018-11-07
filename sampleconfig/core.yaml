@@ -237,10 +237,10 @@ peer:
         # total number of events that could be buffered without blocking send
         buffersize: 100
 
-        # timeout duration for producer to send an event.
-        # if < 0, if buffer full, unblocks immediately and not send
-        # if 0, if buffer full, will block and guarantee the event will be sent out
-        # if > 0, if buffer full, blocks till timeout
+        # timeout configures how long to block when attempting to add an event to a full buffer:
+        #   when timeout < 0 then discard the event and continue
+        #   when timeout = 0 then block until event is added to the buffer
+        #   when timeout > 0 then block and discard the event if the timeout expires
         timeout: 10ms
 
         # timewindow is the acceptable difference between the peer's current
@@ -253,6 +253,9 @@ peer:
             # can send keepalive pings.  If clients send pings more frequently,
             # the events server will disconnect them
             minInterval: 60s
+
+        # the timeout to send events over the GRPC stream to clients
+        sendTimeout: 60s
 
     # TLS Settings
     # Note that peer-chaincode connections through chaincodeListenAddress is

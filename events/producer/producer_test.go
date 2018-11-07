@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package producer
@@ -66,7 +56,7 @@ type Adapter struct {
 }
 
 var adapter *Adapter
-var obcEHClient *consumer.EventsClient
+var ehClient *consumer.EventsClient
 var ehServer *EventsServer
 
 var timeWindow = time.Duration(15 * time.Minute)
@@ -80,10 +70,6 @@ func (a *Adapter) GetInterestedEvents() ([]*pb.Interest, error) {
 	return []*pb.Interest{
 		{EventType: pb.EventType_BLOCK},
 		{EventType: pb.EventType_FILTEREDBLOCK},
-		{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}},
-		{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
-		{EventType: pb.EventType_REGISTER, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event3"}}},
-		{EventType: pb.EventType_REJECTION, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event4"}}},
 	}, nil
 }
 
@@ -177,7 +163,7 @@ func TestSignedEvent(t *testing.T) {
 	recvChan := make(chan *streamEvent)
 	sendChan := make(chan *pb.Event)
 	stream := &mockEventStream{recvChan: recvChan, sendChan: sendChan}
-	mockHandler := &handler{ChatStream: stream}
+	mockHandler := &handler{ChatStream: stream, eventProcessor: gEventProcessor}
 	backupSerializedIdentity := signerSerialized
 	signerSerialized = createExpiredIdentity(t)
 	// get a test event
@@ -256,34 +242,7 @@ func TestSignedEvent(t *testing.T) {
 	}
 }
 
-func createTestChaincodeEvent(tid string, typ string) *pb.Event {
-	emsg := CreateChaincodeEvent(&pb.ChaincodeEvent{ChaincodeId: tid, EventName: typ})
-	return emsg
-}
-
-// Test the invocation of a transaction.
-func TestReceiveMessage(t *testing.T) {
-	var err error
-
-	adapter.count = 1
-	emsg := createTestChaincodeEvent("0xffffffff", "event1")
-	if err = Send(emsg); err != nil {
-		t.Fail()
-		t.Logf("Error sending message %s", err)
-	}
-
-	select {
-	case <-adapter.notfy:
-	case <-time.After(5 * time.Second):
-		t.Fail()
-		t.Logf("timed out on message")
-	}
-}
-
 func TestReceiveAnyMessage(t *testing.T) {
-	var err error
-
-	adapter.count = 1
 	block := testutil.ConstructTestBlock(t, 1, 10, 100)
 
 	bevent, fbevent, _, err := CreateBlockEvents(block)
@@ -291,6 +250,7 @@ func TestReceiveAnyMessage(t *testing.T) {
 		t.Fail()
 		t.Logf("Error processing block for events %s", err)
 	}
+
 	if err = Send(bevent); err != nil {
 		t.Fail()
 		t.Logf("Error sending block event: %s", err)
@@ -299,142 +259,123 @@ func TestReceiveAnyMessage(t *testing.T) {
 		t.Fail()
 		t.Logf("Error sending filtered block event: %s", err)
 	}
-
-	emsg := createTestChaincodeEvent("0xffffffff", "event2")
-	if err = Send(emsg); err != nil {
-		t.Fail()
-		t.Logf("Error sending message %s", err)
-	}
-
-	//receive 3 messages - a block, a filtered block, and a chaincode event
-	for i := 0; i < 3; i++ {
+	// receive 2 messages - a block and a filtered block event
+	for i := 0; i < 2; i++ {
 		select {
 		case <-adapter.notfy:
-		case <-time.After(5 * time.Second):
+		case <-time.After(1 * time.Second):
 			t.Fail()
 			t.Logf("timed out on message")
 		}
 	}
+	assert.Equal(t, 0, len(gEventProcessor.eventChannel))
 }
 
-func TestReceiveCCWildcard(t *testing.T) {
-	var err error
-
-	adapter.count = 1
-	config := &consumer.RegistrationConfig{InterestedEvents: []*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}}, Timestamp: util.CreateUtcTimestamp()}
-	obcEHClient.RegisterAsync(config)
-
-	select {
-	case <-adapter.notfy:
-	case <-time.After(2 * time.Second):
-		t.Fail()
-		t.Logf("timed out on message")
+func TestReceiveEventsBlockingSend(t *testing.T) {
+	recvChan := make(chan *streamEvent)
+	defer close(recvChan)
+	delayChan := make(chan struct{})
+	defer close(delayChan)
+	streamEmbed := mockEventStream{
+		recvChan: recvChan,
 	}
-
-	adapter.count = 1
-	emsg := createTestChaincodeEvent("0xffffffff", "wildcardevent")
-	if err = Send(emsg); err != nil {
-		t.Fail()
-		t.Logf("Error sending message %s", err)
+	delayBlockEventsStream := &mockstreamDelayBlockEvents{
+		mockEventStream: streamEmbed,
+		DelayChan:       delayChan,
 	}
+	handler := newHandler(delayBlockEventsStream, gEventProcessor)
 
-	select {
-	case <-adapter.notfy:
-	case <-time.After(2 * time.Second):
-		t.Fail()
-		t.Logf("timed out on message")
-	}
-	adapter.count = 1
-	obcEHClient.UnregisterAsync([]*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}})
+	e, err := createRegisterEvent(nil, nil)
+	assert.NoError(t, err)
+	sEvt, err := utils.GetSignedEvent(e, signer)
+	assert.NoError(t, err)
 
-	select {
-	case <-adapter.notfy:
-	case <-time.After(2 * time.Second):
-		t.Fail()
-		t.Logf("timed out on message")
-	}
-}
+	err = handler.HandleMessage(sEvt)
+	assert.NoError(t, err)
 
-func TestFailReceive(t *testing.T) {
-	var err error
-
-	adapter.count = 1
-	emsg := createTestChaincodeEvent("badcc", "event1")
-	if err = Send(emsg); err != nil {
-		t.Fail()
-		t.Logf("Error sending message %s", err)
-	}
-
-	select {
-	case <-adapter.notfy:
-		t.Fail()
-		t.Logf("should NOT have received event1")
-	case <-time.After(2 * time.Second):
+	for i := 1; i < 3; i++ {
+		t.Run(fmt.Sprint("send block", i), func(t *testing.T) {
+			block := testutil.ConstructTestBlock(t, uint64(i), 10, 100)
+			bevent, fbevent, _, err := CreateBlockEvents(block)
+			if err != nil {
+				t.Fail()
+				t.Logf("Error processing block for events %s", err)
+			}
+			if err = Send(bevent); err != nil {
+				t.Fail()
+				t.Logf("Error sending block event: %s", err)
+			}
+			if err = Send(fbevent); err != nil {
+				t.Fail()
+				t.Logf("Error sending filtered block event: %s", err)
+			}
+			// receive 2 messages - a block and a filtered block event
+			for i := 0; i < 2; i++ {
+				select {
+				case <-adapter.notfy:
+				case <-time.After(1 * time.Second):
+					t.Fail()
+					t.Logf("timed out on message")
+				}
+			}
+			assert.Equal(t, 0, len(gEventProcessor.eventChannel))
+		})
 	}
 }
 
 func TestUnregister(t *testing.T) {
-	var err error
-	config := &consumer.RegistrationConfig{InterestedEvents: []*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}}, Timestamp: util.CreateUtcTimestamp()}
-	obcEHClient.RegisterAsync(config)
-
-	adapter.count = 1
-	select {
-	case <-adapter.notfy:
-	case <-time.After(2 * time.Second):
-		t.FailNow()
-		t.Logf("timed out on message")
-	}
-
-	emsg := createTestChaincodeEvent("0xffffffff", "event11")
-	if err = Send(emsg); err != nil {
+	block := testutil.ConstructTestBlock(t, 1, 10, 100)
+	bevent, _, _, err := CreateBlockEvents(block)
+	if err != nil {
 		t.Fail()
-		t.Logf("Error sending message %s", err)
+		t.Logf("Error processing block for events %s", err)
+	}
+	if err = Send(bevent); err != nil {
+		t.Fail()
+		t.Logf("Error sending block event: %s", err)
 	}
 
-	adapter.count = 1
 	select {
 	case <-adapter.notfy:
-	case <-time.After(2 * time.Second):
+	case <-time.After(1 * time.Second):
 		t.Fail()
 		t.Logf("timed out on message")
 	}
-	obcEHClient.UnregisterAsync([]*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}})
-	adapter.count = 1
+
+	ehClient.UnregisterAsync([]*pb.Interest{{EventType: pb.EventType_BLOCK}})
 	select {
 	case <-adapter.notfy:
-	case <-time.After(2 * time.Second):
+	case <-time.After(1 * time.Second):
 		t.Fail()
 		t.Logf("should have received unreg")
 	}
 
-	adapter.count = 1
-	emsg = createTestChaincodeEvent("0xffffffff", "event11")
-	if err = Send(emsg); err != nil {
+	if err = Send(bevent); err != nil {
 		t.Fail()
-		t.Logf("Error sending message %s", err)
+		t.Logf("Error sending block event: %s", err)
 	}
-
 	select {
 	case <-adapter.notfy:
 		t.Fail()
-		t.Logf("should NOT have received event11")
-	case <-time.After(5 * time.Second):
+		t.Logf("should NOT have received event")
+	case <-time.After(10 * time.Millisecond):
 	}
-
 }
 
 func TestRegister_outOfTimeWindow(t *testing.T) {
-	interestedEvent := []*pb.Interest{{EventType: pb.EventType_CHAINCODE, RegInfo: &pb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &pb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}}
-	config := &consumer.RegistrationConfig{InterestedEvents: interestedEvent, Timestamp: &timestamp.Timestamp{Seconds: 0}}
-	obcEHClient.RegisterAsync(config)
+	interestedEvents, err := adapter.GetInterestedEvents()
+	assert.NoError(t, err)
+	config := &consumer.RegistrationConfig{
+		InterestedEvents: interestedEvents,
+		Timestamp:        &timestamp.Timestamp{Seconds: 0},
+	}
 
-	adapter.count = 0
+	ehClient.RegisterAsync(config)
 	select {
 	case <-adapter.notfy:
 		t.Fail()
 		t.Logf("register with out of range timestamp should fail")
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Millisecond):
 	}
 }
 
@@ -477,7 +418,7 @@ func TestRegister_MutualTLS(t *testing.T) {
 	select {
 	case <-m.sendChan:
 		t.Fatalf("Received a response when none was expected")
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Millisecond):
 	}
 }
 
@@ -501,13 +442,13 @@ func TestRegister_ExpiredIdentity(t *testing.T) {
 
 	expireSessions := func() {
 		gEventProcessor.RLock()
-		handlerList := gEventProcessor.eventConsumers[pb.EventType_BLOCK].(*genericHandlerList)
-		handlerList.RLock()
+		handlerList := gEventProcessor.eventConsumers[pb.EventType_BLOCK]
+		handlerList.Lock()
 		for k := range handlerList.handlers {
 			// Artificially move the session end time a minute into the past
 			k.sessionEndTime = time.Now().Add(-1 * time.Minute)
 		}
-		handlerList.RUnlock()
+		handlerList.Unlock()
 		gEventProcessor.RUnlock()
 	}
 
@@ -518,18 +459,20 @@ func TestRegister_ExpiredIdentity(t *testing.T) {
 	// Wait for register Ack
 	select {
 	case <-m.sendChan:
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(10 * time.Millisecond):
 		assert.Fail(t, "Didn't receive back a register ack on time")
 	}
+	assert.Equal(t, 0, len(gEventProcessor.eventChannel))
 
 	// Publish a block and make sure we receive it
 	publishBlock()
 	select {
 	case resp := <-m.sendChan:
 		assert.Equal(t, uint64(100), resp.GetBlock().Header.Number)
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(500 * time.Millisecond):
 		assert.Fail(t, "Didn't receive the block on time, but should have")
 	}
+	assert.Equal(t, 0, len(gEventProcessor.eventChannel))
 
 	// Expire the sessions, and publish a block again
 	expireSessions()
@@ -537,8 +480,29 @@ func TestRegister_ExpiredIdentity(t *testing.T) {
 	// Make sure we don't receive it
 	select {
 	case resp := <-m.sendChan:
+		assert.NotEqual(t, uint64(100), resp.GetBlock().Header.Number)
 		t.Fatalf("Received a block (%v) but wasn't supposed to", resp.GetBlock())
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(10 * time.Millisecond):
+	}
+	assert.Equal(t, 0, len(gEventProcessor.eventChannel))
+}
+
+func TestFailReceive(t *testing.T) {
+	unsupportedEvent := &pb.Event{Event: &pb.Event_ChaincodeEvent{}}
+	emptyEvent := &pb.Event{Event: &pb.Event_Block{}}
+	for _, e := range []*pb.Event{unsupportedEvent, emptyEvent} {
+		if err := Send(e); err != nil {
+			t.Fail()
+			t.Logf("Error sending message %s", err)
+		}
+
+		select {
+		case <-adapter.notfy:
+			t.Fail()
+			t.Logf("should NOT have received event1")
+		case <-time.After(10 * time.Millisecond):
+		}
+		assert.Equal(t, 0, len(gEventProcessor.eventChannel))
 	}
 }
 
@@ -553,14 +517,19 @@ func resetEventProcessor(useMutualTLS bool) {
 	gEventProcessor.BindingInspector = comm.NewBindingInspector(useMutualTLS, extract)
 
 	// reset the event consumers
-	gEventProcessor.eventConsumers = make(map[pb.EventType]handlerList)
+	gEventProcessor.eventConsumers = make(map[pb.EventType]*handlerList)
 
 	// re-register the event types
-	addInternalEventTypes()
+	gEventProcessor.addSupportedEventTypes()
 }
 
 func TestNewEventsServer(t *testing.T) {
-	config := &EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
+	config := &EventsServerConfig{
+		BufferSize:  100,
+		Timeout:     0,
+		SendTimeout: 0,
+		TimeWindow:  0,
+	}
 	doubleCreation := func() {
 		NewEventsServer(config)
 	}
@@ -597,10 +566,11 @@ type mockEventhub struct {
 }
 
 func newMockEventhub() *mockEventhub {
-	return &mockEventhub{mockEventStream{
-		recvChan: make(chan *streamEvent),
-		sendChan: make(chan *pb.Event),
-	},
+	return &mockEventhub{
+		mockEventStream{
+			recvChan: make(chan *streamEvent),
+			sendChan: make(chan *pb.Event),
+		},
 	}
 }
 
@@ -620,6 +590,21 @@ func (m *mockEventStream) Recv() (*pb.SignedEvent, error) {
 	return msg.event, nil
 }
 
+type mockstreamDelayBlockEvents struct {
+	mockEventStream
+	DelayChan chan struct{}
+}
+
+func (m *mockstreamDelayBlockEvents) Send(evt *pb.Event) error {
+	// only delay block events, not registration
+	switch evt.Event.(type) {
+	case *pb.Event_Block:
+		<-m.DelayChan
+	default:
+	}
+	return nil
+}
+
 func TestChat(t *testing.T) {
 	m := newMockEventhub()
 	defer close(m.recvChan)
@@ -635,7 +620,6 @@ func TestChat(t *testing.T) {
 	m.mockEventStream.recvChan <- &streamEvent{err: io.EOF}
 	go ehServer.Chat(m)
 	m.recvChan <- &streamEvent{err: errors.New("err")}
-	time.Sleep(time.Second)
 }
 
 var signer msp.SigningIdentity
@@ -686,11 +670,6 @@ func TestMain(m *testing.M) {
 	}
 
 	// Register EventHub server
-	// use a buffer of 100 and blocking timeout
-	viper.Set("peer.events.buffersize", 100)
-	viper.Set("peer.events.timeout", 0)
-	timeWindow, _ := time.ParseDuration("1m")
-	viper.Set("peer.events.timewindow", timeWindow)
 
 	extract := func(msg proto.Message) []byte {
 		evt, isEvent := msg.(*pb.Event)
@@ -700,10 +679,13 @@ func TestMain(m *testing.M) {
 		return evt.TlsCertHash
 	}
 
+	// use a buffer of 100 and timeout of 10ms
+	timeout := 10 * time.Millisecond
 	ehConfig := &EventsServerConfig{
-		BufferSize:       uint(viper.GetInt("peer.events.buffersize")),
-		Timeout:          viper.GetDuration("peer.events.timeout"),
-		TimeWindow:       viper.GetDuration("peer.events.timewindow"),
+		BufferSize:       uint(100),
+		Timeout:          timeout,
+		SendTimeout:      timeout,
+		TimeWindow:       time.Minute,
 		BindingInspector: comm.NewBindingInspector(!mutualTLS, extract)}
 
 	ehServer = NewEventsServer(ehConfig)
@@ -711,16 +693,15 @@ func TestMain(m *testing.M) {
 
 	go grpcServer.Serve(lis)
 
-	var regTimeout = 5 * time.Second
-	done := make(chan struct{})
-	adapter = &Adapter{notfy: done}
-	obcEHClient, _ = consumer.NewEventsClient(peerAddress, regTimeout, adapter)
-	if err = obcEHClient.Start(); err != nil {
+	receiveChan := make(chan struct{})
+	adapter = &Adapter{notfy: receiveChan}
+	ehClient, _ = consumer.NewEventsClient(peerAddress, timeout, adapter)
+	// create a new client where the adapter's recv just waits on the message, then see if the regular
+	// client above can still receive
+	if err = ehClient.Start(); err != nil {
 		fmt.Printf("could not start chat %s\n", err)
-		obcEHClient.Stop()
+		ehClient.Stop()
 		return
 	}
-
-	time.Sleep(2 * time.Second)
 	os.Exit(m.Run())
 }
