@@ -304,7 +304,7 @@ peer:
         listenAddress: 0.0.0.0:6060
 
     # The admin service is used for administrative operations such as
-    # control over log module severity, etc.
+    # control over logger levels, etc.
     # Only peer administrators can use the service.
     adminService:
         # The interface and port on which the admin server will listen on.
@@ -538,7 +538,7 @@ chaincode:
     logging:
       # Default level for all loggers within the chaincode container
       level:  info
-      # Override default level for the 'shim' module
+      # Override default level for the 'shim' logger
       shim:   warning
       # Format for the chaincode container logs
       format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'

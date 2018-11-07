@@ -75,7 +75,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		pubSub:         util.NewPubSub(),
 		PKIID:          idMapper.GetPKIidOfCert(peerIdentity),
 		idMapper:       idMapper,
-		logger:         util.GetLogger(util.LoggingCommModule, fmt.Sprintf("%d", port)),
+		logger:         util.GetLogger(util.CommLogger, fmt.Sprintf("%d", port)),
 		peerIdentity:   peerIdentity,
 		opts:           dialOpts,
 		secureDialOpts: secureDialOpts,

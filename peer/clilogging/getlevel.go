@@ -15,9 +15,9 @@ import (
 
 func getLevelCmd(cf *LoggingCmdFactory) *cobra.Command {
 	var loggingGetLevelCmd = &cobra.Command{
-		Use:   "getlevel <module>",
-		Short: "Returns the logging level of the requested module logger.",
-		Long:  `Returns the logging level of the requested module logger. Note: the module name should exactly match the name that is displayed in the logs.`,
+		Use:   "getlevel <logger>",
+		Short: "Returns the logging level of the requested logger.",
+		Long:  `Returns the logging level of the requested logger. Note: the logger name should exactly match the name that is displayed in the logs.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return getLevel(cf, cmd, args)
 		},
@@ -49,7 +49,7 @@ func getLevel(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err err
 		if err != nil {
 			return err
 		}
-		logger.Infof("Current log level for module '%s': %s", logResponse.LogModule, logResponse.LogLevel)
+		logger.Infof("Current log level for logger '%s': %s", logResponse.LogModule, logResponse.LogLevel)
 	}
 	return err
 }

@@ -10,11 +10,11 @@ package if they use the logging methods provided by the ``shim``.
 This package supports
 
 -  Logging control based on the severity of the message
--  Logging control based on the software *module* generating the message
+-  Logging control based on the software *logger* generating the message
 -  Different pretty-printing options based on the severity of the
    message
 
-All logs are currently directed to ``stderr``. Global and module-level
+All logs are currently directed to ``stderr``. Global and logger-level
 control of logging by severity is provided for both users and developers.
 There are currently no formalized rules for the types of information
 provided at each severity level. When submitting bug reports, developers
@@ -22,9 +22,9 @@ may want to see full logs down to the DEBUG level.
 
 In pretty-printed logs the logging level is indicated both by color and
 by a four-character code, e.g, "ERRO" for ERROR, "DEBU" for DEBUG, etc. In
-the logging context a *module* is an arbitrary name (string) given by
+the logging context a *logger* is an arbitrary name (string) given by
 developers to groups of related messages. In the pretty-printed example
-below, the logging modules ``ledgermgmt``, ``kvledger``, and ``peer`` are
+below, the loggers ``ledgermgmt``, ``kvledger``, and ``peer`` are
 generating logs.
 
 ::
@@ -35,10 +35,9 @@ generating logs.
    2018-11-01 15:32:38.357 UTC [peer] func1 -> INFO 006 Auto-detected peer address: 172.24.0.3:7051
    2018-11-01 15:32:38.357 UTC [peer] func1 -> INFO 007 Returning peer0.org1.example.com:7051
 
-An arbitrary number of logging modules can be created at runtime,
-therefore there is no "master list" of modules, and logging control
-constructs can not check whether logging modules actually do or will
-exist.
+An arbitrary number of loggers can be created at runtime, therefore there is
+no "master list" of loggers, and logging control constructs can not check
+whether logging loggers actually do or will exist.
 
 Logging specification
 ----
@@ -51,7 +50,7 @@ The full logging level specification is of the form
 
 ::
 
-    [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+    [<logger>[,<logger>...]=]<level>[:[<logger>[,<logger>...]=]<level>...]
 
 Logging severity levels are specified using case-insensitive strings
 chosen from
@@ -62,11 +61,11 @@ chosen from
 
 
 A logging level by itself is taken as the overall default. Otherwise,
-overrides for individual or groups of modules can be specified using the
+overrides for individual or groups of loggers can be specified using the
 
 ::
 
-    <module>[,<module>...]=<level>
+    <logger>[,<logger>...]=<level>
 
 syntax. Examples of specifications:
 
@@ -181,7 +180,7 @@ be set in the
 `core.yaml <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`__
 file. The key ``chaincode.logging.level`` sets the default level for all
 loggers within the Chaincode container. The key ``chaincode.logging.shim``
-overrides the default level for the ``shim`` module.
+overrides the default level for the ``shim`` logger.
 
 ::
 
@@ -189,13 +188,13 @@ overrides the default level for the ``shim`` module.
     logging:
       # Default level for all loggers within the chaincode container
       level:  info
-      # Override default level for the 'shim' module
+      # Override default level for the 'shim' logger
       shim:   warning
 
 The default logging level can be overridden by using environment
 variables. ``CORE_CHAINCODE_LOGGING_LEVEL`` sets the default logging
-level for all modules. ``CORE_CHAINCODE_LOGGING_SHIM`` overrides the
-level for the ``shim`` module.
+level for all loggers. ``CORE_CHAINCODE_LOGGING_SHIM`` overrides the
+level for the ``shim`` logger.
 
 Go language chaincodes can also control the logging level of the
 chaincode ``shim`` interface through the ``SetLoggingLevel`` API.

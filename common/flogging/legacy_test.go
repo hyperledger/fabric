@@ -23,37 +23,37 @@ func TestLegacyInitFromSpec(t *testing.T) {
 		expectedLevels map[string]string
 	}{
 		{
-			name:           "SingleModuleLevel",
+			name:           "SingleLoggerLevel",
 			spec:           "a=info",
 			expectedResult: "INFO",
 			expectedLevels: map[string]string{"a": "INFO"},
 		},
 		{
-			name:           "MultipleModulesMultipleLevels",
+			name:           "MultipleLoggersMultipleLevels",
 			spec:           "a=info:b=debug",
 			expectedResult: "INFO",
 			expectedLevels: map[string]string{"a": "INFO", "b": "DEBUG"},
 		},
 		{
-			name:           "MultipleModulesSameLevel",
+			name:           "MultipleLoggersSameLevel",
 			spec:           "a,b=warning",
 			expectedResult: "INFO",
 			expectedLevels: map[string]string{"a": "WARN", "b": "WARN"},
 		},
 		{
-			name:           "DefaultAndModules",
+			name:           "DefaultAndLoggers",
 			spec:           "ERROR:a=warning",
 			expectedResult: "ERROR",
 			expectedLevels: map[string]string{"a": "WARN"},
 		},
 		{
-			name:           "ModuleAndDefault",
+			name:           "LoggerAndDefault",
 			spec:           "a=debug:info",
 			expectedResult: "INFO",
 			expectedLevels: map[string]string{"a": "DEBUG"},
 		},
 		{
-			name:           "EmptyModuleEqualsLevel",
+			name:           "EmptyLoggerEqualsLevel",
 			spec:           "=info",
 			expectedResult: "INFO",
 			expectedLevels: map[string]string{},

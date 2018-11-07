@@ -58,7 +58,7 @@ func NewPayloadsBuffer(next uint64) PayloadsBuffer {
 		buf:       make(map[uint64]*proto.Payload),
 		readyChan: make(chan struct{}, 1),
 		next:      next,
-		logger:    util.GetLogger(util.LoggingStateModule, ""),
+		logger:    util.GetLogger(util.StateLogger, ""),
 	}
 }
 

@@ -117,27 +117,27 @@ func TestCheckLogLevel(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Empty module name",
+			name:    "Empty level",
 			args:    args{level: ""},
 			wantErr: true,
 		},
 		{
-			name:    "Valid module name",
+			name:    "Valid level",
 			args:    args{level: "warning"},
 			wantErr: false,
 		},
 		{
-			name:    "Valid module name",
+			name:    "Invalid level",
 			args:    args{level: "foobaz"},
 			wantErr: true,
 		},
 		{
-			name:    "Valid module name",
+			name:    "Valid level",
 			args:    args{level: "error"},
 			wantErr: false,
 		},
 		{
-			name:    "Valid module name",
+			name:    "Valid level",
 			args:    args{level: "info"},
 			wantErr: false,
 		},
@@ -179,7 +179,7 @@ func TestInitCmd(t *testing.T) {
 	defer cleanup()
 	defer viper.Reset()
 
-	// test that InitCmd doesn't remove existing loggers from the module levels map
+	// test that InitCmd doesn't remove existing loggers from the logger levels map
 	flogging.MustGetLogger("test")
 	flogging.ActivateSpec("test=error")
 	assert.Equal(t, "error", flogging.Global.Level("test").String())

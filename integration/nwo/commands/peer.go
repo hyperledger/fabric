@@ -333,8 +333,8 @@ func (c ChannelUpdate) Args() []string {
 }
 
 type LoggingSetLevel struct {
-	ModuleRegexp string
-	Level        string
+	Logger string
+	Level  string
 }
 
 func (l LoggingSetLevel) SessionName() string {
@@ -343,6 +343,6 @@ func (l LoggingSetLevel) SessionName() string {
 
 func (l LoggingSetLevel) Args() []string {
 	return []string{
-		"logging", "setlevel", l.ModuleRegexp, l.Level,
+		"logging", "setlevel", l.Logger, l.Level,
 	}
 }

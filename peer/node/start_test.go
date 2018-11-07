@@ -35,10 +35,6 @@ func TestStartCmd(t *testing.T) {
 	viper.Set("peer.fileSystemPath", tempDir)
 	viper.Set("chaincode.executetimeout", "30s")
 	viper.Set("chaincode.mode", "dev")
-	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc"}
-	for _, module := range overrideLogModules {
-		viper.Set("logging."+module, "INFO")
-	}
 
 	msptesttools.LoadMSPSetupForTesting()
 

@@ -48,7 +48,7 @@ func DefaultLevel() string {
 // InitFromSpec initializes the logging based on the supplied spec. It is
 // exposed externally so that consumers of the flogging package may parse their
 // own logging specification. The logging specification has the following form:
-//		[<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+//		[<logger>[,<logger>...]=]<level>[:[<logger>[,<logger>...]=]<logger>...]
 func InitFromSpec(spec string) string {
 	err := Global.ActivateSpec(spec)
 	if err != nil {

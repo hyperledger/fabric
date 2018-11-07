@@ -149,7 +149,7 @@ type GossipStateProviderImpl struct {
 	stateTransferActive int32
 }
 
-var logger = util.GetLogger(util.LoggingStateModule, "")
+var logger = util.GetLogger(util.StateLogger, "")
 
 // NewGossipStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.

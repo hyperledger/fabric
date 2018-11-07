@@ -180,7 +180,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		pkiID:                     pkiID,
 		mcs:                       mcs,
 		Adapter:                   adapter,
-		logger:                    util.GetLogger(util.LoggingChannelModule, adapter.GetConf().ID),
+		logger:                    util.GetLogger(util.ChannelLogger, adapter.GetConf().ID),
 		stopChan:                  make(chan struct{}, 1),
 		shouldGossipStateInfo:     int32(0),
 		stateInfoPublishScheduler: time.NewTicker(adapter.GetConf().PublishStateInfoInterval),
