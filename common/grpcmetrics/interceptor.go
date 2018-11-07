@@ -74,8 +74,11 @@ func StreamServerInterceptor(sm *StreamMetrics) grpc.StreamServerInterceptor {
 
 func serviceMethod(fullMethod string) (service, method string) {
 	normalizedMethod := strings.Replace(fullMethod, ".", "_", -1)
-	parts := strings.SplitN(normalizedMethod[1:], "/", 2)
-	return parts[0], parts[1]
+	parts := strings.SplitN(normalizedMethod, "/", -1)
+	if len(parts) != 3 {
+		return "unknown", "unknown"
+	}
+	return parts[1], parts[2]
 }
 
 type serverStream struct {
