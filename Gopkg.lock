@@ -316,6 +316,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:2a26f9d34f80b0e53dc2d1526649a26d017f5dcd99576f863cb9d3c2021feec3"
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:bf5cf1d53d703332e9bd8984c69784645b73a938317bf5ace9aadf20ac49379a"
   name = "github.com/gorilla/mux"
   packages = ["."]
@@ -946,6 +954,7 @@
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/empty",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
     "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/hashicorp/go-version",
