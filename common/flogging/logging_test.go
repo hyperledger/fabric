@@ -52,19 +52,6 @@ func TestLoggingSetWriter(t *testing.T) {
 	assert.EqualError(t, err, "welp")
 }
 
-func TestZapLoggerNameConversion(t *testing.T) {
-	logging, err := flogging.New(flogging.Config{
-		LogSpec: "fatal:test=debug",
-	})
-	assert.NoError(t, err)
-
-	assert.Equal(t, zapcore.FatalLevel, logging.Level("test/module/name"))
-	assert.Equal(t, zapcore.DebugLevel, logging.Level("test.module.name"))
-
-	logger := logging.Logger("test/module/name")
-	assert.True(t, logger.IsEnabledFor(zapcore.DebugLevel))
-}
-
 func TestNamedLogger(t *testing.T) {
 	defer flogging.Reset()
 	buf := &bytes.Buffer{}

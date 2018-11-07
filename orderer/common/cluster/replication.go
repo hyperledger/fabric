@@ -63,7 +63,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block) (*BlockP
 	}
 
 	return &BlockPuller{
-		Logger:  flogging.MustGetLogger("orderer/common/cluster/replication"),
+		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication"),
 		Dialer:  dialer,
 		TLSCert: tlsCertAsDER.Bytes,
 		VerifyBlockSequence: func(blocks []*common.Block) error {
