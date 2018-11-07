@@ -14,11 +14,14 @@ import (
 	"net/http"
 	_ "net/http/pprof" // This is essentially the main package for the orderer
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/diag"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
@@ -129,6 +132,10 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	switch cmd {
 	case start.FullCommand(): // "start" command
 		logger.Infof("Starting %s", metadata.GetVersionInfo())
+		go handleSignals(map[os.Signal]func(){
+			syscall.SIGTERM: func() { grpcServer.Stop() },
+			syscall.SIGUSR1: func() { diag.LogGoRoutines(logger.Named("diag")) },
+		})
 		initializeProfilingService(conf)
 		ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 		logger.Info("Beginning to serve requests")
@@ -159,6 +166,21 @@ func initializeProfilingService(conf *localconfig.TopLevel) {
 			// The ListenAndServe() call does not return unless an error occurs.
 			logger.Panic("Go pprof service failed:", http.ListenAndServe(conf.General.Profile.Address, nil))
 		}()
+	}
+}
+
+func handleSignals(handlers map[os.Signal]func()) {
+	var signals []os.Signal
+	for sig := range handlers {
+		signals = append(signals, sig)
+	}
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, signals...)
+
+	for sig := range signalChan {
+		logger.Infof("Received signal: %d (%s)", sig, sig)
+		handlers[sig]()
 	}
 }
 
