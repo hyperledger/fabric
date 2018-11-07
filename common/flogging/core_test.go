@@ -46,7 +46,7 @@ func TestCoreWith(t *testing.T) {
 
 func TestCoreCheck(t *testing.T) {
 	var enabledArgs []zapcore.Level
-	levels := &flogging.ModuleLevels{}
+	levels := &flogging.LoggerLevels{}
 	err := levels.ActivateSpec("warning")
 	assert.NoError(t, err)
 	core := &flogging.Core{

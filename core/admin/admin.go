@@ -79,7 +79,7 @@ func (s *ServerAdmin) GetModuleLogLevel(ctx context.Context, env *common.Envelop
 	if request == nil {
 		return nil, errors.New("request is nil")
 	}
-	logLevelString := flogging.GetModuleLevel(request.LogModule)
+	logLevelString := flogging.GetLoggerLevel(request.LogModule)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
 	return logResponse, nil
 }

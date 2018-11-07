@@ -45,7 +45,7 @@ type EncodingSelector interface {
 // enabled levels.
 type Core struct {
 	zapcore.LevelEnabler
-	Levels   *ModuleLevels
+	Levels   *LoggerLevels
 	Encoders map[Encoding]zapcore.Encoder
 	Selector EncodingSelector
 	Output   zapcore.WriteSyncer

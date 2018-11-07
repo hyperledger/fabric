@@ -48,15 +48,16 @@ func Reset() {
 	Global.Apply(Config{})
 }
 
-// GetModuleLevel gets the current logging level for the specified module.
-func GetModuleLevel(module string) string {
-	return strings.ToUpper(Global.Level(module).String())
+// GetLoggerLevel gets the current logging level for the logger with the
+// provided name.
+func GetLoggerLevel(loggerName string) string {
+	return strings.ToUpper(Global.Level(loggerName).String())
 }
 
-// MustGetLogger is used in place of `logging.MustGetLogger` to allow us to
-// store a map of all modules and submodules that have loggers in the logging.
-func MustGetLogger(module string) *FabricLogger {
-	return Global.Logger(module)
+// MustGetLogger creates a logger with the specified name. If an invalid name
+// is provided, the operation will panic.
+func MustGetLogger(loggerName string) *FabricLogger {
+	return Global.Logger(loggerName)
 }
 
 // ActivateSpec is used to activate a logging specification.

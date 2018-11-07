@@ -22,11 +22,11 @@ func TestGlobalReset(t *testing.T) {
 
 	system, err := flogging.New(flogging.Config{})
 	assert.NoError(t, err)
-	assert.NotEqual(t, flogging.Global.ModuleLevels, system.ModuleLevels)
+	assert.NotEqual(t, flogging.Global.LoggerLevels, system.LoggerLevels)
 	assert.NotEqual(t, flogging.Global.Encoding(), system.Encoding())
 
 	flogging.Reset()
-	assert.Equal(t, flogging.Global.ModuleLevels, system.ModuleLevels)
+	assert.Equal(t, flogging.Global.LoggerLevels, system.LoggerLevels)
 	assert.Equal(t, flogging.Global.Encoding(), system.Encoding())
 }
 
@@ -81,15 +81,15 @@ func TestGlobalDefaultLevel(t *testing.T) {
 	assert.Equal(t, "INFO", flogging.DefaultLevel())
 }
 
-func TestGlobalGetModuleLevel(t *testing.T) {
+func TestGlobalGetLoggerLevel(t *testing.T) {
 	flogging.Reset()
-	assert.Equal(t, "INFO", flogging.GetModuleLevel("some.logger"))
+	assert.Equal(t, "INFO", flogging.GetLoggerLevel("some.logger"))
 }
 
 func TestGlobalMustGetLogger(t *testing.T) {
 	flogging.Reset()
 
-	l := flogging.MustGetLogger("module-name")
+	l := flogging.MustGetLogger("logger-name")
 	assert.NotNil(t, l)
 }
 
