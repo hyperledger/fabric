@@ -295,12 +295,12 @@ func TestStreamAbort(t *testing.T) {
 		{
 			testName:      "Evicted from membership",
 			membership:    nil,
-			expectedError: "rpc error: code = Canceled desc = context canceled",
+			expectedError: "rpc error",
 		},
 		{
 			testName:      "Changed TLS certificate",
 			membership:    []cluster.RemoteNode{invalidNodeInfo},
-			expectedError: "rpc error: code = Canceled desc = context canceled",
+			expectedError: "rpc error",
 		},
 	} {
 		t.Run(tst.testName, func(t *testing.T) {
@@ -347,7 +347,7 @@ func testStreamAbort(t *testing.T, node2 *clusterNode, newMembership []cluster.R
 		})
 		assert.NoError(t, err)
 		_, err = stream.Recv()
-		assert.EqualError(t, err, expectedError)
+		assert.Contains(t, err.Error(), expectedError)
 		errorChan <- err
 	}()
 
