@@ -96,6 +96,7 @@ func (p *BlockPuller) HeightsByEndpoints() map[string]uint64 {
 		endpointInfo.conn.Close()
 		res[endpoint] = endpointInfo.lastBlockSeq + 1
 	}
+	p.Logger.Info("Returning the heights of OSNs mapped by endpoints", res)
 	return res
 }
 
@@ -370,6 +371,9 @@ func extractBlockFromResponse(resp *orderer.DeliverResponse) (*common.Block, err
 		block := t.Block
 		if block == nil {
 			return nil, errors.New("block is nil")
+		}
+		if block.Data == nil {
+			return nil, errors.New("block data is nil")
 		}
 		if block.Header == nil {
 			return nil, errors.New("block header is nil")
