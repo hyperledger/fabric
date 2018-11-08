@@ -18,6 +18,8 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func (p *CertKeyPair) PrivKeyString() string {
@@ -96,6 +98,9 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 	pubKey := encodePEM("CERTIFICATE", rawBytes)
 
 	block, _ := pem.Decode(pubKey)
+	if block == nil { // Never comes unless x509 or pem has bug
+		return nil, errors.Errorf("%s: wrong PEM encoding", pubKey)
+	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return nil, err

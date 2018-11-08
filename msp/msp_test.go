@@ -61,6 +61,30 @@ func TestMSPParsers(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestGetSigningIdentityFromConfWithWrongPrivateCert(t *testing.T) {
+	// Temporary Replace root certs
+	oldRoots := localMsp.(*bccspmsp).opts.Roots
+	defer func() {
+		// Restore original root certs
+		localMsp.(*bccspmsp).opts.Roots = oldRoots
+	}()
+	_, cert := generateSelfSignedCert(t, time.Now())
+	localMsp.(*bccspmsp).opts.Roots = x509.NewCertPool()
+	localMsp.(*bccspmsp).opts.Roots.AddCert(cert)
+
+	// Use self signed cert as public key. Convert DER to PEM format
+	pem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+
+	// Use wrong formatted private cert
+	keyinfo := &msp.KeyInfo{
+		KeyMaterial:   []byte("wrong encoding"),
+		KeyIdentifier: "MyPrivateKey",
+	}
+	sigid := &msp.SigningIdentityInfo{PublicSigner: pem, PrivateSigner: keyinfo}
+	_, err := localMsp.(*bccspmsp).getSigningIdentityFromConf(sigid)
+	assert.EqualError(t, err, "MyPrivateKey: wrong PEM encoding")
+}
+
 func TestMSPSetupNoCryptoConf(t *testing.T) {
 	mspDir, err := configtest.GetDevMspDir()
 	if err != nil {

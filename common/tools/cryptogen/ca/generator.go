@@ -22,6 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
+	"github.com/pkg/errors"
 )
 
 type CA struct {
@@ -229,6 +230,9 @@ func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
 				return err
 			}
 			block, _ := pem.Decode(rawCert)
+			if block == nil || block.Type != "CERTIFICATE" {
+				return errors.Errorf("%s: wrong PEM encoding", path)
+			}
 			cert, err = utils.DERToX509Certificate(block.Bytes)
 		}
 		return nil

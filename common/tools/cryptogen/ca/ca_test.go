@@ -8,10 +8,13 @@ package ca_test
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
@@ -66,6 +69,20 @@ func TestLoadCertificateECDSA(t *testing.T) {
 	assert.Equal(t, cert.SerialNumber, loadedCert.SerialNumber, "Should have same serial number")
 	assert.Equal(t, cert.Subject.CommonName, loadedCert.Subject.CommonName, "Should have same CN")
 	cleanup(testDir)
+}
+
+func TestLoadCertificateECDSA_wrongEncoding(t *testing.T) {
+	dir, err := ioutil.TempDir("", "wrongEncoding")
+	require.NoError(t, err, "failed to create test directory")
+	defer cleanup(dir)
+
+	filename := filepath.Join(dir, "wrong_encoding.pem")
+	err = ioutil.WriteFile(filename, []byte("wrong_encoding"), 0644) // Wrong encoded cert
+	require.NoErrorf(t, err, "failed to create file %s", filename)
+
+	_, err = ca.LoadCertificateECDSA(dir)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, filename+": wrong PEM encoding")
 }
 
 func TestNewCA(t *testing.T) {
