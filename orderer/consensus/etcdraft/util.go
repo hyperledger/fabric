@@ -7,10 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"bytes"
 	"encoding/pem"
 	"reflect"
 
 	"github.com/coreos/etcd/raft"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -155,4 +158,39 @@ func ConsentersChanged(oldConsenters map[uint64]*etcdraft.Consenter, newConsente
 	consentersSet2 := ConsentersToMap(newConsenters)
 
 	return reflect.DeepEqual(consentersSet1, consentersSet2)
+}
+
+// ConsenterCertificate denotes a TLS certificate of a consenter
+type ConsenterCertificate []byte
+
+// IsConsenterOfChannel returns whether the caller is a consenter of a channel
+// by inspecting the given configuration block.
+// It returns nil if true, else returns an error.
+func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Block) error {
+	if configBlock == nil {
+		return errors.New("nil block")
+	}
+	envelopeConfig, err := utils.ExtractEnvelope(configBlock, 0)
+	if err != nil {
+		return err
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
+	if err != nil {
+		return err
+	}
+	oc, exists := bundle.OrdererConfig()
+	if !exists {
+		return errors.New("no orderer config in bundle")
+	}
+	m := &etcdraft.Metadata{}
+	if err := proto.Unmarshal(oc.ConsensusMetadata(), m); err != nil {
+		return err
+	}
+
+	for _, consenter := range m.Consenters {
+		if bytes.Equal(conCert, consenter.ServerTlsCert) || bytes.Equal(conCert, consenter.ClientTlsCert) {
+			return nil
+		}
+	}
+	return cluster.NotInChannelError
 }

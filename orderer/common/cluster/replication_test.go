@@ -27,6 +27,100 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParticipant(t *testing.T) {
+	for _, testCase := range []struct {
+		name                      string
+		heightsByEndpointsReturns map[string]uint64
+		latestBlockSeq            uint64
+		latestBlock               *common.Block
+		latestConfigBlockSeq      uint64
+		latestConfigBlock         *common.Block
+		expectedError             string
+		predicateReturns          error
+	}{
+		{
+			name:          "No available orderer",
+			expectedError: "no available orderer",
+		},
+		{
+			name: "Pulled block has no metadata",
+			heightsByEndpointsReturns: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock:    &common.Block{},
+			expectedError:  "no metadata in block",
+		},
+		{
+			name: "Pulled block has no last config sequence in metadata",
+			heightsByEndpointsReturns: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{1, 2, 3}},
+				},
+			},
+			expectedError: "no metadata in block",
+		},
+		{
+			name: "Pulled block's metadata is malformed",
+			heightsByEndpointsReturns: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{1, 2, 3}, {1, 2, 3}},
+				},
+			},
+			expectedError: "error unmarshaling metadata from" +
+				" block at index [LAST_CONFIG]: proto: common.Metadata: illegal tag 0 (wire type 1)",
+		},
+		{
+			name: "Pulled block's metadata is valid and has a last config",
+			heightsByEndpointsReturns: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{1, 2, 3}, utils.MarshalOrPanic(&common.Metadata{
+						Value: utils.MarshalOrPanic(&common.LastConfig{
+							Index: 42,
+						}),
+					})},
+				},
+			},
+			latestConfigBlockSeq: 42,
+			latestConfigBlock:    &common.Block{Header: &common.BlockHeader{Number: 42}},
+			predicateReturns:     cluster.NotInChannelError,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			configBlocks := make(chan *common.Block, 1)
+			predicate := func(configBlock *common.Block) error {
+				configBlocks <- configBlock
+				return testCase.predicateReturns
+			}
+			puller := &mocks.ChainPuller{}
+			puller.On("HeightsByEndpoints").Return(testCase.heightsByEndpointsReturns)
+			puller.On("PullBlock", testCase.latestBlockSeq).Return(testCase.latestBlock)
+			puller.On("PullBlock", testCase.latestConfigBlockSeq).Return(testCase.latestConfigBlock)
+
+			err := cluster.Participant(puller, predicate)
+			if testCase.expectedError != "" {
+				assert.EqualError(t, err, testCase.expectedError)
+				assert.Len(t, configBlocks, 0)
+			} else {
+				assert.Len(t, configBlocks, 1)
+				assert.Equal(t, err, testCase.predicateReturns)
+			}
+		})
+	}
+}
+
 func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
 	assert.NoError(t, err)

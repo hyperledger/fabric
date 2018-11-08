@@ -14,6 +14,22 @@ func (_m *ChainPuller) Close() {
 	_m.Called()
 }
 
+// HeightsByEndpoints provides a mock function with given fields:
+func (_m *ChainPuller) HeightsByEndpoints() map[string]uint64 {
+	ret := _m.Called()
+
+	var r0 map[string]uint64
+	if rf, ok := ret.Get(0).(func() map[string]uint64); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]uint64)
+		}
+	}
+
+	return r0
+}
+
 // PullBlock provides a mock function with given fields: seq
 func (_m *ChainPuller) PullBlock(seq uint64) *common.Block {
 	ret := _m.Called(seq)
