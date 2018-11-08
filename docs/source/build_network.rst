@@ -173,7 +173,8 @@ chaincode, pass the following command instead:
   ./byfn.sh up -l node
 
 .. note:: For more information on the Node.js shim, please refer to its
-          `documentation <https://fabric-shim.github.io/fabric-shim.ChaincodeInterface.html>`_.
+          `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
+
 
 .. note:: For more information on the Java shim, please refer to its
           `documentation <https://fabric-chaincode-java.github.io/org/hyperledger/fabric/shim/Chaincode.html>`_.
