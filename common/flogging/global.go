@@ -59,7 +59,7 @@ func MustGetLogger(module string) *FabricLogger {
 	return Global.Logger(module)
 }
 
-// ActivateSpec is used to acivate a logging specification.
+// ActivateSpec is used to activate a logging specification.
 func ActivateSpec(spec string) {
 	err := Global.ActivateSpec(spec)
 	if err != nil {

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package flogging
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -31,7 +32,7 @@ type Config struct {
 	// LogSpec determines the log levels that are enabled for the logging system. The
 	// spec must be in a format that can be processed by ActivateSpec.
 	//
-	// If LogSpec is not provided, modules will be enabled at the INFO level.
+	// If LogSpec is not provided, loggers will be enabled at the INFO level.
 	LogSpec string
 
 	// Writer is the sink for encoded and formatted log records.
@@ -182,17 +183,19 @@ func (s *Logging) Encoding() Encoding {
 	return e
 }
 
-// ZapLogger instantiates a new zap.Logger for the specified module. The module
-// becomes the name of the logger and is used to determine which log levels are
-// enabled.
-func (s *Logging) ZapLogger(module string) *zap.Logger {
+// ZapLogger instantiates a new zap.Logger with the specified name. The name is
+// used to determine which log levels are enabled.
+func (s *Logging) ZapLogger(name string) *zap.Logger {
+	if !isValidLoggerName(name) {
+		panic(fmt.Sprintf("invalid logger name: %s", name))
+	}
+
+	// always return true here because the core's Check()
+	// method computes the level for the logger name based
+	// on the active logging spec
+	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool { return true })
+
 	s.mutex.RLock()
-	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-		// always return true here because the core's Check()
-		// method computes the level for the logger name based
-		// on the active logging spec
-		return true
-	})
 	core := &Core{
 		LevelEnabler: levelEnabler,
 		Levels:       s.ModuleLevels,
@@ -205,13 +208,12 @@ func (s *Logging) ZapLogger(module string) *zap.Logger {
 	}
 	s.mutex.RUnlock()
 
-	return NewZapLogger(core).Named(module)
+	return NewZapLogger(core).Named(name)
 }
 
-// Logger instantiates a new FabricLogger for the specified module. The module
-// becomes the name of the logger and is used to determine which log levels are
-// enabled.
-func (s *Logging) Logger(module string) *FabricLogger {
-	zl := s.ZapLogger(module)
+// Logger instantiates a new FabricLogger with the specified name. The name is
+// used to determine which log levels are enabled.
+func (s *Logging) Logger(name string) *FabricLogger {
+	zl := s.ZapLogger(name)
 	return NewFabricLogger(zl)
 }

@@ -9,6 +9,7 @@ package flogging_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -78,4 +79,14 @@ func TestNamedLogger(t *testing.T) {
 		assert.NotContains(t, buf.String(), "from foo")
 		assert.Contains(t, buf.String(), "from bar")
 	})
+}
+
+func TestInvalidLoggerName(t *testing.T) {
+	names := []string{"test*", ".test", "test.", ".", ""}
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			msg := fmt.Sprintf("invalid logger name: %s", name)
+			assert.PanicsWithValue(t, msg, func() { flogging.MustGetLogger(name) })
+		})
+	}
 }
