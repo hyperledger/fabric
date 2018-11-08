@@ -74,7 +74,7 @@ func TestLegacyInitFromSpec(t *testing.T) {
 			assert.Equal(t, tc.expectedResult, l)
 
 			for k, v := range tc.expectedLevels {
-				assert.Equal(t, v, flogging.GetModuleLevel(k))
+				assert.Equal(t, v, flogging.GetLoggerLevel(k))
 			}
 		})
 	}

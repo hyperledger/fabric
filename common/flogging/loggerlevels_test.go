@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func TestModuleLevelsActivateSpec(t *testing.T) {
+func TestLoggerLevelsActivateSpec(t *testing.T) {
 	var tests = []struct {
 		spec                 string
 		expectedLevels       map[string]zapcore.Level
@@ -94,19 +94,19 @@ func TestModuleLevelsActivateSpec(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
-			ml := &flogging.ModuleLevels{}
+			ll := &flogging.LoggerLevels{}
 
-			err := ml.ActivateSpec(tc.spec)
+			err := ll.ActivateSpec(tc.spec)
 			assert.NoError(t, err)
-			assert.Equal(t, tc.expectedDefaultLevel, ml.DefaultLevel())
+			assert.Equal(t, tc.expectedDefaultLevel, ll.DefaultLevel())
 			for name, lvl := range tc.expectedLevels {
-				assert.Equal(t, lvl, ml.Level(name))
+				assert.Equal(t, lvl, ll.Level(name))
 			}
 		})
 	}
 }
 
-func TestModuleLevelsActivateSpecErrors(t *testing.T) {
+func TestLoggerLevelsActivateSpecErrors(t *testing.T) {
 	var tests = []struct {
 		spec string
 		err  error
@@ -120,19 +120,19 @@ func TestModuleLevelsActivateSpecErrors(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
-			ml := &flogging.ModuleLevels{}
-			err := ml.ActivateSpec("fatal:a=warn")
+			ll := &flogging.LoggerLevels{}
+			err := ll.ActivateSpec("fatal:a=warn")
 
-			err = ml.ActivateSpec(tc.spec)
+			err = ll.ActivateSpec(tc.spec)
 			assert.EqualError(t, err, tc.err.Error())
 
-			assert.Equal(t, zapcore.FatalLevel, ml.DefaultLevel(), "default should not change")
-			assert.Equal(t, zapcore.WarnLevel, ml.Level("a.b"), "log levels should not change")
+			assert.Equal(t, zapcore.FatalLevel, ll.DefaultLevel(), "default should not change")
+			assert.Equal(t, zapcore.WarnLevel, ll.Level("a.b"), "log levels should not change")
 		})
 	}
 }
 
-func TestModuleLevelSpec(t *testing.T) {
+func TestSpec(t *testing.T) {
 	var tests = []struct {
 		input  string
 		output string
@@ -148,10 +148,10 @@ func TestModuleLevelSpec(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		ml := &flogging.ModuleLevels{}
-		err := ml.ActivateSpec(tc.input)
+		ll := &flogging.LoggerLevels{}
+		err := ll.ActivateSpec(tc.input)
 		assert.NoError(t, err)
 
-		assert.Equal(t, tc.output, ml.Spec())
+		assert.Equal(t, tc.output, ll.Spec())
 	}
 }

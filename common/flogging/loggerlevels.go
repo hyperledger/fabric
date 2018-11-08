@@ -17,8 +17,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// ModuleLevels tracks the logging level of logging modules.
-type ModuleLevels struct {
+// LoggerLevels tracks the logging level of named loggers.
+type LoggerLevels struct {
 	defaultLevel zapcore.Level
 
 	mutex      sync.RWMutex
@@ -26,22 +26,22 @@ type ModuleLevels struct {
 	specs      map[string]zapcore.Level
 }
 
-// DefaultLevel returns the default logging level for modules that do not have
+// DefaultLevel returns the default logging level for loggers that do not have
 // an explicit level set.
-func (m *ModuleLevels) DefaultLevel() zapcore.Level {
-	m.mutex.RLock()
-	l := m.defaultLevel
-	m.mutex.RUnlock()
-	return l
+func (l *LoggerLevels) DefaultLevel() zapcore.Level {
+	l.mutex.RLock()
+	lvl := l.defaultLevel
+	l.mutex.RUnlock()
+	return lvl
 }
 
 // ActivateSpec is used to modify logging levels.
 //
 // The logging specification has the following form:
 //   [<logger>[,<logger>...]=]<level>[:[<logger>[,<logger>...]=]<level>...]
-func (m *ModuleLevels) ActivateSpec(spec string) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+func (l *LoggerLevels) ActivateSpec(spec string) error {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 
 	defaultLevel := zapcore.InfoLevel
 	specs := map[string]zapcore.Level{}
@@ -80,9 +80,9 @@ func (m *ModuleLevels) ActivateSpec(spec string) error {
 		}
 	}
 
-	m.defaultLevel = defaultLevel
-	m.specs = specs
-	m.levelCache = map[string]zapcore.Level{}
+	l.defaultLevel = defaultLevel
+	l.specs = specs
+	l.levelCache = map[string]zapcore.Level{}
 
 	return nil
 }
@@ -101,31 +101,31 @@ func isValidLoggerName(loggerName string) bool {
 // Level returns the effective logging level for a logger. If a level has not
 // been explicitly set for the logger, the default logging level will be
 // returned.
-func (m *ModuleLevels) Level(loggerName string) zapcore.Level {
-	if level, ok := m.cachedLevel(loggerName); ok {
+func (l *LoggerLevels) Level(loggerName string) zapcore.Level {
+	if level, ok := l.cachedLevel(loggerName); ok {
 		return level
 	}
 
-	m.mutex.Lock()
-	level := m.calculateLevel(loggerName)
-	m.levelCache[loggerName] = level
-	m.mutex.Unlock()
+	l.mutex.Lock()
+	level := l.calculateLevel(loggerName)
+	l.levelCache[loggerName] = level
+	l.mutex.Unlock()
 
 	return level
 }
 
 // calculateLevel walks the logger name back to find the appropriate
 // log level from the current spec.
-func (m *ModuleLevels) calculateLevel(loggerName string) zapcore.Level {
+func (l *LoggerLevels) calculateLevel(loggerName string) zapcore.Level {
 	candidate := loggerName + "."
 	for {
-		if lvl, ok := m.specs[candidate]; ok {
+		if lvl, ok := l.specs[candidate]; ok {
 			return lvl
 		}
 
 		idx := strings.LastIndex(candidate, ".")
 		if idx <= 0 {
-			return m.defaultLevel
+			return l.defaultLevel
 		}
 		candidate = candidate[:idx]
 	}
@@ -133,25 +133,25 @@ func (m *ModuleLevels) calculateLevel(loggerName string) zapcore.Level {
 
 // cachedLevel attempts to retrieve the effective log level for a logger from the
 // cache. If the logger is not found, ok will be false.
-func (m *ModuleLevels) cachedLevel(loggerName string) (lvl zapcore.Level, ok bool) {
-	m.mutex.RLock()
-	level, ok := m.levelCache[loggerName]
-	m.mutex.RUnlock()
+func (l *LoggerLevels) cachedLevel(loggerName string) (lvl zapcore.Level, ok bool) {
+	l.mutex.RLock()
+	level, ok := l.levelCache[loggerName]
+	l.mutex.RUnlock()
 	return level, ok
 }
 
 // Spec returns a normalized version of the active logging spec.
-func (m *ModuleLevels) Spec() string {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+func (l *LoggerLevels) Spec() string {
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
 
 	var fields []string
-	for k, v := range m.specs {
+	for k, v := range l.specs {
 		fields = append(fields, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	sort.Strings(fields)
-	fields = append(fields, m.defaultLevel.String())
+	fields = append(fields, l.defaultLevel.String())
 
 	return strings.Join(fields, ":")
 }
