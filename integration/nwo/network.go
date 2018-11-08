@@ -863,7 +863,7 @@ func (n *Network) BrokerGroupRunner() ifrit.Runner {
 
 // OrdererRunner returns an ifrit.Runner for the specified orderer. The runner
 // can be used to start and manage an orderer process.
-func (n *Network) OrdererRunner(o *Orderer) ifrit.Runner {
+func (n *Network) OrdererRunner(o *Orderer) *ginkgomon.Runner {
 	cmd := exec.Command(n.Components.Orderer())
 	cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", n.OrdererDir(o)))
 
@@ -895,7 +895,7 @@ func (n *Network) OrdererGroupRunner() ifrit.Runner {
 
 // PeerRunner returns an ifrit.Runner for the specified peer. The runner can be
 // used to start and manage a peer process.
-func (n *Network) PeerRunner(p *Peer) ifrit.Runner {
+func (n *Network) PeerRunner(p *Peer) *ginkgomon.Runner {
 	cmd := n.peerCommand(
 		commands.NodeStart{PeerID: p.ID()},
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
