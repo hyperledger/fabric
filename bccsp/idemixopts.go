@@ -79,12 +79,20 @@ type IdemixCredentialRequestSignerOpts struct {
 	// Attributes contains a list of indices of the attributes to be included in the
 	// credential. The indices are with the respect to IdemixIssuerKeyGenOpts#AttributeNames.
 	Attributes []int
+	// IssuerPK is the public-key of the issuer
+	IssuerPK Key
 	// HashFun is the hash function to be used
 	H crypto.Hash
 }
 
 func (o *IdemixCredentialRequestSignerOpts) HashFunc() crypto.Hash {
 	return o.H
+}
+
+// IssuerPublicKey returns the issuer public key used to derive
+// a new unlinkable pseudonym from a credential secret key
+func (o *IdemixCredentialRequestSignerOpts) IssuerPublicKey() Key {
+	return o.IssuerPK
 }
 
 // IdemixCredentialSignerOpts contains the options to produce a credential starting from a credential request

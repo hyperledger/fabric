@@ -48,3 +48,14 @@ type User interface {
 	// MakeNym creates a new unlinkable pseudonym
 	MakeNym(sk Big, key IssuerPublicKey) (Ecp, Big, error)
 }
+
+// CredRequest is a local interface to decouple from the idemix implementation
+// of the issuance of credential requests.
+type CredRequest interface {
+	// Sign creates a new Credential Request, the first message of the interactive credential issuance protocol
+	// (from user to issuer)
+	Sign(sk Big, ipk IssuerPublicKey) ([]byte, error)
+
+	// Verify verifies the credential request
+	Verify(credRequest []byte, ipk IssuerPublicKey) error
+}

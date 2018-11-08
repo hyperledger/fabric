@@ -18,6 +18,7 @@ import (
 //go:generate counterfeiter -o mock/user.go -fake-name User . User
 //go:generate counterfeiter -o mock/big.go -fake-name Big . Big
 //go:generate counterfeiter -o mock/ecp.go -fake-name Ecp . Ecp
+//go:generate counterfeiter -o mock/credrequest.go -fake-name CredRequest . CredRequest
 
 func TestPlain(t *testing.T) {
 	RegisterFailHandler(Fail)
