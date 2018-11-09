@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -19,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
@@ -108,7 +110,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	alwaysValidKVFunc := func(key string, value []byte) error {
 		return nil
 	}
-	actualPreProcessedBlock, err := preprocessProtoBlock(nil, alwaysValidKVFunc, block, false)
+	actualPreProcessedBlock, _, err := preprocessProtoBlock(nil, alwaysValidKVFunc, block, false)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPerProcessedBlock, actualPreProcessedBlock)
 
@@ -145,21 +147,21 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// good block
 	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
-	_, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.NoError(t, err)
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
-	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad payload
 	gb = testutil.ConstructTestBlock(t, 12, 1, 1)
 	envBytes, _ := putils.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad channel header
@@ -169,7 +171,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	})
 	envBytes, _ = putils.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 
@@ -183,7 +185,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	flags := lutils.NewTxValidationFlags(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
-	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.NoError(t, err) // invalid filter should take precendence
 
 	// new block
@@ -201,7 +203,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	l, recorder := floggingtest.NewTestLogger(t)
 	logger = l
 
-	_, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
+	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false)
 	assert.NoError(t, err)
 	expected := fmt.Sprintf(
 		"Channel [%s]: Block [%d] Transaction index [%d] TxId [%s] marked as invalid by committer. Reason code [%s]",
@@ -238,7 +240,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 	assert.True(t, txfilter.IsValid(0))
 	assert.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
 
-	internalBlock, err := preprocessProtoBlock(nil, kvValidationFunc, block, false)
+	internalBlock, _, err := preprocessProtoBlock(nil, kvValidationFunc, block, false)
 	assert.NoError(t, err)
 	assert.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
 	assert.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
@@ -296,6 +298,132 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	)
 }
 
+func TestTxStatsInfoWithConfigTx(t *testing.T) {
+	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv.Init(t)
+	defer testDBEnv.Cleanup()
+	testDB := testDBEnv.GetDBHandle("emptydb")
+	v := NewStatebasedValidator(nil, testDB)
+
+	gb := testutil.ConstructTestBlocks(t, 1)[0]
+	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
+	assert.NoError(t, err)
+	expectedTxStatInfo := []*txmgr.TxStatInfo{
+		{
+			TxType:         common.HeaderType_CONFIG,
+			ValidationCode: peer.TxValidationCode_VALID,
+		},
+	}
+	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
+	assert.Equal(t, expectedTxStatInfo, txStatsInfo)
+}
+
+func TestTxStatsInfo(t *testing.T) {
+	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv.Init(t)
+	defer testDBEnv.Cleanup()
+	testDB := testDBEnv.GetDBHandle("emptydb")
+	v := NewStatebasedValidator(nil, testDB)
+
+	// create a block with 4 endorser transactions
+	tx1SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+		&testRwset{
+			writes: []*testKeyWrite{
+				{ns: "ns1", key: "key1", val: "val1"},
+			},
+		},
+	)
+	tx2SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+		&testRwset{
+			reads: []*testKeyRead{
+				{ns: "ns1", key: "key1", version: nil}, // should cause mvcc read-conflict with tx1
+			},
+		},
+	)
+	tx3SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+		&testRwset{
+			writes: []*testKeyWrite{
+				{ns: "ns1", key: "key2", val: "val2"},
+			},
+		},
+	)
+	tx4SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+		&testRwset{
+			writes: []*testKeyWrite{
+				{ns: "ns1", coll: "coll1", key: "key1", val: "val1"},
+				{ns: "ns1", coll: "coll2", key: "key1", val: "val1"},
+			},
+		},
+	)
+
+	blockDetails := &testutil.BlockDetails{
+		BlockNum:     5,
+		PreviousHash: []byte("previousHash"),
+		Txs: []*testutil.TxDetails{
+			{
+				TxID:              "tx_1",
+				ChaincodeName:     "cc_1",
+				ChaincodeVersion:  "cc_1_v1",
+				SimulationResults: tx1SimulationResults,
+			},
+			{
+				TxID:              "tx_2",
+				ChaincodeName:     "cc_2",
+				ChaincodeVersion:  "cc_2_v1",
+				SimulationResults: tx2SimulationResults,
+			},
+			{
+				TxID:              "tx_3",
+				ChaincodeName:     "cc_3",
+				ChaincodeVersion:  "cc_3_v1",
+				SimulationResults: tx3SimulationResults,
+			},
+			{
+				TxID:              "tx_4",
+				ChaincodeName:     "cc_4",
+				ChaincodeVersion:  "cc_4_v1",
+				SimulationResults: tx4SimulationResults,
+			},
+		},
+	}
+
+	block := testutil.ConstructBlockFromBlockDetails(t, blockDetails, false)
+	txsFilter := lutils.NewTxValidationFlags(4)
+	txsFilter.SetFlag(0, peer.TxValidationCode_VALID)
+	txsFilter.SetFlag(1, peer.TxValidationCode_VALID)
+	txsFilter.SetFlag(2, peer.TxValidationCode_BAD_PAYLOAD)
+	txsFilter.SetFlag(3, peer.TxValidationCode_VALID)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+
+	// collect the validation stats for the block and check against the expected stats
+	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: block}, true)
+	assert.NoError(t, err)
+	expectedTxStatInfo := []*txmgr.TxStatInfo{
+		{
+			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
+			ValidationCode: peer.TxValidationCode_VALID,
+			ChaincodeID:    &peer.ChaincodeID{Name: "cc_1", Version: "cc_1_v1"},
+		},
+		{
+			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
+			ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			ChaincodeID:    &peer.ChaincodeID{Name: "cc_2", Version: "cc_2_v1"},
+		},
+		{
+			TxType:         -1,
+			ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
+		},
+		{
+			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
+			ValidationCode: peer.TxValidationCode_VALID,
+			ChaincodeID:    &peer.ChaincodeID{Name: "cc_4", Version: "cc_4_v1"},
+			NumCollections: 2,
+		},
+	}
+	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
+	assert.Equal(t, expectedTxStatInfo, txStatsInfo)
+}
+
 // from go-logging memory_test.go
 func memoryRecordN(b *logging.MemoryBackend, n int) *logging.Record {
 	node := b.Head()
@@ -337,4 +465,51 @@ func testutilSampleTxSimulationResults(t *testing.T, key string) *ledger.TxSimul
 	}
 
 	return pubAndPvtSimulationResults
+}
+
+type testKeyRead struct {
+	ns, coll, key string
+	version       *version.Height
+}
+type testKeyWrite struct {
+	ns, coll, key string
+	val           string
+}
+type testRwset struct {
+	reads  []*testKeyRead
+	writes []*testKeyWrite
+}
+
+func testutilGenerateTxSimulationResults(t *testing.T, rwsetInfo *testRwset) *ledger.TxSimulationResults {
+	rwSetBuilder := rwsetutil.NewRWSetBuilder()
+	for _, r := range rwsetInfo.reads {
+		if r.coll == "" {
+			rwSetBuilder.AddToReadSet(r.ns, r.key, r.version)
+		} else {
+			rwSetBuilder.AddToHashedReadSet(r.ns, r.coll, r.key, r.version)
+		}
+	}
+
+	for _, w := range rwsetInfo.writes {
+		if w.coll == "" {
+			rwSetBuilder.AddToWriteSet(w.ns, w.key, []byte(w.val))
+		} else {
+			rwSetBuilder.AddToPvtAndHashedWriteSet(w.ns, w.coll, w.key, []byte(w.val))
+		}
+	}
+	simulationResults, err := rwSetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	return simulationResults
+}
+
+func testutilGenerateTxSimulationResultsAsBytes(
+	t *testing.T, rwsetInfo *testRwset) (
+	publicSimulationRes []byte, pvtWS []byte,
+) {
+	simulationRes := testutilGenerateTxSimulationResults(t, rwsetInfo)
+	pub, err := simulationRes.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	pvt, err := simulationRes.GetPvtSimulationBytes()
+	assert.NoError(t, err)
+	return pub, pvt
 }

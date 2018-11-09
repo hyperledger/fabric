@@ -232,6 +232,19 @@ func collHashedRwSetFromProtoMsg(protoMsg *rwset.CollectionHashedReadWriteSet) (
 	return colHashedRwSet, nil
 }
 
+func (txRwSet *TxRwSet) NumCollections() int {
+	if txRwSet == nil {
+		return 0
+	}
+	numColls := 0
+	for _, nsRwset := range txRwSet.NsRwSets {
+		for range nsRwset.CollHashedRwSets {
+			numColls++
+		}
+	}
+	return numColls
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // functions for private read-write set
 ///////////////////////////////////////////////////////////////////////////////

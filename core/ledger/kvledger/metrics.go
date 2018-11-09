@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 )
 
 type stats struct {
@@ -60,18 +59,29 @@ func (s *ledgerStats) updateStatedbCommitTime(timeTaken time.Duration) {
 	s.stats.statedbCommitTime.With("channel_name", s.ledgerid).Observe(timeTaken.Seconds())
 }
 
-func (s *ledgerStats) updateTransactionCounts(
-	transactionType common.HeaderType,
-	chaincodeName string,
-	validatioCode peer.TxValidationCode,
+func (s *ledgerStats) updateTransactionsStats(
+	txstatsInfo []*txmgr.TxStatInfo,
 ) {
-	s.stats.transactionsCount.
-		With(s.ledgerid,
-			transactionType.String(),
-			chaincodeName,
-			validatioCode.String(),
-		).
-		Add(1)
+	for _, txstat := range txstatsInfo {
+		transactionTypeStr := "CouldNotDetermine"
+		if txstat.TxType != -1 {
+			transactionTypeStr = txstat.TxType.String()
+		}
+
+		chaincodeName := ""
+		if txstat.ChaincodeID != nil {
+			chaincodeName = txstat.ChaincodeID.Name
+		}
+
+		s.stats.transactionsCount.
+			With(
+				"channel_name", s.ledgerid,
+				"transaction_type", transactionTypeStr,
+				"chaincode_name", chaincodeName,
+				"validation_code", txstat.ValidationCode.String(),
+			).
+			Add(1)
+	}
 }
 
 var (
@@ -119,7 +129,7 @@ var (
 		Subsystem:    "",
 		Name:         "transaction_counts",
 		Help:         "Number of transactions processed.",
-		LabelNames:   []string{"channel_name", "transaction_type", "chaincode", "validation_code"},
-		StatsdFormat: "%{#fqname}.%{channel_name}.%{transaction_type}.%{chaincode}.%{validation_code}",
+		LabelNames:   []string{"channel_name", "transaction_type", "chaincode_name", "validation_code"},
+		StatsdFormat: "%{#fqname}.%{channel_name}.%{transaction_type}.%{chaincode_name}.%{validation_code}",
 	}
 )
