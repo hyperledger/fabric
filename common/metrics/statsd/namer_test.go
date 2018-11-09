@@ -66,6 +66,34 @@ var _ = Describe("This is the thing", func() {
 		})
 	})
 
+	Context("when label values contain invalid characters", func() {
+		It("replaces them with underscores", func() {
+			name := n.Format("alpha", ":colon:colon:", "bravo", "|bar|bar|")
+			Expect(name).To(Equal("prefix.namespace.subsystem.name._colon_colon_.bravo._bar_bar_.suffix"))
+		})
+	})
+
+	Context("when label values contain new line, spaces, or tabs", func() {
+		It("replaces them with underscores", func() {
+			name := n.Format("alpha", "a\nb\tc", "bravo", "b c")
+			Expect(name).To(Equal("prefix.namespace.subsystem.name.a_b_c.bravo.b_c.suffix"))
+		})
+	})
+
+	Context("when label values contain periods", func() {
+		It("replaces them with underscores", func() {
+			name := n.Format("alpha", "period.period", "bravo", "...")
+			Expect(name).To(Equal("prefix.namespace.subsystem.name.period_period.bravo.___.suffix"))
+		})
+	})
+
+	Context("when label values contain multi-byte utf8 runes", func() {
+		It("leaves them alone", func() {
+			name := n.Format("alpha", "Ʊpsilon", "bravo", "b")
+			Expect(name).To(Equal("prefix.namespace.subsystem.name.Ʊpsilon.bravo.b.suffix"))
+		})
+	})
+
 	DescribeTable("#fqname",
 		func(n *namer, expectedName string) {
 			n.nameFormat = "%{#fqname}"

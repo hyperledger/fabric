@@ -54,6 +54,7 @@ func (n *namer) labelsToMap(labelValues []string) map[string]string {
 }
 
 var formatRegexp = regexp.MustCompile(`%{([#?[:alnum:]_]+)}`)
+var invalidLabelValueRegexp = regexp.MustCompile(`[.|:\s]`)
 
 func (n *namer) Format(labelValues ...string) string {
 	labels := n.labelsToMap(labelValues)
@@ -87,6 +88,7 @@ func (n *namer) Format(labelValues ...string) string {
 			if !ok {
 				panic(fmt.Sprintf("invalid label in name format: %s", key))
 			}
+			value = invalidLabelValueRegexp.ReplaceAllString(value, "_")
 		}
 		segments = append(segments, value)
 
