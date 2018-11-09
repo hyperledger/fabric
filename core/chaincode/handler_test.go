@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -42,6 +43,9 @@ var _ = Describe("Handler", func() {
 		fakeLedgerGetter               *mock.LedgerGetter
 		fakeHandlerRegistry            *fake.Registry
 		fakeApplicationConfigRetriever *fake.ApplicationConfigRetriever
+		fakeShimRequestsReceived       *metricsfakes.Counter
+		fakeShimRequestsCompleted      *metricsfakes.Counter
+		fakeShimRequestDuration        *metricsfakes.Histogram
 
 		responseNotifier chan *pb.ChaincodeMessage
 		txContext        *chaincode.TransactionContext
@@ -84,6 +88,19 @@ var _ = Describe("Handler", func() {
 		}
 		fakeApplicationConfigRetriever.GetApplicationConfigReturns(applicationCapability, true)
 
+		fakeShimRequestsReceived = &metricsfakes.Counter{}
+		fakeShimRequestsReceived.WithReturns(fakeShimRequestsReceived)
+		fakeShimRequestsCompleted = &metricsfakes.Counter{}
+		fakeShimRequestsCompleted.WithReturns(fakeShimRequestsCompleted)
+		fakeShimRequestDuration = &metricsfakes.Histogram{}
+		fakeShimRequestDuration.WithReturns(fakeShimRequestDuration)
+
+		chaincodeMetrics := &chaincode.Metrics{
+			ShimRequestsReceived:  fakeShimRequestsReceived,
+			ShimRequestsCompleted: fakeShimRequestsCompleted,
+			ShimRequestDuration:   fakeShimRequestDuration,
+		}
+
 		handler = &chaincode.Handler{
 			ACLProvider:                fakeACLProvider,
 			ActiveTransactions:         fakeTransactionRegistry,
@@ -100,9 +117,10 @@ var _ = Describe("Handler", func() {
 				return "generated-query-id"
 			}),
 			AppConfig: fakeApplicationConfigRetriever,
+			Metrics:   chaincodeMetrics,
 		}
 		chaincode.SetHandlerChatStream(handler, fakeChatStream)
-		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "test-handler-name"})
+		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "test-handler-name", Version: "1.0"})
 		chaincode.SetHandlerCCInstance(handler, &sysccprovider.ChaincodeInstance{ChaincodeName: "cc-instance-name"})
 	})
 
@@ -178,7 +196,99 @@ var _ = Describe("Handler", func() {
 			Expect(transactionID).To(Equal("tx-id"))
 		})
 
-		Context("wwhen the transaction ID has already been regustered", func() {
+		It("records shim requests received before requests completed", func() {
+			fakeShimRequestsReceived.AddStub = func(delta float64) {
+				defer GinkgoRecover()
+				Expect(fakeShimRequestsCompleted.AddCallCount()).To(Equal(0))
+			}
+
+			handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
+			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
+			msg := fakeChatStream.SendArgsForCall(0)
+			Expect(msg).To(Equal(expectedResponse))
+
+			Expect(fakeShimRequestsReceived.WithCallCount()).To(Equal(1))
+			labelValues := fakeShimRequestsReceived.WithArgsForCall(0)
+			Expect(labelValues).To(Equal([]string{
+				"type", "GET_STATE",
+				"channel", "channel-id",
+				"chaincode", "test-handler-name:1.0",
+			}))
+			Expect(fakeShimRequestsReceived.AddCallCount()).To(Equal(1))
+			Expect(fakeShimRequestsReceived.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+		})
+
+		It("records transactions completed after transactions received", func() {
+			fakeShimRequestsCompleted.AddStub = func(delta float64) {
+				defer GinkgoRecover()
+				Expect(fakeShimRequestsReceived.AddCallCount()).To(Equal(1))
+			}
+
+			handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
+			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
+
+			Expect(fakeShimRequestsCompleted.WithCallCount()).To(Equal(1))
+			labelValues := fakeShimRequestsCompleted.WithArgsForCall(0)
+			Expect(labelValues).To(Equal([]string{
+				"type", "GET_STATE",
+				"channel", "channel-id",
+				"chaincode", "test-handler-name:1.0",
+				"success", "true",
+			}))
+			Expect(fakeShimRequestsCompleted.AddCallCount()).To(Equal(1))
+			Expect(fakeShimRequestsCompleted.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+		})
+
+		It("records transactions duration", func() {
+			handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
+			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
+
+			Expect(fakeShimRequestDuration.WithCallCount()).To(Equal(1))
+			labelValues := fakeShimRequestDuration.WithArgsForCall(0)
+			Expect(labelValues).To(Equal([]string{
+				"type", "GET_STATE",
+				"channel", "channel-id",
+				"chaincode", "test-handler-name:1.0",
+				"success", "true",
+			}))
+			Expect(fakeShimRequestDuration.ObserveArgsForCall(0)).NotTo(BeZero())
+			Expect(fakeShimRequestDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1.0))
+		})
+
+		Context("when the transaction returns an error", func() {
+			BeforeEach(func() {
+				fakeMessageHandler.HandleReturns(nil, errors.New("I am a total failure"))
+			})
+
+			It("records metrics with success=false", func() {
+				handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
+				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
+
+				Expect(fakeShimRequestsCompleted.WithCallCount()).To(Equal(1))
+				labelValues := fakeShimRequestsCompleted.WithArgsForCall(0)
+				Expect(labelValues).To(Equal([]string{
+					"type", "GET_STATE",
+					"channel", "channel-id",
+					"chaincode", "test-handler-name:1.0",
+					"success", "false",
+				}))
+				Expect(fakeShimRequestsCompleted.AddCallCount()).To(Equal(1))
+				Expect(fakeShimRequestsCompleted.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+
+				Expect(fakeShimRequestDuration.WithCallCount()).To(Equal(1))
+				labelValues = fakeShimRequestDuration.WithArgsForCall(0)
+				Expect(labelValues).To(Equal([]string{
+					"type", "GET_STATE",
+					"channel", "channel-id",
+					"chaincode", "test-handler-name:1.0",
+					"success", "false",
+				}))
+				Expect(fakeShimRequestDuration.ObserveArgsForCall(0)).NotTo(BeZero())
+				Expect(fakeShimRequestDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1.0))
+			})
+		})
+
+		Context("when the transaction ID has already been registered", func() {
 			BeforeEach(func() {
 				fakeTransactionRegistry.AddReturns(false)
 			})

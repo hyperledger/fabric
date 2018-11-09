@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
@@ -234,6 +235,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		mp,
 		platforms.NewRegistry(&golang.Platform{}),
 		peer.DefaultSupport,
+		&disabled.Provider{},
 	)
 
 	// Init the policy checker

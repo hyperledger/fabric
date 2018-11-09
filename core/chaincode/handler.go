@@ -9,6 +9,7 @@ package chaincode
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -162,6 +163,8 @@ type Handler struct {
 	chatStream ccintf.ChaincodeStream
 	// errChan is used to communicate errors from the async send to the receive loop
 	errChan chan error
+	// Metrics holds chaincode metrics
+	Metrics *Metrics
 }
 
 // handleMessage is called by ProcessStream to dispatch messages.
@@ -244,6 +247,7 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 		return
 	}
 
+	startTime := time.Now()
 	var txContext *TransactionContext
 	var err error
 	if msg.Type == pb.ChaincodeMessage_INVOKE_CHAINCODE {
@@ -251,6 +255,13 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	} else {
 		txContext, err = h.isValidTxSim(msg.ChannelId, msg.Txid, "no ledger context")
 	}
+
+	chaincodeName := h.chaincodeID.Name + ":" + h.chaincodeID.Version
+	h.Metrics.ShimRequestsReceived.With(
+		"type", msg.Type.String(),
+		"channel", msg.ChannelId,
+		"chaincode", chaincodeName,
+	).Add(1)
 
 	var resp *pb.ChaincodeMessage
 	if err == nil {
@@ -266,6 +277,19 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
 	h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
 	h.serialSendAsync(resp)
+	duration := time.Since(startTime)
+	h.Metrics.ShimRequestDuration.With(
+		"type", msg.Type.String(),
+		"channel", msg.ChannelId,
+		"chaincode", chaincodeName,
+		"success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR),
+	).Observe(float64(duration) / float64(time.Second))
+	h.Metrics.ShimRequestsCompleted.With(
+		"type", msg.Type.String(),
+		"channel", msg.ChannelId,
+		"chaincode", chaincodeName,
+		"success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR),
+	).Add(1)
 }
 
 func shorttxid(txid string) string {
