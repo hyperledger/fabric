@@ -95,9 +95,31 @@ func (o *IdemixCredentialRequestSignerOpts) IssuerPublicKey() Key {
 	return o.IssuerPK
 }
 
+// IdemixAttributeType represents the type of an idemix attribute
+type IdemixAttributeType int
+
+const (
+	// IdemixHiddenAttribute represents an hidden attribute
+	IdemixHiddenAttribute IdemixAttributeType = iota
+	// IdemixStringAttribute represents a sequence of bytes
+	IdemixBytesAttribute
+	// IdemixIntAttribute represents an int
+	IdemixIntAttribute
+)
+
+type IdemixAttribute struct {
+	// Type is the attribute's type
+	Type IdemixAttributeType
+	// Value is the attribute's value
+	Value interface{}
+}
+
 // IdemixCredentialSignerOpts contains the options to produce a credential starting from a credential request
 type IdemixCredentialSignerOpts struct {
-	Attributes []int
+	// Attributes to include in the credentials. IdemixHiddenAttribute is not allowed here
+	Attributes []IdemixAttribute
+	// IssuerPK is the public-key of the issuer
+	IssuerPK Key
 	// HashFun is the hash function to be used
 	H crypto.Hash
 }
@@ -107,6 +129,10 @@ type IdemixCredentialSignerOpts struct {
 // hashing was done.
 func (o *IdemixCredentialSignerOpts) HashFunc() crypto.Hash {
 	return o.H
+}
+
+func (o *IdemixCredentialSignerOpts) IssuerPublicKey() Key {
+	return o.IssuerPK
 }
 
 // IdemixSignerOpts contains the options to generate an Idemix signature

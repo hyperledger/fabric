@@ -5,6 +5,8 @@ SPDX-License-Identifier: Apache-2.0
 */
 package idemix
 
+import "github.com/hyperledger/fabric/bccsp"
+
 // IssuerPublicKey is the issuer public key
 type IssuerPublicKey interface {
 
@@ -58,4 +60,18 @@ type CredRequest interface {
 
 	// Verify verifies the credential request
 	Verify(credRequest []byte, ipk IssuerPublicKey) error
+}
+
+// CredRequest is a local interface to decouple from the idemix implementation
+// of the issuance of credentials.
+type Credential interface {
+
+	// Sign issues a new credential, which is the last step of the interactive issuance protocol
+	// All attribute values are added by the issuer at this step and then signed together with a commitment to
+	// the user's secret key from a credential request
+	Sign(key IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error)
+
+	// Verify cryptographically verifies the credential by verifying the signature
+	// on the attribute values and user's secret key
+	Verify(sk Big, ipk IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error
 }
