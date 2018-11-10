@@ -194,7 +194,6 @@ func (v *TxValidator) Validate(block *common.Block) error {
 				if res.txsUpgradedChaincode != nil {
 					txsUpgradedChaincodes[res.tIdx] = res.txsUpgradedChaincode
 				}
-				logger.Error("res.txid", res.txid, "")
 				txidArray[res.tIdx] = res.txid
 			}
 		}
@@ -251,7 +250,6 @@ func markTXIdDuplicates(txids []string, txsfltr ledgerUtil.TxValidationFlags) {
 	txidMap := make(map[string]struct{})
 
 	for id, txid := range txids {
-		logger.Error(" txid", txid, "found")
 		if txid == "" {
 			continue
 		}
