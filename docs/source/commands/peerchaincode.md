@@ -67,10 +67,6 @@ flags are
 
   Transient map of arguments in JSON encoding
 
-* `--logging-level <string>`
-
-  Default logging level and overrides, see `core.yaml` for full syntax
-
 ## peer chaincode install
 ```
 Package the specified chaincode into a deployment spec and save it on the peer's path.
@@ -95,7 +91,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -131,7 +126,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -163,7 +157,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -193,7 +186,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -225,7 +217,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -257,7 +248,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -281,7 +271,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
@@ -318,7 +307,6 @@ Global Flags:
       --clientauth                          Use mutual TLS when communicating with the orderer endpoint
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      --logging-level string                Default logging level and overrides, see core.yaml for full syntax
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint

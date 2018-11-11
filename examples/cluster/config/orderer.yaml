@@ -37,10 +37,6 @@ General:
         ClientAuthRequired: false
         ClientRootCAs:
 
-    # Log Level: The level at which to log. This accepts logging specifications
-    # per: fabric/docs/Setup/logging-control.md
-    LogLevel: debug
-
     # Genesis method: The method by which the genesis block for the orderer
     # system channel is specified. Available options are "provisional", "file":
     #  - provisional: Utilizes a genesis profile, specified by GenesisProfile,

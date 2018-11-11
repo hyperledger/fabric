@@ -66,7 +66,3 @@ flags are
 * `--transient <string>`
 
   Transient map of arguments in JSON encoding
-
-* `--logging-level <string>`
-
-  Default logging level and overrides, see `core.yaml` for full syntax

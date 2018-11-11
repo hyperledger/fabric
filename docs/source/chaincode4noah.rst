@@ -332,16 +332,16 @@ Which shows output similar to the example below:
       upgrade     Upgrade chaincode.
 
     Flags:
-          --cafile string      Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      -h, --help               help for chaincode
-      -o, --orderer string     Ordering service endpoint
-          --tls                Use TLS when communicating with the orderer endpoint
-          --transient string   Transient map of arguments in JSON encoding
-
-    Global Flags:
-          --logging-level string       Default logging level and overrides, see core.yaml for full syntax
-          --test.coverprofile string   Done (default "coverage.cov")
-      -v, --version
+          --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
+          --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
+          --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+          --connTimeout duration                Timeout for client to connect (default 3s)
+      -h, --help                                help for chaincode
+          --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
+      -o, --orderer string                      Ordering service endpoint
+          --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+          --tls                                 Use TLS when communicating with the orderer endpoint
+          --transient string                    Transient map of arguments in JSON encoding
 
     Use "peer chaincode [command] --help" for more information about a command.
 
