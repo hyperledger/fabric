@@ -246,6 +246,25 @@ credential (or from two different ones).
 More details on the concepts and features of the Identity Mixer technology are
 described in the paper `Concepts and Languages for Privacy-Preserving Attribute-Based Authentication <https://link.springer.com/chapter/10.1007%2F978-3-642-37282-7_4>`_.
 
+Topology Information
+~~~~~~~~~~~~~~~~~~~~
+
+Given the above limitations, it is recommended to have only one Idemix-based MSP
+per channel or, at the extreme, per network. Indeed, for example, having multiple Idemix-based MSPs
+per channel would allow a party, reading the ledger of that channel, to tell apart
+transactions signed by parties belonging to different Idemix-based MSPs. This is because,
+each transaction leak the MSP-ID of the signer.
+In other words, Idemix currently provides only anonymity of clients among the same organization (MSP).
+
+In the future, Idemix could be extended to support anonymous hierarchies of Idemix-based
+Certification Authorities whose certified credentials can be verified by using a unique public-key,
+therefore achieving anonymity across organizations (MSPs).
+This would allow multiple Idemix-based MSPs to coexist in the same channel.
+
+In principal, a channel can be configured to have a single Idemix-based MSP and multiple
+X.509-based MSPs. Of course, the interaction between these MSP can potential
+leak information. An assessment of the leaked information need to be done case by case.wq
+
 Underlying cryptographic protocols
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
