@@ -121,10 +121,10 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	}
 
 	opts := Options{
-		RaftID:  id,
-		Clock:   clock.NewClock(),
-		Storage: raft.NewMemoryStorage(),
-		Logger:  c.Logger,
+		RaftID:        id,
+		Clock:         clock.NewClock(),
+		MemoryStorage: raft.NewMemoryStorage(),
+		Logger:        c.Logger,
 
 		TickInterval:    time.Duration(m.Options.TickInterval) * time.Millisecond,
 		ElectionTick:    int(m.Options.ElectionTick),
