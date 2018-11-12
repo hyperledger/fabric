@@ -119,7 +119,9 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	if g.conf.ExternalEndpoint == "" {
 		g.logger.Warning("External endpoint is empty, peer will not be accessible outside of its organization")
 	}
-
+	// Adding delta for handlePresumedDead and
+	// acceptMessages goRoutines to block on Wait
+	g.stopSignal.Add(2)
 	go g.start()
 	go g.connect2BootstrapPeers()
 
@@ -271,7 +273,6 @@ func (g *gossipServiceImpl) learnAnchorPeers(channel string, orgOfAnchorPeers ap
 
 func (g *gossipServiceImpl) handlePresumedDead() {
 	defer g.logger.Debug("Exiting")
-	g.stopSignal.Add(1)
 	defer g.stopSignal.Done()
 	for {
 		select {
@@ -319,7 +320,6 @@ func (g *gossipServiceImpl) start() {
 
 func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan proto.ReceivedMessage) {
 	defer g.logger.Debug("Exiting")
-	g.stopSignal.Add(1)
 	defer g.stopSignal.Done()
 	for {
 		select {
@@ -763,12 +763,6 @@ func (g *gossipServiceImpl) Stop() {
 	}
 	atomic.StoreInt32(&g.stopFlag, int32(1))
 	g.logger.Info("Stopping gossip")
-	comWG := sync.WaitGroup{}
-	comWG.Add(1)
-	go func() {
-		defer comWG.Done()
-		g.comm.Stop()
-	}()
 	g.chanState.stop()
 	g.discAdapter.close()
 	g.disc.Stop()
@@ -778,7 +772,7 @@ func (g *gossipServiceImpl) Stop() {
 	g.ChannelDeMultiplexer.Close()
 	g.stateInfoMsgStore.Stop()
 	g.stopSignal.Wait()
-	comWG.Wait()
+	g.comm.Stop()
 }
 
 func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
