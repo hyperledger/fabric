@@ -8,6 +8,9 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -16,16 +19,26 @@ import (
 	"os"
 	"time"
 
+	kitstatsd "github.com/go-kit/kit/metrics/statsd"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/httpadmin"
+	"github.com/hyperledger/fabric/common/grpclogging"
+	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/metrics/prometheus"
+	"github.com/hyperledger/fabric/common/metrics/statsd"
+	"github.com/hyperledger/fabric/common/metrics/statsd/goruntime"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/middleware"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
@@ -41,6 +54,8 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	prom "github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -84,7 +99,14 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	genesisBlock := extractGenesisBlock(conf)
 	clusterType := isClusterType(genesisBlock)
 	signer := localmsp.NewSigner()
-	serverConfig := initializeServerConfig(conf)
+
+	metricsProvider, metricsShutdown, err := initializeOperations(conf.Operations)
+	if err != nil {
+		panic(err)
+	}
+	defer metricsShutdown()
+
+	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
 	caSupport := &comm.CASupport{
 		AppRootCAsByChain:     make(map[string][][]byte),
@@ -193,7 +215,7 @@ func initializeClusterConfig(conf *localconfig.TopLevel) comm.ClientConfig {
 	return cc
 }
 
-func initializeServerConfig(conf *localconfig.TopLevel) comm.ServerConfig {
+func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.Provider) comm.ServerConfig {
 	// secure server config
 	secureOpts := &comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
@@ -247,7 +269,25 @@ func initializeServerConfig(conf *localconfig.TopLevel) comm.ServerConfig {
 	kaOpts.ServerInterval = conf.General.Keepalive.ServerInterval
 	kaOpts.ServerTimeout = conf.General.Keepalive.ServerTimeout
 
-	return comm.ServerConfig{SecOpts: secureOpts, KaOpts: kaOpts}
+	commLogger := flogging.MustGetLogger("core.comm").With("server", "Orderer")
+	if metricsProvider == nil {
+		metricsProvider = &disabled.Provider{}
+	}
+
+	return comm.ServerConfig{
+		SecOpts:         secureOpts,
+		KaOpts:          kaOpts,
+		Logger:          commLogger,
+		MetricsProvider: metricsProvider,
+		StreamInterceptors: []grpc.StreamServerInterceptor{
+			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		},
+		UnaryInterceptors: []grpc.UnaryServerInterceptor{
+			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
+			grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		},
+	}
 }
 
 func extractGenesisBlock(conf *localconfig.TopLevel) *cb.Block {
@@ -352,6 +392,145 @@ func initializeMultichannelRegistrar(isClusterType bool,
 	}
 	registrar.Initialize(consenters)
 	return registrar
+}
+
+// logFunc implements the go-kit Logger interface
+type logFunc func(keyvals ...interface{}) error
+
+// Log creates a log record
+func (l logFunc) Log(keyvals ...interface{}) error {
+	return l(keyvals...)
+}
+
+func initializeOperations(conf localconfig.Operations) (provider metrics.Provider, shutdown func(), err error) {
+	logger := flogging.MustGetLogger("metrics.provider")
+	kitLogger := logFunc(func(keyvals ...interface{}) error {
+		logger.Warn(keyvals...)
+		return nil
+	})
+
+	providerType := conf.Metrics.Provider
+	switch providerType {
+	case "statsd":
+		network := conf.Metrics.Statsd.Network
+		address := conf.Metrics.Statsd.Address
+		writeInterval := conf.Metrics.Statsd.WriteInterval
+		prefix := conf.Metrics.Statsd.Prefix
+		if prefix != "" {
+			prefix = prefix + "."
+		}
+
+		c, err := net.Dial(network, address)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.Close()
+
+		ks := kitstatsd.New(prefix, kitLogger)
+		statsdProvider := &statsd.Provider{Statsd: ks}
+		goCollector := goruntime.NewCollector(statsdProvider)
+
+		collectorTicker := time.NewTicker(writeInterval / 2)
+		go goCollector.CollectAndPublish(collectorTicker.C)
+
+		sendTicker := time.NewTicker(writeInterval)
+		go ks.SendLoop(sendTicker.C, network, address)
+
+		shutdown := func() {
+			sendTicker.Stop()
+			collectorTicker.Stop()
+		}
+		return statsdProvider, shutdown, nil
+
+	case "prometheus":
+		prometheusProvider := &prometheus.Provider{}
+
+		handlerPath := conf.Metrics.Prometheus.HandlerPath
+		address := conf.ListenAddress
+		tlsConfig, err := newTLSConfig(conf.TLS)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var chain middleware.Chain
+		if tlsConfig == nil || tlsConfig.ClientAuth != tls.RequireAndVerifyClientCert {
+			chain = middleware.NewChain(middleware.WithRequestID(util.GenerateUUID))
+		} else {
+			chain = middleware.NewChain(middleware.RequireCert(), middleware.WithRequestID(util.GenerateUUID))
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle(handlerPath, chain.Handler(prom.Handler()))
+		mux.Handle("/logspec", chain.Handler(httpadmin.NewSpecHandler()))
+
+		httpServer := &http.Server{
+			Addr:         address,
+			Handler:      mux,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 2 * time.Minute,
+		}
+
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			return nil, nil, err
+		}
+		if tlsConfig != nil {
+			listener = tls.NewListener(listener, tlsConfig)
+		}
+
+		go httpServer.Serve(listener)
+		shutdown := func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			httpServer.Shutdown(ctx)
+		}
+		return prometheusProvider, shutdown, nil
+
+	default:
+		if providerType != "disabled" {
+			logger.Warnf("Unknown provider type: %s; metrics disabled", providerType)
+		}
+
+		disabledProvider := &disabled.Provider{}
+		return disabledProvider, func() {}, nil
+	}
+}
+
+func newTLSConfig(conf localconfig.TLS) (*tls.Config, error) {
+	tlsEnabled := conf.Enabled
+	certificate := conf.Certificate
+	key := conf.PrivateKey
+	clientCertRequired := conf.ClientAuthRequired
+	caCerts := conf.ClientRootCAs
+
+	var tlsConfig *tls.Config
+	if tlsEnabled {
+		cert, err := tls.LoadX509KeyPair(certificate, key)
+		if err != nil {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		for _, caPath := range caCerts {
+			caPem, err := ioutil.ReadFile(caPath)
+			if err != nil {
+				return nil, err
+			}
+			caCertPool.AppendCertsFromPEM(caPem)
+		}
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			CipherSuites: comm.DefaultTLSCipherSuites,
+			ClientCAs:    caCertPool,
+			NextProtos:   []string{"h2", "http/1.1"},
+		}
+		if clientCertRequired {
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		} else {
+			tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
+		}
+	}
+
+	return tlsConfig, nil
 }
 
 func updateTrustedRoots(srv *comm.GRPCServer, rootCASupport *comm.CASupport,

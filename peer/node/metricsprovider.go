@@ -17,12 +17,15 @@ import (
 
 	kitstatsd "github.com/go-kit/kit/metrics/statsd"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/httpadmin"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/common/metrics/statsd"
 	"github.com/hyperledger/fabric/common/metrics/statsd/goruntime"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/middleware"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 )
@@ -45,13 +48,13 @@ func initializeMetrics() (provider metrics.Provider, shutdown func(), err error)
 		return nil
 	})
 
-	providerType := viper.GetString("metrics.provider")
+	providerType := viper.GetString("operations.metrics.provider")
 	switch providerType {
 	case "statsd":
-		network := viper.GetString("metrics.statsd.network")               // "udp"
-		address := viper.GetString("metrics.statsd.address")               // "127.0.0.1:8125"
-		writeInterval := viper.GetDuration("metrics.statsd.writeInterval") // 10s
-		prefix := viper.GetString("metrics.statsd.prefix")                 // "peer"
+		network := viper.GetString("operations.metrics.statsd.network")               // "udp"
+		address := viper.GetString("operations.metrics.statsd.address")               // "127.0.0.1:8125"
+		writeInterval := viper.GetDuration("operations.metrics.statsd.writeInterval") // 10s
+		prefix := viper.GetString("operations.metrics.statsd.prefix")                 // "peer"
 		if prefix != "" {
 			prefix = prefix + "."
 		}
@@ -81,46 +84,29 @@ func initializeMetrics() (provider metrics.Provider, shutdown func(), err error)
 	case "prometheus":
 		prometheusProvider := &prometheus.Provider{}
 
-		address := viper.GetString("metrics.prometheus.listenAddress")                   // listen address in host:port format
-		handlerPath := viper.GetString("metrics.prometheus.handlerPath")                 // the endpoint to associate
-		tlsEnabled := viper.GetBool("metrics.prometheus.tls.enabled")                    // enable TLS
-		certificate := viper.GetString("metrics.prometheus.tls.cert.file")               // public
-		key := viper.GetString("metrics.prometheus.tls.key.file")                        // private
-		clientCertRequired := viper.GetBool("metrics.prometheus.tls.clientAuthRequired") // require client certificate
-		caCerts := viper.GetStringSlice("metrics.prometheus.tls.clientRootCAs.files")    // trusted ca certificates
+		handlerPath := viper.GetString("operations.metrics.prometheus.handlerPath") // the endpoint to associate
+		address := viper.GetString("operations.listenAddress")                      // listen address in host:port format
+		tlsConfig, err := viperTLSConfig("operations.tls")
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var chain middleware.Chain
+		if tlsConfig == nil || tlsConfig.ClientAuth != tls.RequireAndVerifyClientCert {
+			chain = middleware.NewChain(middleware.WithRequestID(util.GenerateUUID))
+		} else {
+			chain = middleware.NewChain(middleware.RequireCert(), middleware.WithRequestID(util.GenerateUUID))
+		}
 
 		mux := http.NewServeMux()
-		mux.Handle(handlerPath, prom.Handler())
+		mux.Handle(handlerPath, chain.Handler(prom.Handler()))
+		mux.Handle("/logspec", chain.Handler(httpadmin.NewSpecHandler()))
+
 		httpServer := &http.Server{
 			Addr:         address,
 			Handler:      mux,
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 2 * time.Minute,
-		}
-
-		var tlsConfig *tls.Config
-		if tlsEnabled {
-			cert, err := tls.LoadX509KeyPair(certificate, key)
-			if err != nil {
-				return nil, nil, err
-			}
-			caCertPool := x509.NewCertPool()
-			for _, caPath := range caCerts {
-				caPem, err := ioutil.ReadFile(caPath)
-				if err != nil {
-					return nil, nil, err
-				}
-				caCertPool.AppendCertsFromPEM(caPem)
-			}
-			tlsConfig = &tls.Config{
-				Certificates: []tls.Certificate{cert},
-				CipherSuites: comm.DefaultTLSCipherSuites,
-				ClientCAs:    caCertPool,
-				NextProtos:   []string{"h2", "http/1.1"},
-			}
-			if clientCertRequired {
-				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-			}
 		}
 
 		listener, err := net.Listen("tcp", address)
@@ -147,4 +133,41 @@ func initializeMetrics() (provider metrics.Provider, shutdown func(), err error)
 		disabledProvider := &disabled.Provider{}
 		return disabledProvider, func() {}, nil
 	}
+}
+
+func viperTLSConfig(viperStem string) (*tls.Config, error) {
+	tlsEnabled := viper.GetBool(viperStem + ".enabled")                    // enable TLS
+	certificate := viper.GetString(viperStem + ".cert.file")               // public
+	key := viper.GetString(viperStem + ".key.file")                        // private
+	clientCertRequired := viper.GetBool(viperStem + ".clientAuthRequired") // require client certificate
+	caCerts := viper.GetStringSlice(viperStem + ".clientRootCAs.files")    // trusted ca certificates
+
+	var tlsConfig *tls.Config
+	if tlsEnabled {
+		cert, err := tls.LoadX509KeyPair(certificate, key)
+		if err != nil {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		for _, caPath := range caCerts {
+			caPem, err := ioutil.ReadFile(caPath)
+			if err != nil {
+				return nil, err
+			}
+			caCertPool.AppendCertsFromPEM(caPem)
+		}
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			CipherSuites: comm.DefaultTLSCipherSuites,
+			ClientCAs:    caCertPool,
+			NextProtos:   []string{"h2", "http/1.1"},
+		}
+		if clientCertRequired {
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		} else {
+			tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
+		}
+	}
+
+	return tlsConfig, nil
 }

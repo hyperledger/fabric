@@ -32,7 +32,7 @@ func TestInitializeMetricsDisabled(t *testing.T) {
 	t.Run("ExplicitlyDisabled", func(t *testing.T) {
 		gt := NewGomegaWithT(t)
 		viper.Reset()
-		viper.Set("metrics.provider", "disabled")
+		viper.Set("operations.metrics.provider", "disabled")
 		provider, _, err := initializeMetrics()
 		gt.Expect(err).NotTo(HaveOccurred())
 		gt.Expect(provider).To(Equal(&disabled.Provider{}))
@@ -41,7 +41,7 @@ func TestInitializeMetricsDisabled(t *testing.T) {
 	t.Run("BadProvider", func(t *testing.T) {
 		gt := NewGomegaWithT(t)
 		viper.Reset()
-		viper.Set("metrics.provider", "not-a-valid-provider")
+		viper.Set("operations.metrics.provider", "not-a-valid-provider")
 		provider, _, err := initializeMetrics()
 		gt.Expect(err).NotTo(HaveOccurred())
 		gt.Expect(provider).To(Equal(&disabled.Provider{}))
@@ -80,8 +80,8 @@ func TestInitializeMetricsStatsd(t *testing.T) {
 		expectedErr string
 	}{
 		{name: "ValidConfig", expectedErr: ""},
-		{name: "BadNetwork", overrides: map[string]interface{}{"metrics.statsd.network": "bad"}, expectedErr: "dial bad: unknown network bad"},
-		{name: "BadAddress", overrides: map[string]interface{}{"metrics.statsd.address": "0.0.0.0:badport"}, expectedErr: "dial udp:.*udp/badport"},
+		{name: "BadNetwork", overrides: map[string]interface{}{"operations.metrics.statsd.network": "bad"}, expectedErr: "dial bad: unknown network bad"},
+		{name: "BadAddress", overrides: map[string]interface{}{"operations.metrics.statsd.address": "0.0.0.0:badport"}, expectedErr: "dial udp:.*udp/badport"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -101,11 +101,11 @@ func TestInitializeMetricsStatsd(t *testing.T) {
 			go receiveDatagrams(sock, datagramBuffer, done, errCh)
 
 			viper.Reset()
-			viper.Set("metrics.provider", "statsd")
-			viper.Set("metrics.statsd.network", "udp")
-			viper.Set("metrics.statsd.address", sock.LocalAddr().String())
-			viper.Set("metrics.statsd.writeInterval", 100*time.Millisecond)
-			viper.Set("metrics.statsd.prefix", "stats_prefix")
+			viper.Set("operations.metrics.provider", "statsd")
+			viper.Set("operations.metrics.statsd.network", "udp")
+			viper.Set("operations.metrics.statsd.address", sock.LocalAddr().String())
+			viper.Set("operations.metrics.statsd.writeInterval", 100*time.Millisecond)
+			viper.Set("operations.metrics.statsd.prefix", "stats_prefix")
 			for k, v := range tc.overrides {
 				viper.Set(k, v)
 			}
@@ -167,9 +167,9 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 	t.Run("Insecure", func(t *testing.T) {
 		gt := NewGomegaWithT(t)
 		viper.Reset()
-		viper.Set("metrics.provider", "prometheus")
-		viper.Set("metrics.prometheus.listenAddress", "127.0.0.1:33333")
-		viper.Set("metrics.prometheus.handlerPath", "/metricz")
+		viper.Set("operations.listenAddress", "127.0.0.1:33333")
+		viper.Set("operations.metrics.provider", "prometheus")
+		viper.Set("operations.metrics.prometheus.handlerPath", "/metricz")
 		provider, shutdown, err := initializeMetrics()
 		gt.Expect(err).NotTo(HaveOccurred())
 		defer shutdown()
@@ -190,9 +190,9 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 	t.Run("Shutdown", func(t *testing.T) {
 		gt := NewGomegaWithT(t)
 		viper.Reset()
-		viper.Set("metrics.provider", "prometheus")
-		viper.Set("metrics.prometheus.listenAddress", "127.0.0.1:33333")
-		viper.Set("metrics.prometheus.handlerPath", "/metricz")
+		viper.Set("operations.listenAddress", "127.0.0.1:33333")
+		viper.Set("operations.metrics.provider", "prometheus")
+		viper.Set("operations.metrics.prometheus.handlerPath", "/metricz")
 
 		_, shutdown, err := initializeMetrics()
 		gt.Expect(err).NotTo(HaveOccurred())
@@ -210,9 +210,9 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 	t.Run("BadListenAddress", func(t *testing.T) {
 		gt := NewGomegaWithT(t)
 		viper.Reset()
-		viper.Set("metrics.provider", "prometheus")
-		viper.Set("metrics.prometheus.listenAddress", "bad.bad:bad")
-		viper.Set("metrics.prometheus.handlerPath", "/metricz")
+		viper.Set("operations.listenAddress", "bad.bad:bad")
+		viper.Set("operations.metrics.provider", "prometheus")
+		viper.Set("operations.metrics.prometheus.handlerPath", "/metricz")
 
 		_, _, err := initializeMetrics()
 		gt.Expect(err).To(HaveOccurred())
@@ -225,14 +225,14 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 		gt := NewGomegaWithT(t)
 
 		viper.Reset()
-		viper.Set("metrics.provider", "prometheus")
-		viper.Set("metrics.prometheus.listenAddress", "127.0.0.1:33333")
-		viper.Set("metrics.prometheus.handlerPath", "/metricz")
-		viper.Set("metrics.prometheus.tls.enabled", true)
-		viper.Set("metrics.prometheus.tls.cert.file", filepath.Join(tempDir, "server-cert.pem"))
-		viper.Set("metrics.prometheus.tls.key.file", filepath.Join(tempDir, "server-key.pem"))
-		viper.Set("metrics.prometheus.tls.clientAuthRequired", true)
-		viper.Set("metrics.prometheus.tls.clientRootCAs.files", []string{filepath.Join(tempDir, "client-ca.pem")})
+		viper.Set("operations.metrics.provider", "prometheus")
+		viper.Set("operations.metrics.prometheus.handlerPath", "/metricz")
+		viper.Set("operations.listenAddress", "127.0.0.1:33333")
+		viper.Set("operations.tls.enabled", true)
+		viper.Set("operations.tls.cert.file", filepath.Join(tempDir, "server-cert.pem"))
+		viper.Set("operations.tls.key.file", filepath.Join(tempDir, "server-key.pem"))
+		viper.Set("operations.tls.clientAuthRequired", true)
+		viper.Set("operations.tls.clientRootCAs.files", []string{filepath.Join(tempDir, "client-ca.pem")})
 
 		clientCert, err := tls.LoadX509KeyPair(
 			filepath.Join(tempDir, "client-cert.pem"),
@@ -275,13 +275,13 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 		gt := NewGomegaWithT(t)
 
 		viper.Reset()
-		viper.Set("metrics.provider", "prometheus")
-		viper.Set("metrics.prometheus.listenAddress", "127.0.0.1:33333")
-		viper.Set("metrics.prometheus.handlerPath", "/metricz")
-		viper.Set("metrics.prometheus.tls.enabled", true)
-		viper.Set("metrics.prometheus.tls.cert.file", filepath.Join(tempDir, "server-cert.pem"))
-		viper.Set("metrics.prometheus.tls.key.file", filepath.Join(tempDir, "server-key.pem"))
-		viper.Set("metrics.prometheus.tls.clientAuthRequired", false)
+		viper.Set("operations.metrics.provider", "prometheus")
+		viper.Set("operations.metrics.prometheus.handlerPath", "/metricz")
+		viper.Set("operations.listenAddress", "127.0.0.1:33333")
+		viper.Set("operations.tls.enabled", true)
+		viper.Set("operations.tls.cert.file", filepath.Join(tempDir, "server-cert.pem"))
+		viper.Set("operations.tls.key.file", filepath.Join(tempDir, "server-key.pem"))
+		viper.Set("operations.tls.clientAuthRequired", false)
 
 		clientCertPool := x509.NewCertPool()
 		clientCertPool.AppendCertsFromPEM(serverCAPEM)
@@ -311,17 +311,17 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 		}{
 			{
 				name:        "BadServerCert",
-				setup:       func() { viper.Set("metrics.prometheus.tls.cert.file", filepath.Join(tempDir, "missing-cert.pem")) },
+				setup:       func() { viper.Set("operations.tls.cert.file", filepath.Join(tempDir, "missing-cert.pem")) },
 				expectedErr: "missing-cert.pem: no such file or directory",
 			},
 			{
 				name:        "BadServerKey",
-				setup:       func() { viper.Set("metrics.prometheus.tls.key.file", filepath.Join(tempDir, "missing-key.pem")) },
+				setup:       func() { viper.Set("operations.tls.key.file", filepath.Join(tempDir, "missing-key.pem")) },
 				expectedErr: "missing-key.pem: no such file or directory",
 			},
 			{
 				name:        "BadClientCA",
-				setup:       func() { viper.Set("metrics.prometheus.tls.clientRootCAs.files", filepath.Join(tempDir, "missing.pem")) },
+				setup:       func() { viper.Set("operations.tls.clientRootCAs.files", filepath.Join(tempDir, "missing.pem")) },
 				expectedErr: "missing.pem: no such file or directory",
 			},
 		}
@@ -329,14 +329,14 @@ func TestInitializeMetricsPrometheus(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				gt := NewGomegaWithT(t)
 				viper.Reset()
-				viper.Set("metrics.provider", "prometheus")
-				viper.Set("metrics.prometheus.listenAddress", "127.0.0.1:33333")
-				viper.Set("metrics.prometheus.handlerPath", "/metricz")
-				viper.Set("metrics.prometheus.tls.enabled", true)
-				viper.Set("metrics.prometheus.tls.cert.file", filepath.Join(tempDir, "server-cert.pem"))
-				viper.Set("metrics.prometheus.tls.key.file", filepath.Join(tempDir, "server-key.pem"))
-				viper.Set("metrics.prometheus.tls.clientAuthRequired", true)
-				viper.Set("metrics.prometheus.tls.clientRootCAs.files", []string{filepath.Join(tempDir, "client-ca.pem")})
+				viper.Set("operations.metrics.provider", "prometheus")
+				viper.Set("operations.metrics.prometheus.handlerPath", "/metricz")
+				viper.Set("operations.listenAddress", "127.0.0.1:33333")
+				viper.Set("operations.tls.enabled", true)
+				viper.Set("operations.tls.cert.file", filepath.Join(tempDir, "server-cert.pem"))
+				viper.Set("operations.tls.key.file", filepath.Join(tempDir, "server-key.pem"))
+				viper.Set("operations.tls.clientAuthRequired", true)
+				viper.Set("operations.tls.clientRootCAs.files", []string{filepath.Join(tempDir, "client-ca.pem")})
 				tc.setup()
 
 				_, _, err := initializeMetrics()

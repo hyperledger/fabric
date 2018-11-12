@@ -34,6 +34,7 @@ type TopLevel struct {
 	Kafka      Kafka
 	Debug      Debug
 	Consensus  interface{}
+	Operations Operations
 }
 
 // General contains config which should be common among all orderer types.
@@ -177,6 +178,33 @@ type Debug struct {
 	DeliverTraceDir   string
 }
 
+// Operations configures the operations endpont for the orderer.
+type Operations struct {
+	ListenAddress string
+	Metrics       Metrics
+	TLS           TLS
+}
+
+// Operations confiures the metrics provider for the orderer.
+type Metrics struct {
+	Provider   string
+	Statsd     Statsd
+	Prometheus Prometheus
+}
+
+// Statsd provides the configuration required to emit statsd metrics from the orderer.
+type Statsd struct {
+	Network       string
+	Address       string
+	WriteInterval time.Duration
+	Prefix        string
+}
+
+// Prometheus provides the configuration required to host prometheus.
+type Prometheus struct {
+	HandlerPath string
+}
+
 // Defaults carries the default orderer configuration values.
 var Defaults = TopLevel{
 	General: General{
@@ -240,6 +268,12 @@ var Defaults = TopLevel{
 	Debug: Debug{
 		BroadcastTraceDir: "",
 		DeliverTraceDir:   "",
+	},
+	Operations: Operations{
+		ListenAddress: "127.0.0.1:0",
+		Metrics: Metrics{
+			Provider: "disabled",
+		},
 	},
 }
 

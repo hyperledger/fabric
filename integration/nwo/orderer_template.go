@@ -87,9 +87,29 @@ Kafka:
     Password:
   Version:{{ end }}
 Debug:
-    BroadcastTraceDir:
-    DeliverTraceDir:
+  BroadcastTraceDir:
+  DeliverTraceDir:
 Consensus:
   WALDir: {{ .OrdererDir Orderer }}/etcdraft/wal
+Operations:
+  ListenAddress: 127.0.0.1:{{ .OrdererPort Orderer "Operations" }}
+  TLS:
+    Enabled: true
+    PrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
+    Certificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
+    RootCAs:
+    -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
+    ClientAuthRequired: true
+    ClientRootCAs:
+    -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
+  Metrics:
+    Provider: {{ .MetricsProvider }}
+    Statsd:
+      Network: udp
+      Address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
+      WriteInterval: 5s
+      Prefix: {{ ReplaceAll (ToLower Orderer.ID) "." "_" }}
+    Prometheus:
+      HandlerPath: /metrics
 {{- end }}
 `

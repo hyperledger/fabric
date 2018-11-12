@@ -1160,23 +1160,23 @@ type PortName string
 type Ports map[PortName]uint16
 
 const (
-	ChaincodePort PortName = "Chaincode"
-	EventsPort    PortName = "Events"
-	HostPort      PortName = "HostPort"
-	ListenPort    PortName = "Listen"
-	ProfilePort   PortName = "Profile"
-	MetricsPort   PortName = "Metrics"
+	ChaincodePort  PortName = "Chaincode"
+	EventsPort     PortName = "Events"
+	HostPort       PortName = "HostPort"
+	ListenPort     PortName = "Listen"
+	ProfilePort    PortName = "Profile"
+	OperationsPort PortName = "Operations"
 )
 
 // PeerPortNames returns the list of ports that need to be reserved for a Peer.
 func PeerPortNames() []PortName {
-	return []PortName{ListenPort, ChaincodePort, EventsPort, ProfilePort, MetricsPort}
+	return []PortName{ListenPort, ChaincodePort, EventsPort, ProfilePort, OperationsPort}
 }
 
 // OrdererPortNames  returns the list of ports that need to be reserved for an
 // Orderer.
 func OrdererPortNames() []PortName {
-	return []PortName{ListenPort, ProfilePort}
+	return []PortName{ListenPort, ProfilePort, OperationsPort}
 }
 
 // BrokerPortNames returns the list of ports that need to be reserved for a

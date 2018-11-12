@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -111,14 +112,19 @@ var _ = Describe("EndToEnd", func() {
 
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 			RunRespondWith(network, orderer, peer, "testchannel")
-			CheckForStatsdMetrics(datagramReader)
+
+			By("waiting for DeliverFiltered stats to be emitted")
+			metricsWriteInterval := 5 * time.Second
+			Eventually(datagramReader, 2*metricsWriteInterval).Should(gbytes.Say("stream_request_duration.protos_Deliver.DeliverFiltered."))
+
+			CheckPeerStatsdStreamMetrics(datagramReader.String())
+			CheckPeerStatsdMetrics(datagramReader.String(), "org1_peer0")
+			CheckPeerStatsdMetrics(datagramReader.String(), "org2_peer1")
+			CheckOrdererStatsdMetrics(datagramReader.String(), "ordererorg_orderer")
 		})
 	})
 
 	Describe("basic kafka network with 2 orgs", func() {
-		var metricsClient *http.Client
-		var metricsURL string
-
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicKafka(), testDir, client, BasePort(), components)
 			network.MetricsProvider = "prometheus"
@@ -128,27 +134,6 @@ var _ = Describe("EndToEnd", func() {
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-			org1Peer0 := network.Peer("Org1", "peer0")
-			clientCert, err := tls.LoadX509KeyPair(
-				filepath.Join(network.PeerLocalTLSDir(org1Peer0), "server.crt"),
-				filepath.Join(network.PeerLocalTLSDir(org1Peer0), "server.key"),
-			)
-			Expect(err).NotTo(HaveOccurred())
-			clientCertPool := x509.NewCertPool()
-			caCert, err := ioutil.ReadFile(filepath.Join(network.PeerLocalTLSDir(org1Peer0), "ca.crt"))
-			Expect(err).NotTo(HaveOccurred())
-			clientCertPool.AppendCertsFromPEM(caCert)
-
-			metricsURL = fmt.Sprintf("https://127.0.0.1:%d/metrics", network.PeerPort(org1Peer0, nwo.MetricsPort))
-			metricsClient = &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						Certificates: []tls.Certificate{clientCert},
-						RootCAs:      clientCertPool,
-					},
-				},
-			}
 		})
 
 		It("executes a basic kafka network with 2 orgs", func() {
@@ -158,7 +143,9 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
-			CheckForPometheusMetrics(metricsClient, metricsURL)
+
+			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer1"))
+			CheckOrdererOperationEndpoints(network, orderer)
 		})
 	})
 
@@ -405,37 +392,114 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	Expect(sess.Err).To(gbytes.Say(`Error: endorsement failure during invoke.`))
 }
 
-func CheckForStatsdMetrics(datagramReader *DatagramReader) {
-	By("waiting for DeliverFiltered stats to be emitted")
-	Eventually(datagramReader, 10*time.Second /* 2 * metrics.statsd.writeInterval */).Should(gbytes.Say("stream_request_duration.protos_Deliver.DeliverFiltered."))
-	buf := string(datagramReader.Buffer().Contents())
-
-	By("checking for statsd metrics")
-	Expect(buf).To(ContainSubstring("org1_peer0.go.mem.gc_completed_count:"))
-	Expect(buf).To(ContainSubstring("org1_peer1.go.mem.gc_completed_count:"))
-	Expect(buf).To(ContainSubstring("org2_peer0.go.mem.gc_completed_count:"))
-	Expect(buf).To(ContainSubstring("org2_peer1.go.mem.gc_completed_count:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.unary_request_duration.protos_Endorser.ProcessProposal.OK:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.stream_requests_received.protos_Deliver.DeliverFiltered:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.stream_requests_completed.protos_Deliver.DeliverFiltered.Unknown:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.stream_request_duration.protos_Deliver.DeliverFiltered.Unknown:"))
-	Expect(buf).To(ContainSubstring(".grpc.server.stream_messages_received.protos_Deliver.DeliverFiltered"))
-	Expect(buf).To(ContainSubstring(".grpc.server.stream_messages_sent.protos_Deliver.DeliverFiltered"))
+func CheckPeerStatsdMetrics(contents, prefix string) {
+	By("checking for peer statsd metrics")
+	Expect(contents).To(ContainSubstring(prefix + ".go.mem.gc_completed_count:"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_request_duration.protos_Endorser.ProcessProposal.OK:"))
 }
 
-func CheckForPometheusMetrics(client *http.Client, url string) {
+func CheckPeerStatsdStreamMetrics(contents string) {
+	By("checking for stream metrics")
+	Expect(contents).To(ContainSubstring(".grpc.server.stream_requests_received.protos_Deliver.DeliverFiltered:"))
+	Expect(contents).To(ContainSubstring(".grpc.server.stream_requests_completed.protos_Deliver.DeliverFiltered.Unknown:"))
+	Expect(contents).To(ContainSubstring(".grpc.server.stream_request_duration.protos_Deliver.DeliverFiltered.Unknown:"))
+	Expect(contents).To(ContainSubstring(".grpc.server.stream_messages_received.protos_Deliver.DeliverFiltered"))
+	Expect(contents).To(ContainSubstring(".grpc.server.stream_messages_sent.protos_Deliver.DeliverFiltered"))
+}
+
+func CheckOrdererStatsdMetrics(contents, prefix string) {
+	By("checking for AtomicBroadcast")
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Broadcast.OK"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Deliver."))
+
+	By("checking for orderer metrics")
+	Expect(contents).To(ContainSubstring(prefix + ".go.mem.gc_completed_count:"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_received.orderer_AtomicBroadcast.Deliver:"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_completed.orderer_AtomicBroadcast.Deliver."))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_messages_received.orderer_AtomicBroadcast.Deliver"))
+	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_messages_sent.orderer_AtomicBroadcast.Deliver"))
+}
+
+func OrdererOperationalClients(network *nwo.Network, orderer *nwo.Orderer) (authClient, unauthClient *http.Client) {
+	return operationalClients(network.OrdererLocalTLSDir(orderer))
+}
+
+func PeerOperationalClients(network *nwo.Network, peer *nwo.Peer) (authClient, unauthClient *http.Client) {
+	return operationalClients(network.PeerLocalTLSDir(peer))
+}
+
+func operationalClients(tlsDir string) (authClient, unauthClient *http.Client) {
+	clientCert, err := tls.LoadX509KeyPair(
+		filepath.Join(tlsDir, "server.crt"),
+		filepath.Join(tlsDir, "server.key"),
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	clientCertPool := x509.NewCertPool()
+	caCert, err := ioutil.ReadFile(filepath.Join(tlsDir, "ca.crt"))
+	Expect(err).NotTo(HaveOccurred())
+	clientCertPool.AppendCertsFromPEM(caCert)
+
+	authenticatedClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				Certificates: []tls.Certificate{clientCert},
+				RootCAs:      clientCertPool,
+			},
+		},
+	}
+	unauthenticatedClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{RootCAs: clientCertPool},
+		},
+	}
+
+	return authenticatedClient, unauthenticatedClient
+}
+
+func CheckPeerOperationEndpoints(network *nwo.Network, peer *nwo.Peer) {
+	metricsURL := fmt.Sprintf("https://127.0.0.1:%d/metrics", network.PeerPort(peer, nwo.OperationsPort))
+	logspecURL := fmt.Sprintf("https://127.0.0.1:%d/logspec", network.PeerPort(peer, nwo.OperationsPort))
+
+	authClient, unauthClient := PeerOperationalClients(network, peer)
+
+	CheckPeerPometheusMetrics(authClient, metricsURL)
+	CheckLogspecOperations(authClient, logspecURL)
+
+	By("getting interacting without a cert")
+	_, err := unauthClient.Get(logspecURL)
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("remote error: tls: bad certificate"))
+}
+
+func CheckOrdererOperationEndpoints(network *nwo.Network, orderer *nwo.Orderer) {
+	metricsURL := fmt.Sprintf("https://127.0.0.1:%d/metrics", network.OrdererPort(orderer, nwo.OperationsPort))
+	logspecURL := fmt.Sprintf("https://127.0.0.1:%d/logspec", network.OrdererPort(orderer, nwo.OperationsPort))
+
+	authClient, unauthClient := OrdererOperationalClients(network, orderer)
+
+	CheckOrdererPometheusMetrics(authClient, metricsURL)
+	CheckLogspecOperations(authClient, logspecURL)
+
+	By("getting interacting without a cert")
+	_, err := unauthClient.Get(logspecURL)
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("remote error: tls: bad certificate"))
+}
+
+func CheckPeerPometheusMetrics(client *http.Client, url string) {
 	By("hitting the prometheus metrics endpoint")
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusOK))
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
-	body := string(bodyBytes)
+
+	Eventually(getBody(client, url)).Should(ContainSubstring(`# TYPE grpc_server_stream_request_duration histogram`))
 
 	By("checking for some expected metrics")
+	body := getBody(client, url)()
 	Expect(body).To(ContainSubstring(`# TYPE go_gc_duration_seconds summary`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_server_stream_request_duration histogram`))
 	Expect(body).To(ContainSubstring(`grpc_server_stream_request_duration_count{code="Unknown",method="DeliverFiltered",service="protos_Deliver"}`))
@@ -443,4 +507,62 @@ func CheckForPometheusMetrics(client *http.Client, url string) {
 	Expect(body).To(ContainSubstring(`grpc_server_stream_messages_sent{method="DeliverFiltered",service="protos_Deliver"}`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_closed counter`))
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_opened counter`))
+}
+
+func CheckOrdererPometheusMetrics(client *http.Client, url string) {
+	By("hitting the prometheus metrics endpoint")
+	resp, err := client.Get(url)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusOK))
+	resp.Body.Close()
+
+	Eventually(getBody(client, url)).Should(ContainSubstring(`# TYPE grpc_server_stream_request_duration histogram`))
+
+	By("checking for some expected metrics")
+	body := getBody(client, url)()
+	Expect(body).To(ContainSubstring(`# TYPE go_gc_duration_seconds summary`))
+	Expect(body).To(ContainSubstring(`# TYPE grpc_server_stream_request_duration histogram`))
+	Expect(body).To(ContainSubstring(`grpc_server_stream_request_duration_sum{code="OK",method="Deliver",service="orderer_AtomicBroadcast"`))
+	Expect(body).To(ContainSubstring(`grpc_server_stream_request_duration_sum{code="OK",method="Broadcast",service="orderer_AtomicBroadcast"`))
+	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_closed counter`))
+	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_opened counter`))
+}
+
+func CheckLogspecOperations(client *http.Client, logspecURL string) {
+	By("getting the logspec")
+	resp, err := client.Get(logspecURL)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusOK))
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"info"}`))
+
+	updateReq, err := http.NewRequest(http.MethodPut, logspecURL, strings.NewReader(`{"spec":"debug"}`))
+	Expect(err).NotTo(HaveOccurred())
+
+	By("setting the logspec")
+	resp, err = client.Do(updateReq)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+
+	resp, err = client.Get(logspecURL)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusOK))
+	bodyBytes, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"debug"}`))
+}
+
+func getBody(client *http.Client, url string) func() string {
+	return func() string {
+		resp, err := client.Get(url)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+		resp.Body.Close()
+		return string(bodyBytes)
+	}
 }

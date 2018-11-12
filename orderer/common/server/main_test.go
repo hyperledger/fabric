@@ -19,6 +19,8 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -78,7 +80,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			},
 		},
 	}
-	sc := initializeServerConfig(conf)
+	sc := initializeServerConfig(conf, nil)
 	defaultOpts := comm.DefaultKeepaliveOptions
 	assert.Equal(t, defaultOpts.ServerMinInterval, sc.KaOpts.ServerMinInterval)
 	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerInterval)
@@ -89,10 +91,19 @@ func TestInitializeServerConfig(t *testing.T) {
 		ServerInterval:    testDuration,
 		ServerTimeout:     testDuration,
 	}
-	sc = initializeServerConfig(conf)
+	sc = initializeServerConfig(conf, nil)
 	assert.Equal(t, testDuration, sc.KaOpts.ServerMinInterval)
 	assert.Equal(t, testDuration, sc.KaOpts.ServerInterval)
 	assert.Equal(t, testDuration, sc.KaOpts.ServerTimeout)
+
+	sc = initializeServerConfig(conf, nil)
+	assert.NotNil(t, sc.Logger)
+	assert.Equal(t, &disabled.Provider{}, sc.MetricsProvider)
+	assert.Len(t, sc.UnaryInterceptors, 2)
+	assert.Len(t, sc.StreamInterceptors, 2)
+
+	sc = initializeServerConfig(conf, &prometheus.Provider{})
+	assert.Equal(t, &prometheus.Provider{}, sc.MetricsProvider)
 
 	goodFile := "main.go"
 	badFile := "does_not_exist"
@@ -140,7 +151,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			}
 			assert.Panics(t, func() {
 				if tc.clusterCert == "" {
-					initializeServerConfig(conf)
+					initializeServerConfig(conf, nil)
 				} else {
 					initializeClusterConfig(conf)
 				}
@@ -272,7 +283,7 @@ func TestInitializeGrpcServer(t *testing.T) {
 		},
 	}
 	assert.NotPanics(t, func() {
-		grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf))
+		grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf, nil))
 		grpcServer.Listener().Close()
 	})
 }
@@ -298,7 +309,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			},
 		},
 	}
-	grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf))
+	grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf, nil))
 	caSupport := &comm.CASupport{
 		AppRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),
@@ -329,7 +340,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			},
 		},
 	}
-	grpcServer = initializeGrpcServer(conf, initializeServerConfig(conf))
+	grpcServer = initializeGrpcServer(conf, initializeServerConfig(conf, nil))
 	caSupport = &comm.CASupport{
 		AppRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),
