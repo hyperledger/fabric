@@ -33,7 +33,7 @@ type RaftStorage struct {
 	wal *wal.WAL
 }
 
-// Restore attempts to restore a storage state from persited etcd/raft data.
+// Restore attempts to restore a storage state from persisted etcd/raft data.
 // If no data is found, it returns a fresh storage.
 func Restore(lg *flogging.FabricLogger, applied uint64, walDir string, ram MemoryStorage) (*RaftStorage, bool, error) {
 	hasWAL := wal.Exist(walDir)

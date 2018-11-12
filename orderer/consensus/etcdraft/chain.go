@@ -118,7 +118,7 @@ func NewChain(
 	applied := opts.RaftMetadata.RaftIndex
 	storage, hasWAL, err := Restore(lg, applied, opts.WALDir, opts.MemoryStorage)
 	if err != nil {
-		return nil, errors.Errorf("failed to restore persited raft data: %s", err)
+		return nil, errors.Errorf("failed to restore persisted raft data: %s", err)
 	}
 
 	return &Chain{
