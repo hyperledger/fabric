@@ -23,6 +23,9 @@ import (
 func TestSpawnEtcdRaft(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
+	cwd, err := filepath.Abs(".")
+	gt.Expect(err).NotTo(HaveOccurred())
+
 	// Create tempdir to be used to store the genesis block for the system channel
 	tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -46,7 +49,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	genesisBlockPath := filepath.Join(tempDir, "genesis.block")
 	cmd := exec.Command(configtxgen, "-channelID", "system", "-profile", "SampleDevModeEtcdRaft",
 		"-outputBlock", genesisBlockPath)
-	cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(cwd, "testdata")))
 	configtxgenProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -68,7 +71,6 @@ func launchOrderer(gt *GomegaWithT, cmd *exec.Cmd, orderer, tempDir, genesisBloc
 	cmd = exec.Command(orderer)
 	cmd.Env = []string{
 		"ORDERER_GENERAL_LISTENPORT=5611",
-		"ORDERER_GENERAL_GENESISPROFILE=SampleDevModeEtcdRaft",
 		"ORDERER_GENERAL_GENESISMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		"ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED=true",
