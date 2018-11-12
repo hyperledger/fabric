@@ -68,7 +68,7 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts) Gossip {
 	var err error
 
-	lgr := util.GetLogger(util.LoggingGossipModule, conf.ID)
+	lgr := util.GetLogger(util.GossipLogger, conf.ID)
 
 	g := &gossipServiceImpl{
 		selfOrg:               sa.OrgByPeerIdentity(selfIdentity),

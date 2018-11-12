@@ -130,7 +130,7 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback
 		adapter:       adapter,
 		stopChan:      make(chan struct{}, 1),
 		interruptChan: make(chan struct{}, 1),
-		logger:        util.GetLogger(util.LoggingElectionModule, ""),
+		logger:        util.GetLogger(util.ElectionLogger, ""),
 		callback:      noopCallback,
 	}
 

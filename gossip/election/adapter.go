@@ -81,7 +81,7 @@ func NewAdapter(gossip gossip, pkiid common.PKIidType, channel common.ChainID) L
 
 		channel: channel,
 
-		logger: util.GetLogger(util.LoggingElectionModule, ""),
+		logger: util.GetLogger(util.ElectionLogger, ""),
 
 		doneCh:   make(chan struct{}),
 		stopOnce: &sync.Once{},

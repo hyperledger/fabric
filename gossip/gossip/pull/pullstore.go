@@ -136,7 +136,7 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		PullAdapter:  adapter,
 		msgType2Hook: make(map[MsgType][]MessageHook),
 		config:       config,
-		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
+		logger:       util.GetLogger(util.PullLogger, config.ID),
 		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
 	}
 

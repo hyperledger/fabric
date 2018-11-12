@@ -195,7 +195,7 @@ func setupChaincodeLogging() {
 	backendFormatter := logging.NewBackendFormatter(backend, formatter)
 	logging.SetBackend(backendFormatter).SetLevel(defaultLevel, "")
 
-	// set default log level for all modules
+	// set default log level for all loggers
 	chaincodeLogLevelString := viper.GetString("chaincode.logging.level")
 	if chaincodeLogLevelString == "" {
 		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", defaultLevel.String())
@@ -210,7 +210,7 @@ func setupChaincodeLogging() {
 
 	initFromSpec(chaincodeLogLevelString, defaultLevel)
 
-	// override the log level for the shim logging module - note: if this value is
+	// override the log level for the shim logger - note: if this value is
 	// blank or an invalid log level, then the above call to
 	// `initFromSpec` already set the default log level so no action
 	// is required here.
@@ -245,7 +245,7 @@ func initFromSpec(spec string, defaultLevel logging.Level) {
 				levelAll = defaultLevel // need to reset cause original value was overwritten
 			}
 		case 2:
-			// <module>[,<module>...]=<level>
+			// <logger,<logger>...]=<level>
 			levelSingle, err := logging.LogLevel(split[1])
 			if err != nil {
 				chaincodeLogger.Warningf("Invalid logging level in '%s' ignored", field)
@@ -253,12 +253,12 @@ func initFromSpec(spec string, defaultLevel logging.Level) {
 			}
 
 			if split[0] == "" {
-				chaincodeLogger.Warningf("Invalid logging override specification '%s' ignored - no module specified", field)
+				chaincodeLogger.Warningf("Invalid logging override specification '%s' ignored - no logger specified", field)
 			} else {
-				modules := strings.Split(split[0], ",")
-				for _, module := range modules {
-					chaincodeLogger.Debugf("Setting logging level for module '%s' to '%s'", module, levelSingle)
-					logging.SetLevel(levelSingle, module)
+				loggers := strings.Split(split[0], ",")
+				for _, logger := range loggers {
+					chaincodeLogger.Debugf("Setting logging level for logger '%s' to '%s'", logger, levelSingle)
+					logging.SetLevel(levelSingle, logger)
 				}
 			}
 		default:
@@ -266,7 +266,7 @@ func initFromSpec(spec string, defaultLevel logging.Level) {
 		}
 	}
 
-	logging.SetLevel(levelAll, "") // set the logging level for all modules
+	logging.SetLevel(levelAll, "") // set the logging level for all loggers
 }
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an

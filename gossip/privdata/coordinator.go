@@ -39,7 +39,7 @@ const (
 	transientBlockRetentionDefault   = 1000
 )
 
-var logger = util.GetLogger(util.LoggingPrivModule, "")
+var logger = util.GetLogger(util.PrivateDataLogger, "")
 
 //go:generate mockery -dir ../../core/common/privdata/ -name CollectionStore -case underscore -output mocks/
 

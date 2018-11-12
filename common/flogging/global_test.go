@@ -17,7 +17,7 @@ import (
 func TestGlobalReset(t *testing.T) {
 	flogging.Reset()
 	flogging.Global.SetFormat("json")
-	err := flogging.Global.ActivateSpec("module=debug")
+	err := flogging.Global.ActivateSpec("logger=debug")
 	assert.NoError(t, err)
 
 	system, err := flogging.New(flogging.Config{})

@@ -30,7 +30,7 @@ type certStore struct {
 
 func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, mcs api.MessageCryptoService) *certStore {
 	selfPKIID := idMapper.GetPKIidOfCert(selfIdentity)
-	logger := util.GetLogger(util.LoggingGossipModule, hex.EncodeToString(selfPKIID))
+	logger := util.GetLogger(util.GossipLogger, hex.EncodeToString(selfPKIID))
 
 	certStore := &certStore{
 		mcs:          mcs,

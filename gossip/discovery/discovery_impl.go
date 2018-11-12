@@ -111,7 +111,7 @@ func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoServi
 		lock:             &sync.RWMutex{},
 		toDieChan:        make(chan struct{}, 1),
 		toDieFlag:        int32(0),
-		logger:           util.GetLogger(util.LoggingDiscoveryModule, self.InternalEndpoint),
+		logger:           util.GetLogger(util.DiscoveryLogger, self.InternalEndpoint),
 		disclosurePolicy: disPol,
 		pubsub:           util.NewPubSub(),
 
