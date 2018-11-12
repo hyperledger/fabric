@@ -147,7 +147,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		SnapDir: path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
 	}
 
-	rpc := &cluster.RPC{Channel: support.ChainID(), Comm: c.Communication}
+	rpc := &cluster.RPC{
+		Channel:             support.ChainID(),
+		Comm:                c.Communication,
+		DestinationToStream: make(map[uint64]orderer.Cluster_SubmitClient),
+	}
 	return NewChain(support, opts, c.Communication, rpc, bp, nil)
 }
 

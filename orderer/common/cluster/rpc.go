@@ -8,6 +8,7 @@ package cluster
 
 import (
 	"context"
+	"sync"
 
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
@@ -36,9 +37,10 @@ type Client interface {
 
 // RPC performs remote procedure calls to remote cluster nodes.
 type RPC struct {
-	stream  orderer.Cluster_SubmitClient
-	Channel string
-	Comm    Communicator
+	Channel             string
+	Comm                Communicator
+	lock                sync.RWMutex
+	DestinationToStream map[uint64]orderer.Cluster_SubmitClient
 }
 
 // Step sends a StepRequest to the given destination node and returns the response
@@ -58,7 +60,7 @@ func (s *RPC) SendSubmit(destination uint64, request *orderer.SubmitRequest) err
 	}
 	err = stream.Send(request)
 	if err != nil {
-		s.stream = nil
+		s.unMapStream(destination)
 	}
 	return err
 }
@@ -71,24 +73,43 @@ func (s *RPC) ReceiveSubmitResponse(destination uint64) (*orderer.SubmitResponse
 	}
 	msg, err := stream.Recv()
 	if err != nil {
-		s.stream = nil
+		s.unMapStream(destination)
 	}
 	return msg, err
 }
 
 // getProposeStream obtains a Submit stream for the given destination node
 func (s *RPC) getProposeStream(destination uint64) (orderer.Cluster_SubmitClient, error) {
-	if s.stream != nil {
-		return s.stream, nil
+	stream := s.getStream(destination)
+	if stream != nil {
+		return stream, nil
 	}
 	stub, err := s.Comm.Remote(s.Channel, destination)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	stream, err := stub.SubmitStream()
+	stream, err = stub.SubmitStream()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	s.stream = stream
+	s.mapStream(destination, stream)
 	return stream, nil
+}
+
+func (s *RPC) getStream(destination uint64) orderer.Cluster_SubmitClient {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.DestinationToStream[destination]
+}
+
+func (s *RPC) mapStream(destination uint64, stream orderer.Cluster_SubmitClient) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.DestinationToStream[destination] = stream
+}
+
+func (s *RPC) unMapStream(destination uint64) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	delete(s.DestinationToStream, destination)
 }
