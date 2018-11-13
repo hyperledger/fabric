@@ -5,13 +5,13 @@ Developing Applications
    :maxdepth: 1
    :hidden:
 
-   developapps/scenario.md
-   developapps/analysis.md
-   developapps/smartcontract.md
-   developapps/application.md
-   developapps/architecture.md
-   developapps/apis.md
-   developapps/designelements
+   scenario.md
+   analysis.md
+   architecture.md
+   smartcontract.md
+   application.md
+   apis.md
+   designelements
 
 This topic covers how to develop a client application and smart contract to solve a
 business requirement using Hyperledger Fabric. Using a real world **Commercial
