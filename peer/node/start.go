@@ -54,6 +54,7 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/cscc"
@@ -155,11 +156,14 @@ func serve(args []string) error {
 		return mgmt.GetManagerForChain(chainID)
 	}
 
-	metricsProvider, metricsShutdown, err := initializeMetrics()
+	opsSystem := newOperationsSystem()
+	err := opsSystem.Start()
 	if err != nil {
-		return errors.WithMessage(err, "failed to initialize metrics system")
+		return errors.WithMessage(err, "failed to initialize operations subystems")
 	}
-	defer metricsShutdown()
+	defer opsSystem.Stop()
+
+	metricsProvider := opsSystem.Provider
 
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
 	//initialize resource management exit
@@ -809,4 +813,30 @@ func initGossipService(policyMgr policies.ChannelPolicyManagerGetter, peerServer
 		secureDialOpts,
 		bootstrap...,
 	)
+}
+
+func newOperationsSystem() *operations.System {
+	return operations.NewSystem(operations.Options{
+		Logger:        flogging.MustGetLogger("peer.operations"),
+		ListenAddress: viper.GetString("operations.listenAddress"),
+		Metrics: operations.MetricsOptions{
+			Provider: viper.GetString("operations.metrics.provider"),
+			Statsd: &operations.Statsd{
+				Network:       viper.GetString("operations.metrics.statsd.network"),
+				Address:       viper.GetString("operations.metrics.statsd.address"),
+				WriteInterval: viper.GetDuration("operations.metrics.statsd.writeInterval"),
+				Prefix:        viper.GetString("operations.metrics.statsd.prefix"),
+			},
+			Prometheus: &operations.Prometheus{
+				HandlerPath: viper.GetString("operations.metrics.prometheus.handlerPath"),
+			},
+		},
+		TLS: operations.TLS{
+			Enabled:            viper.GetBool("operations.tls.enabled"),
+			CertFile:           viper.GetString("operations.tls.cert.file"),
+			KeyFile:            viper.GetString("operations.tls.key.file"),
+			ClientCertRequired: viper.GetBool("operations.tls.clientAuthRequired"),
+			ClientCACertFiles:  viper.GetStringSlice("operations.tls.clientRootCAs.files"),
+		},
+	})
 }
