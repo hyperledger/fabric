@@ -551,12 +551,6 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             OrdererType: etcdraft
-            EtcdRaft:
-                Consenters:
-                    - Host: 127.0.0.1
-                      Port: 7050
-                      ClientTLSCert: etcdraft/tls-client-1.pem
-                      ServerTLSCert: etcdraft/tls-server-1.pem
             Organizations:
                 - <<: *SampleOrg
                   Policies:
