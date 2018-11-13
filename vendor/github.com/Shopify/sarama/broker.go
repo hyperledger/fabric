@@ -18,6 +18,7 @@ import (
 type Broker struct {
 	id   int32
 	addr string
+	rack *string
 
 	conf          *Config
 	correlationID int32
@@ -85,6 +86,7 @@ func (b *Broker) Open(conf *Config) error {
 		dialer := net.Dialer{
 			Timeout:   conf.Net.DialTimeout,
 			KeepAlive: conf.Net.KeepAlive,
+			LocalAddr: conf.Net.LocalAddr,
 		}
 
 		if conf.Net.TLS.Enable {
@@ -220,6 +222,18 @@ func (b *Broker) GetMetadata(request *MetadataRequest) (*MetadataResponse, error
 
 func (b *Broker) GetConsumerMetadata(request *ConsumerMetadataRequest) (*ConsumerMetadataResponse, error) {
 	response := new(ConsumerMetadataResponse)
+
+	err := b.sendAndReceive(request, response)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) FindCoordinator(request *FindCoordinatorRequest) (*FindCoordinatorResponse, error) {
+	response := new(FindCoordinatorResponse)
 
 	err := b.sendAndReceive(request, response)
 
@@ -373,6 +387,170 @@ func (b *Broker) ApiVersions(request *ApiVersionsRequest) (*ApiVersionsResponse,
 	return response, nil
 }
 
+func (b *Broker) CreateTopics(request *CreateTopicsRequest) (*CreateTopicsResponse, error) {
+	response := new(CreateTopicsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DeleteTopics(request *DeleteTopicsRequest) (*DeleteTopicsResponse, error) {
+	response := new(DeleteTopicsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) CreatePartitions(request *CreatePartitionsRequest) (*CreatePartitionsResponse, error) {
+	response := new(CreatePartitionsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DeleteRecords(request *DeleteRecordsRequest) (*DeleteRecordsResponse, error) {
+	response := new(DeleteRecordsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DescribeAcls(request *DescribeAclsRequest) (*DescribeAclsResponse, error) {
+	response := new(DescribeAclsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) CreateAcls(request *CreateAclsRequest) (*CreateAclsResponse, error) {
+	response := new(CreateAclsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DeleteAcls(request *DeleteAclsRequest) (*DeleteAclsResponse, error) {
+	response := new(DeleteAclsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) InitProducerID(request *InitProducerIDRequest) (*InitProducerIDResponse, error) {
+	response := new(InitProducerIDResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) AddPartitionsToTxn(request *AddPartitionsToTxnRequest) (*AddPartitionsToTxnResponse, error) {
+	response := new(AddPartitionsToTxnResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) AddOffsetsToTxn(request *AddOffsetsToTxnRequest) (*AddOffsetsToTxnResponse, error) {
+	response := new(AddOffsetsToTxnResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) EndTxn(request *EndTxnRequest) (*EndTxnResponse, error) {
+	response := new(EndTxnResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) TxnOffsetCommit(request *TxnOffsetCommitRequest) (*TxnOffsetCommitResponse, error) {
+	response := new(TxnOffsetCommitResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DescribeConfigs(request *DescribeConfigsRequest) (*DescribeConfigsResponse, error) {
+	response := new(DescribeConfigsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) AlterConfigs(request *AlterConfigsRequest) (*AlterConfigsResponse, error) {
+	response := new(AlterConfigsResponse)
+
+	err := b.sendAndReceive(request, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func (b *Broker) DeleteGroups(request *DeleteGroupsRequest) (*DeleteGroupsResponse, error) {
+	response := new(DeleteGroupsResponse)
+
+	if err := b.sendAndReceive(request, response); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func (b *Broker) send(rb protocolBody, promiseResponse bool) (*responsePromise, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -438,7 +616,7 @@ func (b *Broker) sendAndReceive(req protocolBody, res versionedDecoder) error {
 	}
 }
 
-func (b *Broker) decode(pd packetDecoder) (err error) {
+func (b *Broker) decode(pd packetDecoder, version int16) (err error) {
 	b.id, err = pd.getInt32()
 	if err != nil {
 		return err
@@ -454,6 +632,13 @@ func (b *Broker) decode(pd packetDecoder) (err error) {
 		return err
 	}
 
+	if version >= 1 {
+		b.rack, err = pd.getNullableString()
+		if err != nil {
+			return err
+		}
+	}
+
 	b.addr = net.JoinHostPort(host, fmt.Sprint(port))
 	if _, _, err := net.SplitHostPort(b.addr); err != nil {
 		return err
@@ -462,7 +647,7 @@ func (b *Broker) decode(pd packetDecoder) (err error) {
 	return nil
 }
 
-func (b *Broker) encode(pe packetEncoder) (err error) {
+func (b *Broker) encode(pe packetEncoder, version int16) (err error) {
 
 	host, portstr, err := net.SplitHostPort(b.addr)
 	if err != nil {
@@ -481,6 +666,13 @@ func (b *Broker) encode(pe packetEncoder) (err error) {
 	}
 
 	pe.putInt32(int32(port))
+
+	if version >= 1 {
+		err = pe.putNullableString(b.rack)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
