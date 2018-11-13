@@ -49,13 +49,14 @@ can be added to the config with ``idemixgen signerconfig``.
     Generate a default signer for this Idemix MSP
 
     Flags:
-        -h, --help               Show context-sensitive help (also try --help-long and --help-man).
-        -u, --org-unit=ORG-UNIT  The Organizational Unit of the default signer
-        -a, --admin              Make the default signer admin
-        -e, --enrollment-id=ENROLLMENT-ID
-                                 The enrollment id of the default signer
-        -r, --revocation-handle=REVOCATION-HANDLE
-                                 The handle used to revoke this signer
+        -h, --help                Show context-sensitive help (also try --help-long and --help-man).
+        --output="idemix-config"  The output directory in which to place artifacts
+        -u, --org-unit=ORG-UNIT   The Organizational Unit of the default signer
+        -a, --admin               Make the default signer admin
+        -e, --enrollmentId=ENROLLMENTID
+                                  The enrollment id of the default signer
+        -r, --revocationHandle=REVOCATIONHANDLE
+                                  The handle used to revoke this signer
 
 For example, we can create a default signer that is a member of organizational
 unit "OrgUnit1", with enrollment identity "johndoe", revocation handle "1234",
