@@ -10,7 +10,7 @@ func (r *MetadataRequest) encode(pe packetEncoder) error {
 	if r.Version < 0 || r.Version > 5 {
 		return PacketEncodingError{"invalid or unsupported MetadataRequest version field"}
 	}
-	if r.Version == 0 || r.Topics != nil || len(r.Topics) > 0 {
+	if r.Version == 0 || len(r.Topics) > 0 {
 		err := pe.putArrayLength(len(r.Topics))
 		if err != nil {
 			return err
