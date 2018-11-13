@@ -234,6 +234,8 @@ type MissingPrivateData struct {
 	IsEligible bool
 }
 
+// MissingPrivateDataList encapsulates a list of
+// MissingPrivateData
 type MissingPrivateDataList struct {
 	List []*MissingPrivateData
 }
@@ -252,6 +254,7 @@ type BlockPvtData struct {
 	WriteSets map[uint64]*TxPvtData
 }
 
+// Add adds a given missing private data in the MissingPrivateDataList
 func (missing *MissingPrivateDataList) Add(txId string, txNum uint64, ns, coll string, isEligible bool) {
 	missing.List = append(missing.List, &MissingPrivateData{txId, txNum, ns, coll, isEligible})
 }
@@ -386,6 +389,7 @@ type CollectionConfigInfo struct {
 	CommittingBlockNum uint64
 }
 
+// Add adds a missing data entry to the MissingPvtDataInfo Map
 func (missingPvtDataInfo MissingPvtDataInfo) Add(blkNum, txNum uint64, ns, coll string) {
 	missingBlockPvtDataInfo, ok := missingPvtDataInfo[blkNum]
 	if !ok {

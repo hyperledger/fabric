@@ -17,8 +17,17 @@ func (e *ExpiryData) getOrCreateCollections(ns string) *Collections {
 			Map:            make(map[string]*TxNums),
 			MissingDataMap: make(map[string]bool)}
 		e.Map[ns] = collections
+	} else {
+		// due to protobuf encoding/decoding, the previously
+		// initialized map could be a nil now due to 0 length.
+		// Hence, we need to reinitialize the map.
+		if collections.Map == nil {
+			collections.Map = make(map[string]*TxNums)
+		}
+		if collections.MissingDataMap == nil {
+			collections.MissingDataMap = make(map[string]bool)
+		}
 	}
-
 	return collections
 }
 

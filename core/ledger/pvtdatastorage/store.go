@@ -65,6 +65,17 @@ type Store interface {
 	// collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
 	// is now eligible to recieve pvt data
 	ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error
+	// CommitPvtDataOfOldBlocks commits the pvtData (i.e., previously missing data) of old blocks.
+	// The parameter `blocksPvtData` refers a list of old block's pvtdata which are missing in the pvtstore.
+	// This call stores an additional entry called `lastUpdatedOldBlocksList` which keeps the exact list
+	// of updated blocks. This list would be used during recovery process. Once the stateDB is updated with
+	// these pvtData, the `lastUpdatedOldBlocksList` must be removed. During the peer startup,
+	// if the `lastUpdatedOldBlocksList` exists, stateDB needs to be updated with the appropriate pvtData.
+	CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error
+	// GetLastUpdatedOldBlocksList returns the value of `lastUpdatedOldBlocksList`
+	GetLastUpdatedOldBlocksList() ([]uint64, error)
+	// ResetLastUpdatedOldBlocksList removes the `lastUpdatedOldBlocksList` entry from the store
+	ResetLastUpdatedOldBlocksList() error
 	// IsEmpty returns true if the store does not have any block committed yet
 	IsEmpty() (bool, error)
 	// LastCommittedBlockHeight returns the height of the last committed block

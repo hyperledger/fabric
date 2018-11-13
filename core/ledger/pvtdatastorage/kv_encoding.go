@@ -26,6 +26,7 @@ var (
 	eligibleMissingDataKeyPrefix   = []byte{4}
 	ineligibleMissingDataKeyPrefix = []byte{5}
 	collElgKeyPrefix               = []byte{6}
+	lastUpdatedOldBlocksKey        = []byte{7}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
