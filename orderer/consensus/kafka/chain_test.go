@@ -576,7 +576,7 @@ func TestCloseKafkaObjects(t *testing.T) {
 
 		assert.Len(t, errs, 0, "Expected zero errors")
 
-		assert.Panics(t, func() {
+		assert.NotPanics(t, func() {
 			channelConsumer.Close()
 		})
 

@@ -40,8 +40,8 @@
     ".",
     "mocks"
   ]
-  revision = "f7be6aa2bc7b2e38edf816b08b582782194a1c02"
-  version = "v1.16.0"
+  revision = "ec843464b50d4c8b56403ec9d589cf41ea30e722"
+  version = "v1.19.0"
 
 [[projects]]
   branch = "master"
@@ -633,6 +633,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0b9967a9ce9370ccee1fb5c3880f03ffbad05c5dd1b39290568b62cd77a3dc20"
+  inputs-digest = "57ef4e252545f7d8bc64dea43e977c4ba436ed5a87d694a2914e6ecae637564b"
   solver-name = "gps-cdcl"
   solver-version = 1
