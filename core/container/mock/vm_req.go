@@ -2,17 +2,17 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	container_test "github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	container "github.com/hyperledger/fabric/core/container"
+	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type VMCReq struct {
-	DoStub        func(v container_test.VM) error
+	DoStub        func(container.VM) error
 	doMutex       sync.RWMutex
 	doArgsForCall []struct {
-		v container_test.VM
+		arg1 container.VM
 	}
 	doReturns struct {
 		result1 error
@@ -22,8 +22,9 @@ type VMCReq struct {
 	}
 	GetCCIDStub        func() ccintf.CCID
 	getCCIDMutex       sync.RWMutex
-	getCCIDArgsForCall []struct{}
-	getCCIDReturns     struct {
+	getCCIDArgsForCall []struct {
+	}
+	getCCIDReturns struct {
 		result1 ccintf.CCID
 	}
 	getCCIDReturnsOnCall map[int]struct {
@@ -33,21 +34,22 @@ type VMCReq struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VMCReq) Do(v container_test.VM) error {
+func (fake *VMCReq) Do(arg1 container.VM) error {
 	fake.doMutex.Lock()
 	ret, specificReturn := fake.doReturnsOnCall[len(fake.doArgsForCall)]
 	fake.doArgsForCall = append(fake.doArgsForCall, struct {
-		v container_test.VM
-	}{v})
-	fake.recordInvocation("Do", []interface{}{v})
+		arg1 container.VM
+	}{arg1})
+	fake.recordInvocation("Do", []interface{}{arg1})
 	fake.doMutex.Unlock()
 	if fake.DoStub != nil {
-		return fake.DoStub(v)
+		return fake.DoStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.doReturns.result1
+	fakeReturns := fake.doReturns
+	return fakeReturns.result1
 }
 
 func (fake *VMCReq) DoCallCount() int {
@@ -56,13 +58,22 @@ func (fake *VMCReq) DoCallCount() int {
 	return len(fake.doArgsForCall)
 }
 
-func (fake *VMCReq) DoArgsForCall(i int) container_test.VM {
+func (fake *VMCReq) DoCalls(stub func(container.VM) error) {
+	fake.doMutex.Lock()
+	defer fake.doMutex.Unlock()
+	fake.DoStub = stub
+}
+
+func (fake *VMCReq) DoArgsForCall(i int) container.VM {
 	fake.doMutex.RLock()
 	defer fake.doMutex.RUnlock()
-	return fake.doArgsForCall[i].v
+	argsForCall := fake.doArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *VMCReq) DoReturns(result1 error) {
+	fake.doMutex.Lock()
+	defer fake.doMutex.Unlock()
 	fake.DoStub = nil
 	fake.doReturns = struct {
 		result1 error
@@ -70,6 +81,8 @@ func (fake *VMCReq) DoReturns(result1 error) {
 }
 
 func (fake *VMCReq) DoReturnsOnCall(i int, result1 error) {
+	fake.doMutex.Lock()
+	defer fake.doMutex.Unlock()
 	fake.DoStub = nil
 	if fake.doReturnsOnCall == nil {
 		fake.doReturnsOnCall = make(map[int]struct {
@@ -84,7 +97,8 @@ func (fake *VMCReq) DoReturnsOnCall(i int, result1 error) {
 func (fake *VMCReq) GetCCID() ccintf.CCID {
 	fake.getCCIDMutex.Lock()
 	ret, specificReturn := fake.getCCIDReturnsOnCall[len(fake.getCCIDArgsForCall)]
-	fake.getCCIDArgsForCall = append(fake.getCCIDArgsForCall, struct{}{})
+	fake.getCCIDArgsForCall = append(fake.getCCIDArgsForCall, struct {
+	}{})
 	fake.recordInvocation("GetCCID", []interface{}{})
 	fake.getCCIDMutex.Unlock()
 	if fake.GetCCIDStub != nil {
@@ -93,7 +107,8 @@ func (fake *VMCReq) GetCCID() ccintf.CCID {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getCCIDReturns.result1
+	fakeReturns := fake.getCCIDReturns
+	return fakeReturns.result1
 }
 
 func (fake *VMCReq) GetCCIDCallCount() int {
@@ -102,7 +117,15 @@ func (fake *VMCReq) GetCCIDCallCount() int {
 	return len(fake.getCCIDArgsForCall)
 }
 
+func (fake *VMCReq) GetCCIDCalls(stub func() ccintf.CCID) {
+	fake.getCCIDMutex.Lock()
+	defer fake.getCCIDMutex.Unlock()
+	fake.GetCCIDStub = stub
+}
+
 func (fake *VMCReq) GetCCIDReturns(result1 ccintf.CCID) {
+	fake.getCCIDMutex.Lock()
+	defer fake.getCCIDMutex.Unlock()
 	fake.GetCCIDStub = nil
 	fake.getCCIDReturns = struct {
 		result1 ccintf.CCID
@@ -110,6 +133,8 @@ func (fake *VMCReq) GetCCIDReturns(result1 ccintf.CCID) {
 }
 
 func (fake *VMCReq) GetCCIDReturnsOnCall(i int, result1 ccintf.CCID) {
+	fake.getCCIDMutex.Lock()
+	defer fake.getCCIDMutex.Unlock()
 	fake.GetCCIDStub = nil
 	if fake.getCCIDReturnsOnCall == nil {
 		fake.getCCIDReturnsOnCall = make(map[int]struct {

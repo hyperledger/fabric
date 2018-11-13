@@ -2,21 +2,33 @@
 package mock
 
 import (
-	"sync"
+	context "context"
+	sync "sync"
 
-	container_test "github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	container "github.com/hyperledger/fabric/core/container"
+	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type VM struct {
-	StartStub        func(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container_test.Builder) error
+	HealthCheckStub        func(context.Context) error
+	healthCheckMutex       sync.RWMutex
+	healthCheckArgsForCall []struct {
+		arg1 context.Context
+	}
+	healthCheckReturns struct {
+		result1 error
+	}
+	healthCheckReturnsOnCall map[int]struct {
+		result1 error
+	}
+	StartStub        func(ccintf.CCID, []string, []string, map[string][]byte, container.Builder) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
-		ccid          ccintf.CCID
-		args          []string
-		env           []string
-		filesToUpload map[string][]byte
-		builder       container_test.Builder
+		arg1 ccintf.CCID
+		arg2 []string
+		arg3 []string
+		arg4 map[string][]byte
+		arg5 container.Builder
 	}
 	startReturns struct {
 		result1 error
@@ -24,13 +36,13 @@ type VM struct {
 	startReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StopStub        func(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
+	StopStub        func(ccintf.CCID, uint, bool, bool) error
 	stopMutex       sync.RWMutex
 	stopArgsForCall []struct {
-		ccid       ccintf.CCID
-		timeout    uint
-		dontkill   bool
-		dontremove bool
+		arg1 ccintf.CCID
+		arg2 uint
+		arg3 bool
+		arg4 bool
 	}
 	stopReturns struct {
 		result1 error
@@ -42,35 +54,96 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container_test.Builder) error {
-	var argsCopy []string
-	if args != nil {
-		argsCopy = make([]string, len(args))
-		copy(argsCopy, args)
-	}
-	var envCopy []string
-	if env != nil {
-		envCopy = make([]string, len(env))
-		copy(envCopy, env)
-	}
-	fake.startMutex.Lock()
-	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
-	fake.startArgsForCall = append(fake.startArgsForCall, struct {
-		ccid          ccintf.CCID
-		args          []string
-		env           []string
-		filesToUpload map[string][]byte
-		builder       container_test.Builder
-	}{ccid, argsCopy, envCopy, filesToUpload, builder})
-	fake.recordInvocation("Start", []interface{}{ccid, argsCopy, envCopy, filesToUpload, builder})
-	fake.startMutex.Unlock()
-	if fake.StartStub != nil {
-		return fake.StartStub(ccid, args, env, filesToUpload, builder)
+func (fake *VM) HealthCheck(arg1 context.Context) error {
+	fake.healthCheckMutex.Lock()
+	ret, specificReturn := fake.healthCheckReturnsOnCall[len(fake.healthCheckArgsForCall)]
+	fake.healthCheckArgsForCall = append(fake.healthCheckArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	fake.recordInvocation("HealthCheck", []interface{}{arg1})
+	fake.healthCheckMutex.Unlock()
+	if fake.HealthCheckStub != nil {
+		return fake.HealthCheckStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.startReturns.result1
+	fakeReturns := fake.healthCheckReturns
+	return fakeReturns.result1
+}
+
+func (fake *VM) HealthCheckCallCount() int {
+	fake.healthCheckMutex.RLock()
+	defer fake.healthCheckMutex.RUnlock()
+	return len(fake.healthCheckArgsForCall)
+}
+
+func (fake *VM) HealthCheckCalls(stub func(context.Context) error) {
+	fake.healthCheckMutex.Lock()
+	defer fake.healthCheckMutex.Unlock()
+	fake.HealthCheckStub = stub
+}
+
+func (fake *VM) HealthCheckArgsForCall(i int) context.Context {
+	fake.healthCheckMutex.RLock()
+	defer fake.healthCheckMutex.RUnlock()
+	argsForCall := fake.healthCheckArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *VM) HealthCheckReturns(result1 error) {
+	fake.healthCheckMutex.Lock()
+	defer fake.healthCheckMutex.Unlock()
+	fake.HealthCheckStub = nil
+	fake.healthCheckReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *VM) HealthCheckReturnsOnCall(i int, result1 error) {
+	fake.healthCheckMutex.Lock()
+	defer fake.healthCheckMutex.Unlock()
+	fake.HealthCheckStub = nil
+	if fake.healthCheckReturnsOnCall == nil {
+		fake.healthCheckReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.healthCheckReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *VM) Start(arg1 ccintf.CCID, arg2 []string, arg3 []string, arg4 map[string][]byte, arg5 container.Builder) error {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	var arg3Copy []string
+	if arg3 != nil {
+		arg3Copy = make([]string, len(arg3))
+		copy(arg3Copy, arg3)
+	}
+	fake.startMutex.Lock()
+	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
+	fake.startArgsForCall = append(fake.startArgsForCall, struct {
+		arg1 ccintf.CCID
+		arg2 []string
+		arg3 []string
+		arg4 map[string][]byte
+		arg5 container.Builder
+	}{arg1, arg2Copy, arg3Copy, arg4, arg5})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2Copy, arg3Copy, arg4, arg5})
+	fake.startMutex.Unlock()
+	if fake.StartStub != nil {
+		return fake.StartStub(arg1, arg2, arg3, arg4, arg5)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.startReturns
+	return fakeReturns.result1
 }
 
 func (fake *VM) StartCallCount() int {
@@ -79,13 +152,22 @@ func (fake *VM) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte, container_test.Builder) {
+func (fake *VM) StartCalls(stub func(ccintf.CCID, []string, []string, map[string][]byte, container.Builder) error) {
+	fake.startMutex.Lock()
+	defer fake.startMutex.Unlock()
+	fake.StartStub = stub
+}
+
+func (fake *VM) StartArgsForCall(i int) (ccintf.CCID, []string, []string, map[string][]byte, container.Builder) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
-	return fake.startArgsForCall[i].ccid, fake.startArgsForCall[i].args, fake.startArgsForCall[i].env, fake.startArgsForCall[i].filesToUpload, fake.startArgsForCall[i].builder
+	argsForCall := fake.startArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *VM) StartReturns(result1 error) {
+	fake.startMutex.Lock()
+	defer fake.startMutex.Unlock()
 	fake.StartStub = nil
 	fake.startReturns = struct {
 		result1 error
@@ -93,6 +175,8 @@ func (fake *VM) StartReturns(result1 error) {
 }
 
 func (fake *VM) StartReturnsOnCall(i int, result1 error) {
+	fake.startMutex.Lock()
+	defer fake.startMutex.Unlock()
 	fake.StartStub = nil
 	if fake.startReturnsOnCall == nil {
 		fake.startReturnsOnCall = make(map[int]struct {
@@ -104,24 +188,25 @@ func (fake *VM) StartReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
+func (fake *VM) Stop(arg1 ccintf.CCID, arg2 uint, arg3 bool, arg4 bool) error {
 	fake.stopMutex.Lock()
 	ret, specificReturn := fake.stopReturnsOnCall[len(fake.stopArgsForCall)]
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
-		ccid       ccintf.CCID
-		timeout    uint
-		dontkill   bool
-		dontremove bool
-	}{ccid, timeout, dontkill, dontremove})
-	fake.recordInvocation("Stop", []interface{}{ccid, timeout, dontkill, dontremove})
+		arg1 ccintf.CCID
+		arg2 uint
+		arg3 bool
+		arg4 bool
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("Stop", []interface{}{arg1, arg2, arg3, arg4})
 	fake.stopMutex.Unlock()
 	if fake.StopStub != nil {
-		return fake.StopStub(ccid, timeout, dontkill, dontremove)
+		return fake.StopStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.stopReturns.result1
+	fakeReturns := fake.stopReturns
+	return fakeReturns.result1
 }
 
 func (fake *VM) StopCallCount() int {
@@ -130,13 +215,22 @@ func (fake *VM) StopCallCount() int {
 	return len(fake.stopArgsForCall)
 }
 
+func (fake *VM) StopCalls(stub func(ccintf.CCID, uint, bool, bool) error) {
+	fake.stopMutex.Lock()
+	defer fake.stopMutex.Unlock()
+	fake.StopStub = stub
+}
+
 func (fake *VM) StopArgsForCall(i int) (ccintf.CCID, uint, bool, bool) {
 	fake.stopMutex.RLock()
 	defer fake.stopMutex.RUnlock()
-	return fake.stopArgsForCall[i].ccid, fake.stopArgsForCall[i].timeout, fake.stopArgsForCall[i].dontkill, fake.stopArgsForCall[i].dontremove
+	argsForCall := fake.stopArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *VM) StopReturns(result1 error) {
+	fake.stopMutex.Lock()
+	defer fake.stopMutex.Unlock()
 	fake.StopStub = nil
 	fake.stopReturns = struct {
 		result1 error
@@ -144,6 +238,8 @@ func (fake *VM) StopReturns(result1 error) {
 }
 
 func (fake *VM) StopReturnsOnCall(i int, result1 error) {
+	fake.stopMutex.Lock()
+	defer fake.stopMutex.Unlock()
 	fake.StopStub = nil
 	if fake.stopReturnsOnCall == nil {
 		fake.stopReturnsOnCall = make(map[int]struct {
@@ -158,6 +254,8 @@ func (fake *VM) StopReturnsOnCall(i int, result1 error) {
 func (fake *VM) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.healthCheckMutex.RLock()
+	defer fake.healthCheckMutex.RUnlock()
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	fake.stopMutex.RLock()
