@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,11 +22,12 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
-	orderer2 "github.com/hyperledger/fabric/protos/orderer"
+	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/ginkgo"
@@ -272,7 +274,7 @@ var _ = Describe("EndToEnd", func() {
 			updatedConfig := proto.Clone(config).(*common.Config)
 
 			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-			consensusTypeValue := &orderer2.ConsensusType{}
+			consensusTypeValue := &protosorderer.ConsensusType{}
 			err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -462,31 +464,41 @@ func operationalClients(tlsDir string) (authClient, unauthClient *http.Client) {
 func CheckPeerOperationEndpoints(network *nwo.Network, peer *nwo.Peer) {
 	metricsURL := fmt.Sprintf("https://127.0.0.1:%d/metrics", network.PeerPort(peer, nwo.OperationsPort))
 	logspecURL := fmt.Sprintf("https://127.0.0.1:%d/logspec", network.PeerPort(peer, nwo.OperationsPort))
+	healthURL := fmt.Sprintf("https://127.0.0.1:%d/healthz", network.PeerPort(peer, nwo.OperationsPort))
 
 	authClient, unauthClient := PeerOperationalClients(network, peer)
 
 	CheckPeerPometheusMetrics(authClient, metricsURL)
 	CheckLogspecOperations(authClient, logspecURL)
+	CheckHealthEndpoint(authClient, healthURL)
 
-	By("getting interacting without a cert")
-	_, err := unauthClient.Get(logspecURL)
-	Expect(err).To(HaveOccurred())
-	Expect(err.Error()).To(ContainSubstring("remote error: tls: bad certificate"))
+	By("getting the logspec without a client cert")
+	resp, err := unauthClient.Get(logspecURL)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+
+	By("ensuring health checks do not require a client cert")
+	CheckHealthEndpoint(unauthClient, healthURL)
 }
 
 func CheckOrdererOperationEndpoints(network *nwo.Network, orderer *nwo.Orderer) {
 	metricsURL := fmt.Sprintf("https://127.0.0.1:%d/metrics", network.OrdererPort(orderer, nwo.OperationsPort))
 	logspecURL := fmt.Sprintf("https://127.0.0.1:%d/logspec", network.OrdererPort(orderer, nwo.OperationsPort))
+	healthURL := fmt.Sprintf("https://127.0.0.1:%d/healthz", network.OrdererPort(orderer, nwo.OperationsPort))
 
 	authClient, unauthClient := OrdererOperationalClients(network, orderer)
 
 	CheckOrdererPometheusMetrics(authClient, metricsURL)
 	CheckLogspecOperations(authClient, logspecURL)
+	CheckHealthEndpoint(authClient, healthURL)
 
-	By("getting interacting without a cert")
-	_, err := unauthClient.Get(logspecURL)
-	Expect(err).To(HaveOccurred())
-	Expect(err.Error()).To(ContainSubstring("remote error: tls: bad certificate"))
+	By("getting the logspec without a client cert")
+	resp, err := unauthClient.Get(logspecURL)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+
+	By("ensuring health checks do not require a client cert")
+	CheckHealthEndpoint(unauthClient, healthURL)
 }
 
 func CheckPeerPometheusMetrics(client *http.Client, url string) {
@@ -553,6 +565,15 @@ func CheckLogspecOperations(client *http.Client, logspecURL string) {
 	resp.Body.Close()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"debug"}`))
+}
+
+func CheckHealthEndpoint(client *http.Client, url string) {
+	body := getBody(client, url)()
+
+	var healthStatus healthz.HealthStatus
+	err := json.Unmarshal([]byte(body), &healthStatus)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(healthStatus.Status).To(Equal(healthz.StatusOK))
 }
 
 func getBody(client *http.Client, url string) func() string {

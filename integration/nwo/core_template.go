@@ -192,7 +192,7 @@ operations:
       file: {{ .PeerLocalTLSDir Peer }}/server.crt
     key:
       file: {{ .PeerLocalTLSDir Peer }}/server.key
-    clientAuthRequired: true
+    clientAuthRequired: false
     clientRootCAs:
       files:
       - {{ .PeerLocalTLSDir Peer }}/ca.crt

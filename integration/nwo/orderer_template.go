@@ -99,7 +99,7 @@ Operations:
     Certificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
     RootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
-    ClientAuthRequired: true
+    ClientAuthRequired: false
     ClientRootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
   Metrics:
