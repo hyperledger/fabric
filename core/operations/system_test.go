@@ -36,9 +36,10 @@ var _ = Describe("System", func() {
 		fakeLogger *fakes.Logger
 		tempDir    string
 
-		client  *http.Client
-		options operations.Options
-		system  *operations.System
+		client       *http.Client
+		unauthClient *http.Client
+		options      operations.Options
+		system       *operations.System
 	)
 
 	BeforeEach(func() {
@@ -47,7 +48,8 @@ var _ = Describe("System", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)
-		client = newHTTPClient(tempDir)
+		client = newHTTPClient(tempDir, true)
+		unauthClient = newHTTPClient(tempDir, false)
 
 		fakeLogger = &fakes.Logger{}
 		options = operations.Options{
@@ -60,7 +62,7 @@ var _ = Describe("System", func() {
 				Enabled:            true,
 				CertFile:           filepath.Join(tempDir, "server-cert.pem"),
 				KeyFile:            filepath.Join(tempDir, "server-key.pem"),
-				ClientCertRequired: true,
+				ClientCertRequired: false,
 				ClientCACertFiles:  []string{filepath.Join(tempDir, "client-ca.pem")},
 			},
 		}
@@ -79,10 +81,15 @@ var _ = Describe("System", func() {
 		err := system.Start()
 		Expect(err).NotTo(HaveOccurred())
 
-		resp, err := client.Get(fmt.Sprintf("https://%s/logspec", system.Addr()))
+		logspecURL := fmt.Sprintf("https://%s/logspec", system.Addr())
+		resp, err := client.Get(logspecURL)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 		resp.Body.Close()
+
+		resp, err = unauthClient.Get(logspecURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 	})
 
 	Context("when TLS is disabled", func() {
@@ -99,6 +106,22 @@ var _ = Describe("System", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			resp.Body.Close()
+		})
+	})
+
+	Context("when ClientCertRequired is true", func() {
+		BeforeEach(func() {
+			options.TLS.ClientCertRequired = true
+			system = operations.NewSystem(options)
+		})
+
+		It("requires a client cert to connect", func() {
+			err := system.Start()
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = unauthClient.Get(fmt.Sprintf("https://%s/healthz", system.Addr()))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("remote error: tls: bad certificate"))
 		})
 	})
 
@@ -223,13 +246,18 @@ var _ = Describe("System", func() {
 			err := system.Start()
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err := client.Get(fmt.Sprintf("https://%s/metrics", system.Addr()))
+			metricsURL := fmt.Sprintf("https://%s/metrics", system.Addr())
+			resp, err := client.Get(metricsURL)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			body, err := ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(body).To(ContainSubstring("# TYPE go_gc_duration_seconds summary"))
+
+			resp, err = unauthClient.Get(metricsURL)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 		})
 	})
 

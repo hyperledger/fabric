@@ -49,24 +49,27 @@ func generateCertificates(tempDir string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func newHTTPClient(tlsDir string) *http.Client {
-	clientCert, err := tls.LoadX509KeyPair(
-		filepath.Join(tlsDir, "client-cert.pem"),
-		filepath.Join(tlsDir, "client-key.pem"),
-	)
-	Expect(err).NotTo(HaveOccurred())
-
+func newHTTPClient(tlsDir string, withClientCert bool) *http.Client {
 	clientCertPool := x509.NewCertPool()
 	caCert, err := ioutil.ReadFile(filepath.Join(tlsDir, "server-ca.pem"))
 	Expect(err).NotTo(HaveOccurred())
 	clientCertPool.AppendCertsFromPEM(caCert)
 
+	tlsClientConfig := &tls.Config{
+		RootCAs: clientCertPool,
+	}
+	if withClientCert {
+		clientCert, err := tls.LoadX509KeyPair(
+			filepath.Join(tlsDir, "client-cert.pem"),
+			filepath.Join(tlsDir, "client-key.pem"),
+		)
+		Expect(err).NotTo(HaveOccurred())
+		tlsClientConfig.Certificates = []tls.Certificate{clientCert}
+	}
+
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				Certificates: []tls.Certificate{clientCert},
-				RootCAs:      clientCertPool,
-			},
+			TLSClientConfig: tlsClientConfig,
 		},
 	}
 }

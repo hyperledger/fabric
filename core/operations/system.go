@@ -176,8 +176,7 @@ func (s *System) initializeMetricsProvider() error {
 
 	case "prometheus":
 		s.Provider = &prometheus.Provider{}
-		secure := s.options.TLS.Enabled && s.options.TLS.ClientCertRequired
-		s.mux.Handle(m.Prometheus.HandlerPath, s.handlerChain(prom.Handler(), secure))
+		s.mux.Handle(m.Prometheus.HandlerPath, s.handlerChain(prom.Handler(), s.options.TLS.Enabled))
 		return nil
 
 	default:
@@ -191,8 +190,7 @@ func (s *System) initializeMetricsProvider() error {
 }
 
 func (s *System) initializeLoggingHandler() {
-	secure := s.options.TLS.Enabled && s.options.TLS.ClientCertRequired
-	s.mux.Handle("/logspec", s.handlerChain(httpadmin.NewSpecHandler(), secure))
+	s.mux.Handle("/logspec", s.handlerChain(httpadmin.NewSpecHandler(), s.options.TLS.Enabled))
 }
 
 func (s *System) initializeHealthCheckHandler() {
