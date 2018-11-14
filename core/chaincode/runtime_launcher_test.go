@@ -9,6 +9,7 @@ package chaincode_test
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
@@ -24,6 +25,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRuntime         *mock.Runtime
 		fakeRegistry        *fake.LaunchRegistry
 		launchState         *chaincode.LaunchState
+		fakeLaunchDuration  *metricsfakes.Histogram
 
 		ccci *ccprovider.ChaincodeContainerInfo
 
@@ -44,6 +46,12 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakePackageProvider = &mock.PackageProvider{}
 		fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-package"), nil)
 
+		fakeLaunchDuration = &metricsfakes.Histogram{}
+		fakeLaunchDuration.WithReturns(fakeLaunchDuration)
+
+		launchMetrics := &chaincode.LaunchMetrics{
+			LaunchDuration: fakeLaunchDuration,
+		}
 		ccci = &ccprovider.ChaincodeContainerInfo{
 			Name:          "chaincode-name",
 			Path:          "chaincode-path",
@@ -57,6 +65,7 @@ var _ = Describe("RuntimeLauncher", func() {
 			Registry:        fakeRegistry,
 			PackageProvider: fakePackageProvider,
 			StartupTimeout:  5 * time.Second,
+			Metrics:         launchMetrics,
 		}
 	})
 
@@ -95,6 +104,20 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRegistry.DeregisterCallCount()).To(Equal(0))
+	})
+
+	It("records launch duration", func() {
+		err := runtimeLauncher.Launch(ccci)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(fakeLaunchDuration.WithCallCount()).To(Equal(1))
+		labelValues := fakeLaunchDuration.WithArgsForCall(0)
+		Expect(labelValues).To(Equal([]string{
+			"chaincode", "chaincode-name:chaincode-version",
+			"success", "true",
+		}))
+		Expect(fakeLaunchDuration.ObserveArgsForCall(0)).NotTo(BeZero())
+		Expect(fakeLaunchDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1.0))
 	})
 
 	Context("when starting the runtime fails", func() {

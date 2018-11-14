@@ -164,7 +164,7 @@ type Handler struct {
 	// errChan is used to communicate errors from the async send to the receive loop
 	errChan chan error
 	// Metrics holds chaincode metrics
-	Metrics *Metrics
+	Metrics *HandlerMetrics
 }
 
 // handleMessage is called by ProcessStream to dispatch messages.
@@ -257,11 +257,12 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	}
 
 	chaincodeName := h.chaincodeID.Name + ":" + h.chaincodeID.Version
-	h.Metrics.ShimRequestsReceived.With(
+	meterLabels := []string{
 		"type", msg.Type.String(),
 		"channel", msg.ChannelId,
 		"chaincode", chaincodeName,
-	).Add(1)
+	}
+	h.Metrics.ShimRequestsReceived.With(meterLabels...).Add(1)
 
 	var resp *pb.ChaincodeMessage
 	if err == nil {
@@ -277,19 +278,10 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
 	h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
 	h.serialSendAsync(resp)
-	duration := time.Since(startTime)
-	h.Metrics.ShimRequestDuration.With(
-		"type", msg.Type.String(),
-		"channel", msg.ChannelId,
-		"chaincode", chaincodeName,
-		"success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR),
-	).Observe(float64(duration) / float64(time.Second))
-	h.Metrics.ShimRequestsCompleted.With(
-		"type", msg.Type.String(),
-		"channel", msg.ChannelId,
-		"chaincode", chaincodeName,
-		"success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR),
-	).Add(1)
+
+	meterLabels = append(meterLabels, "success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR))
+	h.Metrics.ShimRequestDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
+	h.Metrics.ShimRequestsCompleted.With(meterLabels...).Add(1)
 }
 
 func shorttxid(txid string) string {

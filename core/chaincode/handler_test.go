@@ -95,7 +95,7 @@ var _ = Describe("Handler", func() {
 		fakeShimRequestDuration = &metricsfakes.Histogram{}
 		fakeShimRequestDuration.WithReturns(fakeShimRequestDuration)
 
-		chaincodeMetrics := &chaincode.Metrics{
+		chaincodeMetrics := &chaincode.HandlerMetrics{
 			ShimRequestsReceived:  fakeShimRequestsReceived,
 			ShimRequestsCompleted: fakeShimRequestsCompleted,
 			ShimRequestDuration:   fakeShimRequestDuration,

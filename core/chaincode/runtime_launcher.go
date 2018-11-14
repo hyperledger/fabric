@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -31,12 +32,14 @@ type RuntimeLauncher struct {
 	Registry        LaunchRegistry
 	PackageProvider PackageProvider
 	StartupTimeout  time.Duration
+	Metrics         *LaunchMetrics
 }
 
 func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error {
 	var startFailCh chan error
 	var timeoutCh <-chan time.Time
 
+	startTime := time.Now()
 	cname := ccci.Name + ":" + ccci.Version
 	launchState, started := r.Registry.Launching(cname)
 	if !started {
@@ -66,13 +69,20 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		launchState.Notify(err)
 	}
 
+	success := true
 	if err != nil && !started {
+		success = false
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
 		defer r.Registry.Deregister(cname)
 		if err := r.Runtime.Stop(ccci); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
 	}
+
+	r.Metrics.LaunchDuration.With(
+		"chaincode", cname,
+		"success", strconv.FormatBool(success),
+	).Observe(time.Since(startTime).Seconds())
 
 	chaincodeLogger.Debug("launch complete")
 	return err

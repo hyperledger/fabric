@@ -9,6 +9,14 @@ package chaincode
 import "github.com/hyperledger/fabric/common/metrics"
 
 var (
+	launchDuration = metrics.HistogramOpts{
+		Namespace:    "chaincode",
+		Name:         "launch_duration",
+		Help:         "The time to launch a chaincode.",
+		LabelNames:   []string{"chaincode", "success"},
+		StatsdFormat: "%{#fqname}.%{chaincode}.%{success}",
+	}
+
 	shimRequestsReceived = metrics.CounterOpts{
 		Namespace:    "chaincode",
 		Name:         "shim_requests_received",
@@ -32,16 +40,26 @@ var (
 	}
 )
 
-type Metrics struct {
+type HandlerMetrics struct {
 	ShimRequestsReceived  metrics.Counter
 	ShimRequestsCompleted metrics.Counter
 	ShimRequestDuration   metrics.Histogram
 }
 
-func NewMetrics(p metrics.Provider) *Metrics {
-	return &Metrics{
+func NewHandlerMetrics(p metrics.Provider) *HandlerMetrics {
+	return &HandlerMetrics{
 		ShimRequestsReceived:  p.NewCounter(shimRequestsReceived),
 		ShimRequestsCompleted: p.NewCounter(shimRequestsCompleted),
 		ShimRequestDuration:   p.NewHistogram(shimRequestDuration),
+	}
+}
+
+type LaunchMetrics struct {
+	LaunchDuration metrics.Histogram
+}
+
+func NewLaunchMetrics(p metrics.Provider) *LaunchMetrics {
+	return &LaunchMetrics{
+		LaunchDuration: p.NewHistogram(launchDuration),
 	}
 }

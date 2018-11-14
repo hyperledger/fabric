@@ -1097,6 +1097,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		Registry:        handlerRegistry,
 		StartupTimeout:  10 * time.Second,
 		PackageProvider: fakePackageProvider,
+		Metrics:         NewLaunchMetrics(&disabled.Provider{}),
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -1130,6 +1131,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 		Registry:        NewHandlerRegistry(false),
 		StartupTimeout:  500 * time.Millisecond,
 		PackageProvider: fakePackageProvider,
+		Metrics:         NewLaunchMetrics(&disabled.Provider{}),
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -1162,6 +1164,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 		Registry:        NewHandlerRegistry(false),
 		StartupTimeout:  10 * time.Second,
 		PackageProvider: fakePackageProvider,
+		Metrics:         NewLaunchMetrics(&disabled.Provider{}),
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
