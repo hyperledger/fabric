@@ -130,7 +130,7 @@ var _ = Describe("Server", func() {
 		})
 
 		It("logs request data", func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 
 			startTime := time.Now()
@@ -213,7 +213,7 @@ var _ = Describe("Server", func() {
 		})
 
 		It("provides a decorated context", func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			_, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
 			Expect(err).NotTo(HaveOccurred())
@@ -243,9 +243,7 @@ var _ = Describe("Server", func() {
 				expectedErr = errors.New("gah!")
 				fakeEchoService.EchoReturns(nil, expectedErr)
 
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				_, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
+				_, err := echoServiceClient.Echo(context.Background(), &testpb.Message{Message: "hi"})
 				Expect(err).To(HaveOccurred())
 			})
 
@@ -267,9 +265,7 @@ var _ = Describe("Server", func() {
 				expectedErr = &statusError{Status: status.New(codes.Aborted, "aborted")}
 				fakeEchoService.EchoReturns(nil, expectedErr)
 
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				_, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
+				_, err := echoServiceClient.Echo(context.Background(), &testpb.Message{Message: "hi"})
 				Expect(err).To(HaveOccurred())
 			})
 
@@ -302,7 +298,7 @@ var _ = Describe("Server", func() {
 		})
 
 		It("logs stream data", func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			streamClient, err := echoServiceClient.EchoStream(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -319,6 +315,7 @@ var _ = Describe("Server", func() {
 			Expect(err).NotTo(HaveOccurred())
 			endTime := time.Now()
 
+			Eventually(observed.AllUntimed).Should(HaveLen(3))
 			var logMessages []string
 			for _, entry := range observed.AllUntimed() {
 				logMessages = append(logMessages, entry.Message)
@@ -393,7 +390,7 @@ var _ = Describe("Server", func() {
 		})
 
 		It("provides a decorated context", func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			streamClient, err := echoServiceClient.EchoStream(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -438,9 +435,7 @@ var _ = Describe("Server", func() {
 			})
 
 			It("omits grpc.peer_subject", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				streamClient, err := echoServiceClient.EchoStream(ctx)
+				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
 
 				err = streamClient.Send(&testpb.Message{Message: "hello"})
@@ -470,9 +465,7 @@ var _ = Describe("Server", func() {
 				expectedErr = errors.New("gah!")
 				fakeEchoService.EchoStreamReturns(expectedErr)
 
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				streamClient, err := echoServiceClient.EchoStream(ctx)
+				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
 
 				err = streamClient.Send(&testpb.Message{Message: "hello"})
@@ -499,9 +492,7 @@ var _ = Describe("Server", func() {
 				expectedErr = &statusError{Status: status.New(codes.Aborted, "aborted")}
 				fakeEchoService.EchoStreamReturns(expectedErr)
 
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				streamClient, err := echoServiceClient.EchoStream(ctx)
+				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
 
 				err = streamClient.Send(&testpb.Message{Message: "hello"})
