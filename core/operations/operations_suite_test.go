@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -68,4 +69,9 @@ func newHTTPClient(tlsDir string) *http.Client {
 			},
 		},
 	}
+}
+
+//go:generate counterfeiter -o fakes/healthchecker.go -fake-name HealthChecker . healthChecker
+type healthChecker interface {
+	healthz.HealthChecker
 }

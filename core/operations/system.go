@@ -16,6 +16,7 @@ import (
 	"time"
 
 	kitstatsd "github.com/go-kit/kit/metrics/statsd"
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/httpadmin"
 	"github.com/hyperledger/fabric/common/metrics"
@@ -63,6 +64,7 @@ type System struct {
 	metrics.Provider
 
 	logger          Logger
+	healthHandler   *healthz.HealthHandler
 	options         Options
 	statsd          *kitstatsd.Statsd
 	collectorTicker *time.Ticker
@@ -84,6 +86,7 @@ func NewSystem(o Options) *System {
 	}
 
 	system.initializeServer()
+	system.initializeHealthCheckHandler()
 	system.initializeLoggingHandler()
 	system.initializeMetricsProvider()
 
@@ -133,6 +136,10 @@ func (s *System) Stop() error {
 	defer cancel()
 
 	return s.httpServer.Shutdown(ctx)
+}
+
+func (s *System) RegisterChecker(component string, checker healthz.HealthChecker) error {
+	return s.healthHandler.RegisterChecker(component, checker)
 }
 
 func (s *System) initializeServer() {
@@ -186,6 +193,11 @@ func (s *System) initializeMetricsProvider() error {
 func (s *System) initializeLoggingHandler() {
 	secure := s.options.TLS.Enabled && s.options.TLS.ClientCertRequired
 	s.mux.Handle("/logspec", s.handlerChain(httpadmin.NewSpecHandler(), secure))
+}
+
+func (s *System) initializeHealthCheckHandler() {
+	s.healthHandler = healthz.NewHealthHandler()
+	s.mux.Handle("/healthz", s.handlerChain(s.healthHandler, false))
 }
 
 func (s *System) startMetricsTickers() error {

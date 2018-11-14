@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package operations_test
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/common/metrics/statsd"
@@ -156,6 +159,34 @@ var _ = Describe("System", func() {
 			err := system.Log("key", "value")
 			Expect(err).NotTo(HaveOccurred())
 		})
+	})
+
+	It("hosts a health check endpoint", func() {
+		err := system.Start()
+		Expect(err).NotTo(HaveOccurred())
+
+		healthy := &fakes.HealthChecker{}
+		unhealthy := &fakes.HealthChecker{}
+		unhealthy.HealthCheckReturns(errors.New("Unfortunately, I am not feeling well."))
+
+		system.RegisterChecker("healthy", healthy)
+		system.RegisterChecker("unhealthy", unhealthy)
+
+		resp, err := client.Get(fmt.Sprintf("https://%s/healthz", system.Addr()))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusServiceUnavailable))
+		body, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+		resp.Body.Close()
+
+		var healthStatus healthz.HealthStatus
+		err = json.Unmarshal(body, &healthStatus)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(healthStatus.Status).To(Equal(healthz.StatusUnavailable))
+		Expect(healthStatus.FailedChecks).To(ConsistOf(healthz.FailedCheck{
+			Component: "unhealthy",
+			Reason:    "Unfortunately, I am not feeling well.",
+		}))
 	})
 
 	Context("when the metrics provider is disabled", func() {

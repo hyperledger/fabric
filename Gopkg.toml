@@ -59,6 +59,10 @@ noverify = [
 
 [[constraint]]
   branch = "master"
+  name = "github.com/hyperledger/fabric-lib-go"
+
+[[constraint]]
+  branch = "master"
   name = "github.com/kr/pretty"
 
 [[constraint]]
