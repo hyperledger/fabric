@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package container
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -29,6 +30,7 @@ type Builder interface {
 type VM interface {
 	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
 	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
+	HealthCheck(context.Context) error
 }
 
 type refCountedLock struct {

@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -41,7 +42,7 @@ var (
 // getClient returns an instance that implements dockerClient interface
 type getClient func() (dockerClient, error)
 
-//DockerVM is a vm. It is identified by an image id
+// DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
 	getClientFnc getClient
 	PeerID       string
@@ -74,6 +75,9 @@ type dockerClient interface {
 	KillContainer(opts docker.KillContainerOptions) error
 	// RemoveContainer removes a docker container, returns an error in case of failure
 	RemoveContainer(opts docker.RemoveContainerOptions) error
+	// PingWithContext pings the docker daemon. The context object can be used
+	// to cancel the ping request.
+	PingWithContext(context.Context) error
 }
 
 // Controller implements container.VMProvider
@@ -208,7 +212,7 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID,
 	return nil
 }
 
-//Start starts a container using a previously created docker image
+// Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ccid ccintf.CCID,
 	args []string, env []string, filesToUpload map[string][]byte, builder container.Builder) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
@@ -375,7 +379,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID,
 	return nil
 }
 
-//Stop stops a running chaincode
+// Stop stops a running chaincode
 func (vm *DockerVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	id := vm.GetVMName(ccid)
 
@@ -389,6 +393,21 @@ func (vm *DockerVM) Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremo
 	err = vm.stopInternal(client, id, timeout, dontkill, dontremove)
 
 	return err
+}
+
+// HealthCheck checks if the DockerVM is able to communicate with the Docker
+// daemon.
+func (vm *DockerVM) HealthCheck(ctx context.Context) error {
+	errMsg := "failed to ping Docker daemon [%s]"
+	client, err := vm.getClientFnc()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	pingErr := client.PingWithContext(ctx)
+	if pingErr != nil {
+		return fmt.Errorf(errMsg, pingErr)
+	}
+	return nil
 }
 
 func (vm *DockerVM) stopInternal(client dockerClient,

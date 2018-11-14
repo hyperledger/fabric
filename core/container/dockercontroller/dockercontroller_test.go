@@ -10,6 +10,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -183,6 +184,29 @@ func Test_Stop(t *testing.T) {
 	testerr(t, err, true)
 }
 
+func Test_HealthCheck(t *testing.T) {
+	dvm := DockerVM{}
+
+	dvm.getClientFnc = func() (dockerClient, error) {
+		client := &mockClient{
+			pingErr: false,
+		}
+		return client, nil
+	}
+	err := dvm.HealthCheck(context.Background())
+	assert.NoError(t, err)
+
+	dvm.getClientFnc = func() (dockerClient, error) {
+		client := &mockClient{
+			pingErr: true,
+		}
+		return client, nil
+	}
+	err = dvm.HealthCheck(context.Background())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Error pinging daemon")
+}
+
 type testCase struct {
 	name           string
 	vm             *DockerVM
@@ -309,6 +333,7 @@ func (m *mockBuilder) Build() (io.Reader, error) {
 
 type mockClient struct {
 	noSuchImgErrReturned bool
+	pingErr              bool
 }
 
 var getClientErr, createErr, uploadErr, noSuchImgErr, buildErr, removeImgErr,
@@ -377,6 +402,13 @@ func (c *mockClient) KillContainer(opts docker.KillContainerOptions) error {
 func (c *mockClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
 	if removeErr {
 		return errors.New("Error removing container")
+	}
+	return nil
+}
+
+func (c *mockClient) PingWithContext(context.Context) error {
+	if c.pingErr {
+		return errors.New("Error pinging daemon")
 	}
 	return nil
 }
