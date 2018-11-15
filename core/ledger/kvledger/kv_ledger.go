@@ -348,12 +348,13 @@ func (l *kvLedger) CommitPvtData(pvtData []*ledger.BlockPvtData) ([]*ledger.Pvtd
 		return nil, err
 	}
 
-	// TODO: call txmgr with pvtData list to check whether any states need
-	// to be updated. if so, update the state.
-	// We need to compare write set version in the committedPvtData with the
-	// version in the stateDB. For a tx, if all versions matches, we need to
-	// committ the pvtData. This will be addressed by FAB-11765.
+	// (2) remove stale pvt data of old blocks and then commit to the stateDB
+	err = l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(validPvtData)
+	if err != nil {
+		return nil, err
+	}
 
+	// (3) reset the lastUpdatedOldBlockList from the pvtstore
 	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
 		return nil, err
 	}
