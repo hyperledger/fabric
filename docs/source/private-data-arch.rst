@@ -221,7 +221,7 @@ Limitations:
   non-authorized clients are able to invoke chaincode on peers that have access
   to the private data, the chaincode logic still needs a means to enforce access
   control as usual, for example by calling the GetCreator() chaincode API or
-  using the client identity `chaincode library <https://github.com/hyperledger/fabric/tree/master/core/chaincode/lib/cid>`__ .
+  using the client identity `chaincode library <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim/ext/cid>`__ .
 
 Using Indexes with collections
 ------------------------------

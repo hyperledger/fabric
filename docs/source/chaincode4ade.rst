@@ -35,7 +35,7 @@ Chaincode API
           such access control decisions.
 
           We won't cover that in this tutorial, however it is
-          `documented here <https://github.com/hyperledger/fabric/blob/master/core/chaincode/lib/cid/README.md>`_.
+          `documented here <https://github.com/hyperledger/fabric/blob/master/core/chaincode/shim/ext/cid/README.md>`_.
 
 Every chaincode program must implement the ``Chaincode`` interface:
 
