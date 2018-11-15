@@ -26,6 +26,12 @@ type Transactor interface {
 	// of the outputs, the details of which need to be looked up from the ledger.
 	RequestTransfer(request *token.TransferRequest) (*token.TokenTransaction, error)
 
+	// RequestRedeem allows the redemption of the tokens in the input tokenIds
+	// It queries the ledger to read detail for each token id.
+	// It creates a token transaction with an output for redeemed tokens and
+	// possibly another output to transfer the remaining tokens, if any, to the creator
+	RequestRedeem(request *token.RedeemRequest) (*token.TokenTransaction, error)
+
 	// ListTokens returns a slice of unspent tokens owned by this transactor
 	ListTokens() (*token.UnspentTokens, error)
 }

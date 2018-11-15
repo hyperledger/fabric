@@ -76,6 +76,19 @@ message TransferRequest {
     repeated RecipientTransferShare shares = 3;
 }
 
+// RedeemRequest is used to request token redemption
+message RedeemRequest {
+    // Credential contains information for the party who is requesting the operation
+    // The content of this field depends on the characteristic of token manager system
+    bytes credential = 1;
+
+    // token_ids specifies the ids for the tokens that will be redeemed
+    repeated bytes token_ids = 2;
+
+    // quantity refers to the number of units of a given token needs to be redeemed.
+    uint64 quantity_to_redeem = 3;
+}
+
 // Header is a generic replay prevention and identity message to include in a signed command
 message Header {
     // Timestamp is the local time when the message was created
@@ -105,6 +118,7 @@ message Command {
         ImportRequest import_request = 2;
         TransferRequest transfer_request = 3;
         ListRequest list_request = 4;
+        RedeemRequest redeem_request = 5;
     }
 }
 

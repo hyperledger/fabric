@@ -57,6 +57,8 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (*
 		payload, err = s.RequestImport(ctx, command.Header, t.ImportRequest)
 	case *token.Command_TransferRequest:
 		payload, err = s.RequestTransfer(ctx, command.Header, t.TransferRequest)
+	case *token.Command_RedeemRequest:
+		payload, err = s.RequestRedeem(ctx, command.Header, t.RedeemRequest)
 	case *token.Command_ListRequest:
 		payload, err = s.ListUnspentTokens(ctx, command.Header, t.ListRequest)
 	default:
@@ -93,6 +95,20 @@ func (s *Prover) RequestTransfer(ctx context.Context, header *token.Header, requ
 	}
 
 	tokenTransaction, err := transactor.RequestTransfer(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return &token.CommandResponse_TokenTransaction{TokenTransaction: tokenTransaction}, nil
+}
+
+func (s *Prover) RequestRedeem(ctx context.Context, header *token.Header, request *token.RedeemRequest) (*token.CommandResponse_TokenTransaction, error) {
+	transactor, err := s.TMSManager.GetTransactor(header.ChannelId, request.Credential, header.Creator)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenTransaction, err := transactor.RequestRedeem(request)
 	if err != nil {
 		return nil, err
 	}

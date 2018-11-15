@@ -50,6 +50,9 @@ var _ = Describe("Prover", func() {
 		transferRequest    *token.TransferRequest
 		trTokenTransaction *token.TokenTransaction
 
+		redeemRequest          *token.RedeemRequest
+		redeemTokenTransaction *token.TokenTransaction
+
 		listRequest      *token.ListRequest
 		unspentTokens    *token.UnspentTokens
 		transactorTokens []*token.TokenOutput
@@ -97,6 +100,26 @@ var _ = Describe("Prover", func() {
 		}
 		fakeTransactor = &mock.Transactor{}
 		fakeTransactor.RequestTransferReturns(trTokenTransaction, nil)
+
+		redeemTokenTransaction = &token.TokenTransaction{
+			Action: &token.TokenTransaction_PlainAction{
+				PlainAction: &token.PlainTokenAction{
+					Data: &token.PlainTokenAction_PlainRedeem{
+						PlainRedeem: &token.PlainTransfer{
+							Inputs: []*token.InputId{{
+								TxId:  "txid",
+								Index: 0,
+							}},
+							Outputs: []*token.PlainOutput{{
+								Type:     "PDQ",
+								Quantity: 50,
+							}},
+						},
+					},
+				},
+			},
+		}
+		fakeTransactor.RequestRedeemReturns(redeemTokenTransaction, nil)
 
 		transactorTokens = []*token.TokenOutput{
 			{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
@@ -151,6 +174,12 @@ var _ = Describe("Prover", func() {
 				Recipient: []byte("recipient"),
 				Quantity:  99,
 			}},
+		}
+
+		redeemRequest = &token.RedeemRequest{
+			Credential:       []byte("credential"),
+			TokenIds:         [][]byte{},
+			QuantityToRedeem: 50,
 		}
 
 		listRequest = &token.ListRequest{
@@ -364,6 +393,40 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
+	Describe("ProcessCommand_RequestRedeem", func() {
+		BeforeEach(func() {
+			command = &token.Command{
+				Header: &token.Header{
+					ChannelId: "channel-id",
+					Creator:   []byte("creator"),
+					Nonce:     []byte("nonce"),
+				},
+				Payload: &token.Command_RedeemRequest{
+					RedeemRequest: redeemRequest,
+				},
+			}
+			marshaledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshaledCommand,
+				Signature: []byte("command-signature"),
+			}
+			fakeMarshaler.MarshalCommandResponseReturns(marshaledResponse, nil)
+		})
+
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: redeemTokenTransaction,
+			}))
+		})
+	})
+
 	Describe("Process RequestImport command", func() {
 		It("returns a signed command response", func() {
 			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
@@ -501,6 +564,53 @@ var _ = Describe("Prover", func() {
 
 			It("retuns the error", func() {
 				_, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
+				Expect(err).To(MatchError("watermelon"))
+			})
+		})
+	})
+
+	Describe("RequestRedeem", func() {
+		It("gets a transactor", func() {
+			_, err := prover.RequestRedeem(context.Background(), command.Header, redeemRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(1))
+			channel, cred, creator := fakeTMSManager.GetTransactorArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(cred).To(Equal([]byte("credential")))
+			Expect(creator).To(Equal([]byte("creator")))
+		})
+
+		It("uses the transactor to request a redemption", func() {
+			resp, err := prover.RequestRedeem(context.Background(), command.Header, redeemRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: redeemTokenTransaction,
+			}))
+
+			Expect(fakeTransactor.RequestRedeemCallCount()).To(Equal(1))
+			tr := fakeTransactor.RequestRedeemArgsForCall(0)
+			Expect(tr).To(Equal(redeemRequest))
+		})
+
+		Context("when the TMS manager fails to get a transactor", func() {
+			BeforeEach(func() {
+				fakeTMSManager.GetTransactorReturns(nil, errors.New("boing boing"))
+			})
+
+			It("retuns the error", func() {
+				_, err := prover.RequestRedeem(context.Background(), command.Header, redeemRequest)
+				Expect(err).To(MatchError("boing boing"))
+			})
+		})
+
+		Context("when the transactor fails to redeem", func() {
+			BeforeEach(func() {
+				fakeTransactor.RequestRedeemReturns(nil, errors.New("watermelon"))
+			})
+
+			It("retuns the error", func() {
+				_, err := prover.RequestRedeem(context.Background(), command.Header, redeemRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
 		})
