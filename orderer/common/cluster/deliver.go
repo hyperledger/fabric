@@ -39,7 +39,7 @@ type BlockPuller struct {
 	VerifyBlockSequence BlockSequenceVerifier
 	Endpoints           []string
 	// Internal state
-	stream       *impatientStream
+	stream       *ImpatientStream
 	blockBuff    []*common.Block
 	latestSeq    uint64
 	endpoint     string
@@ -182,8 +182,8 @@ func (p *BlockPuller) pullBlocks(seq uint64, reConnected bool) error {
 	return nil
 }
 
-func (p *BlockPuller) obtainStream(reConnected bool, env *common.Envelope, seq uint64) (*impatientStream, error) {
-	var stream *impatientStream
+func (p *BlockPuller) obtainStream(reConnected bool, env *common.Envelope, seq uint64) (*ImpatientStream, error) {
+	var stream *ImpatientStream
 	var err error
 	if reConnected {
 		p.Logger.Infof("Sending request for block %d to %s", seq, p.endpoint)
@@ -347,10 +347,10 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 	return block.Header.Number, nil
 }
 
-// requestBlocks starts requesting blocks from the given endpoint, using the given streamCreator by sending
+// requestBlocks starts requesting blocks from the given endpoint, using the given ImpatientStreamCreator by sending
 // the given envelope.
 // It returns a stream that is used to pull blocks, or error if something goes wrong.
-func (p *BlockPuller) requestBlocks(endpoint string, newStream streamCreator, env *common.Envelope) (*impatientStream, error) {
+func (p *BlockPuller) requestBlocks(endpoint string, newStream ImpatientStreamCreator, env *common.Envelope) (*ImpatientStream, error) {
 	stream, err := newStream()
 	if err != nil {
 		p.Logger.Warningf("Failed establishing deliver stream with %s", endpoint)
@@ -455,22 +455,23 @@ func (eib endpointInfoBucket) byEndpoints() map[string]*endpointInfo {
 	return infoByEndpoints
 }
 
-type streamCreator func() (*impatientStream, error)
+// ImpatientStreamCreator creates an ImpatientStream
+type ImpatientStreamCreator func() (*ImpatientStream, error)
 
-// impatientStream aborts the stream if it waits for too long for a message.
-type impatientStream struct {
+// ImpatientStream aborts the stream if it waits for too long for a message.
+type ImpatientStream struct {
 	waitTimeout time.Duration
 	orderer.AtomicBroadcast_DeliverClient
 	cancelFunc func()
 }
 
-func (stream *impatientStream) abort() {
+func (stream *ImpatientStream) abort() {
 	stream.cancelFunc()
 }
 
 // Recv blocks until a response is received from the stream or the
 // timeout expires.
-func (stream *impatientStream) Recv() (*orderer.DeliverResponse, error) {
+func (stream *ImpatientStream) Recv() (*orderer.DeliverResponse, error) {
 	// Initialize a timeout to cancel the stream when it expires
 	timeout := time.NewTimer(stream.waitTimeout)
 	defer timeout.Stop()
@@ -498,9 +499,9 @@ func (stream *impatientStream) Recv() (*orderer.DeliverResponse, error) {
 	}
 }
 
-// NewImpatientStream returns a streamCreator that creates impatientStreams.
-func NewImpatientStream(conn *grpc.ClientConn, waitTimeout time.Duration) streamCreator {
-	return func() (*impatientStream, error) {
+// NewImpatientStream returns a ImpatientStreamCreator that creates impatientStreams.
+func NewImpatientStream(conn *grpc.ClientConn, waitTimeout time.Duration) ImpatientStreamCreator {
+	return func() (*ImpatientStream, error) {
 		abc := orderer.NewAtomicBroadcastClient(conn)
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -511,7 +512,7 @@ func NewImpatientStream(conn *grpc.ClientConn, waitTimeout time.Duration) stream
 		}
 
 		once := &sync.Once{}
-		return &impatientStream{
+		return &ImpatientStream{
 			waitTimeout: waitTimeout,
 			// The stream might be canceled while Close() is being called, but also
 			// while a timeout expires, so ensure it's only called once.

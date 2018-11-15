@@ -79,7 +79,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 			name:          "valid config block with cert mismatch",
 			configBlock:   validBlock(),
 			certificate:   certInsideConfigBlock[2:],
-			expectedError: cluster.NotInChannelError.Error(),
+			expectedError: cluster.ErrNotInChannel.Error(),
 		},
 		{
 			name:        "valid config block with matching cert",

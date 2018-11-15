@@ -209,7 +209,7 @@ func (r *Replicator) channelsToPull(channels []string) []string {
 		puller.Close()
 		// Restore the previous buffer size
 		puller.MaxTotalBufferBytes = bufferSize
-		if err == NotInChannelError {
+		if err == ErrNotInChannel {
 			r.Logger.Info("I do not belong to channel", channel, ", skipping chain retrieval")
 			continue
 		}
@@ -305,8 +305,8 @@ type ChainInspector struct {
 	LastConfigBlock *common.Block
 }
 
-// NotInChannelError denotes that an ordering node is not in the channel
-var NotInChannelError = errors.New("not in the channel")
+// ErrNotInChannel denotes that an ordering node is not in the channel
+var ErrNotInChannel = errors.New("not in the channel")
 
 // selfMembershipPredicate determines whether the caller is found in the given config block
 type selfMembershipPredicate func(configBlock *common.Block) error

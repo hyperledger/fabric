@@ -371,5 +371,5 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 			return nil
 		}
 	}
-	return cluster.NotInChannelError
+	return cluster.ErrNotInChannel
 }

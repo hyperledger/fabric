@@ -303,7 +303,7 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	// For channel A
 	amIPartOfChannelMock.On("func2").Return(nil).Once()
 	// For channel B
-	amIPartOfChannelMock.On("func2").Return(cluster.NotInChannelError).Once()
+	amIPartOfChannelMock.On("func2").Return(cluster.ErrNotInChannel).Once()
 
 	// 22 is for the system channel, and 31 is for channel A
 	blocksCommittedToLedger := make(chan *common.Block, 22+31)
@@ -512,7 +512,7 @@ func TestParticipant(t *testing.T) {
 			},
 			latestConfigBlockSeq: 42,
 			latestConfigBlock:    &common.Block{Header: &common.BlockHeader{Number: 42}},
-			predicateReturns:     cluster.NotInChannelError,
+			predicateReturns:     cluster.ErrNotInChannel,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

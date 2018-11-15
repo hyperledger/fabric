@@ -115,23 +115,23 @@ func (dialer *PredicateDialer) ClientConfig() (comm.ClientConfig, error) {
 	if val == nil {
 		return comm.ClientConfig{}, errors.New("client config not initialized")
 	}
-	if cc, isClientConfig := val.(comm.ClientConfig); !isClientConfig {
+	cc, isClientConfig := val.(comm.ClientConfig)
+	if !isClientConfig {
 		err := errors.Errorf("value stored is %v, not comm.ClientConfig",
 			reflect.TypeOf(val))
 		return comm.ClientConfig{}, err
-	} else {
-		if cc.SecOpts == nil {
-			return comm.ClientConfig{}, errors.New("SecOpts is nil")
-		}
-		// Copy by value the secure options
-		secOpts := *cc.SecOpts
-		return comm.ClientConfig{
-			AsyncConnect: cc.AsyncConnect,
-			Timeout:      cc.Timeout,
-			SecOpts:      &secOpts,
-			KaOpts:       cc.KaOpts,
-		}, nil
 	}
+	if cc.SecOpts == nil {
+		return comm.ClientConfig{}, errors.New("SecOpts is nil")
+	}
+	// Copy by value the secure options
+	secOpts := *cc.SecOpts
+	return comm.ClientConfig{
+		AsyncConnect: cc.AsyncConnect,
+		Timeout:      cc.Timeout,
+		SecOpts:      &secOpts,
+		KaOpts:       cc.KaOpts,
+	}, nil
 }
 
 // SetConfig sets the configuration of the PredicateDialer
@@ -182,6 +182,7 @@ type StandardDialer struct {
 	Dialer *PredicateDialer
 }
 
+// Dial dials to the given address
 func (bdp *StandardDialer) Dial(address string) (*grpc.ClientConn, error) {
 	return bdp.Dialer.Dial(address, nil)
 }
@@ -229,7 +230,7 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 	// during iteration over the block batch.
 	for _, block := range blockBuff {
 		configFromBlock, err := ConfigFromBlock(block)
-		if err == notAConfig {
+		if err == errNotAConfig {
 			continue
 		}
 		if err != nil {
@@ -247,7 +248,7 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
 }
 
-var notAConfig = errors.New("not a config block")
+var errNotAConfig = errors.New("not a config block")
 
 // ConfigFromBlock returns a ConfigEnvelope if exists, or a *NotAConfigBlock error.
 // It may also return some other error in case parsing failed.
@@ -272,7 +273,7 @@ func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
 		return nil, errors.WithStack(err)
 	}
 	if common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
-		return nil, notAConfig
+		return nil, errNotAConfig
 	}
 	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	if err != nil {
