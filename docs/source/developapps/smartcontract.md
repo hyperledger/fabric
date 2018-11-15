@@ -77,7 +77,7 @@ as automatic method invocation, a
 
 Notice also how the class constructor uses its
 [superclass](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/super)
-to initialize itself with a [namespace](./namespace.html):
+to initialize itself with an explicit [contract name](./contractname.html):
 
 ```JavaScript
 constructor() {

@@ -13,4 +13,5 @@ Key Concepts
    peers/peers.md
    private-data/private-data.md
    ledger/ledger.md
+   smartcontract/smartcontract.md
    usecases

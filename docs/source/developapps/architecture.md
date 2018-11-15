@@ -129,7 +129,7 @@ transactions. See how the list has a descriptive name: `org.papernet.papers`;
 it's a really good idea to use this kind of [DNS
 name](https://en.wikipedia.org/wiki/Domain_Name_System) because well-chosen
 names will make your blockchain designs intuitive to other people. This idea
-applies equally well to smart contract [namespaces](./namespace.html).
+applies equally well to smart contract [names](./contractname.html).
 
 ### Physical representation
 
