@@ -149,10 +149,22 @@ type IdemixSignerOpts struct {
 	IssuerPK Key
 	// Credential is the byte representation of the credential signed by the issuer
 	Credential []byte
-	// Disclosure specifies which attribute should be disclosed. If Disclosure[i] = 0
+	// Attributes specifies which attribute should be disclosed and which not.
+	// If Attributes[i].Type = IdemixHiddenAttribute
 	// then the i-th credential attribute should not be disclosed, otherwise the i-th
 	// credential attribute will be disclosed.
-	Disclosure []byte
+	// At verification time, if the i-th attribute is disclosed (Attributes[i].Type != IdemixHiddenAttribute),
+	// then Attributes[i].Value must be set accordingly.
+	Attributes []IdemixAttribute
+	// RhIndex is the index of attribute containing the revocation handler.
+	// Notice that this attributed cannot be discloused
+	RhIndex int
+	// CRI contains the credential revocation information
+	CRI []byte
+	// Epoch is the revocation epoch the signature should be produced against
+	Epoch int
+	// RevocationPublicKey is the revocation public key
+	RevocationPublicKey Key
 	// H is the hash function to be used
 	H crypto.Hash
 }

@@ -21,6 +21,7 @@ import (
 //go:generate counterfeiter -o mock/credrequest.go -fake-name CredRequest . CredRequest
 //go:generate counterfeiter -o mock/credential.go -fake-name Credential . Credential
 //go:generate counterfeiter -o mock/revocation.go -fake-name Revocation . Revocation
+//go:generate counterfeiter -o mock/signature_scheme.go -fake-name SignatureScheme . SignatureScheme
 
 func TestPlain(t *testing.T) {
 	RegisterFailHandler(Fail)
