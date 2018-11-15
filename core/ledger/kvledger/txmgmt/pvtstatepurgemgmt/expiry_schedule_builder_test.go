@@ -107,7 +107,7 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 }
 
 func putPvtAndHashUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
-	updates.PvtUpdates.Put(ns, coll, key, value, ver)
+	putPvtUpdates(updates, ns, coll, key, value, ver)
 	putHashUpdates(updates, ns, coll, key, value, ver)
 }
 
@@ -118,6 +118,10 @@ func deletePvtAndHashUpdates(t *testing.T, updates *privacyenabledstate.UpdateBa
 
 func putHashUpdates(updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), ver)
+}
+
+func putPvtUpdates(updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
+	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 }
 
 func deleteHashUpdates(updates *privacyenabledstate.UpdateBatch, ns, coll, key string, ver *version.Height) {

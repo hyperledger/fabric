@@ -399,7 +399,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	}
 	defer func() {
 		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.current.blockNum() + 1)
-		logger.Debugf("Cleared version cache and launched the background routine for preparing keys to purge with the next block")
+		logger.Debugf("launched the background routine for preparing keys to purge with the next block")
 		txmgr.reset()
 	}()
 
@@ -423,7 +423,11 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	}
 	// only during the exclusive lock duration, we should clear the cache as the cache is being
 	// used by the old pvtData committer as well
-	txmgr.clearCache()
+	txmgr.clearCache() // note that we should clear the cache before calling
+	// PrepareForExpiringKeys as it uses the cache as well. To be precise,
+	// we should not clear the cache until PrepareForExpiringKeys completes
+	// the task.
+	logger.Debugf("cleared cached")
 	txmgr.commitRWLock.Unlock()
 	// EXCLUSIVE LOCK ENDS
 	logger.Debugf("Updates committed to state database")

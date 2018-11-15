@@ -41,6 +41,8 @@ type expiryKeeper interface {
 	updateBookkeeping(toTrack []*expiryInfo, toClear []*expiryInfoKey) error
 	// retrieve returns the keys info that are supposed to be expired by the given block number
 	retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error)
+	// retrieveByExpiryKey retrieves the expiryInfo for given expiryKey
+	retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error)
 }
 
 func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) expiryKeeper {
@@ -93,6 +95,15 @@ func (ek *expKeeper) retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error) {
 		listExpinfo = append(listExpinfo, expinfo)
 	}
 	return listExpinfo, nil
+}
+
+func (ek *expKeeper) retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error) {
+	key := encodeExpiryInfoKey(expiryKey)
+	value, err := ek.db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return decodeExpiryInfo(key, value)
 }
 
 func encodeKV(expinfo *expiryInfo) (key []byte, value []byte, err error) {

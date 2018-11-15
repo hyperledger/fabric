@@ -686,3 +686,9 @@ func TestPaginatedQueryValidation(t *testing.T) {
 	assert.Error(t, err, "An should have been thrown for an invalid options")
 
 }
+
+func TestApplyUpdatesWithNilHeight(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
+}

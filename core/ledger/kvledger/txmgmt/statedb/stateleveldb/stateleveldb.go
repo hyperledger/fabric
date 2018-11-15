@@ -185,7 +185,13 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 			}
 		}
 	}
-	dbBatch.Put(savePointKey, height.ToBytes())
+	// Record a savepoint at a given height
+	// If a given height is nil, it denotes that we are committing pvt data of old blocks.
+	// In this case, we should not store a savepoint for recovery. The lastUpdatedOldBlockList
+	// in the pvtstore acts as a savepoint for pvt data.
+	if height != nil {
+		dbBatch.Put(savePointKey, height.ToBytes())
+	}
 	// Setting snyc to true as a precaution, false may be an ok optimization after further testing.
 	if err := vdb.db.WriteBatch(dbBatch, true); err != nil {
 		return err

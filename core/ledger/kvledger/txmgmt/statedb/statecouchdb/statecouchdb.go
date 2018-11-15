@@ -489,6 +489,14 @@ func (vdb *VersionedDB) ensureFullCommitAndRecordSavepoint(height *version.Heigh
 	if err := vdb.ensureFullCommit(dbs); err != nil {
 		return err
 	}
+
+	// If a given height is nil, it denotes that we are committing pvt data of old blocks.
+	// In this case, we should not store a savepoint for recovery. The lastUpdatedOldBlockList
+	// in the pvtstore acts as a savepoint for pvt data.
+	if height == nil {
+		return nil
+	}
+
 	// construct savepoint document and save
 	savepointCouchDoc, err := encodeSavepoint(height)
 	if err != nil {
