@@ -13,12 +13,12 @@ import (
 )
 
 type Core struct {
-	Logging   *Logging   `yaml:"logging,omitempty"`
-	Peer      *Peer      `yaml:"peer,omitempty"`
-	VM        *VM        `yaml:"vm,omitempty"`
-	Chaincode *Chaincode `yaml:"chaincode,omitempty"`
-	Ledger    *Ledger    `yaml:"ledger,omitempty"`
-	Metrics   *Metrics   `yaml:"metrics,omitempty"`
+	Logging    *Logging    `yaml:"logging,omitempty"`
+	Peer       *Peer       `yaml:"peer,omitempty"`
+	VM         *VM         `yaml:"vm,omitempty"`
+	Chaincode  *Chaincode  `yaml:"chaincode,omitempty"`
+	Ledger     *Ledger     `yaml:"ledger,omitempty"`
+	Operations *Operations `yaml:"operations,omitempty"`
 }
 
 type Logging struct {
@@ -264,6 +264,11 @@ type HistoryConfig struct {
 	EnableHistoryDatabase bool `yaml:"enableHistoryDatabase"`
 }
 
+type Operations struct {
+	ListenAddress string `yaml:"listenAddress,omitempty"`
+	TLS           *TLS   `yaml:"tls"`
+}
+
 type Metrics struct {
 	Provider   string      `yaml:"provider"`
 	Statsd     *Statsd     `yaml:"statsd,omitempty"`
@@ -278,7 +283,5 @@ type Statsd struct {
 }
 
 type Prometheus struct {
-	ListenAddress string `yaml:"listenAddress,omitempty"`
-	HandlerPath   string `yaml:"handlerPath"`
-	TLS           *TLS   `yaml:"tls"`
+	HandlerPath string `yaml:"handlerPath"`
 }

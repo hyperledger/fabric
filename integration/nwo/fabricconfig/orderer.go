@@ -9,10 +9,11 @@ package fabricconfig
 import "time"
 
 type Orderer struct {
-	General    *General    `yaml:"General,omitempty"`
-	FileLedger *FileLedger `yaml:"FileLedger,omitempty"`
-	RAMLedger  *RAMLedger  `yaml:"RAMLedger,omitempty"`
-	Kafka      *Kafka      `yaml:"Kafka,omitempty"`
+	General    *General           `yaml:"General,omitempty"`
+	FileLedger *FileLedger        `yaml:"FileLedger,omitempty"`
+	RAMLedger  *RAMLedger         `yaml:"RAMLedger,omitempty"`
+	Kafka      *Kafka             `yaml:"Kafka,omitempty"`
+	Operations *OrdererOperations `yaml:"Operations,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -106,4 +107,27 @@ type NetworkTimeouts struct {
 type Backoff struct {
 	RetryBackoff time.Duration `yaml:"RetryBackoff,omitempty"`
 	RetryMax     int           `yaml:"RetryMax,omitempty"`
+}
+
+type OrdererOperations struct {
+	ListenAddress string          `yaml:"ListenAddress,omitempty"`
+	Metrics       *OrdererMetrics `yaml:"Metrics,omitempty"`
+	TLS           *OrdererTLS     `yaml:"TLS"`
+}
+
+type OrdererMetrics struct {
+	Provider   string             `yaml:"Provider"`
+	Statsd     *OrdererStatsd     `yaml:"Statsd,omitempty"`
+	Prometheus *OrdererPrometheus `yaml:"Prometheus,omitempty"`
+}
+
+type OrdererStatsd struct {
+	Network       string        `yaml:"Network,omitempty"`
+	Address       string        `yaml:"Address,omitempty"`
+	WriteInterval time.Duration `yaml:"WriteInterval,omitempty"`
+	Prefix        string        `yaml:"Prefix,omitempty"`
+}
+
+type OrdererPrometheus struct {
+	HandlerPath string `yaml:"handlerPath"`
 }

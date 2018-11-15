@@ -81,6 +81,10 @@ func (dr *DatagramReader) Address() string {
 	return dr.sock.LocalAddr().String()
 }
 
+func (dr *DatagramReader) String() string {
+	return string(dr.buffer.Contents())
+}
+
 func (dr *DatagramReader) Start() {
 	buf := make([]byte, 1024*1024)
 	for {

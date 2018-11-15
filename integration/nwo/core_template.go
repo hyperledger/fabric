@@ -184,24 +184,25 @@ ledger:
   history:
     enableHistoryDatabase: true
 
-metrics:
-  provider: {{ .MetricsProvider }}
-  statsd:
-    network: udp
-    address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
-    writeInterval: 5s
-    prefix: {{ ReplaceAll (ToLower Peer.ID) "." "_" }}
-  prometheus:
-    listenAddress: 127.0.0.1:{{ .PeerPort Peer "Metrics" }}
-    handlerPath: /metrics
-    tls:
-      enabled: true
-      cert:
-        file: {{ .PeerLocalTLSDir Peer }}/server.crt
-      key:
-        file: {{ .PeerLocalTLSDir Peer }}/server.key
-      clientAuthRequired: true
-      clientRootCAs:
-        files:
-        - {{ .PeerLocalTLSDir Peer }}/ca.crt
+operations:
+  listenAddress: 127.0.0.1:{{ .PeerPort Peer "Operations" }}
+  tls:
+    enabled: true
+    cert:
+      file: {{ .PeerLocalTLSDir Peer }}/server.crt
+    key:
+      file: {{ .PeerLocalTLSDir Peer }}/server.key
+    clientAuthRequired: true
+    clientRootCAs:
+      files:
+      - {{ .PeerLocalTLSDir Peer }}/ca.crt
+  metrics:
+    provider: {{ .MetricsProvider }}
+    statsd:
+      network: udp
+      address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
+      writeInterval: 5s
+      prefix: {{ ReplaceAll (ToLower Peer.ID) "." "_" }}
+    prometheus:
+      handlerPath: /metrics
 `
