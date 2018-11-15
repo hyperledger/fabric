@@ -162,7 +162,6 @@ func serve(args []string) error {
 	defer metricsShutdown()
 
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
-
 	//initialize resource management exit
 	ledgermgmt.Initialize(
 		&ledgermgmt.Initializer{
@@ -170,6 +169,7 @@ func serve(args []string) error {
 			PlatformRegistry:              pr,
 			DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 			MembershipInfoProvider:        membershipInfoProvider,
+			MetricsProvider:               metricsProvider,
 		},
 	)
 
@@ -333,7 +333,8 @@ func serve(args []string) error {
 			logger.Panicf("Failed subscribing to chaincode lifecycle updates")
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
-	}, ccp, sccp, txvalidator.MapBasedPluginMapper(validationPluginsByName), pr, deployedCCInfoProvider, membershipInfoProvider)
+	}, ccp, sccp, txvalidator.MapBasedPluginMapper(validationPluginsByName),
+		pr, deployedCCInfoProvider, membershipInfoProvider, metricsProvider)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, policyMgr, lifecycle)

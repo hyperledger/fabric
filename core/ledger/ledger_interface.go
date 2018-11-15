@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -22,6 +23,7 @@ type Initializer struct {
 	StateListeners                []StateListener
 	DeployedChaincodeInfoProvider DeployedChaincodeInfoProvider
 	MembershipInfoProvider        MembershipInfoProvider
+	MetricsProvider               metrics.Provider
 }
 
 // PeerLedgerProvider provides handle to ledger instances

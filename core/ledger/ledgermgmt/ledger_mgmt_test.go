@@ -21,6 +21,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
@@ -90,6 +92,7 @@ func TestLedgerMgmt(t *testing.T) {
 	// Restart ledger mgmt with existing ledgers
 	Initialize(&Initializer{
 		PlatformRegistry: platforms.NewRegistry(&golang.Platform{}),
+		MetricsProvider:  &disabled.Provider{},
 	})
 	l, err = OpenLedger(ledgerID)
 	assert.NoError(t, err)

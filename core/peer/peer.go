@@ -20,6 +20,7 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
@@ -201,7 +202,9 @@ var validationWorkersSemaphore *semaphore.Weighted
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider) {
+func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider,
+	pm txvalidator.PluginMapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
@@ -218,6 +221,7 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 		PlatformRegistry:              pr,
 		DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 		MembershipInfoProvider:        membershipProvider,
+		MetricsProvider:               metricsProvider,
 	})
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {

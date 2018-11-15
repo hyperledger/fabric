@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -132,6 +134,7 @@ func initLedgerMgmt() {
 		&ledgermgmt.Initializer{
 			CustomTxProcessors:            peer.ConfigTxProcessors,
 			DeployedChaincodeInfoProvider: &lscc.DeployedCCInfoProvider{},
+			MetricsProvider:               &disabled.Provider{},
 		},
 	)
 }
