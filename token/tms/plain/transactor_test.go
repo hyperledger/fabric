@@ -187,7 +187,7 @@ var _ = Describe("Transactor", func() {
 			{Recipient: []byte("R2"), Quantity: 1002},
 			{Recipient: []byte("R3"), Quantity: 1003},
 		}
-		transactor = &plain.Transactor{}
+		transactor = &plain.Transactor{PublicCredential: []byte("Alice")}
 	})
 
 	It("converts a transfer request with no inputs into a token transaction", func() {
@@ -457,4 +457,102 @@ var _ = Describe("Transactor", func() {
 		})
 	})
 
+	Describe("RequestRedeem", func() {
+		var (
+			fakeLedger     *mock.LedgerWriter
+			redeemRequest  *token.RedeemRequest
+			inputBytes     []byte
+			inputQuantity  uint64
+			redeemQuantity uint64
+		)
+
+		BeforeEach(func() {
+			inputQuantity = 99
+			input := &token.PlainOutput{
+				Owner:    []byte("owner-1"),
+				Type:     "TOK1",
+				Quantity: inputQuantity,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).ToNot(HaveOccurred())
+			fakeLedger = &mock.LedgerWriter{}
+			fakeLedger.SetStateReturns(nil)
+			//fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+			fakeLedger.GetStateReturns(inputBytes, nil)
+			transactor.Ledger = fakeLedger
+		})
+
+		It("creates a token transaction with 1 output if all tokens are redeemed", func() {
+			redeemQuantity = inputQuantity
+			redeemRequest = &token.RedeemRequest{
+				Credential:       []byte("credential"),
+				TokenIds:         [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+				QuantityToRedeem: redeemQuantity,
+			}
+			tt, err := transactor.RequestRedeem(redeemRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainRedeem{
+							PlainRedeem: &token.PlainTransfer{
+								Inputs: []*token.InputId{
+									{TxId: "robert", Index: uint32(0)},
+								},
+								Outputs: []*token.PlainOutput{
+									{Type: "TOK1", Quantity: redeemQuantity},
+								},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		It("creates a token transaction with 2 outputs if some tokens are redeemed", func() {
+			redeemQuantity = 50
+			unredeemedQuantity := inputQuantity - 50
+			redeemRequest = &token.RedeemRequest{
+				Credential:       []byte("credential"),
+				TokenIds:         [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+				QuantityToRedeem: redeemQuantity,
+			}
+			tt, err := transactor.RequestRedeem(redeemRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainRedeem{
+							PlainRedeem: &token.PlainTransfer{
+								Inputs: []*token.InputId{
+									{TxId: "robert", Index: uint32(0)},
+								},
+								Outputs: []*token.PlainOutput{
+									{Type: "TOK1", Quantity: redeemQuantity},
+									{Owner: []byte("Alice"), Type: "TOK1", Quantity: unredeemedQuantity},
+								},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		Context("when quantity to redeem is greater than input quantity", func() {
+			BeforeEach(func() {
+				redeemQuantity = inputQuantity + 10
+				redeemRequest = &token.RedeemRequest{
+					Credential:       []byte("credential"),
+					TokenIds:         [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+					QuantityToRedeem: redeemQuantity,
+				}
+			})
+
+			It("returns an error", func() {
+				_, err := transactor.RequestRedeem(redeemRequest)
+				Expect(err).To(MatchError(fmt.Sprintf("total quantity [%d] from TokenIds is less than quantity [%d] to be redeemed", inputQuantity, redeemQuantity)))
+			})
+		})
+	})
 })
