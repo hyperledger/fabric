@@ -423,12 +423,16 @@ func GetBytesEnvelope(env *common.Envelope) ([]byte, error) {
 
 // GetActionFromEnvelope extracts a ChaincodeAction message from a
 // serialized Envelope
+// TODO: fix function name as per FAB-11831
 func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
 	env, err := GetEnvelopeFromBlock(envBytes)
 	if err != nil {
 		return nil, err
 	}
+	return GetActionFromEnvelopeMsg(env)
+}
 
+func GetActionFromEnvelopeMsg(env *common.Envelope) (*peer.ChaincodeAction, error) {
 	payl, err := GetPayload(env)
 	if err != nil {
 		return nil, err

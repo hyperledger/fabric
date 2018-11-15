@@ -47,6 +47,32 @@ type CollHashedRwSet struct {
 	PvtRwSetHash   []byte
 }
 
+// GetPvtDataHash returns the PvtRwSetHash for a given namespace and collection
+func (txRwSet *TxRwSet) GetPvtDataHash(ns, coll string) []byte {
+	// we could build and use a map to reduce the number of lookup
+	// in the future call. However, we decided to defer such optimization
+	// due to the following assumptions (mainly to avoid additioan LOC).
+	// we assume that the number of namespaces and collections in a txRWSet
+	// to be very minimal (in a single digit),
+	for _, nsRwSet := range txRwSet.NsRwSets {
+		if nsRwSet.NameSpace != ns {
+			continue
+		}
+		return nsRwSet.getPvtDataHash(coll)
+	}
+	return nil
+}
+
+func (nsRwSet *NsRwSet) getPvtDataHash(coll string) []byte {
+	for _, collHashedRwSet := range nsRwSet.CollHashedRwSets {
+		if collHashedRwSet.CollectionName != coll {
+			continue
+		}
+		return collHashedRwSet.PvtRwSetHash
+	}
+	return nil
+}
+
 /////////////////////////////////////////////////////////////////
 // Messages related to PRIVATE read-write set
 /////////////////////////////////////////////////////////////////

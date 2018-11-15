@@ -115,3 +115,30 @@ func (dchrws *DynamicCollectionHashedReadWriteSet) StaticallyOpaqueFieldProto(na
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
 	}
 }
+
+// Remove removes the rwset for the given <ns, coll> tuple. If after this removal,
+// there are no more collection in the namespace <ns>, the whole namespace entry is removed
+func (p *TxPvtReadWriteSet) Remove(ns, coll string) {
+	for i := 0; i < len(p.NsPvtRwset); i++ {
+		n := p.NsPvtRwset[i]
+		if n.Namespace != ns {
+			continue
+		}
+		n.remove(coll)
+		if len(n.CollectionPvtRwset) == 0 {
+			p.NsPvtRwset = append(p.NsPvtRwset[:i], p.NsPvtRwset[i+1:]...)
+		}
+		return
+	}
+}
+
+func (n *NsPvtReadWriteSet) remove(collName string) {
+	for i := 0; i < len(n.CollectionPvtRwset); i++ {
+		c := n.CollectionPvtRwset[i]
+		if c.CollectionName != collName {
+			continue
+		}
+		n.CollectionPvtRwset = append(n.CollectionPvtRwset[:i], n.CollectionPvtRwset[i+1:]...)
+		return
+	}
+}

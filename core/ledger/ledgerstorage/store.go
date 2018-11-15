@@ -132,6 +132,15 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 	return nil
 }
 
+// CommitPvtDataOfOldBlocks commits the pvtData of old blocks
+func (s *Store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+	err := s.pvtdataStore.CommitPvtDataOfOldBlocks(blocksPvtData)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetPvtDataAndBlockByNum returns the block and the corresponding pvt data.
 // The pvt data is filtered by the list of 'collections' supplied
 func (s *Store) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {
@@ -161,7 +170,7 @@ func (s *Store) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) 
 
 // getPvtDataByNumWithoutLock returns only the pvt data  corresponding to the given block number.
 // This function does not acquire a readlock and it is expected that in most of the circumstances, the caller
-// posesses a read lock on `s.rwlock`
+// possesses a read lock on `s.rwlock`
 func (s *Store) getPvtDataByNumWithoutLock(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	var pvtdata []*ledger.TxPvtData
 	var err error
@@ -173,16 +182,26 @@ func (s *Store) getPvtDataByNumWithoutLock(blockNum uint64, filter ledger.PvtNsC
 
 // GetMissingPvtDataInfoForMostRecentBlocks invokes the function on underlying pvtdata store
 func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
-	// it is safe to not acquire a read lock. Without a lock, the value of lastCommittedBlock
-	// can change due to a new block commit. As a result, we may not be able to fetch the
-	// missing data info of the most recent block. This decision was made to ensure that
-	// the block commit rate is not affected.
+	// it is safe to not acquire a read lock on s.rwlock. Without a lock, the value of
+	// lastCommittedBlock can change due to a new block commit. As a result, we may not
+	// be able to fetch the missing data info of truly the most recent blocks. This
+	// decision was made to ensure that the regular block commit rate is not affected.
 	return s.pvtdataStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
 // ProcessCollsEligibilityEnabled invokes the function on underlying pvtdata store
 func (s *Store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
 	return s.pvtdataStore.ProcessCollsEligibilityEnabled(committingBlk, nsCollMap)
+}
+
+// GetLastUpdatedOldBlocksList invokes the function on underlying pvtdata store
+func (s *Store) GetLastUpdatedOldBlocksList() ([]uint64, error) {
+	return s.pvtdataStore.GetLastUpdatedOldBlocksList()
+}
+
+// ResetLastUpdatedOldBlocksList invokes the function on underlying pvtdata store
+func (s *Store) ResetLastUpdatedOldBlocksList() error {
+	return s.pvtdataStore.ResetLastUpdatedOldBlocksList()
 }
 
 // init first invokes function `initFromExistingBlockchain`
@@ -204,7 +223,7 @@ func (s *Store) init() error {
 // This situation is expected to happen when a peer is upgrated from version 1.0
 // and an existing blockchain is present that was generated with version 1.0.
 // Under this scenario, the pvtdata store is brought upto the point as if it has
-// processed exisitng blocks with no pvt data. This function returns true if the
+// processed existing blocks with no pvt data. This function returns true if the
 // above mentioned condition is found to be true and pvtdata store is successfully updated
 func (s *Store) initPvtdataStoreFromExistingBlockchain() (bool, error) {
 	var bcInfo *common.BlockchainInfo

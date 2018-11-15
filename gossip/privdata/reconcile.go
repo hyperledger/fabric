@@ -259,7 +259,7 @@ func (r *reconciler) logMismatched(pvtdataMismatched []*ledger.PvtdataHashMismat
 	if len(pvtdataMismatched) > 0 {
 		for _, hashMismatch := range pvtdataMismatched {
 			logger.Warningf("failed to reconciliation pvtdata chaincode %s, collection %s, block num %d, tx num %d due to hash mismatch",
-				hashMismatch.ChaincodeName, hashMismatch.CollectionName, hashMismatch.BlockNum, hashMismatch.TxNum)
+				hashMismatch.Namespace, hashMismatch.Collection, hashMismatch.BlockNum, hashMismatch.TxNum)
 		}
 	}
 }
