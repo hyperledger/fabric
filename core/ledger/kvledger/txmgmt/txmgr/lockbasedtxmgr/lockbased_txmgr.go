@@ -38,6 +38,7 @@ type LockBasedTxMgr struct {
 	stateListeners  []ledger.StateListener
 	ccInfoProvider  ledger.DeployedChaincodeInfoProvider
 	commitRWLock    sync.RWMutex
+	oldBlockCommit  sync.Mutex
 	current         *current
 }
 
@@ -115,10 +116,10 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 // RemoveStaleAndCommitPvtDataOfOldBlocks implements method in interface `txmgmt.TxMgr`
 // The following six operations are performed:
 // (1) contructs the unique pvt data from the passed blocksPvtData
-// (2) acquires the exclusive lock before checking for the stale pvtData
+// (2) acquire a lock on oldBlockCommit
 // (3) checks for stale pvtData by comparing [version, valueHash] and removes stale data
 // (4) creates update batch from the the non-stale pvtData
-// (5) update the BTL bookkeeping managed by the purge manager
+// (5) update the BTL bookkeeping managed by the purge manager and prepare expiring keys.
 // (6) commit the non-stale pvt data to the stateDB
 // This function assumes that the passed input contains only transactions that had been
 // marked "Valid". In the current design, this assumption holds true as we store
@@ -141,10 +142,13 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 		return err
 	}
 
-	// (2) acquire an exclusive lock on the stateDB as we cannot allow any regular block
-	// commit to happen while validating and committing the pvtData of old blocks
-	txmgr.commitRWLock.Lock()
-	defer txmgr.commitRWLock.Unlock()
+	// (2) acquire a lock on oldBlockCommit. If the regular block commit has already
+	// acquired this lock, commit of old blocks' pvtData cannot proceed until the lock
+	// is released. This is required as the PrepareForExpiringKeys() used in step (5)
+	// of this function might affect the result of DeleteExpiredAndUpdateBookkeeping()
+	// in Commit()
+	txmgr.oldBlockCommit.Lock()
+	defer txmgr.oldBlockCommit.Unlock()
 
 	// (3) remove the pvt data which does not matches the hashed
 	// value stored in the public state
@@ -153,10 +157,24 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	}
 
 	// (4) create the update batch from the uniquePvtData
-	_ = uniquePvtData.transformToUpdateBatch()
+	batch := uniquePvtData.transformToUpdateBatch()
 
-	// (5) TODO: update booking in the purge manager
-	// (6) TODO: commit the pvt data of old blocks to the sateDB
+	// (5) update booking in the purge manager and prepare expiring keys.
+	// Though the expiring keys would have been loaded in memory during last
+	// PrepareExpiringKeys from Commit but we rerun this here because,
+	// RemoveStaleAndCommitPvtDataOfOldBlocks may have added new data which might be
+	// eligible for expiry during the next regular block commit.
+	txmgr.pvtdataPurgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(batch.PvtUpdates)
+	nextBlockNumToBeCommitted, err := txmgr.getNextBlockNumberToBeCommitted()
+	if err != nil {
+		return err
+	}
+	txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(nextBlockNumToBeCommitted)
+
+	// (6) commit the pvt data to the stateDB
+	if err := txmgr.db.ApplyPrivacyAwareUpdates(batch, nil); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -333,6 +351,16 @@ func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
 	return true, nil
 }
 
+// getNextBlockNumberToBeCommittedreturn the last committed block number + 1
+func (txmgr *LockBasedTxMgr) getNextBlockNumberToBeCommitted() (uint64, error) {
+	lastCommittedBlk, err := txmgr.db.GetLatestSavePoint()
+	if err != nil {
+		return 0, err
+	}
+
+	return lastCommittedBlk.BlockNum + 1, nil
+}
+
 func (uniquePvtData uniquePvtDataMap) transformToUpdateBatch() *privacyenabledstate.UpdateBatch {
 	batch := privacyenabledstate.NewUpdateBatch()
 	for hashedCompositeKey, pvtWrite := range uniquePvtData {
@@ -390,6 +418,16 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
+	// we need to acquire a lock on oldBlockCommit. This is required because
+	// the DeleteExpiredAndUpdateBookkeeping() would perform incorrect operation if
+	// PrepareForExpiringKeys() in RemoveStaleAndCommitPvtDataOfOldBlocks() is allowed to
+	// execute parallely. RemoveStaleAndCommitPvtDataOfOldBlocks computes the update
+	// batch based on the current state and if we allow regular block commits at the
+	// same time, the former may overwrite the newer versions of the data and we may
+	// end up with an incorrect update batch.
+	txmgr.oldBlockCommit.Lock()
+	defer txmgr.oldBlockCommit.Unlock()
+
 	// When using the purge manager for the first block commit after peer start, the asynchronous function
 	// 'PrepareForExpiringKeys' is invoked in-line. However, for the subsequent blocks commits, this function is invoked
 	// in advance for the next block
@@ -413,24 +451,19 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		return err
 	}
 
-	// EXCLUSIVE LOCK STARTS
+	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
 	txmgr.commitRWLock.Lock()
 	logger.Debugf("Write lock acquired for committing updates to state database")
-	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
 		txmgr.commitRWLock.Unlock()
 		return err
 	}
-	// only during the exclusive lock duration, we should clear the cache as the cache is being
-	// used by the old pvtData committer as well
-	txmgr.clearCache() // note that we should clear the cache before calling
-	// PrepareForExpiringKeys as it uses the cache as well. To be precise,
-	// we should not clear the cache until PrepareForExpiringKeys completes
-	// the task.
-	logger.Debugf("cleared cached")
 	txmgr.commitRWLock.Unlock()
-	// EXCLUSIVE LOCK ENDS
-	logger.Debugf("Updates committed to state database")
+	// only while holding a lock on oldBlockCommit, we should clear the cache as the
+	// cache is being used by the old pvtData committer to load the version of
+	// hashedKeys. Also, note that the PrepareForExpiringKeys uses the cache.
+	txmgr.clearCache()
+	logger.Debugf("Updates committed to state database and the write lock is released")
 
 	// purge manager should be called (in this call the purge mgr removes the expiry entries from schedules) after committing to statedb
 	if err := txmgr.pvtdataPurgeMgr.BlockCommitDone(); err != nil {
