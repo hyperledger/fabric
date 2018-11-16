@@ -47,16 +47,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//go:generate counterfeiter -o mock/chaincode_stub.go --fake-name ChaincodeStub . chaincodeStub
-type chaincodeStub interface {
-	shim.ChaincodeStubInterface
-}
-
-//go:generate counterfeiter -o mock/state_query_iterator.go --fake-name StateQueryIterator . stateQueryIterator
-type stateQueryIterator interface {
-	shim.StateQueryIteratorInterface
-}
-
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createInvalidIndex bool, createFS bool, scc *LifeCycleSysCC) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
 

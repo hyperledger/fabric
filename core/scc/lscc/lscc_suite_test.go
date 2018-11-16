@@ -9,6 +9,7 @@ package lscc_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -35,6 +36,16 @@ type fileSystemSupport interface {
 //go:generate counterfeiter -o mock/cc_package.go --fake-name CCPackage . ccPackage
 type ccPackage interface {
 	ccprovider.CCPackage
+}
+
+//go:generate counterfeiter -o mock/chaincode_stub.go --fake-name ChaincodeStub . chaincodeStub
+type chaincodeStub interface {
+	shim.ChaincodeStubInterface
+}
+
+//go:generate counterfeiter -o mock/state_query_iterator.go --fake-name StateQueryIterator . stateQueryIterator
+type stateQueryIterator interface {
+	shim.StateQueryIteratorInterface
 }
 
 func TestLscc(t *testing.T) {

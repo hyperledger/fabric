@@ -26,9 +26,6 @@ type Chaincode interface {
 	Invoke(stub ChaincodeStubInterface) pb.Response
 }
 
-//go:generate counterfeiter -o ../../scc/lscc/mock/chaincode_stub.go --fake-name ChaincodeStub . ChaincodeStubInterface
-//go:generate counterfeiter -o ../../chaincode/lifecycle/mock/chaincode_stub.go --fake-name ChaincodeStub . ChaincodeStubInterface
-
 // ChaincodeStubInterface is used by deployable chaincode apps to access and
 // modify their ledgers
 type ChaincodeStubInterface interface {
