@@ -44,7 +44,7 @@ func (bg *BlockGenerator) NextBlock(simulationResults [][]byte) *common.Block {
 	return block
 }
 
-// NextBlock constructs next block in sequence that includes a number of transactions - one per simulationResults
+// NextBlockWithTxid constructs next block in sequence that includes a number of transactions - one per simulationResults
 func (bg *BlockGenerator) NextBlockWithTxid(simulationResults [][]byte, txids []string) *common.Block {
 	// Length of simulationResults should be same as the length of txids.
 	if len(simulationResults) != len(txids) {
@@ -68,8 +68,11 @@ func (bg *BlockGenerator) NextTestBlock(numTx int, txSize int) *common.Block {
 // NextTestBlocks constructs 'numBlocks' number of blocks for testing
 func (bg *BlockGenerator) NextTestBlocks(numBlocks int) []*common.Block {
 	blocks := []*common.Block{}
+	numTx := 10
 	for i := 0; i < numBlocks; i++ {
-		blocks = append(blocks, bg.NextTestBlock(10, 100))
+		block := bg.NextTestBlock(numTx, 100)
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlagsSetValue(numTx, pb.TxValidationCode_VALID)
+		blocks = append(blocks, block)
 	}
 	return blocks
 }

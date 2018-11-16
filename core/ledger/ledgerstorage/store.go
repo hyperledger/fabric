@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
+	lutil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
@@ -88,8 +89,6 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
 func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	blockNum := blockAndPvtdata.Block.Header.Number
-	missingPvtData := blockAndPvtdata.MissingPvtData
-
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
 
@@ -103,11 +102,10 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		// when re-processing blocks (rejoin the channel or re-fetching last few block),
 		// skip the pvt data commit to the pvtdata blockstore
 		logger.Debugf("Writing block [%d] to pvt block store", blockNum)
-		var pvtdata []*ledger.TxPvtData
-		for _, v := range blockAndPvtdata.PvtData {
-			pvtdata = append(pvtdata, v)
-		}
-		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, missingPvtData); err != nil {
+		// as the ledger has already validated all txs in this block, we need to
+		// use the validated info to commit only the pvtData of valid tx
+		validTxPvtData, validTxMissingPvtData := constructValidTxPvtDataAndMissingData(blockAndPvtdata)
+		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, validTxPvtData, validTxMissingPvtData); err != nil {
 			return err
 		}
 		writtenToPvtStore = true
@@ -124,6 +122,35 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		return s.pvtdataStore.Commit()
 	}
 	return nil
+}
+
+func constructValidTxPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
+	ledger.TxMissingPvtDataMap) {
+
+	var validTxPvtData []*ledger.TxPvtData
+	validTxMissingPvtData := make(ledger.TxMissingPvtDataMap)
+
+	txsFilter := lutil.TxValidationFlags(blockAndPvtData.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	numTxs := uint64(len(blockAndPvtData.Block.Data.Data))
+
+	// for all valid tx, construct pvtdata and missing pvtdata list
+	for txNum := uint64(0); txNum < numTxs; txNum++ {
+		if txsFilter.IsInvalid(int(txNum)) {
+			continue
+		}
+
+		if pvtdata, ok := blockAndPvtData.PvtData[txNum]; ok {
+			validTxPvtData = append(validTxPvtData, pvtdata)
+		}
+
+		if missingPvtData, ok := blockAndPvtData.MissingPvtData[txNum]; ok {
+			for _, missing := range missingPvtData {
+				validTxMissingPvtData.Add(txNum, missing.Namespace,
+					missing.Collection, missing.IsEligible)
+			}
+		}
+	}
+	return validTxPvtData, validTxMissingPvtData
 }
 
 // CommitPvtDataOfOldBlocks commits the pvtData of old blocks

@@ -20,7 +20,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
+	lutil "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,7 +59,9 @@ func TestStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, pvtdata)
 
-	// block 2 has pvt data for tx 3 and 5 only
+	// block 2 has pvt data for tx 3, 5 and 6. However, tx 6
+	// is marked as invalid in the block and hence should not
+	// have been stored
 	pvtdata, err = store.GetPvtDataByNum(2, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pvtdata))
@@ -72,20 +77,10 @@ func TestStore(t *testing.T) {
 
 	blockAndPvtdata, err := store.GetPvtDataAndBlockByNum(2, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, len(sampleData[2].MissingPvtData), len(blockAndPvtdata.MissingPvtData))
-	for txNum := range blockAndPvtdata.MissingPvtData {
-		assert.ElementsMatch(t, sampleData[2].MissingPvtData[txNum],
-			blockAndPvtdata.MissingPvtData)
-	}
 	assert.True(t, proto.Equal(sampleData[2].Block, blockAndPvtdata.Block))
 
 	blockAndPvtdata, err = store.GetPvtDataAndBlockByNum(3, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, len(sampleData[2].MissingPvtData), len(blockAndPvtdata.MissingPvtData))
-	for txNum := range blockAndPvtdata.MissingPvtData {
-		assert.ElementsMatch(t, sampleData[2].MissingPvtData[txNum],
-			blockAndPvtdata.MissingPvtData)
-	}
 	assert.True(t, proto.Equal(sampleData[3].Block, blockAndPvtdata.Block))
 
 	// pvt data retrieval for block 3 with filter should return filtered pvtdata
@@ -101,6 +96,15 @@ func TestStore(t *testing.T) {
 	assert.Equal(t, 1, len(blockAndPvtdata.PvtData[6].WriteSet.NsPvtRwset))
 	// any other transaction entry should be nil
 	assert.Nil(t, blockAndPvtdata.PvtData[2])
+
+	// test missing data retrieval in the presence of invalid tx. Block 5 had
+	// missing data (for tx4 and tx5). However, tx5 was marked as invalid tx.
+	// Hence, only tx4's missing data should be returned
+	expectedMissingDataInfo := make(ledger.MissingPvtDataInfo)
+	expectedMissingDataInfo.Add(5, 4, "ns-4", "coll-4")
+	missingDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(1)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedMissingDataInfo, missingDataInfo)
 }
 
 func TestStoreWithExistingBlockchain(t *testing.T) {
@@ -326,10 +330,25 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T) []*ledger.BlockAndPvtData
 	for i := 0; i < 10; i++ {
 		blockAndpvtdata = append(blockAndpvtdata, &ledger.BlockAndPvtData{Block: blocks[i]})
 	}
-	// txNum 3, 5 in block 2 has pvtdata
-	blockAndpvtdata[2].PvtData = samplePvtData(t, []uint64{3, 5})
+
+	// txNum 3, 5, 6 in block 2 has pvtdata but txNum 6 is invalid
+	blockAndpvtdata[2].PvtData = samplePvtData(t, []uint64{3, 5, 6})
+	txFilter := lutil.TxValidationFlags(blockAndpvtdata[2].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter.SetFlag(6, pb.TxValidationCode_INVALID_WRITESET)
+	blockAndpvtdata[2].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
+
 	// txNum 4, 6 in block 3 has pvtdata
 	blockAndpvtdata[3].PvtData = samplePvtData(t, []uint64{4, 6})
+
+	// txNum 4, 5 in block 5 has missing pvt data but txNum 5 is invalid
+	missingData := make(ledger.TxMissingPvtDataMap)
+	missingData.Add(4, "ns-4", "coll-4", true)
+	missingData.Add(5, "ns-5", "coll-5", true)
+	blockAndpvtdata[5].MissingPvtData = missingData
+	txFilter = lutil.TxValidationFlags(blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter.SetFlag(5, pb.TxValidationCode_INVALID_WRITESET)
+	blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
+
 	return blockAndpvtdata
 }
 
