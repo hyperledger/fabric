@@ -26,7 +26,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-var logger = flogging.MustGetLogger("node-platform")
+var logger = flogging.MustGetLogger("chaincode.platform.node")
 
 // Platform for chaincodes written in Go
 type Platform struct {

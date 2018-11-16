@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var logger = flogging.MustGetLogger("accessControl")
+var logger = flogging.MustGetLogger("chaincode.accesscontrol")
 
 // CertAndPrivKeyPair contains a certificate
 // and its corresponding private key in base64 format

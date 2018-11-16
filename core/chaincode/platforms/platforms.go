@@ -54,7 +54,7 @@ type Registry struct {
 	PackageWriter PackageWriter
 }
 
-var logger = flogging.MustGetLogger("chaincode-platform")
+var logger = flogging.MustGetLogger("chaincode.platform")
 
 func NewRegistry(platformTypes ...Platform) *Registry {
 	platforms := make(map[string]Platform)

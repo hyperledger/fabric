@@ -31,7 +31,7 @@ import (
 	cutil "github.com/hyperledger/fabric/core/container/util"
 )
 
-var logger = flogging.MustGetLogger("util")
+var logger = flogging.MustGetLogger("chaincode.platform.util")
 
 //ComputeHash computes contents hash based on previous hash
 func ComputeHash(contents []byte, hash []byte) []byte {
