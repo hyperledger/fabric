@@ -1232,7 +1232,7 @@ func prepareNextBlockForTestFromSimulator(t *testing.T, bg *testutil.BlockGenera
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
 	return &ledger.BlockAndPvtData{Block: block,
-		BlockPvtData: map[uint64]*ledger.TxPvtData{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
+		PvtData: ledger.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}
 }
 

@@ -72,12 +72,20 @@ func TestStore(t *testing.T) {
 
 	blockAndPvtdata, err := store.GetPvtDataAndBlockByNum(2, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, sampleData[2].Missing, blockAndPvtdata.Missing)
+	assert.Equal(t, len(sampleData[2].MissingPvtData), len(blockAndPvtdata.MissingPvtData))
+	for txNum := range blockAndPvtdata.MissingPvtData {
+		assert.ElementsMatch(t, sampleData[2].MissingPvtData[txNum],
+			blockAndPvtdata.MissingPvtData)
+	}
 	assert.True(t, proto.Equal(sampleData[2].Block, blockAndPvtdata.Block))
 
 	blockAndPvtdata, err = store.GetPvtDataAndBlockByNum(3, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, sampleData[3].Missing, blockAndPvtdata.Missing)
+	assert.Equal(t, len(sampleData[2].MissingPvtData), len(blockAndPvtdata.MissingPvtData))
+	for txNum := range blockAndPvtdata.MissingPvtData {
+		assert.ElementsMatch(t, sampleData[2].MissingPvtData[txNum],
+			blockAndPvtdata.MissingPvtData)
+	}
 	assert.True(t, proto.Equal(sampleData[3].Block, blockAndPvtdata.Block))
 
 	// pvt data retrieval for block 3 with filter should return filtered pvtdata
@@ -87,12 +95,12 @@ func TestStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sampleData[3].Block, blockAndPvtdata.Block)
 	// two transactions should be present
-	assert.Equal(t, 2, len(blockAndPvtdata.BlockPvtData))
+	assert.Equal(t, 2, len(blockAndPvtdata.PvtData))
 	// both tran number 4 and 6 should have only one collection because of filter
-	assert.Equal(t, 1, len(blockAndPvtdata.BlockPvtData[4].WriteSet.NsPvtRwset))
-	assert.Equal(t, 1, len(blockAndPvtdata.BlockPvtData[6].WriteSet.NsPvtRwset))
+	assert.Equal(t, 1, len(blockAndPvtdata.PvtData[4].WriteSet.NsPvtRwset))
+	assert.Equal(t, 1, len(blockAndPvtdata.PvtData[6].WriteSet.NsPvtRwset))
 	// any other transaction entry should be nil
-	assert.Nil(t, blockAndPvtdata.BlockPvtData[2])
+	assert.Nil(t, blockAndPvtdata.PvtData[2])
 }
 
 func TestStoreWithExistingBlockchain(t *testing.T) {
@@ -142,7 +150,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 
 	// Add one more block with ovtdata associated with one of the trans and commit in the normal course
 	pvtdata := samplePvtData(t, []uint64{0})
-	assert.NoError(t, store.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blockToAdd, BlockPvtData: pvtdata}))
+	assert.NoError(t, store.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blockToAdd, PvtData: pvtdata}))
 	pvtdataBlockHt, err = store.pvtdataStore.LastCommittedBlockHeight()
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(10), pvtdataBlockHt)
@@ -167,7 +175,7 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 	}
 	blokNumAtCrash := dataAtCrash.Block.Header.Number
 	var pvtdataAtCrash []*ledger.TxPvtData
-	for _, p := range dataAtCrash.BlockPvtData {
+	for _, p := range dataAtCrash.PvtData {
 		pvtdataAtCrash = append(pvtdataAtCrash, p)
 	}
 	// Only call Prepare on pvt data store and mimic a crash
@@ -189,14 +197,14 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 	pvtdata, err := store.GetPvtDataByNum(blokNumAtCrash, nil)
 	assert.NoError(t, err)
 	constructed := constructPvtdataMap(pvtdata)
-	for k, v := range dataAtCrash.BlockPvtData {
+	for k, v := range dataAtCrash.PvtData {
 		ov, ok := constructed[k]
 		assert.True(t, ok)
 		assert.Equal(t, v.SeqInBlock, ov.SeqInBlock)
 		assert.True(t, proto.Equal(v.WriteSet, ov.WriteSet))
 	}
 	for k, v := range constructed {
-		ov, ok := dataAtCrash.BlockPvtData[k]
+		ov, ok := dataAtCrash.PvtData[k]
 		assert.True(t, ok)
 		assert.Equal(t, v.SeqInBlock, ov.SeqInBlock)
 		assert.True(t, proto.Equal(v.WriteSet, ov.WriteSet))
@@ -222,7 +230,7 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 	}
 	blokNumAtCrash := dataAtCrash.Block.Header.Number
 	var pvtdataAtCrash []*ledger.TxPvtData
-	for _, p := range dataAtCrash.BlockPvtData {
+	for _, p := range dataAtCrash.PvtData {
 		pvtdataAtCrash = append(pvtdataAtCrash, p)
 	}
 
@@ -238,7 +246,7 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 	store.Init(btlPolicyForSampleData())
 	blkAndPvtdata, err := store.GetPvtDataAndBlockByNum(blokNumAtCrash, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, dataAtCrash.Missing, blkAndPvtdata.Missing)
+	assert.Equal(t, dataAtCrash.MissingPvtData, blkAndPvtdata.MissingPvtData)
 	assert.True(t, proto.Equal(dataAtCrash.Block, blkAndPvtdata.Block))
 }
 
@@ -319,9 +327,9 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T) []*ledger.BlockAndPvtData
 		blockAndpvtdata = append(blockAndpvtdata, &ledger.BlockAndPvtData{Block: blocks[i]})
 	}
 	// txNum 3, 5 in block 2 has pvtdata
-	blockAndpvtdata[2].BlockPvtData = samplePvtData(t, []uint64{3, 5})
+	blockAndpvtdata[2].PvtData = samplePvtData(t, []uint64{3, 5})
 	// txNum 4, 6 in block 3 has pvtdata
-	blockAndpvtdata[3].BlockPvtData = samplePvtData(t, []uint64{4, 6})
+	blockAndpvtdata[3].PvtData = samplePvtData(t, []uint64{4, 6})
 	return blockAndpvtdata
 }
 
@@ -331,8 +339,8 @@ func sampleDataWithPvtdataForAllTxs(t *testing.T) []*ledger.BlockAndPvtData {
 	for i := 0; i < 10; i++ {
 		blockAndpvtdata = append(blockAndpvtdata,
 			&ledger.BlockAndPvtData{
-				Block:        blocks[i],
-				BlockPvtData: samplePvtData(t, []uint64{uint64(i), uint64(i + 1)}),
+				Block:   blocks[i],
+				PvtData: samplePvtData(t, []uint64{uint64(i), uint64(i + 1)}),
 			},
 		)
 	}

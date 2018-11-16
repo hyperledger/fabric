@@ -159,8 +159,9 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	blockAndPvtData := &ledger.BlockAndPvtData{
-		Block:        block,
-		BlockPvtData: make(map[uint64]*ledger.TxPvtData),
+		Block:          block,
+		PvtData:        make(ledger.TxPvtDataMap),
+		MissingPvtData: make(ledger.TxMissingPvtDataMap),
 	}
 
 	ownedRWsets, err := computeOwnedRWsets(block, privateDataSets)
@@ -211,21 +212,20 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	for seqInBlock, nsRWS := range ownedRWsets.bySeqsInBlock() {
 		rwsets := nsRWS.toRWSet()
 		logger.Debugf("[%s] Added %d namespace private write sets for block [%d], tran [%d]", c.ChainID, len(rwsets.NsPvtRwset), block.Header.Number, seqInBlock)
-		blockAndPvtData.BlockPvtData[seqInBlock] = &ledger.TxPvtData{
+		blockAndPvtData.PvtData[seqInBlock] = &ledger.TxPvtData{
 			SeqInBlock: seqInBlock,
 			WriteSet:   rwsets,
 		}
 	}
 
 	// populate missing RWSets to be passed to the ledger
-	blockAndPvtData.Missing = &ledger.MissingPrivateDataList{}
 	for missingRWS := range privateInfo.missingKeys {
-		blockAndPvtData.Missing.Add(missingRWS.txID, missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, true)
+		blockAndPvtData.MissingPvtData.Add(missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, true)
 	}
 
 	// populate missing RWSets for ineligible collections to be passed to the ledger
 	for _, missingRWS := range privateInfo.missingRWSButIneligible {
-		blockAndPvtData.Missing.Add(missingRWS.txID, missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, false)
+		blockAndPvtData.MissingPvtData.Add(missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, false)
 	}
 
 	// commit block and private data
@@ -234,7 +234,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		return errors.Wrap(err, "commit failed")
 	}
 
-	if len(blockAndPvtData.BlockPvtData) > 0 {
+	if len(blockAndPvtData.PvtData) > 0 {
 		// Finally, purge all transactions in block - valid or not valid.
 		if err := c.PurgeByTxids(privateInfo.txns); err != nil {
 			logger.Error("Purging transactions", privateInfo.txns, "failed:", err)
@@ -829,7 +829,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
 	data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) error {
-		item, exists := blockAndPvtData.BlockPvtData[seqInBlock]
+		item, exists := blockAndPvtData.PvtData[seqInBlock]
 		if !exists {
 			return nil
 		}

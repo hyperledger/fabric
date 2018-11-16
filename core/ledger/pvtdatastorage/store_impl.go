@@ -162,7 +162,7 @@ func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 }
 
 // Prepare implements the function in the interface `Store`
-func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingData *ledger.MissingPrivateDataList) error {
+func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
 	if s.batchPending {
 		return &ErrIllegalCall{`A pending batch exists as as result of last invoke to "Prepare" call.
 			 Invoke "Commit" or "Rollback" on the pending batch before invoking "Prepare" function`}
@@ -176,7 +176,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingDat
 	var err error
 	var keyBytes, valBytes []byte
 
-	storeEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy, missingData)
+	storeEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy, missingPvtData)
 	if err != nil {
 		return err
 	}

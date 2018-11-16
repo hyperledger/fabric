@@ -85,7 +85,7 @@ func (v *verifier) verifyMostRecentCollectionConfigBelow(blockNum uint64, chainc
 func (v *verifier) verifyBlockAndPvtData(blockNum uint64, filter ledger.PvtNsCollFilter, verifyLogic func(r *retrievedBlockAndPvtdata)) {
 	out, err := v.lgr.GetPvtDataAndBlockByNum(blockNum, filter)
 	v.assert.NoError(err)
-	v.t.Logf("Retrieved Block = %s, pvtdata = %s", spew.Sdump(out.Block), spew.Sdump(out.BlockPvtData))
+	v.t.Logf("Retrieved Block = %s, pvtdata = %s", spew.Sdump(out.Block), spew.Sdump(out.PvtData))
 	verifyLogic(&retrievedBlockAndPvtdata{out, v.assert})
 }
 
@@ -121,7 +121,7 @@ type retrievedBlockAndPvtdata struct {
 }
 
 func (r *retrievedBlockAndPvtdata) sameAs(expectedBlockAndPvtdata *ledger.BlockAndPvtData) {
-	r.samePvtdata(expectedBlockAndPvtdata.BlockPvtData)
+	r.samePvtdata(expectedBlockAndPvtdata.PvtData)
 	r.sameBlockHeaderAndData(expectedBlockAndPvtdata.Block)
 	r.sameMetadata(expectedBlockAndPvtdata.Block)
 }
@@ -131,11 +131,11 @@ func (r *retrievedBlockAndPvtdata) hasNumTx(numTx int) {
 }
 
 func (r *retrievedBlockAndPvtdata) hasNoPvtdata() {
-	r.assert.Len(r.BlockPvtData, 0)
+	r.assert.Len(r.PvtData, 0)
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key, value string) {
-	txPvtData := r.BlockAndPvtData.BlockPvtData[uint64(txSeq)]
+	txPvtData := r.BlockAndPvtData.PvtData[uint64(txSeq)]
 	for _, nsdata := range txPvtData.WriteSet.NsPvtRwset {
 		if nsdata.Namespace == ns {
 			for _, colldata := range nsdata.CollectionPvtRwset {
@@ -156,7 +156,7 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContain(ns, coll string) {
-	allTxPvtData := r.BlockAndPvtData.BlockPvtData
+	allTxPvtData := r.BlockAndPvtData.PvtData
 	for _, txPvtData := range allTxPvtData {
 		r.assert.False(txPvtData.Has(ns, coll))
 	}
@@ -187,9 +187,9 @@ func (r *retrievedBlockAndPvtdata) containsValidationCode(txSeq int, validationC
 }
 
 func (r *retrievedBlockAndPvtdata) samePvtdata(expectedPvtdata map[uint64]*ledger.TxPvtData) {
-	r.assert.Equal(len(expectedPvtdata), len(r.BlockAndPvtData.BlockPvtData))
+	r.assert.Equal(len(expectedPvtdata), len(r.BlockAndPvtData.PvtData))
 	for txNum, pvtData := range expectedPvtdata {
-		actualPvtData := r.BlockAndPvtData.BlockPvtData[txNum]
+		actualPvtData := r.BlockAndPvtData.PvtData[txNum]
 		r.assert.Equal(pvtData.SeqInBlock, actualPvtData.SeqInBlock)
 		r.assert.True(proto.Equal(pvtData.WriteSet, actualPvtData.WriteSet))
 	}
