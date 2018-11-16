@@ -15,10 +15,11 @@ import (
 	"github.com/willf/bitset"
 )
 
-func prepareStoreEntries(blockNum uint64, pvtdata []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy, missingData *ledger.MissingPrivateDataList) (*storeEntries, error) {
-	dataEntries := prepareDataEntries(blockNum, pvtdata)
+func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy,
+	missingPvtData ledger.TxMissingPvtDataMap) (*storeEntries, error) {
+	dataEntries := prepareDataEntries(blockNum, pvtData)
 
-	missingDataEntries := prepareMissingDataEntries(blockNum, missingData)
+	missingDataEntries := prepareMissingDataEntries(blockNum, missingPvtData)
 
 	expiryEntries, err := prepareExpiryEntries(blockNum, dataEntries, missingDataEntries, btlPolicy)
 	if err != nil {
@@ -47,23 +48,21 @@ func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEnt
 	return dataEntries
 }
 
-func prepareMissingDataEntries(committingBlk uint64, missingData *ledger.MissingPrivateDataList) map[missingDataKey]*bitset.BitSet {
-	if missingData == nil {
-		return nil
-	}
-
+func prepareMissingDataEntries(committingBlk uint64, missingPvtData ledger.TxMissingPvtDataMap) map[missingDataKey]*bitset.BitSet {
 	missingDataEntries := make(map[missingDataKey]*bitset.BitSet)
 
-	for _, missing := range missingData.List {
-		key := missingDataKey{nsCollBlk{missing.Namespace, missing.Collection, committingBlk},
-			missing.IsEligible}
+	for txNum, missingData := range missingPvtData {
+		for _, nsColl := range missingData {
+			key := missingDataKey{nsCollBlk{nsColl.Namespace, nsColl.Collection, committingBlk},
+				nsColl.IsEligible}
 
-		if _, ok := missingDataEntries[key]; !ok {
-			missingDataEntries[key] = &bitset.BitSet{}
+			if _, ok := missingDataEntries[key]; !ok {
+				missingDataEntries[key] = &bitset.BitSet{}
+			}
+			bitmap := missingDataEntries[key]
+
+			bitmap.Set(uint(txNum))
 		}
-		bitmap := missingDataEntries[key]
-
-		bitmap.Set(uint(missing.SeqInBlock))
 	}
 
 	return missingDataEntries

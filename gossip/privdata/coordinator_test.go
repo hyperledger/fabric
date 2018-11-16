@@ -606,13 +606,7 @@ type rwsTriplet struct {
 	rwset      string
 }
 
-type privateData map[uint64]*ledger.TxPvtData
-
-func (pd privateData) Equal(that privateData) bool {
-	return reflect.DeepEqual(pd.flatten(), that.flatten())
-}
-
-func (pd privateData) flatten() map[uint64]map[rwsTriplet]struct{} {
+func flattenTxPvtDataMap(pd ledger.TxPvtDataMap) map[uint64]map[rwsTriplet]struct{} {
 	m := make(map[uint64]map[rwsTriplet]struct{})
 	for seqInBlock, namespaces := range pd {
 		triplets := make(map[rwsTriplet]struct{})
@@ -770,7 +764,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	}
 	committer = &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
-		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
+		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		commitHappened = true
 		// Only the first transaction's private data is passed to the ledger
 		assert.Len(t, privateDataPassed2Ledger, 1)
@@ -848,8 +842,9 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	var commitHappened bool
 
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
-		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
-		assert.True(t, privateDataPassed2Ledger.Equal(expectedPvtData))
+		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
+		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+			flattenTxPvtDataMap(expectedPvtData)))
 		commitHappened = true
 	}).Return(nil)
 
@@ -922,8 +917,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}
 	committer := &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
-		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
-		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData1))
+		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
+		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+			flattenTxPvtDataMap(expectedCommittedPrivateData1)))
 		commitHappened = true
 	}).Return(nil)
 	purgedTxns := make(map[string]struct{})
@@ -1090,8 +1086,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	store.On("Persist", mock.Anything, uint64(1), mock.Anything).expectRWSet("ns3", "c3", []byte("rws-pre-image"))
 	committer = &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
-		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
-		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
+		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
+		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
 		commitHappened = true
 	}).Return(nil)
 	coordinator = NewCoordinator(Support{
@@ -1127,8 +1124,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	fetcher = &fetcherMock{t: t}
 	committer = &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
-		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
-		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
+		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
+		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
 		commitHappened = true
 	}).Return(nil)
 	coordinator = NewCoordinator(Support{
@@ -1164,11 +1162,12 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	committer := &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
-		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
-		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
-		missingPrivateData := blockAndPrivateData.Missing
-		expectedMissingPvtData := &ledger.MissingPrivateDataList{}
-		expectedMissingPvtData.Add("tx1", 0, "ns3", "c2", true)
+		privateDataPassed2Ledger := blockAndPrivateData.PvtData
+		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
+		missingPrivateData := blockAndPrivateData.MissingPvtData
+		expectedMissingPvtData := make(ledger.TxMissingPvtDataMap)
+		expectedMissingPvtData.Add(0, "ns3", "c2", true)
 		assert.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
 	}).Return(nil)
@@ -1249,11 +1248,12 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	committer := &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
-		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
-		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData3))
-		missingPrivateData := blockAndPrivateData.Missing
-		expectedMissingPvtData := &ledger.MissingPrivateDataList{}
-		expectedMissingPvtData.Add("tx1", 0, "ns3", "c2", false)
+		privateDataPassed2Ledger := blockAndPrivateData.PvtData
+		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+			flattenTxPvtDataMap(expectedCommittedPrivateData3)))
+		missingPrivateData := blockAndPrivateData.MissingPvtData
+		expectedMissingPvtData := make(ledger.TxMissingPvtDataMap)
+		expectedMissingPvtData.Add(0, "ns3", "c2", false)
 		assert.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
 	}).Return(nil)
@@ -1311,8 +1311,8 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	})
 	committer.Mock = mock.Mock{}
 	committer.On("GetPvtDataAndBlockByNum", mock.Anything).Return(&ledger.BlockAndPvtData{
-		Block:        block,
-		BlockPvtData: expectedCommittedPrivateData1,
+		Block:   block,
+		PvtData: expectedCommittedPrivateData1,
 	}, nil)
 	coordinator = NewCoordinator(Support{
 		CollectionStore: cs,
@@ -1446,9 +1446,9 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		// Ensure there is no private data to commit
-		assert.Empty(t, blockAndPrivateData.BlockPvtData)
+		assert.Empty(t, blockAndPrivateData.PvtData)
 		// Ensure there is no missing private data
-		assert.Empty(t, blockAndPrivateData.Missing)
+		assert.Empty(t, blockAndPrivateData.MissingPvtData)
 		commitHappened = true
 	}).Return(nil)
 	store := &mockTransientStore{t: t}

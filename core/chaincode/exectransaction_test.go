@@ -321,8 +321,8 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 			defer _commitLock_.Unlock()
 
 			blockAndPvtData := &ledger.BlockAndPvtData{
-				Block:        block,
-				BlockPvtData: make(map[uint64]*ledger.TxPvtData),
+				Block:   block,
+				PvtData: make(ledger.TxPvtDataMap),
 			}
 
 			// All tests are performed with just one transaction in a block.
@@ -336,7 +336,7 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 
 			if txSimulationResults.PvtSimulationResults != nil {
 
-				blockAndPvtData.BlockPvtData[seqInBlock] = &ledger.TxPvtData{
+				blockAndPvtData.PvtData[seqInBlock] = &ledger.TxPvtData{
 					SeqInBlock: seqInBlock,
 					WriteSet:   txSimulationResults.PvtSimulationResults,
 				}

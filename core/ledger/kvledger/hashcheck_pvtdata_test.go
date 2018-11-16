@@ -70,17 +70,17 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	}
 
 	// construct a missingData list for block1
-	missingData := &ledger.MissingPrivateDataList{}
-	missingData.Add("", 3, "ns-1", "coll-1", true)
-	missingData.Add("", 3, "ns-1", "coll-2", true)
-	missingData.Add("", 6, "ns-6", "coll-2", true)
-	missingData.Add("", 7, "ns-1", "coll-2", true)
+	missingData := make(ledger.TxMissingPvtDataMap)
+	missingData.Add(3, "ns-1", "coll-1", true)
+	missingData.Add(3, "ns-1", "coll-2", true)
+	missingData.Add(6, "ns-6", "coll-2", true)
+	missingData.Add(7, "ns-1", "coll-2", true)
 
 	// commit block1
 	blockAndPvtData1 := &ledger.BlockAndPvtData{
-		Block:        blk1,
-		BlockPvtData: pvtDataBlk1,
-		Missing:      missingData}
+		Block:          blk1,
+		PvtData:        pvtDataBlk1,
+		MissingPvtData: missingData}
 	assert.NoError(t, lg.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtData1))
 
 	// construct pvtData from missing data in tx3, tx6, and tx7

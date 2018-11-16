@@ -171,17 +171,17 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 
 	pvtdataAndBlock, _ := ledger.GetPvtDataAndBlockByNum(0, nil)
 	assert.Equal(t, gb, pvtdataAndBlock.Block)
-	assert.Nil(t, pvtdataAndBlock.BlockPvtData)
+	assert.Nil(t, pvtdataAndBlock.PvtData)
 
 	pvtdataAndBlock, _ = ledger.GetPvtDataAndBlockByNum(1, nil)
 	assert.Equal(t, block1, pvtdataAndBlock.Block)
-	assert.NotNil(t, pvtdataAndBlock.BlockPvtData)
-	assert.True(t, pvtdataAndBlock.BlockPvtData[0].Has("ns1", "coll1"))
-	assert.True(t, pvtdataAndBlock.BlockPvtData[0].Has("ns1", "coll2"))
+	assert.NotNil(t, pvtdataAndBlock.PvtData)
+	assert.True(t, pvtdataAndBlock.PvtData[0].Has("ns1", "coll1"))
+	assert.True(t, pvtdataAndBlock.PvtData[0].Has("ns1", "coll2"))
 
 	pvtdataAndBlock, _ = ledger.GetPvtDataAndBlockByNum(2, nil)
 	assert.Equal(t, block2, pvtdataAndBlock.Block)
-	assert.Nil(t, pvtdataAndBlock.BlockPvtData)
+	assert.Nil(t, pvtdataAndBlock.PvtData)
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
@@ -497,7 +497,7 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
 	return &lgr.BlockAndPvtData{Block: block,
-		BlockPvtData: map[uint64]*lgr.TxPvtData{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
+		PvtData: lgr.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}
 }
 

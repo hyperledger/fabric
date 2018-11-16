@@ -55,7 +55,7 @@ type Store interface {
 	// that enough preparation is done such that `Commit` function invoked afterwards can commit the
 	// data and the store is capable of surviving a crash between this function call and the next
 	// invoke to the `Commit`
-	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missing *ledger.MissingPrivateDataList) error
+	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error
 	// Commit commits the pvt data passed in the previous invoke to the `Prepare` function
 	Commit() error
 	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function

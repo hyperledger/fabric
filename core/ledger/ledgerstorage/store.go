@@ -21,7 +21,6 @@ import (
 )
 
 var logger = flogging.MustGetLogger("ledgerstorage")
-var isMissingDataReconEnabled = false
 
 // Provider encapusaltes two providers 1) block store provider and 2) and pvt data store provider
 type Provider struct {
@@ -89,12 +88,7 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
 func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	blockNum := blockAndPvtdata.Block.Header.Number
-	missingDataList := blockAndPvtdata.Missing
-
-	if !isMissingDataReconEnabled {
-		// should not store any entries for missing data
-		missingDataList = nil
-	}
+	missingPvtData := blockAndPvtdata.MissingPvtData
 
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
@@ -110,10 +104,10 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		// skip the pvt data commit to the pvtdata blockstore
 		logger.Debugf("Writing block [%d] to pvt block store", blockNum)
 		var pvtdata []*ledger.TxPvtData
-		for _, v := range blockAndPvtdata.BlockPvtData {
+		for _, v := range blockAndPvtdata.PvtData {
 			pvtdata = append(pvtdata, v)
 		}
-		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, missingDataList); err != nil {
+		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtdata, missingPvtData); err != nil {
 			return err
 		}
 		writtenToPvtStore = true
@@ -156,7 +150,7 @@ func (s *Store) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsColl
 	if pvtdata, err = s.getPvtDataByNumWithoutLock(blockNum, filter); err != nil {
 		return nil, err
 	}
-	return &ledger.BlockAndPvtData{Block: block, BlockPvtData: constructPvtdataMap(pvtdata)}, nil
+	return &ledger.BlockAndPvtData{Block: block, PvtData: constructPvtdataMap(pvtdata)}, nil
 }
 
 // GetPvtDataByNum returns only the pvt data  corresponding to the given block number

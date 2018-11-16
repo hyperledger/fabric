@@ -225,29 +225,29 @@ type TxPvtData struct {
 	WriteSet   *rwset.TxPvtReadWriteSet
 }
 
-// MissingPrivateData represents a private RWSet
-// that isn't present among the private data passed
-// to the ledger at the commit of the corresponding block
-type MissingPrivateData struct {
-	TxId       string
-	SeqInBlock uint64
+// TxPvtDataMap is a map from txNum to the pvtData
+type TxPvtDataMap map[uint64]*TxPvtData
+
+// MissingPvtData contains a namespace and collection for
+// which the pvtData is not present. It also denotes
+// whether the missing pvtData is eligible (i.e., whether
+// the peer is member of the [namespace, collection]
+type MissingPvtData struct {
 	Namespace  string
 	Collection string
 	IsEligible bool
 }
 
-// MissingPrivateDataList encapsulates a list of
-// MissingPrivateData
-type MissingPrivateDataList struct {
-	List []*MissingPrivateData
-}
+// TxMissingPvtDataMap is a map from txNum to the list of
+// missing pvtData
+type TxMissingPvtDataMap map[uint64][]*MissingPvtData
 
 // BlockAndPvtData encapsulates the block and a map that contains the tuples <seqInBlock, *TxPvtData>
 // The map is expected to contain the entries only for the transactions that has associated pvt data
 type BlockAndPvtData struct {
-	Block        *common.Block
-	BlockPvtData map[uint64]*TxPvtData
-	Missing      *MissingPrivateDataList
+	Block          *common.Block
+	PvtData        TxPvtDataMap
+	MissingPvtData TxMissingPvtDataMap
 }
 
 // BlockPvtData contains the private data for a block
@@ -257,8 +257,8 @@ type BlockPvtData struct {
 }
 
 // Add adds a given missing private data in the MissingPrivateDataList
-func (missing *MissingPrivateDataList) Add(txId string, txNum uint64, ns, coll string, isEligible bool) {
-	missing.List = append(missing.List, &MissingPrivateData{txId, txNum, ns, coll, isEligible})
+func (txMissingPvtData TxMissingPvtDataMap) Add(txNum uint64, ns, coll string, isEligible bool) {
+	txMissingPvtData[txNum] = append(txMissingPvtData[txNum], &MissingPvtData{ns, coll, isEligible})
 }
 
 // PvtCollFilter represents the set of the collection names (as keys of the map with value 'true')
