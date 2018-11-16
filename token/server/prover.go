@@ -200,11 +200,11 @@ func (s *Prover) RequestTransferFrom(ctx context.Context, header *token.Header, 
 // for import, transfer or redemption.
 func (s *Prover) RequestExpectation(ctx context.Context, header *token.Header, request *token.ExpectationRequest) (*token.CommandResponse_TokenTransaction, error) {
 	if request.GetExpectation() == nil {
-		return nil, errors.New("ExpectationRequest has nil Expectation")
+		return nil, errors.New("no token expectation in ExpectationRequest")
 	}
 	plainExpectation := request.GetExpectation().GetPlainExpectation()
 	if plainExpectation == nil {
-		return nil, errors.New("ExpectationRequest has nil PlainExpectation")
+		return nil, errors.New("no plain expectation in ExpectationRequest")
 	}
 
 	// get either issuer or transactor based on payload type in the request

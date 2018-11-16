@@ -8,6 +8,7 @@ package plain
 
 import (
 	"github.com/hyperledger/fabric/protos/token"
+	"github.com/pkg/errors"
 )
 
 // An Issuer that can import new tokens
@@ -40,5 +41,29 @@ func (i *Issuer) RequestImport(tokensToIssue []*token.TokenToIssue) (*token.Toke
 // RequestExpectation allows indirect import based on the expectation.
 // It creates a token transaction with the outputs as specified in the expectation.
 func (i *Issuer) RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error) {
-	panic("not implemented yet")
+	if request.GetExpectation() == nil {
+		return nil, errors.New("no token expectation in ExpectationRequest")
+	}
+	if request.GetExpectation().GetPlainExpectation() == nil {
+		return nil, errors.New("no plain expectation in ExpectationRequest")
+	}
+	if request.GetExpectation().GetPlainExpectation().GetImportExpectation() == nil {
+		return nil, errors.New("no import expectation in ExpectationRequest")
+	}
+
+	outputs := request.GetExpectation().GetPlainExpectation().GetImportExpectation().GetOutputs()
+	if len(outputs) == 0 {
+		return nil, errors.New("no outputs in ExpectationRequest")
+	}
+	return &token.TokenTransaction{
+		Action: &token.TokenTransaction_PlainAction{
+			PlainAction: &token.PlainTokenAction{
+				Data: &token.PlainTokenAction_PlainImport{
+					PlainImport: &token.PlainImport{
+						Outputs: outputs,
+					},
+				},
+			},
+		},
+	}, nil
 }

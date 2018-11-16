@@ -437,7 +437,57 @@ func getOutputsForTx(shares []*token.RecipientTransferShare, tokenType string, i
 // RequestExpectation allows indirect transfer based on the expectation.
 // It creates a token transaction based on the outputs as specified in the expectation.
 func (t *Transactor) RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error) {
-	panic("not implemented yet")
+	if len(request.GetTokenIds()) == 0 {
+		return nil, errors.New("no token ids in ExpectationRequest")
+	}
+	if request.GetExpectation() == nil {
+		return nil, errors.New("no token expectation in ExpectationRequest")
+	}
+	if request.GetExpectation().GetPlainExpectation() == nil {
+		return nil, errors.New("no plain expectation in ExpectationRequest")
+	}
+	if request.GetExpectation().GetPlainExpectation().GetTransferExpectation() == nil {
+		return nil, errors.New("no transfer expectation in ExpectationRequest")
+	}
+
+	inputs, inputType, inputSum, err := t.getInputsFromTokenIds(request.GetTokenIds())
+	if err != nil {
+		return nil, err
+	}
+
+	outputs := request.GetExpectation().GetPlainExpectation().GetTransferExpectation().GetOutputs()
+	outputType, outputSum, err := parseOutputs(outputs)
+	if err != nil {
+		return nil, err
+	}
+	if outputType != inputType {
+		return nil, errors.Errorf("token type mismatch in inputs and outputs for expectation (%s vs %s)", outputType, inputType)
+	}
+	if outputSum > inputSum {
+		return nil, errors.Errorf("total quantity [%d] from TokenIds is less than total quantity [%d] in expectation", inputSum, outputSum)
+	}
+
+	// inputs may have remaining tokens after outputs - add a new output in this case
+	if inputSum > outputSum {
+		outputs = append(outputs, &token.PlainOutput{
+			Owner:    t.PublicCredential, // PublicCredential is serialized identity for the creator
+			Type:     outputType,
+			Quantity: inputSum - outputSum,
+		})
+	}
+
+	return &token.TokenTransaction{
+		Action: &token.TokenTransaction_PlainAction{
+			PlainAction: &token.PlainTokenAction{
+				Data: &token.PlainTokenAction_PlainTransfer{
+					PlainTransfer: &token.PlainTransfer{
+						Inputs:  inputs,
+						Outputs: outputs,
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 // Done releases any resources held by this transactor
@@ -493,4 +543,24 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 		return "", nil, errors.New("invalid composite key - no components found")
 	}
 	return components[0], components[1:], nil
+}
+
+// parseOutputs iterates each output to verify token type and calculate the sum
+func parseOutputs(outputs []*token.PlainOutput) (string, uint64, error) {
+	if len(outputs) == 0 {
+		return "", 0, errors.New("no outputs in request")
+	}
+
+	outputType := ""
+	outputSum := uint64(0)
+	for _, output := range outputs {
+		if outputType == "" {
+			outputType = output.GetType()
+		} else if outputType != output.GetType() {
+			return "", 0, errors.Errorf("multiple token types ('%s', '%s') in outputs", outputType, output.GetType())
+		}
+		outputSum += output.GetQuantity()
+	}
+
+	return outputType, outputSum, nil
 }

@@ -174,7 +174,7 @@ func TestTransactor_ListTokens(t *testing.T) {
 	}
 }
 
-var _ = Describe("Transactor Transfer", func() {
+var _ = Describe("Transactor", func() {
 	var (
 		transactor              *plain.Transactor
 		recipientTransferShares []*token.RecipientTransferShare
@@ -553,6 +553,156 @@ var _ = Describe("Transactor Transfer", func() {
 			})
 		})
 	})
+
+	Describe("RequestExpectation", func() {
+		var (
+			fakeLedger         *mock.LedgerWriter
+			expectationRequest *token.ExpectationRequest
+			inputQuantity      uint64
+		)
+
+		BeforeEach(func() {
+			inputQuantity = 100
+			input := &token.PlainOutput{
+				Owner:    []byte("Alice"),
+				Type:     "TOK1",
+				Quantity: inputQuantity,
+			}
+			inputBytes, err := proto.Marshal(input)
+			Expect(err).ToNot(HaveOccurred())
+			fakeLedger = &mock.LedgerWriter{}
+			fakeLedger.GetStateReturns(inputBytes, nil)
+			transactor.Ledger = fakeLedger
+
+			expectationRequest = &token.ExpectationRequest{
+				Credential: []byte("credential"),
+				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "robert" + string("\x00") + "0" + string("\x00"))},
+				Expectation: &token.TokenExpectation{
+					Expectation: &token.TokenExpectation_PlainExpectation{
+						PlainExpectation: &token.PlainExpectation{
+							Payload: &token.PlainExpectation_TransferExpectation{
+								TransferExpectation: &token.PlainTokenExpectation{
+									Outputs: []*token.PlainOutput{{
+										Owner:    []byte("owner-1"),
+										Type:     "TOK1",
+										Quantity: inputQuantity,
+									}},
+								},
+							},
+						},
+					},
+				},
+			}
+		})
+
+		It("creates a token transaction when input quantity is same as output quantity", func() {
+			tt, err := transactor.RequestExpectation(expectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainTransfer{
+							PlainTransfer: &token.PlainTransfer{
+								Inputs: []*token.InputId{
+									{TxId: "robert", Index: uint32(0)},
+								},
+								Outputs: []*token.PlainOutput{{
+									Owner:    []byte("owner-1"),
+									Type:     "TOK1",
+									Quantity: inputQuantity,
+								}},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		It("creates a token transaction when input quantity is greater than output quantity", func() {
+			// change quantity in expectation output to be less than inputQuantity
+			expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = 40
+			tt, err := transactor.RequestExpectation(expectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainTransfer{
+							PlainTransfer: &token.PlainTransfer{
+								Inputs: []*token.InputId{
+									{TxId: "robert", Index: uint32(0)},
+								},
+								Outputs: []*token.PlainOutput{
+									{Owner: []byte("owner-1"), Type: "TOK1", Quantity: 40},
+									{Owner: []byte("Alice"), Type: "TOK1", Quantity: inputQuantity - 40},
+								},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		Context("when quantity in output is greater than input quantity", func() {
+			BeforeEach(func() {
+				// change quantity in expectation output
+				expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = inputQuantity + 1
+			})
+
+			It("returns an error", func() {
+				_, err := transactor.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError(fmt.Sprintf("total quantity [%d] from TokenIds is less than total quantity [%d] in expectation", inputQuantity, inputQuantity+1)))
+			})
+		})
+
+		Context("when quantity in output is greater than input quantity", func() {
+			BeforeEach(func() {
+				// change quantity in expectation output
+				expectationRequest.GetExpectation().GetPlainExpectation().GetTransferExpectation().Outputs[0].Quantity = inputQuantity + 1
+			})
+
+			It("returns an error", func() {
+				_, err := transactor.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError(fmt.Sprintf("total quantity [%d] from TokenIds is less than total quantity [%d] in expectation", inputQuantity, inputQuantity+1)))
+			})
+		})
+
+		Context("when ExpectationRequest has nil Expectation", func() {
+			BeforeEach(func() {
+				expectationRequest.Expectation = nil
+			})
+
+			It("returns the error", func() {
+				_, err := transactor.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no token expectation in ExpectationRequest"))
+			})
+		})
+
+		Context("when ExpectationRequest has nil PlainExpectation", func() {
+			BeforeEach(func() {
+				expectationRequest.Expectation = &token.TokenExpectation{}
+			})
+
+			It("returns the error", func() {
+				_, err := transactor.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no plain expectation in ExpectationRequest"))
+			})
+		})
+
+		Context("when ExpectationRequest has nil TransferExpectation", func() {
+			BeforeEach(func() {
+				expectationRequest.Expectation = &token.TokenExpectation{
+					Expectation: &token.TokenExpectation_PlainExpectation{
+						PlainExpectation: &token.PlainExpectation{},
+					},
+				}
+			})
+
+			It("returns the error", func() {
+				_, err := transactor.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no transfer expectation in ExpectationRequest"))
+			})
+		})
+	})
 })
 
 var _ = Describe("Transactor Approve", func() {
@@ -788,7 +938,6 @@ var _ = Describe("Transactor Approve", func() {
 		})
 
 	})
-
 })
 
 var _ = Describe("Transactor TransferFrom", func() {

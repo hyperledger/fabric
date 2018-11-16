@@ -736,7 +736,7 @@ var _ = Describe("Prover", func() {
 			})
 		})
 
-		Context("when Expectationrequest has nil Expectation", func() {
+		Context("when ExpectationRequest has nil Expectation", func() {
 			BeforeEach(func() {
 				importExpectationRequest = &token.ExpectationRequest{
 					Credential: []byte("credential"),
@@ -745,11 +745,11 @@ var _ = Describe("Prover", func() {
 
 			It("returns the error", func() {
 				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
-				Expect(err).To(MatchError("ExpectationRequest has nil Expectation"))
+				Expect(err).To(MatchError("no token expectation in ExpectationRequest"))
 			})
 		})
 
-		Context("when Expectationrequest has nil PlainExpectation", func() {
+		Context("when ExpectationRequest has nil PlainExpectation", func() {
 			BeforeEach(func() {
 				importExpectationRequest = &token.ExpectationRequest{
 					Credential:  []byte("credential"),
@@ -759,7 +759,7 @@ var _ = Describe("Prover", func() {
 
 			It("returns the error", func() {
 				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
-				Expect(err).To(MatchError("ExpectationRequest has nil PlainExpectation"))
+				Expect(err).To(MatchError("no plain expectation in ExpectationRequest"))
 			})
 		})
 	})
