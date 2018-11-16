@@ -2,16 +2,16 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 )
 
 type ACLProvider struct {
-	CheckACLStub        func(resName string, channelID string, idinfo interface{}) error
+	CheckACLStub        func(string, string, interface{}) error
 	checkACLMutex       sync.RWMutex
 	checkACLArgsForCall []struct {
-		resName   string
-		channelID string
-		idinfo    interface{}
+		arg1 string
+		arg2 string
+		arg3 interface{}
 	}
 	checkACLReturns struct {
 		result1 error
@@ -23,23 +23,24 @@ type ACLProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ACLProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (fake *ACLProvider) CheckACL(arg1 string, arg2 string, arg3 interface{}) error {
 	fake.checkACLMutex.Lock()
 	ret, specificReturn := fake.checkACLReturnsOnCall[len(fake.checkACLArgsForCall)]
 	fake.checkACLArgsForCall = append(fake.checkACLArgsForCall, struct {
-		resName   string
-		channelID string
-		idinfo    interface{}
-	}{resName, channelID, idinfo})
-	fake.recordInvocation("CheckACL", []interface{}{resName, channelID, idinfo})
+		arg1 string
+		arg2 string
+		arg3 interface{}
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("CheckACL", []interface{}{arg1, arg2, arg3})
 	fake.checkACLMutex.Unlock()
 	if fake.CheckACLStub != nil {
-		return fake.CheckACLStub(resName, channelID, idinfo)
+		return fake.CheckACLStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.checkACLReturns.result1
+	fakeReturns := fake.checkACLReturns
+	return fakeReturns.result1
 }
 
 func (fake *ACLProvider) CheckACLCallCount() int {
@@ -48,13 +49,22 @@ func (fake *ACLProvider) CheckACLCallCount() int {
 	return len(fake.checkACLArgsForCall)
 }
 
+func (fake *ACLProvider) CheckACLCalls(stub func(string, string, interface{}) error) {
+	fake.checkACLMutex.Lock()
+	defer fake.checkACLMutex.Unlock()
+	fake.CheckACLStub = stub
+}
+
 func (fake *ACLProvider) CheckACLArgsForCall(i int) (string, string, interface{}) {
 	fake.checkACLMutex.RLock()
 	defer fake.checkACLMutex.RUnlock()
-	return fake.checkACLArgsForCall[i].resName, fake.checkACLArgsForCall[i].channelID, fake.checkACLArgsForCall[i].idinfo
+	argsForCall := fake.checkACLArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *ACLProvider) CheckACLReturns(result1 error) {
+	fake.checkACLMutex.Lock()
+	defer fake.checkACLMutex.Unlock()
 	fake.CheckACLStub = nil
 	fake.checkACLReturns = struct {
 		result1 error
@@ -62,6 +72,8 @@ func (fake *ACLProvider) CheckACLReturns(result1 error) {
 }
 
 func (fake *ACLProvider) CheckACLReturnsOnCall(i int, result1 error) {
+	fake.checkACLMutex.Lock()
+	defer fake.checkACLMutex.Unlock()
 	fake.CheckACLStub = nil
 	if fake.checkACLReturnsOnCall == nil {
 		fake.checkACLReturnsOnCall = make(map[int]struct {

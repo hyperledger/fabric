@@ -2,18 +2,18 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/ledger"
+	ccprovider "github.com/hyperledger/fabric/core/common/ccprovider"
+	ledger "github.com/hyperledger/fabric/core/ledger"
 )
 
 type ChaincodeDefinitionGetter struct {
-	ChaincodeDefinitionStub        func(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	ChaincodeDefinitionStub        func(string, ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
 	chaincodeDefinitionMutex       sync.RWMutex
 	chaincodeDefinitionArgsForCall []struct {
-		chaincodeName string
-		txSim         ledger.QueryExecutor
+		arg1 string
+		arg2 ledger.QueryExecutor
 	}
 	chaincodeDefinitionReturns struct {
 		result1 ccprovider.ChaincodeDefinition
@@ -27,22 +27,23 @@ type ChaincodeDefinitionGetter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChaincodeDefinitionGetter) ChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+func (fake *ChaincodeDefinitionGetter) ChaincodeDefinition(arg1 string, arg2 ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	fake.chaincodeDefinitionMutex.Lock()
 	ret, specificReturn := fake.chaincodeDefinitionReturnsOnCall[len(fake.chaincodeDefinitionArgsForCall)]
 	fake.chaincodeDefinitionArgsForCall = append(fake.chaincodeDefinitionArgsForCall, struct {
-		chaincodeName string
-		txSim         ledger.QueryExecutor
-	}{chaincodeName, txSim})
-	fake.recordInvocation("ChaincodeDefinition", []interface{}{chaincodeName, txSim})
+		arg1 string
+		arg2 ledger.QueryExecutor
+	}{arg1, arg2})
+	fake.recordInvocation("ChaincodeDefinition", []interface{}{arg1, arg2})
 	fake.chaincodeDefinitionMutex.Unlock()
 	if fake.ChaincodeDefinitionStub != nil {
-		return fake.ChaincodeDefinitionStub(chaincodeName, txSim)
+		return fake.ChaincodeDefinitionStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.chaincodeDefinitionReturns.result1, fake.chaincodeDefinitionReturns.result2
+	fakeReturns := fake.chaincodeDefinitionReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionCallCount() int {
@@ -51,13 +52,22 @@ func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionCallCount() int {
 	return len(fake.chaincodeDefinitionArgsForCall)
 }
 
+func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionCalls(stub func(string, ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)) {
+	fake.chaincodeDefinitionMutex.Lock()
+	defer fake.chaincodeDefinitionMutex.Unlock()
+	fake.ChaincodeDefinitionStub = stub
+}
+
 func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionArgsForCall(i int) (string, ledger.QueryExecutor) {
 	fake.chaincodeDefinitionMutex.RLock()
 	defer fake.chaincodeDefinitionMutex.RUnlock()
-	return fake.chaincodeDefinitionArgsForCall[i].chaincodeName, fake.chaincodeDefinitionArgsForCall[i].txSim
+	argsForCall := fake.chaincodeDefinitionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
+	fake.chaincodeDefinitionMutex.Lock()
+	defer fake.chaincodeDefinitionMutex.Unlock()
 	fake.ChaincodeDefinitionStub = nil
 	fake.chaincodeDefinitionReturns = struct {
 		result1 ccprovider.ChaincodeDefinition
@@ -66,6 +76,8 @@ func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionReturns(result1 ccprov
 }
 
 func (fake *ChaincodeDefinitionGetter) ChaincodeDefinitionReturnsOnCall(i int, result1 ccprovider.ChaincodeDefinition, result2 error) {
+	fake.chaincodeDefinitionMutex.Lock()
+	defer fake.chaincodeDefinitionMutex.Unlock()
 	fake.ChaincodeDefinitionStub = nil
 	if fake.chaincodeDefinitionReturnsOnCall == nil {
 		fake.chaincodeDefinitionReturnsOnCall = make(map[int]struct {

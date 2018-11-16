@@ -2,16 +2,28 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	peer "github.com/hyperledger/fabric/protos/peer"
 )
 
 type ChaincodeStream struct {
-	SendStub        func(*pb.ChaincodeMessage) error
+	RecvStub        func() (*peer.ChaincodeMessage, error)
+	recvMutex       sync.RWMutex
+	recvArgsForCall []struct {
+	}
+	recvReturns struct {
+		result1 *peer.ChaincodeMessage
+		result2 error
+	}
+	recvReturnsOnCall map[int]struct {
+		result1 *peer.ChaincodeMessage
+		result2 error
+	}
+	SendStub        func(*peer.ChaincodeMessage) error
 	sendMutex       sync.RWMutex
 	sendArgsForCall []struct {
-		arg1 *pb.ChaincodeMessage
+		arg1 *peer.ChaincodeMessage
 	}
 	sendReturns struct {
 		result1 error
@@ -19,26 +31,70 @@ type ChaincodeStream struct {
 	sendReturnsOnCall map[int]struct {
 		result1 error
 	}
-	RecvStub        func() (*pb.ChaincodeMessage, error)
-	recvMutex       sync.RWMutex
-	recvArgsForCall []struct{}
-	recvReturns     struct {
-		result1 *pb.ChaincodeMessage
-		result2 error
-	}
-	recvReturnsOnCall map[int]struct {
-		result1 *pb.ChaincodeMessage
-		result2 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChaincodeStream) Send(arg1 *pb.ChaincodeMessage) error {
+func (fake *ChaincodeStream) Recv() (*peer.ChaincodeMessage, error) {
+	fake.recvMutex.Lock()
+	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
+	fake.recvArgsForCall = append(fake.recvArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Recv", []interface{}{})
+	fake.recvMutex.Unlock()
+	if fake.RecvStub != nil {
+		return fake.RecvStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.recvReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChaincodeStream) RecvCallCount() int {
+	fake.recvMutex.RLock()
+	defer fake.recvMutex.RUnlock()
+	return len(fake.recvArgsForCall)
+}
+
+func (fake *ChaincodeStream) RecvCalls(stub func() (*peer.ChaincodeMessage, error)) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = stub
+}
+
+func (fake *ChaincodeStream) RecvReturns(result1 *peer.ChaincodeMessage, result2 error) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = nil
+	fake.recvReturns = struct {
+		result1 *peer.ChaincodeMessage
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStream) RecvReturnsOnCall(i int, result1 *peer.ChaincodeMessage, result2 error) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = nil
+	if fake.recvReturnsOnCall == nil {
+		fake.recvReturnsOnCall = make(map[int]struct {
+			result1 *peer.ChaincodeMessage
+			result2 error
+		})
+	}
+	fake.recvReturnsOnCall[i] = struct {
+		result1 *peer.ChaincodeMessage
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStream) Send(arg1 *peer.ChaincodeMessage) error {
 	fake.sendMutex.Lock()
 	ret, specificReturn := fake.sendReturnsOnCall[len(fake.sendArgsForCall)]
 	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
-		arg1 *pb.ChaincodeMessage
+		arg1 *peer.ChaincodeMessage
 	}{arg1})
 	fake.recordInvocation("Send", []interface{}{arg1})
 	fake.sendMutex.Unlock()
@@ -48,7 +104,8 @@ func (fake *ChaincodeStream) Send(arg1 *pb.ChaincodeMessage) error {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.sendReturns.result1
+	fakeReturns := fake.sendReturns
+	return fakeReturns.result1
 }
 
 func (fake *ChaincodeStream) SendCallCount() int {
@@ -57,13 +114,22 @@ func (fake *ChaincodeStream) SendCallCount() int {
 	return len(fake.sendArgsForCall)
 }
 
-func (fake *ChaincodeStream) SendArgsForCall(i int) *pb.ChaincodeMessage {
+func (fake *ChaincodeStream) SendCalls(stub func(*peer.ChaincodeMessage) error) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = stub
+}
+
+func (fake *ChaincodeStream) SendArgsForCall(i int) *peer.ChaincodeMessage {
 	fake.sendMutex.RLock()
 	defer fake.sendMutex.RUnlock()
-	return fake.sendArgsForCall[i].arg1
+	argsForCall := fake.sendArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ChaincodeStream) SendReturns(result1 error) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
 	fake.SendStub = nil
 	fake.sendReturns = struct {
 		result1 error
@@ -71,6 +137,8 @@ func (fake *ChaincodeStream) SendReturns(result1 error) {
 }
 
 func (fake *ChaincodeStream) SendReturnsOnCall(i int, result1 error) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
 	fake.SendStub = nil
 	if fake.sendReturnsOnCall == nil {
 		fake.sendReturnsOnCall = make(map[int]struct {
@@ -82,56 +150,13 @@ func (fake *ChaincodeStream) SendReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *ChaincodeStream) Recv() (*pb.ChaincodeMessage, error) {
-	fake.recvMutex.Lock()
-	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
-	fake.recvArgsForCall = append(fake.recvArgsForCall, struct{}{})
-	fake.recordInvocation("Recv", []interface{}{})
-	fake.recvMutex.Unlock()
-	if fake.RecvStub != nil {
-		return fake.RecvStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.recvReturns.result1, fake.recvReturns.result2
-}
-
-func (fake *ChaincodeStream) RecvCallCount() int {
-	fake.recvMutex.RLock()
-	defer fake.recvMutex.RUnlock()
-	return len(fake.recvArgsForCall)
-}
-
-func (fake *ChaincodeStream) RecvReturns(result1 *pb.ChaincodeMessage, result2 error) {
-	fake.RecvStub = nil
-	fake.recvReturns = struct {
-		result1 *pb.ChaincodeMessage
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *ChaincodeStream) RecvReturnsOnCall(i int, result1 *pb.ChaincodeMessage, result2 error) {
-	fake.RecvStub = nil
-	if fake.recvReturnsOnCall == nil {
-		fake.recvReturnsOnCall = make(map[int]struct {
-			result1 *pb.ChaincodeMessage
-			result2 error
-		})
-	}
-	fake.recvReturnsOnCall[i] = struct {
-		result1 *pb.ChaincodeMessage
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *ChaincodeStream) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.sendMutex.RLock()
-	defer fake.sendMutex.RUnlock()
 	fake.recvMutex.RLock()
 	defer fake.recvMutex.RUnlock()
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

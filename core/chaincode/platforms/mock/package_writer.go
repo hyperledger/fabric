@@ -2,17 +2,17 @@
 package mock
 
 import (
-	"archive/tar"
-	"sync"
+	tar "archive/tar"
+	sync "sync"
 )
 
 type PackageWriter struct {
-	WriteStub        func(name string, payload []byte, tw *tar.Writer) error
+	WriteStub        func(string, []byte, *tar.Writer) error
 	writeMutex       sync.RWMutex
 	writeArgsForCall []struct {
-		name    string
-		payload []byte
-		tw      *tar.Writer
+		arg1 string
+		arg2 []byte
+		arg3 *tar.Writer
 	}
 	writeReturns struct {
 		result1 error
@@ -24,28 +24,29 @@ type PackageWriter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PackageWriter) Write(name string, payload []byte, tw *tar.Writer) error {
-	var payloadCopy []byte
-	if payload != nil {
-		payloadCopy = make([]byte, len(payload))
-		copy(payloadCopy, payload)
+func (fake *PackageWriter) Write(arg1 string, arg2 []byte, arg3 *tar.Writer) error {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
 	fake.writeMutex.Lock()
 	ret, specificReturn := fake.writeReturnsOnCall[len(fake.writeArgsForCall)]
 	fake.writeArgsForCall = append(fake.writeArgsForCall, struct {
-		name    string
-		payload []byte
-		tw      *tar.Writer
-	}{name, payloadCopy, tw})
-	fake.recordInvocation("Write", []interface{}{name, payloadCopy, tw})
+		arg1 string
+		arg2 []byte
+		arg3 *tar.Writer
+	}{arg1, arg2Copy, arg3})
+	fake.recordInvocation("Write", []interface{}{arg1, arg2Copy, arg3})
 	fake.writeMutex.Unlock()
 	if fake.WriteStub != nil {
-		return fake.WriteStub(name, payload, tw)
+		return fake.WriteStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.writeReturns.result1
+	fakeReturns := fake.writeReturns
+	return fakeReturns.result1
 }
 
 func (fake *PackageWriter) WriteCallCount() int {
@@ -54,13 +55,22 @@ func (fake *PackageWriter) WriteCallCount() int {
 	return len(fake.writeArgsForCall)
 }
 
+func (fake *PackageWriter) WriteCalls(stub func(string, []byte, *tar.Writer) error) {
+	fake.writeMutex.Lock()
+	defer fake.writeMutex.Unlock()
+	fake.WriteStub = stub
+}
+
 func (fake *PackageWriter) WriteArgsForCall(i int) (string, []byte, *tar.Writer) {
 	fake.writeMutex.RLock()
 	defer fake.writeMutex.RUnlock()
-	return fake.writeArgsForCall[i].name, fake.writeArgsForCall[i].payload, fake.writeArgsForCall[i].tw
+	argsForCall := fake.writeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *PackageWriter) WriteReturns(result1 error) {
+	fake.writeMutex.Lock()
+	defer fake.writeMutex.Unlock()
 	fake.WriteStub = nil
 	fake.writeReturns = struct {
 		result1 error
@@ -68,6 +78,8 @@ func (fake *PackageWriter) WriteReturns(result1 error) {
 }
 
 func (fake *PackageWriter) WriteReturnsOnCall(i int, result1 error) {
+	fake.writeMutex.Lock()
+	defer fake.writeMutex.Unlock()
 	fake.WriteStub = nil
 	if fake.writeReturnsOnCall == nil {
 		fake.writeReturnsOnCall = make(map[int]struct {
