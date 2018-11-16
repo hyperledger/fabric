@@ -9,6 +9,19 @@ import (
 )
 
 type Issuer struct {
+	RequestExpectationStub        func(*token.ExpectationRequest) (*token.TokenTransaction, error)
+	requestExpectationMutex       sync.RWMutex
+	requestExpectationArgsForCall []struct {
+		arg1 *token.ExpectationRequest
+	}
+	requestExpectationReturns struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
+	requestExpectationReturnsOnCall map[int]struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}
 	RequestImportStub        func([]*token.TokenToIssue) (*token.TokenTransaction, error)
 	requestImportMutex       sync.RWMutex
 	requestImportArgsForCall []struct {
@@ -24,6 +37,69 @@ type Issuer struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Issuer) RequestExpectation(arg1 *token.ExpectationRequest) (*token.TokenTransaction, error) {
+	fake.requestExpectationMutex.Lock()
+	ret, specificReturn := fake.requestExpectationReturnsOnCall[len(fake.requestExpectationArgsForCall)]
+	fake.requestExpectationArgsForCall = append(fake.requestExpectationArgsForCall, struct {
+		arg1 *token.ExpectationRequest
+	}{arg1})
+	fake.recordInvocation("RequestExpectation", []interface{}{arg1})
+	fake.requestExpectationMutex.Unlock()
+	if fake.RequestExpectationStub != nil {
+		return fake.RequestExpectationStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.requestExpectationReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Issuer) RequestExpectationCallCount() int {
+	fake.requestExpectationMutex.RLock()
+	defer fake.requestExpectationMutex.RUnlock()
+	return len(fake.requestExpectationArgsForCall)
+}
+
+func (fake *Issuer) RequestExpectationCalls(stub func(*token.ExpectationRequest) (*token.TokenTransaction, error)) {
+	fake.requestExpectationMutex.Lock()
+	defer fake.requestExpectationMutex.Unlock()
+	fake.RequestExpectationStub = stub
+}
+
+func (fake *Issuer) RequestExpectationArgsForCall(i int) *token.ExpectationRequest {
+	fake.requestExpectationMutex.RLock()
+	defer fake.requestExpectationMutex.RUnlock()
+	argsForCall := fake.requestExpectationArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Issuer) RequestExpectationReturns(result1 *token.TokenTransaction, result2 error) {
+	fake.requestExpectationMutex.Lock()
+	defer fake.requestExpectationMutex.Unlock()
+	fake.RequestExpectationStub = nil
+	fake.requestExpectationReturns = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Issuer) RequestExpectationReturnsOnCall(i int, result1 *token.TokenTransaction, result2 error) {
+	fake.requestExpectationMutex.Lock()
+	defer fake.requestExpectationMutex.Unlock()
+	fake.RequestExpectationStub = nil
+	if fake.requestExpectationReturnsOnCall == nil {
+		fake.requestExpectationReturnsOnCall = make(map[int]struct {
+			result1 *token.TokenTransaction
+			result2 error
+		})
+	}
+	fake.requestExpectationReturnsOnCall[i] = struct {
+		result1 *token.TokenTransaction
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Issuer) RequestImport(arg1 []*token.TokenToIssue) (*token.TokenTransaction, error) {
@@ -97,6 +173,8 @@ func (fake *Issuer) RequestImportReturnsOnCall(i int, result1 *token.TokenTransa
 func (fake *Issuer) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.requestExpectationMutex.RLock()
+	defer fake.requestExpectationMutex.RUnlock()
 	fake.requestImportMutex.RLock()
 	defer fake.requestImportMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

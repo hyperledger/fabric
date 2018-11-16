@@ -3,6 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package server
 
 import (
@@ -82,7 +83,37 @@ func (ac *PolicyBasedAccessControl) Check(sc *token.SignedCommand, c *token.Comm
 			c.Header.ChannelId,
 			signedData,
 		)
+
+	case *token.Command_ExpectationRequest:
+		if c.GetExpectationRequest().GetExpectation() == nil {
+			return errors.New("ExpectationRequest has nil Expectation")
+		}
+		plainExpectation := c.GetExpectationRequest().GetExpectation().GetPlainExpectation()
+		if plainExpectation == nil {
+			return errors.New("ExpectationRequest has nil PlainExpectation")
+		}
+		return ac.checkExpectation(plainExpectation, signedData, c)
 	default:
 		return errors.Errorf("command type not recognized: %T", t)
+	}
+}
+
+// checkExpectation checks either issue policy or transfer policy depending on the payload type in expectation
+func (ac *PolicyBasedAccessControl) checkExpectation(plainExpectation *token.PlainExpectation, signedData []*common.SignedData, c *token.Command) error {
+	switch t := plainExpectation.GetPayload().(type) {
+	case *token.PlainExpectation_ImportExpectation:
+		return ac.ACLProvider.CheckACL(
+			ac.ACLResources.IssueTokens,
+			c.Header.ChannelId,
+			signedData,
+		)
+	case *token.PlainExpectation_TransferExpectation:
+		return ac.ACLProvider.CheckACL(
+			ac.ACLResources.TransferTokens,
+			c.Header.ChannelId,
+			signedData,
+		)
+	default:
+		return errors.Errorf("expectation payload type not recognized: %T", t)
 	}
 }

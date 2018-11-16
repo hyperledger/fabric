@@ -12,6 +12,7 @@ option java_package = "org.hyperledger.fabric.protos.token";
 package protos;
 
 import "google/protobuf/timestamp.proto";
+import "token/expectations.proto";
 import "token/transaction.proto";
 
 // TokenToIssue describes a token to be issued in the system
@@ -110,6 +111,19 @@ message ApproveRequest{
     repeated bytes token_ids = 3;
 }
 
+// ExpectationRequest is used to request indirect token import or transfer based on the token expectation
+message ExpectationRequest {
+    // credential contains information for the party who is requesting the operation
+    // The content of this field depends on the characteristic of token manager system
+    bytes credential = 1;
+
+    // expectation contains the expected outputs for token import or transfer
+    TokenExpectation expectation = 2;
+
+    // TokenIds are the token identifiers used to fulfill the expectation
+    repeated bytes token_ids = 3;
+}
+
 // Header is a generic replay prevention and identity message to include in a signed command
 message Header {
     // Timestamp is the local time when the message was created
@@ -142,6 +156,7 @@ message Command {
         RedeemRequest redeem_request = 5;
         ApproveRequest approve_request = 6;
         TransferRequest transfer_from_request = 7;
+        ExpectationRequest expectation_request = 8;
     }
 }
 
