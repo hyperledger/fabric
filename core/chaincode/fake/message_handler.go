@@ -2,37 +2,37 @@
 package fake
 
 import (
-	"sync"
+	sync "sync"
 
-	chaincode_test "github.com/hyperledger/fabric/core/chaincode"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	chaincode "github.com/hyperledger/fabric/core/chaincode"
+	peer "github.com/hyperledger/fabric/protos/peer"
 )
 
 type MessageHandler struct {
-	HandleStub        func(*pb.ChaincodeMessage, *chaincode_test.TransactionContext) (*pb.ChaincodeMessage, error)
+	HandleStub        func(*peer.ChaincodeMessage, *chaincode.TransactionContext) (*peer.ChaincodeMessage, error)
 	handleMutex       sync.RWMutex
 	handleArgsForCall []struct {
-		arg1 *pb.ChaincodeMessage
-		arg2 *chaincode_test.TransactionContext
+		arg1 *peer.ChaincodeMessage
+		arg2 *chaincode.TransactionContext
 	}
 	handleReturns struct {
-		result1 *pb.ChaincodeMessage
+		result1 *peer.ChaincodeMessage
 		result2 error
 	}
 	handleReturnsOnCall map[int]struct {
-		result1 *pb.ChaincodeMessage
+		result1 *peer.ChaincodeMessage
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *MessageHandler) Handle(arg1 *pb.ChaincodeMessage, arg2 *chaincode_test.TransactionContext) (*pb.ChaincodeMessage, error) {
+func (fake *MessageHandler) Handle(arg1 *peer.ChaincodeMessage, arg2 *chaincode.TransactionContext) (*peer.ChaincodeMessage, error) {
 	fake.handleMutex.Lock()
 	ret, specificReturn := fake.handleReturnsOnCall[len(fake.handleArgsForCall)]
 	fake.handleArgsForCall = append(fake.handleArgsForCall, struct {
-		arg1 *pb.ChaincodeMessage
-		arg2 *chaincode_test.TransactionContext
+		arg1 *peer.ChaincodeMessage
+		arg2 *chaincode.TransactionContext
 	}{arg1, arg2})
 	fake.recordInvocation("Handle", []interface{}{arg1, arg2})
 	fake.handleMutex.Unlock()
@@ -42,7 +42,8 @@ func (fake *MessageHandler) Handle(arg1 *pb.ChaincodeMessage, arg2 *chaincode_te
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.handleReturns.result1, fake.handleReturns.result2
+	fakeReturns := fake.handleReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *MessageHandler) HandleCallCount() int {
@@ -51,30 +52,41 @@ func (fake *MessageHandler) HandleCallCount() int {
 	return len(fake.handleArgsForCall)
 }
 
-func (fake *MessageHandler) HandleArgsForCall(i int) (*pb.ChaincodeMessage, *chaincode_test.TransactionContext) {
-	fake.handleMutex.RLock()
-	defer fake.handleMutex.RUnlock()
-	return fake.handleArgsForCall[i].arg1, fake.handleArgsForCall[i].arg2
+func (fake *MessageHandler) HandleCalls(stub func(*peer.ChaincodeMessage, *chaincode.TransactionContext) (*peer.ChaincodeMessage, error)) {
+	fake.handleMutex.Lock()
+	defer fake.handleMutex.Unlock()
+	fake.HandleStub = stub
 }
 
-func (fake *MessageHandler) HandleReturns(result1 *pb.ChaincodeMessage, result2 error) {
+func (fake *MessageHandler) HandleArgsForCall(i int) (*peer.ChaincodeMessage, *chaincode.TransactionContext) {
+	fake.handleMutex.RLock()
+	defer fake.handleMutex.RUnlock()
+	argsForCall := fake.handleArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *MessageHandler) HandleReturns(result1 *peer.ChaincodeMessage, result2 error) {
+	fake.handleMutex.Lock()
+	defer fake.handleMutex.Unlock()
 	fake.HandleStub = nil
 	fake.handleReturns = struct {
-		result1 *pb.ChaincodeMessage
+		result1 *peer.ChaincodeMessage
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *MessageHandler) HandleReturnsOnCall(i int, result1 *pb.ChaincodeMessage, result2 error) {
+func (fake *MessageHandler) HandleReturnsOnCall(i int, result1 *peer.ChaincodeMessage, result2 error) {
+	fake.handleMutex.Lock()
+	defer fake.handleMutex.Unlock()
 	fake.HandleStub = nil
 	if fake.handleReturnsOnCall == nil {
 		fake.handleReturnsOnCall = make(map[int]struct {
-			result1 *pb.ChaincodeMessage
+			result1 *peer.ChaincodeMessage
 			result2 error
 		})
 	}
 	fake.handleReturnsOnCall[i] = struct {
-		result1 *pb.ChaincodeMessage
+		result1 *peer.ChaincodeMessage
 		result2 error
 	}{result1, result2}
 }

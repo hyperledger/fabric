@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
@@ -192,6 +193,7 @@ func initMockPeer(chainIDs ...string) (*ChaincodeSupport, error) {
 		sccp,
 		pr,
 		peer.DefaultSupport,
+		&disabled.Provider{},
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 

@@ -2,17 +2,17 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/core/container"
+	container "github.com/hyperledger/fabric/core/container"
 )
 
 type Processor struct {
-	ProcessStub        func(vmtype string, req container.VMCReq) error
+	ProcessStub        func(string, container.VMCReq) error
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
-		vmtype string
-		req    container.VMCReq
+		arg1 string
+		arg2 container.VMCReq
 	}
 	processReturns struct {
 		result1 error
@@ -24,22 +24,23 @@ type Processor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Processor) Process(vmtype string, req container.VMCReq) error {
+func (fake *Processor) Process(arg1 string, arg2 container.VMCReq) error {
 	fake.processMutex.Lock()
 	ret, specificReturn := fake.processReturnsOnCall[len(fake.processArgsForCall)]
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
-		vmtype string
-		req    container.VMCReq
-	}{vmtype, req})
-	fake.recordInvocation("Process", []interface{}{vmtype, req})
+		arg1 string
+		arg2 container.VMCReq
+	}{arg1, arg2})
+	fake.recordInvocation("Process", []interface{}{arg1, arg2})
 	fake.processMutex.Unlock()
 	if fake.ProcessStub != nil {
-		return fake.ProcessStub(vmtype, req)
+		return fake.ProcessStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.processReturns.result1
+	fakeReturns := fake.processReturns
+	return fakeReturns.result1
 }
 
 func (fake *Processor) ProcessCallCount() int {
@@ -48,13 +49,22 @@ func (fake *Processor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
+func (fake *Processor) ProcessCalls(stub func(string, container.VMCReq) error) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
+	fake.ProcessStub = stub
+}
+
 func (fake *Processor) ProcessArgsForCall(i int) (string, container.VMCReq) {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
-	return fake.processArgsForCall[i].vmtype, fake.processArgsForCall[i].req
+	argsForCall := fake.processArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Processor) ProcessReturns(result1 error) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
 	fake.ProcessStub = nil
 	fake.processReturns = struct {
 		result1 error
@@ -62,6 +72,8 @@ func (fake *Processor) ProcessReturns(result1 error) {
 }
 
 func (fake *Processor) ProcessReturnsOnCall(i int, result1 error) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
 	fake.ProcessStub = nil
 	if fake.processReturnsOnCall == nil {
 		fake.processReturnsOnCall = make(map[int]struct {
