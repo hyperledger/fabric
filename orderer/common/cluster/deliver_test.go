@@ -111,20 +111,24 @@ func noopBlockVerifierf(_ []*common.Block) error {
 	return nil
 }
 
-func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.SeekInfo, error) {
+func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.SeekInfo, string, error) {
 	env, err := stream.Recv()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	payload, err := utils.UnmarshalPayload(env.Payload)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	seekInfo := &orderer.SeekInfo{}
 	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return seekInfo, nil
+	chdr := &common.ChannelHeader{}
+	if err = proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
+		return nil, "", err
+	}
+	return seekInfo, chdr.ChannelId, nil
 }
 
 type deliverServer struct {
@@ -132,7 +136,7 @@ type deliverServer struct {
 	sync.Mutex
 	err            error
 	srv            *comm.GRPCServer
-	seekAssertions chan func(*orderer.SeekInfo)
+	seekAssertions chan func(*orderer.SeekInfo, string)
 	blockResponses chan *orderer.DeliverResponse
 }
 
@@ -150,31 +154,56 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	ds.Lock()
 	err := ds.err
 	ds.Unlock()
+
 	if err != nil {
-		return ds.err
+		return err
 	}
-	seekInfo, err := readSeekEnvelope(stream)
+	seekInfo, channel, err := readSeekEnvelope(stream)
 	if err != nil {
 		panic(err)
 	}
-
 	// Get the next seek assertion and ensure the next seek is of the expected type
 	seekAssert := <-ds.seekAssertions
-	seekAssert(seekInfo)
+	seekAssert(seekInfo, channel)
 
 	if seekInfo.GetStart().GetSpecified() != nil {
-		for resp := range ds.blockResponses {
-			if err := stream.Send(resp); err != nil {
-				return nil
-			}
-		}
-		return nil
+		return ds.deliverBlocks(stream)
 	}
 	if seekInfo.GetStart().GetNewest() != nil {
-		resp := <-ds.blockResponses
+		resp := <-ds.blocks()
 		return stream.Send(resp)
 	}
 	panic(fmt.Sprintf("expected either specified or newest seek but got %v", seekInfo.GetStart()))
+}
+
+func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverServer) error {
+	for {
+		blockChan := ds.blocks()
+		response := <-blockChan
+		// A nil response is a signal from the test to close the stream.
+		// This is needed to avoid reading from the block buffer, hence
+		// consuming by accident a block that is tabled to be pulled
+		// later in the test.
+		if response == nil {
+			return nil
+		}
+		if err := stream.Send(response); err != nil {
+			return err
+		}
+	}
+}
+
+func (ds *deliverServer) blocks() chan *orderer.DeliverResponse {
+	ds.Lock()
+	defer ds.Unlock()
+	blockChan := ds.blockResponses
+	return blockChan
+}
+
+func (ds *deliverServer) setBlocks(blocks chan *orderer.DeliverResponse) {
+	ds.Lock()
+	defer ds.Unlock()
+	ds.blockResponses = blocks
 }
 
 func (ds *deliverServer) port() int {
@@ -190,7 +219,7 @@ func (ds *deliverServer) resurrect() {
 	var err error
 	// copy the responses channel into a fresh one
 	respChan := make(chan *orderer.DeliverResponse, 100)
-	for resp := range ds.blockResponses {
+	for resp := range ds.blocks() {
 		respChan <- resp
 	}
 	ds.blockResponses = respChan
@@ -204,23 +233,23 @@ func (ds *deliverServer) resurrect() {
 
 func (ds *deliverServer) stop() {
 	ds.srv.Stop()
-	close(ds.blockResponses)
+	close(ds.blocks())
 }
 
 func (ds *deliverServer) enqueueResponse(seq uint64) {
-	ds.blockResponses <- &orderer.DeliverResponse{
+	ds.blocks() <- &orderer.DeliverResponse{
 		Type: &orderer.DeliverResponse_Block{Block: common.NewBlock(seq, nil)},
 	}
 }
 
 func (ds *deliverServer) addExpectProbeAssert() {
-	ds.seekAssertions <- func(info *orderer.SeekInfo) {
+	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		assert.NotNil(ds.t, info.GetStart().GetNewest())
 	}
 }
 
 func (ds *deliverServer) addExpectPullAssert(seq uint64) {
-	ds.seekAssertions <- func(info *orderer.SeekInfo) {
+	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		assert.NotNil(ds.t, info.GetStart().GetSpecified())
 		assert.Equal(ds.t, seq, info.GetStart().GetSpecified().Number)
 	}
@@ -233,7 +262,7 @@ func newClusterNode(t *testing.T) *deliverServer {
 	}
 	ds := &deliverServer{
 		t:              t,
-		seekAssertions: make(chan func(*orderer.SeekInfo), 100),
+		seekAssertions: make(chan func(*orderer.SeekInfo, string), 100),
 		blockResponses: make(chan *orderer.DeliverResponse, 100),
 		srv:            srv,
 	}
@@ -704,8 +733,8 @@ func TestBlockPullerFailures(t *testing.T) {
 
 	malformBlockSignatureAndRecreateOSNBuffer := func(osn *deliverServer, bp *cluster.BlockPuller) {
 		bp.VerifyBlockSequence = func([]*common.Block) error {
-			close(osn.blockResponses)
-			osn.blockResponses = make(chan *orderer.DeliverResponse, 100)
+			close(osn.blocks())
+			osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
 			osn.enqueueResponse(1)
 			osn.enqueueResponse(2)
 			osn.enqueueResponse(3)
@@ -834,6 +863,11 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 		return resp
 	}
 
+	removeData := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
+		resp.GetBlock().Data = nil
+		return resp
+	}
+
 	removeMetadata := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
 		resp.GetBlock().Metadata = nil
 		return resp
@@ -860,6 +894,11 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 			name:           "nil header",
 			corruptBlock:   removeHeader,
 			expectedErrMsg: "block header is nil",
+		},
+		{
+			name:           "nil data",
+			corruptBlock:   removeData,
+			expectedErrMsg: "block data is nil",
 		},
 		{
 			name:           "nil metadata",
@@ -910,9 +949,9 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 				if strings.Contains(entry.Message, fmt.Sprintf("Failed pulling blocks: %s", testCase.expectedErrMsg)) {
 					detectedBadBlock.Done()
 					// Close the channel to make the current server-side deliver stream close
-					close(osn.blockResponses)
+					close(osn.blocks())
 					// Ane reset the block buffer to be able to write into it again
-					osn.blockResponses = make(chan *orderer.DeliverResponse, 100)
+					osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
 					// Put a correct block after it, 1 for the probing and 1 for the fetch
 					osn.enqueueResponse(10)
 					osn.enqueueResponse(10)
