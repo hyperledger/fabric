@@ -187,8 +187,9 @@ The CLI internally creates the SignedChaincodeDeploymentSpec for **sacc** and
 sends it to the local peer, which calls the ``Install`` method on the LSCC. The
 argument to the ``-p`` option specifies the path to the chaincode, which must be
 located within the source tree of the user's ``GOPATH``, e.g.
-``$GOPATH/src/sacc``. See the `CLI`_ section for a complete description of
-the command options.
+``$GOPATH/src/sacc``. Note if using ``-l node`` or ``-l java`` for node chaincode
+or java chaincode, use ``-p`` with the absolute path of the chaincode location.
+See the :doc:`command_ref` for a complete description of the command options.
 
 Note that in order to install on a peer, the signature of the SignedProposal
 must be from 1 of the peer's local MSP administrators.
@@ -296,68 +297,6 @@ the SignedCDS from each of the endorsing peer nodes:
 Stop would be useful in the workflow for doing upgrade in controlled manner,
 where a chaincode can be stopped on a channel on all peers before issuing an
 upgrade.
-
-.. _CLI:
-
-CLI
-^^^
-
-.. note:: We are assessing the need to distribute platform-specific binaries
-          for the Hyperledger Fabric ``peer`` binary. For the time being, you
-          can simply invoke the commands from within a running docker container.
-
-To view the currently available CLI commands, execute the following command from
-within a running ``fabric-peer`` Docker container:
-
-.. code:: bash
-
-    docker run -it hyperledger/fabric-peer bash
-    # peer chaincode --help
-
-Which shows output similar to the example below:
-
-.. code:: bash
-
-    Usage:
-      peer chaincode [command]
-
-    Available Commands:
-      install     Package the specified chaincode into a deployment spec and save it on the peer's path.
-      instantiate Deploy the specified chaincode to the network.
-      invoke      Invoke the specified chaincode.
-      list        Get the instantiated chaincodes on a channel or installed chaincodes on a peer.
-      package     Package the specified chaincode into a deployment spec.
-      query       Query using the specified chaincode.
-      signpackage Sign the specified chaincode package
-      upgrade     Upgrade chaincode.
-
-    Flags:
-          --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-          --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-          --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-          --connTimeout duration                Timeout for client to connect (default 3s)
-      -h, --help                                help for chaincode
-          --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-      -o, --orderer string                      Ordering service endpoint
-          --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
-          --tls                                 Use TLS when communicating with the orderer endpoint
-          --transient string                    Transient map of arguments in JSON encoding
-
-    Use "peer chaincode [command] --help" for more information about a command.
-
-To facilitate its use in scripted applications, the ``peer`` command always
-produces a non-zero return code in the event of command failure.
-
-Example of chaincode commands:
-
-.. code:: bash
-
-    peer chaincode install -n mycc -v 0 -p path/to/my/chaincode/v0
-    peer chaincode instantiate -n mycc -v 0 -c '{"Args":["a", "b", "c"]}' -C mychannel
-    peer chaincode install -n mycc -v 1 -p path/to/my/chaincode/v1
-    peer chaincode upgrade -n mycc -v 1 -c '{"Args":["d", "e", "f"]}' -C mychannel
-    peer chaincode query -C mychannel -n mycc -c '{"Args":["query","e"]}'
-    peer chaincode invoke -o orderer.example.com:7050  --tls --cafile $ORDERER_CA -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
 
 .. _System Chaincode:
 

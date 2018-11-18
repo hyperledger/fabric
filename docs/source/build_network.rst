@@ -693,7 +693,7 @@ place the specified source code flavor onto our peer's filesystem.
 
 .. code:: bash
 
-    # this installs the Go chaincode
+    # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
     peer chaincode install -n mycc -v 1.0 -p github.com/chaincode/chaincode_example02/go/
 
 **Node.js**
@@ -701,13 +701,16 @@ place the specified source code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Node.js chaincode
-    # make note of the -l flag; we use this to specify the language
+    # make note of the -l flag to indicate "node" chaincode
+    # for node chaincode -p takes the absolute path to the node.js chaincode
     peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
 
 **Java**
 
 .. code:: bash
 
+    # make note of the -l flag to indicate "java" chaincode
+    # for java chaincode -p takes the absolute path to the java chaincode
     peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
 
 Next, instantiate the chaincode on the channel. This will initialize the
