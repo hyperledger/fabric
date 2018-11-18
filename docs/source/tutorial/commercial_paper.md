@@ -462,14 +462,15 @@ everyone else can think in terms of smart contracts.
 
 The MagnetoCorp administrator uses the `peer chaincode install` command to copy
 the `papercontract` smart contract from their local machine's file system to the
-file system within the target peer's docker container. Once here,
+file system within the target peer's docker container. Once the smart contract
+is installed on the peer and instantiated on a channel,
 `papercontract` can be invoked by applications, and interact with the ledger
 database via the
 [putState()](https://fabric-shim.github.io/release-1.3/fabric-shim.ChaincodeStub.html#putState__anchor)
 and
 [getState()](https://fabric-shim.github.io/release-1.3/fabric-shim.ChaincodeStub.html#getState__anchor)
-Fabric APIs. Examine how these APIs are used by `State` class within
-`ledger-api\state.js`.
+Fabric APIs. Examine how these APIs are used by `StateList` class within
+`ledger-api\statelist.js`.
 
 Let's now install `papercontract` as the MagnetoCorp administrator. In the
 MagnetoCorp administrator's command window, use the `docker exec` command to run
@@ -480,7 +481,7 @@ the `peer chaincode install` command in the `cliMagnetCorp` container:
 
 2018-11-07 14:21:48.400 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
 2018-11-07 14:21:48.400 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
-2018-11-07 14:21:48.466 UTC [chaincodeCmd] install -> INFO 003 Installed remotely response:<status:200 payload:"OK" > 
+2018-11-07 14:21:48.466 UTC [chaincodeCmd] install -> INFO 003 Installed remotely response:<status:200 payload:"OK" >
 ```
 
 The `cliMagnetCorp` container has set
@@ -525,11 +526,6 @@ administrator instantiates `papercontract` chaincode containing the smart
 contract. A new docker chaincode container will be created to run
 `papercontract`.*
 
-Every time a `papercontract` chaincode is instantiated on a channel, every peer in
-`mychannel` creates a separate docker container where it runs. This provides
-isolation of the same smart contract running in different channels, which helps
-manageability and scalability.
-
 The MagnetoCorp administrator uses the `peer chaincode instantiate` command to
 instantiate `papercontract` on `mychannel`:
 
@@ -543,17 +539,19 @@ instantiate `papercontract` on `mychannel`:
 
 One of the most important parameters on `instantiate` is `-P`. It specifies the
 [endorsement policy](../endorsement-policies.html) for `papercontract`,
-describing the set of organizations who must sign a transaction before it can be
-determined as valid. All transactions, whether valid or invalid, will be
-recorded on the [ledger blockchain](../ledger/ledger.html#blockchain), but only
-valid transactions will update the [world
+describing the set of organizations that must endorse (execute and sign) a
+transaction before it can be determined as valid. All transactions, whether
+valid or invalid, will be recorded on the [ledger blockchain](../ledger/ledger.html#blockchain),
+but only valid transactions will update the [world
 state](../ledger/ledger.html#world-state).
 
-In passing, see how `instantiate` confirms the orderer address
-`orderer.example.com:7050`. This is because it additionally asks the orderer to
-notify other peers in `mychannel` to create a `papercontract` container. It
-means that `instantiate` only needs to be issued once for `papercontract` even
-though typically it is installed on many peers.
+In passing, see how `instantiate` passes the orderer address
+`orderer.example.com:7050`. This is because it additionally submits an
+instantiate transaction to the orderer, which will include the transaction
+in the next block and distribute it to all peers that have joined
+`mychannel`, enabling any peer to execute the chaincode in their own
+isolated chaincode container. Note that `instantiate` only needs to be issued
+once for `papercontract` even though typically it is installed on many peers.
 
 See how a `papercontract` container has been started with the `docker ps`
 command:
@@ -589,12 +587,12 @@ Because the `issue` application submits transactions on behalf of Isabella, it
 starts by retrieving Isabella's X.509 certificate from her
 [wallet](../developapps/wallet.html), which might be stored on the local file
 system or a Hardware Security Module
-[HSM](https://en.wikipedia.org/wiki/Hardware_security_module). After connecting
-to the gateway `issue` is then able to join a network channel and submit
-transactions. The Hyperledger Fabric SDK provides a
+[HSM](https://en.wikipedia.org/wiki/Hardware_security_module). The `issue`
+application is then able to utilize the gateway to submit transactions on the
+channel. The Hyperledger Fabric SDK provides a
 [gateway](../developapps/gateway.html) abstraction so that applications can
-focus on creating transactions, submitting them to the network, and processing
-responses.  Gateways and wallets make it straightforward to write Hyperledger
+focus on application logic while delegating network interaction to the
+gateway. Gateways and wallets make it straightforward to write Hyperledger
 Fabric applications.
 
 So let's examine the `issue` application that Isabella is going to use. open a
@@ -688,8 +686,8 @@ application [topic](../developapps/application.html).
 ## Application dependencies
 
 The `issue.js` application is written in JavaScript and designed to run in the
-node.js environment that is established in each peer's `papercontract` container
-as it starts. As is common practice, MagnetoCorp's application is built on many
+node.js environment that acts as a client to the PaperNet network.
+As is common practice, MagnetoCorp's application is built on many
 external node packages -- to improve quality and speed of development. Consider
 how `issue.js` includes the `js-yaml`
 [package](https://www.npmjs.com/package/js-yaml) to process the YAML gateway
@@ -864,8 +862,8 @@ to DigiBank, who will buy the commercial paper.
 
 Now that commercial paper `00001`has been issued by MagnetoCorp, let's switch
 context to interact with PaperNet as employees of DigiBank. First, we'll act as
-administrator who will create an console configured to interact with PaperNet.
-Then Balaji, an end user, will use Digibank's `redeem` application to buy
+administrator who will create a console configured to interact with PaperNet.
+Then Balaji, an end user, will use Digibank's `buy` application to buy
 commercial paper `00001`, moving it to the next stage in its lifecycle.
 
 ![commercialpaper.workdigi](./commercial_paper.diagram.5.png) *DigiBank
@@ -902,8 +900,7 @@ CONTAINER ID        IMAGE                            COMMAND                  CR
 In this tutorial, you'll use the command line container named `cliDigiBank` to
 interact with the network on behalf of DigiBank. We've not shown all the docker
 containers, and in the real world DigiBank users would only see the network
-components (peers, orderers, CAs) that are hosted on the Digibank infrastructure
-to which they have access.
+components (peers, orderers, CAs) to which they have access.
 
 Digibank's administrator doesn't have much to do in this tutorial right now
 because the PaperNet network configuration is so simple. Let's turn our
@@ -1069,7 +1066,7 @@ topic will give you a fuller explanation of the commercial paper scenario, the
 `PaperNet` business network, its actors, and how the applications and smart
 contracts they use work in detail.
 
-Also feel free to this sample to start creating your own applications and smart
+Also feel free to use this sample to start creating your own applications and smart
 contracts!
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
