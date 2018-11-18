@@ -181,8 +181,8 @@ func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
 	return defVal
 }
 
-// SetDuration stores duration key value to viper
-func SetDuration(key string, val time.Duration) {
+// SetVal stores key value to viper
+func SetVal(key string, val interface{}) {
 	viperLock.Lock()
 	defer viperLock.Unlock()
 	viper.Set(key, val)
