@@ -21,7 +21,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/diag"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
@@ -132,10 +131,9 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	switch cmd {
 	case start.FullCommand(): // "start" command
 		logger.Infof("Starting %s", metadata.GetVersionInfo())
-		go handleSignals(map[os.Signal]func(){
+		go handleSignals(addPlatformSignals(map[os.Signal]func(){
 			syscall.SIGTERM: func() { grpcServer.Stop() },
-			syscall.SIGUSR1: func() { diag.LogGoRoutines(logger.Named("diag")) },
-		})
+		}))
 		initializeProfilingService(conf)
 		ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 		logger.Info("Beginning to serve requests")
