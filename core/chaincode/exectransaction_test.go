@@ -134,7 +134,7 @@ func initPeer(chainIDs ...string) (net.Listener, *ChaincodeSupport, func(), erro
 		aclmgmt.NewACLProvider(func(string) channelconfig.Resources { return nil }),
 		container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockercontroller.NewProvider("", ""),
+				dockercontroller.ContainerType: dockercontroller.NewProvider("", "", &disabled.Provider{}),
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),

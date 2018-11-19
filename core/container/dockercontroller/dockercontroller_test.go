@@ -19,12 +19,15 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +36,7 @@ import (
 // This test used to be part of an integration style test in core/container, moved to here
 func TestIntegrationPath(t *testing.T) {
 	coreutil.SetupTestConfig()
-	dc := NewDockerVM("", util.GenerateUUID())
+	dc := NewDockerVM("", util.GenerateUUID(), NewBuildMetrics(&disabled.Provider{}))
 	ccid := ccintf.CCID{Name: "simple"}
 
 	err := dc.Start(ccid, nil, nil, nil, InMemBuilder{})
@@ -77,8 +80,18 @@ func TestGetDockerHostConfig(t *testing.T) {
 }
 
 func Test_Start(t *testing.T) {
-	dvm := DockerVM{}
-	ccid := ccintf.CCID{Name: "simple"}
+	gt := NewGomegaWithT(t)
+	fakeChaincodeContainerBuildDuration := &metricsfakes.Histogram{}
+	fakeChaincodeContainerBuildDuration.WithReturns(fakeChaincodeContainerBuildDuration)
+	dvm := DockerVM{
+		BuildMetrics: &BuildMetrics{
+			ChaincodeContainerBuildDuration: fakeChaincodeContainerBuildDuration,
+		},
+	}
+	ccid := ccintf.CCID{
+		Name:    "simple",
+		Version: "1.0",
+	}
 	args := make([]string, 1)
 	env := make([]string, 1)
 	files := map[string][]byte{
@@ -90,25 +103,25 @@ func Test_Start(t *testing.T) {
 	dvm.getClientFnc = getMockClient
 	getClientErr = true
 	err := dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, false)
+	gt.Expect(err).To(HaveOccurred())
 	getClientErr = false
 
 	// case 2: dockerClient.CreateContainer returns error
 	createErr = true
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, false)
+	gt.Expect(err).To(HaveOccurred())
 	createErr = false
 
 	// case 3: dockerClient.UploadToContainer returns error
 	uploadErr = true
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, false)
+	gt.Expect(err).To(HaveOccurred())
 	uploadErr = false
 
 	// case 4: dockerClient.StartContainer returns docker.noSuchImgErr
 	noSuchImgErr = true
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, false)
+	gt.Expect(err).To(HaveOccurred())
 
 	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/example01/cmd"
 	spec := &pb.ChaincodeSpec{
@@ -138,34 +151,43 @@ func Test_Start(t *testing.T) {
 	viper.Set("vm.docker.attachStdout", true)
 	startErr = true
 	err = dvm.Start(ccid, args, env, files, bldr)
-	testerr(t, err, false)
+	gt.Expect(err).To(HaveOccurred())
+
+	gt.Expect(fakeChaincodeContainerBuildDuration.WithCallCount()).To(Equal(1))
+	labelValues := fakeChaincodeContainerBuildDuration.WithArgsForCall(0)
+	gt.Expect(labelValues).To(Equal([]string{
+		"chaincode", "simple:1.0",
+		"success", "true",
+	}))
+	gt.Expect(fakeChaincodeContainerBuildDuration.ObserveArgsForCall(0)).NotTo(BeZero())
+	gt.Expect(fakeChaincodeContainerBuildDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1.0))
 	startErr = false
 
 	// Success cases
 	err = dvm.Start(ccid, args, env, files, bldr)
-	testerr(t, err, true)
+	gt.Expect(err).NotTo(HaveOccurred())
 	noSuchImgErr = false
 
 	// dockerClient.StopContainer returns error
 	stopErr = true
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, true)
+	gt.Expect(err).NotTo(HaveOccurred())
 	stopErr = false
 
 	// dockerClient.KillContainer returns error
 	killErr = true
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, true)
+	gt.Expect(err).NotTo(HaveOccurred())
 	killErr = false
 
 	// dockerClient.RemoveContainer returns error
 	removeErr = true
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, true)
+	gt.Expect(err).NotTo(HaveOccurred())
 	removeErr = false
 
 	err = dvm.Start(ccid, args, env, files, nil)
-	testerr(t, err, true)
+	gt.Expect(err).NotTo(HaveOccurred())
 }
 
 func Test_Stop(t *testing.T) {
@@ -176,12 +198,12 @@ func Test_Stop(t *testing.T) {
 	getClientErr = true
 	dvm.getClientFnc = getMockClient
 	err := dvm.Stop(ccid, 10, true, true)
-	testerr(t, err, false)
+	assert.Error(t, err)
 	getClientErr = false
 
 	// Success case
 	err = dvm.Stop(ccid, 10, true, true)
-	testerr(t, err, true)
+	assert.NoError(t, err)
 }
 
 func Test_HealthCheck(t *testing.T) {
@@ -306,14 +328,6 @@ func (imb InMemBuilder) Build() (io.Reader, error) {
 	tr.Close()
 	gw.Close()
 	return inputbuf, nil
-}
-
-func testerr(t *testing.T, err error, succ bool) {
-	if succ {
-		assert.NoError(t, err, "Expected success but got error")
-	} else {
-		assert.Error(t, err, "Expected failure but succeeded")
-	}
 }
 
 func getMockClient() (dockerClient, error) {

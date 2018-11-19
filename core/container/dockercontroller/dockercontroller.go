@@ -16,11 +16,13 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -47,6 +49,7 @@ type DockerVM struct {
 	getClientFnc getClient
 	PeerID       string
 	NetworkID    string
+	BuildMetrics *BuildMetrics
 }
 
 // dockerClient represents a docker client
@@ -80,33 +83,36 @@ type dockerClient interface {
 	PingWithContext(context.Context) error
 }
 
-// Controller implements container.VMProvider
+// Provider implements container.VMProvider
 type Provider struct {
-	PeerID    string
-	NetworkID string
+	PeerID       string
+	NetworkID    string
+	BuildMetrics *BuildMetrics
 }
 
 // NewProvider creates a new instance of Provider
-func NewProvider(peerID, networkID string) *Provider {
+func NewProvider(peerID, networkID string, metricsProvider metrics.Provider) *Provider {
 	return &Provider{
-		PeerID:    peerID,
-		NetworkID: networkID,
+		PeerID:       peerID,
+		NetworkID:    networkID,
+		BuildMetrics: NewBuildMetrics(metricsProvider),
 	}
 }
 
 // NewVM creates a new DockerVM instance
 func (p *Provider) NewVM() container.VM {
-	return NewDockerVM(p.PeerID, p.NetworkID)
+	return NewDockerVM(p.PeerID, p.NetworkID, p.BuildMetrics)
 }
 
 // NewDockerVM returns a new DockerVM instance
-func NewDockerVM(peerID, networkID string) *DockerVM {
-	vm := DockerVM{
-		PeerID:    peerID,
-		NetworkID: networkID,
+func NewDockerVM(peerID, networkID string, buildMetrics *BuildMetrics) *DockerVM {
+	vm := &DockerVM{
+		PeerID:       peerID,
+		NetworkID:    networkID,
+		getClientFnc: getDockerClient,
+		BuildMetrics: buildMetrics,
 	}
-	vm.getClientFnc = getDockerClient
-	return &vm
+	return vm
 }
 
 func getDockerClient() (dockerClient, error) {
@@ -201,7 +207,15 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID,
 		OutputStream: outputbuf,
 	}
 
-	if err := client.BuildImage(opts); err != nil {
+	startTime := time.Now()
+	err = client.BuildImage(opts)
+
+	vm.BuildMetrics.ChaincodeContainerBuildDuration.With(
+		"chaincode", ccid.Name+":"+ccid.Version,
+		"success", strconv.FormatBool(err == nil),
+	).Observe(time.Since(startTime).Seconds())
+
+	if err != nil {
 		dockerLogger.Errorf("Error building images: %s", err)
 		dockerLogger.Errorf("Image Output:\n********************\n%s\n********************", outputbuf.String())
 		return err
