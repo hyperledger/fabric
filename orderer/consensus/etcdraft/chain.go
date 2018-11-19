@@ -97,7 +97,10 @@ type Options struct {
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
-	rpc          RPC
+
+	// access to `SendSubmit` should be serialzed because gRPC is not thread-safe
+	submitLock sync.Mutex
+	rpc        RPC
 
 	raftID    uint64
 	channelID string
@@ -389,6 +392,8 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	}
 
 	c.logger.Debugf("Forwarding submit request to Raft leader %d", lead)
+	c.submitLock.Lock()
+	defer c.submitLock.Unlock()
 	return c.rpc.SendSubmit(lead, req)
 }
 
