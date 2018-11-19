@@ -87,11 +87,11 @@ type PeerLedger interface {
 	Prune(policy commonledger.PrunePolicy) error
 	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
 	GetConfigHistoryRetriever() (ConfigHistoryRetriever, error)
-	// CommitPvtData commits the private data corresponding to already committed block
+	// CommitPvtDataOfOldBlocks commits the private data corresponding to already committed block
 	// If hashes for some of the private data supplied in this function does not match
 	// the corresponding hash present in the block, the unmatched private data is not
 	// committed and instead the mismatch inforation is returned back
-	CommitPvtData(blockPvtData []*BlockPvtData) ([]*PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocks(blockPvtData []*BlockPvtData) ([]*PvtdataHashMismatch, error)
 	// GetMissingPvtDataTracker return the MissingPvtDataTracker
 	GetMissingPvtDataTracker() (MissingPvtDataTracker, error)
 }
