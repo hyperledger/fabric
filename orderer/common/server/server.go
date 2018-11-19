@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -72,10 +72,13 @@ func (rs *responseSender) SendBlockResponse(block *cb.Block) error {
 }
 
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
-func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
+func NewServer(r *multichannel.Registrar, metricsProvider metrics.Provider, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
-		dh:        deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS),
-		bh:        broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
+		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS),
+		bh: &broadcast.Handler{
+			SupportRegistrar: broadcastSupport{Registrar: r},
+			Metrics:          broadcast.NewMetrics(metricsProvider),
+		},
 		debug:     debug,
 		Registrar: r,
 	}

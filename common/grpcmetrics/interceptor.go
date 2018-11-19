@@ -32,7 +32,7 @@ func UnaryServerInterceptor(um *UnaryMetrics) grpc.UnaryServerInterceptor {
 
 		um.RequestDuration.With(
 			"service", service, "method", method, "code", grpc.Code(err).String(),
-		).Observe(float64(duration) / float64(time.Second))
+		).Observe(duration.Seconds())
 		um.RequestsCompleted.With("service", service, "method", method, "code", grpc.Code(err).String()).Add(1)
 
 		return resp, err
@@ -65,7 +65,7 @@ func StreamServerInterceptor(sm *StreamMetrics) grpc.StreamServerInterceptor {
 
 		sm.RequestDuration.With(
 			"service", service, "method", method, "code", grpc.Code(err).String(),
-		).Observe(float64(duration) / float64(time.Second))
+		).Observe(duration.Seconds())
 		sm.RequestsCompleted.With("service", service, "method", method, "code", grpc.Code(err).String()).Add(1)
 
 		return err

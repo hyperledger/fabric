@@ -24,13 +24,33 @@ import (
 
 var _ = Describe("Broadcast", func() {
 	var (
-		fakeSupportRegistrar *mock.ChannelSupportRegistrar
-		handler              *broadcast.Handler
+		fakeSupportRegistrar  *mock.ChannelSupportRegistrar
+		handler               *broadcast.Handler
+		fakeValidateHistogram *mock.MetricsHistogram
+		fakeEnqueueHistogram  *mock.MetricsHistogram
+		fakeProcessedCounter  *mock.MetricsCounter
 	)
 
 	BeforeEach(func() {
 		fakeSupportRegistrar = &mock.ChannelSupportRegistrar{}
-		handler = broadcast.NewHandlerImpl(fakeSupportRegistrar)
+
+		fakeValidateHistogram = &mock.MetricsHistogram{}
+		fakeValidateHistogram.WithReturns(fakeValidateHistogram)
+
+		fakeEnqueueHistogram = &mock.MetricsHistogram{}
+		fakeEnqueueHistogram.WithReturns(fakeEnqueueHistogram)
+
+		fakeProcessedCounter = &mock.MetricsCounter{}
+		fakeProcessedCounter.WithReturns(fakeProcessedCounter)
+
+		handler = &broadcast.Handler{
+			SupportRegistrar: fakeSupportRegistrar,
+			Metrics: &broadcast.Metrics{
+				ValidateDuration: fakeValidateHistogram,
+				EnqueueDuration:  fakeEnqueueHistogram,
+				ProcessedCount:   fakeProcessedCounter,
+			},
+		}
 	})
 
 	Describe("Handle", func() {
@@ -52,7 +72,7 @@ var _ = Describe("Broadcast", func() {
 			fakeSupport.ProcessNormalMsgReturns(5, nil)
 
 			fakeSupportRegistrar.BroadcastChannelSupportReturns(&cb.ChannelHeader{
-				Type:      1,
+				Type:      3,
 				ChannelId: "fake-channel",
 			}, false, fakeSupport, nil)
 		})
@@ -74,6 +94,35 @@ var _ = Describe("Broadcast", func() {
 			orderedMsg, seq := fakeSupport.OrderArgsForCall(0)
 			Expect(orderedMsg).To(Equal(fakeMsg))
 			Expect(seq).To(Equal(uint64(5)))
+
+			Expect(fakeValidateHistogram.WithCallCount()).To(Equal(1))
+			Expect(fakeValidateHistogram.WithArgsForCall(0)).To(Equal([]string{
+				"status", "SUCCESS",
+				"channel", "fake-channel",
+				"type", "ENDORSER_TRANSACTION",
+			}))
+			Expect(fakeValidateHistogram.ObserveCallCount()).To(Equal(1))
+			Expect(fakeValidateHistogram.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+			Expect(fakeValidateHistogram.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+
+			Expect(fakeEnqueueHistogram.WithCallCount()).To(Equal(1))
+			Expect(fakeEnqueueHistogram.WithArgsForCall(0)).To(Equal([]string{
+				"status", "SUCCESS",
+				"channel", "fake-channel",
+				"type", "ENDORSER_TRANSACTION",
+			}))
+			Expect(fakeEnqueueHistogram.ObserveCallCount()).To(Equal(1))
+			Expect(fakeEnqueueHistogram.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+			Expect(fakeEnqueueHistogram.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+
+			Expect(fakeProcessedCounter.WithCallCount()).To(Equal(1))
+			Expect(fakeProcessedCounter.WithArgsForCall(0)).To(Equal([]string{
+				"status", "SUCCESS",
+				"channel", "fake-channel",
+				"type", "ENDORSER_TRANSACTION",
+			}))
+			Expect(fakeProcessedCounter.AddCallCount()).To(Equal(1))
+			Expect(fakeProcessedCounter.AddArgsForCall(0)).To(Equal(float64(1)))
 
 			Expect(fakeABServer.SendCallCount()).To(Equal(1))
 			Expect(proto.Equal(fakeABServer.SendArgsForCall(0), &ab.BroadcastResponse{Status: cb.Status_SUCCESS})).To(BeTrue())
@@ -106,6 +155,15 @@ var _ = Describe("Broadcast", func() {
 				It("does not crash", func() {
 					err := handler.Handle(fakeABServer)
 					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeValidateHistogram.WithCallCount()).To(Equal(1))
+					Expect(fakeValidateHistogram.WithArgsForCall(0)).To(Equal([]string{
+						"status", "BAD_REQUEST",
+						"channel", "unknown",
+						"type", "unknown",
+					}))
+					Expect(fakeEnqueueHistogram.WithCallCount()).To(Equal(0))
+					Expect(fakeProcessedCounter.WithCallCount()).To(Equal(1))
 				})
 			})
 
@@ -252,6 +310,23 @@ var _ = Describe("Broadcast", func() {
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
 				Expect(proto.Equal(fakeABServer.SendArgsForCall(0), &ab.BroadcastResponse{Status: cb.Status_SUCCESS})).To(BeTrue())
+			})
+
+			Context("when the consenter is not ready for the request", func() {
+				BeforeEach(func() {
+					fakeSupport.WaitReadyReturns(fmt.Errorf("not-ready"))
+				})
+
+				It("returns the error to the client with a service unavailable status", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeABServer.SendCallCount()).To(Equal(1))
+					Expect(proto.Equal(
+						fakeABServer.SendArgsForCall(0),
+						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"}),
+					).To(BeTrue())
+				})
 			})
 
 			Context("when the consenter cannot enqueue the message", func() {
