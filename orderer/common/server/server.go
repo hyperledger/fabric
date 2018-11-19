@@ -47,7 +47,7 @@ func (ds deliverSupport) GetChain(chainID string) deliver.Chain {
 }
 
 type server struct {
-	bh    broadcast.Handler
+	bh    *broadcast.Handler
 	dh    *deliver.Handler
 	debug *localconfig.Debug
 	*multichannel.Registrar

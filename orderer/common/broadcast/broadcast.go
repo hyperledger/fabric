@@ -19,13 +19,8 @@ import (
 
 var logger = flogging.MustGetLogger("orderer.common.broadcast")
 
-// Handler defines an interface which handles broadcasts
-type Handler interface {
-	// Handle starts a service thread for a given gRPC connection and services the broadcast connection
-	Handle(srv ab.AtomicBroadcast_BroadcastServer) error
-}
-
 // ChannelSupportRegistrar provides a way for the Handler to look up the Support for a channel
+//go:generate counterfeiter -o mock/channel_support_registrar.go --fake-name ChannelSupportRegistrar . ChannelSupportRegistrar
 type ChannelSupportRegistrar interface {
 	// BroadcastChannelSupport returns the message channel header, whether the message is a config update
 	// and the channel resources for a message or an error if the message is not a message which can
@@ -34,6 +29,7 @@ type ChannelSupportRegistrar interface {
 }
 
 // ChannelSupport provides the backing resources needed to support broadcast on a channel
+//go:generate counterfeiter -o mock/channel_support.go --fake-name ChannelSupport . ChannelSupport
 type ChannelSupport interface {
 	msgprocessor.Processor
 	Consenter
@@ -57,19 +53,19 @@ type Consenter interface {
 	WaitReady() error
 }
 
-type handlerImpl struct {
+type Handler struct {
 	sm ChannelSupportRegistrar
 }
 
 // NewHandlerImpl constructs a new implementation of the Handler interface
-func NewHandlerImpl(sm ChannelSupportRegistrar) Handler {
-	return &handlerImpl{
+func NewHandlerImpl(sm ChannelSupportRegistrar) *Handler {
+	return &Handler{
 		sm: sm,
 	}
 }
 
 // Handle starts a service thread for a given gRPC connection and services the broadcast connection
-func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
+func (bh *Handler) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 	addr := util.ExtractRemoteAddress(srv.Context())
 	logger.Debugf("Starting new broadcast loop for %s", addr)
 	for {
