@@ -202,3 +202,6 @@ intersphinx_mapping = {'https://docs.python.org/': None}
 
 # Skip the links with anchor tags during the linkcheck
 linkcheck_anchors = False
+
+# Increase the linkcheck timeout to 5 seconds
+linkcheck_timeout = 5
