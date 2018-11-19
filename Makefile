@@ -97,7 +97,7 @@ PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^LICENSE | grep -v ^vendor )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
 IMAGES = peer orderer ccenv buildenv tools
-RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-s390x
+RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-s390x linux-ppc64le
 RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer orderer
 
 pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
@@ -334,6 +334,9 @@ release/linux-%: GOOS=linux
 release/linux-s390x: GOARCH=s390x
 release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
 
+release/linux-ppc64le: GOARCH=ppc64le
+release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS)) release/linux-ppc64le/install
+
 release/%/bin/configtxlator: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
@@ -437,6 +440,7 @@ dist-clean:
 	-@rm -rf release/darwin-amd64/hyperledger-fabric-darwin-amd64.$(PROJECT_VERSION).tar.gz
 	-@rm -rf release/linux-amd64/hyperledger-fabric-linux-amd64.$(PROJECT_VERSION).tar.gz
 	-@rm -rf release/linux-s390x/hyperledger-fabric-linux-s390x.$(PROJECT_VERSION).tar.gz
+	-@rm -rf release/linux-ppc64le/hyperledger-fabric-linux-ppc64le.$(PROJECT_VERSION).tar.gz
 
 %-release-clean:
 	$(eval TARGET = ${patsubst %-release-clean,%,${@}})
