@@ -165,7 +165,7 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 		NetworkID:         helpers.UniqueName(),
 		EventuallyTimeout: time.Minute,
-		MetricsProvider:   "disabled",
+		MetricsProvider:   "prometheus",
 		PortsByBrokerID:   map[string]Ports{},
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},
