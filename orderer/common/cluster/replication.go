@@ -353,6 +353,11 @@ func lastConfigFromBlock(block *common.Block) (uint64, error) {
 	return utils.GetLastConfigIndexFromBlock(block)
 }
 
+// Close closes the ChainInspector
+func (ci *ChainInspector) Close() {
+	ci.Puller.Close()
+}
+
 // Channels returns the list of channels
 // that exist in the chain
 func (ci *ChainInspector) Channels() []string {

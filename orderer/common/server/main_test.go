@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -202,12 +203,12 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 
 			if tc.panics {
 				assert.Panics(t, func() {
-					genesisBlock := extractGenesisBlock(bootstrapConfig)
+					genesisBlock := extractBootstrapBlock(bootstrapConfig)
 					initializeBootstrapChannel(genesisBlock, ledgerFactory)
 				})
 			} else {
 				assert.NotPanics(t, func() {
-					genesisBlock := extractGenesisBlock(bootstrapConfig)
+					genesisBlock := extractBootstrapBlock(bootstrapConfig)
 					initializeBootstrapChannel(genesisBlock, ledgerFactory)
 				})
 			}
@@ -259,7 +260,9 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
-		initializeMultichannelRegistrar(false, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, localmsp.NewSigner(), &disabled.Provider{})
+		lf, _ := createLedgerFactory(conf)
+		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
+		initializeMultichannelRegistrar(bootBlock, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, localmsp.NewSigner(), &disabled.Provider{}, lf)
 	})
 }
 
@@ -320,7 +323,9 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			updateTrustedRoots(grpcServer, caSupport, bundle)
 		}
 	}
-	initializeMultichannelRegistrar(false, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, callback)
+	lf, _ := createLedgerFactory(conf)
+	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
+	initializeMultichannelRegistrar(bootBlock, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, lf, callback)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
 	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
 	// mutual TLS not required so no updates should have occurred
@@ -357,7 +362,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			updateClusterDialer(caSupport, predDialer, clusterConf.SecOpts.ServerRootCAs)
 		}
 	}
-	initializeMultichannelRegistrar(false, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, callback)
+	initializeMultichannelRegistrar(bootBlock, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, lf, callback)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
 	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
 	// mutual TLS is required so updates should have occurred
