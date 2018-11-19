@@ -62,6 +62,8 @@ type ServerConfig struct {
 	Logger *flogging.FabricLogger
 	// Metrics Provider
 	MetricsProvider metrics.Provider
+	// HealthCheckEnabled enables the gRPC Health Checking Protocol for the server
+	HealthCheckEnabled bool
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance

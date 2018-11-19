@@ -876,7 +876,7 @@
   revision = "c7e5094acea1ca1b899e2259d80a6b0f882f81f8"
 
 [[projects]]
-  digest = "1:638e6e596d67d0a0c8aeb76ebdcf73561b701ea43f21963b1db231d96ed7db68"
+  digest = "1:3f21220da2c9af37c32adb314f1c609a6bf8548d5801bf43b95386af19c148bd"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -891,6 +891,8 @@
     "encoding",
     "encoding/proto",
     "grpclog",
+    "health",
+    "health/grpc_health_v1",
     "internal",
     "internal/backoff",
     "internal/binarylog",
@@ -1017,6 +1019,8 @@
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/credentials",
     "google.golang.org/grpc/grpclog",
+    "google.golang.org/grpc/health",
+    "google.golang.org/grpc/health/grpc_health_v1",
     "google.golang.org/grpc/keepalive",
     "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/peer",
