@@ -1039,12 +1039,29 @@ func TestChannels(t *testing.T) {
 			},
 		},
 		{
-			name:               "bad path - pulled chain's hash is mismatched",
-			prepareSystemChain: func(_ []*common.Block) {},
+			name: "bad path - pulled chain's last block hash doesn't match the last config block",
+			prepareSystemChain: func(systemChain []*common.Block) {
+				assignHashes(systemChain)
+				systemChain[len(systemChain)-1].Header.PreviousHash = nil
+			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
 				panicValue := "System channel pulled doesn't match the boot last config block:" +
-					" block 4's hash (d8553eb97aa57e3c795a185f30efdbe8d88ae4b1e44b984b311159beac9bd5f4)" +
+					" block 4's hash (34762d9deefdea2514a85663856e92b5c7e1ae4669e6265b27b079d1f320e741)" +
 					" mismatches 3's prev block hash ()"
+				assert.PanicsWithValue(t, panicValue, func() {
+					ci.Channels()
+				})
+			},
+		},
+		{
+			name: "bad path - hash chain mismatch",
+			prepareSystemChain: func(systemChain []*common.Block) {
+				assignHashes(systemChain)
+				systemChain[len(systemChain)/2].Header.PreviousHash = nil
+			},
+			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
+				panicValue := "Claimed previous hash of block 3 is  but actual previous " +
+					"hash is ab6be2effec106c0324f9d6b1af2cf115c60c3f60e250658362991cb8e195a50"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
 				})
@@ -1080,6 +1097,7 @@ func TestChannels(t *testing.T) {
 			}
 			testCase.prepareSystemChain(systemChain)
 			puller := &mocks.ChainPuller{}
+			puller.On("Close")
 			for seq := uint64(1); int(seq) <= len(systemChain); seq++ {
 				puller.On("PullBlock", seq).Return(systemChain[int(seq)-1])
 			}
@@ -1089,6 +1107,8 @@ func TestChannels(t *testing.T) {
 				Puller:          puller,
 				LastConfigBlock: systemChain[len(systemChain)-1],
 			}
+			defer puller.AssertNumberOfCalls(t, "Close", 1)
+			defer ci.Close()
 			testCase.assertion(t, ci)
 		})
 	}
