@@ -55,7 +55,7 @@ the chaincode decrypts the message and puts it in the proposal response. An
 invocation would persist the result in the ledger for all channel readers to
 see whereas a query can be discarded and so the result remains confidential.
 
-To test signing and verifying, you also need to generate an ECDSA key for the appopriate
+To test signing and verifying, you also need to generate an ECDSA key for the appropriate
 curve, as follows.
 
 ```
