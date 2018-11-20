@@ -6,8 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 package lockbasedtxmgr
 
 import (
+	"bytes"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
@@ -18,7 +20,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
@@ -108,6 +112,241 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	return nil
 }
 
+// RemoveStaleAndCommitPvtDataOfOldBlocks implements method in interface `txmgmt.TxMgr`
+// The following six operations are performed:
+// (1) contructs the unique pvt data from the passed blocksPvtData
+// (2) acquires the exclusive lock before checking for the stale pvtData
+// (3) checks for stale pvtData by comparing [version, valueHash] and removes stale data
+// (4) creates update batch from the the non-stale pvtData
+// (5) update the BTL bookkeeping managed by the purge manager
+// (6) commit the non-stale pvt data to the stateDB
+// This function assumes that the passed input contains only transactions that had been
+// marked "Valid". In the current design, this assumption holds true as we store
+// missing data info about only valid transactions. Further, gossip supplies only the
+// missing pvtData of valid transactions. If these two assumptions are broken due to some bug,
+// we are still safe from data consistency point of view as we match the version and the
+// value hashes stored in the stateDB before committing the value. However, if pvtData of
+// a tuple <ns, Coll, key> is passed for two (or more) transactions with one as valid and
+// another as invalid transaction, we might miss to store a missing data forever if the
+// version# of invalid tx is greater than the valid tx (as per our logic employed in
+// constructUniquePvtData(). Other than a bug, there is another scenario in which this
+// function might receive pvtData of both valid and invalid tx. Such a scenario is explained
+// in FAB-12924 and is related to state fork and rebuilding ledger state.
+func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+	// (1) as the blocksPvtData can contain multiple versions of pvtData for
+	// a given <ns, coll, key>, we need to find duplicate tuples with different
+	// versions and use the one with the higher version
+	uniquePvtData, err := constructUniquePvtData(blocksPvtData)
+	if err != nil {
+		return err
+	}
+
+	// (2) acquire an exclusive lock on the stateDB as we cannot allow any regular block
+	// commit to happen while validating and committing the pvtData of old blocks
+	txmgr.commitRWLock.Lock()
+	defer txmgr.commitRWLock.Unlock()
+
+	// (3) remove the pvt data which does not matches the hashed
+	// value stored in the public state
+	if err := uniquePvtData.findAndRemoveStalePvtData(txmgr.db); err != nil {
+		return err
+	}
+
+	// (4) create the update batch from the uniquePvtData
+	_ = uniquePvtData.transformToUpdateBatch()
+
+	// (5) TODO: update booking in the purge manager
+	// (6) TODO: commit the pvt data of old blocks to the sateDB
+	return nil
+}
+
+type uniquePvtDataMap map[privacyenabledstate.HashedCompositeKey]*privacyenabledstate.PvtKVWrite
+
+func constructUniquePvtData(blocksPvtData map[uint64][]*ledger.TxPvtData) (uniquePvtDataMap, error) {
+	uniquePvtData := make(uniquePvtDataMap)
+	// go over the blocksPvtData to find duplicate <ns, coll, key>
+	// in the pvtWrites and use the one with the higher version number
+	for blkNum, blockPvtData := range blocksPvtData {
+		if err := uniquePvtData.updateUsingBlockPvtData(blockPvtData, blkNum); err != nil {
+			return nil, err
+		}
+	} // for each block
+	return uniquePvtData, nil
+}
+
+func (uniquePvtData uniquePvtDataMap) updateUsingBlockPvtData(blockPvtData []*ledger.TxPvtData, blkNum uint64) error {
+	for _, txPvtData := range blockPvtData {
+		ver := version.NewHeight(blkNum, txPvtData.SeqInBlock)
+		if err := uniquePvtData.updateUsingTxPvtData(txPvtData, ver); err != nil {
+			return err
+		}
+	} // for each tx
+	return nil
+}
+func (uniquePvtData uniquePvtDataMap) updateUsingTxPvtData(txPvtData *ledger.TxPvtData, ver *version.Height) error {
+	for _, nsPvtData := range txPvtData.WriteSet.NsPvtRwset {
+		if err := uniquePvtData.updateUsingNsPvtData(nsPvtData, ver); err != nil {
+			return err
+		}
+	} // for each ns
+	return nil
+}
+func (uniquePvtData uniquePvtDataMap) updateUsingNsPvtData(nsPvtData *rwset.NsPvtReadWriteSet, ver *version.Height) error {
+	for _, collPvtData := range nsPvtData.CollectionPvtRwset {
+		if err := uniquePvtData.updateUsingCollPvtData(collPvtData, nsPvtData.Namespace, ver); err != nil {
+			return err
+		}
+	} // for each coll
+	return nil
+}
+
+func (uniquePvtData uniquePvtDataMap) updateUsingCollPvtData(collPvtData *rwset.CollectionPvtReadWriteSet,
+	ns string, ver *version.Height) error {
+
+	kvRWSet := &kvrwset.KVRWSet{}
+	if err := proto.Unmarshal(collPvtData.Rwset, kvRWSet); err != nil {
+		return err
+	}
+
+	hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
+		Namespace:      ns,
+		CollectionName: collPvtData.CollectionName,
+	}
+
+	for _, kvWrite := range kvRWSet.Writes { // for each kv pair
+		hashedCompositeKey.KeyHash = string(util.ComputeStringHash(kvWrite.Key))
+		uniquePvtData.updateUsingPvtWrite(kvWrite, hashedCompositeKey, ver)
+	} // for each kv pair
+
+	return nil
+}
+
+func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWrite,
+	hashedCompositeKey privacyenabledstate.HashedCompositeKey, ver *version.Height) {
+
+	pvtData, ok := uniquePvtData[hashedCompositeKey]
+	if !ok || pvtData.Version.Compare(ver) < 0 {
+		uniquePvtData[hashedCompositeKey] =
+			&privacyenabledstate.PvtKVWrite{
+				Key:      pvtWrite.Key,
+				IsDelete: pvtWrite.IsDelete,
+				Value:    pvtWrite.Value,
+				Version:  ver,
+			}
+	}
+}
+
+func (uniquePvtData uniquePvtDataMap) findAndRemoveStalePvtData(db privacyenabledstate.DB) error {
+	// (1) load all committed versions
+	if err := uniquePvtData.loadCommittedVersionIntoCache(db); err != nil {
+		return err
+	}
+
+	// (2) find and remove the stale data
+	for hashedCompositeKey, pvtWrite := range uniquePvtData {
+		isStale, err := checkIfPvtWriteIsStale(&hashedCompositeKey, pvtWrite, db)
+		if err != nil {
+			return err
+		}
+		if isStale {
+			delete(uniquePvtData, hashedCompositeKey)
+		}
+	}
+	return nil
+}
+
+func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyenabledstate.DB) error {
+	// the regular block validation might have populate the cache already. In that scenario,
+	// this call would be adding more entries to the existing cache. However, it does not affect
+	// the correctness of regular block validation. If an entry already exist for a given
+	// hashedCompositeKey, cache would not be updated.
+	// Note that ClearCachedVersions would not be called till we validate and commit these
+	// pvt data of old blocks. This is because only during the exclusive lock duration, we
+	// clear the cache and we have already acquired one before reaching here.
+	var hashedCompositeKeys []*privacyenabledstate.HashedCompositeKey
+	for hashedCompositeKey := range uniquePvtData {
+		hashedCompositeKeys = append(hashedCompositeKeys, &hashedCompositeKey)
+	}
+
+	err := db.LoadCommittedVersionsOfPubAndHashedKeys(nil, hashedCompositeKeys)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
+	kvWrite *privacyenabledstate.PvtKVWrite, db privacyenabledstate.DB) (bool, error) {
+
+	ns := hashedKey.Namespace
+	coll := hashedKey.CollectionName
+	keyHashBytes := []byte(hashedKey.KeyHash)
+	committedVersion, err := db.GetKeyHashVersion(ns, coll, keyHashBytes)
+	if err != nil {
+		return true, err
+	}
+
+	// for a deleted hashedKey, we would get a nil committed version. Note that
+	// the hashedKey was deleted because either it got expired or was deleted by
+	// the chaincode itself.
+	if committedVersion == nil && kvWrite.IsDelete {
+		return false, nil
+	}
+
+	/*
+		TODO: FAB-12922
+		In the first round, we need to the check version of passed pvtData
+		against the version of pvtdata stored in the stateDB. In second round,
+		for the remaining pvtData, we need to check for stalenss using hashed
+		version. In the third round, for the still remaining pvtdata, we need
+		to check against hashed values. In each phase we would require to
+		perform bulkload of relevant data from the stateDB.
+		committedPvtData, err := db.GetPrivateData(ns, coll, kvWrite.Key)
+		if err != nil {
+			return false, err
+		}
+		if committedPvtData.Version.Compare(kvWrite.Version) > 0 {
+			return false, nil
+		}
+	*/
+	if version.AreSame(committedVersion, kvWrite.Version) {
+		return false, nil
+	}
+
+	// due to metadata updates, we could get a version
+	// mismatch between pvt kv write and the committed
+	// hashedKey. In this case, we must compare the hash
+	// of the value. If the hash matches, we should update
+	// the version number in the pvt kv write and return
+	// true as the validation result
+	vv, err := db.GetValueHash(ns, coll, keyHashBytes)
+	if err != nil {
+		return true, err
+	}
+	if bytes.Equal(vv.Value, util.ComputeHash(kvWrite.Value)) {
+		// if hash of value matches, update version
+		// and return true
+		kvWrite.Version = vv.Version // side effect
+		// (checkIfPvtWriteIsStale should not be updating the state)
+		return false, nil
+	}
+	return true, nil
+}
+
+func (uniquePvtData uniquePvtDataMap) transformToUpdateBatch() *privacyenabledstate.UpdateBatch {
+	batch := privacyenabledstate.NewUpdateBatch()
+	for hashedCompositeKey, pvtWrite := range uniquePvtData {
+		ns := hashedCompositeKey.Namespace
+		coll := hashedCompositeKey.CollectionName
+		if pvtWrite.IsDelete {
+			batch.PvtUpdates.Delete(ns, coll, pvtWrite.Key, pvtWrite.Version)
+		} else {
+			batch.PvtUpdates.Put(ns, coll, pvtWrite.Key, pvtWrite.Value, pvtWrite.Version)
+		}
+	}
+	return batch
+}
+
 func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 	for _, listener := range txmgr.stateListeners {
 		stateUpdatesForListener := extractStateUpdates(txmgr.current.batch, listener.InterestedInNamespaces())
@@ -159,7 +398,6 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		txmgr.pvtdataPurgeMgr.usedOnce = true
 	}
 	defer func() {
-		txmgr.clearCache()
 		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.current.blockNum() + 1)
 		logger.Debugf("Cleared version cache and launched the background routine for preparing keys to purge with the next block")
 		txmgr.reset()
@@ -175,13 +413,19 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		return err
 	}
 
+	// EXCLUSIVE LOCK STARTS
 	txmgr.commitRWLock.Lock()
-	defer txmgr.commitRWLock.Unlock()
 	logger.Debugf("Write lock acquired for committing updates to state database")
 	commitHeight := version.NewHeight(txmgr.current.blockNum(), txmgr.current.maxTxNumber())
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.current.batch, commitHeight); err != nil {
+		txmgr.commitRWLock.Unlock()
 		return err
 	}
+	// only during the exclusive lock duration, we should clear the cache as the cache is being
+	// used by the old pvtData committer as well
+	txmgr.clearCache()
+	txmgr.commitRWLock.Unlock()
+	// EXCLUSIVE LOCK ENDS
 	logger.Debugf("Updates committed to state database")
 
 	// purge manager should be called (in this call the purge mgr removes the expiry entries from schedules) after committing to statedb

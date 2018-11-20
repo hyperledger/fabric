@@ -55,6 +55,14 @@ type HashedCompositeKey struct {
 	KeyHash        string
 }
 
+// PvtKVWrite encloses Key, IsDelete, Value, and Version components
+type PvtKVWrite struct {
+	Key      string
+	IsDelete bool
+	Value    []byte
+	Version  *version.Height
+}
+
 // UpdateBatch encapsulates the updates to Public, Private, and Hashed data.
 // This is expected to contain a consistent set of updates
 type UpdateBatch struct {
