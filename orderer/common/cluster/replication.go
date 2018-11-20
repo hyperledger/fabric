@@ -110,7 +110,9 @@ func (r *Replicator) ReplicateChains() {
 		r.PullChannel(channel)
 	}
 	// Last, pull the system chain
-	r.PullChannel(r.SystemChannel)
+	if err := r.PullChannel(r.SystemChannel); err != nil {
+		r.Logger.Panicf("Failed pulling system channel: %v", err)
+	}
 	r.LedgerFactory.Close()
 }
 

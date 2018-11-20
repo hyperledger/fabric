@@ -236,12 +236,15 @@ func TestReplicateIfNeeded(t *testing.T) {
 			},
 		},
 		{
-			name:               "Replication is needed",
+			name: "Replication is needed, but pulling fails",
+			panicValue: "Failed pulling system channel: " +
+				"failed obtaining the latest block for channel system",
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          bootBlock,
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
+					SystemChannel: "system",
 					Cluster: localconfig.Cluster{
 						ReplicationPullTimeout:  time.Millisecond * 100,
 						DialTimeout:             time.Millisecond * 100,
@@ -256,13 +259,6 @@ func TestReplicateIfNeeded(t *testing.T) {
 				Key:           key,
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{caCert},
-			},
-			zapHooks: []func(entry zapcore.Entry) error{
-				func(entry zapcore.Entry) error {
-					hooksActivated = true
-					assert.Equal(t, entry.Message, "Will now replicate chains")
-					return nil
-				},
 			},
 		},
 	} {
