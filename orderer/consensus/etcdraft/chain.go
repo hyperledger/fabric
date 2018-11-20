@@ -743,6 +743,13 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				// set flag back
 				c.configChangeInProgress = false
 			}
+
+			if cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID {
+				c.logger.Infof("Current node removed from replica set for channel %s", c.channelID)
+				// calling goroutine, since otherwise it will be blocked
+				// trying to write into haltC
+				go c.Halt()
+			}
 		}
 
 		if ents[i].Index > c.appliedIndex {
