@@ -286,7 +286,7 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 				return err
 			}
 			if txSimulationBytes, err = txSimulationResults.GetPubSimulationBytes(); err != nil {
-				return nil
+				return err
 			}
 			// assemble a (signed) proposal response message
 			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
