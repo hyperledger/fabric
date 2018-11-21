@@ -144,6 +144,9 @@ type collElgListener interface {
 }
 
 func retrieveCollConfs(collConfPkg *common.CollectionConfigPackage) []*common.StaticCollectionConfig {
+	if collConfPkg == nil {
+		return nil
+	}
 	var staticCollConfs []*common.StaticCollectionConfig
 	protoConfArray := collConfPkg.Config
 	for _, protoConf := range protoConfArray {
