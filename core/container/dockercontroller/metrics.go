@@ -9,21 +9,21 @@ package dockercontroller
 import "github.com/hyperledger/fabric/common/metrics"
 
 var (
-	chaincodeContainerBuildDuration = metrics.HistogramOpts{
+	chaincodeImageBuildDuration = metrics.HistogramOpts{
 		Namespace:    "dockercontroller",
 		Name:         "chaincode_container_build_duration",
-		Help:         "The time to build a chaincode container in seconds.",
+		Help:         "The time to build a chaincode image in seconds.",
 		LabelNames:   []string{"chaincode", "success"},
 		StatsdFormat: "%{#fqname}.%{chaincode}.%{success}",
 	}
 )
 
 type BuildMetrics struct {
-	ChaincodeContainerBuildDuration metrics.Histogram
+	ChaincodeImageBuildDuration metrics.Histogram
 }
 
 func NewBuildMetrics(p metrics.Provider) *BuildMetrics {
 	return &BuildMetrics{
-		ChaincodeContainerBuildDuration: p.NewHistogram(chaincodeContainerBuildDuration),
+		ChaincodeImageBuildDuration: p.NewHistogram(chaincodeImageBuildDuration),
 	}
 }

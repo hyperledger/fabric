@@ -131,7 +131,7 @@ vm:
         file: docker/tls.crt
       key:
         file: docker/tls.key
-    attachStdout: false
+    attachStdout: true
     hostConfig:
       NetworkMode: host
       LogConfig:
