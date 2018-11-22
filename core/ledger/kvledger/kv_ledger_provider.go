@@ -76,10 +76,7 @@ func (provider *Provider) Initialize(initializer *ledger.Initializer) error {
 		make(map[string]collElgListener),
 	}
 	stateListeners := initializer.StateListeners
-	// TODO uncomment follwoing line when FAB-11780 is done.
-	// Because, collElgNotifier has a dependency on `ledger.MembershipInfoProvider` which is nil as of now
-	// and will lead to a nil pointer
-	// stateListeners = append(stateListeners, collElgNotifier)
+	stateListeners = append(stateListeners, collElgNotifier)
 	stateListeners = append(stateListeners, configHistoryMgr)
 
 	provider.initializer = initializer
