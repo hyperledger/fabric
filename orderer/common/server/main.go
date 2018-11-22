@@ -8,6 +8,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -48,6 +49,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -298,8 +300,20 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		},
 		UnaryInterceptors: []grpc.UnaryServerInterceptor{
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
-			grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+			grpclogging.UnaryServerInterceptor(
+				flogging.MustGetLogger("comm.grpc.server").Zap(),
+				grpclogging.WithLeveler(grpclogging.LevelerFunc(grpcLeveler)),
+			),
 		},
+	}
+}
+
+func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {
+	switch fullMethod {
+	case "/orderer.Cluster/Step":
+		return flogging.DisabledLevel
+	default:
+		return zapcore.InfoLevel
 	}
 }
 

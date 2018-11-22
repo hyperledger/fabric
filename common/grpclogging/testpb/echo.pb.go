@@ -35,7 +35,7 @@ func (m *Message) Reset()         { *m = Message{} }
 func (m *Message) String() string { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()    {}
 func (*Message) Descriptor() ([]byte, []int) {
-	return fileDescriptor_echo_87c649ee23078ed4, []int{0}
+	return fileDescriptor_echo_c06a4742710c8217, []int{0}
 }
 func (m *Message) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Message.Unmarshal(m, b)
@@ -211,9 +211,9 @@ var _EchoService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "testpb/echo.proto",
 }
 
-func init() { proto.RegisterFile("testpb/echo.proto", fileDescriptor_echo_87c649ee23078ed4) }
+func init() { proto.RegisterFile("testpb/echo.proto", fileDescriptor_echo_c06a4742710c8217) }
 
-var fileDescriptor_echo_87c649ee23078ed4 = []byte{
+var fileDescriptor_echo_c06a4742710c8217 = []byte{
 	// 154 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2c, 0x49, 0x2d, 0x2e,
 	0x29, 0x48, 0xd2, 0x4f, 0x4d, 0xce, 0xc8, 0xd7, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83,
