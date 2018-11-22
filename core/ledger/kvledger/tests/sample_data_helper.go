@@ -249,17 +249,17 @@ func (d *sampleDataHelper) sampleVal(val, ledgerid string) string {
 
 func (d *sampleDataHelper) sampleCollConf1(ledgerid, ccName string) []*collConf {
 	return []*collConf{
-		{name: "coll1"},
-		{name: ledgerid},
-		{name: ccName},
+		{name: "coll1", members: []string{"org1", "org2"}},
+		{name: ledgerid, members: []string{"org1", "org2"}},
+		{name: ccName, members: []string{"org1", "org2"}},
 	}
 }
 
 func (d *sampleDataHelper) sampleCollConf2(ledgerid string, ccName string) []*collConf {
 	return []*collConf{
-		{name: "coll1"},
-		{name: "coll2"},
-		{name: ledgerid},
-		{name: ccName},
+		{name: "coll1", members: []string{"org1", "org2"}},
+		{name: "coll2", members: []string{"org1", "org2"}},
+		{name: ledgerid, members: []string{"org1", "org2"}},
+		{name: ccName, members: []string{"org1", "org2"}},
 	}
 }
