@@ -26,8 +26,9 @@ var logger = flogging.MustGetLogger("test2")
 // use 'collConf' as parameters and return values and transform back and forth to/from proto
 // message internally (using func 'convertToCollConfigProtoBytes' and 'convertFromCollConfigProto')
 type collConf struct {
-	name string
-	btl  uint64
+	name    string
+	btl     uint64
+	members []string
 }
 
 type txAndPvtdata struct {
@@ -39,41 +40,53 @@ type txAndPvtdata struct {
 func convertToCollConfigProtoBytes(collConfs []*collConf) ([]byte, error) {
 	var protoConfArray []*common.CollectionConfig
 	for _, c := range collConfs {
-		protoConf := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
-				Name:             c.name,
-				BlockToLive:      c.btl,
-				MemberOrgsPolicy: getAccessPolicy([]string{"peer0", "peer1"})}}}
+		protoConf := &common.CollectionConfig{
+			Payload: &common.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &common.StaticCollectionConfig{
+					Name:             c.name,
+					BlockToLive:      c.btl,
+					MemberOrgsPolicy: convertToMemberOrgsPolicy(c.members),
+				},
+			},
+		}
 		protoConfArray = append(protoConfArray, protoConf)
 	}
 	return proto.Marshal(&common.CollectionConfigPackage{Config: protoConfArray})
 }
 
-func getAccessPolicy(signers []string) *common.CollectionPolicyConfig {
+func convertToMemberOrgsPolicy(members []string) *common.CollectionPolicyConfig {
 	var data [][]byte
-	for _, signer := range signers {
-		data = append(data, []byte(signer))
+	for _, member := range members {
+		data = append(data, []byte(member))
 	}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), data)
-	return createCollectionPolicyConfig(policyEnvelope)
+	return &common.CollectionPolicyConfig{
+		Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+			SignaturePolicy: cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), data),
+		},
+	}
 }
 
-func createCollectionPolicyConfig(accessPolicy *common.SignaturePolicyEnvelope) *common.CollectionPolicyConfig {
-	cpcSp := &common.CollectionPolicyConfig_SignaturePolicy{
-		SignaturePolicy: accessPolicy,
+func convertFromMemberOrgsPolicy(policy *common.CollectionPolicyConfig) []string {
+	ids := policy.GetSignaturePolicy().Identities
+	var members []string
+	for _, id := range ids {
+		members = append(members, string(id.Principal))
 	}
-	cpc := &common.CollectionPolicyConfig{
-		Payload: cpcSp,
-	}
-	return cpc
+	return members
 }
 
 func convertFromCollConfigProto(collConfPkg *common.CollectionConfigPackage) []*collConf {
 	var collConfs []*collConf
 	protoConfArray := collConfPkg.Config
 	for _, protoConf := range protoConfArray {
-		name, btl := protoConf.GetStaticCollectionConfig().Name, protoConf.GetStaticCollectionConfig().BlockToLive
-		collConfs = append(collConfs, &collConf{name, btl})
+		p := protoConf.GetStaticCollectionConfig()
+		collConfs = append(collConfs,
+			&collConf{
+				name:    p.Name,
+				btl:     p.BlockToLive,
+				members: convertFromMemberOrgsPolicy(p.MemberOrgsPolicy),
+			},
+		)
 	}
 	return collConfs
 }
