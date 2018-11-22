@@ -30,9 +30,10 @@ type Marshaler interface {
 
 // A Provider is responslble for processing token commands.
 type Prover struct {
-	Marshaler     Marshaler
-	PolicyChecker PolicyChecker
-	TMSManager    TMSManager
+	CapabilityChecker CapabilityChecker
+	Marshaler         Marshaler
+	PolicyChecker     PolicyChecker
+	TMSManager        TMSManager
 }
 
 // NewProver creates a Prover
@@ -60,6 +61,16 @@ func (s *Prover) ProcessCommand(ctx context.Context, sc *token.SignedCommand) (*
 	err = s.ValidateHeader(command.Header)
 	if err != nil {
 		return s.MarshalErrorResponse(sc.Command, err)
+	}
+
+	// check if FabToken capability is enabled
+	channelId := command.Header.ChannelId
+	enabled, err := s.CapabilityChecker.FabToken(channelId)
+	if err != nil {
+		return s.MarshalErrorResponse(sc.Command, err)
+	}
+	if !enabled {
+		return s.MarshalErrorResponse(sc.Command, errors.Errorf("FabToken capability not enabled for channel %s", channelId))
 	}
 
 	err = s.PolicyChecker.Check(sc, command)
