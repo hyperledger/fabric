@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/admin"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -77,8 +78,10 @@ import (
 	common2 "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/token/server"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -307,6 +310,12 @@ func serve(args []string) error {
 		return err
 	}
 	defer service.GetGossipService().Stop()
+
+	// register prover grpc service
+	err = registerProverService(peerServer, aclProvider, signingIdentity)
+	if err != nil {
+		return err
+	}
 
 	// initialize system chaincodes
 
@@ -856,4 +865,31 @@ func newOperationsSystem() *operations.System {
 			ClientCACertFiles:  viper.GetStringSlice("operations.tls.clientRootCAs.files"),
 		},
 	})
+}
+
+func registerProverService(peerServer *comm.GRPCServer, aclProvider aclmgmt.ACLProvider, signingIdentity msp.SigningIdentity) error {
+	policyChecker := &server.PolicyBasedAccessControl{
+		ACLProvider: aclProvider,
+		ACLResources: &server.ACLResources{
+			IssueTokens:    resources.Token_Issue,
+			TransferTokens: resources.Token_Transfer,
+			ListTokens:     resources.Token_List,
+		},
+	}
+
+	responseMarshaler, err := server.NewResponseMarshaler(signingIdentity)
+	if err != nil {
+		logger.Errorf("Failed to create prover service: %s", err)
+		return err
+	}
+
+	prover := &server.Prover{
+		Marshaler:     responseMarshaler,
+		PolicyChecker: policyChecker,
+		TMSManager: &server.Manager{
+			LedgerManager: &server.PeerLedgerManager{},
+		},
+	}
+	token.RegisterProverServer(peerServer.Server(), prover)
+	return nil
 }

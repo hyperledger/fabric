@@ -551,7 +551,7 @@ var _ = Describe("Prover", func() {
 				fakeTMSManager.GetTransactorReturns(nil, errors.New("boing boing"))
 			})
 
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				_, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
 				Expect(err).To(MatchError("boing boing"))
 			})
@@ -562,7 +562,7 @@ var _ = Describe("Prover", func() {
 				fakeTransactor.RequestTransferReturns(nil, errors.New("watermelon"))
 			})
 
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				_, err := prover.RequestTransfer(context.Background(), command.Header, transferRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
@@ -598,7 +598,7 @@ var _ = Describe("Prover", func() {
 				fakeTMSManager.GetTransactorReturns(nil, errors.New("boing boing"))
 			})
 
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				_, err := prover.RequestRedeem(context.Background(), command.Header, redeemRequest)
 				Expect(err).To(MatchError("boing boing"))
 			})
@@ -609,7 +609,7 @@ var _ = Describe("Prover", func() {
 				fakeTransactor.RequestRedeemReturns(nil, errors.New("watermelon"))
 			})
 
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				_, err := prover.RequestRedeem(context.Background(), command.Header, redeemRequest)
 				Expect(err).To(MatchError("watermelon"))
 			})
