@@ -32,11 +32,11 @@ both within and across organizations using the gossip protocol.*
 A gateway can be used by an application in two different ways:
 
 * **Static**: The gateway configuration is *completely* defined in a [connection
-  profile](./commonconnectionprofile.html). All the peers, orderers and CAs
+  profile](./connectionprofile.html). All the peers, orderers and CAs
   available to an application are statically defined in the connection profile
   used to configure the gateway. For peers, this includes their role as an
   endorsing peer or event notification hub, for example. You can read more about
-  these roles in the connection profile [topic](./commonconnectionprofile.html).
+  these roles in the connection profile [topic](./connectionprofile.html).
 
   The SDK will use this static topology, in conjunction with gateway
   [connection options](./connectionoptions), to manage the transaction
@@ -99,7 +99,7 @@ used in subsequent SDK processing:
   let connectionProfile = yaml.safeLoad(fs.readFileSync('../gateway/paperNet.yaml', 'utf8'));
   ```
 
-  Read more about [connection profiles](./commonconnectionprofile.html) and how
+  Read more about [connection profiles](./connectionprofile.html) and how
   to configure them.
 
 
@@ -164,10 +164,11 @@ explicitly specified using the connect option `discovery: { enabled:true }` on
 the `gateway.connect()` API. Alternatively, the environment variable setting
 `FABRIC_SDK_DISCOVERY=true` will always override the application choice.
 
-A dynamic gateway represents a up-to-date view of a network. As networks change,
-service discovery will ensure that the network view is an accurate reflection of
-the topology visible to the application. Applications will automatically pick
-up these changes; they do not even need to re-load the gateway file.
+A dynamic gateway represents an up-to-date view of a network. As networks
+change, service discovery will ensure that the network view is an accurate
+reflection of the topology visible to the application. Applications will
+automatically pick up these changes; they do not even need to re-load the
+gateway file.
 
 ## Multiple gateways
 
