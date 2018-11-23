@@ -238,7 +238,7 @@ type ResultsIteratorImpl struct {
 }
 
 func (it *ResultsIteratorImpl) Next() (QueryResult, error) {
-	return it.Next()
+	return it.ResultsIterator.Next()
 }
 
 // SerializedPolicy defines a marshaled policy
