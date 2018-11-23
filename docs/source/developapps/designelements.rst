@@ -13,6 +13,6 @@ solutions.
    transactioncontext.md
    transactionhandler.md
    connectionprofile.md
-   connectoptions.md
+   connectionoptions.md
    wallet.md
    gateway.md
