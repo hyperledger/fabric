@@ -38,19 +38,22 @@ type ChainGetter interface {
 	GetChain(chainID string) *multichannel.ChainSupport
 }
 
-// Config contains etcdraft configurations
-type Config struct {
-	WALDir string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+// EtcdRaftConfig contains etcdraft configurations
+type EtcdRaftConfig struct {
+	WALDir  string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
 }
 
 // Consenter implements etddraft consenter
 type Consenter struct {
+	Dialer        *cluster.PredicateDialer
 	Communication cluster.Communicator
 	*Dispatcher
-	Chains ChainGetter
-	Logger *flogging.FabricLogger
-	Config Config
-	Cert   []byte
+	Chains         ChainGetter
+	Logger         *flogging.FabricLogger
+	EtcdRaftConfig EtcdRaftConfig
+	OrdererConfig  localconfig.TopLevel
+	Cert           []byte
 }
 
 // TargetChannel extracts the channel from the given proto.Message.
@@ -120,6 +123,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return nil, errors.WithStack(err)
 	}
 
+	bp, err := newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	opts := Options{
 		RaftID:        id,
 		Clock:         clock.NewClock(),
@@ -131,13 +139,16 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		HeartbeatTick:   int(m.Options.HeartbeatTick),
 		MaxInflightMsgs: int(m.Options.MaxInflightMsgs),
 		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
+		SnapInterval:    m.Options.SnapshotInterval,
 
 		RaftMetadata: raftMetadata,
-		WALDir:       path.Join(c.Config.WALDir, support.ChainID()),
+
+		WALDir:  path.Join(c.EtcdRaftConfig.WALDir, support.ChainID()),
+		SnapDir: path.Join(c.EtcdRaftConfig.SnapDir, support.ChainID()),
 	}
 
 	rpc := &cluster.RPC{Channel: support.ChainID(), Comm: c.Communication}
-	return NewChain(support, opts, c.Communication, rpc, nil)
+	return NewChain(support, opts, c.Communication, rpc, bp, nil)
 }
 
 func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
@@ -166,16 +177,18 @@ func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
-	var config Config
-	if err := viperutil.Decode(conf.Consensus, &config); err != nil {
+	var cfg EtcdRaftConfig
+	if err := viperutil.Decode(conf.Consensus, &cfg); err != nil {
 		logger.Panicf("Failed to decode etcdraft configuration: %s", err)
 	}
 
 	consenter := &Consenter{
-		Cert:   srvConf.SecOpts.Certificate,
-		Logger: logger,
-		Chains: r,
-		Config: config,
+		Cert:           srvConf.SecOpts.Certificate,
+		Logger:         logger,
+		Chains:         r,
+		EtcdRaftConfig: cfg,
+		OrdererConfig:  *conf,
+		Dialer:         clusterDialer,
 	}
 	consenter.Dispatcher = &Dispatcher{
 		Logger:        logger,

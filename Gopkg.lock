@@ -102,7 +102,7 @@
   revision = "be9bd761db19d4fc551d40be908f02e00487511d"
 
 [[projects]]
-  digest = "1:19fe0160ba5281f25062c4704df82bac66ac11fe6780f2752443405a79c462d0"
+  digest = "1:cffadb7be778996825cde9028332fa925f07f6c487467f7f8ae41e7472bdbfc4"
   name = "github.com/coreos/etcd"
   packages = [
     "pkg/crc",
@@ -111,6 +111,8 @@
     "pkg/pbutil",
     "raft",
     "raft/raftpb",
+    "snap",
+    "snap/snappb",
     "wal",
     "wal/walpb",
   ]
@@ -940,6 +942,7 @@
     "github.com/Shopify/sarama/mocks",
     "github.com/coreos/etcd/raft",
     "github.com/coreos/etcd/raft/raftpb",
+    "github.com/coreos/etcd/snap",
     "github.com/coreos/etcd/wal",
     "github.com/coreos/etcd/wal/walpb",
     "github.com/davecgh/go-spew/spew",

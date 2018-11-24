@@ -89,6 +89,8 @@ Profiles:{{ range .Profiles }}
       {{- end }}
       {{- if eq $w.Consensus.Type "etcdraft" }}
       EtcdRaft:
+        Options:
+          SnapshotInterval: 5
         Consenters:{{ range .Orderers }}{{ with $w.Orderer . }}
         - Host: 127.0.0.1
           Port: {{ $w.OrdererPort . "Listen" }}
