@@ -18,6 +18,13 @@ const (
 	AlgNoRevocation RevocationAlgorithm = iota
 )
 
+// IdemixEmptyDigest is used every time an idemix-related signed operation is not supposed
+// to take any digest in input. The underlying code ensure that the passed digest is that
+// returned by this function. This applies to credential request, credential, CRI
+func IdemixEmptyDigest() []byte {
+	return []byte("idemix-empty-digest")
+}
+
 // IdemixIssuerKeyGenOpts contains the options for the Idemix Issuer key-generation.
 // A list of attribytes may be optionally passed
 type IdemixIssuerKeyGenOpts struct {
@@ -124,7 +131,7 @@ type IdemixAttribute struct {
 type IdemixCredentialSignerOpts struct {
 	// Attributes to include in the credentials. IdemixHiddenAttribute is not allowed here
 	Attributes []IdemixAttribute
-	// IssuerPK is the public-keXy of the issuer
+	// IssuerPK is the public-key of the issuer
 	IssuerPK Key
 	// HashFun is the hash function to be used
 	H crypto.Hash

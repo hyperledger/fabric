@@ -3,7 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix
+package handlers
 
 import (
 	"crypto/ecdsa"
@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
+	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
@@ -147,8 +148,8 @@ func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 	if !ok {
 		return nil, errors.New("invalid options, expected *IdemixCRISignerOpts")
 	}
-	if len(digest) != 0 {
-		return nil, errors.New("invalid digest, it must be empty")
+	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
+		return nil, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 
 	return s.Revocation.Sign(
@@ -172,8 +173,8 @@ func (v *CriVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.S
 	if !ok {
 		return false, errors.New("invalid options, expected *IdemixCRISignerOpts")
 	}
-	if len(digest) != 0 {
-		return false, errors.New("invalid digest, it must be empty")
+	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
+		return false, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 	if len(signature) == 0 {
 		return false, errors.New("invalid signature, it must not be empty")

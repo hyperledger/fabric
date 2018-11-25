@@ -4,15 +4,15 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type CredRequest struct {
-	SignStub        func(sk idemix.Big, ipk idemix.IssuerPublicKey) ([]byte, error)
+	SignStub        func(sk handlers.Big, ipk handlers.IssuerPublicKey) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
-		sk  idemix.Big
-		ipk idemix.IssuerPublicKey
+		sk  handlers.Big
+		ipk handlers.IssuerPublicKey
 	}
 	signReturns struct {
 		result1 []byte
@@ -22,11 +22,11 @@ type CredRequest struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(credRequest []byte, ipk idemix.IssuerPublicKey) error
+	VerifyStub        func(credRequest []byte, ipk handlers.IssuerPublicKey) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
 		credRequest []byte
-		ipk         idemix.IssuerPublicKey
+		ipk         handlers.IssuerPublicKey
 	}
 	verifyReturns struct {
 		result1 error
@@ -38,12 +38,12 @@ type CredRequest struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CredRequest) Sign(sk idemix.Big, ipk idemix.IssuerPublicKey) ([]byte, error) {
+func (fake *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey) ([]byte, error) {
 	fake.signMutex.Lock()
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
-		sk  idemix.Big
-		ipk idemix.IssuerPublicKey
+		sk  handlers.Big
+		ipk handlers.IssuerPublicKey
 	}{sk, ipk})
 	fake.recordInvocation("Sign", []interface{}{sk, ipk})
 	fake.signMutex.Unlock()
@@ -62,7 +62,7 @@ func (fake *CredRequest) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
-func (fake *CredRequest) SignArgsForCall(i int) (idemix.Big, idemix.IssuerPublicKey) {
+func (fake *CredRequest) SignArgsForCall(i int) (handlers.Big, handlers.IssuerPublicKey) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
 	return fake.signArgsForCall[i].sk, fake.signArgsForCall[i].ipk
@@ -90,7 +90,7 @@ func (fake *CredRequest) SignReturnsOnCall(i int, result1 []byte, result2 error)
 	}{result1, result2}
 }
 
-func (fake *CredRequest) Verify(credRequest []byte, ipk idemix.IssuerPublicKey) error {
+func (fake *CredRequest) Verify(credRequest []byte, ipk handlers.IssuerPublicKey) error {
 	var credRequestCopy []byte
 	if credRequest != nil {
 		credRequestCopy = make([]byte, len(credRequest))
@@ -100,7 +100,7 @@ func (fake *CredRequest) Verify(credRequest []byte, ipk idemix.IssuerPublicKey) 
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
 		credRequest []byte
-		ipk         idemix.IssuerPublicKey
+		ipk         handlers.IssuerPublicKey
 	}{credRequestCopy, ipk})
 	fake.recordInvocation("Verify", []interface{}{credRequestCopy, ipk})
 	fake.verifyMutex.Unlock()
@@ -119,7 +119,7 @@ func (fake *CredRequest) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *CredRequest) VerifyArgsForCall(i int) ([]byte, idemix.IssuerPublicKey) {
+func (fake *CredRequest) VerifyArgsForCall(i int) ([]byte, handlers.IssuerPublicKey) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	return fake.verifyArgsForCall[i].credRequest, fake.verifyArgsForCall[i].ipk
@@ -170,4 +170,4 @@ func (fake *CredRequest) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.CredRequest = new(CredRequest)
+var _ handlers.CredRequest = new(CredRequest)

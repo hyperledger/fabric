@@ -3,15 +3,16 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix_test
+package handlers_test
 
 import (
 	"crypto/sha256"
 	"errors"
 
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
+
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
-	"github.com/hyperledger/fabric/bccsp/idemix/mock"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -29,11 +30,11 @@ var _ = Describe("User", func() {
 
 	Describe("when creating a user key", func() {
 		var (
-			UserKeyGen *idemix.UserKeyGen
+			UserKeyGen *handlers.UserKeyGen
 		)
 
 		BeforeEach(func() {
-			UserKeyGen = &idemix.UserKeyGen{}
+			UserKeyGen = &handlers.UserKeyGen{}
 			UserKeyGen.User = fakeUser
 		})
 
@@ -52,7 +53,7 @@ var _ = Describe("User", func() {
 				hash.Write([]byte{1, 2, 3, 4})
 				SKI = hash.Sum(nil)
 
-				fakeUserSecretKey = idemix.NewUserSecretKey(fakeIdemixKey, false)
+				fakeUserSecretKey = handlers.NewUserSecretKey(fakeIdemixKey, false)
 			})
 
 			AfterEach(func() {
@@ -69,7 +70,7 @@ var _ = Describe("User", func() {
 			Context("and the secret key is exportable", func() {
 				BeforeEach(func() {
 					UserKeyGen.Exportable = true
-					fakeUserSecretKey = idemix.NewUserSecretKey(fakeIdemixKey, true)
+					fakeUserSecretKey = handlers.NewUserSecretKey(fakeIdemixKey, true)
 				})
 
 				It("returns no error and a key", func() {
@@ -88,7 +89,7 @@ var _ = Describe("User", func() {
 			Context("and the secret key is not exportable", func() {
 				BeforeEach(func() {
 					UserKeyGen.Exportable = false
-					fakeUserSecretKey = idemix.NewUserSecretKey(fakeIdemixKey, false)
+					fakeUserSecretKey = handlers.NewUserSecretKey(fakeIdemixKey, false)
 				})
 
 				It("returns no error and a key", func() {
@@ -120,12 +121,12 @@ var _ = Describe("User", func() {
 
 	Describe("when deriving a new pseudonym", func() {
 		var (
-			NymKeyDerivation    *idemix.NymKeyDerivation
+			NymKeyDerivation    *handlers.NymKeyDerivation
 			fakeIssuerPublicKey bccsp.Key
 		)
 
 		BeforeEach(func() {
-			NymKeyDerivation = &idemix.NymKeyDerivation{}
+			NymKeyDerivation = &handlers.NymKeyDerivation{}
 			NymKeyDerivation.User = fakeUser
 		})
 
@@ -171,9 +172,9 @@ var _ = Describe("User", func() {
 				BeforeEach(func() {
 					var err error
 					NymKeyDerivation.Exportable = true
-					fakeUserSecretKey = idemix.NewUserSecretKey(userKey, true)
-					fakeIssuerPublicKey = idemix.NewIssuerPublicKey(nil)
-					fakeNym, err = idemix.NewNymSecretKey(result2, result1, true)
+					fakeUserSecretKey = handlers.NewUserSecretKey(userKey, true)
+					fakeIssuerPublicKey = handlers.NewIssuerPublicKey(nil)
+					fakeNym, err = handlers.NewNymSecretKey(result2, result1, true)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -193,8 +194,8 @@ var _ = Describe("User", func() {
 				BeforeEach(func() {
 					var err error
 					NymKeyDerivation.Exportable = false
-					fakeUserSecretKey = idemix.NewUserSecretKey(userKey, false)
-					fakeNym, err = idemix.NewNymSecretKey(result2, result1, false)
+					fakeUserSecretKey = handlers.NewUserSecretKey(userKey, false)
+					fakeNym, err = handlers.NewNymSecretKey(result2, result1, false)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -214,8 +215,8 @@ var _ = Describe("User", func() {
 
 		Context("and the underlying cryptographic algorithm fails", func() {
 			BeforeEach(func() {
-				fakeUserSecretKey = idemix.NewUserSecretKey(nil, true)
-				fakeIssuerPublicKey = idemix.NewIssuerPublicKey(nil)
+				fakeUserSecretKey = handlers.NewUserSecretKey(nil, true)
+				fakeIssuerPublicKey = handlers.NewIssuerPublicKey(nil)
 				fakeUser.MakeNymReturns(nil, nil, errors.New("make-nym error"))
 			})
 
@@ -238,7 +239,7 @@ var _ = Describe("User", func() {
 
 			Context("and the user secret key is not of type *userSecretKey", func() {
 				It("returns error", func() {
-					nym, err := NymKeyDerivation.KeyDeriv(idemix.NewIssuerPublicKey(nil), &bccsp.IdemixNymKeyDerivationOpts{})
+					nym, err := NymKeyDerivation.KeyDeriv(handlers.NewIssuerPublicKey(nil), &bccsp.IdemixNymKeyDerivationOpts{})
 					Expect(err).To(MatchError("invalid key, expected *userSecretKey"))
 					Expect(nym).To(BeNil())
 				})
@@ -246,7 +247,7 @@ var _ = Describe("User", func() {
 
 			Context("and the option is missing", func() {
 				BeforeEach(func() {
-					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+					fakeUserSecretKey = handlers.NewUserSecretKey(nil, false)
 				})
 
 				It("returns error", func() {
@@ -258,7 +259,7 @@ var _ = Describe("User", func() {
 
 			Context("and the option is not of type *bccsp.IdemixNymKeyDerivationOpts", func() {
 				BeforeEach(func() {
-					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+					fakeUserSecretKey = handlers.NewUserSecretKey(nil, false)
 				})
 
 				It("returns error", func() {
@@ -270,7 +271,7 @@ var _ = Describe("User", func() {
 
 			Context("and the issuer public key is missing", func() {
 				BeforeEach(func() {
-					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+					fakeUserSecretKey = handlers.NewUserSecretKey(nil, false)
 				})
 
 				It("returns error", func() {
@@ -283,7 +284,7 @@ var _ = Describe("User", func() {
 
 			Context("and the issuer public key is not of type *issuerPublicKey", func() {
 				BeforeEach(func() {
-					fakeUserSecretKey = idemix.NewUserSecretKey(nil, false)
+					fakeUserSecretKey = handlers.NewUserSecretKey(nil, false)
 				})
 
 				It("returns error", func() {

@@ -9,8 +9,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
 	"github.com/hyperledger/fabric/bccsp/idemix/bridge"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,11 +18,11 @@ import (
 
 var _ = Describe("Idemix Bridge", func() {
 	var (
-		userSecretKey   idemix.Big
-		issuerPublicKey idemix.IssuerPublicKey
-		issuerSecretKey idemix.IssuerSecretKey
-		nymPublicKey    idemix.Ecp
-		nymSecretKey    idemix.Big
+		userSecretKey   handlers.Big
+		issuerPublicKey handlers.IssuerPublicKey
+		issuerSecretKey handlers.IssuerSecretKey
+		nymPublicKey    handlers.Ecp
+		nymSecretKey    handlers.Big
 	)
 
 	BeforeEach(func() {
@@ -81,7 +81,7 @@ var _ = Describe("Idemix Bridge", func() {
 			It("panic on rand failure", func() {
 				Issuer.NewRand = NewRandPanic
 				key, err := Issuer.NewKey(nil)
-				Expect(err).To(MatchError("failure [new rand panic]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
 				Expect(key).To(BeNil())
 			})
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Idemix Bridge", func() {
 			It("panic on rand failure", func() {
 				User.NewRand = NewRandPanic
 				key, err := User.NewKey()
-				Expect(err).To(MatchError("failure [new rand panic]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
 				Expect(key).To(BeNil())
 			})
 		})
@@ -109,28 +109,28 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fails on nil user secret key", func() {
 				r1, r2, err := User.MakeNym(nil, issuerPublicKey)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [<nil>]"))
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
 
 			It("fails on invalid user secret key", func() {
 				r1, r2, err := User.MakeNym(issuerPublicKey, issuerPublicKey)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
 
 			It("fails on nil issuer public key", func() {
 				r1, r2, err := User.MakeNym(userSecretKey, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
 
 			It("fails on invalid issuer public key", func() {
 				r1, r2, err := User.MakeNym(userSecretKey, userSecretKey)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
@@ -138,7 +138,7 @@ var _ = Describe("Idemix Bridge", func() {
 			It("panic on rand failure", func() {
 				User.NewRand = NewRandPanic
 				r1, r2, err := User.MakeNym(userSecretKey, issuerPublicKey)
-				Expect(err).To(MatchError("failure [new rand panic]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
 				Expect(r1).To(BeNil())
 				Expect(r2).To(BeNil())
 			})
@@ -156,32 +156,32 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("sign", func() {
 			It("fail on nil user secret key", func() {
 				raw, err := CredRequest.Sign(nil, issuerPublicKey)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [<nil>]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid user secret key", func() {
 				raw, err := CredRequest.Sign(issuerPublicKey, issuerPublicKey)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on nil issuer public key", func() {
 				raw, err := CredRequest.Sign(userSecretKey, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid issuer public key", func() {
 				raw, err := CredRequest.Sign(userSecretKey, userSecretKey)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("panic on rand failure", func() {
 				CredRequest.NewRand = NewRandPanic
 				raw, err := CredRequest.Sign(userSecretKey, issuerPublicKey)
-				Expect(err).To(MatchError("failure [new rand panic]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
 				Expect(raw).To(BeNil())
 			})
 
@@ -190,29 +190,29 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("verify", func() {
 			It("panic on nil credential request", func() {
 				err := CredRequest.Verify(nil, issuerPublicKey)
-				Expect(err).To(MatchError("failure [runtime error: index out of range]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: index out of range]"))
 			})
 
 			It("fail on invalid credential request", func() {
 				err := CredRequest.Verify([]byte{0, 1, 2, 3, 4}, issuerPublicKey)
-				Expect(err).To(MatchError("proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
 			})
 
 			It("fail on nil issuer public key", func() {
 				err := CredRequest.Verify(nil, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
 			It("fail on invalid issuer public key", func() {
 				err := CredRequest.Verify(nil, userSecretKey)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
 			})
 		})
 	})
 
 	Describe("credential", func() {
 		var (
-			Credential idemix.Credential
+			Credential handlers.Credential
 		)
 		BeforeEach(func() {
 			Credential = &bridge.Credential{}
@@ -222,19 +222,19 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on nil issuer secret key", func() {
 				raw, err := Credential.Sign(nil, []byte{0, 1, 2, 3, 4}, nil)
-				Expect(err).To(MatchError("invalid issuer secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer secret key, expected *Big, got [<nil>]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid credential request", func() {
 				raw, err := Credential.Sign(issuerSecretKey, []byte{0, 1, 2, 3, 4}, nil)
-				Expect(err).To(MatchError("proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("failed unmarshalling credential request: proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on nil inputs", func() {
 				raw, err := Credential.Sign(issuerSecretKey, nil, nil)
-				Expect(err).To(MatchError("failure [runtime error: invalid memory address or nil pointer dereference]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: invalid memory address or nil pointer dereference]"))
 				Expect(raw).To(BeNil())
 			})
 
@@ -242,7 +242,7 @@ var _ = Describe("Idemix Bridge", func() {
 				raw, err := Credential.Sign(issuerSecretKey, nil, []bccsp.IdemixAttribute{
 					{Type: 5, Value: nil},
 				})
-				Expect(err).To(MatchError("attribute type not allowed or supported [5] at position [0]"))
+				Expect(err.Error()).To(BeEquivalentTo("attribute type not allowed or supported [5] at position [0]"))
 				Expect(raw).To(BeNil())
 			})
 		})
@@ -250,36 +250,36 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("verify", func() {
 			It("fail on nil user secret key", func() {
 				err := Credential.Verify(nil, nil, nil, nil)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [<nil>]"))
 			})
 
 			It("fail on invalid user secret key", func() {
 				err := Credential.Verify(issuerPublicKey, nil, nil, nil)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
 			})
 
 			It("fail on nil issuer public  key", func() {
 				err := Credential.Verify(userSecretKey, nil, nil, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
 			})
 
 			It("fail on invalid issuer public  key", func() {
 				err := Credential.Verify(userSecretKey, userSecretKey, nil, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*bridge.Big]"))
 			})
 
 			It("fail on invalid attributes", func() {
 				err := Credential.Verify(userSecretKey, issuerPublicKey, nil, []bccsp.IdemixAttribute{
 					{Type: 5, Value: nil},
 				})
-				Expect(err).To(MatchError("attribute type not allowed or supported [5] at position [0]"))
+				Expect(err.Error()).To(BeEquivalentTo("attribute type not allowed or supported [5] at position [0]"))
 			})
 		})
 	})
 
 	Describe("revocation", func() {
 		var (
-			Revocation idemix.Revocation
+			Revocation handlers.Revocation
 		)
 		BeforeEach(func() {
 			Revocation = &bridge.Revocation{}
@@ -289,13 +289,13 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on nil inputs", func() {
 				raw, err := Revocation.Sign(nil, nil, 0, 0)
-				Expect(err).To(MatchError("CreateCRI received nil input"))
+				Expect(err.Error()).To(BeEquivalentTo("failed creating CRI: CreateCRI received nil input"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid handlers", func() {
 				raw, err := Revocation.Sign(nil, [][]byte{{0, 2, 3, 4}}, 0, 0)
-				Expect(err).To(MatchError("failure [runtime error: index out of range]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: index out of range]"))
 				Expect(raw).To(BeNil())
 			})
 		})
@@ -303,19 +303,19 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("verify", func() {
 			It("fail on nil inputs", func() {
 				err := Revocation.Verify(nil, nil, 0, 0)
-				Expect(err).To(MatchError("EpochPK invalid: received nil input"))
+				Expect(err.Error()).To(BeEquivalentTo("EpochPK invalid: received nil input"))
 			})
 
 			It("fail on malformed cri", func() {
 				err := Revocation.Verify(nil, []byte{0, 1, 2, 3, 4}, 0, 0)
-				Expect(err).To(MatchError("proto: idemix.CredentialRevocationInformation: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.CredentialRevocationInformation: illegal tag 0 (wire type 0)"))
 			})
 		})
 	})
 
 	Describe("signature", func() {
 		var (
-			SignatureScheme idemix.SignatureScheme
+			SignatureScheme handlers.SignatureScheme
 		)
 		BeforeEach(func() {
 			SignatureScheme = &bridge.SignatureScheme{NewRand: bridge.NewRandOrPanic}
@@ -324,25 +324,25 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("sign", func() {
 			It("fail on nil user secret key", func() {
 				signature, err := SignatureScheme.Sign(nil, nil, nil, nil, nil, nil, nil, 0, nil)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 
 			It("fail on nil nym public key", func() {
 				signature, err := SignatureScheme.Sign(nil, userSecretKey, nil, nil, nil, nil, nil, 0, nil)
-				Expect(err).To(MatchError("invalid nym public key, expected *Ecp, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid nym public key, expected *Ecp, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 
 			It("fail on nil nym secret key", func() {
 				signature, err := SignatureScheme.Sign(nil, userSecretKey, nymPublicKey, nil, nil, nil, nil, 0, nil)
-				Expect(err).To(MatchError("invalid nym secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid nym secret key, expected *Big, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 
 			It("fail on nil issuer public key", func() {
 				signature, err := SignatureScheme.Sign(nil, userSecretKey, nymPublicKey, nymSecretKey, nil, nil, nil, 0, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 		})
@@ -350,30 +350,30 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("verify", func() {
 			It("fail on nil issuer Public key", func() {
 				err := SignatureScheme.Verify(nil, nil, nil, nil, 0, nil, 0)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
 			It("fail on nil signature", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, nil, nil, nil, 0, nil, 0)
-				Expect(err).To(MatchError("cannot verify idemix signature: received nil input"))
+				Expect(err.Error()).To(BeEquivalentTo("cannot verify idemix signature: received nil input"))
 			})
 
 			It("fail on invalid signature", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, []byte{0, 1, 2, 3, 4}, nil, nil, 0, nil, 0)
-				Expect(err).To(MatchError("proto: idemix.Signature: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.Signature: illegal tag 0 (wire type 0)"))
 			})
 
 			It("fail on invalid attributes", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, nil, nil,
 					[]bccsp.IdemixAttribute{{Type: -1}}, 0, nil, 0)
-				Expect(err).To(MatchError("attribute type not allowed or supported [-1] at position [0]"))
+				Expect(err.Error()).To(BeEquivalentTo("attribute type not allowed or supported [-1] at position [0]"))
 			})
 		})
 	})
 
 	Describe("nym signature", func() {
 		var (
-			NymSignatureScheme idemix.NymSignatureScheme
+			NymSignatureScheme handlers.NymSignatureScheme
 		)
 		BeforeEach(func() {
 			NymSignatureScheme = &bridge.NymSignatureScheme{NewRand: bridge.NewRandOrPanic}
@@ -382,25 +382,25 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("sign", func() {
 			It("fail on nil user secret key", func() {
 				signature, err := NymSignatureScheme.Sign(nil, nil, nil, nil, nil)
-				Expect(err).To(MatchError("invalid user secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 
 			It("fail on nil nym public key", func() {
 				signature, err := NymSignatureScheme.Sign(userSecretKey, nil, nil, nil, nil)
-				Expect(err).To(MatchError("invalid nym public key, expected *Ecp, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid nym public key, expected *Ecp, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 
 			It("fail on nil nym secret key", func() {
 				signature, err := NymSignatureScheme.Sign(userSecretKey, nymPublicKey, nil, nil, nil)
-				Expect(err).To(MatchError("invalid nym secret key, expected *Big, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid nym secret key, expected *Big, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 
 			It("fail on nil issuer public key", func() {
 				signature, err := NymSignatureScheme.Sign(userSecretKey, nymPublicKey, nymSecretKey, nil, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
 		})
@@ -408,22 +408,22 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("verify", func() {
 			It("fail on nil issuer Public key", func() {
 				err := NymSignatureScheme.Verify(nil, nil, nil, nil)
-				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
 			It("fail on nil nym public key", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nil, nil, nil)
-				Expect(err).To(MatchError("invalid nym public key, expected *Ecp, got [<nil>]"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid nym public key, expected *Ecp, got [<nil>]"))
 			})
 
 			It("panic on nil signature", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, nil, nil)
-				Expect(err).To(MatchError("failure [runtime error: index out of range]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: index out of range]"))
 			})
 
 			It("fail on invalid signature", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, []byte{0, 1, 2, 3, 4}, nil)
-				Expect(err).To(MatchError("proto: idemix.NymSignature: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.NymSignature: illegal tag 0 (wire type 0)"))
 			})
 
 		})
@@ -431,35 +431,35 @@ var _ = Describe("Idemix Bridge", func() {
 
 	Describe("setting up the environment with one issuer and one user", func() {
 		var (
-			Issuer          idemix.Issuer
-			IssuerKeyGen    *idemix.IssuerKeyGen
+			Issuer          handlers.Issuer
+			IssuerKeyGen    *handlers.IssuerKeyGen
 			IssuerKey       bccsp.Key
 			IssuerPublicKey bccsp.Key
 			AttributeNames  []string
 
-			User             idemix.User
-			UserKeyGen       *idemix.UserKeyGen
+			User             handlers.User
+			UserKeyGen       *handlers.UserKeyGen
 			UserKey          bccsp.Key
-			NymKeyDerivation *idemix.NymKeyDerivation
+			NymKeyDerivation *handlers.NymKeyDerivation
 			NymKey           bccsp.Key
 			NymPublicKey     bccsp.Key
 
-			CredRequest               idemix.CredRequest
-			CredentialRequestSigner   *idemix.CredentialRequestSigner
-			CredentialRequestVerifier *idemix.CredentialRequestVerifier
+			CredRequest               handlers.CredRequest
+			CredentialRequestSigner   *handlers.CredentialRequestSigner
+			CredentialRequestVerifier *handlers.CredentialRequestVerifier
 			credRequest               []byte
 
-			Credential         idemix.Credential
-			CredentialSigner   *idemix.CredentialSigner
-			CredentialVerifier *idemix.CredentialVerifier
+			Credential         handlers.Credential
+			CredentialSigner   *handlers.CredentialSigner
+			CredentialVerifier *handlers.CredentialVerifier
 			credential         []byte
 
-			Revocation          idemix.Revocation
-			RevocationKeyGen    *idemix.RevocationKeyGen
+			Revocation          handlers.Revocation
+			RevocationKeyGen    *handlers.RevocationKeyGen
 			RevocationKey       bccsp.Key
 			RevocationPublicKey bccsp.Key
-			CriSigner           *idemix.CriSigner
-			CriVerifier         *idemix.CriVerifier
+			CriSigner           *handlers.CriSigner
+			CriVerifier         *handlers.CriVerifier
 			cri                 []byte
 		)
 
@@ -467,7 +467,7 @@ var _ = Describe("Idemix Bridge", func() {
 			// Issuer
 			var err error
 			Issuer = &bridge.Issuer{NewRand: bridge.NewRandOrPanic}
-			IssuerKeyGen = &idemix.IssuerKeyGen{Issuer: Issuer}
+			IssuerKeyGen = &handlers.IssuerKeyGen{Issuer: Issuer}
 			AttributeNames = []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
 			IssuerKey, err = IssuerKeyGen.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
 			Expect(err).NotTo(HaveOccurred())
@@ -476,12 +476,12 @@ var _ = Describe("Idemix Bridge", func() {
 
 			// User
 			User = &bridge.User{NewRand: bridge.NewRandOrPanic}
-			UserKeyGen = &idemix.UserKeyGen{User: User}
+			UserKeyGen = &handlers.UserKeyGen{User: User}
 			UserKey, err = UserKeyGen.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{})
 			Expect(err).NotTo(HaveOccurred())
 
 			// User Nym Key
-			NymKeyDerivation = &idemix.NymKeyDerivation{User: User}
+			NymKeyDerivation = &handlers.NymKeyDerivation{User: User}
 			NymKey, err = NymKeyDerivation.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: IssuerPublicKey})
 			Expect(err).NotTo(HaveOccurred())
 			NymPublicKey, err = NymKey.PublicKey()
@@ -489,19 +489,19 @@ var _ = Describe("Idemix Bridge", func() {
 
 			// Credential Request for User
 			CredRequest = &bridge.CredRequest{NewRand: bridge.NewRandOrPanic}
-			CredentialRequestSigner = &idemix.CredentialRequestSigner{CredRequest: CredRequest}
-			CredentialRequestVerifier = &idemix.CredentialRequestVerifier{CredRequest: CredRequest}
+			CredentialRequestSigner = &handlers.CredentialRequestSigner{CredRequest: CredRequest}
+			CredentialRequestVerifier = &handlers.CredentialRequestVerifier{CredRequest: CredRequest}
 			credRequest, err = CredentialRequestSigner.Sign(
 				UserKey,
-				nil,
+				bccsp.IdemixEmptyDigest(),
 				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Credential
 			Credential = &bridge.Credential{NewRand: bridge.NewRandOrPanic}
-			CredentialSigner = &idemix.CredentialSigner{Credential: Credential}
-			CredentialVerifier = &idemix.CredentialVerifier{Credential: Credential}
+			CredentialSigner = &handlers.CredentialSigner{Credential: Credential}
+			CredentialVerifier = &handlers.CredentialVerifier{Credential: Credential}
 			credential, err = CredentialSigner.Sign(
 				IssuerKey,
 				credRequest,
@@ -519,22 +519,21 @@ var _ = Describe("Idemix Bridge", func() {
 
 			// Revocation
 			Revocation = &bridge.Revocation{}
-			RevocationKeyGen = &idemix.RevocationKeyGen{Revocation: Revocation}
+			RevocationKeyGen = &handlers.RevocationKeyGen{Revocation: Revocation}
 			RevocationKey, err = RevocationKeyGen.KeyGen(&bccsp.IdemixRevocationKeyGenOpts{})
 			Expect(err).NotTo(HaveOccurred())
 			RevocationPublicKey, err = RevocationKey.PublicKey()
 			Expect(err).NotTo(HaveOccurred())
 
 			// CRI
-			CriSigner = &idemix.CriSigner{Revocation: Revocation}
-			CriVerifier = &idemix.CriVerifier{Revocation: Revocation}
+			CriSigner = &handlers.CriSigner{Revocation: Revocation}
+			CriVerifier = &handlers.CriVerifier{Revocation: Revocation}
 			cri, err = CriSigner.Sign(
 				RevocationKey,
-				nil,
+				bccsp.IdemixEmptyDigest(),
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
-
 		})
 
 		It("the environment is properly set", func() {
@@ -542,7 +541,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err := CredentialRequestVerifier.Verify(
 				IssuerPublicKey,
 				credRequest,
-				nil,
+				bccsp.IdemixEmptyDigest(),
 				nil,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -552,7 +551,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err = CredentialVerifier.Verify(
 				UserKey,
 				credential,
-				nil,
+				bccsp.IdemixEmptyDigest(),
 				&bccsp.IdemixCredentialSignerOpts{
 					IssuerPK: IssuerPublicKey,
 					Attributes: []bccsp.IdemixAttribute{
@@ -571,7 +570,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err = CriVerifier.Verify(
 				RevocationPublicKey,
 				cri,
-				nil,
+				bccsp.IdemixEmptyDigest(),
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -595,7 +594,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("zero knowledge proof is invalid"))
+				Expect(err.Error()).To(BeEquivalentTo("failed creating new credential: zero knowledge proof is invalid"))
 				Expect(credential).To(BeNil())
 			})
 
@@ -604,7 +603,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					nil,
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -616,7 +615,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("invalid signature, it must not be empty"))
+				Expect(err.Error()).To(BeEquivalentTo("invalid signature, it must not be empty"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -625,7 +624,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					[]byte{0, 1, 2, 3, 4},
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -637,7 +636,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("proto: idemix.Credential: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.Credential: illegal tag 0 (wire type 0)"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -647,7 +646,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					credential,
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -659,7 +658,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("credential is not cryptographically valid"))
+				Expect(err.Error()).To(BeEquivalentTo("credential is not cryptographically valid"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -668,7 +667,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					credential,
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -680,7 +679,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("credential does not contain the correct attribute value at position [0]"))
+				Expect(err.Error()).To(BeEquivalentTo("credential does not contain the correct attribute value at position [0]"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -689,7 +688,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					credential,
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -701,7 +700,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("credential does not contain the correct attribute value at position [2]"))
+				Expect(err.Error()).To(BeEquivalentTo("credential does not contain the correct attribute value at position [2]"))
 				Expect(valid).To(BeFalse())
 
 			})
@@ -712,10 +711,10 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CriVerifier.Verify(
 					RevocationPublicKey,
 					cri,
-					nil,
+					bccsp.IdemixEmptyDigest(),
 					&bccsp.IdemixCRISignerOpts{},
 				)
-				Expect(err).To(MatchError("EpochPKSig invalid"))
+				Expect(err.Error()).To(BeEquivalentTo("EpochPKSig invalid"))
 				Expect(valid).To(BeFalse())
 			})
 		})
@@ -727,7 +726,7 @@ var _ = Describe("Idemix Bridge", func() {
 					It("returns an error", func() {
 						AttributeNames = []string{"A", "A"}
 						IssuerKey, err := IssuerKeyGen.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
-						Expect(err).To(MatchError("attribute A appears multiple times in AttributeNames"))
+						Expect(err.Error()).To(BeEquivalentTo("attribute A appears multiple times in AttributeNames"))
 						Expect(IssuerKey).To(BeNil())
 					})
 				})
@@ -737,9 +736,9 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Describe("producing and verifying idemix signature with different sets of attributes", func() {
 			var (
-				SignatureScheme idemix.SignatureScheme
-				Signer          *idemix.Signer
-				Verifier        *idemix.Verifier
+				SignatureScheme handlers.SignatureScheme
+				Signer          *handlers.Signer
+				Verifier        *handlers.Verifier
 				digest          []byte
 				signature       []byte
 
@@ -753,8 +752,8 @@ var _ = Describe("Idemix Bridge", func() {
 
 			BeforeEach(func() {
 				SignatureScheme = &bridge.SignatureScheme{NewRand: bridge.NewRandOrPanic}
-				Signer = &idemix.Signer{SignatureScheme: SignatureScheme}
-				Verifier = &idemix.Verifier{SignatureScheme: SignatureScheme}
+				Signer = &handlers.Signer{SignatureScheme: SignatureScheme}
+				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
 
 				digest = []byte("a digest")
 				RhIndex = 4
@@ -856,7 +855,7 @@ var _ = Describe("Idemix Bridge", func() {
 				if errMessage == "" {
 					Expect(err).NotTo(HaveOccurred())
 				} else {
-					Expect(err).To(MatchError(errMessage))
+					Expect(err.Error()).To(BeEquivalentTo(errMessage))
 				}
 				Expect(valid).To(BeEquivalentTo(validity))
 			})
@@ -865,15 +864,15 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("producing an idemix signature", func() {
 			var (
-				SignatureScheme idemix.SignatureScheme
-				Signer          *idemix.Signer
+				SignatureScheme handlers.SignatureScheme
+				Signer          *handlers.Signer
 				SignAttributes  []bccsp.IdemixAttribute
-				Verifier        *idemix.Verifier
+				Verifier        *handlers.Verifier
 			)
 
 			BeforeEach(func() {
 				SignatureScheme = &bridge.SignatureScheme{NewRand: bridge.NewRandOrPanic}
-				Signer = &idemix.Signer{SignatureScheme: SignatureScheme}
+				Signer = &handlers.Signer{SignatureScheme: SignatureScheme}
 				SignAttributes = []bccsp.IdemixAttribute{
 					{Type: bccsp.IdemixHiddenAttribute},
 					{Type: bccsp.IdemixHiddenAttribute},
@@ -881,7 +880,7 @@ var _ = Describe("Idemix Bridge", func() {
 					{Type: bccsp.IdemixHiddenAttribute},
 					{Type: bccsp.IdemixHiddenAttribute},
 				}
-				Verifier = &idemix.Verifier{SignatureScheme: SignatureScheme}
+				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
 			})
 
 			It("fails when the credential is malformed", func() {
@@ -898,7 +897,7 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).To(MatchError("proto: idemix.Credential: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("failed unmarshalling credential: proto: idemix.Credential: illegal tag 0 (wire type 0)"))
 				Expect(signature).To(BeNil())
 			})
 
@@ -916,7 +915,7 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        []byte{0, 1, 2, 3, 4},
 					},
 				)
-				Expect(err).To(MatchError("proto: idemix.CredentialRevocationInformation: illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(BeEquivalentTo("failed unmarshalling credential revocation information: proto: idemix.CredentialRevocationInformation: illegal tag 0 (wire type 0)"))
 				Expect(signature).To(BeNil())
 			})
 
@@ -934,7 +933,7 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).To(MatchError("cannot create idemix signature: received invalid input"))
+				Expect(err.Error()).To(BeEquivalentTo("failed creating new signature: cannot create idemix signature: received invalid input"))
 				Expect(signature).To(BeNil())
 			})
 
@@ -967,7 +966,7 @@ var _ = Describe("Idemix Bridge", func() {
 						Epoch:               0,
 					},
 				)
-				Expect(err).To(MatchError("signature invalid: APrime = 1"))
+				Expect(err.Error()).To(BeEquivalentTo("signature invalid: APrime = 1"))
 				Expect(valid).To(BeFalse())
 
 			})
@@ -987,7 +986,7 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).To(MatchError("failure [runtime error: index out of range]"))
+				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: index out of range]"))
 				Expect(signature).To(BeNil())
 			})
 		})
@@ -995,8 +994,8 @@ var _ = Describe("Idemix Bridge", func() {
 		Describe("producing an idemix nym signature", func() {
 			var (
 				NymSignatureScheme *bridge.NymSignatureScheme
-				NymSigner          *idemix.NymSigner
-				NymVerifier        *idemix.NymVerifier
+				NymSigner          *handlers.NymSigner
+				NymVerifier        *handlers.NymVerifier
 				digest             []byte
 				signature          []byte
 			)
@@ -1004,8 +1003,8 @@ var _ = Describe("Idemix Bridge", func() {
 			BeforeEach(func() {
 				var err error
 				NymSignatureScheme = &bridge.NymSignatureScheme{NewRand: bridge.NewRandOrPanic}
-				NymSigner = &idemix.NymSigner{NymSignatureScheme: NymSignatureScheme}
-				NymVerifier = &idemix.NymVerifier{NymSignatureScheme: NymSignatureScheme}
+				NymSigner = &handlers.NymSigner{NymSignatureScheme: NymSignatureScheme}
+				NymVerifier = &handlers.NymVerifier{NymSignatureScheme: NymSignatureScheme}
 
 				digest = []byte("a digest")
 
@@ -1153,7 +1152,7 @@ var _ = Describe("Idemix Bridge", func() {
 							IssuerPK: IssuerPublicKey,
 						},
 					)
-					Expect(err).To(MatchError(errMessage))
+					Expect(err.Error()).To(BeEquivalentTo(errMessage))
 					Expect(valid).To(BeFalse())
 				})
 			})

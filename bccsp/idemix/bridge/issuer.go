@@ -8,7 +8,7 @@ package bridge
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 	"github.com/pkg/errors"
 )
@@ -31,7 +31,7 @@ func (o *IssuerSecretKey) Bytes() ([]byte, error) {
 	return proto.Marshal(o.SK)
 }
 
-func (o *IssuerSecretKey) Public() idemix.IssuerPublicKey {
+func (o *IssuerSecretKey) Public() handlers.IssuerPublicKey {
 	return &IssuerPublicKey{o.SK.Ipk}
 }
 
@@ -41,7 +41,7 @@ type Issuer struct {
 }
 
 // NewKey generates a new issuer key-pair
-func (i *Issuer) NewKey(attributeNames []string) (res idemix.IssuerSecretKey, err error) {
+func (i *Issuer) NewKey(attributeNames []string) (res handlers.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil

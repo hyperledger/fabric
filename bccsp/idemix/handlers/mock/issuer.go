@@ -4,28 +4,28 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type Issuer struct {
-	NewKeyStub        func(AttributeNames []string) (idemix.IssuerSecretKey, error)
+	NewKeyStub        func(AttributeNames []string) (handlers.IssuerSecretKey, error)
 	newKeyMutex       sync.RWMutex
 	newKeyArgsForCall []struct {
 		AttributeNames []string
 	}
 	newKeyReturns struct {
-		result1 idemix.IssuerSecretKey
+		result1 handlers.IssuerSecretKey
 		result2 error
 	}
 	newKeyReturnsOnCall map[int]struct {
-		result1 idemix.IssuerSecretKey
+		result1 handlers.IssuerSecretKey
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Issuer) NewKey(AttributeNames []string) (idemix.IssuerSecretKey, error) {
+func (fake *Issuer) NewKey(AttributeNames []string) (handlers.IssuerSecretKey, error) {
 	var AttributeNamesCopy []string
 	if AttributeNames != nil {
 		AttributeNamesCopy = make([]string, len(AttributeNames))
@@ -59,24 +59,24 @@ func (fake *Issuer) NewKeyArgsForCall(i int) []string {
 	return fake.newKeyArgsForCall[i].AttributeNames
 }
 
-func (fake *Issuer) NewKeyReturns(result1 idemix.IssuerSecretKey, result2 error) {
+func (fake *Issuer) NewKeyReturns(result1 handlers.IssuerSecretKey, result2 error) {
 	fake.NewKeyStub = nil
 	fake.newKeyReturns = struct {
-		result1 idemix.IssuerSecretKey
+		result1 handlers.IssuerSecretKey
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Issuer) NewKeyReturnsOnCall(i int, result1 idemix.IssuerSecretKey, result2 error) {
+func (fake *Issuer) NewKeyReturnsOnCall(i int, result1 handlers.IssuerSecretKey, result2 error) {
 	fake.NewKeyStub = nil
 	if fake.newKeyReturnsOnCall == nil {
 		fake.newKeyReturnsOnCall = make(map[int]struct {
-			result1 idemix.IssuerSecretKey
+			result1 handlers.IssuerSecretKey
 			result2 error
 		})
 	}
 	fake.newKeyReturnsOnCall[i] = struct {
-		result1 idemix.IssuerSecretKey
+		result1 handlers.IssuerSecretKey
 		result2 error
 	}{result1, result2}
 }
@@ -105,4 +105,4 @@ func (fake *Issuer) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.Issuer = new(Issuer)
+var _ handlers.Issuer = new(Issuer)

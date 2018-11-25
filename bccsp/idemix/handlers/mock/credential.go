@@ -5,14 +5,14 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 )
 
 type Credential struct {
-	SignStub        func(key idemix.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error)
+	SignStub        func(key handlers.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
-		key               idemix.IssuerSecretKey
+		key               handlers.IssuerSecretKey
 		credentialRequest []byte
 		attributes        []bccsp.IdemixAttribute
 	}
@@ -24,11 +24,11 @@ type Credential struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(sk idemix.Big, ipk idemix.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error
+	VerifyStub        func(sk handlers.Big, ipk handlers.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
-		sk         idemix.Big
-		ipk        idemix.IssuerPublicKey
+		sk         handlers.Big
+		ipk        handlers.IssuerPublicKey
 		credential []byte
 		attributes []bccsp.IdemixAttribute
 	}
@@ -42,7 +42,7 @@ type Credential struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Credential) Sign(key idemix.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error) {
+func (fake *Credential) Sign(key handlers.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error) {
 	var credentialRequestCopy []byte
 	if credentialRequest != nil {
 		credentialRequestCopy = make([]byte, len(credentialRequest))
@@ -56,7 +56,7 @@ func (fake *Credential) Sign(key idemix.IssuerSecretKey, credentialRequest []byt
 	fake.signMutex.Lock()
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
-		key               idemix.IssuerSecretKey
+		key               handlers.IssuerSecretKey
 		credentialRequest []byte
 		attributes        []bccsp.IdemixAttribute
 	}{key, credentialRequestCopy, attributesCopy})
@@ -77,7 +77,7 @@ func (fake *Credential) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
-func (fake *Credential) SignArgsForCall(i int) (idemix.IssuerSecretKey, []byte, []bccsp.IdemixAttribute) {
+func (fake *Credential) SignArgsForCall(i int) (handlers.IssuerSecretKey, []byte, []bccsp.IdemixAttribute) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
 	return fake.signArgsForCall[i].key, fake.signArgsForCall[i].credentialRequest, fake.signArgsForCall[i].attributes
@@ -105,7 +105,7 @@ func (fake *Credential) SignReturnsOnCall(i int, result1 []byte, result2 error) 
 	}{result1, result2}
 }
 
-func (fake *Credential) Verify(sk idemix.Big, ipk idemix.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error {
+func (fake *Credential) Verify(sk handlers.Big, ipk handlers.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error {
 	var credentialCopy []byte
 	if credential != nil {
 		credentialCopy = make([]byte, len(credential))
@@ -119,8 +119,8 @@ func (fake *Credential) Verify(sk idemix.Big, ipk idemix.IssuerPublicKey, creden
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
-		sk         idemix.Big
-		ipk        idemix.IssuerPublicKey
+		sk         handlers.Big
+		ipk        handlers.IssuerPublicKey
 		credential []byte
 		attributes []bccsp.IdemixAttribute
 	}{sk, ipk, credentialCopy, attributesCopy})
@@ -141,7 +141,7 @@ func (fake *Credential) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *Credential) VerifyArgsForCall(i int) (idemix.Big, idemix.IssuerPublicKey, []byte, []bccsp.IdemixAttribute) {
+func (fake *Credential) VerifyArgsForCall(i int) (handlers.Big, handlers.IssuerPublicKey, []byte, []bccsp.IdemixAttribute) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	return fake.verifyArgsForCall[i].sk, fake.verifyArgsForCall[i].ipk, fake.verifyArgsForCall[i].credential, fake.verifyArgsForCall[i].attributes
@@ -192,4 +192,4 @@ func (fake *Credential) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ idemix.Credential = new(Credential)
+var _ handlers.Credential = new(Credential)

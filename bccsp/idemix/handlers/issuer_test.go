@@ -3,14 +3,15 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix_test
+package handlers_test
 
 import (
 	"crypto/sha256"
 
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
+
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/idemix"
-	"github.com/hyperledger/fabric/bccsp/idemix/mock"
+	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -20,7 +21,7 @@ var _ = Describe("Issuer", func() {
 
 	Describe("when creating an issuer key-pair", func() {
 		var (
-			IssuerKeyGen *idemix.IssuerKeyGen
+			IssuerKeyGen *handlers.IssuerKeyGen
 
 			fakeIssuer      *mock.Issuer
 			IssuerSecretKey bccsp.Key
@@ -29,7 +30,7 @@ var _ = Describe("Issuer", func() {
 		BeforeEach(func() {
 			fakeIssuer = &mock.Issuer{}
 
-			IssuerKeyGen = &idemix.IssuerKeyGen{}
+			IssuerKeyGen = &handlers.IssuerKeyGen{}
 			IssuerKeyGen.Issuer = fakeIssuer
 		})
 
@@ -57,7 +58,7 @@ var _ = Describe("Issuer", func() {
 				Expect(err).NotTo(HaveOccurred())
 				fakeIssuer.NewKeyReturns(fakeIssuerSecretKey, nil)
 
-				IssuerSecretKey = idemix.NewIssuerSecretKey(fakeIssuerSecretKey, false)
+				IssuerSecretKey = handlers.NewIssuerSecretKey(fakeIssuerSecretKey, false)
 			})
 
 			AfterEach(func() {
@@ -86,7 +87,7 @@ var _ = Describe("Issuer", func() {
 			Context("and the secret key is exportable", func() {
 				BeforeEach(func() {
 					IssuerKeyGen.Exportable = true
-					IssuerSecretKey = idemix.NewIssuerSecretKey(fakeIssuerSecretKey, true)
+					IssuerSecretKey = handlers.NewIssuerSecretKey(fakeIssuerSecretKey, true)
 				})
 
 				It("returns no error and a key", func() {
@@ -105,7 +106,7 @@ var _ = Describe("Issuer", func() {
 			Context("and the secret key is not exportable", func() {
 				BeforeEach(func() {
 					IssuerKeyGen.Exportable = false
-					IssuerSecretKey = idemix.NewIssuerSecretKey(fakeIssuerSecretKey, false)
+					IssuerSecretKey = handlers.NewIssuerSecretKey(fakeIssuerSecretKey, false)
 				})
 
 				It("returns no error and a key", func() {

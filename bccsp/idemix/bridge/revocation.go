@@ -39,7 +39,7 @@ func (*Revocation) Sign(key *ecdsa.PrivateKey, unrevokedHandles [][]byte, epoch 
 	}
 	cri, err := cryptolib.CreateCRI(key, handles, epoch, cryptolib.RevocationAlgorithm(alg), NewRandOrPanic())
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "failed creating CRI")
 	}
 
 	return proto.Marshal(cri)
