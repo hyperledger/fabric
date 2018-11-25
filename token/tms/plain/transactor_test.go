@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/ledger/mock"
@@ -175,7 +174,7 @@ func TestTransactor_ListTokens(t *testing.T) {
 	}
 }
 
-var _ = Describe("Transactor", func() {
+var _ = Describe("Transactor Transfer", func() {
 	var (
 		transactor              *plain.Transactor
 		recipientTransferShares []*token.RecipientTransferShare
@@ -247,7 +246,7 @@ var _ = Describe("Transactor", func() {
 
 		BeforeEach(func() {
 			input := &token.PlainOutput{
-				Owner:    []byte("owner-1"),
+				Owner:    []byte("Alice"),
 				Type:     "TOK1",
 				Quantity: 99,
 			}
@@ -311,7 +310,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("input '%s' does not exist", inputID)}))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("input '%s' does not exist", inputID)))
 		})
 	})
 
@@ -327,12 +326,12 @@ var _ = Describe("Transactor", func() {
 
 		BeforeEach(func() {
 			input1 := &token.PlainOutput{
-				Owner:    []byte("owner-1"),
+				Owner:    []byte("Alice"),
 				Type:     "TOK1",
 				Quantity: 99,
 			}
 			input2 := &token.PlainOutput{
-				Owner:    []byte("owner-1"),
+				Owner:    []byte("Alice"),
 				Type:     "TOK2",
 				Quantity: 99,
 			}
@@ -357,7 +356,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "two or more token types specified in input: 'TOK1', 'TOK2'"}))
+			Expect(err.Error()).To(Equal("two or more token types specified in input: 'TOK1', 'TOK2'"))
 		})
 	})
 
@@ -381,7 +380,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "not enough components in output ID composite key; expected 2, received '[george 0 1]'"}))
+			Expect(err.Error()).To(Equal("not enough components in output ID composite key; expected 2, received '[george 0 1]'"))
 		})
 	})
 
@@ -405,7 +404,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error splitting input composite key: 'invalid composite key - no components found'"}))
+			Expect(err.Error()).To(Equal("error splitting input composite key: 'invalid composite key - no components found'"))
 		})
 	})
 
@@ -429,7 +428,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "namespace not 'tokenOutput': 'badNamespace'"}))
+			Expect(err.Error()).To(Equal("namespace not 'tokenOutput': 'badNamespace'"))
 		})
 	})
 
@@ -453,7 +452,7 @@ var _ = Describe("Transactor", func() {
 				Shares:     recipientTransferShares,
 			}
 			_, err := transactor.RequestTransfer(transferRequest)
-			Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "error parsing output index 'bear': 'strconv.Atoi: parsing \"bear\": invalid syntax'"}))
+			Expect(err.Error()).To(Equal("error parsing output index 'bear': 'strconv.Atoi: parsing \"bear\": invalid syntax'"))
 		})
 	})
 
@@ -469,7 +468,7 @@ var _ = Describe("Transactor", func() {
 		BeforeEach(func() {
 			inputQuantity = 99
 			input := &token.PlainOutput{
-				Owner:    []byte("owner-1"),
+				Owner:    []byte("Alice"),
 				Type:     "TOK1",
 				Quantity: inputQuantity,
 			}
@@ -478,7 +477,6 @@ var _ = Describe("Transactor", func() {
 			Expect(err).ToNot(HaveOccurred())
 			fakeLedger = &mock.LedgerWriter{}
 			fakeLedger.SetStateReturns(nil)
-			//fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
 			fakeLedger.GetStateReturns(inputBytes, nil)
 			transactor.Ledger = fakeLedger
 		})
@@ -555,4 +553,240 @@ var _ = Describe("Transactor", func() {
 			})
 		})
 	})
+})
+
+var _ = Describe("Transactor Approve", func() {
+	var (
+		transactor      *plain.Transactor
+		allowanceShares []*token.AllowanceRecipientShare
+	)
+
+	BeforeEach(func() {
+		allowanceShares = []*token.AllowanceRecipientShare{
+			{Recipient: []byte("Alice"), Quantity: 100},
+			{Recipient: []byte("Bob"), Quantity: 200},
+		}
+		transactor = &plain.Transactor{}
+	})
+
+	Describe("converts an approve request into a token transaction", func() {
+		var (
+			fakeLedger     *mock.LedgerReader
+			approveRequest *token.ApproveRequest
+			inputBytes     []byte
+		)
+
+		BeforeEach(func() {
+			input := &token.PlainOutput{
+				Owner:    []byte("credential"),
+				Type:     "XYZ",
+				Quantity: 350,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+			fakeLedger = &mock.LedgerReader{}
+			transactor.Ledger = fakeLedger
+			transactor.PublicCredential = []byte("credential")
+
+			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+		})
+
+		It("creates a valid approve request", func() {
+			approveRequest = &token.ApproveRequest{
+				Credential:      []byte("credential"),
+				TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+				AllowanceShares: allowanceShares,
+			}
+			tt, err := transactor.RequestApprove(approveRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainApprove{
+							PlainApprove: &token.PlainApprove{
+								Inputs: []*token.InputId{
+									{TxId: "lalaland", Index: uint32(0)},
+								},
+								DelegatedOutputs: []*token.PlainDelegatedOutput{
+									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Alice")}, Type: "XYZ", Quantity: 100},
+									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Bob")}, Type: "XYZ", Quantity: 200},
+								},
+								Output: &token.PlainOutput{Owner: []byte("credential"), Type: "XYZ", Quantity: 50},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		It("creates a valid approve request without outputs", func() {
+			input := &token.PlainOutput{
+				Owner:    []byte("credential"),
+				Type:     "XYZ",
+				Quantity: 300,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+			approveRequest = &token.ApproveRequest{
+				Credential:      []byte("credential"),
+				TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+				AllowanceShares: allowanceShares,
+			}
+			tt, err := transactor.RequestApprove(approveRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainApprove{
+							PlainApprove: &token.PlainApprove{
+								Inputs: []*token.InputId{
+									{TxId: "lalaland", Index: uint32(0)},
+								},
+								DelegatedOutputs: []*token.PlainDelegatedOutput{
+									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Alice")}, Type: "XYZ", Quantity: 100},
+									{Owner: []byte("credential"), Delegatees: [][]byte{[]byte("Bob")}, Type: "XYZ", Quantity: 200},
+								},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		When("no inputs are provided", func() {
+			It("returns an error", func() {
+				approveRequest = &token.ApproveRequest{
+					TokenIds:        [][]byte{},
+					AllowanceShares: allowanceShares,
+				}
+
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(tt).To(BeNil())
+				Expect(err.Error()).To(Equal("no token ids in ApproveAllowanceRequest"))
+			})
+		})
+
+		When("no recipient shares are provided", func() {
+			It("returns an error", func() {
+				key, err := plain.GenerateKeyForTest("1", 0)
+				Expect(err).NotTo(HaveOccurred())
+				approveRequest = &token.ApproveRequest{
+					TokenIds:        [][]byte{[]byte(key)},
+					AllowanceShares: []*token.AllowanceRecipientShare{},
+				}
+
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(tt).To(BeNil())
+				Expect(err.Error()).To(Equal("no recipient shares in ApproveAllowanceRequest"))
+			})
+		})
+
+		When("a quantity in a share <= 0", func() {
+			It("returns an error", func() {
+				key, err := plain.GenerateKeyForTest("1", 0)
+				Expect(err).NotTo(HaveOccurred())
+				approveRequest = &token.ApproveRequest{
+					TokenIds:        [][]byte{[]byte(key)},
+					AllowanceShares: []*token.AllowanceRecipientShare{{Recipient: []byte("Bob"), Quantity: 0}},
+				}
+
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(tt).To(BeNil())
+				Expect(err.Error()).To(Equal("the quantity to approve [0] must be greater than 0"))
+			})
+		})
+
+		When("a recipient is not specified", func() {
+			It("returns an error", func() {
+				key, err := plain.GenerateKeyForTest("1", 0)
+				Expect(err).NotTo(HaveOccurred())
+				approveRequest = &token.ApproveRequest{
+					TokenIds:        [][]byte{[]byte(key)},
+					AllowanceShares: []*token.AllowanceRecipientShare{{Quantity: 10}},
+				}
+
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(tt).To(BeNil())
+				Expect(err.Error()).To(Equal("the recipient in approve must be specified"))
+			})
+		})
+
+		When("inputs are not of the same type", func() {
+			input := &token.PlainOutput{
+				Owner:    []byte("credential"),
+				Type:     "ABC",
+				Quantity: 100,
+			}
+			It("returns an error", func() {
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
+				approveRequest = &token.ApproveRequest{
+					Credential: []byte("credential"),
+					TokenIds: [][]byte{
+						[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00")),
+						[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "1" + string("\x00"))},
+					AllowanceShares: allowanceShares,
+				}
+
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("two or more token types specified in input: 'XYZ', 'ABC'"))
+				Expect(tt).To(BeNil())
+			})
+		})
+
+		When("inputs are not sufficient", func() {
+			input := &token.PlainOutput{
+				Owner:    []byte("credential"),
+				Type:     "XYZ",
+				Quantity: 100,
+			}
+			It("returns an error", func() {
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+				approveRequest = &token.ApproveRequest{
+					Credential:      []byte("credential"),
+					TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+					AllowanceShares: allowanceShares,
+				}
+
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("insufficient funds: 100 < 300"))
+				Expect(tt).To(BeNil())
+			})
+		})
+
+		When("transactor fails to get inputs from ledger", func() {
+			It("returns an error", func() {
+				fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("banana"))
+				approveRequest = &token.ApproveRequest{
+					Credential:      []byte("credential"),
+					TokenIds:        [][]byte{[]byte(string("\x00") + "tokenOutput" + string("\x00") + "lalaland" + string("\x00") + "0" + string("\x00"))},
+					AllowanceShares: allowanceShares,
+				}
+				tt, err := transactor.RequestApprove(approveRequest)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("banana"))
+				Expect(tt).To(BeNil())
+
+			})
+		})
+
+	})
+
 })

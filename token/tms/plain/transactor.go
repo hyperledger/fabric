@@ -7,21 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package plain
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/ledger"
 	"github.com/pkg/errors"
 )
-
-var namespace = "tms"
-
-const tokenInput = "tokenInput"
 
 // A Transactor that can transfer tokens.
 type Transactor struct {
@@ -128,41 +124,45 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId,
 		// check whether the composite key conforms to the composite key of an output
 		namespace, components, err := splitCompositeKey(inKey)
 		if err != nil {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("error splitting input composite key: '%s'", err)}
+			return nil, "", 0, errors.New(fmt.Sprintf("error splitting input composite key: '%s'", err))
 		}
 		if namespace != tokenOutput {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("namespace not '%s': '%s'", tokenOutput, namespace)}
+			return nil, "", 0, errors.New(fmt.Sprintf("namespace not '%s': '%s'", tokenOutput, namespace))
 		}
 		if len(components) != 2 {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("not enough components in output ID composite key; expected 2, received '%s'", components)}
+			return nil, "", 0, errors.New(fmt.Sprintf("not enough components in output ID composite key; expected 2, received '%s'", components))
 		}
 		txID := components[0]
 		index, err := strconv.Atoi(components[1])
 		if err != nil {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("error parsing output index '%s': '%s'", components[1], err)}
+			return nil, "", 0, errors.New(fmt.Sprintf("error parsing output index '%s': '%s'", components[1], err))
 		}
 
 		// make sure the output exists in the ledger
-		inBytes, err := t.Ledger.GetState(tokenNamespace, inKey)
+		inBytes, err := t.Ledger.GetState(tokenNameSpace, inKey)
 		if err != nil {
 			return nil, "", 0, err
 		}
 		if inBytes == nil {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("input '%s' does not exist", inKey)}
+			return nil, "", 0, errors.New(fmt.Sprintf("input '%s' does not exist", inKey))
 		}
 		input := &token.PlainOutput{}
 		err = proto.Unmarshal(inBytes, input)
 		if err != nil {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("error unmarshaling input bytes: '%s'", err)}
+			return nil, "", 0, errors.New(fmt.Sprintf("error unmarshaling input bytes: '%s'", err))
+		}
+
+		// check the owner of the token
+		if !bytes.Equal(t.PublicCredential, input.Owner) {
+			return nil, "", 0, errors.New(fmt.Sprintf("the requestor does not own inputs"))
 		}
 
 		// check the token type - only one type allowed per transfer
 		if tokenType == "" {
 			tokenType = input.Type
 		} else if tokenType != input.Type {
-			return nil, "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type)}
+			return nil, "", 0, errors.New(fmt.Sprintf("two or more token types specified in input: '%s', '%s'", tokenType, input.Type))
 		}
-
 		// add input to list of inputs
 		inputs = append(inputs, &token.InputId{TxId: txID, Index: uint32(index)})
 
@@ -175,7 +175,7 @@ func (t *Transactor) getInputsFromTokenIds(tokenIds [][]byte) ([]*token.InputId,
 
 // ListTokens creates a TokenTransaction that lists the unspent tokens owned by owner.
 func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
-	iterator, err := t.Ledger.GetStateRangeScanIterator(namespace, "", "")
+	iterator, err := t.Ledger.GetStateRangeScanIterator(tokenNameSpace, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,67 @@ func (t *Transactor) ListTokens() (*token.UnspentTokens, error) {
 }
 
 func (t *Transactor) RequestApprove(request *token.ApproveRequest) (*token.TokenTransaction, error) {
-	panic("implement me!")
+	if len(request.GetTokenIds()) == 0 {
+		return nil, errors.New("no token ids in ApproveAllowanceRequest")
+	}
+
+	if len(request.AllowanceShares) == 0 {
+		return nil, errors.New("no recipient shares in ApproveAllowanceRequest")
+	}
+
+	var delegatedOutputs []*token.PlainDelegatedOutput
+
+	inputs, tokenType, sumQuantity, err := t.getInputsFromTokenIds(request.GetTokenIds())
+	if err != nil {
+		return nil, err
+	}
+
+	// prepare approve tx
+
+	delegatedQuantity := uint64(0)
+	for _, share := range request.GetAllowanceShares() {
+		if len(share.Recipient) == 0 {
+			return nil, errors.Errorf("the recipient in approve must be specified")
+		}
+		if share.Quantity <= 0 {
+			return nil, errors.Errorf("the quantity to approve [%d] must be greater than 0", share.GetQuantity())
+		}
+		delegatedOutputs = append(delegatedOutputs, &token.PlainDelegatedOutput{
+			Owner:      []byte(request.Credential),
+			Delegatees: [][]byte{share.Recipient},
+			Type:       tokenType,
+			Quantity:   share.Quantity,
+		})
+		delegatedQuantity = delegatedQuantity + share.Quantity
+	}
+	if sumQuantity < delegatedQuantity {
+		return nil, errors.Errorf("insufficient funds: %v < %v", sumQuantity, delegatedQuantity)
+
+	}
+	var output *token.PlainOutput
+	if sumQuantity != delegatedQuantity {
+		output = &token.PlainOutput{
+			Owner:    request.Credential,
+			Type:     tokenType,
+			Quantity: sumQuantity - delegatedQuantity,
+		}
+	}
+
+	transaction := &token.TokenTransaction{
+		Action: &token.TokenTransaction_PlainAction{
+			PlainAction: &token.PlainTokenAction{
+				Data: &token.PlainTokenAction_PlainApprove{
+					PlainApprove: &token.PlainApprove{
+						Inputs:           inputs,
+						DelegatedOutputs: delegatedOutputs,
+						Output:           output,
+					},
+				},
+			},
+		},
+	}
+
+	return transaction, nil
 }
 
 // isSpent checks whether an output token with identifier outputID has been spent.
@@ -237,7 +297,7 @@ func (t *Transactor) isSpent(outputID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	result, err := t.Ledger.GetState(namespace, key)
+	result, err := t.Ledger.GetState(tokenNameSpace, key)
 	if err != nil {
 		return false, err
 	}
