@@ -40,6 +40,7 @@ type kvLedger struct {
 	historyDB              historydb.HistoryDB
 	configHistoryRetriever ledger.ConfigHistoryRetriever
 	blockAPIsRWLock        *sync.RWMutex
+	stats                  *ledgerStats
 }
 
 // NewKVLedger constructs new `KVLedger`
@@ -52,6 +53,7 @@ func newKVLedger(
 	stateListeners []ledger.StateListener,
 	bookkeeperProvider bookkeeping.Provider,
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
+	stats *ledgerStats,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
@@ -76,6 +78,14 @@ func newKVLedger(
 		panic(errors.WithMessage(err, "error during state DB recovery"))
 	}
 	l.configHistoryRetriever = configHistoryMgr.GetRetriever(ledgerID, l)
+
+	info, err := l.GetBlockchainInfo()
+	if err != nil {
+		return nil, err
+	}
+	// initialize stat with the current height
+	stats.updateBlockchainHeight(info.Height)
+	l.stats = stats
 	return l, nil
 }
 
@@ -254,13 +264,13 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 	block := pvtdataAndBlock.Block
 	blockNo := pvtdataAndBlock.Block.Header.Number
 
-	startStateValidation := time.Now()
+	startBlockProcessing := time.Now()
 	logger.Debugf("[%s] Validating state for block [%d]", l.ledgerID, blockNo)
 	err = l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
 	if err != nil {
 		return err
 	}
-	elapsedStateValidation := time.Since(startStateValidation) / time.Millisecond // duration in ms
+	elapsedBlockProcessing := time.Since(startBlockProcessing)
 
 	startCommitBlockStorage := time.Now()
 	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
@@ -269,14 +279,14 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 	if err = l.blockStore.CommitWithPvtData(pvtdataAndBlock); err != nil {
 		return err
 	}
-	elapsedCommitBlockStorage := time.Since(startCommitBlockStorage) / time.Millisecond // duration in ms
+	elapsedCommitBlockStorage := time.Since(startCommitBlockStorage)
 
 	startCommitState := time.Now()
 	logger.Debugf("[%s] Committing block [%d] transactions to state database", l.ledgerID, blockNo)
 	if err = l.txtmgmt.Commit(); err != nil {
 		panic(errors.WithMessage(err, "error during commit to txmgr"))
 	}
-	elapsedCommitState := time.Since(startCommitState) / time.Millisecond // duration in ms
+	elapsedCommitState := time.Since(startCommitState)
 
 	// History database could be written in parallel with state and/or async as a future optimization,
 	// although it has not been a bottleneck...no need to clutter the log with elapsed duration.
@@ -287,13 +297,33 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 		}
 	}
 
-	elapsedCommitWithPvtData := time.Since(startStateValidation) / time.Millisecond // total duration in ms
+	elapsedCommitWithPvtData := time.Since(startBlockProcessing)
 
 	logger.Infof("[%s] Committed block [%d] with %d transaction(s) in %dms (state_validation=%dms block_commit=%dms state_commit=%dms)",
-		l.ledgerID, block.Header.Number, len(block.Data.Data), elapsedCommitWithPvtData,
-		elapsedStateValidation, elapsedCommitBlockStorage, elapsedCommitState)
-
+		l.ledgerID, block.Header.Number, len(block.Data.Data),
+		elapsedCommitWithPvtData/time.Millisecond,
+		elapsedBlockProcessing/time.Millisecond,
+		elapsedCommitBlockStorage/time.Millisecond,
+		elapsedCommitState/time.Millisecond,
+	)
+	l.updateBlockStats(blockNo,
+		elapsedBlockProcessing,
+		elapsedCommitBlockStorage,
+		elapsedCommitState,
+	)
 	return nil
+}
+
+func (l *kvLedger) updateBlockStats(
+	blockNum uint64,
+	blockProcessingTime time.Duration,
+	blockstorageCommitTime time.Duration,
+	statedbCommitTime time.Duration,
+) {
+	l.stats.updateBlockchainHeight(blockNum + 1)
+	l.stats.updateBlockProcessingTime(blockProcessingTime)
+	l.stats.updateBlockstorageCommitTime(blockstorageCommitTime)
+	l.stats.updateStatedbCommitTime(statedbCommitTime)
 }
 
 // GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
