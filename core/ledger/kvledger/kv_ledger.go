@@ -94,6 +94,16 @@ func (l *kvLedger) initBlockStore(btlPolicy pvtdatapolicy.BTLPolicy) {
 //by recommitting last valid blocks
 func (l *kvLedger) recoverDBs() error {
 	logger.Debugf("Entering recoverDB()")
+	if err := l.syncStateAndHistoryDBWithBlockstore(); err != nil {
+		return err
+	}
+	if err := l.syncStateDBWithPvtdatastore(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 	//If there is no block in blockstorage, nothing to recover.
 	info, _ := l.blockStore.GetBlockchainInfo()
 	if info.Height == 0 {
@@ -134,6 +144,29 @@ func (l *kvLedger) recoverDBs() error {
 	// get both the db upto block storage
 	return l.recommitLostBlocks(recoverers[1].firstBlockNum, lastAvailableBlockNum,
 		recoverers[0].recoverable, recoverers[1].recoverable)
+}
+
+func (l *kvLedger) syncStateDBWithPvtdatastore() error {
+	// TODO: So far, the design philosophy was that the scope of block storage is
+	// limited to storing and retrieving blocks data with certain guarantees and statedb is
+	// for the state management. The higher layer, 'kvledger', coordinates the acts between
+	// the two. However, with maintaining the state of the consumption of blocks (i.e,
+	// lastUpdatedOldBlockList for pvtstore reconciliation) within private data block storage
+	// breaks that assumption. The knowledge of what blocks have been consumed for the purpose
+	// of state update should not lie with the source (i.e., pvtdatastorage). A potential fix
+	// is mentioned in FAB-12731
+	blocksPvtData, err := l.blockStore.GetLastUpdatedOldBlocksPvtData()
+	if err != nil {
+		return err
+	}
+	if err := l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData); err != nil {
+		return err
+	}
+	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //recommitLostBlocks retrieves blocks in specified range and commit the write set to either

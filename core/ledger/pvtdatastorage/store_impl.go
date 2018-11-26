@@ -147,7 +147,7 @@ func (s *store) initState() error {
 	if s.batchPending, err = s.hasPendingCommit(); err != nil {
 		return err
 	}
-	if blist, err = s.GetLastUpdatedOldBlocksList(); err != nil {
+	if blist, err = s.getLastUpdatedOldBlocksList(); err != nil {
 		return err
 	}
 	if len(blist) > 0 {
@@ -521,7 +521,27 @@ func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 	return nil
 }
 
-func (s *store) GetLastUpdatedOldBlocksList() ([]uint64, error) {
+// GetLastUpdatedOldBlocksPvtData implements the function in the interface `Store`
+func (s *store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
+	if !s.isLastUpdatedOldBlocksSet {
+		return nil, nil
+	}
+
+	updatedBlksList, err := s.getLastUpdatedOldBlocksList()
+	if err != nil {
+		return nil, err
+	}
+
+	blksPvtData := make(map[uint64][]*ledger.TxPvtData)
+	for _, blkNum := range updatedBlksList {
+		if blksPvtData[blkNum], err = s.GetPvtDataByBlockNum(blkNum, nil); err != nil {
+			return nil, err
+		}
+	}
+	return blksPvtData, nil
+}
+
+func (s *store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(lastUpdatedOldBlocksKey); err != nil {
@@ -547,10 +567,8 @@ func (s *store) GetLastUpdatedOldBlocksList() ([]uint64, error) {
 	return updatedBlksList, nil
 }
 
+// ResetLastUpdatedOldBlocksList implements the function in the interface `Store`
 func (s *store) ResetLastUpdatedOldBlocksList() error {
-	if !s.isLastUpdatedOldBlocksSet {
-		return &ErrIllegalCall{"No updated old block list"}
-	}
 	batch := leveldbhelper.NewUpdateBatch()
 	batch.Delete(lastUpdatedOldBlocksKey)
 	if err := s.db.WriteBatch(batch, true); err != nil {
@@ -712,6 +730,7 @@ func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 	return missingPvtDataInfo, nil
 }
 
+// ProcessCollsEligibilityEnabled implements the function in the interface `Store`
 func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
 	key := encodeCollElgKey(committingBlk)
 	m := newCollElgInfo(nsCollMap)

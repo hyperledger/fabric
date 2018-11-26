@@ -138,7 +138,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	// a given <ns, coll, key>, we need to find duplicate tuples with different
 	// versions and use the one with the higher version
 	uniquePvtData, err := constructUniquePvtData(blocksPvtData)
-	if err != nil {
+	if len(uniquePvtData) == 0 || err != nil {
 		return err
 	}
 

@@ -72,8 +72,8 @@ type Store interface {
 	// these pvtData, the `lastUpdatedOldBlocksList` must be removed. During the peer startup,
 	// if the `lastUpdatedOldBlocksList` exists, stateDB needs to be updated with the appropriate pvtData.
 	CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error
-	// GetLastUpdatedOldBlocksList returns the value of `lastUpdatedOldBlocksList`
-	GetLastUpdatedOldBlocksList() ([]uint64, error)
+	// GetLastUpdatedOldBlocksPvtData returns the pvtdata of blocks listed in `lastUpdatedOldBlocksList`
+	GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error)
 	// ResetLastUpdatedOldBlocksList removes the `lastUpdatedOldBlocksList` entry from the store
 	ResetLastUpdatedOldBlocksList() error
 	// IsEmpty returns true if the store does not have any block committed yet
