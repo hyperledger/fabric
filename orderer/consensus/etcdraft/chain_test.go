@@ -122,12 +122,12 @@ var _ = Describe("Chain", func() {
 
 			meta := &raftprotos.RaftMetadata{
 				Consenters:      map[uint64]*raftprotos.Consenter{},
-				NextConsenterID: 1,
+				NextConsenterId: 1,
 			}
 
 			for _, c := range consenterMetadata.Consenters {
-				meta.Consenters[meta.NextConsenterID] = c
-				meta.NextConsenterID++
+				meta.Consenters[meta.NextConsenterId] = c
+				meta.NextConsenterId++
 			}
 
 			opts = etcdraft.Options{
@@ -366,17 +366,6 @@ var _ = Describe("Chain", func() {
 					configBlock *common.Block
 				)
 
-				// ensures that configBlock has the correct configEnv
-				JustBeforeEach(func() {
-					configBlock = &common.Block{
-						Header: &common.BlockHeader{},
-						Data: &common.BlockData{
-							Data: [][]byte{marshalOrPanic(configEnv)},
-						},
-					}
-					support.CreateNextBlockReturns(configBlock)
-				})
-
 				Context("when a config update with invalid header comes", func() {
 
 					BeforeEach(func() {
@@ -384,6 +373,14 @@ var _ = Describe("Chain", func() {
 							common.HeaderType_CONFIG_UPDATE, // invalid header; envelopes with CONFIG_UPDATE header never reach chain
 							&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("test invalid envelope")})
 						configSeq = 0
+
+						configBlock = &common.Block{
+							Header: &common.BlockHeader{},
+							Data: &common.BlockData{
+								Data: [][]byte{marshalOrPanic(configEnv)},
+							},
+						}
+						support.CreateNextBlockReturns(configBlock)
 					})
 
 					It("should throw an error", func() {
@@ -393,6 +390,17 @@ var _ = Describe("Chain", func() {
 				})
 
 				Context("when a type A config update comes", func() {
+
+					// ensures that configBlock has the correct configEnv
+					JustBeforeEach(func() {
+						configBlock = &common.Block{
+							Header: &common.BlockHeader{},
+							Data: &common.BlockData{
+								Data: [][]byte{marshalOrPanic(configEnv)},
+							},
+						}
+						support.CreateNextBlockReturns(configBlock)
+					})
 
 					Context("for existing channel", func() {
 
@@ -492,7 +500,6 @@ var _ = Describe("Chain", func() {
 				}) // Context block for type A config
 
 				Context("when a type B config update comes", func() {
-
 					Context("updating protocol values", func() {
 						// use to prepare the Orderer Values
 						BeforeEach(func() {
@@ -508,6 +515,14 @@ var _ = Describe("Chain", func() {
 								common.HeaderType_CONFIG,
 								newConfigUpdateEnv(channelID, values))
 							configSeq = 0
+
+							configBlock = &common.Block{
+								Header: &common.BlockHeader{},
+								Data: &common.BlockData{
+									Data: [][]byte{marshalOrPanic(configEnv)},
+								},
+							}
+							support.CreateNextBlockReturns(configBlock)
 						}) // BeforeEach block
 
 						It("should be able to process config update of type B", func() {
@@ -531,11 +546,119 @@ var _ = Describe("Chain", func() {
 								common.HeaderType_CONFIG,
 								newConfigUpdateEnv(channelID, values))
 							configSeq = 0
+
+							configBlock = &common.Block{
+								Header: &common.BlockHeader{},
+								Data: &common.BlockData{
+									Data: [][]byte{marshalOrPanic(configEnv)},
+								},
+							}
+							support.CreateNextBlockReturns(configBlock)
 						}) // BeforeEach block
 
-						It("should fail, since consenters set change is not supported yet", func() {
+						It("should fail, since consenters set change is not supported", func() {
 							err := chain.Configure(configEnv, configSeq)
-							Expect(err).To(MatchError("update of consenters set is not supported yet"))
+							Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+						})
+					})
+
+					Context("updating consenters set by exactly one node", func() {
+						It("should be able to process config update adding single node", func() {
+							metadata := proto.Clone(consenterMetadata).(*raftprotos.Metadata)
+							metadata.Consenters = append(metadata.Consenters, &raftprotos.Consenter{
+								Host:          "localhost",
+								Port:          7050,
+								ServerTlsCert: serverTLSCert(tlsCA),
+								ClientTlsCert: clientTLSCert(tlsCA),
+							})
+
+							values := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Metadata: marshalOrPanic(metadata),
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, values))
+							configSeq = 0
+
+							configBlock = &common.Block{
+								Header: &common.BlockHeader{},
+								Data: &common.BlockData{
+									Data: [][]byte{marshalOrPanic(configEnv)},
+								},
+							}
+							support.CreateNextBlockReturns(configBlock)
+
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).NotTo(HaveOccurred())
+						})
+
+						It("should be able to process config update removing single node", func() {
+							metadata := proto.Clone(consenterMetadata).(*raftprotos.Metadata)
+							// Remove one of the consenters
+							metadata.Consenters = metadata.Consenters[1:]
+							values := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Metadata: marshalOrPanic(metadata),
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, values))
+							configSeq = 0
+
+							configBlock = &common.Block{
+								Header: &common.BlockHeader{},
+								Data: &common.BlockData{
+									Data: [][]byte{marshalOrPanic(configEnv)},
+								},
+							}
+							support.CreateNextBlockReturns(configBlock)
+
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).NotTo(HaveOccurred())
+						})
+
+						It("fail since not allowed to add and remove node at same change", func() {
+							metadata := proto.Clone(consenterMetadata).(*raftprotos.Metadata)
+							// Remove one of the consenters
+							metadata.Consenters = metadata.Consenters[1:]
+							metadata.Consenters = append(metadata.Consenters, &raftprotos.Consenter{
+								Host:          "localhost",
+								Port:          7050,
+								ServerTlsCert: serverTLSCert(tlsCA),
+								ClientTlsCert: clientTLSCert(tlsCA),
+							})
+							values := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Metadata: marshalOrPanic(metadata),
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, values))
+							configSeq = 0
+
+							configBlock = &common.Block{
+								Header: &common.BlockHeader{},
+								Data: &common.BlockData{
+									Data: [][]byte{marshalOrPanic(configEnv)},
+								},
+							}
+							support.CreateNextBlockReturns(configBlock)
+
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
 						})
 					})
 				})
@@ -558,7 +681,7 @@ var _ = Describe("Chain", func() {
 								ServerTlsCert: serverTLSCert(tlsCA),
 							},
 						},
-						NextConsenterID: 2,
+						NextConsenterId: 2,
 					}
 				})
 
@@ -1081,8 +1204,6 @@ var _ = Describe("Chain", func() {
 			dataDir, err = ioutil.TempDir("", "raft-test-")
 			Expect(err).NotTo(HaveOccurred())
 
-			tlsCA, _ := tlsgen.NewCA()
-
 			raftMetadata = &raftprotos.RaftMetadata{
 				Consenters: map[uint64]*raftprotos.Consenter{
 					1: {
@@ -1104,7 +1225,7 @@ var _ = Describe("Chain", func() {
 						ServerTlsCert: serverTLSCert(tlsCA),
 					},
 				},
-				NextConsenterID: 4,
+				NextConsenterId: 4,
 			}
 
 			network = createNetwork(timeout, channelID, dataDir, raftMetadata)
@@ -1188,6 +1309,234 @@ var _ = Describe("Chain", func() {
 				Eventually(func() int { return c3.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(2))
 
 				network.stop()
+			})
+		})
+
+		When("reconfiguring raft cluster", func() {
+			const (
+				defaultTimeout = 5 * time.Second
+			)
+			var (
+				addConsenterConfigValue = func() map[string]*common.ConfigValue {
+					metadata := &raftprotos.Metadata{}
+					for _, consenter := range raftMetadata.Consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					newConsenter := &raftprotos.Consenter{
+						Host:          "localhost",
+						Port:          7050,
+						ServerTlsCert: serverTLSCert(tlsCA),
+						ClientTlsCert: clientTLSCert(tlsCA),
+					}
+					metadata.Consenters = append(metadata.Consenters, newConsenter)
+
+					return map[string]*common.ConfigValue{
+						"ConsensusType": {
+							Version: 1,
+							Value: marshalOrPanic(&orderer.ConsensusType{
+								Metadata: marshalOrPanic(metadata),
+							}),
+						},
+					}
+				}
+			)
+
+			BeforeEach(func() {
+				network.init()
+				network.start()
+				network.elect(1)
+
+				By("Submitting first tx to cut the block")
+				c1.cutter.CutNext = true
+				err := c1.Order(env, 0)
+				Expect(err).ToNot(HaveOccurred())
+
+				c1.clock.Increment(interval)
+
+				network.exec(
+					func(c *chain) {
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, defaultTimeout).Should(Equal(1))
+					})
+			})
+
+			AfterEach(func() {
+				network.stop()
+			})
+
+			Context("reconfiguration", func() {
+				It("trying to simultaneously add and remove nodes in one config update", func() {
+
+					updatedRaftMetadata := proto.Clone(raftMetadata).(*raftprotos.RaftMetadata)
+					// remove second consenter
+					delete(updatedRaftMetadata.Consenters, 2)
+
+					metadata := &raftprotos.Metadata{}
+					for _, consenter := range updatedRaftMetadata.Consenters {
+						metadata.Consenters = append(metadata.Consenters, consenter)
+					}
+
+					// add new consenter
+					newConsenter := &raftprotos.Consenter{
+						Host:          "localhost",
+						Port:          7050,
+						ServerTlsCert: serverTLSCert(tlsCA),
+						ClientTlsCert: clientTLSCert(tlsCA),
+					}
+					metadata.Consenters = append(metadata.Consenters, newConsenter)
+
+					value := map[string]*common.ConfigValue{
+						"ConsensusType": {
+							Version: 1,
+							Value: marshalOrPanic(&orderer.ConsensusType{
+								Metadata: marshalOrPanic(metadata),
+							}),
+						},
+					}
+
+					By("adding new consenter into configuration")
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, value))
+					c1.cutter.CutNext = true
+					c1.support.CreateNextBlockReturns(&common.Block{
+						Header: &common.BlockHeader{},
+						Data:   &common.BlockData{Data: [][]byte{marshalOrPanic(configEnv)}}})
+
+					By("sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).To(MatchError("update of more than one consenters at a time is not supported"))
+				})
+
+				It("adding node to the cluster", func() {
+
+					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
+						Consenters: map[uint64]*raftprotos.Consenter{},
+					})
+					c4.init()
+
+					By("adding new node to the network")
+					Eventually(func() int { return c4.support.WriteBlockCallCount() }, defaultTimeout).Should(Equal(0))
+					Eventually(func() int { return c4.support.WriteConfigBlockCallCount() }, defaultTimeout).Should(Equal(0))
+
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					c1.cutter.CutNext = true
+					c1.support.CreateNextBlockReturns(&common.Block{
+						Header: &common.BlockHeader{},
+						Data:   &common.BlockData{Data: [][]byte{marshalOrPanic(configEnv)}}})
+
+					By("sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+					})
+
+					network.addChain(c4)
+					c4.Start()
+
+					// ConfChange is applied to etcd/raft asynchronously, meaning node 4 is not added
+					// to leader's node list right away. An immediate tick does not trigger a heartbeat
+					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
+					// the cluster successfully.
+					Eventually(func() <-chan uint64 {
+						c1.clock.Increment(interval)
+						return c4.observe
+					}, defaultTimeout).Should(Receive(Equal(uint64(1))))
+
+					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
+					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+					By("submitting new transaction to follower")
+					c1.cutter.CutNext = true
+					c1.support.CreateNextBlockReturns(normalBlock)
+					err = c4.Order(env, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					c1.clock.Increment(interval)
+
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
+					})
+				})
+
+				It("adding node to the cluster of 2/3 available nodes", func() {
+					// Scenario: disconnect one of existing nodes from the replica set
+					// add new node, reconnect the old one and choose newly added as a
+					// leader, check whenever disconnected node will get new configuration
+					// and will see newly added as a leader
+
+					// disconnect second node
+					network.disconnect(2)
+
+					c4 := newChain(timeout, channelID, dataDir, 4, &raftprotos.RaftMetadata{
+						Consenters: map[uint64]*raftprotos.Consenter{},
+					})
+					c4.init()
+
+					By("adding new node to the network")
+					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(0))
+					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(0))
+
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
+					c1.cutter.CutNext = true
+					c1.support.CreateNextBlockReturns(&common.Block{
+						Header: &common.BlockHeader{},
+						Data:   &common.BlockData{Data: [][]byte{marshalOrPanic(configEnv)}}})
+
+					By("sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					Eventually(c1.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+					// second node is disconnected hence should not be able to get the config block
+					Eventually(c2.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(0))
+					Eventually(c3.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+					network.addChain(c4)
+					c4.Start()
+
+					// ConfChange is applied to etcd/raft asynchronously, meaning node 4 is not added
+					// to leader's node list right away. An immediate tick does not trigger a heartbeat
+					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
+					// the cluster successfully.
+					Eventually(func() <-chan uint64 {
+						c1.clock.Increment(interval)
+						return c4.observe
+					}).Should(Receive(Equal(uint64(1))))
+
+					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
+					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+					By("submitting new transaction to follower")
+					c1.cutter.CutNext = true
+					c1.support.CreateNextBlockReturns(normalBlock)
+					err = c4.Order(env, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					c1.clock.Increment(interval)
+
+					// elect newly added node to be the leader
+					network.elect(4)
+
+					// connecting node back again, should be able to catch up and get configuration update
+					network.connect(2)
+
+					// make sure second node see 4th as a leader
+					Eventually(func() <-chan uint64 {
+						c4.clock.Increment(interval)
+						return c2.observe
+					}, defaultTimeout).Should(Receive(Equal(uint64(4))))
+
+					By("submitting new transaction to re-connected node")
+					c4.cutter.CutNext = true
+					c4.support.CreateNextBlockReturns(normalBlock)
+					err = c2.Order(env, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(3))
+					})
+				})
 			})
 		})
 
