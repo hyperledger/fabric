@@ -38,6 +38,10 @@ func TestEncodeDecodeJSONOldFormat(t *testing.T) {
 func TestEncodeDecodeOldAndNewFormat(t *testing.T) {
 	testdata := []*statedb.VersionedValue{
 		{
+			Value:   []byte("value0"),
+			Version: version.NewHeight(0, 0),
+		},
+		{
 			Value:   []byte("value1"),
 			Version: version.NewHeight(1, 2),
 		},
@@ -61,7 +65,10 @@ func TestEncodeDecodeOldAndNewFormat(t *testing.T) {
 
 	for i, testdatum := range testdata {
 		t.Run(fmt.Sprintf("testcase-oldfmt-%d", i),
-			func(t *testing.T) { testEncodeDecodeOldFormat(t, testdatum) },
+			func(t *testing.T) {
+				testdatum.Metadata = nil
+				testEncodeDecodeOldFormat(t, testdatum)
+			},
 		)
 	}
 
@@ -81,7 +88,5 @@ func testEncodeDecodeOldFormat(t *testing.T, v *statedb.VersionedValue) {
 	// decodeValue should be able to handle the old format
 	decodedFromOldFmt, err := decodeValue(encodedOldFmt)
 	assert.NoError(t, err)
-	assert.Equal(t, v.Value, decodedFromOldFmt.Value)
-	assert.Equal(t, v.Version, decodedFromOldFmt.Version)
-	assert.Nil(t, decodedFromOldFmt.Metadata)
+	assert.Equal(t, v, decodedFromOldFmt)
 }
