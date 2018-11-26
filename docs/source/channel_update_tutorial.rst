@@ -106,7 +106,7 @@ Bring Org3 into the Channel Manually
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: The manual steps outlined below assume that the ``FABRIC_LOGGING_SPEC``
-          in the ``cli`` and `Org3cli`` containers is set to ``DEBUG``.
+          in the ``cli`` and ``Org3cli`` containers is set to ``DEBUG``.
 
           For the ``cli`` container, you can set this by modifying the
           ``docker-compose-cli.yaml`` file in the ``first-network`` directory.
@@ -263,7 +263,7 @@ and ``CHANNEL_NAME`` exported.  Let's go fetch the most recent config block for 
 channel -- ``mychannel``.
 
 The reason why we have to pull the latest version of the config is because channel
-config elements are versioned.. Versioning is important for several reasons. It prevents
+config elements are versioned. Versioning is important for several reasons. It prevents
 config changes from being repeated or replayed (for instance, reverting to a channel config
 with old CRLs would represent a security risk). Also it helps ensure concurrency (if you
 want to remove an Org from your channel, for example, after a new Org has been added,
