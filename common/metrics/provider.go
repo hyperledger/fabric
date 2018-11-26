@@ -61,7 +61,7 @@ type CounterOpts struct {
 	StatsdFormat string
 }
 
-// A Gauge is a memter that expresses the current value of some metric.
+// A Gauge is a meter that expresses the current value of some metric.
 type Gauge interface {
 	// With is used to provide label values when recording a Gauge value. This
 	// must be used to provide values for all LabelNames provided to GaugeOpts.
@@ -108,7 +108,7 @@ type GaugeOpts struct {
 	StatsdFormat string
 }
 
-// A Histogram is a memter that records an observed value into quantized
+// A Histogram is a meter that records an observed value into quantized
 // buckets.
 type Histogram interface {
 	// With is used to provide label values when recording a Histogram

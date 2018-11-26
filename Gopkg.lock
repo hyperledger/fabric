@@ -976,6 +976,7 @@
     "github.com/op/go-logging",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/rcrowley/go-metrics",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/spf13/viper",

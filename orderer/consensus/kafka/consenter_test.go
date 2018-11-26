@@ -12,16 +12,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/kafka/mock"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/Shopify/sarama"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,11 +71,12 @@ func init() {
 }
 
 func TestNew(t *testing.T) {
-	_ = consensus.Consenter(New(mockLocalConfig.Kafka))
+	c, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{})
+	_ = consensus.Consenter(c)
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter := consensus.Consenter(New(mockLocalConfig.Kafka))
+	consenter, _ := New(mockLocalConfig.Kafka, &mock.MetricsProvider{})
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -103,7 +106,6 @@ func TestHandleChain(t *testing.T) {
 	}
 
 	mockMetadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: newestOffset - 1})}
-
 	_, err := consenter.HandleChain(mockSupport, mockMetadata)
 	assert.NoError(t, err, "Expected the HandleChain call to return without errors")
 }

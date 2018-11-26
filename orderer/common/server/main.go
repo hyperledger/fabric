@@ -126,7 +126,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(clusterType, clusterDialer, serverConfig, grpcServer, conf, signer, tlsCallback)
+	manager := initializeMultichannelRegistrar(clusterType, clusterDialer, serverConfig, grpcServer, conf, signer, metricsProvider, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -397,6 +397,7 @@ func initializeMultichannelRegistrar(isClusterType bool,
 	srv *comm.GRPCServer,
 	conf *localconfig.TopLevel,
 	signer crypto.LocalSigner,
+	metricsProvider metrics.Provider,
 	callbacks ...func(bundle *channelconfig.Bundle)) *multichannel.Registrar {
 	lf, _ := createLedgerFactory(conf)
 	genesisBlock := extractGenesisBlock(conf)
@@ -412,7 +413,11 @@ func initializeMultichannelRegistrar(isClusterType bool,
 	registrar := multichannel.NewRegistrar(lf, signer, callbacks...)
 
 	consenters["solo"] = solo.New()
-	consenters["kafka"] = kafka.New(conf.Kafka)
+	var kafkaMetrics *kafka.Metrics
+	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider)
+	// Note, we pass a 'nil' channel here, we could pass a channel that
+	// closes if we wished to cleanup this routine on exit.
+	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
 	if isClusterType {
 		raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar)
 		consenters["etcdraft"] = raftConsenter

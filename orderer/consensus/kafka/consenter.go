@@ -7,24 +7,28 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/common/metrics"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/Shopify/sarama"
 	logging "github.com/op/go-logging"
 )
 
 // New creates a Kafka-based consenter. Called by orderer's main.go.
-func New(config localconfig.Kafka) consensus.Consenter {
+func New(config localconfig.Kafka, metricsProvider metrics.Provider) (consensus.Consenter, *Metrics) {
 	if config.Verbose {
 		logging.SetLevel(logging.DEBUG, "orderer.consensus.kafka.sarama")
 	}
+
 	brokerConfig := newBrokerConfig(
 		config.TLS,
 		config.SASLPlain,
 		config.Retry,
 		config.Version,
 		defaultPartition)
+
 	return &consenterImpl{
 		brokerConfigVal: brokerConfig,
 		tlsConfigVal:    config.TLS,
@@ -34,7 +38,7 @@ func New(config localconfig.Kafka) consensus.Consenter {
 			NumPartitions:     1,
 			ReplicationFactor: config.Topic.ReplicationFactor,
 		},
-	}
+	}, NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
 }
 
 // consenterImpl holds the implementation of type that satisfies the
@@ -46,6 +50,7 @@ type consenterImpl struct {
 	retryOptionsVal localconfig.Retry
 	kafkaVersionVal sarama.KafkaVersion
 	topicDetailVal  *sarama.TopicDetail
+	metricsProvider metrics.Provider
 }
 
 // HandleChain creates/returns a reference to a consensus.Chain object for the
