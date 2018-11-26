@@ -81,7 +81,7 @@ await gateway.connect(connectionProfile, connectionOptions);
 `gateway.connect()` has two important parameters:
 
   * **connectionProfile**: the file system location of a
-    [connection profile](./commonconnectionprofile.html) that identifies
+    [connection profile](./connectionprofile.html) that identifies
     a set of peers as a gateway to PaperNet
 
   * **connectionOptions**: a set of options used to control how `application.js`

@@ -12,7 +12,7 @@ solutions.
    namespace.md
    transactioncontext.md
    transactionhandler.md
-   commonconnectionprofile.md
+   connectionprofile.md
    connectoptions.md
    wallet.md
    gateway.md
