@@ -2,32 +2,34 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/deliver"
-	cb "github.com/hyperledger/fabric/protos/common"
+	deliver "github.com/hyperledger/fabric/common/deliver"
+	common "github.com/hyperledger/fabric/protos/common"
 )
 
 type Receiver struct {
-	RecvStub        func() (*cb.Envelope, error)
+	RecvStub        func() (*common.Envelope, error)
 	recvMutex       sync.RWMutex
-	recvArgsForCall []struct{}
-	recvReturns     struct {
-		result1 *cb.Envelope
+	recvArgsForCall []struct {
+	}
+	recvReturns struct {
+		result1 *common.Envelope
 		result2 error
 	}
 	recvReturnsOnCall map[int]struct {
-		result1 *cb.Envelope
+		result1 *common.Envelope
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Receiver) Recv() (*cb.Envelope, error) {
+func (fake *Receiver) Recv() (*common.Envelope, error) {
 	fake.recvMutex.Lock()
 	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
-	fake.recvArgsForCall = append(fake.recvArgsForCall, struct{}{})
+	fake.recvArgsForCall = append(fake.recvArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Recv", []interface{}{})
 	fake.recvMutex.Unlock()
 	if fake.RecvStub != nil {
@@ -36,7 +38,8 @@ func (fake *Receiver) Recv() (*cb.Envelope, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.recvReturns.result1, fake.recvReturns.result2
+	fakeReturns := fake.recvReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Receiver) RecvCallCount() int {
@@ -45,24 +48,34 @@ func (fake *Receiver) RecvCallCount() int {
 	return len(fake.recvArgsForCall)
 }
 
-func (fake *Receiver) RecvReturns(result1 *cb.Envelope, result2 error) {
+func (fake *Receiver) RecvCalls(stub func() (*common.Envelope, error)) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
+	fake.RecvStub = stub
+}
+
+func (fake *Receiver) RecvReturns(result1 *common.Envelope, result2 error) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
 	fake.RecvStub = nil
 	fake.recvReturns = struct {
-		result1 *cb.Envelope
+		result1 *common.Envelope
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Receiver) RecvReturnsOnCall(i int, result1 *cb.Envelope, result2 error) {
+func (fake *Receiver) RecvReturnsOnCall(i int, result1 *common.Envelope, result2 error) {
+	fake.recvMutex.Lock()
+	defer fake.recvMutex.Unlock()
 	fake.RecvStub = nil
 	if fake.recvReturnsOnCall == nil {
 		fake.recvReturnsOnCall = make(map[int]struct {
-			result1 *cb.Envelope
+			result1 *common.Envelope
 			result2 error
 		})
 	}
 	fake.recvReturnsOnCall[i] = struct {
-		result1 *cb.Envelope
+		result1 *common.Envelope
 		result2 error
 	}{result1, result2}
 }

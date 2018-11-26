@@ -15,6 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
@@ -157,6 +158,13 @@ type testConfig struct {
 type testCase struct {
 	name    string
 	prepare func(wg *sync.WaitGroup) (deliver.ChainManager, peer.Deliver_DeliverServer)
+}
+
+func TestFilteredBlockResponseSenderIsFiltered(t *testing.T) {
+	var fbrs interface{} = &filteredBlockResponseSender{}
+	filtered, ok := fbrs.(deliver.Filtered)
+	assert.True(t, ok, "should be filtered")
+	assert.True(t, filtered.IsFiltered(), "should return true from IsFiltered")
 }
 
 func TestEventsServer_DeliverFiltered(t *testing.T) {
@@ -371,7 +379,12 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 			wg := &sync.WaitGroup{}
 			chainManager, deliverServer := test.prepare(wg)
 
-			server := NewDeliverEventsServer(false, defaultPolicyCheckerProvider, chainManager)
+			server := NewDeliverEventsServer(
+				false,
+				defaultPolicyCheckerProvider,
+				chainManager,
+				&disabled.Provider{},
+			)
 			err := server.DeliverFiltered(deliverServer)
 			wg.Wait()
 			// no error expected
