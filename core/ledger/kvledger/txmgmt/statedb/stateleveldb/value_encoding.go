@@ -13,7 +13,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
 
-// encode value encodes the versioned value
+// encode value encodes the versioned value. starting in v1.3 the encoding begins with a nil
+// byte and includes metadata.
 func encodeValue(v *statedb.VersionedValue) ([]byte, error) {
 	vvMsg := &msgs.VersionedValueProto{
 		VersionBytes: v.Version.ToBytes(),
@@ -28,6 +29,8 @@ func encodeValue(v *statedb.VersionedValue) ([]byte, error) {
 	return encodedValue, nil
 }
 
+// decodeValue decodes the statedb value bytes using either the old (pre-v1.3) encoding
+// or the new (v1.3 and later) encoding that supports metadata.
 func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
 	if oldFormatEncoding(encodedValue) {
 		val, ver := decodeValueOldFormat(encodedValue)
@@ -49,7 +52,7 @@ func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
 }
 
 // encodeValueOldFormat appends the value to the version, allows storage of version and value in binary form.
-// With the intorduction of metadata feature, we change the encoding (see function below). However, we retain
+// With the introduction of metadata feature in v1.3, we change the encoding (see function below). However, we retain
 // this funtion for test so as to make sure that we can decode old format and support mixed formats present
 // in a statedb. This function should be used only in tests to generate the encoding in old format
 func encodeValueOldFormat(value []byte, version *version.Height) []byte {
@@ -62,7 +65,7 @@ func encodeValueOldFormat(value []byte, version *version.Height) []byte {
 
 // decodeValueOldFormat separates the version and value from a binary value
 // See comments in the function `encodeValueOldFormat`. We retain this function as is
-// to use this for decoding the old format data present in the statedb. This function
+// to use this for decoding the old format (pre-v1.3) data present in the statedb. This function
 // should not be used directly or in a tests. The function 'decodeValue' should be used
 // for all decodings - which is expected to detect the encoded format and direct the call
 // to this function for decoding the values encoded in the old format
@@ -72,6 +75,12 @@ func decodeValueOldFormat(encodedValue []byte) ([]byte, *version.Height) {
 	return value, height
 }
 
+// oldFormatEncoding checks whether the value is encoded using the old (pre-v1.3) format
+// or new format (v1.3 and later for encoding metadata).
 func oldFormatEncoding(encodedValue []byte) bool {
-	return encodedValue[0] != byte(0)
+	return encodedValue[0] != byte(0) ||
+		(encodedValue[0]|encodedValue[1]) == byte(0) // this check covers a corner case
+	// where the old formatted value happens to start with a nil byte. In this corner case,
+	// the channel config happen to be persisted for the tuple <block 0, tran 0>. So, this
+	// is assumed that block 0 contains a single transaction (i.e., tran 0)
 }
