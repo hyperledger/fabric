@@ -38,6 +38,9 @@ type LedgerReader struct {
 		result1 ledgercommon.ResultsIterator
 		result2 error
 	}
+	DoneStub         func()
+	doneMutex        sync.RWMutex
+	doneArgsForCall  []struct{}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -147,6 +150,22 @@ func (fake *LedgerReader) GetStateRangeScanIteratorReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
+func (fake *LedgerReader) Done() {
+	fake.doneMutex.Lock()
+	fake.doneArgsForCall = append(fake.doneArgsForCall, struct{}{})
+	fake.recordInvocation("Done", []interface{}{})
+	fake.doneMutex.Unlock()
+	if fake.DoneStub != nil {
+		fake.DoneStub()
+	}
+}
+
+func (fake *LedgerReader) DoneCallCount() int {
+	fake.doneMutex.RLock()
+	defer fake.doneMutex.RUnlock()
+	return len(fake.doneArgsForCall)
+}
+
 func (fake *LedgerReader) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -154,6 +173,8 @@ func (fake *LedgerReader) Invocations() map[string][][]interface{} {
 	defer fake.getStateMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
+	fake.doneMutex.RLock()
+	defer fake.doneMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -38,6 +38,9 @@ type LedgerWriter struct {
 		result1 ledgercommon.ResultsIterator
 		result2 error
 	}
+	DoneStub            func()
+	doneMutex           sync.RWMutex
+	doneArgsForCall     []struct{}
 	SetStateStub        func(namespace string, key string, value []byte) error
 	setStateMutex       sync.RWMutex
 	setStateArgsForCall []struct {
@@ -160,6 +163,22 @@ func (fake *LedgerWriter) GetStateRangeScanIteratorReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
+func (fake *LedgerWriter) Done() {
+	fake.doneMutex.Lock()
+	fake.doneArgsForCall = append(fake.doneArgsForCall, struct{}{})
+	fake.recordInvocation("Done", []interface{}{})
+	fake.doneMutex.Unlock()
+	if fake.DoneStub != nil {
+		fake.DoneStub()
+	}
+}
+
+func (fake *LedgerWriter) DoneCallCount() int {
+	fake.doneMutex.RLock()
+	defer fake.doneMutex.RUnlock()
+	return len(fake.doneArgsForCall)
+}
+
 func (fake *LedgerWriter) SetState(namespace string, key string, value []byte) error {
 	var valueCopy []byte
 	if value != nil {
@@ -222,6 +241,8 @@ func (fake *LedgerWriter) Invocations() map[string][][]interface{} {
 	defer fake.getStateMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
+	fake.doneMutex.RLock()
+	defer fake.doneMutex.RUnlock()
 	fake.setStateMutex.RLock()
 	defer fake.setStateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

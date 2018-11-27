@@ -124,6 +124,7 @@ func (s *Prover) RequestTransfer(ctx context.Context, header *token.Header, requ
 	if err != nil {
 		return nil, err
 	}
+	defer transactor.Done()
 
 	tokenTransaction, err := transactor.RequestTransfer(request)
 	if err != nil {
@@ -138,6 +139,7 @@ func (s *Prover) RequestRedeem(ctx context.Context, header *token.Header, reques
 	if err != nil {
 		return nil, err
 	}
+	defer transactor.Done()
 
 	tokenTransaction, err := transactor.RequestRedeem(request)
 	if err != nil {
@@ -152,6 +154,7 @@ func (s *Prover) ListUnspentTokens(ctxt context.Context, header *token.Header, l
 	if err != nil {
 		return nil, err
 	}
+	defer transactor.Done()
 
 	tokens, err := transactor.ListTokens()
 	if err != nil {
@@ -166,6 +169,7 @@ func (s *Prover) RequestApprove(ctx context.Context, header *token.Header, reque
 	if err != nil {
 		return nil, err
 	}
+	defer transactor.Done()
 
 	tokenTransaction, err := transactor.RequestApprove(request)
 	if err != nil {
@@ -180,6 +184,8 @@ func (s *Prover) RequestTransferFrom(ctx context.Context, header *token.Header, 
 	if err != nil {
 		return nil, err
 	}
+	defer transactor.Done()
+
 	tokenTransaction, err := transactor.RequestTransferFrom(request)
 	if err != nil {
 		return nil, err
