@@ -255,7 +255,7 @@ var _ = Describe("Server", func() {
 			})
 
 			It("logs the error", func() {
-				entries := observed.FilterMessage("unary call completed").FilterField(zap.Error(expectedErr)).AllUntimed()
+				entries := observed.FilterMessage("unary call completed").FilterField(grpclogging.Error(expectedErr)).AllUntimed()
 				Expect(entries).To(HaveLen(1))
 			})
 		})
@@ -277,7 +277,7 @@ var _ = Describe("Server", func() {
 			})
 
 			It("logs the error", func() {
-				entries := observed.FilterMessage("unary call completed").FilterField(zap.Error(expectedErr)).AllUntimed()
+				entries := observed.FilterMessage("unary call completed").FilterField(grpclogging.Error(expectedErr)).AllUntimed()
 				Expect(entries).To(HaveLen(1))
 			})
 		})
@@ -551,7 +551,7 @@ var _ = Describe("Server", func() {
 			})
 
 			It("logs the error", func() {
-				entries := observed.FilterMessage("streaming call completed").FilterField(zap.Error(expectedErr)).AllUntimed()
+				entries := observed.FilterMessage("streaming call completed").FilterField(grpclogging.Error(expectedErr)).AllUntimed()
 				Expect(entries).To(HaveLen(1))
 			})
 		})
@@ -578,7 +578,7 @@ var _ = Describe("Server", func() {
 			})
 
 			It("logs the error", func() {
-				entries := observed.FilterMessage("streaming call completed").FilterField(zap.Error(expectedErr)).AllUntimed()
+				entries := observed.FilterMessage("streaming call completed").FilterField(grpclogging.Error(expectedErr)).AllUntimed()
 				Expect(entries).To(HaveLen(1))
 			})
 		})

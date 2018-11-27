@@ -96,7 +96,7 @@ func UnaryServerInterceptor(logger *zap.Logger, opts ...Option) grpc.UnaryServer
 
 		if ce := logger.Check(o.Level(ctx, info.FullMethod), "unary call completed"); ce != nil {
 			ce.Write(
-				zap.Error(err),
+				Error(err),
 				zap.Stringer("grpc.code", grpc.Code(err)),
 				zap.Duration("grpc.call_duration", time.Since(startTime)),
 			)
@@ -128,7 +128,7 @@ func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServ
 		err := handler(service, wrappedStream)
 		if ce := logger.Check(o.Level(ctx, info.FullMethod), "streaming call completed"); ce != nil {
 			ce.Write(
-				zap.Error(err),
+				Error(err),
 				zap.Stringer("grpc.code", grpc.Code(err)),
 				zap.Duration("grpc.call_duration", time.Since(startTime)),
 			)

@@ -32,3 +32,14 @@ func ProtoMessage(key string, val interface{}) zapcore.Field {
 	}
 	return zap.Any(key, val)
 }
+
+func Error(err error) zapcore.Field {
+	if err == nil {
+		return zap.Skip()
+	}
+
+	// Wrap the error so it no longer implements fmt.Formatter. This will prevent
+	// zap from adding the "verboseError" field to the log record that includes a
+	// full stack trace.
+	return zap.Error(struct{ error }{err})
+}
