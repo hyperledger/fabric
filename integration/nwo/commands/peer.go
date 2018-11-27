@@ -332,6 +332,21 @@ func (c ChannelUpdate) Args() []string {
 	}
 }
 
+type ChannelInfo struct {
+	ChannelID string
+}
+
+func (c ChannelInfo) SessionName() string {
+	return "peer-channel-info"
+}
+
+func (c ChannelInfo) Args() []string {
+	return []string{
+		"channel", "getinfo",
+		"-c", c.ChannelID,
+	}
+}
+
 type LoggingSetLevel struct {
 	Logger string
 	Level  string

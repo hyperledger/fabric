@@ -146,7 +146,6 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	}()
 
 	msg := message.GetGossipMessage()
-
 	// group all digest by block number
 	block2dig := groupDigestsByBlockNum(msg.GetPrivateReq().Digests)
 
@@ -156,14 +155,12 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 			logger.Warningf("could not obtain private collection rwset for block %d, because of %s, continue...", blockNum, err)
 			continue
 		}
-
 		returned = append(returned, p.filterNotEligible(dig2rwSets, fcommon.SignedData{
 			Identity:  message.GetConnectionInfo().Identity,
 			Data:      authInfo.SignedData,
 			Signature: authInfo.Signature,
 		}, connectionEndpoint)...)
 	}
-
 	return returned
 }
 
@@ -610,17 +607,21 @@ func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, signedData
 			continue
 		}
 
-		colAP, err := p.AccessPolicy(rwSets.CollectionConfig, p.channel)
-		if err != nil {
-			logger.Debug("No policy found for channel", p.channel, ", collection", d.Collection, "txID", d.TxId, ":", err, "skipping...")
-			continue
+		eligibleForCollection := p.isEligibleByLatestConfig(p.channel, d.Collection, d.Namespace, signedData)
+
+		if !eligibleForCollection {
+			colAP, err := p.AccessPolicy(rwSets.CollectionConfig, p.channel)
+			if err != nil {
+				logger.Debug("No policy found for channel", p.channel, ", collection", d.Collection, "txID", d.TxId, ":", err, "skipping...")
+				continue
+			}
+			colFilter := colAP.AccessFilter()
+			if colFilter == nil {
+				logger.Debug("Collection ", d.Collection, " has no access filter, txID", d.TxId, "skipping...")
+				continue
+			}
+			eligibleForCollection = colFilter(signedData)
 		}
-		colFilter := colAP.AccessFilter()
-		if colFilter == nil {
-			logger.Debug("Collection ", d.Collection, " has no access filter, txID", d.TxId, "skipping...")
-			continue
-		}
-		eligibleForCollection := colFilter(signedData)
 
 		if !eligibleForCollection {
 			logger.Debug("Peer", endpoint, "isn't eligible for txID", d.TxId, "at collection", d.Collection)
@@ -639,6 +640,22 @@ func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, signedData
 		})
 	}
 	return returned
+}
+
+func (p *puller) isEligibleByLatestConfig(channel string, collection string, chaincode string, signedData fcommon.SignedData) bool {
+	cc := fcommon.CollectionCriteria{
+		Channel:    channel,
+		Collection: collection,
+		Namespace:  chaincode,
+	}
+
+	latestCollectionConfig, err := p.cs.RetrieveCollectionAccessPolicy(cc)
+	if err != nil {
+		return false
+	}
+
+	collectionFilter := latestCollectionConfig.AccessFilter()
+	return collectionFilter(signedData)
 }
 
 func randomizeMemberList(members []discovery.NetworkMember) []discovery.NetworkMember {

@@ -692,11 +692,11 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 
 	for orgName, p := range peersByOrg {
 		anchorUpdate := commands.OutputAnchorPeersUpdate{
+			OutputAnchorPeersUpdate: tempFile.Name(),
 			ChannelID:               channelName,
 			Profile:                 n.ProfileForChannel(channelName),
 			ConfigPath:              n.RootDir,
 			AsOrg:                   orgName,
-			OutputAnchorPeersUpdate: tempFile.Name(),
 		}
 		sess, err := n.ConfigTxGen(anchorUpdate)
 		Expect(err).NotTo(HaveOccurred())
@@ -747,7 +747,7 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 	defer os.Remove(tempFile.Name())
 
 	sess, err := n.PeerAdminSession(peers[0], commands.ChannelFetch{
-		Block:      "config",
+		Block:      "0",
 		ChannelID:  name,
 		Orderer:    n.OrdererAddress(o, ListenPort),
 		OutputFile: tempFile.Name(),
@@ -1004,6 +1004,19 @@ func (n *Network) Peer(orgName, peerName string) *Peer {
 		}
 	}
 	return nil
+}
+
+// the function creates a new DiscoveredPeer from the peer and chaincodes passed as arguments
+func (n *Network) DiscoveredPeer(p *Peer, chaincodes ...string) DiscoveredPeer {
+	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
+	Expect(err).NotTo(HaveOccurred())
+
+	return DiscoveredPeer{
+		MSPID:      n.Organization(p.Organization).MSPID,
+		Endpoint:   fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort)),
+		Identity:   string(peerCert),
+		Chaincodes: chaincodes,
+	}
 }
 
 // Orderer returns the information about the named Orderer.

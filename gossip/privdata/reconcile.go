@@ -23,10 +23,11 @@ import (
 )
 
 const (
-	reconcileSleepIntervalConfigKey = "peer.gossip.pvtData.sleepInterval"
+	reconcileSleepIntervalConfigKey = "peer.gossip.pvtData.reconcileSleepInterval"
 	reconcileSleepIntervalDefault   = time.Minute * 5
-	reconcileBatchSizeConfigKey     = "peer.gossip.pvtData.batchSize"
+	reconcileBatchSizeConfigKey     = "peer.gossip.pvtData.reconcileBatchSize"
 	reconcileBatchSizeDefault       = 10
+	reconciliationEnabledConfigKey  = "peer.gossip.pvtData.reconciliationEnabled"
 )
 
 // ReconciliationFetcher interface which defines API to fetch
@@ -49,7 +50,7 @@ type Reconciler interface {
 }
 
 type reconciler struct {
-	config ReconcilerConfig
+	config *ReconcilerConfig
 	ReconciliationFetcher
 	committer.Committer
 	stopChan  chan struct{}
@@ -75,10 +76,11 @@ func (*NoOpReconciler) Stop() {
 type ReconcilerConfig struct {
 	sleepInterval time.Duration
 	batchSize     int
+	isEnabled     bool
 }
 
 // this func reads reconciler configuration values from core.yaml and returns ReconcilerConfig
-func GetReconcilerConfig() ReconcilerConfig {
+func GetReconcilerConfig() *ReconcilerConfig {
 	reconcileSleepInterval := viper.GetDuration(reconcileSleepIntervalConfigKey)
 	if reconcileSleepInterval == 0 {
 		logger.Warning("Configuration key", reconcileSleepIntervalConfigKey, "isn't set, defaulting to", reconcileSleepIntervalDefault)
@@ -89,11 +91,16 @@ func GetReconcilerConfig() ReconcilerConfig {
 		logger.Warning("Configuration key", reconcileBatchSizeConfigKey, "isn't set, defaulting to", reconcileBatchSizeDefault)
 		reconcileBatchSize = reconcileBatchSizeDefault
 	}
-	return ReconcilerConfig{sleepInterval: reconcileSleepInterval, batchSize: reconcileBatchSize}
+	isEnabled := viper.GetBool(reconciliationEnabledConfigKey)
+	return &ReconcilerConfig{sleepInterval: reconcileSleepInterval, batchSize: reconcileBatchSize, isEnabled: isEnabled}
 }
 
 // NewReconciler creates a new instance of reconciler
-func NewReconciler(c committer.Committer, fetcher ReconciliationFetcher, config ReconcilerConfig) Reconciler {
+func NewReconciler(c committer.Committer, fetcher ReconciliationFetcher, config *ReconcilerConfig) Reconciler {
+	if !config.isEnabled {
+		return &NoOpReconciler{}
+	}
+	logger.Debug("Private data reconciliation is enabled")
 	return &reconciler{
 		config:                config,
 		Committer:             c,
@@ -134,15 +141,16 @@ func (r *reconciler) run() {
 func (r *reconciler) reconcile() error {
 	missingPvtDataTracker, err := r.GetMissingPvtDataTracker()
 	if err != nil {
-		logger.Debug("reconciliation error:", err)
+		logger.Error("reconciliation error when trying to get missingPvtDataTrcker:", err)
 		return err
 	}
 	if missingPvtDataTracker == nil {
+		logger.Error("got nil as MissingPvtDataTracker, exiting...")
 		return errors.New("got nil as MissingPvtDataTracker, exiting...")
 	}
 	missingPvtDataInfo, err := missingPvtDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(r.config.batchSize)
 	if err != nil {
-		logger.Debug("reconciliation error:", err)
+		logger.Error("reconciliation error when trying to get missing pvt data info recent blocks:", err)
 		return err
 	}
 	// if missingPvtDataInfo is nil, len will return 0
@@ -150,11 +158,17 @@ func (r *reconciler) reconcile() error {
 		logger.Debug("No missing private data to reconcile, exiting...")
 		return nil
 	}
+	logger.Debug("got from ledger", len(missingPvtDataInfo), "blocks with missing private data, trying to reconcile...")
 	dig2collectionCfg := r.getDig2CollectionConfig(missingPvtDataInfo)
+
 	fetchedData, err := r.FetchReconciledItems(dig2collectionCfg)
 	if err != nil {
-		logger.Debug("reconciliation error:", err)
+		logger.Error("reconciliation error when trying to fetch missing items from different peers:", err)
 		return err
+	}
+	if len(fetchedData.AvailableElements) == 0 {
+		logger.Warning("failed to reconcile missing private data from the other peers")
+		return nil
 	}
 
 	pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
