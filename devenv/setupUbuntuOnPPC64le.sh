@@ -39,7 +39,7 @@ fi
 # Install pre-requisite OS packages #
 #####################################
 apt-get update
-apt-get -y install software-properties-common curl git sudo wget "build-essential" zlib1g-dev libbz2-dev
+apt-get -y install software-properties-common curl git sudo wget "build-essential" zlib1g-dev libbz2-dev softhsm2
 
 #####################################
 # Install and setup Docker services #

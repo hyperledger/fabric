@@ -55,6 +55,14 @@ Prerequisites
 -  Note: The BIOS Enabled Virtualization may be within the CPU or
    Security settings of the BIOS
 
+-  (macOS) `Install softhsm on Mac OSX <http://macappstore.org/softhsm/>`__.You can
+   use Homebrew to install it as follows:
+
+::
+
+    brew install softhsm
+
+
 ``pip``
 ~~~~~~
 

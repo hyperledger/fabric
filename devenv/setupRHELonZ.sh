@@ -37,6 +37,10 @@ iptables -I INPUT 1 -j ACCEPT
 sysctl vm.overcommit_memory=1
 
 ##################
+# Install softhsm2
+yum install softhsm -y
+
+##################
 # Install Docker
 cd /tmp
 wget ftp://ftp.unicamp.br/pub/linuxpatch/s390x/redhat/rhel7.2/docker-1.10.1-rhel7.2-20160408.tar.gz

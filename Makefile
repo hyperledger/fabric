@@ -17,6 +17,7 @@
 #   - orderer - builds a native fabric orderer binary
 #   - release - builds release packages for the host platform
 #   - release-all - builds release packages for all target platforms
+#   - softhsm2_initialization - generates softhsm2 tokens used in pkcs11 test
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 #   - profile - runs unit tests for all packages in coverprofile mode (slow)
@@ -183,7 +184,10 @@ ccenv: $(BUILD_DIR)/image/ccenv/$(DUMMY)
 integration-test: gotool.ginkgo ccenv docker-thirdparty
 	./scripts/run-integration-tests.sh
 
-unit-test: unit-test-clean peer-docker docker-thirdparty ccenv
+softhsm2_initialization:
+	./scripts/config_softhsm2.sh
+
+unit-test: unit-test-clean peer-docker softhsm2_initialization docker-thirdparty ccenv
 	unit-test/run.sh
 
 unit-tests: unit-test
