@@ -1,4 +1,6 @@
-#!/bin/bash
+#! /bin/bash -ue
+set -o pipefail
+
 #
 # Copyright IBM Corp. All Rights Reserved.
 #
@@ -15,16 +17,21 @@ export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/wi
 export MARCH=$(uname -m)
 
 printHelp() {
-  echo "Usage: bootstrap.sh [version [ca_version [thirdparty_version]]] [options]"
-  echo
-  echo "options:"
-  echo "-h : this help"
-  echo "-d : bypass docker image download"
-  echo "-s : bypass fabric-samples repo clone"
-  echo "-b : bypass download of platform-specific binaries"
-  echo
-  echo "e.g. bootstrap.sh 1.3.0 -s"
-  echo "would download docker images and binaries for version 1.3.0"
+cat <<EOF
+
+    Usage: $(basename $0) [OPTION]... [version [ca_version [thirdparty_version]]]
+
+    OPTIONS:
+        -h|--help Print this message
+        -d        Bypass docker image download
+        -s        Bypass fabric-samples repo clone
+        -b        Bypass download of platform-specific binaries
+
+    EXAMPLES:
+        To download docker images for version $VERSION
+        ==> $0 -sb $VERSION
+
+EOF
 }
 
 dockerFabricPull() {
@@ -121,8 +128,7 @@ binaryDownload() {
           echo "==> Partial binary file found. Resuming download..."
           binaryIncrementalDownload ${BINARY_FILE} ${URL}
       else
-          curl ${URL} | tar xz || rc=$?
-          if [ ! -z "$rc" ]; then
+          if ! curl --output - ${URL} | tar -xz; then
               echo "==> There was an error downloading the binary file. Switching to incremental download."
               echo "==> Downloading file..."
               binaryIncrementalDownload ${BINARY_FILE} ${URL}
@@ -170,21 +176,37 @@ dockerInstall() {
   fi
 }
 
+###########  End of Function Definitions ######################################
+
 DOCKER=true
 SAMPLES=true
 BINARIES=true
 
-# Parse commandline args pull out
-# version and/or ca-version strings first
-if [ ! -z $1 -a ${1:0:1} != "-" ]; then
-  VERSION=$1;shift
-  if [ ! -z $1  -a ${1:0:1} != "-" ]; then
-    CA_VERSION=$1;shift
-    if [ ! -z $1  -a ${1:0:1} != "-" ]; then
-      THIRDPARTY_IMAGE_VERSION=$1;shift
-    fi
-  fi
-fi
+# Use 'getopt' to parse the command line arguments
+options=$(getopt -o b,d,h,s --long help -- "$@")
+
+# Extract all flags from command line
+# Leave arguments
+eval set -- "$options"
+while [[ $# > 0 ]]; do
+    case "$1" in
+    -h|--help) printHelp ; exit  ;;
+    -b)        BINARIES=false    ;;
+    -d)        DOCKER=false      ;;
+    -s)        SAMPLES=false     ;;
+    --)        shift ; break     ;;
+    esac
+    shift
+done
+
+# All that is left is arguments (no flags)
+case $# in
+     0)  ;;
+     1)  VERSION=$1 ;;
+     2)  VERSION=$1 ; CA_VERSION=$2 ;;
+     3)  VERSION=$1 ; CA_VERSION=$2 ; THIRDPARTY_IMAGE_VERSION=$3 ;;
+     *)  echo "ERROR: Unexpected argument: $4" ; printHelp ; exit 1 ;;
+esac
 
 # prior to 1.2.0 architecture was determined by uname -m
 if [[ $VERSION =~ ^1\.[0-1]\.* ]]; then
@@ -201,35 +223,19 @@ fi
 BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
 CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
 
-# then parse opts
-while getopts "h?dsb" opt; do
-  case "$opt" in
-    h|\?)
-      printHelp
-      exit 0
-    ;;
-    d)  DOCKER=false
-    ;;
-    s)  SAMPLES=false
-    ;;
-    b)  BINARIES=false
-    ;;
-  esac
-done
-
-if [ "$SAMPLES" == "true" ]; then
+if $SAMPLES; then
   echo
   echo "Installing hyperledger/fabric-samples repo"
   echo
   samplesInstall
 fi
-if [ "$BINARIES" == "true" ]; then
+if $BINARIES; then
   echo
   echo "Installing Hyperledger Fabric binaries"
   echo
   binariesInstall
 fi
-if [ "$DOCKER" == "true" ]; then
+if $DOCKER; then
   echo
   echo "Installing Hyperledger Fabric docker images"
   echo
