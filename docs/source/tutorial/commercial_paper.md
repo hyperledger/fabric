@@ -725,7 +725,7 @@ to a minute to complete:
 ```
 (magnetocorp user)$ npm install
 
-⸨            ░░░░░░⸩ ⠹ extract:lodash: sill extract ansi-styles@3.2.1
+(           ) extract:lodash: sill extract ansi-styles@3.2.1
 (...)
 added 738 packages in 46.701s
 ```
@@ -979,7 +979,7 @@ In the DigiBank administrator window, install the application dependencies:
 (digibank admin)$ cd commercial-paper/organization/digibank/application/
 (digibank admin)$ npm install
 
-⸨            ░░░░░░⸩ ⠹ extract:lodash: sill extract ansi-styles@3.2.1
+(            ) extract:lodash: sill extract ansi-styles@3.2.1
 (...)
 added 738 packages in 46.701s
 ```
@@ -1066,8 +1066,8 @@ topic will give you a fuller explanation of the commercial paper scenario, the
 `PaperNet` business network, its actors, and how the applications and smart
 contracts they use work in detail.
 
-Also feel free to use this sample to start creating your own applications and smart
-contracts!
+Also feel free to use this sample to start creating your own applications and
+smart contracts!
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
