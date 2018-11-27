@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package validation
@@ -26,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -218,10 +209,12 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 	}
 
 	// validate the header type
-	if common.HeaderType(cHdr.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
-		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG_UPDATE &&
-		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG &&
-		common.HeaderType(cHdr.Type) != common.HeaderType_TOKEN_TRANSACTION {
+	switch common.HeaderType(cHdr.Type) {
+	case common.HeaderType_ENDORSER_TRANSACTION:
+	case common.HeaderType_CONFIG_UPDATE:
+	case common.HeaderType_CONFIG:
+	case common.HeaderType_TOKEN_TRANSACTION:
+	default:
 		return errors.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
 	}
 
@@ -370,6 +363,23 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 	return nil
 }
 
+// validateTokenTransaction validates the payload of a transaction assuming its type is TOKEN_TRANSACTION
+func validateTokenTransaction(data []byte) error {
+	// check for nil argument
+	if data == nil {
+		return errors.New("nil payload data")
+	}
+
+	// verify it contains a TokenTransaction
+	tx := &token.TokenTransaction{}
+	if err := proto.Unmarshal(data, tx); err != nil {
+		return errors.Wrap(err, "error unmarshaling the token Transaction")
+	}
+
+	// further verification will be done by tms verifier at transaction commit path
+	return nil
+}
+
 // ValidateTransaction checks that the transaction envelope is properly formed
 func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabilities) (*common.Payload, pb.TxValidationCode) {
 	putilsLogger.Debugf("ValidateTransactionEnvelope starts for envelope %p", e)
@@ -456,6 +466,11 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 			return nil, pb.TxValidationCode_BAD_PROPOSAL_TXID
 		}
 
+		err = validateTokenTransaction(payload.Data)
+		if err != nil {
+			putilsLogger.Errorf("validateTokenTransaction returns err %s", err)
+			return payload, pb.TxValidationCode_BAD_PAYLOAD
+		}
 		return payload, pb.TxValidationCode_VALID
 	default:
 		return nil, pb.TxValidationCode_UNSUPPORTED_TX_PAYLOAD

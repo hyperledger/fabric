@@ -141,9 +141,9 @@ func TestCustomTxProcessors(t *testing.T) {
 	defer ledgermgmt.CleanupTestEnv()
 
 	processor := customtx.GetProcessor(common.HeaderType_CONFIG)
-	assert.NotNil(t, processor)
+	assert.Equal(t, processor, configTxProcessor)
 	processor = customtx.GetProcessor(common.HeaderType_TOKEN_TRANSACTION)
-	assert.NotNil(t, processor)
+	assert.Equal(t, processor, tokenTxProcessor)
 }
 
 type testHelper struct {

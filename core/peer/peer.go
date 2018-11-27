@@ -54,7 +54,9 @@ var peerServer *comm.GRPCServer
 var configTxProcessor = newConfigTxProcessor()
 var tokenTxProcessor = &transaction.Processor{
 	TMSManager: &manager.Manager{
-		IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{}}}
+		IdentityDeserializerManager: &manager.FabricIdentityDeserializerManager{},
+	},
+}
 var ConfigTxProcessors = customtx.Processors{
 	common.HeaderType_CONFIG:            configTxProcessor,
 	common.HeaderType_TOKEN_TRANSACTION: tokenTxProcessor,

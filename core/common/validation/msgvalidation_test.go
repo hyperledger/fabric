@@ -1,13 +1,23 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package validation
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -63,6 +73,78 @@ func setupMSPManagerNoMSPs(channel string) error {
 	return nil
 }
 
+func protoMarshal(t *testing.T, m proto.Message) []byte {
+	bytes, err := proto.Marshal(m)
+	assert.NoError(t, err)
+	return bytes
+}
+
+// getTokenTransaction returns a valid token transaction
+func getTokenTransaction() *token.TokenTransaction {
+	return &token.TokenTransaction{
+		Action: &token.TokenTransaction_PlainAction{
+			PlainAction: &token.PlainTokenAction{
+				Data: &token.PlainTokenAction_PlainImport{
+					PlainImport: &token.PlainImport{
+						Outputs: []*token.PlainOutput{{
+							Owner:    []byte("token-owner"),
+							Type:     "PDQ",
+							Quantity: 777,
+						}},
+					},
+				},
+			},
+		},
+	}
+}
+
+// createTestHeader creates a header for a given transaction type, channel id, and creator
+// Based on useGoodTxid, the returned header will have either a good or bad txid for testing purpose
+func createTestHeader(t *testing.T, txType common.HeaderType, channelId string, creator []byte, useGoodTxid bool) (*common.Header, error) {
+	nonce := []byte("nonce-abc-12345")
+
+	// useGoodTxid is used to for testing purpose. When it is true, we use a bad value for txid
+	txid := "bad"
+	if useGoodTxid {
+		var err error
+		txid, err = utils.ComputeTxID(nonce, creator)
+		assert.NoError(t, err)
+	}
+
+	chdr := &common.ChannelHeader{
+		Type:      int32(txType),
+		ChannelId: channelId,
+		TxId:      txid,
+		Epoch:     uint64(0),
+	}
+
+	shdr := &common.SignatureHeader{
+		Creator: creator,
+		Nonce:   nonce,
+	}
+
+	return &common.Header{
+		ChannelHeader:   protoMarshal(t, chdr),
+		SignatureHeader: protoMarshal(t, shdr),
+	}, nil
+}
+
+func createTestEnvelope(t *testing.T, data []byte, header *common.Header, signer msp.SigningIdentity) (*common.Envelope, error) {
+	payload := &common.Payload{
+		Header: header,
+		Data:   data,
+	}
+	payloadBytes := protoMarshal(t, payload)
+
+	signature, err := signer.Sign(payloadBytes)
+	assert.NoError(t, err)
+
+	return &common.Envelope{
+		Payload:   payloadBytes,
+		Signature: signature,
+	}, nil
+}
+
 func TestCheckSignatureFromCreator(t *testing.T) {
 	response := &peer.Response{Status: 200}
 	simRes := []byte("simulation_result")
@@ -116,4 +198,53 @@ func TestValidateProposalMessage(t *testing.T) {
 	_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: sProp.ProposalBytes, Signature: sigCopy})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("access denied: channel [%s] creator org [%s]", util.GetTestChainID(), signerMSPId))
+}
+
+func TestValidateTokenTransaction(t *testing.T) {
+	tokenTx := getTokenTransaction()
+	txBytes := protoMarshal(t, tokenTx)
+	err := validateTokenTransaction(txBytes)
+	assert.NoError(t, err)
+}
+
+func TestValidateTokenTransactionBadData(t *testing.T) {
+	txBytes := []byte("bad-data")
+	err := validateTokenTransaction(txBytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error unmarshaling the token Transaction")
+}
+
+func TestValidateTransactionGoodTokenTx(t *testing.T) {
+	tokenTx := getTokenTransaction()
+	txBytes := protoMarshal(t, tokenTx)
+	header, err := createTestHeader(t, common.HeaderType_TOKEN_TRANSACTION, util.GetTestChainID(), signerSerialized, true)
+	assert.NoError(t, err)
+	envelope, err := createTestEnvelope(t, txBytes, header, signer)
+	assert.NoError(t, err)
+	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
+	assert.Equal(t, code, peer.TxValidationCode_VALID)
+	assert.Equal(t, payload.Data, txBytes)
+}
+
+func TestValidateTransactionBadTokenTxData(t *testing.T) {
+	txBytes := []byte("bad-data")
+	header, err := createTestHeader(t, common.HeaderType_TOKEN_TRANSACTION, util.GetTestChainID(), signerSerialized, true)
+	assert.NoError(t, err)
+	envelope, err := createTestEnvelope(t, txBytes, header, signer)
+	assert.NoError(t, err)
+	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
+	assert.Equal(t, code, peer.TxValidationCode_BAD_PAYLOAD)
+	assert.Equal(t, payload.Data, txBytes)
+}
+
+func TestValidateTransactionBadTokenTxID(t *testing.T) {
+	tokenTx := getTokenTransaction()
+	txBytes := protoMarshal(t, tokenTx)
+	header, err := createTestHeader(t, common.HeaderType_TOKEN_TRANSACTION, util.GetTestChainID(), signerSerialized, false)
+	assert.NoError(t, err)
+	envelope, err := createTestEnvelope(t, txBytes, header, signer)
+	assert.NoError(t, err)
+	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
+	assert.Equal(t, code, peer.TxValidationCode_BAD_PROPOSAL_TXID)
+	assert.Nil(t, payload)
 }
