@@ -253,7 +253,7 @@ func serve(args []string) error {
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// Initialize chaincode service
-	chaincodeSupport, ccp, sccp, packageProvider := startChaincodeServer(peerHost, aclProvider, pr, metricsProvider)
+	chaincodeSupport, ccp, sccp, packageProvider := startChaincodeServer(peerHost, aclProvider, pr, opsSystem)
 
 	logger.Debugf("Running peer")
 
@@ -613,7 +613,16 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca tlsgen.CA, packageProvider *persistence.PackageProvider, aclProvider aclmgmt.ACLProvider, pr *platforms.Registry, lifecycleSCC *lifecycle.SCC, metricsProvider metrics.Provider) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
+func registerChaincodeSupport(
+	grpcServer *comm.GRPCServer,
+	ccEndpoint string,
+	ca tlsgen.CA,
+	packageProvider *persistence.PackageProvider,
+	aclProvider aclmgmt.ACLProvider,
+	pr *platforms.Registry,
+	lifecycleSCC *lifecycle.SCC,
+	ops *operations.System,
+) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -623,6 +632,22 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 
 	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
 	lsccInst := lscc.New(sccp, aclProvider, pr)
+
+	dockerProvider := dockercontroller.NewProvider(
+		viper.GetString("peer.id"),
+		viper.GetString("peer.networkId"),
+		ops.Provider,
+	)
+	dockerVM := dockercontroller.NewDockerVM(
+		dockerProvider.PeerID,
+		dockerProvider.NetworkID,
+		dockerProvider.BuildMetrics,
+	)
+
+	err := ops.RegisterChecker("docker", dockerVM)
+	if err != nil {
+		logger.Panicf("failed to register docker health check: %s", err)
+	}
 
 	chaincodeSupport := chaincode.NewChaincodeSupport(
 		chaincode.GlobalConfig(),
@@ -635,18 +660,14 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 		aclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
-				dockercontroller.ContainerType: dockercontroller.NewProvider(
-					viper.GetString("peer.id"),
-					viper.GetString("peer.networkId"),
-					metricsProvider,
-				),
+				dockercontroller.ContainerType: dockerProvider,
 				inproccontroller.ContainerType: ipRegistry,
 			},
 		),
 		sccp,
 		pr,
 		peer.DefaultSupport,
-		metricsProvider,
+		ops.Provider,
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 	ccp := chaincode.NewProvider(chaincodeSupport)
@@ -673,7 +694,12 @@ func registerChaincodeSupport(grpcServer *comm.GRPCServer, ccEndpoint string, ca
 // 1) setup local chaincode install path
 // 2) create chaincode specific tls CA
 // 3) start the chaincode specific gRPC listening service
-func startChaincodeServer(peerHost string, aclProvider aclmgmt.ACLProvider, pr *platforms.Registry, metricsProvider metrics.Provider) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *persistence.PackageProvider) {
+func startChaincodeServer(
+	peerHost string,
+	aclProvider aclmgmt.ACLProvider,
+	pr *platforms.Registry,
+	ops *operations.System,
+) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *persistence.PackageProvider) {
 	// Setup chaincode path
 	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
 	ccprovider.SetChaincodesPath(chaincodeInstallPath)
@@ -714,7 +740,7 @@ func startChaincodeServer(peerHost string, aclProvider aclmgmt.ACLProvider, pr *
 		aclProvider,
 		pr,
 		lifecycleSCC,
-		metricsProvider,
+		ops,
 	)
 	go ccSrv.Start()
 	return chaincodeSupport, ccp, sccp, packageProvider
