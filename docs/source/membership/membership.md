@@ -287,7 +287,7 @@ Let's describe these folders in a little more detail and see why they are import
 
 * **Node Identity:** This folder contains the identity of the node, i.e.,
   cryptographic material that --- in combination to the content of `KeyStore` --- would
-  allow the node to authenticate itself in the messages that is sends to other
+  allow the node to authenticate itself in the messages that it sends to other
   participants of its channels and network. For X.509 based identities, this
   folder contains an **X.509 certificate**. This is the certificate a peer places
   in a transaction proposal response, for example, to indicate that the peer has
