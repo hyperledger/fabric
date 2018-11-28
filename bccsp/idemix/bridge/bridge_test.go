@@ -127,7 +127,11 @@ var _ = Describe("Idemix Bridge", func() {
 				})
 
 				It("fails to validate invalid issuer public key", func() {
-					pk.(*bridge.IssuerPublicKey).PK.ProofC[0] = 1
+					if pk.(*bridge.IssuerPublicKey).PK.ProofC[0] != 1 {
+						pk.(*bridge.IssuerPublicKey).PK.ProofC[0] = 1
+					} else {
+						pk.(*bridge.IssuerPublicKey).PK.ProofC[0] = 0
+					}
 					raw, err := pk.Bytes()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(raw).NotTo(BeEmpty())
