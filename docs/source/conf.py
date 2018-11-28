@@ -205,3 +205,6 @@ linkcheck_anchors = False
 
 # Increase the linkcheck timeout to 5 seconds
 linkcheck_timeout = 5
+
+# Ignore redirects from fabric-shim.github.io
+linkcheck_ignore = [r'https://fabric-shim.github.io/*']
