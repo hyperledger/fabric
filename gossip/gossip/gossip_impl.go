@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	protoG "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -764,7 +765,6 @@ func (g *gossipServiceImpl) Stop() {
 	atomic.StoreInt32(&g.stopFlag, int32(1))
 	g.logger.Info("Stopping gossip")
 	g.chanState.stop()
-	g.discAdapter.close()
 	g.disc.Stop()
 	g.certStore.stop()
 	g.toDieChan <- struct{}{}
@@ -772,6 +772,7 @@ func (g *gossipServiceImpl) Stop() {
 	g.ChannelDeMultiplexer.Close()
 	g.stateInfoMsgStore.Stop()
 	g.stopSignal.Wait()
+	g.discAdapter.close()
 	g.comm.Stop()
 }
 
@@ -943,15 +944,22 @@ func (da *discoveryAdapter) SendToPeer(peer *discovery.NetworkMember, msg *proto
 			SelfInformation: selfMsg.Envelope,
 			Known:           oldKnown,
 		}
+		msgCopy := protoG.Clone(msg.GossipMessage).(*proto.GossipMessage)
+
 		// Update original message
-		msg.Content = &proto.GossipMessage_MemReq{
+		msgCopy.Content = &proto.GossipMessage_MemReq{
 			MemReq: memReq,
 		}
 		// Update the envelope of the outer message, no need to sign (point2point)
-		msg, err = msg.NoopSign()
+		msg, err = (&proto.SignedGossipMessage{
+			GossipMessage: msgCopy,
+		}).NoopSign()
+
 		if err != nil {
 			return
 		}
+		da.c.Send(msg, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()})
+		return
 	}
 	da.c.Send(msg, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()})
 }
