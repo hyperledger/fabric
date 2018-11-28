@@ -163,7 +163,7 @@ type Handler struct {
 	chatStream ccintf.ChaincodeStream
 	// errChan is used to communicate errors from the async send to the receive loop
 	errChan chan error
-	// Metrics holds chaincode metrics
+	// Metrics holds chaincode handler metrics
 	Metrics *HandlerMetrics
 }
 
@@ -1142,6 +1142,10 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 		// are typically treated as error
 	case <-time.After(timeout):
 		err = errors.New("timeout expired while executing transaction")
+		ccName := cccid.Name + ":" + cccid.Version
+		h.Metrics.ExecuteTimeouts.With(
+			"chaincode", ccName,
+		).Add(1)
 	}
 
 	return ccresp, err

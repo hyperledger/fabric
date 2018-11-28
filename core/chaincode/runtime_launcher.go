@@ -64,9 +64,15 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
 	case err = <-startFailCh:
 		launchState.Notify(err)
+		r.Metrics.LaunchFailures.With(
+			"chaincode", cname,
+		).Add(1)
 	case <-timeoutCh:
 		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", cname)
 		launchState.Notify(err)
+		r.Metrics.LaunchTimeouts.With(
+			"chaincode", cname,
+		).Add(1)
 	}
 
 	success := true

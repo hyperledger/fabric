@@ -26,6 +26,8 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry        *fake.LaunchRegistry
 		launchState         *chaincode.LaunchState
 		fakeLaunchDuration  *metricsfakes.Histogram
+		fakeLaunchFailures  *metricsfakes.Counter
+		fakeLaunchTimeouts  *metricsfakes.Counter
 
 		ccci *ccprovider.ChaincodeContainerInfo
 
@@ -48,9 +50,15 @@ var _ = Describe("RuntimeLauncher", func() {
 
 		fakeLaunchDuration = &metricsfakes.Histogram{}
 		fakeLaunchDuration.WithReturns(fakeLaunchDuration)
+		fakeLaunchFailures = &metricsfakes.Counter{}
+		fakeLaunchFailures.WithReturns(fakeLaunchFailures)
+		fakeLaunchTimeouts = &metricsfakes.Counter{}
+		fakeLaunchTimeouts.WithReturns(fakeLaunchTimeouts)
 
 		launchMetrics := &chaincode.LaunchMetrics{
 			LaunchDuration: fakeLaunchDuration,
+			LaunchFailures: fakeLaunchFailures,
+			LaunchTimeouts: fakeLaunchTimeouts,
 		}
 		ccci = &ccprovider.ChaincodeContainerInfo{
 			Name:          "chaincode-name",
@@ -136,6 +144,17 @@ var _ = Describe("RuntimeLauncher", func() {
 			Expect(launchState.Err()).To(MatchError("error starting container: banana"))
 		})
 
+		It("records chaincode launch failures", func() {
+			runtimeLauncher.Launch(ccci)
+			Expect(fakeLaunchFailures.WithCallCount()).To(Equal(1))
+			labelValues := fakeLaunchFailures.WithArgsForCall(0)
+			Expect(labelValues).To(Equal([]string{
+				"chaincode", "chaincode-name:chaincode-version",
+			}))
+			Expect(fakeLaunchFailures.AddCallCount()).To(Equal(1))
+			Expect(fakeLaunchFailures.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+		})
+
 		It("stops the runtime", func() {
 			runtimeLauncher.Launch(ccci)
 
@@ -198,6 +217,17 @@ var _ = Describe("RuntimeLauncher", func() {
 			runtimeLauncher.Launch(ccci)
 			Eventually(launchState.Done()).Should(BeClosed())
 			Expect(launchState.Err()).To(MatchError("timeout expired while starting chaincode chaincode-name:chaincode-version for transaction"))
+		})
+
+		It("records chaincode launch timeouts", func() {
+			runtimeLauncher.Launch(ccci)
+			Expect(fakeLaunchTimeouts.WithCallCount()).To(Equal(1))
+			labelValues := fakeLaunchTimeouts.WithArgsForCall(0)
+			Expect(labelValues).To(Equal([]string{
+				"chaincode", "chaincode-name:chaincode-version",
+			}))
+			Expect(fakeLaunchTimeouts.AddCallCount()).To(Equal(1))
+			Expect(fakeLaunchTimeouts.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
 		})
 
 		It("stops the runtime", func() {
