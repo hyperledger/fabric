@@ -42,3 +42,8 @@ func (p *MemoryLedger) SetState(namespace string, key string, value []byte) erro
 func (p *MemoryLedger) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	return nil, nil
 }
+
+// Done releases resources occupied by the MemoryLedger
+func (p *MemoryLedger) Done() {
+	// No resources to be released for MemoryLedger
+}

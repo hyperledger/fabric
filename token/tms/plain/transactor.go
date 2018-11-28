@@ -295,6 +295,13 @@ func (t *Transactor) RequestTransferFrom(request *token.TransferRequest) (*token
 	panic("implement me!")
 }
 
+// Done releases any resources held by this transactor
+func (t *Transactor) Done() {
+	if t.Ledger != nil {
+		t.Ledger.Done()
+	}
+}
+
 // isSpent checks whether an output token with identifier outputID has been spent.
 func (t *Transactor) isSpent(outputID string) (bool, error) {
 	key, err := createInputKey(outputID)

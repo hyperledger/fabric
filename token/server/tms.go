@@ -43,6 +43,9 @@ type Transactor interface {
 	// for transferring the tokens of a third party that previsouly delegated the transfer
 	// via an approve request
 	RequestTransferFrom(request *token.TransferRequest) (*token.TokenTransaction, error)
+
+	// Done releases any resources held by this transactor
+	Done()
 }
 
 //go:generate counterfeiter -o mock/tms_manager.go -fake-name TMSManager . TMSManager
