@@ -182,22 +182,18 @@ DOCKER=true
 SAMPLES=true
 BINARIES=true
 
-# Use 'getopt' to parse the command line arguments
-options=$(getopt -o b,d,h,s --long help -- "$@")
-
-# Extract all flags from command line
-# Leave arguments
-eval set -- "$options"
-while [[ $# > 0 ]]; do
-    case "$1" in
-    -h|--help) printHelp ; exit  ;;
-    -b)        BINARIES=false    ;;
-    -d)        DOCKER=false      ;;
-    -s)        SAMPLES=false     ;;
-    --)        shift ; break     ;;
-    esac
-    shift
+while getopts "h?dsb" opt; do
+  echo $opt
+  case "$opt" in
+    d)  DOCKER=false	;;
+    s)  SAMPLES=false	;;
+    b)  BINARIES=false	;;
+    h|\?) printHelp
+	exit 0
+	;;
+  esac
 done
+shift $(($OPTIND - 1))
 
 # All that is left is arguments (no flags)
 case $# in
