@@ -1455,6 +1455,7 @@ func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v tx
 }
 
 func TestTokenValidTransaction(t *testing.T) {
+	t.Skip("Skipping TestTokenValidTransaction until token transaction is enabled after v1.4")
 	l, v := setupLedgerAndValidatorWithFabTokenCapabilities(t)
 	defer ledgermgmt.CleanupTestEnv()
 	defer l.Close()
@@ -1484,10 +1485,11 @@ func TestTokenCapabilityNotEnabled(t *testing.T) {
 	// We expect the tx to be invalid because of a duplicate txid
 	txsfltr := lutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
-	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_UNSUPPORTED_TX_PAYLOAD)
+	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_UNKNOWN_TX_TYPE)
 }
 
 func TestTokenDuplicateTxId(t *testing.T) {
+	t.Skip("Skipping TestTokenDuplicateTxId until token transaction is enabled after v1.4")
 	theLedger := new(mockLedger)
 	vcs := struct {
 		*mocktxvalidator.Support
