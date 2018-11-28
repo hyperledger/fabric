@@ -13,7 +13,7 @@ import (
 	tk "github.com/hyperledger/fabric/token"
 )
 
-//go:generate mockery -dir . -name Prover -case underscore -output ./mocks/
+//go:generate counterfeiter -o mock/prover.go -fake-name Prover . Prover
 
 type Prover interface {
 
@@ -31,7 +31,7 @@ type Prover interface {
 	RequestTransfer(tokenIDs [][]byte, shares []*token.RecipientTransferShare, signingIdentity tk.SigningIdentity) ([]byte, error)
 }
 
-//go:generate mockery -dir . -name FabricTxSubmitter -case underscore -output ./mocks/
+//go:generate counterfeiter -o mock/fabric_tx_submitter.go -fake-name FabricTxSubmitter . FabricTxSubmitter
 
 type FabricTxSubmitter interface {
 
