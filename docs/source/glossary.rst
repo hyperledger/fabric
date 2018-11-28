@@ -134,10 +134,10 @@ a channel in order to interact with it.  Channels are defined by a
 Configuration-Block_.
 
 
-.. _Commitment:
+.. _Commit:
 
-Commitment
-----------
+Commit
+------
 
 Each Peer_ on a channel validates ordered blocks of
 transactions and then commits (writes/appends) the blocks to its replica of the
