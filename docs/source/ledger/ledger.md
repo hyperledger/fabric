@@ -147,8 +147,8 @@ In the above diagram, we can see that **block** B2 has a **block data** D2 which
 contains all its transactions: T5, T6, T7.
 
 Most importantly, B2 has a **block header** H2, which contains a cryptographic
-**hash** of all the transactions in D2 as well as with the equivalent hash from
-the previous block B1. In this way, blocks are inextricably and immutably linked
+**hash** of all the transactions in D2 as well as with the hash of the previous
+**block header** H1. In this way, blocks are inextricably and immutably linked
 to each other, which the term **blockchain** so neatly captures!
 
 Finally, as you can see in the diagram, the first block in the blockchain is
