@@ -8,6 +8,7 @@ package election
 
 import (
 	"bytes"
+	"encoding/hex"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -99,6 +100,13 @@ type LeaderElectionService interface {
 }
 
 type peerID []byte
+
+func (p peerID) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return hex.EncodeToString(p)
+}
 
 // Peer describes a remote peer
 type Peer interface {

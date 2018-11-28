@@ -6,7 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package common
 
-import "bytes"
+import (
+	"bytes"
+	"encoding/hex"
+)
 
 func init() {
 	// This is just to satisfy the code coverage tool
@@ -19,6 +22,13 @@ func init() {
 // PKIidType defines the type that holds the PKI-id
 // which is the security identifier of a peer
 type PKIidType []byte
+
+func (p PKIidType) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return hex.EncodeToString(p)
+}
 
 // IsNotSameFilter generate filter function which
 // provides a predicate to identify whenever current id
