@@ -1,5 +1,5 @@
-Service Discovery Command Line Interface (discover)
-=====================================================
+Service Discovery CLI
+=====================
 
 The discovery service has its own Command Line Interface (CLI) which
 uses a YAML configuration file to persist properties such as certificate
@@ -45,7 +45,19 @@ Commands:
     Save the config passed by flags into the file specified by --configFile
 ~~~~
 
+Configuring external endpoints
+------------------------------
 
+Currently, to see peers in service discovery they need to have `EXTERNAL_ENDPOINT`
+to be configured for them. Otherwise, Fabric assumes the peer should not be
+disclosed.
+
+To define these endpoints, you need to specify them in the `core.yaml` of the
+peer, replacing the sample endpoint below with the ones of your peer.
+
+```
+CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.example.com:7051
+```
 
 Persisting configuration
 ------------------------
