@@ -31,6 +31,10 @@ type Chaincode struct {
 // DeployChaincode is a helper that will install chaincode to all peers that
 // are connected to the specified channel, instantiate the chaincode on one of
 // the peers, and wait for the instantiation to complete on all of the peers.
+//
+// NOTE: This helper should not be used to deploy the same chaincode on
+// multiple channels as the install will fail on subsequent calls. Instead,
+// simply use InstantiateChaincode().
 func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
 	if len(peers) == 0 {
 		peers = n.PeersWithChannel(channel)
