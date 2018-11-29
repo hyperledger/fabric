@@ -197,3 +197,15 @@ func createRangeScanKeysForCollElg() (startKey, endKey []byte) {
 	return encodeCollElgKey(math.MaxUint64),
 		encodeCollElgKey(0)
 }
+
+func datakeyRange(blockNum uint64) (startKey, endKey []byte) {
+	startKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
+	endKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, math.MaxUint64).ToBytes()...)
+	return
+}
+
+func eligibleMissingdatakeyRange(blkNum uint64) (startKey, endKey []byte) {
+	startKey = append(eligibleMissingDataKeyPrefix, util.EncodeReverseOrderVarUint64(blkNum)...)
+	endKey = append(eligibleMissingDataKeyPrefix, util.EncodeReverseOrderVarUint64(blkNum-1)...)
+	return
+}
