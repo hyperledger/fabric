@@ -590,12 +590,26 @@ func errorIfCreatorHasNoReadAccess(chaincodeName, collection string, txContext *
 }
 
 func hasReadAccess(chaincodeName, collection string, txContext *TransactionContext) (bool, error) {
+	// check to see if read access has already been checked in the scope of this chaincode simulation
+	if txContext.AllowedCollectionAccess[collection] {
+		return true, nil
+	}
+
 	cc := common.CollectionCriteria{
 		Channel:    txContext.ChainID,
 		Namespace:  chaincodeName,
 		Collection: collection,
 	}
-	return txContext.CollectionStore.HasReadAccess(cc, txContext.SignedProp, txContext.TXSimulator)
+
+	accessAllowed, err := txContext.CollectionStore.HasReadAccess(cc, txContext.SignedProp, txContext.TXSimulator)
+	if err != nil {
+		return false, err
+	}
+	if accessAllowed {
+		txContext.AllowedCollectionAccess[collection] = accessAllowed
+	}
+
+	return accessAllowed, err
 }
 
 // Handles query to ledger to get state

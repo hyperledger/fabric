@@ -67,11 +67,12 @@ var _ = Describe("Handler", func() {
 
 		responseNotifier = make(chan *pb.ChaincodeMessage, 1)
 		txContext = &chaincode.TransactionContext{
-			ChainID:              "channel-id",
-			TXSimulator:          fakeTxSimulator,
-			HistoryQueryExecutor: fakeHistoryQueryExecutor,
-			ResponseNotifier:     responseNotifier,
-			CollectionStore:      fakeCollectionStore,
+			ChainID:                 "channel-id",
+			TXSimulator:             fakeTxSimulator,
+			HistoryQueryExecutor:    fakeHistoryQueryExecutor,
+			ResponseNotifier:        responseNotifier,
+			CollectionStore:         fakeCollectionStore,
+			AllowedCollectionAccess: make(map[string]bool),
 		}
 
 		fakeACLProvider = &mock.ACLProvider{}
@@ -931,6 +932,25 @@ var _ = Describe("Handler", func() {
 				It("returns the error from errorIfCreatorHasNoReadAccess", func() {
 					_, err := handler.HandleGetState(incomingMessage, txContext)
 					Expect(err).To(MatchError("no collection config"))
+				})
+			})
+
+			Context("and GetPrivateData returns the response message", func() {
+				BeforeEach(func() {
+					txContext.AllowedCollectionAccess["collection-name"] = true
+					fakeCollectionStore.HasReadAccessReturns(false, nil) // to
+					// ensure that the access cache is used
+				})
+
+				It("returns the the response message from GetPrivateData", func() {
+					resp, err := handler.HandleGetState(incomingMessage, txContext)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp).To(Equal(&pb.ChaincodeMessage{
+						Type:      pb.ChaincodeMessage_RESPONSE,
+						Payload:   []byte("get-private-data-response"),
+						Txid:      "tx-id",
+						ChannelId: "channel-id",
+					}))
 				})
 			})
 

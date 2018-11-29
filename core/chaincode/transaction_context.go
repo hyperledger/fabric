@@ -29,6 +29,13 @@ type TransactionContext struct {
 	queryIteratorMap    map[string]commonledger.ResultsIterator
 	pendingQueryResults map[string]*PendingQueryResult
 	totalReturnCount    map[string]*int32
+
+	// cache used to save the result of collection acl
+	// as a transactionContext is created for every chaincode
+	// invoke (even in case of chaincode-calling-chaincode,
+	// we do not need to store the namespace in the map and
+	// collection alone is sufficient.
+	AllowedCollectionAccess map[string]bool
 }
 
 func (t *TransactionContext) InitializeQueryContext(queryID string, iter commonledger.ResultsIterator) {

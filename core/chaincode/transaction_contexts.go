@@ -70,6 +70,8 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 
 		queryIteratorMap:    map[string]commonledger.ResultsIterator{},
 		pendingQueryResults: map[string]*PendingQueryResult{},
+
+		AllowedCollectionAccess: make(map[string]bool),
 	}
 	c.contexts[ctxID] = txctx
 
