@@ -253,7 +253,7 @@ type BlockAndPvtData struct {
 // BlockPvtData contains the private data for a block
 type BlockPvtData struct {
 	BlockNum  uint64
-	WriteSets map[uint64]*TxPvtData
+	WriteSets TxPvtDataMap
 }
 
 // Add adds a given missing private data in the MissingPrivateDataList
