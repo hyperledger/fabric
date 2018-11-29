@@ -132,6 +132,7 @@ type CouchConnectionDef struct {
 type CouchInstance struct {
 	conf   CouchConnectionDef //connection configuration
 	client *http.Client       // a client to connect to this instance
+	stats  *stats
 }
 
 //CouchDatabase represents a database within a CouchDB instance
@@ -1645,6 +1646,7 @@ func (couchInstance *CouchInstance) handleRequest(method, dbName, functionName s
 	var resp *http.Response
 	var errResp error
 	couchDBReturn := &DBReturn{}
+	defer couchInstance.recordMetric(time.Now(), dbName, couchDBReturn, functionName)
 
 	//set initial wait duration for retries
 	waitDuration := retryWaitTime * time.Millisecond
@@ -1830,6 +1832,10 @@ func (couchInstance *CouchInstance) handleRequest(method, dbName, functionName s
 
 	//If no errors, then return the http response and the couchdb return object
 	return resp, couchDBReturn, nil
+}
+
+func (ci *CouchInstance) recordMetric(startTime time.Time, connectURL string, couchDBReturn *DBReturn, api string) {
+	ci.stats.observeProcessingTime(startTime, connectURL, strconv.Itoa(couchDBReturn.StatusCode), api)
 }
 
 //invalidCouchDBResponse checks to make sure either a valid response or error is returned
