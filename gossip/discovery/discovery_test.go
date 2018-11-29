@@ -405,6 +405,25 @@ func TestToString(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("%d, %d", now.UnixNano(), 42), fmt.Sprint(ts))
 }
 
+func TestNetworkMemberString(t *testing.T) {
+	tests := []struct {
+		input    NetworkMember
+		expected string
+	}{
+		{
+			input:    NetworkMember{Endpoint: "endpoint", InternalEndpoint: "internal-endpoint", PKIid: common.PKIidType{0, 1, 2, 3}, Metadata: nil},
+			expected: "Endpoint: endpoint, InternalEndpoint: internal-endpoint, PKI-ID: 00010203, Metadata: ",
+		},
+		{
+			input:    NetworkMember{Endpoint: "endpoint", InternalEndpoint: "internal-endpoint", PKIid: common.PKIidType{0, 1, 2, 3}, Metadata: []byte{4, 5, 6, 7}},
+			expected: "Endpoint: endpoint, InternalEndpoint: internal-endpoint, PKI-ID: 00010203, Metadata: 04050607",
+		},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.expected, tt.input.String())
+	}
+}
+
 func TestBadInput(t *testing.T) {
 	inst := createDiscoveryInstance(2048, fmt.Sprintf("d%d", 0), []string{})
 	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(nil)
