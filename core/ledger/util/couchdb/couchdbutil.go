@@ -144,8 +144,10 @@ func CreateSystemDatabasesIfNotExist(couchInstance *CouchInstance) error {
 func constructCouchDBUrl(connectURL *url.URL, dbName string, pathElements ...string) *url.URL {
 	var buffer bytes.Buffer
 	buffer.WriteString(connectURL.String())
-	buffer.WriteString("/")
-	buffer.WriteString(encodePathElement(dbName))
+	if dbName != "" {
+		buffer.WriteString("/")
+		buffer.WriteString(encodePathElement(dbName))
+	}
 	for _, pathElement := range pathElements {
 		buffer.WriteString("/")
 		buffer.WriteString(encodePathElement(pathElement))
