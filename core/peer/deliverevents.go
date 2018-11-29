@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
@@ -60,11 +61,18 @@ type filteredBlockResponseSender struct {
 	peer.Deliver_DeliverFilteredServer
 }
 
+// SendStatusResponse generates status reply proto message
 func (fbrs *filteredBlockResponseSender) SendStatusResponse(status common.Status) error {
 	response := &peer.DeliverResponse{
 		Type: &peer.DeliverResponse_Status{Status: status},
 	}
 	return fbrs.Send(response)
+}
+
+// IsFiltered is a marker method which indicates that this response sender
+// sends filtered blocks.
+func (fbrs *filteredBlockResponseSender) IsFiltered() bool {
+	return true
 }
 
 // SendBlockResponse generates deliver response with block message
@@ -121,15 +129,16 @@ func (s *server) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 
 // NewDeliverEventsServer creates a peer.Deliver server to deliver block and
 // filtered block events
-func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerProvider, chainManager deliver.ChainManager) peer.DeliverServer {
+func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerProvider, chainManager deliver.ChainManager, metricsProvider metrics.Provider) peer.DeliverServer {
 	timeWindow := viper.GetDuration("peer.authentication.timewindow")
 	if timeWindow == 0 {
 		defaultTimeWindow := 15 * time.Minute
 		logger.Warningf("`peer.authentication.timewindow` not set; defaulting to %s", defaultTimeWindow)
 		timeWindow = defaultTimeWindow
 	}
+	metrics := deliver.NewMetrics(metricsProvider)
 	return &server{
-		dh:                    deliver.NewHandler(chainManager, timeWindow, mutualTLS),
+		dh:                    deliver.NewHandler(chainManager, timeWindow, mutualTLS, metrics),
 		policyCheckerProvider: policyCheckerProvider,
 	}
 }

@@ -468,7 +468,7 @@ func CheckPeerOperationEndpoints(network *nwo.Network, peer *nwo.Peer) {
 
 	authClient, unauthClient := PeerOperationalClients(network, peer)
 
-	CheckPeerPometheusMetrics(authClient, metricsURL)
+	CheckPeerPrometheusMetrics(authClient, metricsURL)
 	CheckLogspecOperations(authClient, logspecURL)
 	CheckHealthEndpoint(authClient, healthURL)
 
@@ -488,7 +488,7 @@ func CheckOrdererOperationEndpoints(network *nwo.Network, orderer *nwo.Orderer) 
 
 	authClient, unauthClient := OrdererOperationalClients(network, orderer)
 
-	CheckOrdererPometheusMetrics(authClient, metricsURL)
+	CheckOrdererPrometheusMetrics(authClient, metricsURL)
 	CheckLogspecOperations(authClient, logspecURL)
 	CheckHealthEndpoint(authClient, healthURL)
 
@@ -501,7 +501,7 @@ func CheckOrdererOperationEndpoints(network *nwo.Network, orderer *nwo.Orderer) 
 	CheckHealthEndpoint(unauthClient, healthURL)
 }
 
-func CheckPeerPometheusMetrics(client *http.Client, url string) {
+func CheckPeerPrometheusMetrics(client *http.Client, url string) {
 	By("hitting the prometheus metrics endpoint")
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())
@@ -521,7 +521,7 @@ func CheckPeerPometheusMetrics(client *http.Client, url string) {
 	Expect(body).To(ContainSubstring(`# TYPE grpc_comm_conn_opened counter`))
 }
 
-func CheckOrdererPometheusMetrics(client *http.Client, url string) {
+func CheckOrdererPrometheusMetrics(client *http.Client, url string) {
 	By("hitting the prometheus metrics endpoint")
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())

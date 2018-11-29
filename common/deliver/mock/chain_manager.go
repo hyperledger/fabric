@@ -2,16 +2,16 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/deliver"
+	deliver "github.com/hyperledger/fabric/common/deliver"
 )
 
 type ChainManager struct {
-	GetChainStub        func(chainID string) deliver.Chain
+	GetChainStub        func(string) deliver.Chain
 	getChainMutex       sync.RWMutex
 	getChainArgsForCall []struct {
-		chainID string
+		arg1 string
 	}
 	getChainReturns struct {
 		result1 deliver.Chain
@@ -23,21 +23,22 @@ type ChainManager struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChainManager) GetChain(chainID string) deliver.Chain {
+func (fake *ChainManager) GetChain(arg1 string) deliver.Chain {
 	fake.getChainMutex.Lock()
 	ret, specificReturn := fake.getChainReturnsOnCall[len(fake.getChainArgsForCall)]
 	fake.getChainArgsForCall = append(fake.getChainArgsForCall, struct {
-		chainID string
-	}{chainID})
-	fake.recordInvocation("GetChain", []interface{}{chainID})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetChain", []interface{}{arg1})
 	fake.getChainMutex.Unlock()
 	if fake.GetChainStub != nil {
-		return fake.GetChainStub(chainID)
+		return fake.GetChainStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getChainReturns.result1
+	fakeReturns := fake.getChainReturns
+	return fakeReturns.result1
 }
 
 func (fake *ChainManager) GetChainCallCount() int {
@@ -46,13 +47,22 @@ func (fake *ChainManager) GetChainCallCount() int {
 	return len(fake.getChainArgsForCall)
 }
 
+func (fake *ChainManager) GetChainCalls(stub func(string) deliver.Chain) {
+	fake.getChainMutex.Lock()
+	defer fake.getChainMutex.Unlock()
+	fake.GetChainStub = stub
+}
+
 func (fake *ChainManager) GetChainArgsForCall(i int) string {
 	fake.getChainMutex.RLock()
 	defer fake.getChainMutex.RUnlock()
-	return fake.getChainArgsForCall[i].chainID
+	argsForCall := fake.getChainArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ChainManager) GetChainReturns(result1 deliver.Chain) {
+	fake.getChainMutex.Lock()
+	defer fake.getChainMutex.Unlock()
 	fake.GetChainStub = nil
 	fake.getChainReturns = struct {
 		result1 deliver.Chain
@@ -60,6 +70,8 @@ func (fake *ChainManager) GetChainReturns(result1 deliver.Chain) {
 }
 
 func (fake *ChainManager) GetChainReturnsOnCall(i int, result1 deliver.Chain) {
+	fake.getChainMutex.Lock()
+	defer fake.getChainMutex.Unlock()
 	fake.GetChainStub = nil
 	if fake.getChainReturnsOnCall == nil {
 		fake.getChainReturnsOnCall = make(map[int]struct {

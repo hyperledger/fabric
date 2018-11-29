@@ -4,11 +4,20 @@ package mock
 import (
 	sync "sync"
 
-	deliver "github.com/hyperledger/fabric/common/deliver"
 	common "github.com/hyperledger/fabric/protos/common"
 )
 
-type ResponseSender struct {
+type FilteredResponseSender struct {
+	IsFilteredStub        func() bool
+	isFilteredMutex       sync.RWMutex
+	isFilteredArgsForCall []struct {
+	}
+	isFilteredReturns struct {
+		result1 bool
+	}
+	isFilteredReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	SendBlockResponseStub        func(*common.Block) error
 	sendBlockResponseMutex       sync.RWMutex
 	sendBlockResponseArgsForCall []struct {
@@ -35,7 +44,59 @@ type ResponseSender struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ResponseSender) SendBlockResponse(arg1 *common.Block) error {
+func (fake *FilteredResponseSender) IsFiltered() bool {
+	fake.isFilteredMutex.Lock()
+	ret, specificReturn := fake.isFilteredReturnsOnCall[len(fake.isFilteredArgsForCall)]
+	fake.isFilteredArgsForCall = append(fake.isFilteredArgsForCall, struct {
+	}{})
+	fake.recordInvocation("IsFiltered", []interface{}{})
+	fake.isFilteredMutex.Unlock()
+	if fake.IsFilteredStub != nil {
+		return fake.IsFilteredStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.isFilteredReturns
+	return fakeReturns.result1
+}
+
+func (fake *FilteredResponseSender) IsFilteredCallCount() int {
+	fake.isFilteredMutex.RLock()
+	defer fake.isFilteredMutex.RUnlock()
+	return len(fake.isFilteredArgsForCall)
+}
+
+func (fake *FilteredResponseSender) IsFilteredCalls(stub func() bool) {
+	fake.isFilteredMutex.Lock()
+	defer fake.isFilteredMutex.Unlock()
+	fake.IsFilteredStub = stub
+}
+
+func (fake *FilteredResponseSender) IsFilteredReturns(result1 bool) {
+	fake.isFilteredMutex.Lock()
+	defer fake.isFilteredMutex.Unlock()
+	fake.IsFilteredStub = nil
+	fake.isFilteredReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FilteredResponseSender) IsFilteredReturnsOnCall(i int, result1 bool) {
+	fake.isFilteredMutex.Lock()
+	defer fake.isFilteredMutex.Unlock()
+	fake.IsFilteredStub = nil
+	if fake.isFilteredReturnsOnCall == nil {
+		fake.isFilteredReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.isFilteredReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FilteredResponseSender) SendBlockResponse(arg1 *common.Block) error {
 	fake.sendBlockResponseMutex.Lock()
 	ret, specificReturn := fake.sendBlockResponseReturnsOnCall[len(fake.sendBlockResponseArgsForCall)]
 	fake.sendBlockResponseArgsForCall = append(fake.sendBlockResponseArgsForCall, struct {
@@ -53,26 +114,26 @@ func (fake *ResponseSender) SendBlockResponse(arg1 *common.Block) error {
 	return fakeReturns.result1
 }
 
-func (fake *ResponseSender) SendBlockResponseCallCount() int {
+func (fake *FilteredResponseSender) SendBlockResponseCallCount() int {
 	fake.sendBlockResponseMutex.RLock()
 	defer fake.sendBlockResponseMutex.RUnlock()
 	return len(fake.sendBlockResponseArgsForCall)
 }
 
-func (fake *ResponseSender) SendBlockResponseCalls(stub func(*common.Block) error) {
+func (fake *FilteredResponseSender) SendBlockResponseCalls(stub func(*common.Block) error) {
 	fake.sendBlockResponseMutex.Lock()
 	defer fake.sendBlockResponseMutex.Unlock()
 	fake.SendBlockResponseStub = stub
 }
 
-func (fake *ResponseSender) SendBlockResponseArgsForCall(i int) *common.Block {
+func (fake *FilteredResponseSender) SendBlockResponseArgsForCall(i int) *common.Block {
 	fake.sendBlockResponseMutex.RLock()
 	defer fake.sendBlockResponseMutex.RUnlock()
 	argsForCall := fake.sendBlockResponseArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *ResponseSender) SendBlockResponseReturns(result1 error) {
+func (fake *FilteredResponseSender) SendBlockResponseReturns(result1 error) {
 	fake.sendBlockResponseMutex.Lock()
 	defer fake.sendBlockResponseMutex.Unlock()
 	fake.SendBlockResponseStub = nil
@@ -81,7 +142,7 @@ func (fake *ResponseSender) SendBlockResponseReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *ResponseSender) SendBlockResponseReturnsOnCall(i int, result1 error) {
+func (fake *FilteredResponseSender) SendBlockResponseReturnsOnCall(i int, result1 error) {
 	fake.sendBlockResponseMutex.Lock()
 	defer fake.sendBlockResponseMutex.Unlock()
 	fake.SendBlockResponseStub = nil
@@ -95,7 +156,7 @@ func (fake *ResponseSender) SendBlockResponseReturnsOnCall(i int, result1 error)
 	}{result1}
 }
 
-func (fake *ResponseSender) SendStatusResponse(arg1 common.Status) error {
+func (fake *FilteredResponseSender) SendStatusResponse(arg1 common.Status) error {
 	fake.sendStatusResponseMutex.Lock()
 	ret, specificReturn := fake.sendStatusResponseReturnsOnCall[len(fake.sendStatusResponseArgsForCall)]
 	fake.sendStatusResponseArgsForCall = append(fake.sendStatusResponseArgsForCall, struct {
@@ -113,26 +174,26 @@ func (fake *ResponseSender) SendStatusResponse(arg1 common.Status) error {
 	return fakeReturns.result1
 }
 
-func (fake *ResponseSender) SendStatusResponseCallCount() int {
+func (fake *FilteredResponseSender) SendStatusResponseCallCount() int {
 	fake.sendStatusResponseMutex.RLock()
 	defer fake.sendStatusResponseMutex.RUnlock()
 	return len(fake.sendStatusResponseArgsForCall)
 }
 
-func (fake *ResponseSender) SendStatusResponseCalls(stub func(common.Status) error) {
+func (fake *FilteredResponseSender) SendStatusResponseCalls(stub func(common.Status) error) {
 	fake.sendStatusResponseMutex.Lock()
 	defer fake.sendStatusResponseMutex.Unlock()
 	fake.SendStatusResponseStub = stub
 }
 
-func (fake *ResponseSender) SendStatusResponseArgsForCall(i int) common.Status {
+func (fake *FilteredResponseSender) SendStatusResponseArgsForCall(i int) common.Status {
 	fake.sendStatusResponseMutex.RLock()
 	defer fake.sendStatusResponseMutex.RUnlock()
 	argsForCall := fake.sendStatusResponseArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *ResponseSender) SendStatusResponseReturns(result1 error) {
+func (fake *FilteredResponseSender) SendStatusResponseReturns(result1 error) {
 	fake.sendStatusResponseMutex.Lock()
 	defer fake.sendStatusResponseMutex.Unlock()
 	fake.SendStatusResponseStub = nil
@@ -141,7 +202,7 @@ func (fake *ResponseSender) SendStatusResponseReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *ResponseSender) SendStatusResponseReturnsOnCall(i int, result1 error) {
+func (fake *FilteredResponseSender) SendStatusResponseReturnsOnCall(i int, result1 error) {
 	fake.sendStatusResponseMutex.Lock()
 	defer fake.sendStatusResponseMutex.Unlock()
 	fake.SendStatusResponseStub = nil
@@ -155,9 +216,11 @@ func (fake *ResponseSender) SendStatusResponseReturnsOnCall(i int, result1 error
 	}{result1}
 }
 
-func (fake *ResponseSender) Invocations() map[string][][]interface{} {
+func (fake *FilteredResponseSender) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.isFilteredMutex.RLock()
+	defer fake.isFilteredMutex.RUnlock()
 	fake.sendBlockResponseMutex.RLock()
 	defer fake.sendBlockResponseMutex.RUnlock()
 	fake.sendStatusResponseMutex.RLock()
@@ -169,7 +232,7 @@ func (fake *ResponseSender) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *ResponseSender) recordInvocation(key string, args []interface{}) {
+func (fake *FilteredResponseSender) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -180,5 +243,3 @@ func (fake *ResponseSender) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ deliver.ResponseSender = new(ResponseSender)

@@ -10,6 +10,7 @@ import (
 	"context"
 	"io"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -89,6 +90,7 @@ type Handler struct {
 	ChainManager     ChainManager
 	TimeWindow       time.Duration
 	BindingInspector Inspector
+	Metrics          *Metrics
 }
 
 //go:generate counterfeiter -o mock/receiver.go -fake-name Receiver . Receiver
@@ -105,6 +107,12 @@ type Receiver interface {
 type ResponseSender interface {
 	SendStatusResponse(status cb.Status) error
 	SendBlockResponse(block *cb.Block) error
+}
+
+// Filtered is a marker interface that indicates a response sender
+// is configured to send filtered blocks
+type Filtered interface {
+	IsFiltered() bool
 }
 
 // Server is a polymorphic structure to support generalization of this handler
@@ -125,11 +133,12 @@ func ExtractChannelHeaderCertHash(msg proto.Message) []byte {
 }
 
 // NewHandler creates an implementation of the Handler interface.
-func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool) *Handler {
+func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics) *Handler {
 	return &Handler{
 		ChainManager:     cm,
 		TimeWindow:       timeWindow,
 		BindingInspector: InspectorFunc(comm.NewBindingInspector(mutualTLS, ExtractChannelHeaderCertHash)),
+		Metrics:          metrics,
 	}
 }
 
@@ -137,6 +146,8 @@ func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool) *Hand
 func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 	addr := util.ExtractRemoteAddress(ctx)
 	logger.Debugf("Starting new deliver loop for %s", addr)
+	h.Metrics.StreamsOpened.Add(1)
+	defer h.Metrics.StreamsClosed.Add(1)
 	for {
 		logger.Debugf("Attempting to read seek info message from %s", addr)
 		envelope, err := srv.Recv()
@@ -144,13 +155,22 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 			logger.Debugf("Received EOF from %s, hangup", addr)
 			return nil
 		}
-
 		if err != nil {
 			logger.Warningf("Error reading from %s: %s", addr, err)
 			return err
 		}
 
-		if err := h.deliverBlocks(ctx, srv, envelope); err != nil {
+		status, err := h.deliverBlocks(ctx, srv, envelope)
+		if err != nil {
+			return err
+		}
+
+		err = srv.SendStatusResponse(status)
+		if status != cb.Status_SUCCESS {
+			return err
+		}
+		if err != nil {
+			logger.Warningf("Error sending to %s: %s", addr, err)
 			return err
 		}
 
@@ -158,29 +178,36 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 	}
 }
 
-func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.Envelope) error {
+func isFiltered(srv *Server) bool {
+	if filtered, ok := srv.ResponseSender.(Filtered); ok {
+		return filtered.IsFiltered()
+	}
+	return false
+}
+
+func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.Envelope) (status cb.Status, err error) {
 	addr := util.ExtractRemoteAddress(ctx)
 	payload, err := utils.UnmarshalPayload(envelope.Payload)
 	if err != nil {
 		logger.Warningf("Received an envelope from %s with no payload: %s", addr, err)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	if payload.Header == nil {
 		logger.Warningf("Malformed envelope received from %s with bad header", addr)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		logger.Warningf("Failed to unmarshal channel header from %s: %s", addr, err)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	err = h.validateChannelHeader(ctx, chdr)
 	if err != nil {
 		logger.Warningf("Rejecting deliver for %s due to envelope validation error: %s", addr, err)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	chain := h.ChainManager.GetChain(chdr.ChannelId)
@@ -188,38 +215,47 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		// Note, we log this at DEBUG because SDKs will poll waiting for channels to be created
 		// So we would expect our log to be somewhat flooded with these
 		logger.Debugf("Rejecting deliver for %s because channel %s not found", addr, chdr.ChannelId)
-		return srv.SendStatusResponse(cb.Status_NOT_FOUND)
+		return cb.Status_NOT_FOUND, nil
 	}
+
+	labels := []string{
+		"channel", chdr.ChannelId,
+		"filtered", strconv.FormatBool(isFiltered(srv)),
+	}
+	h.Metrics.RequestsReceived.With(labels...).Add(1)
+	defer func() {
+		labels := append(labels, "success", strconv.FormatBool(status == cb.Status_SUCCESS))
+		h.Metrics.RequestsCompleted.With(labels...).Add(1)
+	}()
 
 	erroredChan := chain.Errored()
 	select {
 	case <-erroredChan:
 		logger.Warningf("[channel: %s] Rejecting deliver request for %s because of consenter error", chdr.ChannelId, addr)
-		return srv.SendStatusResponse(cb.Status_SERVICE_UNAVAILABLE)
+		return cb.Status_SERVICE_UNAVAILABLE, nil
 	default:
-
 	}
 
 	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, crypto.ExpiresAt)
 	if err != nil {
 		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.ChannelId, err)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	if err := accessControl.Evaluate(); err != nil {
 		logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
-		return srv.SendStatusResponse(cb.Status_FORBIDDEN)
+		return cb.Status_FORBIDDEN, nil
 	}
 
 	seekInfo := &ab.SeekInfo{}
 	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
 		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	if seekInfo.Start == nil || seekInfo.Stop == nil {
 		logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
-		return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+		return cb.Status_BAD_REQUEST, nil
 	}
 
 	logger.Debugf("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
@@ -236,14 +272,14 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		stopNum = stop.Specified.Number
 		if stopNum < number {
 			logger.Warningf("[channel: %s] Received invalid seekInfo message from %s: start number %d greater than stop number %d", chdr.ChannelId, addr, number, stopNum)
-			return srv.SendStatusResponse(cb.Status_BAD_REQUEST)
+			return cb.Status_BAD_REQUEST, nil
 		}
 	}
 
 	for {
 		if seekInfo.Behavior == ab.SeekInfo_FAIL_IF_NOT_READY {
 			if number > chain.Reader().Height()-1 {
-				return srv.SendStatusResponse(cb.Status_NOT_FOUND)
+				return cb.Status_NOT_FOUND, nil
 			}
 		}
 
@@ -259,17 +295,17 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		select {
 		case <-ctx.Done():
 			logger.Debugf("Context canceled, aborting wait for next block")
-			return errors.Wrapf(ctx.Err(), "context finished before block retrieved")
+			return cb.Status_INTERNAL_SERVER_ERROR, errors.Wrapf(ctx.Err(), "context finished before block retrieved")
 		case <-erroredChan:
 			logger.Warningf("Aborting deliver for request because of background error")
-			return srv.SendStatusResponse(cb.Status_SERVICE_UNAVAILABLE)
+			return cb.Status_SERVICE_UNAVAILABLE, nil
 		case <-iterCh:
 			// Iterator has set the block and status vars
 		}
 
 		if status != cb.Status_SUCCESS {
 			logger.Errorf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
-			return srv.SendStatusResponse(status)
+			return status, nil
 		}
 
 		// increment block number to support FAIL_IF_NOT_READY deliver behavior
@@ -277,29 +313,26 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 
 		if err := accessControl.Evaluate(); err != nil {
 			logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
-			return srv.SendStatusResponse(cb.Status_FORBIDDEN)
+			return cb.Status_FORBIDDEN, nil
 		}
 
 		logger.Debugf("[channel: %s] Delivering block for (%p) for %s", chdr.ChannelId, seekInfo, addr)
 
 		if err := srv.SendBlockResponse(block); err != nil {
 			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
-			return err
+			return cb.Status_INTERNAL_SERVER_ERROR, err
 		}
+
+		h.Metrics.BlocksSent.With(labels...).Add(1)
 
 		if stopNum == block.Header.Number {
 			break
 		}
 	}
 
-	if err := srv.SendStatusResponse(cb.Status_SUCCESS); err != nil {
-		logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
-		return err
-	}
-
 	logger.Debugf("[channel: %s] Done delivering to %s for (%p)", chdr.ChannelId, addr, seekInfo)
 
-	return nil
+	return cb.Status_SUCCESS, nil
 }
 
 func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHeader) error {
