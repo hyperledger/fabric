@@ -51,6 +51,11 @@ message StaticCollectionConfig {
     // For instance if the value is set to 10, a key last modified by block number 100
     // will be purged at block number 111. A zero value is treated same as MaxUint64
     uint64 block_to_live = 5;
+    // The member only read access denotes whether only collection member clients
+    // can read the private data (if set to true), or even non members can 
+    // read the data (if set to false, for example if you want to implement more granular
+    // access logic in the chaincode)
+    bool member_only_read = 6;
 }
 
 
