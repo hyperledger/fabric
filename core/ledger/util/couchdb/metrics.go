@@ -16,8 +16,8 @@ var (
 		Namespace:    "couchdb",
 		Subsystem:    "",
 		Name:         "processing_time",
-		LabelNames:   []string{"database", "result", "function_name"},
-		StatsdFormat: "%{#fqname}.%{database}.%{result}.%{function_name}",
+		LabelNames:   []string{"database", "function_name", "result"},
+		StatsdFormat: "%{#fqname}.%{database}.%{function_name}.%{result}",
 	}
 )
 
@@ -31,10 +31,10 @@ func newStats(metricsProvider metrics.Provider) *stats {
 	}
 }
 
-func (s *stats) observeProcessingTime(startTime time.Time, dbName, result, functionName string) {
+func (s *stats) observeProcessingTime(startTime time.Time, dbName, functionName, result string) {
 	s.apiProcessingTime.With(
 		"database", dbName,
-		"result", result,
 		"function_name", functionName,
+		"result", result,
 	).Observe(time.Since(startTime).Seconds())
 }
