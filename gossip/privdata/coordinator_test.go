@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/peer"
 	transientstore2 "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -404,6 +405,10 @@ func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privda
 	panic("implement me")
 }
 
+func (cs *collectionStore) HasReadAccess(cc common.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, error) {
+	panic("implement me")
+}
+
 func (cs *collectionStore) RetrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
 	return &common.CollectionConfigPackage{
 		Config: []*common.CollectionConfig{
@@ -443,6 +448,10 @@ func (cap *collectionAccessPolicy) RequiredPeerCount() int {
 
 func (cap *collectionAccessPolicy) MaximumPeerCount() int {
 	return 2
+}
+
+func (cap *collectionAccessPolicy) IsMemberOnlyRead() bool {
+	return false
 }
 
 func (cap *collectionAccessPolicy) AccessFilter() privdata.Filter {

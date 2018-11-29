@@ -9,7 +9,9 @@ package privdata
 import (
 	"strings"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Collection defines a common interface for collections
@@ -47,6 +49,10 @@ type CollectionAccessPolicy interface {
 	// MemberOrgs returns the collection's members as MSP IDs. This serves as
 	// a human-readable way of quickly identifying who is part of a collection.
 	MemberOrgs() []string
+
+	// IsMemberOnlyRead returns a true if only collection members can read
+	// the private data
+	IsMemberOnlyRead() bool
 }
 
 // CollectionPersistenceConfigs encapsulates configurations related to persistece of a collection
@@ -65,9 +71,18 @@ type CollectionPersistenceConfigs interface {
 //          False otherwise
 type Filter func(common.SignedData) bool
 
-// CollectionStore retrieves stored collections based on the collection's
-// properties. It works as a collection object factory and takes care of
-// returning a collection object of an appropriate collection type.
+// CollectionStore provides various APIs to retrieves stored collections and perform
+// membership check & read permission check based on the collection's properties.
+// TODO: Refactor CollectionStore - FAB-13082
+// (1) function such as RetrieveCollection() and RetrieveCollectionConfigPackage() are
+//     never used except in mocks and test files.
+// (2) in gossip, at least in 7 different places, the following 3 operations
+//     are repeated which can be avoided by introducing a API called IsAMemberOf().
+//         (i)   retrieves collection access policy by calling RetrieveCollectionAccessPolicy()
+//         (ii)  get the access filter func from the collection access policy
+//         (iii) create the evaluation policy and check for membership
+// (3) we would need a cache in collection store to avoid repeated crypto operation.
+//     This would be simple to implement when we introduce IsAMemberOf() APIs.
 type CollectionStore interface {
 	// GetCollection retrieves the collection in the following way:
 	// If the TxID exists in the ledger, the collection that is returned has the
@@ -84,7 +99,11 @@ type CollectionStore interface {
 	RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error)
 
 	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
-	RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (CollectionPersistenceConfigs, error)
+	RetrieveCollectionPersistenceConfigs(common.CollectionCriteria) (CollectionPersistenceConfigs, error)
+
+	// HasReadAccess checks whether the creator of the signedProposal has read permission on a
+	// given collection
+	HasReadAccess(common.CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) (bool, error)
 
 	CollectionFilter
 }

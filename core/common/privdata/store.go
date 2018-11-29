@@ -13,6 +13,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +52,11 @@ func NewSimpleCollectionStore(s Support) CollectionStore {
 	return &simpleCollectionStore{s}
 }
 
-func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*common.CollectionConfigPackage, error) {
+	if qe != nil {
+		return RetrieveCollectionConfigPackageFromState(cc, qe)
+	}
+
 	qe, err := c.s.GetQueryExecutorForLedger(cc.Channel)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
@@ -86,8 +92,8 @@ func ParseCollectionConfig(colBytes []byte) (*common.CollectionConfigPackage, er
 	return collections, nil
 }
 
-func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCriteria) (*common.StaticCollectionConfig, error) {
-	collections, err := c.retrieveCollectionConfigPackage(cc)
+func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*common.StaticCollectionConfig, error) {
+	collections, err := c.retrieveCollectionConfigPackage(cc, qe)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +113,8 @@ func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCri
 	return nil, NoSuchCollectionError(cc)
 }
 
-func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria) (*SimpleCollection, error) {
-	staticCollectionConfig, err := c.retrieveCollectionConfig(cc)
+func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*SimpleCollection, error) {
+	staticCollectionConfig, err := c.retrieveCollectionConfig(cc, qe)
 	if err != nil {
 		return nil, err
 	}
@@ -130,22 +136,59 @@ func (c *simpleCollectionStore) AccessFilter(channelName string, collectionPolic
 }
 
 func (c *simpleCollectionStore) RetrieveCollection(cc common.CollectionCriteria) (Collection, error) {
-	return c.retrieveSimpleCollection(cc)
+	return c.retrieveSimpleCollection(cc, nil)
 }
 
 func (c *simpleCollectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) (CollectionAccessPolicy, error) {
-	return c.retrieveSimpleCollection(cc)
+	return c.retrieveSimpleCollection(cc, nil)
 }
 
 func (c *simpleCollectionStore) RetrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
-	return c.retrieveCollectionConfigPackage(cc)
+	return c.retrieveCollectionConfigPackage(cc, nil)
 }
 
 // RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
 func (c *simpleCollectionStore) RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (CollectionPersistenceConfigs, error) {
-	staticCollectionConfig, err := c.retrieveCollectionConfig(cc)
+	staticCollectionConfig, err := c.retrieveCollectionConfig(cc, nil)
 	if err != nil {
 		return nil, err
 	}
 	return &SimpleCollectionPersistenceConfigs{staticCollectionConfig.BlockToLive}, nil
+}
+
+func (c *simpleCollectionStore) HasReadAccess(cc common.CollectionCriteria, signedProposal *pb.SignedProposal, qe ledger.QueryExecutor) (bool, error) {
+	accessPolicy, err := c.retrieveSimpleCollection(cc, qe)
+	if err != nil {
+		return false, err
+	}
+
+	if !accessPolicy.IsMemberOnlyRead() {
+		return true, nil
+	}
+
+	signedData, err := getSignedData(signedProposal)
+	if err != nil {
+		return false, err
+	}
+
+	hasReadAccess := accessPolicy.AccessFilter()
+	return hasReadAccess(signedData), nil
+}
+
+func getSignedData(signedProposal *pb.SignedProposal) (common.SignedData, error) {
+	proposal, err := utils.GetProposal(signedProposal.ProposalBytes)
+	if err != nil {
+		return common.SignedData{}, err
+	}
+
+	creator, _, err := utils.GetChaincodeProposalContext(proposal)
+	if err != nil {
+		return common.SignedData{}, err
+	}
+
+	return common.SignedData{
+		Data:      signedProposal.ProposalBytes,
+		Identity:  creator,
+		Signature: signedProposal.Signature,
+	}, nil
 }

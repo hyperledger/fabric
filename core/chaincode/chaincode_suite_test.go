@@ -11,6 +11,7 @@ import (
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
@@ -139,4 +140,9 @@ type registry interface {
 //go:generate counterfeiter -o fake/application_config_retriever.go --fake-name ApplicationConfigRetriever . applicationConfigRetriever
 type applicationConfigRetriever interface {
 	chaincode.ApplicationConfigRetriever
+}
+
+//go:generate counterfeiter -o mock/collection_store.go --fake-name CollectionStore . collectionStore
+type collectionStore interface {
+	privdata.CollectionStore
 }

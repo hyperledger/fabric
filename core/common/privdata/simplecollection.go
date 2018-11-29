@@ -61,6 +61,10 @@ func (sc *SimpleCollection) AccessFilter() Filter {
 	}
 }
 
+func (sc *SimpleCollection) IsMemberOnlyRead() bool {
+	return sc.conf.MemberOnlyRead
+}
+
 // Setup configures a simple collection object based on a given
 // StaticCollectionConfig proto that has all the necessary information
 func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfig, deserializer msp.IdentityDeserializer) error {
