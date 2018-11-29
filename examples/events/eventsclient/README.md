@@ -34,21 +34,21 @@ Next, to start receiving block events from a peer with TLS enabled, run the
 following command:
 
 ```sh
-CORE_PEER_LOCALMSPID=<msp-id> CORE_PEER_MSPCONFIGPATH=<path to MSP folder> ./eventsclient -channelID=<channel-id> -filtered=<true or false> -tls=true -clientKey=<path to the client key> -clientCert=<path to the client TLS certificate> -rootCert=<path to the server root CA certificate>
+FABRIC_CFG_PATH=<path to config> CORE_PEER_LOCALMSPID=<msp-id> CORE_PEER_MSPCONFIGPATH=<path to MSP folder> ./eventsclient -channelID=<channel-id> -filtered=<true or false> -tls=true -clientKey=<path to the client key> -clientCert=<path to the client TLS certificate> -rootCert=<path to the server root CA certificate>
 ```
 
 If the peer is not using TLS you can run:
 
 ```bash
-CORE_PEER_LOCALMSPID=<msp-id> CORE_PEER_MSPCONFIGPATH=<path to MSP folder> ./eventsclient -channelID=<channel-id> -filtered=<true or false> -tls=false
+FABRIC_CFG_PATH=<path to config> CORE_PEER_LOCALMSPID=<msp-id> CORE_PEER_MSPCONFIGPATH=<path to MSP folder> ./eventsclient -channelID=<channel-id> -filtered=<true or false> -tls=false
 ```
 
 The peer will begin delivering block events and print the output to the console.
 
-# Example with the e2e_cli example
+# Example with BYFN
 The events client sample can be used with TLS enabled or disabled. By default,
-the e2e_cli example will have TLS enabled. In order to allow the events client
-to connect to peers created by the e2e_cli example with TLS enabled, the easiest
+the BYFN sample will have TLS enabled. In order to allow the events client
+to connect to peers created by the BYFN sample with TLS enabled, the easiest
 way would be to map `127.0.0.1` to the hostname of the peer that you are
 connecting to, such as `peer0.org1.example.com`. For example on \*nix based
 systems this would be an entry in `/etc/hosts` file.
@@ -58,11 +58,16 @@ CORE_PEER_TLS_ENABLED=***false*** in ``docker-compose-cli.yaml`` and
 ``base/peer-base.yaml`` as well as
 ORDERER_GENERAL_TLS_ENABLED=***false*** in``base/docker-compose-base.yaml``.
 
-Next, run the [e2e_cli example](https://github.com/hyperledger/fabric/tree/master/examples/e2e_cli).
+Next, run the [BYFN sample](https://github.com/hyperledger/fabric-samples/tree/master/first-network).
 
-Once the "All in one" command:
+First, generate the artifacts for BYFN:
 ```sh
-./network_setup.sh up
+./byfn.sh generate
+```
+
+Then, once the "All in one" command:
+```sh
+./byfn.sh up
 ```
 has completed, attach the event client to peer peer0.org1.example.com by doing
 the following:
@@ -70,23 +75,23 @@ the following:
 * If TLS is enabled:
   * to receive full blocks:
 ```sh
-CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=false -tls=true -clientKey=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.key -clientCert=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.crt -rootCert=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/ca.crt
+FABRIC_CFG_PATH=$GOPATH/src/github.com/hyperledger/fabric-samples/config CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=false -tls=true -clientKey=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.key -clientCert=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.crt -rootCert=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/ca.crt
 ```
 
   * to receive filtered blocks:
 ```sh
-CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=true -tls=true -clientKey=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.key -clientCert=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.crt -rootCert=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/ca.crt
+FABRIC_CFG_PATH=$GOPATH/src/github.com/hyperledger/fabric-samples/config CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=true -tls=true -clientKey=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.key -clientCert=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/client.crt -rootCert=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@Org1.example.com/tls/ca.crt
 ```
 
 * If TLS is disabled:
   * to receive full blocks:
 ```sh
-CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=false -tls=false
+FABRIC_CFG_PATH=$GOPATH/src/github.com/hyperledger/fabric-samples/config CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=false -tls=false
 ```
 
   * to receive filtered blocks:
 ```sh
-CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=true -tls=false
+FABRIC_CFG_PATH=$GOPATH/src/github.com/hyperledger/fabric-samples/config CORE_PEER_LOCALMSPID=Org1MSP CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric-samples/first-network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.Org1.example.com/msp ./eventsclient -server=peer0.org1.example.com:7051 -channelID=mychannel -filtered=true -tls=false
 ```
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
