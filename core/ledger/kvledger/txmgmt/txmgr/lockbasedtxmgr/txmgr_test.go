@@ -1269,7 +1269,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 			pvtDataBlk1Tx1,
 		},
 	}
-	err := txMgr.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData)
+	err = txMgr.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData)
 	assert.NoError(t, err)
 
 	// pvt data should exist
