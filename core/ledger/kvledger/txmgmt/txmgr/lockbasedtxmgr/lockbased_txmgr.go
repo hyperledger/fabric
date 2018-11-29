@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -101,22 +102,24 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) error {
+func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) (
+	[]*txmgr.TxStatInfo, error,
+) {
 	block := blockAndPvtdata.Block
 	logger.Debugf("Waiting for purge mgr to finish the background job of computing expirying keys for the block")
 	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
-	batch, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
+	batch, txstatsInfo, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
 		txmgr.reset()
-		return err
+		return nil, err
 	}
 	txmgr.current = &current{block: block, batch: batch}
 	if err := txmgr.invokeNamespaceListeners(); err != nil {
 		txmgr.reset()
-		return err
+		return nil, err
 	}
-	return nil
+	return txstatsInfo, nil
 }
 
 // RemoveStaleAndCommitPvtDataOfOldBlocks implements method in interface `txmgmt.TxMgr`
@@ -501,7 +504,7 @@ func (txmgr *LockBasedTxMgr) ShouldRecover(lastAvailableBlock uint64) (bool, uin
 func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	block := blockAndPvtdata.Block
 	logger.Debugf("Constructing updateSet for the block %d", block.Header.Number)
-	if err := txmgr.ValidateAndPrepare(blockAndPvtdata, false); err != nil {
+	if _, err := txmgr.ValidateAndPrepare(blockAndPvtdata, false); err != nil {
 		return err
 	}
 

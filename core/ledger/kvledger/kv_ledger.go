@@ -299,7 +299,7 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 
 	startBlockProcessing := time.Now()
 	logger.Debugf("[%s] Validating state for block [%d]", l.ledgerID, blockNo)
-	err = l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
+	txstatsInfo, err := l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
 	if err != nil {
 		return err
 	}
@@ -343,6 +343,7 @@ func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) er
 		elapsedBlockProcessing,
 		elapsedCommitBlockStorage,
 		elapsedCommitState,
+		txstatsInfo,
 	)
 	return nil
 }
@@ -352,11 +353,13 @@ func (l *kvLedger) updateBlockStats(
 	blockProcessingTime time.Duration,
 	blockstorageCommitTime time.Duration,
 	statedbCommitTime time.Duration,
+	txstatsInfo []*txmgr.TxStatInfo,
 ) {
 	l.stats.updateBlockchainHeight(blockNum + 1)
 	l.stats.updateBlockProcessingTime(blockProcessingTime)
 	l.stats.updateBlockstorageCommitTime(blockstorageCommitTime)
 	l.stats.updateStatedbCommitTime(statedbCommitTime)
+	l.stats.updateTransactionsStats(txstatsInfo)
 }
 
 // GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the

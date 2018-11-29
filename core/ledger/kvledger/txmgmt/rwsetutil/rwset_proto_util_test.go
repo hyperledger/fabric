@@ -125,6 +125,13 @@ func TestCollHashedRwSetConversion(t *testing.T) {
 	assert.Equal(t, collHashedRwSet.PvtRwSetHash, collHashedRwSet1.PvtRwSetHash)
 }
 
+func TestNumCollections(t *testing.T) {
+	var txRwSet *TxRwSet
+	assert.Equal(t, 0, txRwSet.NumCollections())         // nil TxRwSet
+	assert.Equal(t, 0, (&TxRwSet{}).NumCollections())    // empty TxRwSet
+	assert.Equal(t, 4, sampleTxRwSet().NumCollections()) // sample TxRwSet
+}
+
 func sampleTxRwSet() *TxRwSet {
 	txRwSet := &TxRwSet{}
 	txRwSet.NsRwSets = append(txRwSet.NsRwSets, sampleNsRwSet("ns-1"))

@@ -99,7 +99,8 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	s1.SetPrivateDataMetadata("ns", "coll", key1, metadata1)
 	s1.Done()
 	blkAndPvtdata1 := prepareNextBlockForTestFromSimulator(t, bg, s1)
-	assert.NoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata1, true))
+	_, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
+	assert.NoError(t, err)
 	assert.NoError(t, txMgr.Commit())
 
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {

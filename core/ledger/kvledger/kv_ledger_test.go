@@ -229,7 +229,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true))
+	_, err := ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
+	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata2))
 
 	// block storage should be as of block-2 but the state and history db should be as of block-1
@@ -278,7 +279,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true))
+	_, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
+	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata3))
 	// committing the transaction to state DB
 	assert.NoError(t, ledger.(*kvLedger).txtmgmt.Commit())
@@ -330,8 +332,8 @@ func testSyncStateAndHistoryDBWithBlockstore(t *testing.T) {
 		map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
-
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true))
+	_, err = ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
+	assert.NoError(t, err)
 	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata4))
 	assert.NoError(t, ledger.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
 

@@ -95,9 +95,12 @@ func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error 
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The retuned 'Block' structure contains only transactions that are endorser transactions and are not alredy marked as invalid
-func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, value []byte) error,
-	block *common.Block, doMVCCValidation bool) (*internal.Block, error) {
+func preprocessProtoBlock(txMgr txmgr.TxMgr,
+	validateKVFunc func(key string, value []byte) error,
+	block *common.Block, doMVCCValidation bool,
+) (*internal.Block, []*txmgr.TxStatInfo, error) {
 	b := &internal.Block{Num: block.Header.Number}
+	txsStatInfo := []*txmgr.TxStatInfo{}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for txIndex, envBytes := range block.Data.Data {
@@ -105,6 +108,8 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, val
 		var chdr *common.ChannelHeader
 		var payload *common.Payload
 		var err error
+		txStatInfo := &txmgr.TxStatInfo{TxType: -1}
+		txsStatInfo = append(txsStatInfo, txStatInfo)
 		if env, err = utils.GetEnvelopeFromBlock(envBytes); err == nil {
 			if payload, err = utils.GetPayload(env); err == nil {
 				chdr, err = utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
@@ -119,12 +124,13 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, val
 			continue
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var txRWSet *rwsetutil.TxRwSet
 		txType := common.HeaderType(chdr.Type)
 		logger.Debugf("txType=%s", txType)
+		txStatInfo.TxType = txType
 		if txType == common.HeaderType_ENDORSER_TRANSACTION {
 			// extract actions from the envelope message
 			respPayload, err := utils.GetActionFromEnvelope(envBytes)
@@ -132,27 +138,29 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, val
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
 				continue
 			}
+			txStatInfo.ChaincodeID = respPayload.ChaincodeId
 			txRWSet = &rwsetutil.TxRwSet{}
 			if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
 			}
 		} else {
-			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txmgr, !doMVCCValidation)
+			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txMgr, !doMVCCValidation)
 			if _, ok := err.(*customtx.InvalidTxError); ok {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
 			}
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if rwsetProto != nil {
 				if txRWSet, err = rwsetutil.TxRwSetFromProtoMsg(rwsetProto); err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 			}
 		}
 		if txRWSet != nil {
+			txStatInfo.NumCollections = txRWSet.NumCollections()
 			if err := validateWriteset(txRWSet, validateKVFunc); err != nil {
 				logger.Warningf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
 					" marked as invalid. Reason code [%s]",
@@ -163,7 +171,7 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, validateKVFunc func(key string, val
 			b.Txs = append(b.Txs, &internal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
 		}
 	}
-	return b, nil
+	return b, txsStatInfo, nil
 }
 
 func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.HeaderType, txmgr txmgr.TxMgr, synchingState bool) (*rwset.TxReadWriteSet, error) {
