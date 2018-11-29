@@ -76,7 +76,7 @@ type privateHandler struct {
 	support     Support
 	coordinator privdata2.Coordinator
 	distributor privdata2.PvtDataDistributor
-	reconciler  privdata2.Reconciler
+	reconciler  privdata2.PvtDataReconciler
 }
 
 func (p privateHandler) close() {
@@ -246,12 +246,19 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}, g.createSelfSignedData())
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()
+	var reconciler privdata2.PvtDataReconciler
+
+	if reconcilerConfig.IsEnabled {
+		reconciler = privdata2.NewReconciler(support.Committer, fetcher, reconcilerConfig)
+	} else {
+		reconciler = &privdata2.NoOpReconciler{}
+	}
 
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
 		distributor: privdata2.NewDistributor(chainID, g, collectionAccessFactory),
-		reconciler:  privdata2.NewReconciler(support.Committer, fetcher, reconcilerConfig),
+		reconciler:  reconciler,
 	}
 	g.privateHandlers[chainID].reconciler.Start()
 
