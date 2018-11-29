@@ -20,10 +20,12 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -1123,6 +1125,7 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
 
+	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
 	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {
 		return nil, err
@@ -1157,6 +1160,14 @@ func (h *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.P
 		msg.Proposal = signedProp
 	}
 	return nil
+}
+
+func (h *Handler) getCollectionStore(channelID string) privdata.CollectionStore {
+	csStoreSupport := &peer.CollectionSupport{
+		PeerLedger: h.LedgerGetter.GetLedger(channelID),
+	}
+	return privdata.NewSimpleCollectionStore(csStoreSupport)
+
 }
 
 func (h *Handler) State() State { return h.state }

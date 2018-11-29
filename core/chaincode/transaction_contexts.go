@@ -66,8 +66,10 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 		ResponseNotifier:     make(chan *pb.ChaincodeMessage, 1),
 		TXSimulator:          txParams.TXSimulator,
 		HistoryQueryExecutor: txParams.HistoryQueryExecutor,
-		queryIteratorMap:     map[string]commonledger.ResultsIterator{},
-		pendingQueryResults:  map[string]*PendingQueryResult{},
+		CollectionStore:      txParams.CollectionStore,
+
+		queryIteratorMap:    map[string]commonledger.ResultsIterator{},
+		pendingQueryResults: map[string]*PendingQueryResult{},
 	}
 	c.contexts[ctxID] = txctx
 

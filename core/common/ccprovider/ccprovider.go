@@ -18,6 +18,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -509,6 +510,7 @@ type TransactionParams struct {
 	Proposal             *pb.Proposal
 	TXSimulator          ledger.TxSimulator
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
+	CollectionStore      privdata.CollectionStore
 
 	// this is additional data passed to the chaincode
 	ProposalDecorations map[string][]byte

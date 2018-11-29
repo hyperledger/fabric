@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -21,6 +22,7 @@ type TransactionContext struct {
 	ResponseNotifier     chan *pb.ChaincodeMessage
 	TXSimulator          ledger.TxSimulator
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
+	CollectionStore      privdata.CollectionStore
 
 	// tracks open iterators used for range queries
 	queryMutex          sync.Mutex
