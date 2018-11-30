@@ -1646,7 +1646,7 @@ func (couchInstance *CouchInstance) handleRequest(method, dbName, functionName s
 	var resp *http.Response
 	var errResp error
 	couchDBReturn := &DBReturn{}
-	defer couchInstance.recordMetric(time.Now(), dbName, couchDBReturn, functionName)
+	defer couchInstance.recordMetric(time.Now(), dbName, functionName, couchDBReturn)
 
 	//set initial wait duration for retries
 	waitDuration := retryWaitTime * time.Millisecond
@@ -1834,8 +1834,8 @@ func (couchInstance *CouchInstance) handleRequest(method, dbName, functionName s
 	return resp, couchDBReturn, nil
 }
 
-func (ci *CouchInstance) recordMetric(startTime time.Time, connectURL string, couchDBReturn *DBReturn, api string) {
-	ci.stats.observeProcessingTime(startTime, connectURL, strconv.Itoa(couchDBReturn.StatusCode), api)
+func (ci *CouchInstance) recordMetric(startTime time.Time, dbName, api string, couchDBReturn *DBReturn) {
+	ci.stats.observeProcessingTime(startTime, dbName, api, strconv.Itoa(couchDBReturn.StatusCode))
 }
 
 //invalidCouchDBResponse checks to make sure either a valid response or error is returned

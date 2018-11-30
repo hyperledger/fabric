@@ -45,7 +45,7 @@ func TestAPIProcessTimeMetric(t *testing.T) {
 	gt.Expect(fakeHistogram.ObserveArgsForCall(0)).NotTo(BeZero())
 	gt.Expect(fakeHistogram.WithArgsForCall(0)).To(Equal([]string{
 		"database", "db_name",
-		"result", "0",
 		"function_name", "function_name",
+		"result", "0",
 	}))
 }
