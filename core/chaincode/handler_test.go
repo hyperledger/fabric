@@ -46,6 +46,7 @@ var _ = Describe("Handler", func() {
 		fakeShimRequestsReceived       *metricsfakes.Counter
 		fakeShimRequestsCompleted      *metricsfakes.Counter
 		fakeShimRequestDuration        *metricsfakes.Histogram
+		fakeExecuteTimeouts            *metricsfakes.Counter
 
 		responseNotifier chan *pb.ChaincodeMessage
 		txContext        *chaincode.TransactionContext
@@ -94,11 +95,14 @@ var _ = Describe("Handler", func() {
 		fakeShimRequestsCompleted.WithReturns(fakeShimRequestsCompleted)
 		fakeShimRequestDuration = &metricsfakes.Histogram{}
 		fakeShimRequestDuration.WithReturns(fakeShimRequestDuration)
+		fakeExecuteTimeouts = &metricsfakes.Counter{}
+		fakeExecuteTimeouts.WithReturns(fakeExecuteTimeouts)
 
 		chaincodeMetrics := &chaincode.HandlerMetrics{
 			ShimRequestsReceived:  fakeShimRequestsReceived,
 			ShimRequestsCompleted: fakeShimRequestsCompleted,
 			ShimRequestDuration:   fakeShimRequestDuration,
+			ExecuteTimeouts:       fakeExecuteTimeouts,
 		}
 
 		handler = &chaincode.Handler{
@@ -2320,6 +2324,22 @@ var _ = Describe("Handler", func() {
 					errCh <- err
 				}()
 				Eventually(errCh).Should(Receive(MatchError("timeout expired while executing transaction")))
+			})
+
+			It("records execute timeouts", func() {
+				errCh := make(chan error, 1)
+				go func() {
+					_, err := handler.Execute(txParams, cccid, incomingMessage, time.Millisecond)
+					errCh <- err
+				}()
+				Eventually(errCh).Should(Receive(MatchError("timeout expired while executing transaction")))
+				Expect(fakeExecuteTimeouts.WithCallCount()).To(Equal(1))
+				labelValues := fakeExecuteTimeouts.WithArgsForCall(0)
+				Expect(labelValues).To(Equal([]string{
+					"chaincode", "chaincode-name:chaincode-version",
+				}))
+				Expect(fakeExecuteTimeouts.AddCallCount()).To(Equal(1))
+				Expect(fakeExecuteTimeouts.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
 			})
 
 			It("deletes the transaction context", func() {
