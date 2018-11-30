@@ -43,23 +43,23 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	fakeBlockchainHeightGauge := testMetricProvider.fakeBlockchainHeightGauge
 	// calls during ledger creation
 	assert.Equal(t, float64(0), fakeBlockchainHeightGauge.SetArgsForCall(0))
-	assert.Equal(t, []string{"channel_name", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(0))
+	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(0))
 
 	// calls during committing genesis block
 	assert.Equal(t, float64(1), fakeBlockchainHeightGauge.SetArgsForCall(1))
-	assert.Equal(t, []string{"channel_name", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(1))
+	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(1))
 
 	ledger.Close()
 	provider.Open(ledgerid)
 	// calls during opening an existing ledger - opening a ledger should set the current height
 	assert.Equal(t, float64(1), fakeBlockchainHeightGauge.SetArgsForCall(2))
-	assert.Equal(t, []string{"channel_name", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(2))
+	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(2))
 
 	// invoke updateBlockStats api explicitly and verify the calls with fake metrics
 	ledger.updateBlockStats(
 		10, 1*time.Second, 2*time.Second, 3*time.Second, nil,
 	)
-	assert.Equal(t, []string{"channel_name", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(3))
+	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(3))
 	assert.Equal(t, float64(11), fakeBlockchainHeightGauge.SetArgsForCall(3))
 }
 
@@ -85,22 +85,22 @@ func TestStatsBlockCommit(t *testing.T) {
 
 	// calls during committing genesis block
 	assert.Equal(t,
-		[]string{"channel_name", ledgerid},
+		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockProcessingTimeHist.WithArgsForCall(0),
 	)
 	assert.Equal(t,
-		[]string{"channel_name", ledgerid},
+		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitTimeHist.WithArgsForCall(0),
 	)
 	assert.Equal(t,
-		[]string{"channel_name", ledgerid},
+		[]string{"channel", ledgerid},
 		testMetricProvider.fakeStatedbCommitTimeHist.WithArgsForCall(0),
 	)
 	assert.Equal(t,
 		[]string{
-			"channel_name", ledgerid,
+			"channel", ledgerid,
 			"transaction_type", common.HeaderType_CONFIG.String(),
-			"chaincode_name", "",
+			"chaincode", "unknown",
 			"validation_code", peer.TxValidationCode_VALID.String(),
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(0),
@@ -113,7 +113,7 @@ func TestStatsBlockCommit(t *testing.T) {
 			{
 				ValidationCode: peer.TxValidationCode_VALID,
 				TxType:         common.HeaderType_ENDORSER_TRANSACTION,
-				ChaincodeID:    &peer.ChaincodeID{Name: "mycc"},
+				ChaincodeID:    &peer.ChaincodeID{Name: "mycc", Version: "1.0"},
 				NumCollections: 2,
 			},
 			{
@@ -123,7 +123,7 @@ func TestStatsBlockCommit(t *testing.T) {
 		},
 	)
 	assert.Equal(t,
-		[]string{"channel_name", ledgerid},
+		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockProcessingTimeHist.WithArgsForCall(1),
 	)
 	assert.Equal(t,
@@ -131,7 +131,7 @@ func TestStatsBlockCommit(t *testing.T) {
 		testMetricProvider.fakeBlockProcessingTimeHist.ObserveArgsForCall(1),
 	)
 	assert.Equal(t,
-		[]string{"channel_name", ledgerid},
+		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitTimeHist.WithArgsForCall(1),
 	)
 	assert.Equal(t,
@@ -139,7 +139,7 @@ func TestStatsBlockCommit(t *testing.T) {
 		testMetricProvider.fakeBlockstorageCommitTimeHist.ObserveArgsForCall(1),
 	)
 	assert.Equal(t,
-		[]string{"channel_name", ledgerid},
+		[]string{"channel", ledgerid},
 		testMetricProvider.fakeStatedbCommitTimeHist.WithArgsForCall(1),
 	)
 	assert.Equal(t,
@@ -148,9 +148,9 @@ func TestStatsBlockCommit(t *testing.T) {
 	)
 	assert.Equal(t,
 		[]string{
-			"channel_name", ledgerid,
+			"channel", ledgerid,
 			"transaction_type", common.HeaderType_ENDORSER_TRANSACTION.String(),
-			"chaincode_name", "mycc",
+			"chaincode", "mycc:1.0",
 			"validation_code", peer.TxValidationCode_VALID.String(),
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(1),
@@ -162,9 +162,9 @@ func TestStatsBlockCommit(t *testing.T) {
 
 	assert.Equal(t,
 		[]string{
-			"channel_name", ledgerid,
-			"transaction_type", "CouldNotDetermine",
-			"chaincode_name", "",
+			"channel", ledgerid,
+			"transaction_type", "unknown",
+			"chaincode", "unknown",
 			"validation_code", peer.TxValidationCode_INVALID_OTHER_REASON.String(),
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(2),
