@@ -10,11 +10,22 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+//go:generate counterfeiter -o mock/metrics_histogram.go --fake-name MetricsHistogram . metricsHistogram
+type metricsHistogram interface {
+	metrics.Histogram
+}
+
+//go:generate counterfeiter -o mock/metrics_provider.go --fake-name MetricsProvider . metricsProvider
+type metricsProvider interface {
+	metrics.Provider
+}
 
 //go:generate counterfeiter -o mock/config_fetcher.go --fake-name OrdererConfigFetcher . ordererConfigFetcher
 type ordererConfigFetcher interface {

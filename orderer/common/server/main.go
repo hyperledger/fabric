@@ -410,7 +410,7 @@ func initializeMultichannelRegistrar(isClusterType bool,
 
 	consenters := make(map[string]consensus.Consenter)
 
-	registrar := multichannel.NewRegistrar(lf, signer, callbacks...)
+	registrar := multichannel.NewRegistrar(lf, signer, metricsProvider, callbacks...)
 
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics

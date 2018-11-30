@@ -34,6 +34,7 @@ func newChainSupport(
 	ledgerResources *ledgerResources,
 	consenters map[string]consensus.Consenter,
 	signer crypto.LocalSigner,
+	blockcutterMetrics *blockcutter.Metrics,
 ) *ChainSupport {
 	// Read in the last block and metadata for the channel
 	lastBlock := blockledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
@@ -49,7 +50,11 @@ func newChainSupport(
 	cs := &ChainSupport{
 		ledgerResources: ledgerResources,
 		LocalSigner:     signer,
-		cutter:          blockcutter.NewReceiverImpl(ledgerResources),
+		cutter: blockcutter.NewReceiverImpl(
+			ledgerResources.ConfigtxValidator().ChainID(),
+			ledgerResources,
+			blockcutterMetrics,
+		),
 	}
 
 	// Set up the msgprocessor
