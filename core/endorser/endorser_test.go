@@ -14,8 +14,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/common/mocks/resourcesconfig"
+	resourceconfig "github.com/hyperledger/fabric/common/mocks/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
@@ -28,7 +30,7 @@ import (
 	em "github.com/hyperledger/fabric/core/mocks/endorser"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -79,6 +81,57 @@ func newMockTxSim() *mockccprovider.MockTxSim {
 	}
 }
 
+// fake metrics
+type fakeEndorserMetrics struct {
+	proposalDuration         *metricsfakes.Histogram
+	proposalsReceived        *metricsfakes.Counter
+	successfulProposals      *metricsfakes.Counter
+	proposalValidationFailed *metricsfakes.Counter
+	proposalACLCheckFailed   *metricsfakes.Counter
+	initFailed               *metricsfakes.Counter
+	endorsementsFailed       *metricsfakes.Counter
+	duplicateTxsFailure      *metricsfakes.Counter
+}
+
+// initalize Endorser with fake metrics
+func initFakeMetrics(es *endorser.Endorser) *fakeEndorserMetrics {
+	fakeMetrics := &fakeEndorserMetrics{
+		proposalDuration:         &metricsfakes.Histogram{},
+		proposalsReceived:        &metricsfakes.Counter{},
+		successfulProposals:      &metricsfakes.Counter{},
+		proposalValidationFailed: &metricsfakes.Counter{},
+		proposalACLCheckFailed:   &metricsfakes.Counter{},
+		initFailed:               &metricsfakes.Counter{},
+		endorsementsFailed:       &metricsfakes.Counter{},
+		duplicateTxsFailure:      &metricsfakes.Counter{},
+	}
+
+	fakeMetrics.proposalDuration.WithReturns(fakeMetrics.proposalDuration)
+	fakeMetrics.proposalACLCheckFailed.WithReturns(fakeMetrics.proposalACLCheckFailed)
+	fakeMetrics.initFailed.WithReturns(fakeMetrics.initFailed)
+	fakeMetrics.endorsementsFailed.WithReturns(fakeMetrics.endorsementsFailed)
+	fakeMetrics.duplicateTxsFailure.WithReturns(fakeMetrics.duplicateTxsFailure)
+
+	es.Metrics.ProposalDuration = fakeMetrics.proposalDuration
+	es.Metrics.ProposalsReceived = fakeMetrics.proposalsReceived
+	es.Metrics.SuccessfulProposals = fakeMetrics.successfulProposals
+	es.Metrics.ProposalValidationFailed = fakeMetrics.proposalValidationFailed
+	es.Metrics.ProposalACLCheckFailed = fakeMetrics.proposalACLCheckFailed
+	es.Metrics.InitFailed = fakeMetrics.initFailed
+	es.Metrics.EndorsementsFailed = fakeMetrics.endorsementsFailed
+	es.Metrics.DuplicateTxsFailure = fakeMetrics.duplicateTxsFailure
+
+	return fakeMetrics
+}
+
+func testEndorsementCompletedMetric(t *testing.T, fakeMetrics *fakeEndorserMetrics, callCount int32, chainID, ccnamever, succ string) {
+	// test for triggering of duplicate TX metric
+	assert.EqualValues(t, callCount, fakeMetrics.proposalDuration.WithCallCount())
+	labelValues := fakeMetrics.proposalDuration.WithArgsForCall(0)
+	assert.EqualValues(t, labelValues, []string{"channel", chainID, "chaincode", ccnamever, "success", succ})
+	assert.NotEqual(t, 0, fakeMetrics.proposalDuration.ObserveArgsForCall(0))
+}
+
 func TestEndorserNilProp(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, &em.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -91,12 +144,20 @@ func TestEndorserNilProp(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+
+	fakeMetrics := initFakeMetrics(es)
 
 	pResp, err := es.ProcessProposal(context.Background(), nil)
 	assert.Error(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
 	assert.Equal(t, "nil arguments", pResp.Response.Message)
+
+	// nil proposal results in upfront validation failure
+	assert.EqualValues(t, 1, fakeMetrics.proposalsReceived.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.proposalsReceived.AddArgsForCall(0))
+	assert.EqualValues(t, 1, fakeMetrics.proposalValidationFailed.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.proposalValidationFailed.AddArgsForCall(0))
 }
 
 func TestEndorserUninvokableSysCC(t *testing.T) {
@@ -105,7 +166,7 @@ func TestEndorserUninvokableSysCC(t *testing.T) {
 		GetApplicationConfigRv:           &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:            errors.New(""),
 		IsSysCCAndNotInvokableExternalRv: true,
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -127,7 +188,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -149,7 +210,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -172,7 +233,7 @@ func TestEndorserBadInstPolicy(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -195,8 +256,8 @@ func TestEndorserSysCC(t *testing.T) {
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
-	attachPluginEndorser(support)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+	attachPluginEndorser(support, nil)
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -217,7 +278,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -238,7 +299,7 @@ func TestEndorserLSCCBadType(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	cds := utils.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -267,7 +328,9 @@ func TestEndorserDupTXId(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+
+	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -275,6 +338,13 @@ func TestEndorserDupTXId(t *testing.T) {
 	assert.Error(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
 	assert.Regexp(t, "duplicate transaction found", pResp.Response.Message)
+
+	// test for triggering of duplicate TX metric
+	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.WithCallCount())
+	labelValues := fakeMetrics.duplicateTxsFailure.WithArgsForCall(0)
+	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0"})
+	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddArgsForCall(0))
 }
 
 func TestEndorserBadACL(t *testing.T) {
@@ -290,13 +360,22 @@ func TestEndorserBadACL(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+
+	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
+
+	// test for triggering of ACL check failure metric
+	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.WithCallCount())
+	labelValues := fakeMetrics.proposalACLCheckFailed.WithArgsForCall(0)
+	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0"})
+	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddArgsForCall(0))
 }
 
 func TestEndorserGoodPathEmptyChannel(t *testing.T) {
@@ -311,13 +390,18 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+
+	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedPropWithCHIdAndArgs("", "ccid", "0", [][]byte{[]byte("args")}, t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 200, pResp.Response.Status)
+
+	// test for triggering of successful TX metric
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, "", "ccid:0", "true")
 }
 
 func TestEndorserLSCCInitFails(t *testing.T) {
@@ -333,12 +417,14 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 			},
 		},
 		ExecuteCDSError: errors.New(""),
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+
+	fakeMetrics := initFakeMetrics(es)
 
 	cds := utils.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
 			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
+				ChaincodeId: &pb.ChaincodeID{Name: "barf", Version: "0"},
 				Type:        pb.ChaincodeSpec_GOLANG,
 			},
 		},
@@ -348,6 +434,16 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
+
+	// test for triggering of instantiation/upgrade failure metric
+	assert.EqualValues(t, 1, fakeMetrics.initFailed.WithCallCount())
+	labelValues := fakeMetrics.initFailed.WithArgsForCall(0)
+	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "barf:0"})
+	assert.EqualValues(t, 1, fakeMetrics.initFailed.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.initFailed.AddArgsForCall(0))
+
+	// test for triggering of failed TX metric
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "lscc:0", "false")
 }
 
 func TestEndorserLSCCDeploySysCC(t *testing.T) {
@@ -366,7 +462,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 			},
 		},
 		SysCCMap: SysCCMap,
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	cds := utils.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -398,8 +494,8 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 		ExecuteEvent:               &pb.ChaincodeEvent{},
 	}
-	attachPluginEndorser(support)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+	attachPluginEndorser(support, nil)
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -420,7 +516,7 @@ func TestEndorserBadChannel(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedPropWithCHID("ccid", "0", "barfchain", t)
 
@@ -440,17 +536,26 @@ func TestEndorserGoodPath(t *testing.T) {
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
 		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
+		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Name: "ccid", Version: "0", Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
-	attachPluginEndorser(support)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+	attachPluginEndorser(support, nil)
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+
+	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 200, pResp.Response.Status)
+
+	// test for triggering of successfully completed TX metric
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid:0", "true")
+
+	// test for triggering of successful proposal metric
+	assert.EqualValues(t, 1, fakeMetrics.successfulProposals.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.successfulProposals.AddArgsForCall(0))
 }
 
 func TestEndorserChaincodeCallLogging(t *testing.T) {
@@ -467,8 +572,8 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
-	attachPluginEndorser(support)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+	attachPluginEndorser(support, nil)
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	buf := gbytes.NewBuffer()
 	flogging.Global.SetWriter(buf)
@@ -494,8 +599,8 @@ func TestEndorserLSCC(t *testing.T) {
 		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
-	attachPluginEndorser(support)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+	attachPluginEndorser(support, nil)
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	cds := utils.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -512,12 +617,12 @@ func TestEndorserLSCC(t *testing.T) {
 	assert.EqualValues(t, 200, pResp.Response.Status)
 }
 
-func attachPluginEndorser(support *em.MockSupport) {
+func attachPluginEndorser(support *em.MockSupport, signerReturnErr error) {
 	csr := &mocks.ChannelStateRetriever{}
 	queryCreator := &mocks.QueryCreator{}
 	csr.On("NewQueryCreator", mock.Anything).Return(queryCreator, nil)
 	sif := &mocks.SigningIdentityFetcher{}
-	sif.On("SigningIdentityForRequest", mock.Anything).Return(support, nil)
+	sif.On("SigningIdentityForRequest", mock.Anything).Return(support, signerReturnErr)
 	pm := &mocks.PluginMapper{}
 	pm.On("PluginFactoryByName", mock.Anything).Return(&builtin.DefaultEndorsementFactory{})
 	support.PluginEndorser = endorser.NewPluginEndorser(&endorser.PluginSupport{
@@ -537,13 +642,13 @@ func TestEndorseWithPlugin(t *testing.T) {
 		Mock:                       m,
 		GetApplicationConfigBoolRv: true,
 		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New("can't find this transaction in the index"),
+		GetTransactionByIDErr:      errors.New(""),
 		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
 		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
 	}
-	attachPluginEndorser(support)
+	attachPluginEndorser(support, nil)
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}))
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -552,6 +657,79 @@ func TestEndorseWithPlugin(t *testing.T) {
 	assert.Equal(t, []byte{1, 2, 3, 4, 5}, resp.Endorsement.Signature)
 	assert.Equal(t, []byte{1, 1, 1}, resp.Endorsement.Endorser)
 	assert.Equal(t, 200, int(resp.Response.Status))
+}
+
+func TestEndorseEndorsementFailure(t *testing.T) {
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
+	support := &em.MockSupport{
+		Mock:                       m,
+		GetApplicationConfigBoolRv: true,
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+		GetTransactionByIDErr:      errors.New(""),
+		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{NameRv: "ccid", VersionRv: "0", EndorsementStr: "ESCC"},
+		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
+	}
+
+	// fail endorsement with "sign err"
+	attachPluginEndorser(support, fmt.Errorf("sign err"))
+
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	fakeMetrics := initFakeMetrics(es)
+
+	signedProp := getSignedProp("ccid", "0", t)
+
+	resp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 500, resp.Response.Status)
+
+	// test for triggering of endorsement failure metric
+	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.WithCallCount())
+	labelValues := fakeMetrics.endorsementsFailed.WithArgsForCall(0)
+	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0", "chaincodeerror", "false"})
+	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddArgsForCall(0))
+
+	// test for triggering of failed TX metric
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid:0", "false")
+}
+
+func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
+	m := &mock.Mock{}
+	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
+	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
+	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
+	support := &em.MockSupport{
+		Mock:                       m,
+		GetApplicationConfigBoolRv: true,
+		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
+		GetTransactionByIDErr:      errors.New(""),
+		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{NameRv: "ccid", VersionRv: "0", EndorsementStr: "ESCC"},
+		ExecuteResp:                &pb.Response{Status: 400, Message: "CC error"},
+	}
+
+	attachPluginEndorser(support, nil)
+
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	fakeMetrics := initFakeMetrics(es)
+
+	signedProp := getSignedProp("ccid", "0", t)
+
+	resp, err := es.ProcessProposal(context.Background(), signedProp)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 400, int(resp.Response.Status))
+
+	// test for triggering of endorsement failure due to CC error metric
+	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.WithCallCount())
+	labelValues := fakeMetrics.endorsementsFailed.WithArgsForCall(0)
+	assert.EqualValues(t, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0", "chaincodeerror", "true"}, labelValues)
+	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddCallCount())
+	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddArgsForCall(0))
+
+	// test for triggering of failed TX metric
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid:0", "false")
 }
 
 func TestSimulateProposal(t *testing.T) {
@@ -566,7 +744,7 @@ func TestSimulateProposal(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, platforms.NewRegistry(&golang.Platform{}))
+	}, platforms.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
 	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, nil)
 	assert.Error(t, err)
@@ -601,11 +779,12 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 				ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
 				ExecuteResp:                expectedResponse,
 			}
-			attachPluginEndorser(support)
+			attachPluginEndorser(support, nil)
 			es := endorser.NewEndorserServer(
 				pvtEmptyDistributor,
 				support,
 				platforms.NewRegistry(&golang.Platform{}),
+				&disabled.Provider{},
 			)
 
 			t.Parallel()
@@ -647,13 +826,14 @@ func TestMain(m *testing.M) {
 }
 
 //go:generate counterfeiter -o mocks/support.go --fake-name Support . support
+
 type support interface {
 	endorser.Support
 }
 
 func TestUserCDSSanitization(t *testing.T) {
 	fakeSupport := &mocks.Support{}
-	e := endorser.NewEndorserServer(nil, fakeSupport, nil)
+	e := endorser.NewEndorserServer(nil, fakeSupport, nil, &disabled.Provider{})
 
 	userCDS := &pb.ChaincodeDeploymentSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
