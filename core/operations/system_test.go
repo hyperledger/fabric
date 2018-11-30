@@ -230,9 +230,6 @@ var _ = Describe("System", func() {
 		BeforeEach(func() {
 			options.Metrics = operations.MetricsOptions{
 				Provider: "prometheus",
-				Prometheus: &operations.Prometheus{
-					HandlerPath: "/metrics",
-				},
 			}
 			system = operations.NewSystem(options)
 			Expect(system).NotTo(BeNil())

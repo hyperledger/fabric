@@ -43,14 +43,9 @@ type Statsd struct {
 	Prefix        string
 }
 
-type Prometheus struct {
-	HandlerPath string
-}
-
 type MetricsOptions struct {
-	Provider   string
-	Statsd     *Statsd
-	Prometheus *Prometheus
+	Provider string
+	Statsd   *Statsd
 }
 
 type Options struct {
@@ -176,7 +171,7 @@ func (s *System) initializeMetricsProvider() error {
 
 	case "prometheus":
 		s.Provider = &prometheus.Provider{}
-		s.mux.Handle(m.Prometheus.HandlerPath, s.handlerChain(prom.Handler(), s.options.TLS.Enabled))
+		s.mux.Handle("/metrics", s.handlerChain(prom.Handler(), s.options.TLS.Enabled))
 		return nil
 
 	default:
