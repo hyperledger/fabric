@@ -214,7 +214,7 @@ Let’s begin the upgrade process by **bringing down the orderer**:
   # Note, replace '1.3.x' with a specific version, for example '1.3.0'.
   # Set IMAGE_TAG to 'latest' if you prefer to default to the images tagged 'latest' on your system.
 
-  export IMAGE_TAG=$(go env GOARCH)-1.3.x-stable
+  export IMAGE_TAG=$(go env GOARCH)-1.3.x
 
 We have created a variable for a directory to put file backups into, and
 exported the ``IMAGE_TAG`` we'd like to move to.
@@ -343,7 +343,7 @@ If you specifically want the v1.3 version of the CLI, issue:
 
 .. code:: bash
 
-  IMAGE_TAG=$(go env GOARCH)-1.3.x-stable docker-compose -f docker-compose-cli.yaml up -d --no-deps cli
+  IMAGE_TAG=$(go env GOARCH)-1.3.x docker-compose -f docker-compose-cli.yaml up -d --no-deps cli
 
 Once you have the version of the CLI you want, get into the CLI container:
 
