@@ -106,12 +106,12 @@ Operations:
     ClientAuthRequired: false
     ClientRootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
-  Metrics:
-    Provider: {{ .MetricsProvider }}
-    Statsd:
-      Network: udp
-      Address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
-      WriteInterval: 5s
-      Prefix: {{ ReplaceAll (ToLower Orderer.ID) "." "_" }}
+Metrics:
+  Provider: {{ .MetricsProvider }}
+  Statsd:
+    Network: udp
+    Address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
+    WriteInterval: 5s
+    Prefix: {{ ReplaceAll (ToLower Orderer.ID) "." "_" }}
 {{- end }}
 `

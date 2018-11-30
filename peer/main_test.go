@@ -45,6 +45,7 @@ func TestPluginLoadingFailure(t *testing.T) {
 				fmt.Sprintf("CORE_PEER_HANDLERS_%s_LIBRARY=testdata/invalid_plugins/invalidplugin.so", plugin),
 				fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "msp"),
 				fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(parentDir, "sampleconfig")),
+				"CORE_OPERATIONS_TLS_ENABLED=false",
 			}
 
 			sess, err := gexec.Start(cmd, nil, nil)
