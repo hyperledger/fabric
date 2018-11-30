@@ -41,7 +41,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
-	"github.com/hyperledger/fabric/orderer/common/performance"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/kafka"
@@ -130,22 +129,14 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
-	switch cmd {
-	case start.FullCommand(): // "start" command
-		logger.Infof("Starting %s", metadata.GetVersionInfo())
-		go handleSignals(addPlatformSignals(map[os.Signal]func(){
-			syscall.SIGTERM: func() { grpcServer.Stop() },
-		}))
-		initializeProfilingService(conf)
-		ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
-		logger.Info("Beginning to serve requests")
-		grpcServer.Start()
-	case benchmark.FullCommand(): // "benchmark" command
-		logger.Info("Starting orderer in benchmark mode")
-		benchmarkServer := performance.GetBenchmarkServer()
-		benchmarkServer.RegisterService(server)
-		benchmarkServer.Start()
-	}
+	logger.Infof("Starting %s", metadata.GetVersionInfo())
+	go handleSignals(addPlatformSignals(map[os.Signal]func(){
+		syscall.SIGTERM: func() { grpcServer.Stop() },
+	}))
+	initializeProfilingService(conf)
+	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
+	logger.Info("Beginning to serve requests")
+	grpcServer.Start()
 }
 
 func initializeLogging() {
