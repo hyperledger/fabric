@@ -167,7 +167,7 @@ following functions apply:
 To help set endorsement policies and marshal them into validation
 parameter byte arrays, the shim provides convenience functions that allow the
 chaincode developer to deal with endorsement policies in terms of the MSP
-identifiers of organizations:
+identifiers of organizations(`KeyEndorsementPolicy <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim/ext/statebased#KeyEndorsementPolicy>`_):
 
 .. code-block:: Go
 
@@ -181,13 +181,10 @@ identifiers of organizations:
 
         // DelOrgs delete the specified channel orgs from the existing key-level endorsement
         // policy for this KVS key. If any org is not present, an error will be returned.
-        DelOrgs([]string) error
-
-        // DelAllOrgs removes any key-level endorsement policy from this KVS key.
-        DelAllOrgs() error
+        DelOrgs(organizations ...string) error
 
         // ListOrgs returns an array of channel orgs that are required to endorse changes
-        ListOrgs() ([]string, error)
+        ListOrgs() ([]string)
     }
 
 For example, to set an endorsement policy for a key where two specific orgs are
