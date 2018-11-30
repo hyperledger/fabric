@@ -9,12 +9,14 @@ package endorser
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -103,6 +105,7 @@ type Endorser struct {
 	s                     Support
 	PlatformRegistry      *platforms.Registry
 	PvtRWSetAssembler
+	Metrics *EndorserMetrics
 }
 
 // validateResult provides the result of endorseProposal verification
@@ -115,12 +118,13 @@ type validateResult struct {
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms.Registry) *Endorser {
+func NewEndorserServer(privDist privateDataDistributor, s Support, pr *platforms.Registry, metricsProv metrics.Provider) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
 		s:                     s,
 		PlatformRegistry:      pr,
 		PvtRWSetAssembler:     &rwSetAssembler{},
+		Metrics:               NewEndorserMetrics(metricsProv),
 	}
 	return e
 }
@@ -178,6 +182,12 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, version
 
 		_, _, err = e.s.ExecuteLegacyInit(txParams, txParams.ChannelID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txParams.TxID, txParams.SignedProp, txParams.Proposal, cds)
 		if err != nil {
+			// increment the failure to indicate instantion/upgrade failures
+			meterLabels := []string{
+				"channel", txParams.ChannelID,
+				"chaincode", cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version,
+			}
+			e.Metrics.InitFailed.With(meterLabels...).Add(1)
 			return nil, nil, err
 		}
 	}
@@ -341,6 +351,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
 
 	if err != nil {
+		e.Metrics.ProposalValidationFailed.Add(1)
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 		return vr, err
 	}
@@ -370,9 +381,18 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 	endorserLogger.Debugf("[%s][%s] processing txid: %s", chainID, shorttxid(txid), txid)
 
 	if chainID != "" {
+		// labels that provide context for failure metrics
+		meterLabels := []string{
+			"channel", chainID,
+			"chaincode", hdrExt.ChaincodeId.Name + ":" + hdrExt.ChaincodeId.Version,
+		}
+
 		// Here we handle uniqueness check and ACLs for proposals targeting a chain
 		// Notice that ValidateProposalMessage has already verified that TxID is computed properly
 		if _, err = e.s.GetTransactionByID(chainID, txid); err == nil {
+			// increment failure due to duplicate transactions. Useful for catching replay attacks in
+			// addition to benign retries
+			e.Metrics.DuplicateTxsFailure.With(meterLabels...).Add(1)
 			err = errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
 			vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 			return vr, err
@@ -383,6 +403,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 		if !e.s.IsSysCC(hdrExt.ChaincodeId.Name) {
 			// check that the proposal complies with the Channel's writers
 			if err = e.s.CheckACL(signedProp, chdr, shdr, hdrExt); err != nil {
+				e.Metrics.ProposalACLCheckFailed.With(meterLabels...).Add(1)
 				vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 				return vr, err
 			}
@@ -400,9 +421,32 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 
 // ProcessProposal process the Proposal
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
+	// start time for computing elapsed time metric for successfully endorsed proposals
+	startTime := time.Now()
+	e.Metrics.ProposalsReceived.Add(1)
+
 	addr := util.ExtractRemoteAddress(ctx)
 	endorserLogger.Debug("Entering: request from", addr)
-	defer endorserLogger.Debug("Exit: request from", addr)
+
+	// variables to capture proposal duration metric
+	var chainID string
+	var hdrExt *pb.ChaincodeHeaderExtension
+	var success bool
+	defer func() {
+		// capture proposal duration metric. hdrExt == nil indicates early failure
+		// where we don't capture latency metric. But the ProposalValidationFailed
+		// counter metric should shed light on those failures.
+		if hdrExt != nil {
+			meterLabels := []string{
+				"channel", chainID,
+				"chaincode", hdrExt.ChaincodeId.Name + ":" + hdrExt.ChaincodeId.Version,
+				"success", strconv.FormatBool(success),
+			}
+			e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
+		}
+
+		endorserLogger.Debug("Exit: request from", addr)
+	}()
 
 	// 0 -- check and validate
 	vr, err := e.preProcess(signedProp)
@@ -484,12 +528,25 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if chainID == "" {
 		pResp = &pb.ProposalResponse{Response: res}
 	} else {
-		//Note: To endorseProposal(), we pass the released txsim. Hence, an error would occur if we try to use this txsim
+		// Note: To endorseProposal(), we pass the released txsim. Hence, an error would occur if we try to use this txsim
 		pResp, err = e.endorseProposal(ctx, chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
+
+		// if error, capture endorsement failure metric
+		meterLabels := []string{
+			"channel", chainID,
+			"chaincode", hdrExt.ChaincodeId.Name + ":" + hdrExt.ChaincodeId.Version,
+		}
+
 		if err != nil {
+			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
+			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
 		if pResp.Response.Status >= shim.ERRORTHRESHOLD {
+			// the default ESCC treats all status codes about threshold as errors and fails endorsement
+			// useful to track this as a separate metric
+			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
+			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
 			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, txid)
 			return pResp, nil
 		}
@@ -499,6 +556,10 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// contains the "return value" from the
 	// chaincode invocation
 	pResp.Response = res
+
+	// total failed proposals = ProposalsReceived-SuccessfulProposals
+	e.Metrics.SuccessfulProposals.Add(1)
+	success = true
 
 	return pResp, nil
 }
