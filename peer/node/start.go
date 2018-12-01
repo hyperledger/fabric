@@ -879,9 +879,6 @@ func newOperationsSystem() *operations.System {
 				WriteInterval: viper.GetDuration("operations.metrics.statsd.writeInterval"),
 				Prefix:        viper.GetString("operations.metrics.statsd.prefix"),
 			},
-			Prometheus: &operations.Prometheus{
-				HandlerPath: viper.GetString("operations.metrics.prometheus.handlerPath"),
-			},
 		},
 		TLS: operations.TLS{
 			Enabled:            viper.GetBool("operations.tls.enabled"),

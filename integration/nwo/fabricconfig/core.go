@@ -270,9 +270,8 @@ type Operations struct {
 }
 
 type Metrics struct {
-	Provider   string      `yaml:"provider"`
-	Statsd     *Statsd     `yaml:"statsd,omitempty"`
-	Prometheus *Prometheus `yaml:"prometheus,omitempty"`
+	Provider string  `yaml:"provider"`
+	Statsd   *Statsd `yaml:"statsd,omitempty"`
 }
 
 type Statsd struct {
@@ -280,8 +279,4 @@ type Statsd struct {
 	Address       string        `yaml:"address,omitempty"`
 	WriteInterval time.Duration `yaml:"writeInterval,omitempty"`
 	Prefix        string        `yaml:"prefix,omitempty"`
-}
-
-type Prometheus struct {
-	HandlerPath string `yaml:"handlerPath"`
 }

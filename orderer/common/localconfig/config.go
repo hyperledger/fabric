@@ -187,9 +187,8 @@ type Operations struct {
 
 // Operations confiures the metrics provider for the orderer.
 type Metrics struct {
-	Provider   string
-	Statsd     Statsd
-	Prometheus Prometheus
+	Provider string
+	Statsd   Statsd
 }
 
 // Statsd provides the configuration required to emit statsd metrics from the orderer.
@@ -198,11 +197,6 @@ type Statsd struct {
 	Address       string
 	WriteInterval time.Duration
 	Prefix        string
-}
-
-// Prometheus provides the configuration required to host prometheus.
-type Prometheus struct {
-	HandlerPath string
 }
 
 // Defaults carries the default orderer configuration values.

@@ -206,6 +206,4 @@ operations:
       address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
       writeInterval: 5s
       prefix: {{ ReplaceAll (ToLower Peer.ID) "." "_" }}
-    prometheus:
-      handlerPath: /metrics
 `

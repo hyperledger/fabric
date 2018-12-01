@@ -116,9 +116,8 @@ type OrdererOperations struct {
 }
 
 type OrdererMetrics struct {
-	Provider   string             `yaml:"Provider"`
-	Statsd     *OrdererStatsd     `yaml:"Statsd,omitempty"`
-	Prometheus *OrdererPrometheus `yaml:"Prometheus,omitempty"`
+	Provider string         `yaml:"Provider"`
+	Statsd   *OrdererStatsd `yaml:"Statsd,omitempty"`
 }
 
 type OrdererStatsd struct {
@@ -126,8 +125,4 @@ type OrdererStatsd struct {
 	Address       string        `yaml:"Address,omitempty"`
 	WriteInterval time.Duration `yaml:"WriteInterval,omitempty"`
 	Prefix        string        `yaml:"Prefix,omitempty"`
-}
-
-type OrdererPrometheus struct {
-	HandlerPath string `yaml:"handlerPath"`
 }

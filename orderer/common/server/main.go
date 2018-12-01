@@ -446,9 +446,6 @@ func newOperationsSystem(conf localconfig.Operations) *operations.System {
 				WriteInterval: conf.Metrics.Statsd.WriteInterval,
 				Prefix:        conf.Metrics.Statsd.Prefix,
 			},
-			Prometheus: &operations.Prometheus{
-				HandlerPath: conf.Metrics.Prometheus.HandlerPath,
-			},
 		},
 		TLS: operations.TLS{
 			Enabled:            conf.TLS.Enabled,
