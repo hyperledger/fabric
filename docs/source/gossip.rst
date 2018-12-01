@@ -47,26 +47,24 @@ in its own organization.
 Leader election
 ---------------
 
-The leader election mechanism is used to **elect** one peer per each organization
-which will maintain connection with ordering service and initiate distribution of
-newly arrived blocks across peers of its own organization. Leveraging leader election
-provides system with ability to efficiently utilize bandwidth of the ordering
-service. There are two possible operation modes for leader election module:
+The leader election mechanism is used to **elect** one peer per organization
+which will maintain connection with the ordering service and initiate distribution of
+newly arrived blocks across the peers of its own organization. Leveraging leader election
+provides the system with the ability to efficiently utilize the bandwidth of the ordering
+service. There are two possible modes of operation for a leader election module:
 
-1. **Static** -- system administrator manually configures one peer in the organization
-   to be the leader, e.g. one to maintain open connection with the ordering service.
-2. **Dynamic** -- peers execute a leader election procedure to select one peer in an
-   organization to become leader, pull blocks from the ordering service, and disseminate
-   blocks to the other peers in the organization.
+1. **Static** --- a system administrator manually configures a peer in an organization to
+   be the leader.
+2. **Dynamic** --- peers execute a leader election procedure to select one peer in an
+   organization to become leader.
 
 Static leader election
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Using static leader election allows to manually define a set of leader peers within the organization, it's
-possible to define a single node to be a leader or all available peers, it should be taken into account that -
-making too many peers to connect to the ordering service might lead to inefficient bandwidth
-utilization. To enable static leader election mode, configure the following parameters
-within the section of ``core.yaml``:
+Static leader election allows you to manually define one or more peers within an
+organization as leader peers.  Please note, however, that having too many peers connect
+to the ordering service may result in inefficient use of bandwidth. To enable static
+leader election mode, configure the following parameters within the section of ``core.yaml``:
 
 ::
 
@@ -97,23 +95,23 @@ Alternatively these parameters could be configured and overridden with environme
 3. In static configuration organization admin is responsible to provide high availability
    of the leader node in case for failure or crashes.
 
-
 Dynamic leader election
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Dynamic leader election enables organization peers to **elect** one peer which will
-connect to the ordering service and pull out new blocks. Leader is elected for set
-of peers for each organization independently.
+connect to the ordering service and pull out new blocks. This leader is elected
+for an organization's peers independently.
 
-Elected leader is responsible to send the **heartbeat** messages to the rest of the peers
-as an evidence of liveness. If one or more peers won't get **heartbeats** updates during
-period of time, they will initiate a new round of leader election procedure, eventually
-selecting a new leader. In case of a network partition in the worst case
-there will be more than one active leader for organization thus to guarantee resiliency
-and availability allowing the organization's peers to continue making progress. After
-the network partition is healed one of the leaders will relinquish its leadership, therefore in
-steady state and in no presence of network partitions for each organization there will be **only**
-one active leader connecting to the ordering service.
+A dynamically elected leader sends **heartbeat** messages to the rest of the peers
+as an evidence of liveness. If one or more peers don't receive **heartbeats** updates
+during a set period of time, they will elect a new leader.
+
+In the worst case scenario of a network partition, there will be more than one
+active leader for organization to guarantee resiliency and availability to allow
+an organization's peers to continue making progress. After the network partition
+has been healed, one of the leaders will relinquish its leadership. In
+a steady state with no network partitions, there will be
+**only** one active leader connecting to the ordering service.
 
 Following configuration controls frequency of the leader **heartbeat** messages:
 
@@ -136,7 +134,7 @@ within ``core.yaml``:
             useLeaderElection: true
             orgLeader: false
 
-Alternatively these parameters could be configured and overridden with environmental variables:
+Alternatively these parameters could be configured and overridden with environment variables:
 
 ::
 
@@ -171,6 +169,39 @@ recommended that every organization provides its own set of anchor peers for hig
 availability and redundancy. Note that the anchor peer does not need to be the
 same peer as the leader peer.
 
+External and internal endpoints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order for gossip to work effectively, peers need to be able to obtain the
+endpoint information of peers in their own organization as well as from peers in
+other organizations.
+
+The ``CORE_PEER_GOSSIP_BOOTSTRAP`` property in the ``core.yaml`` of the peer is
+used to bootstrap gossip within an organization. If you are using gossip, you
+will typically configure all the peers in your organization to point to an initial set of
+bootstrap peers (you can specific a space-separated list of peers). Peers
+can bootstrap from different peers as well, but in that case you need to make
+sure that there is a bootstrap path across all peers. Peers within an organization
+will typically communicate on their internal endpoints (meaning you do not have
+to expose all the peers in an organization publicly). When the peer contacts the bootstrap
+peer, it passes its endpoint info and then gossip is used to distribute the
+information about all the peers in the organization among the peers in that
+organization.
+
+Bootstrap information is similarly required to establish communication across
+organizations. The initial cross-organization bootstrap information is provided
+via the "anchor peers" setting described above. If you want to make other peers
+in your organization known to other organizations, you need to set the
+``CORE_PEER_GOSSIP_EXTERNALENDPOINT`` property in the ``core.yaml`` of your peer.
+If this is not set, the endpoint information of the peer will not be broadcast
+to peers in other organizations.
+
+To set these properties, issue:
+
+::
+
+    export CORE_PEER_GOSSIP_BOOTSTRAP=<the_peer_endpoint>
+    export CORE_PEER_GOSSIP_EXTERNALENDPOINT=<the_peer_endpoint>
 
 Gossip messaging
 ----------------
@@ -196,7 +227,7 @@ Because channels are segregated, peers on one channel cannot message or
 share information on any other channel. Though any peer can belong
 to multiple channels, partitioned messaging prevents blocks from being disseminated
 to peers that are not in the channel by applying message routing policies based
-on peers' channel subscriptions.
+on a peers' channel subscriptions.
 
 .. note:: 1. Security of point-to-point messages are handled by the peer TLS layer, and do
           not require signatures. Peers are authenticated by their certificates,
