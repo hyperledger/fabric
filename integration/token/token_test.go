@@ -73,6 +73,7 @@ var _ = Describe("Token EndToEnd", func() {
 		})
 
 		It("executes a basic solo network and submits token transaction", func() {
+			Skip("Skipping token e2e test until token transaction is enabled after v1.4")
 			By("getting the orderer by name")
 			orderer := network.Orderer("orderer")
 

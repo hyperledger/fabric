@@ -381,32 +381,35 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				logger.Infof("Find chaincode upgrade transaction for chaincode %s on channel %s with new version %s", upgradeCC.ChaincodeName, upgradeCC.ChainID, upgradeCC.ChaincodeVersion)
 				txsUpgradedChaincode = upgradeCC
 			}
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_TOKEN_TRANSACTION {
+			// FAB-12971 comment out below block before v1.4 cut. Will uncomment after v1.4.
+			/*
+				} else if common.HeaderType(chdr.Type) == common.HeaderType_TOKEN_TRANSACTION {
 
-			txID = chdr.TxId
-			if !v.Support.Capabilities().FabToken() {
-				logger.Errorf("FabToken capability is not enabled. Unsupported transaction type [%s] in block [%d] transaction [%d]",
-					common.HeaderType(chdr.Type), block.Header.Number, tIdx)
-				results <- &blockValidationResult{
-					tIdx:           tIdx,
-					validationCode: peer.TxValidationCode_UNSUPPORTED_TX_PAYLOAD,
-				}
-				return
-			}
+					txID = chdr.TxId
+					if !v.Support.Capabilities().FabToken() {
+						logger.Errorf("FabToken capability is not enabled. Unsupported transaction type [%s] in block [%d] transaction [%d]",
+							common.HeaderType(chdr.Type), block.Header.Number, tIdx)
+						results <- &blockValidationResult{
+							tIdx:           tIdx,
+							validationCode: peer.TxValidationCode_UNSUPPORTED_TX_PAYLOAD,
+						}
+						return
+					}
 
-			// Check if there is a duplicate of such transaction in the ledger and
-			// obtain the corresponding result that acknowledges the error type
-			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.Support.Ledger())
-			if erroneousResultEntry != nil {
-				results <- erroneousResultEntry
-				return
-			}
+					// Check if there is a duplicate of such transaction in the ledger and
+					// obtain the corresponding result that acknowledges the error type
+					erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.Support.Ledger())
+					if erroneousResultEntry != nil {
+						results <- erroneousResultEntry
+						return
+					}
 
-			// Set the namespace of the invocation field
-			txsChaincodeName = &sysccprovider.ChaincodeInstance{
-				ChainID:          channel,
-				ChaincodeName:    "Token",
-				ChaincodeVersion: ""}
+					// Set the namespace of the invocation field
+					txsChaincodeName = &sysccprovider.ChaincodeInstance{
+						ChainID:          channel,
+						ChaincodeName:    "Token",
+						ChaincodeVersion: ""}
+			*/
 		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 			configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 			if err != nil {
