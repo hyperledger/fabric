@@ -18,7 +18,7 @@ package golang
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -30,35 +30,30 @@ func runProgram(env Env, timeout time.Duration, pgm string, args ...string) ([]b
 	if env == nil {
 		return nil, fmt.Errorf("<%s, %v>: nil env provided", pgm, args)
 	}
-	var stdOut bytes.Buffer
-	var stdErr bytes.Buffer
 
-	cmd := exec.Command(pgm, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, pgm, args...)
 	cmd.Env = flattenEnv(env)
-	cmd.Stdout = &stdOut
-	cmd.Stderr = &stdErr
-	err := cmd.Start()
+	stdErr := &bytes.Buffer{}
+	cmd.Stderr = stdErr
 
-	// Create a go routine that will wait for the command to finish
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
+	out, err := cmd.Output()
 
-	select {
-	case <-time.After(timeout):
-		if err = cmd.Process.Kill(); err != nil {
-			return nil, fmt.Errorf("<%s, %v>: failed to kill: %s", pgm, args, err)
-		} else {
-			return nil, errors.New(fmt.Sprintf("<%s, %v>: timeout(%d msecs)", pgm, args, timeout/time.Millisecond))
-		}
-	case err = <-done:
-		if err != nil {
-			return nil, fmt.Errorf("<%s, %v>: failed with error: \"%s\"\n%s", pgm, args, err, string(stdErr.Bytes()))
-		}
-
-		return stdOut.Bytes(), nil
+	if ctx.Err() == context.DeadlineExceeded {
+		err = fmt.Errorf("timed out after %s", timeout)
 	}
+
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"command <%s %s>: failed with error: \"%s\"\n%s",
+				pgm,
+				strings.Join(args, " "),
+				err,
+				string(stdErr.Bytes()))
+	}
+	return out, nil
 }
 
 // Logic inspired by: https://dave.cheney.net/2014/09/14/go-list-your-swiss-army-knife
