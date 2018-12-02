@@ -863,9 +863,10 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		depSpec := args[2]
-		cds, err := utils.GetChaincodeDeploymentSpec(depSpec, lscc.PlatformRegistry)
+		cds := &pb.ChaincodeDeploymentSpec{}
+		err := proto.Unmarshal(depSpec, cds)
 		if err != nil {
-			return shim.Error(err.Error())
+			return shim.Error(fmt.Sprintf("error unmarshaling ChaincodeDeploymentSpec: %s", err))
 		}
 
 		// optional arguments here (they can each be nil and may or may not be present)
