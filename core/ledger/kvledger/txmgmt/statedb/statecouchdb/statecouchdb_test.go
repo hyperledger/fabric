@@ -22,6 +22,7 @@ import (
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -196,9 +197,13 @@ func TestUtilityFunctions(t *testing.T) {
 	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))
 	testutil.AssertNil(t, err)
 
-	// ValidateKey should return an error for an invalid key
+	// ValidateKeyValue should return an error for a key that is not a utf-8 valid string
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
 	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
+
+	// ValidateKeyValue should return an error for a key that is an empty string
+	assert.EqualError(t, db.ValidateKeyValue("", []byte("validValue")),
+		"invalid key. Empty string is not supported as a key by couchdb")
 
 	reservedFields := []string{"~version", "_id", "_test"}
 

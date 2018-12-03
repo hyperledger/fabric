@@ -8,6 +8,7 @@ package statecouchdb
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -208,6 +209,9 @@ func validateKey(key string) error {
 	}
 	if strings.HasPrefix(key, "_") {
 		return fmt.Errorf("The key [%s] is not valid for the CouchDB state database.  The key must not begin with \"_\"", key)
+	}
+	if key == "" {
+		return errors.New("invalid key. Empty string is not supported as a key by couchdb")
 	}
 	return nil
 }
