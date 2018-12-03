@@ -37,8 +37,8 @@ func TestNoItemsToReconcile(t *testing.T) {
 	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
 	fetcher.On("FetchReconciledItems", mock.Anything).Return(nil, errors.New("this function shouldn't be called"))
 
-	r := &reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, isEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
-	err := r.reconcile()
+	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
+	_, _, _, err := r.reconcile()
 
 	assert.NoError(t, err)
 }
@@ -73,8 +73,8 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 		fetchCalled = true
 	}).Return(nil, errors.New("called with no digests"))
 
-	r := &reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, isEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
-	err := r.reconcile()
+	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
+	_, _, _, err := r.reconcile()
 
 	assert.Error(t, err)
 	assert.Equal(t, "called with no digests", err.Error())
@@ -147,8 +147,8 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 		commitPvtDataHappened = true
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
-	r := &reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, isEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
-	err := r.reconcile()
+	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
+	_, _, _, err := r.reconcile()
 
 	assert.NoError(t, err)
 	assert.True(t, commitPvtDataHappened)
@@ -224,7 +224,7 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 		wg.Done()
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
-	r := NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, isEnabled: true})
+	r := NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
 	r.Start()
 	wg.Wait()
 	r.Stop()

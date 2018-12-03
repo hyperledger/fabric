@@ -43,7 +43,7 @@ type Dig2PvtRWSetWithConfig map[privdatacommon.DigKey]*util.PrivateRWSetWithConf
 // of retrieving required private data
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
-	CollectionRWSet(dig []*proto.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error)
+	CollectionRWSet(dig []*proto.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
 }
 
 // gossip defines capabilities that the gossip module gives the Coordinator
@@ -150,12 +150,12 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	block2dig := groupDigestsByBlockNum(msg.GetPrivateReq().Digests)
 
 	for blockNum, digests := range block2dig {
-		dig2rwSets, err := p.CollectionRWSet(digests, blockNum)
+		dig2rwSets, wasFetchedFromLedger, err := p.CollectionRWSet(digests, blockNum)
 		if err != nil {
 			logger.Warningf("could not obtain private collection rwset for block %d, because of %s, continue...", blockNum, err)
 			continue
 		}
-		returned = append(returned, p.filterNotEligible(dig2rwSets, fcommon.SignedData{
+		returned = append(returned, p.filterNotEligible(dig2rwSets, wasFetchedFromLedger, fcommon.SignedData{
 			Identity:  message.GetConnectionInfo().Identity,
 			Data:      authInfo.SignedData,
 			Signature: authInfo.Signature,
@@ -594,7 +594,7 @@ func (p *puller) purgedFilter(dig privdatacommon.DigKey) (filter.RoutingFilter, 
 	}, nil
 }
 
-func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, signedData fcommon.SignedData, endpoint string) []*proto.PvtDataElement {
+func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, shouldCheckLatestConfig bool, signedData fcommon.SignedData, endpoint string) []*proto.PvtDataElement {
 	var returned []*proto.PvtDataElement
 	for d, rwSets := range dig2rwSets {
 		if rwSets == nil {
@@ -607,7 +607,7 @@ func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, signedData
 			continue
 		}
 
-		eligibleForCollection := p.isEligibleByLatestConfig(p.channel, d.Collection, d.Namespace, signedData)
+		eligibleForCollection := shouldCheckLatestConfig && p.isEligibleByLatestConfig(p.channel, d.Collection, d.Namespace, signedData)
 
 		if !eligibleForCollection {
 			colAP, err := p.AccessPolicy(rwSets.CollectionConfig, p.channel)

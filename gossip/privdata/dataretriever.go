@@ -21,8 +21,8 @@ import (
 // StorageDataRetriever defines an API to retrieve private date from the storage
 type StorageDataRetriever interface {
 	// CollectionRWSet retrieves for give digest relevant private data if
-	// available otherwise returns nil
-	CollectionRWSet(dig []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error)
+	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
+	CollectionRWSet(dig []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
 }
 
 //go:generate mockery -dir . -name DataStore -case underscore -output mocks/
@@ -59,12 +59,12 @@ func NewDataRetriever(store DataStore) StorageDataRetriever {
 }
 
 // CollectionRWSet retrieves for give digest relevant private data if
-// available otherwise returns nil
-func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
+// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
+func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error) {
 	height, err := dr.store.LedgerHeight()
 	if err != nil {
 		// if there is an error getting info from the ledger, we need to try to read from transient store
-		return nil, fmt.Errorf("wasn't able to read ledger height, due to %s", err)
+		return nil, false, fmt.Errorf("wasn't able to read ledger height, due to %s", err)
 	}
 	if height <= blockNum {
 		logger.Debug("Current ledger height ", height, "is below requested block sequence number",
@@ -94,10 +94,11 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 			}] = pvtRWSet
 		}
 
-		return results, nil
+		return results, false, nil
 	}
 	// Since ledger height is above block sequence number private data is might be available in the ledger
-	return dr.fromLedger(digests, blockNum)
+	results, err := dr.fromLedger(digests, blockNum)
+	return results, true, err
 }
 
 func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
