@@ -18,6 +18,8 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -92,13 +94,14 @@ type Registrar struct {
 	lock   sync.RWMutex
 	chains map[string]*ChainSupport
 
-	consenters      map[string]consensus.Consenter
-	ledgerFactory   blockledger.Factory
-	signer          crypto.LocalSigner
-	systemChannelID string
-	systemChannel   *ChainSupport
-	templator       msgprocessor.ChannelConfigTemplator
-	callbacks       []func(bundle *channelconfig.Bundle)
+	consenters         map[string]consensus.Consenter
+	ledgerFactory      blockledger.Factory
+	signer             crypto.LocalSigner
+	blockcutterMetrics *blockcutter.Metrics
+	systemChannelID    string
+	systemChannel      *ChainSupport
+	templator          msgprocessor.ChannelConfigTemplator
+	callbacks          []func(bundle *channelconfig.Bundle)
 }
 
 func getConfigTx(reader blockledger.Reader) *cb.Envelope {
@@ -117,12 +120,13 @@ func getConfigTx(reader blockledger.Reader) *cb.Envelope {
 
 // NewRegistrar produces an instance of a *Registrar.
 func NewRegistrar(ledgerFactory blockledger.Factory,
-	signer crypto.LocalSigner, callbacks ...func(bundle *channelconfig.Bundle)) *Registrar {
+	signer crypto.LocalSigner, metricsProvider metrics.Provider, callbacks ...func(bundle *channelconfig.Bundle)) *Registrar {
 	r := &Registrar{
-		chains:        make(map[string]*ChainSupport),
-		ledgerFactory: ledgerFactory,
-		signer:        signer,
-		callbacks:     callbacks,
+		chains:             make(map[string]*ChainSupport),
+		ledgerFactory:      ledgerFactory,
+		signer:             signer,
+		blockcutterMetrics: blockcutter.NewMetrics(metricsProvider),
+		callbacks:          callbacks,
 	}
 
 	return r
@@ -151,7 +155,8 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r,
 				ledgerResources,
 				r.consenters,
-				r.signer)
+				r.signer,
+				r.blockcutterMetrics)
 			r.templator = msgprocessor.NewDefaultTemplator(chain)
 			chain.Processor = msgprocessor.NewSystemChannel(chain, r.templator, msgprocessor.CreateSystemChannelFilters(r, chain))
 
@@ -178,7 +183,8 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r,
 				ledgerResources,
 				r.consenters,
-				r.signer)
+				r.signer,
+				r.blockcutterMetrics)
 			r.chains[chainID] = chain
 			chain.start()
 		}
@@ -282,7 +288,7 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer)
+	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics)
 	chainID := ledgerResources.ConfigtxValidator().ChainID()
 
 	logger.Infof("Created and starting new chain %s", chainID)

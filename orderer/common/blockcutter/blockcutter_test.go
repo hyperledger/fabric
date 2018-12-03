@@ -21,6 +21,9 @@ var _ = Describe("Blockcutter", func() {
 		bc                blockcutter.Receiver
 		fakeConfig        *mock.OrdererConfig
 		fakeConfigFetcher *mock.OrdererConfigFetcher
+
+		metrics               *blockcutter.Metrics
+		fakeBlockFillDuration *mock.MetricsHistogram
 	)
 
 	BeforeEach(func() {
@@ -28,7 +31,13 @@ var _ = Describe("Blockcutter", func() {
 		fakeConfigFetcher = &mock.OrdererConfigFetcher{}
 		fakeConfigFetcher.OrdererConfigReturns(fakeConfig, true)
 
-		bc = blockcutter.NewReceiverImpl(fakeConfigFetcher)
+		fakeBlockFillDuration = &mock.MetricsHistogram{}
+		fakeBlockFillDuration.WithReturns(fakeBlockFillDuration)
+		metrics = &blockcutter.Metrics{
+			BlockFillDuration: fakeBlockFillDuration,
+		}
+
+		bc = blockcutter.NewReceiverImpl("mychannel", fakeConfigFetcher, metrics)
 	})
 
 	Describe("Ordered", func() {
@@ -49,6 +58,7 @@ var _ = Describe("Blockcutter", func() {
 			batches, pending := bc.Ordered(message)
 			Expect(batches).To(BeEmpty())
 			Expect(pending).To(BeTrue())
+			Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(0))
 		})
 
 		Context("when enough batches to fill the max message count are enqueued", func() {
@@ -60,6 +70,12 @@ var _ = Describe("Blockcutter", func() {
 				Expect(len(batches)).To(Equal(1))
 				Expect(len(batches[0])).To(Equal(2))
 				Expect(pending).To(BeFalse())
+
+				Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(1))
+				Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+				Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+				Expect(fakeBlockFillDuration.WithCallCount()).To(Equal(1))
+				Expect(fakeBlockFillDuration.WithArgsForCall(0)).To(Equal([]string{"channel", "mychannel"}))
 			})
 		})
 
@@ -78,6 +94,7 @@ var _ = Describe("Blockcutter", func() {
 				batches, pending = bc.Ordered(message)
 				Expect(batches).To(BeEmpty())
 				Expect(pending).To(BeTrue())
+				Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(0))
 			})
 		})
 
@@ -93,6 +110,10 @@ var _ = Describe("Blockcutter", func() {
 				batches, pending := bc.Ordered(message)
 				Expect(len(batches)).To(Equal(1))
 				Expect(pending).To(BeFalse())
+				Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(1))
+				Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(Equal(float64(0)))
+				Expect(fakeBlockFillDuration.WithCallCount()).To(Equal(1))
+				Expect(fakeBlockFillDuration.WithArgsForCall(0)).To(Equal([]string{"channel", "mychannel"}))
 			})
 		})
 
@@ -113,6 +134,12 @@ var _ = Describe("Blockcutter", func() {
 				Expect(len(batches)).To(Equal(1))
 				Expect(len(batches[0])).To(Equal(1))
 				Expect(pending).To(BeTrue())
+
+				Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(1))
+				Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+				Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+				Expect(fakeBlockFillDuration.WithCallCount()).To(Equal(1))
+				Expect(fakeBlockFillDuration.WithArgsForCall(0)).To(Equal([]string{"channel", "mychannel"}))
 			})
 
 			Context("when the new message is larger than the preferred max bytes", func() {
@@ -134,6 +161,14 @@ var _ = Describe("Blockcutter", func() {
 					Expect(len(batches[0])).To(Equal(1))
 					Expect(len(batches[1])).To(Equal(1))
 					Expect(pending).To(BeFalse())
+
+					Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(2))
+					Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+					Expect(fakeBlockFillDuration.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+					Expect(fakeBlockFillDuration.ObserveArgsForCall(1)).To(Equal(float64(0)))
+					Expect(fakeBlockFillDuration.WithCallCount()).To(Equal(2))
+					Expect(fakeBlockFillDuration.WithArgsForCall(0)).To(Equal([]string{"channel", "mychannel"}))
+					Expect(fakeBlockFillDuration.WithArgsForCall(1)).To(Equal([]string{"channel", "mychannel"}))
 				})
 			})
 		})
