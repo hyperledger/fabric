@@ -38,8 +38,8 @@ type ChainGetter interface {
 	GetChain(chainID string) *multichannel.ChainSupport
 }
 
-// EtcdRaftConfig contains etcdraft configurations
-type EtcdRaftConfig struct {
+// Config contains etcdraft configurations
+type Config struct {
 	WALDir  string // WAL data of <my-channel> is stored in WALDir/<my-channel>
 	SnapDir string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
 }
@@ -51,7 +51,7 @@ type Consenter struct {
 	*Dispatcher
 	Chains         ChainGetter
 	Logger         *flogging.FabricLogger
-	EtcdRaftConfig EtcdRaftConfig
+	EtcdRaftConfig Config
 	OrdererConfig  localconfig.TopLevel
 	Cert           []byte
 }
@@ -116,7 +116,10 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	// In case chain has been restarted we restore raft metadata
 	// information from the recently committed block meta data
 	// field.
-	raftMetadata, err := raftMetadata(metadata, m)
+	raftMetadata, err := readRaftMetadata(metadata, m)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read Raft metadata")
+	}
 
 	id, err := c.detectSelfID(raftMetadata.Consenters)
 	if err != nil {
@@ -155,7 +158,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	return NewChain(support, opts, c.Communication, rpc, bp, nil)
 }
 
-func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
+func readRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
 	m := &etcdraft.RaftMetadata{
 		Consenters:      map[uint64]*etcdraft.Consenter{},
 		NextConsenterId: 1,
@@ -181,7 +184,7 @@ func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
-	var cfg EtcdRaftConfig
+	var cfg Config
 	if err := viperutil.Decode(conf.Consensus, &cfg); err != nil {
 		logger.Panicf("Failed to decode etcdraft configuration: %s", err)
 	}
