@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -34,7 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12/mocks"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	per "github.com/hyperledger/fabric/core/peer"
+	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
@@ -803,19 +804,15 @@ func TestAlreadyDeployed(t *testing.T) {
 	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
-	ccver := "1"
+	ccver := "alreadydeployed"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		t.FailNow()
 	}
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1185,19 +1182,15 @@ func TestValidateUpgradeOK(t *testing.T) {
 	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
-	ccver := "1"
+	ccver := "upgradeok"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		t.FailNow()
 	}
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1252,19 +1245,15 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
-	ccver := "1"
+	ccver := "upgradebadversion"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		t.FailNow()
 	}
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1301,7 +1290,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
+func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bool) {
 	state := make(map[string]map[string][]byte)
 	mp := (&scc.MocksccProviderFactory{
 		Qe:                    lm.NewMockQueryExecutor(state),
@@ -1331,19 +1320,14 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 	}
 
 	ccname := "mycc"
-	ccver := "1"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		t.FailNow()
 	}
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1496,9 +1480,9 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 
 func TestValidateUpgradeWithCollection(t *testing.T) {
 	// with V1_2Validation enabled
-	validateUpgradeWithCollection(t, true)
+	validateUpgradeWithCollection(t, "v12-validation-enabled", true)
 	// with V1_2Validation disabled
-	validateUpgradeWithCollection(t, false)
+	validateUpgradeWithCollection(t, "v12-validation-disabled", false)
 }
 
 func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
@@ -1517,12 +1501,8 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
-	ccver := "1"
+	ccver := "upgradewithpoliciesok"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	if err != nil {
@@ -1531,7 +1511,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	}
 	_, err = processSignedCDS(cds, cauthdsl.AcceptAllPolicy)
 	assert.NoError(t, err)
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1581,11 +1561,11 @@ func TestValidateUpgradeWithNewFailAllIP(t *testing.T) {
 	// We run this test twice, once with the V11 capability (and expect
 	// a failure) and once without (and we expect success).
 
-	validateUpgradeWithNewFailAllIP(t, true, true)
-	validateUpgradeWithNewFailAllIP(t, false, false)
+	validateUpgradeWithNewFailAllIP(t, "v11-capabilityenabled", true, true)
+	validateUpgradeWithNewFailAllIP(t, "v11-capabilitydisabled", false, false)
 }
 
-func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool) {
+func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, expecterr bool) {
 	state := make(map[string]map[string][]byte)
 	mp := (&scc.MocksccProviderFactory{
 		Qe:                    lm.NewMockQueryExecutor(state),
@@ -1609,11 +1589,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	// deploy the chaincode with an accept all policy
 
 	ccname := "mycc"
-	ccver := "1"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	if err != nil {
@@ -1622,7 +1598,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	}
 	_, err = processSignedCDS(cds, cauthdsl.AcceptAllPolicy)
 	assert.NoError(t, err)
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1639,7 +1615,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 
 	// now we upgrade, with v 2 of the same cc, with the crucial difference that it has a reject all IP
 
-	ccver = "2"
+	ccver = ccver + ".2"
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver,
 		cauthdsl.MarshaledRejectAllPolicy, // here's where we specify the IP of the upgraded cc
@@ -1689,12 +1665,8 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
-	ccver := "1"
+	ccver := "upgradewithpoliciesfail"
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-
-	ppath := lccctestpath + "/" + ccname + "." + ccver
-
-	os.Remove(ppath)
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	if err != nil {
@@ -1703,7 +1675,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	}
 	cdbytes, err := processSignedCDS(cds, cauthdsl.RejectAllPolicy)
 	assert.NoError(t, err)
-	defer os.Remove(ppath)
+
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -1996,8 +1968,6 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	assert.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
 }
 
-var lccctestpath = "/tmp/lscc-validation-test"
-
 func NewMockProvider() *scc.MocksccProviderImpl {
 	return (&scc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
@@ -2008,16 +1978,21 @@ func NewMockProvider() *scc.MocksccProviderImpl {
 }
 
 func TestMain(m *testing.M) {
-	ccprovider.SetChaincodesPath(lccctestpath)
+	testDir, err := ioutil.TempDir("", "v1.2-validation")
+	if err != nil {
+		fmt.Printf("Could not create temp dir: %s", err)
+		os.Exit(-1)
+	}
+	defer os.RemoveAll(testDir)
+	ccprovider.SetChaincodesPath(testDir)
+
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	mspGetter := func(cid string) []string {
 		return []string{"SampleOrg"}
 	}
 
-	per.MockSetMSPIDGetter(mspGetter)
-
-	var err error
+	corepeer.MockSetMSPIDGetter(mspGetter)
 
 	// setup the MSP manager so that we can sign/verify
 	msptesttools.LoadMSPSetupForTesting()
