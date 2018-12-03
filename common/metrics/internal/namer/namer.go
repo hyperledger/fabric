@@ -4,15 +4,17 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package statsd
+package namer
 
 import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/hyperledger/fabric/common/metrics"
 )
 
-type namer struct {
+type Namer struct {
 	namespace  string
 	subsystem  string
 	name       string
@@ -20,13 +22,43 @@ type namer struct {
 	labelNames map[string]struct{}
 }
 
-func (n *namer) validateKey(name string) {
+func NewCounterNamer(c metrics.CounterOpts) *Namer {
+	return &Namer{
+		namespace:  c.Namespace,
+		subsystem:  c.Subsystem,
+		name:       c.Name,
+		nameFormat: c.StatsdFormat,
+		labelNames: sliceToSet(c.LabelNames),
+	}
+}
+
+func NewGaugeNamer(g metrics.GaugeOpts) *Namer {
+	return &Namer{
+		namespace:  g.Namespace,
+		subsystem:  g.Subsystem,
+		name:       g.Name,
+		nameFormat: g.StatsdFormat,
+		labelNames: sliceToSet(g.LabelNames),
+	}
+}
+
+func NewHistogramNamer(h metrics.HistogramOpts) *Namer {
+	return &Namer{
+		namespace:  h.Namespace,
+		subsystem:  h.Subsystem,
+		name:       h.Name,
+		nameFormat: h.StatsdFormat,
+		labelNames: sliceToSet(h.LabelNames),
+	}
+}
+
+func (n *Namer) validateKey(name string) {
 	if _, ok := n.labelNames[name]; !ok {
 		panic("invalid label name: " + name)
 	}
 }
 
-func (n *namer) fullyQualifiedName() string {
+func (n *Namer) FullyQualifiedName() string {
 	switch {
 	case n.namespace != "" && n.subsystem != "":
 		return strings.Join([]string{n.namespace, n.subsystem, n.name}, ".")
@@ -39,7 +71,7 @@ func (n *namer) fullyQualifiedName() string {
 	}
 }
 
-func (n *namer) labelsToMap(labelValues []string) map[string]string {
+func (n *Namer) labelsToMap(labelValues []string) map[string]string {
 	labels := map[string]string{}
 	for i := 0; i < len(labelValues); i += 2 {
 		key := labelValues[i]
@@ -56,7 +88,7 @@ func (n *namer) labelsToMap(labelValues []string) map[string]string {
 var formatRegexp = regexp.MustCompile(`%{([#?[:alnum:]_]+)}`)
 var invalidLabelValueRegexp = regexp.MustCompile(`[.|:\s]`)
 
-func (n *namer) Format(labelValues ...string) string {
+func (n *Namer) Format(labelValues ...string) string {
 	labels := n.labelsToMap(labelValues)
 
 	cursor := 0
@@ -81,7 +113,7 @@ func (n *namer) Format(labelValues ...string) string {
 		case "#name":
 			value = n.name
 		case "#fqname":
-			value = n.fullyQualifiedName()
+			value = n.FullyQualifiedName()
 		default:
 			var ok bool
 			value, ok = labels[key]
@@ -101,4 +133,12 @@ func (n *namer) Format(labelValues ...string) string {
 	}
 
 	return strings.Join(segments, "")
+}
+
+func sliceToSet(set []string) map[string]struct{} {
+	labelSet := map[string]struct{}{}
+	for _, s := range set {
+		labelSet[s] = struct{}{}
+	}
+	return labelSet
 }
