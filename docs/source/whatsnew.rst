@@ -10,7 +10,7 @@ New features
 * :doc:`idemix`:
   A way to keep identities anonymous and unlinkable through the use of zero-knowledge
   proofs. There is a tool that can generate Identity Mixer credentials in test
-  environments known as `idexmigen`, the documentation for which can be found in
+  environments known as `idemixgen`, the documentation for which can be found in
   :doc:`idemixgen`.
 
 * :ref:`key-level-endorsement`:
