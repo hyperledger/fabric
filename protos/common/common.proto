@@ -42,15 +42,16 @@ enum HeaderType {
     // reserved 7;
     // reserved "PEER_RESOURCE_UPDATE";
 
-    MESSAGE = 0;                   // Used for messages which are signed but opaque
-    CONFIG = 1;                    // Used for messages which express the channel config
-    CONFIG_UPDATE = 2;             // Used for transactions which update the channel config
-    ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
-    ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
-    DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
-    CHAINCODE_PACKAGE = 6;         // Used for packaging chaincode artifacts for install
-    PEER_ADMIN_OPERATION = 8;      // Used for invoking an administrative operation on a peer
-    TOKEN_TRANSACTION = 9;         // Used to denote transactions that invoke token management operations
+    MESSAGE = 0;                     // Used for messages which are signed but opaque
+    CONFIG = 1;                      // Used for messages which express the channel config
+    CONFIG_UPDATE = 2;               // Used for transactions which update the channel config
+    ENDORSER_TRANSACTION = 3;        // Used by the SDK to submit endorser based transactions
+    ORDERER_TRANSACTION = 4;         // Used internally by the orderer for management
+    DELIVER_SEEK_INFO = 5;           // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
+    CHAINCODE_PACKAGE = 6;           // Used for packaging chaincode artifacts for install
+    PEER_ADMIN_OPERATION = 8;        // Used for invoking an administrative operation on a peer
+    TOKEN_TRANSACTION = 9;           // Used to denote transactions that invoke token management operations
+    TOKEN_ENDORSER_TRANSACTION = 10; // Used to denote endorsement transactions that use FabToken as payment settlement
 }
 
 // This enum enlists indexes of the block metadata array
