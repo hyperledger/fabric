@@ -579,12 +579,6 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	conn := c.connStore.onConnected(stream, connInfo)
 
-	// if connStore denied the connection, it means we already have a connection to that peer
-	// so close this stream
-	if conn == nil {
-		return nil
-	}
-
 	h := func(m *proto.SignedGossipMessage) {
 		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
 			conn:                conn,
