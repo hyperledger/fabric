@@ -73,8 +73,8 @@ func (vdb *versionedDB) ValidateKeyValue(key string, value []byte) error {
 	return nil
 }
 
-// BytesKeySuppoted implements method in VersionedDB interface
-func (vdb *versionedDB) BytesKeySuppoted() bool {
+// BytesKeySupported implements method in VersionedDB interface
+func (vdb *versionedDB) BytesKeySupported() bool {
 	return true
 }
 

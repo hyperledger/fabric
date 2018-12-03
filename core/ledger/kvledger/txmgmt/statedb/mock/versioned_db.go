@@ -146,13 +146,13 @@ type VersionedDB struct {
 	validateKeyValueReturnsOnCall map[int]struct {
 		result1 error
 	}
-	BytesKeySuppotedStub        func() bool
-	bytesKeySuppotedMutex       sync.RWMutex
-	bytesKeySuppotedArgsForCall []struct{}
-	bytesKeySuppotedReturns     struct {
+	BytesKeySupportedStub        func() bool
+	bytesKeySupportedMutex       sync.RWMutex
+	bytesKeySupportedArgsForCall []struct{}
+	bytesKeySupportedReturns     struct {
 		result1 bool
 	}
-	bytesKeySuppotedReturnsOnCall map[int]struct {
+	bytesKeySupportedReturnsOnCall map[int]struct {
 		result1 bool
 	}
 	OpenStub        func() error
@@ -690,42 +690,42 @@ func (fake *VersionedDB) ValidateKeyValueReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *VersionedDB) BytesKeySuppoted() bool {
-	fake.bytesKeySuppotedMutex.Lock()
-	ret, specificReturn := fake.bytesKeySuppotedReturnsOnCall[len(fake.bytesKeySuppotedArgsForCall)]
-	fake.bytesKeySuppotedArgsForCall = append(fake.bytesKeySuppotedArgsForCall, struct{}{})
-	fake.recordInvocation("BytesKeySuppoted", []interface{}{})
-	fake.bytesKeySuppotedMutex.Unlock()
-	if fake.BytesKeySuppotedStub != nil {
-		return fake.BytesKeySuppotedStub()
+func (fake *VersionedDB) BytesKeySupported() bool {
+	fake.bytesKeySupportedMutex.Lock()
+	ret, specificReturn := fake.bytesKeySupportedReturnsOnCall[len(fake.bytesKeySupportedArgsForCall)]
+	fake.bytesKeySupportedArgsForCall = append(fake.bytesKeySupportedArgsForCall, struct{}{})
+	fake.recordInvocation("BytesKeySupported", []interface{}{})
+	fake.bytesKeySupportedMutex.Unlock()
+	if fake.BytesKeySupportedStub != nil {
+		return fake.BytesKeySupportedStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.bytesKeySuppotedReturns.result1
+	return fake.bytesKeySupportedReturns.result1
 }
 
-func (fake *VersionedDB) BytesKeySuppotedCallCount() int {
-	fake.bytesKeySuppotedMutex.RLock()
-	defer fake.bytesKeySuppotedMutex.RUnlock()
-	return len(fake.bytesKeySuppotedArgsForCall)
+func (fake *VersionedDB) BytesKeySupportedCallCount() int {
+	fake.bytesKeySupportedMutex.RLock()
+	defer fake.bytesKeySupportedMutex.RUnlock()
+	return len(fake.bytesKeySupportedArgsForCall)
 }
 
-func (fake *VersionedDB) BytesKeySuppotedReturns(result1 bool) {
-	fake.BytesKeySuppotedStub = nil
-	fake.bytesKeySuppotedReturns = struct {
+func (fake *VersionedDB) BytesKeySupportedReturns(result1 bool) {
+	fake.BytesKeySupportedStub = nil
+	fake.bytesKeySupportedReturns = struct {
 		result1 bool
 	}{result1}
 }
 
-func (fake *VersionedDB) BytesKeySuppotedReturnsOnCall(i int, result1 bool) {
-	fake.BytesKeySuppotedStub = nil
-	if fake.bytesKeySuppotedReturnsOnCall == nil {
-		fake.bytesKeySuppotedReturnsOnCall = make(map[int]struct {
+func (fake *VersionedDB) BytesKeySupportedReturnsOnCall(i int, result1 bool) {
+	fake.BytesKeySupportedStub = nil
+	if fake.bytesKeySupportedReturnsOnCall == nil {
+		fake.bytesKeySupportedReturnsOnCall = make(map[int]struct {
 			result1 bool
 		})
 	}
-	fake.bytesKeySuppotedReturnsOnCall[i] = struct {
+	fake.bytesKeySupportedReturnsOnCall[i] = struct {
 		result1 bool
 	}{result1}
 }
@@ -809,8 +809,8 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.getLatestSavePointMutex.RUnlock()
 	fake.validateKeyValueMutex.RLock()
 	defer fake.validateKeyValueMutex.RUnlock()
-	fake.bytesKeySuppotedMutex.RLock()
-	defer fake.bytesKeySuppotedMutex.RUnlock()
+	fake.bytesKeySupportedMutex.RLock()
+	defer fake.bytesKeySupportedMutex.RUnlock()
 	fake.openMutex.RLock()
 	defer fake.openMutex.RUnlock()
 	fake.closeMutex.RLock()

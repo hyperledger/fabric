@@ -152,8 +152,8 @@ func TestUtilityFunctions(t *testing.T) {
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
 	assert.NoError(t, err)
 
-	// BytesKeySuppoted should be false for CouchDB
-	byteKeySupported := db.BytesKeySuppoted()
+	// BytesKeySupported should be false for CouchDB
+	byteKeySupported := db.BytesKeySupported()
 	assert.False(t, byteKeySupported)
 
 	// ValidateKeyValue should return nil for a valid key and value

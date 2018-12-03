@@ -111,8 +111,8 @@ func TestUtilityFunctions(t *testing.T) {
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
 	assert.NoError(t, err)
 
-	// BytesKeySuppoted should be true for goleveldb
-	byteKeySupported := db.BytesKeySuppoted()
+	// BytesKeySupported should be true for goleveldb
+	byteKeySupported := db.BytesKeySupported()
 	assert.True(t, byteKeySupported)
 
 	// ValidateKeyValue should return nil for a valid key and value
