@@ -57,6 +57,12 @@ var _ = Describe("Prover", func() {
 		listRequest      *token.ListRequest
 		unspentTokens    *token.UnspentTokens
 		transactorTokens []*token.TokenOutput
+
+		importExpectationRequest     *token.ExpectationRequest
+		importExpectationTransaction *token.TokenTransaction
+
+		transferExpectationRequest     *token.ExpectationRequest
+		transferExpectationTransaction *token.TokenTransaction
 	)
 
 	BeforeEach(func() {
@@ -189,6 +195,50 @@ var _ = Describe("Prover", func() {
 		listRequest = &token.ListRequest{
 			Credential: []byte("credential"),
 		}
+
+		importExpectationRequest = &token.ExpectationRequest{
+			Credential: []byte("credential"),
+			Expectation: &token.TokenExpectation{
+				Expectation: &token.TokenExpectation_PlainExpectation{
+					PlainExpectation: &token.PlainExpectation{
+						Payload: &token.PlainExpectation_ImportExpectation{
+							ImportExpectation: &token.PlainTokenExpectation{
+								Outputs: []*token.PlainOutput{{
+									Owner:    []byte("recipient"),
+									Type:     "XYZ",
+									Quantity: 99,
+								}},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		transferExpectationRequest = &token.ExpectationRequest{
+			Credential: []byte("credential"),
+			TokenIds:   [][]byte{},
+			Expectation: &token.TokenExpectation{
+				Expectation: &token.TokenExpectation_PlainExpectation{
+					PlainExpectation: &token.PlainExpectation{
+						Payload: &token.PlainExpectation_TransferExpectation{
+							TransferExpectation: &token.PlainTokenExpectation{
+								Outputs: []*token.PlainOutput{{
+									Owner:    []byte("token-owner"),
+									Type:     "PDQ",
+									Quantity: 777,
+								}},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		importExpectationTransaction = tokenTransaction
+		transferExpectationTransaction = trTokenTransaction
+		fakeIssuer.RequestExpectationReturns(tokenTransaction, nil)
+		fakeTransactor.RequestExpectationReturns(trTokenTransaction, nil)
 	})
 
 	Describe("ProcessCommand", func() {
@@ -639,6 +689,129 @@ var _ = Describe("Prover", func() {
 		})
 	})
 
+	Describe("RequestExpectation import", func() {
+		It("gets an issuer", func() {
+			_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeTMSManager.GetIssuerCallCount()).To(Equal(1))
+			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(0))
+			channel, cred, creator := fakeTMSManager.GetIssuerArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(cred).To(Equal([]byte("credential")))
+			Expect(creator).To(Equal([]byte("creator")))
+		})
+
+		It("uses the issuer to request an import", func() {
+			resp, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: importExpectationTransaction,
+			}))
+
+			Expect(fakeIssuer.RequestExpectationCallCount()).To(Equal(1))
+			request := fakeIssuer.RequestExpectationArgsForCall(0)
+			Expect(request).To(Equal(importExpectationRequest))
+		})
+
+		Context("when the TMS manager fails to get an issuer", func() {
+			BeforeEach(func() {
+				fakeTMSManager.GetIssuerReturns(nil, errors.New("boing boing"))
+			})
+
+			It("returns the error", func() {
+				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+				Expect(err).To(MatchError("boing boing"))
+			})
+		})
+
+		Context("when the issuer fails to import", func() {
+			BeforeEach(func() {
+				fakeIssuer.RequestExpectationReturns(nil, errors.New("watermelon"))
+			})
+
+			It("returns the error", func() {
+				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+				Expect(err).To(MatchError("watermelon"))
+			})
+		})
+
+		Context("when Expectationrequest has nil Expectation", func() {
+			BeforeEach(func() {
+				importExpectationRequest = &token.ExpectationRequest{
+					Credential: []byte("credential"),
+				}
+			})
+
+			It("returns the error", func() {
+				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+				Expect(err).To(MatchError("ExpectationRequest has nil Expectation"))
+			})
+		})
+
+		Context("when Expectationrequest has nil PlainExpectation", func() {
+			BeforeEach(func() {
+				importExpectationRequest = &token.ExpectationRequest{
+					Credential:  []byte("credential"),
+					Expectation: &token.TokenExpectation{},
+				}
+			})
+
+			It("returns the error", func() {
+				_, err := prover.RequestExpectation(context.Background(), command.Header, importExpectationRequest)
+				Expect(err).To(MatchError("ExpectationRequest has nil PlainExpectation"))
+			})
+		})
+	})
+
+	Describe("RequestExpectation transfer", func() {
+		It("gets a transactor", func() {
+			_, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeTMSManager.GetIssuerCallCount()).To(Equal(0))
+			Expect(fakeTMSManager.GetTransactorCallCount()).To(Equal(1))
+			channel, cred, creator := fakeTMSManager.GetTransactorArgsForCall(0)
+			Expect(channel).To(Equal("channel-id"))
+			Expect(cred).To(Equal([]byte("credential")))
+			Expect(creator).To(Equal([]byte("creator")))
+		})
+
+		It("uses the transactor to request a transfer expectation", func() {
+			resp, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: transferExpectationTransaction,
+			}))
+
+			Expect(fakeTransactor.RequestExpectationCallCount()).To(Equal(1))
+			tr := fakeTransactor.RequestExpectationArgsForCall(0)
+			Expect(tr).To(Equal(transferExpectationRequest))
+		})
+
+		Context("when the TMS manager fails to get a transactor", func() {
+			BeforeEach(func() {
+				fakeTMSManager.GetTransactorReturns(nil, errors.New("boing boing"))
+			})
+
+			It("returns the error", func() {
+				_, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+				Expect(err).To(MatchError("boing boing"))
+			})
+		})
+
+		Context("when the transactor fails to transfer", func() {
+			BeforeEach(func() {
+				fakeTransactor.RequestExpectationReturns(nil, errors.New("watermelon"))
+			})
+
+			It("returns the error", func() {
+				_, err := prover.RequestExpectation(context.Background(), command.Header, transferExpectationRequest)
+				Expect(err).To(MatchError("watermelon"))
+			})
+		})
+	})
+
 	Describe("Issue tokens by a plain issuer", func() {
 		var (
 			manager         *server.Manager
@@ -847,6 +1020,74 @@ var _ = Describe("Prover", func() {
 				_, err := prover.ListUnspentTokens(context.Background(), command.Header, listRequest)
 				Expect(err).To(MatchError("pineapple"))
 			})
+		})
+	})
+
+	Describe("ProcessCommand_RequestExpection for import", func() {
+		BeforeEach(func() {
+			command = &token.Command{
+				Header: &token.Header{
+					ChannelId: "channel-id",
+					Creator:   []byte("creator"),
+					Nonce:     []byte("nonce"),
+				},
+				Payload: &token.Command_ExpectationRequest{
+					ExpectationRequest: importExpectationRequest,
+				},
+			}
+			marshaledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshaledCommand,
+				Signature: []byte("command-signature"),
+			}
+			fakeMarshaler.MarshalCommandResponseReturns(marshaledResponse, nil)
+		})
+
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: importExpectationTransaction,
+			}))
+		})
+	})
+
+	Describe("ProcessCommand_RequestExpection for transfer", func() {
+		BeforeEach(func() {
+			command = &token.Command{
+				Header: &token.Header{
+					ChannelId: "channel-id",
+					Creator:   []byte("creator"),
+					Nonce:     []byte("nonce"),
+				},
+				Payload: &token.Command_ExpectationRequest{
+					ExpectationRequest: transferExpectationRequest,
+				},
+			}
+			marshaledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshaledCommand,
+				Signature: []byte("command-signature"),
+			}
+			fakeMarshaler.MarshalCommandResponseReturns(marshaledResponse, nil)
+		})
+
+		It("returns a signed command response", func() {
+			resp, err := prover.ProcessCommand(context.Background(), signedCommand)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(Equal(marshaledResponse))
+
+			Expect(fakeMarshaler.MarshalCommandResponseCallCount()).To(Equal(1))
+			cmd, payload := fakeMarshaler.MarshalCommandResponseArgsForCall(0)
+			Expect(cmd).To(Equal(marshaledCommand))
+			Expect(payload).To(Equal(&token.CommandResponse_TokenTransaction{
+				TokenTransaction: transferExpectationTransaction,
+			}))
 		})
 	})
 })
@@ -1241,7 +1482,7 @@ var _ = Describe("Prover Approve using mock TMS", func() {
 		})
 
 		Context("when the TMS manager fails to get a transactor", func() {
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				fakeTMSManager.GetTransactorReturns(nil, errors.New("camel"))
 				_, err := prover.RequestApprove(context.Background(), command.Header, approveRequest)
 				Expect(err).To(MatchError("camel"))
@@ -1249,7 +1490,7 @@ var _ = Describe("Prover Approve using mock TMS", func() {
 		})
 
 		Context("when the transactor fails to approve", func() {
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				fakeTransactor.RequestApproveReturns(nil, errors.New("banana"))
 				_, err := prover.RequestApprove(context.Background(), command.Header, approveRequest)
 				Expect(err).To(MatchError("banana"))
@@ -1396,7 +1637,7 @@ var _ = Describe("RequestTransferFrom using mock TMS", func() {
 		})
 
 		Context("when the TMS manager fails to get a transferFrom", func() {
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				fakeTMSManager.GetTransactorReturns(nil, errors.New("camel"))
 				_, err := prover.RequestTransferFrom(context.Background(), command.Header, transferFromRequest)
 				Expect(err).To(MatchError("camel"))
@@ -1404,7 +1645,7 @@ var _ = Describe("RequestTransferFrom using mock TMS", func() {
 		})
 
 		Context("when the transactor fails to transferFrom", func() {
-			It("retuns the error", func() {
+			It("returns the error", func() {
 				fakeTransactor.RequestTransferFromReturns(nil, errors.New("banana"))
 				_, err := prover.RequestTransferFrom(context.Background(), command.Header, transferFromRequest)
 				Expect(err).To(MatchError("banana"))

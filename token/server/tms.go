@@ -15,6 +15,10 @@ import (
 type Issuer interface {
 	// Issue creates an import request transaction.
 	RequestImport(tokensToIssue []*token.TokenToIssue) (*token.TokenTransaction, error)
+
+	// RequestExpectation allows indirect import based on the expectation.
+	// It creates a token transaction with the outputs as specified in the expectation.
+	RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error)
 }
 
 //go:generate counterfeiter -o mock/transactor.go -fake-name Transactor . Transactor
@@ -43,6 +47,10 @@ type Transactor interface {
 	// for transferring the tokens of a third party that previsouly delegated the transfer
 	// via an approve request
 	RequestTransferFrom(request *token.TransferRequest) (*token.TokenTransaction, error)
+
+	// RequestExpectation allows indirect transfer based on the expectation.
+	// It creates a token transaction with the outputs as specified in the expectation.
+	RequestExpectation(request *token.ExpectationRequest) (*token.TokenTransaction, error)
 
 	// Done releases any resources held by this transactor
 	Done()
