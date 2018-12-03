@@ -1,0 +1,27 @@
+{{/* Copyright IBM Corp. All Rights Reserved. */ -}}
+{{/* SPDX-License-Identifier: Apache-2.0 */ -}}
+
+Metrics Reference
+=================
+
+Prometheus Metrics
+------------------
+
+The following metrics are currently exported for consumption by Prometheus.
+
+{{ PrometheusTable }}
+
+StatsD Metrics
+--------------
+
+The following metrics are currently emitted for consumption by StatsD. The
+``%{variable_name}`` nomenclature represents segments that vary based on
+context.
+
+For example, ``%{channel}`` will be replaced with the name of the channel
+associated with the metric.
+
+{{ StatsdTable }}
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
