@@ -523,29 +523,6 @@ If you let the logs stream, then you will need to open a second terminal to exec
 
 .. _peerenvvars:
 
-Environment variables
-^^^^^^^^^^^^^^^^^^^^^
-
-For the following CLI commands against ``peer0.org1.example.com`` to work, we need
-to preface our commands with the four environment variables given below.  These
-variables for ``peer0.org1.example.com`` are baked into the CLI container,
-therefore we can operate without passing them.  **HOWEVER**, if you want to send
-calls to other peers or the orderer, then you can provide these
-values accordingly by editing the  ``docker-compose-base.yaml`` before starting the
-container. Modify the following four environment variables to use a different
-peer and org.
-
-.. code:: bash
-
-    # Environment variables for PEER0
-
-    CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-    CORE_PEER_LOCALMSPID="Org1MSP"
-    CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-
-.. _createandjoin:
-
 Create & Join Channel
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -568,18 +545,24 @@ If successful you should see the following:
 
         root@0d78bb69300d:/opt/gopath/src/github.com/hyperledger/fabric/peer#
 
-If you do not want to run the CLI commands against the default peer
-``peer0.org1.example.com``, replace the values of ``peer0`` or ``org1`` in the
-four environment variables and run the commands:
+For the following CLI commands against ``peer0.org1.example.com`` to work, we need
+to preface our commands with the four environment variables given below.  These
+variables for ``peer0.org1.example.com`` are baked into the CLI container,
+therefore we can operate without passing them. **HOWEVER**, if you want to send
+calls to other peers or the orderer, keep the CLI container defaults targeting
+``peer0.org1.example.com``, but override the environment variables as seen in the
+example below when you make any CLI calls:
 
 .. code:: bash
 
     # Environment variables for PEER0
 
-    export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    CORE_PEER_LOCALMSPID="Org1MSP"
+    CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
+.. _createandjoin:
 
 Next, we are going to pass in the generated channel configuration transaction
 artifact that we created in the :ref:`createchanneltx` section (we called
@@ -592,7 +575,6 @@ we will set the ``CHANNEL_NAME`` environment variable within our CLI container s
 we don't have to explicitly pass this argument. Channel names must be all lower
 case, less than 250 characters long and match the regular expression
 ``[a-z][a-z0-9.-]*``.
-
 
 .. code:: bash
 
