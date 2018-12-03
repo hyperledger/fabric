@@ -216,6 +216,9 @@ func validateKey(key string) error {
 	if strings.HasPrefix(key, "_") {
 		return errors.Errorf("invalid key [%s], cannot begin with \"_\"", key)
 	}
+	if key == "" {
+		return errors.New("invalid key. Empty string is not supported as a key by couchdb")
+	}
 	return nil
 }
 
