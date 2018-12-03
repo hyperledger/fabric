@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix_test
 
 import (
+	"crypto/rand"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/idemix"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -26,6 +28,7 @@ var _ = Describe("Idemix Bridge", func() {
 			NymKey       bccsp.Key
 			NymPublicKey bccsp.Key
 
+			IssuerNonce []byte
 			credRequest []byte
 
 			credential []byte
@@ -57,11 +60,16 @@ var _ = Describe("Idemix Bridge", func() {
 			NymPublicKey, err = NymKey.PublicKey()
 			Expect(err).NotTo(HaveOccurred())
 
+			IssuerNonce = make([]byte, 32)
+			n, err := rand.Read(IssuerNonce)
+			Expect(n).To(BeEquivalentTo(32))
+			Expect(err).NotTo(HaveOccurred())
+
 			// Credential Request for User
 			credRequest, err = CSP.Sign(
 				UserKey,
 				bccsp.IdemixEmptyDigest(),
-				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey},
+				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -103,7 +111,7 @@ var _ = Describe("Idemix Bridge", func() {
 				IssuerPublicKey,
 				credRequest,
 				bccsp.IdemixEmptyDigest(),
-				&bccsp.IdemixCredentialRequestSignerOpts{},
+				&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(valid).To(BeTrue())

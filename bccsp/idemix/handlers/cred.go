@@ -38,7 +38,7 @@ func (c *CredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.Si
 		return nil, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 
-	return c.CredRequest.Sign(userSecretKey.sk, issuerPK.pk)
+	return c.CredRequest.Sign(userSecretKey.sk, issuerPK.pk, credentialRequestSignerOpts.IssuerNonce)
 }
 
 // CredentialRequestVerifier verifies credential requests
@@ -55,8 +55,12 @@ func (c *CredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte
 	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
 		return false, errors.New("invalid digest, the idemix empty digest is expected")
 	}
+	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixCredentialRequestSignerOpts)
+	if !ok {
+		return false, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
+	}
 
-	err := c.CredRequest.Verify(signature, issuerPublicKey.pk)
+	err := c.CredRequest.Verify(signature, issuerPublicKey.pk, credentialRequestSignerOpts.IssuerNonce)
 	if err != nil {
 		return false, err
 	}

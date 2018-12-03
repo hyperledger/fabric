@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package handlers_test
 
 import (
+	"crypto/rand"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers/mock"
@@ -158,11 +160,16 @@ var _ = Describe("Credential Request", func() {
 
 		var (
 			CredentialRequestVerifier *handlers.CredentialRequestVerifier
+			IssuerNonce               []byte
 			fakeCredRequest           *mock.CredRequest
 		)
 
 		BeforeEach(func() {
 			fakeCredRequest = &mock.CredRequest{}
+			IssuerNonce = make([]byte, 32)
+			n, err := rand.Read(IssuerNonce)
+			Expect(n).To(BeEquivalentTo(32))
+			Expect(err).NotTo(HaveOccurred())
 			CredentialRequestVerifier = &handlers.CredentialRequestVerifier{CredRequest: fakeCredRequest}
 		})
 
@@ -176,7 +183,7 @@ var _ = Describe("Credential Request", func() {
 					handlers.NewIssuerPublicKey(nil),
 					[]byte("fake signature"),
 					bccsp.IdemixEmptyDigest(),
-					nil,
+					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
@@ -193,7 +200,7 @@ var _ = Describe("Credential Request", func() {
 					handlers.NewIssuerPublicKey(nil),
 					[]byte("fake signature"),
 					bccsp.IdemixEmptyDigest(),
-					nil,
+					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err).To(MatchError("verify error"))
 				Expect(valid).To(BeFalse())
@@ -208,7 +215,7 @@ var _ = Describe("Credential Request", func() {
 						nil,
 						[]byte("fake signature"),
 						nil,
-						nil,
+						&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 					)
 					Expect(err).To(MatchError("invalid key, expected *issuerPublicKey"))
 					Expect(valid).To(BeFalse())
@@ -221,7 +228,7 @@ var _ = Describe("Credential Request", func() {
 						handlers.NewUserSecretKey(nil, false),
 						[]byte("fake signature"),
 						nil,
-						nil,
+						&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 					)
 					Expect(err).To(MatchError("invalid key, expected *issuerPublicKey"))
 					Expect(valid).To(BeFalse())
@@ -234,13 +241,38 @@ var _ = Describe("Credential Request", func() {
 						handlers.NewIssuerPublicKey(nil),
 						[]byte("fake signature"),
 						[]byte{1, 2, 3, 4},
-						nil,
+						&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 					)
 					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
 					Expect(valid).To(BeFalse())
 				})
 			})
 
+			Context("and nil options are passed", func() {
+				It("returns error", func() {
+					valid, err := CredentialRequestVerifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
+						[]byte("fake signature"),
+						bccsp.IdemixEmptyDigest(),
+						nil,
+					)
+					Expect(err).To(MatchError("invalid options, expected *IdemixCredentialRequestSignerOpts"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and non-valid options are passed", func() {
+				It("returns error", func() {
+					valid, err := CredentialRequestVerifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
+						[]byte("fake signature"),
+						bccsp.IdemixEmptyDigest(),
+						&bccsp.IdemixCRISignerOpts{},
+					)
+					Expect(err).To(MatchError("invalid options, expected *IdemixCredentialRequestSignerOpts"))
+					Expect(valid).To(BeFalse())
+				})
+			})
 		})
 	})
 })

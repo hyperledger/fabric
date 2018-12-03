@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
@@ -22,7 +24,7 @@ type CredRequest struct {
 
 // Sign produces an idemix credential request. It takes in input a user secret key and
 // an issuer public key.
-func (cr *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey) (res []byte, err error) {
+func (cr *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey, nonce []byte) (res []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -38,12 +40,15 @@ func (cr *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey) (res 
 	if !ok {
 		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
+	if len(nonce) != cryptolib.FieldBytes {
+		return nil, errors.Errorf("invalid issuer nonce, expected length %d, got %d", cryptolib.FieldBytes, len(nonce))
+	}
 
 	rng := cr.NewRand()
 
 	credRequest := cryptolib.NewCredRequest(
 		isk.E,
-		cryptolib.RandModOrder(rng),
+		nonce,
 		iipk.PK,
 		rng)
 
@@ -52,7 +57,7 @@ func (cr *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey) (res 
 
 // Verify checks that the passed credential request is valid with the respect to the passed
 // issuer public key.
-func (*CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPublicKey) (err error) {
+func (*CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPublicKey, nonce []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)
@@ -70,5 +75,18 @@ func (*CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPublicKe
 		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	return credRequest.Check(iipk.PK)
+	err = credRequest.Check(iipk.PK)
+	if err != nil {
+		return err
+	}
+
+	// Nonce checks
+	if len(nonce) != cryptolib.FieldBytes {
+		return errors.Errorf("invalid issuer nonce, expected length %d, got %d", cryptolib.FieldBytes, len(nonce))
+	}
+	if !bytes.Equal(nonce, credRequest.IssuerNonce) {
+		return errors.Errorf("invalid nonce, expected [%v], got [%v]", nonce, credRequest.IssuerNonce)
+	}
+
+	return nil
 }

@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package bridge_test
 
 import (
+	"crypto/rand"
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/bccsp"
@@ -291,39 +294,56 @@ var _ = Describe("Idemix Bridge", func() {
 	Describe("credential request", func() {
 		var (
 			CredRequest *bridge.CredRequest
+			IssuerNonce []byte
 		)
 		BeforeEach(func() {
 			CredRequest = &bridge.CredRequest{NewRand: bridge.NewRandOrPanic}
+			IssuerNonce = make([]byte, 32)
+			n, err := rand.Read(IssuerNonce)
+			Expect(n).To(BeEquivalentTo(32))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("sign", func() {
 			It("fail on nil user secret key", func() {
-				raw, err := CredRequest.Sign(nil, issuerPublicKey)
+				raw, err := CredRequest.Sign(nil, issuerPublicKey, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [<nil>]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid user secret key", func() {
-				raw, err := CredRequest.Sign(issuerPublicKey, issuerPublicKey)
+				raw, err := CredRequest.Sign(issuerPublicKey, issuerPublicKey, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("invalid user secret key, expected *Big, got [*bridge.IssuerPublicKey]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on nil issuer public key", func() {
-				raw, err := CredRequest.Sign(userSecretKey, nil)
+				raw, err := CredRequest.Sign(userSecretKey, nil, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid issuer public key", func() {
-				raw, err := CredRequest.Sign(userSecretKey, &mock.IssuerPublicKey{})
+				raw, err := CredRequest.Sign(userSecretKey, &mock.IssuerPublicKey{}, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*mock.IssuerPublicKey]"))
+				Expect(raw).To(BeNil())
+			})
+
+			It("fail on nil nonce", func() {
+				raw, err := CredRequest.Sign(userSecretKey, issuerPublicKey, nil)
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer nonce, expected length 32, got 0"))
+				Expect(raw).To(BeNil())
+			})
+
+			It("fail on empty nonce", func() {
+				raw, err := CredRequest.Sign(userSecretKey, issuerPublicKey, []byte{})
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer nonce, expected length 32, got 0"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("panic on rand failure", func() {
 				CredRequest.NewRand = NewRandPanic
-				raw, err := CredRequest.Sign(userSecretKey, issuerPublicKey)
+				raw, err := CredRequest.Sign(userSecretKey, issuerPublicKey, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("failure [new rand panic]"))
 				Expect(raw).To(BeNil())
 			})
@@ -332,24 +352,25 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("verify", func() {
 			It("panic on nil credential request", func() {
-				err := CredRequest.Verify(nil, issuerPublicKey)
+				err := CredRequest.Verify(nil, issuerPublicKey, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("failure [runtime error: index out of range]"))
 			})
 
 			It("fail on invalid credential request", func() {
-				err := CredRequest.Verify([]byte{0, 1, 2, 3, 4}, issuerPublicKey)
+				err := CredRequest.Verify([]byte{0, 1, 2, 3, 4}, issuerPublicKey, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
 			})
 
 			It("fail on nil issuer public key", func() {
-				err := CredRequest.Verify(nil, nil)
+				err := CredRequest.Verify(nil, nil, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
 			It("fail on invalid issuer public key", func() {
-				err := CredRequest.Verify(nil, &mock.IssuerPublicKey{})
+				err := CredRequest.Verify(nil, &mock.IssuerPublicKey{}, IssuerNonce)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer public key, expected *IssuerPublicKey, got [*mock.IssuerPublicKey]"))
 			})
+
 		})
 	})
 
@@ -590,6 +611,7 @@ var _ = Describe("Idemix Bridge", func() {
 			CredRequest               handlers.CredRequest
 			CredentialRequestSigner   *handlers.CredentialRequestSigner
 			CredentialRequestVerifier *handlers.CredentialRequestVerifier
+			IssuerNonce               []byte
 			credRequest               []byte
 
 			Credential         handlers.Credential
@@ -631,13 +653,18 @@ var _ = Describe("Idemix Bridge", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Credential Request for User
+			IssuerNonce = make([]byte, 32)
+			n, err := rand.Read(IssuerNonce)
+			Expect(n).To(BeEquivalentTo(32))
+			Expect(err).NotTo(HaveOccurred())
+
 			CredRequest = &bridge.CredRequest{NewRand: bridge.NewRandOrPanic}
 			CredentialRequestSigner = &handlers.CredentialRequestSigner{CredRequest: CredRequest}
 			CredentialRequestVerifier = &handlers.CredentialRequestVerifier{CredRequest: CredRequest}
 			credRequest, err = CredentialRequestSigner.Sign(
 				UserKey,
 				bccsp.IdemixEmptyDigest(),
-				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey},
+				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -685,7 +712,7 @@ var _ = Describe("Idemix Bridge", func() {
 				IssuerPublicKey,
 				credRequest,
 				bccsp.IdemixEmptyDigest(),
-				nil,
+				&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(valid).To(BeTrue())
@@ -722,7 +749,45 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("the environment is not valid with the respect to different parameters", func() {
 
+			It("invalid credential request nonce", func() {
+				valid, err := CredentialRequestVerifier.Verify(
+					IssuerPublicKey,
+					credRequest,
+					bccsp.IdemixEmptyDigest(),
+					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-apple-pine-apple-pine-apple")},
+				)
+				Expect(err.Error()).To(BeEquivalentTo(fmt.Sprintf("invalid nonce, expected [%v], got [%v]", []byte("pine-apple-pine-apple-pine-apple"), IssuerNonce)))
+				Expect(valid).ToNot(BeTrue())
+			})
+
+			It("invalid credential request nonce, too short", func() {
+				valid, err := CredentialRequestVerifier.Verify(
+					IssuerPublicKey,
+					credRequest,
+					bccsp.IdemixEmptyDigest(),
+					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-aple-pine-apple-pinapple")},
+				)
+				Expect(err.Error()).To(BeEquivalentTo("invalid issuer nonce, expected length 32, got 29"))
+				Expect(valid).ToNot(BeTrue())
+			})
+
 			It("invalid credential request", func() {
+				if credRequest[4] == 0 {
+					credRequest[4] = 1
+				} else {
+					credRequest[4] = 0
+				}
+				valid, err := CredentialRequestVerifier.Verify(
+					IssuerPublicKey,
+					credRequest,
+					bccsp.IdemixEmptyDigest(),
+					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
+				)
+				Expect(err.Error()).To(BeEquivalentTo("zero knowledge proof is invalid"))
+				Expect(valid).ToNot(BeTrue())
+			})
+
+			It("invalid credential request in verifying credential", func() {
 				credRequest[4] = 0
 				credential, err := CredentialSigner.Sign(
 					IssuerKey,

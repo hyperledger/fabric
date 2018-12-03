@@ -63,7 +63,7 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 		return nil, errors.WithMessage(err, "Error getting PRNG")
 	}
 	sk := idemix.RandModOrder(rng)
-	ni := idemix.RandModOrder(rng)
+	ni := idemix.BigToBytes(idemix.RandModOrder(rng))
 	msg := idemix.NewCredRequest(sk, ni, key.Ipk, rng)
 	cred, err := idemix.NewCredential(key, msg, attrs, rng)
 	if err != nil {

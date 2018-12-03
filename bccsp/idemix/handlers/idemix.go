@@ -74,10 +74,10 @@ type User interface {
 type CredRequest interface {
 	// Sign creates a new Credential Request, the first message of the interactive credential issuance protocol
 	// (from user to issuer)
-	Sign(sk Big, ipk IssuerPublicKey) ([]byte, error)
+	Sign(sk Big, ipk IssuerPublicKey, nonce []byte) ([]byte, error)
 
 	// Verify verifies the credential request
-	Verify(credRequest []byte, ipk IssuerPublicKey) error
+	Verify(credRequest []byte, ipk IssuerPublicKey, nonce []byte) error
 }
 
 // CredRequest is a local interface to decouple from the idemix implementation
