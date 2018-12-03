@@ -236,11 +236,32 @@ func (s *store) Commit() error {
 }
 
 // Rollback implements the function in the interface `Store`
-// Not deleting the existing data entries and expiry entries for now
-// Because the next try would have exact same entries and will overwrite those
+// This deletes the existing data entries and eligible missing data entries.
+// However, this does not delete ineligible missing data entires as the next try
+// would have exact same entries and will overwrite those. This also leaves the
+// existing expiry entires as is because, most likely they will also get overwritten
+// per new data entries. Even if some of the expiry entries does not get overwritten,
+// (beacuse of some data may be missing next time), the additional expiry entries are just
+// a Noop
 func (s *store) Rollback() error {
 	if !s.batchPending {
 		return &ErrIllegalCall{"No pending batch to rollback"}
+	}
+	blkNum := s.nextBlockNum()
+	batch := leveldbhelper.NewUpdateBatch()
+	itr := s.db.GetIterator(datakeyRange(blkNum))
+	for itr.Next() {
+		batch.Delete(itr.Key())
+	}
+	itr.Release()
+	itr = s.db.GetIterator(eligibleMissingdatakeyRange(blkNum))
+	for itr.Next() {
+		batch.Delete(itr.Key())
+	}
+	itr.Release()
+	batch.Delete(pendingCommitKey)
+	if err := s.db.WriteBatch(batch, true); err != nil {
+		return err
 	}
 	s.batchPending = false
 	return nil
