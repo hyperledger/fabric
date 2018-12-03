@@ -102,7 +102,7 @@ prompt. Respond with a ``y`` or hit the return key to execute the described acti
 
 .. code:: bash
 
-  Generating certs and genesis block for with channel 'mychannel' and CLI timeout of '10'
+  Generating certs and genesis block for channel 'mychannel' with CLI timeout of '10' seconds and CLI delay of '3' seconds
   Continue? [Y/n] y
   proceeding ...
   /Users/xxx/dev/fabric-samples/bin/cryptogen
@@ -192,7 +192,7 @@ Respond with a ``y`` or hit the return key:
 
 .. code:: bash
 
-  Starting with channel 'mychannel' and CLI timeout of '10'
+  Starting for channel 'mychannel' with CLI timeout of '10' seconds and CLI delay of '3' seconds
   Continue? [Y/n]
   proceeding ...
   Creating network "net_byfn" with the default driver
