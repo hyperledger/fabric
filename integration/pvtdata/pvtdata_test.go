@@ -478,6 +478,80 @@ var _ bool = Describe("PrivateData", func() {
 				"Failed to get private details for marble1")
 		})
 	})
+
+	Describe("collection ACL while reading private data", func() {
+		var (
+			testDir       string
+			network       *nwo.Network
+			process       ifrit.Process
+			orderer       *nwo.Orderer
+			expectedPeers []*nwo.Peer
+		)
+
+		BeforeEach(func() {
+			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
+
+			By("installing and instantiating chaincode on all peers")
+			chaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json")}
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			By("invoking initMarble function of the chaincode")
+			invokeChaincode(network, "org1", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
+
+			By("waiting for block to propagate")
+			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+		})
+
+		AfterEach(func() {
+			testCleanup(testDir, network, process)
+		})
+
+		It("verify that the private data is not readable by non-members", func() {
+			// as the member_only_read is set to false, org1-user1 should be able to
+			// read from both the collectionMarblePrivateDetails but cannot find the
+			// private data.
+			By("querying collectionMarblePrivateDetails on org1-peer0 by org1-user1, should have read access but cannot find the pvtdata")
+			verifyAccessFailed(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["readMarblePrivateDetails","marble1"]}`},
+				network.Peer("org1", "peer0"),
+				"private data matching public hash version is not available")
+
+			// after the upgrade the collections will be updated as follows:
+			// 1. collectionMarbles - member_only_read is set to true
+			// 2. collectionMarblePrivateDetails - member_only_read is set to true
+			// no change in the membership but org1-user1 cannot read from
+			// collectionMarblePrivateDetails.
+			By("upgrading chaincode in order to update collections config")
+			chaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "2.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config4.json")}
+			nwo.UpgradeChaincode(network, "testchannel", orderer, chaincode)
+
+			By("querying collectionMarblePrivateDetails on org1-peer0 by org1-user1, shouldn't have read access")
+			verifyAccessFailed(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["readMarblePrivateDetails","marble1"]}`},
+				network.Peer("org1", "peer0"),
+				"tx creator does not have read access permission")
+		})
+	})
 })
 
 func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
