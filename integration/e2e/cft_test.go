@@ -25,7 +25,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
-var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
+var _ = PDescribe("EndToEnd Crash Fault Tolerance", func() {
 	var (
 		testDir   string
 		client    *docker.Client
