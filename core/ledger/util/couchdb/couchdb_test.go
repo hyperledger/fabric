@@ -742,6 +742,7 @@ func TestDBSaveAttachment(t *testing.T) {
 	attachment := &AttachmentInfo{}
 	attachment.AttachmentBytes = byteText
 	attachment.ContentType = "text/plain"
+	attachment.Length = uint64(len(byteText))
 	attachment.Name = "valueBytes"
 
 	attachments := []*AttachmentInfo{}
@@ -766,6 +767,7 @@ func TestDBSaveAttachment(t *testing.T) {
 	assert.NoError(t, geterr2, "Error when trying to retrieve a document with attachment")
 	assert.NotNil(t, couchDoc.Attachments)
 	assert.Equal(t, byteText, couchDoc.Attachments[0].AttachmentBytes)
+	assert.Equal(t, attachment.Length, couchDoc.Attachments[0].Length)
 
 }
 
