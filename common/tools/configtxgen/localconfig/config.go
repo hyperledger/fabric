@@ -29,10 +29,6 @@ const (
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
 var configName = strings.ToLower(Prefix)
 
-func init() {
-	flogging.InitFromSpec("common.tools.configtxgen.localconfig=error")
-}
-
 const (
 	// TestChainID is the channel name used for testing purposes when one is
 	// not given
