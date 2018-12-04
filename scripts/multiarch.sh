@@ -11,6 +11,7 @@ usage() {
   echo "ENV:"
   echo "  NS=$NS"
   echo "  VERSION=$VERSION"
+  echo "  TWO_DIGIT_VERSION=$TWO_DIGIT_VERSION"
   exit 1
 }
 
@@ -19,6 +20,7 @@ missing() {
   echo "ENV:"
   echo "  NS=$NS"
   echo "  VERSION=$VERSION"
+  echo "  TWO_DIGIT_VERSION=$TWO_DIGIT_VERSION"
   exit 1
 }
 
@@ -27,13 +29,15 @@ failed() {
   echo "ENV:"
   echo "  NS=$NS"
   echo "  VERSION=$VERSION"
+  echo "  TWO_DIGIT_VERSION=$TWO_DIGIT_VERSION"
   exit 1
 }
 
 USER=${1:-nobody}
 PASSWORD=${2:-nohow}
 NS=${NS:-hyperledger}
-VERSION=${BASE_VERSION:-1.1.0}
+VERSION=${BASE_VERSION:-1.3.0}
+TWO_DIGIT_VERSION=${TWO_DIGIT_VERSION:-1.3}
 
 if [ "$#" -ne 2 ]; then
   usage
@@ -62,11 +66,15 @@ for image in ${IMAGES}; do
   manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
    --platforms linux/amd64,linux/s390x --template "${NS}/${image}:ARCH-${VERSION}"\
    --target "${NS}/${image}:latest"
+  manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
+   --platforms linux/amd64,linux/s390x --template "${NS}/${image}:ARCH-${VERSION}"\
+   --target "${NS}/${image}:${TWO_DIGIT_VERSION}"
 done
 
 # test that manifest is working as expected
 for image in ${IMAGES}; do
   docker pull ${NS}/${image}:${VERSION} || failed
+  docker pull ${NS}/${image}:${TWO_DIGIT_VERSION} || failed
   docker pull ${NS}/${image}:latest || failed
 done
 
