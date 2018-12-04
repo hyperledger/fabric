@@ -7,8 +7,6 @@ package client
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -17,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/comm"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	peercommon "github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/protos/common"
@@ -49,15 +46,16 @@ type TxEvent struct {
 }
 
 // NewTransactionSubmitter creates a new TxSubmitter from token client config
-func NewTxSubmitter(config *ClientConfig) (*TxSubmitter, error) {
+func NewTxSubmitter(config ClientConfig) (*TxSubmitter, error) {
 	err := ValidateClientConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: make mspType configurable
-	mspType := "bccsp"
-	peercommon.InitCrypto(config.MspDir, config.MspId, mspType)
+	if config.MSPInfo.MSPType == "" {
+		config.MSPInfo.MSPType = "bccsp"
+	}
+	peercommon.InitCrypto(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
 
 	Signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
@@ -68,18 +66,18 @@ func NewTxSubmitter(config *ClientConfig) (*TxSubmitter, error) {
 		return nil, err
 	}
 
-	ordererClient, err := NewOrdererClient(config)
+	ordererClient, err := NewOrdererClient(&config.Orderer)
 	if err != nil {
 		return nil, err
 	}
 
-	deliverClient, err := NewDeliverClient(config)
+	deliverClient, err := NewDeliverClient(&config.CommitterPeer)
 	if err != nil {
 		return nil, err
 	}
 
 	return &TxSubmitter{
-		Config:        config,
+		Config:        &config,
 		Signer:        Signer,
 		Creator:       creator,
 		OrdererClient: ordererClient,
@@ -141,18 +139,18 @@ func (s *TxSubmitter) sendTransactionInternal(txEnvelope *common.Envelope, ctx c
 		if err != nil {
 			return false, "", err
 		}
-		blockEnvelope, err := CreateDeliverEnvelope(s.Config.ChannelId, s.Creator, s.Signer, s.DeliverClient.Certificate())
+		blockEnvelope, err := CreateDeliverEnvelope(s.Config.ChannelID, s.Creator, s.Signer, s.DeliverClient.Certificate())
 		if err != nil {
 			return false, "", err
 		}
-		err = DeliverSend(deliverFiltered, s.Config.CommitPeerCfg.Address, blockEnvelope)
+		err = DeliverSend(deliverFiltered, s.Config.CommitterPeer.Address, blockEnvelope)
 		if err != nil {
 			return false, "", err
 		}
-		go DeliverReceive(deliverFiltered, s.Config.CommitPeerCfg.Address, txid, eventCh)
+		go DeliverReceive(deliverFiltered, s.Config.CommitterPeer.Address, txid, eventCh)
 	}
 
-	err = BroadcastSend(broadcast, s.Config.OrdererCfg.Address, txEnvelope)
+	err = BroadcastSend(broadcast, s.Config.Orderer.Address, txEnvelope)
 	if err != nil {
 		return false, txid, err
 	}
@@ -160,7 +158,7 @@ func (s *TxSubmitter) sendTransactionInternal(txEnvelope *common.Envelope, ctx c
 	// wait for response from orderer broadcast - it does not wait for commit peer response
 	responses := make(chan common.Status)
 	errs := make(chan error, 1)
-	go BroadcastReceive(broadcast, s.Config.OrdererCfg.Address, responses, errs)
+	go BroadcastReceive(broadcast, s.Config.Orderer.Address, responses, errs)
 	_, err = BroadcastWaitForResponse(responses, errs)
 
 	// wait for commit event from deliver service in this case
@@ -172,8 +170,6 @@ func (s *TxSubmitter) sendTransactionInternal(txEnvelope *common.Envelope, ctx c
 }
 
 func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (string, *common.Envelope, error) {
-	// channelId string, creator []byte, signer SignerIdentity, cert *tls.Certificate
-	// , s.Config.ChannelId, s.Creator, s.Signer, s.OrdererClient.Certificate()
 	var tlsCertHash []byte
 	var err error
 	// check for client certificate and compute SHA2-256 on certificate if present
@@ -187,7 +183,7 @@ func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (string, *common.Envelope
 		}
 	}
 
-	txid, header, err := CreateHeader(common.HeaderType_TOKEN_TRANSACTION, s.Config.ChannelId, s.Creator, tlsCertHash)
+	txid, header, err := CreateHeader(common.HeaderType_TOKEN_TRANSACTION, s.Config.ChannelID, s.Creator, tlsCertHash)
 	if err != nil {
 		return txid, nil, err
 	}
@@ -198,7 +194,7 @@ func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (string, *common.Envelope
 
 // CreateHeader creates common.Header for a token transaction
 // tlsCertHash is for client TLS cert, only applicable when ClientAuthRequired is true
-func CreateHeader(txType common.HeaderType, channelId string, creator []byte, tlsCertHash []byte) (string, *common.Header, error) {
+func CreateHeader(txType common.HeaderType, channelID string, creator []byte, tlsCertHash []byte) (string, *common.Header, error) {
 	ts, err := ptypes.TimestampProto(time.Now())
 	if err != nil {
 		return "", nil, err
@@ -216,7 +212,7 @@ func CreateHeader(txType common.HeaderType, channelId string, creator []byte, tl
 
 	chdr := &common.ChannelHeader{
 		Type:        int32(txType),
-		ChannelId:   channelId,
+		ChannelId:   channelID,
 		TxId:        txId,
 		Epoch:       uint64(0),
 		Timestamp:   ts,
@@ -283,27 +279,4 @@ func getTransactionId(txEnvelope *common.Envelope) (string, error) {
 	}
 
 	return channelHeader.TxId, nil
-}
-
-// createGrpcClient returns a comm.GRPCClient based on toke client config
-func createGrpcClient(cfg *ConnectionConfig, tlsEnabled bool) (*comm.GRPCClient, error) {
-	clientConfig := comm.ClientConfig{Timeout: time.Second}
-
-	if tlsEnabled {
-		if cfg.TlsRootCertFile == "" {
-			return nil, errors.New("missing TlsRootCertFile in client config")
-		}
-		caPEM, err := ioutil.ReadFile(cfg.TlsRootCertFile)
-		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("unable to load TLS cert from %s", cfg.TlsRootCertFile))
-		}
-		secOpts := &comm.SecureOptions{
-			UseTLS:            true,
-			ServerRootCAs:     [][]byte{caPEM},
-			RequireClientCert: false,
-		}
-		clientConfig.SecOpts = secOpts
-	}
-
-	return comm.NewGRPCClient(clientConfig)
 }

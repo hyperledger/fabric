@@ -46,19 +46,20 @@ var _ = Describe("TxSubmitter", func() {
 	BeforeEach(func() {
 		channelId = "test-channel"
 
-		ordererCfg := client.ConnectionConfig{
+		orderer := client.ConnectionConfig{
 			Address: "fake_address",
 		}
-
-		commitPeerCfg := client.ConnectionConfig{
+		committerPeer := client.ConnectionConfig{
 			Address: "fake_address",
 		}
-
+		proverPeer := client.ConnectionConfig{
+			Address: "fake_address",
+		}
 		config = &client.ClientConfig{
-			ChannelId:     channelId,
-			TlsEnabled:    false,
-			OrdererCfg:    ordererCfg,
-			CommitPeerCfg: commitPeerCfg,
+			ChannelID:     channelId,
+			Orderer:       orderer,
+			CommitterPeer: committerPeer,
+			ProverPeer:    proverPeer,
 		}
 
 		fakeSigner = &mock.SignerIdentity{}

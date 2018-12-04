@@ -92,31 +92,35 @@ var _ = Describe("Token EndToEnd", func() {
 func RunTokenTransactionSubmit(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) {
 	user := "User1"
 	mspDir := n.PeerUserMSPDir(peer, user)
-	mspId := "Org1MSP"
+	mspID := "Org1MSP"
 
 	ordererAddr := n.OrdererAddress(orderer, nwo.ListenPort)
-	ordererTlsRootCertFile := filepath.Join(n.OrdererLocalTLSDir(orderer), "ca.crt")
+	ordererTLSRootCertFile := filepath.Join(n.OrdererLocalTLSDir(orderer), "ca.crt")
 
 	peerAddr := n.PeerAddress(peer, nwo.ListenPort)
-	peerTlsRootCertFile := filepath.Join(n.PeerLocalTLSDir(peer), "ca.crt")
+	peerTLSRootCertFile := filepath.Join(n.PeerLocalTLSDir(peer), "ca.crt")
 
-	ordererCfg := tokenclient.ConnectionConfig{
-		Address:         ordererAddr,
-		TlsRootCertFile: ordererTlsRootCertFile,
-	}
-
-	commitPeerCfg := tokenclient.ConnectionConfig{
-		Address:         peerAddr,
-		TlsRootCertFile: peerTlsRootCertFile,
-	}
-
-	config := &tokenclient.ClientConfig{
-		ChannelId:     "testchannel",
-		MspDir:        mspDir,
-		MspId:         mspId,
-		TlsEnabled:    true,
-		OrdererCfg:    ordererCfg,
-		CommitPeerCfg: commitPeerCfg,
+	config := tokenclient.ClientConfig{
+		ChannelID: "testchannel",
+		MSPInfo: tokenclient.MSPInfo{
+			MSPConfigPath: mspDir,
+			MSPID:         mspID,
+		},
+		Orderer: tokenclient.ConnectionConfig{
+			Address:         ordererAddr,
+			TLSEnabled:      true,
+			TLSRootCertFile: ordererTLSRootCertFile,
+		},
+		CommitterPeer: tokenclient.ConnectionConfig{
+			Address:         peerAddr,
+			TLSEnabled:      true,
+			TLSRootCertFile: peerTLSRootCertFile,
+		},
+		ProverPeer: tokenclient.ConnectionConfig{
+			Address:         peerAddr,
+			TLSEnabled:      true,
+			TLSRootCertFile: peerTLSRootCertFile,
+		},
 	}
 
 	txSubmitter, err := tokenclient.NewTxSubmitter(config)

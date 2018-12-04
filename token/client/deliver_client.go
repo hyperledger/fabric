@@ -51,21 +51,21 @@ type deliverClient struct {
 	conn               *grpc.ClientConn
 }
 
-func NewDeliverClient(config *ClientConfig) (DeliverClient, error) {
-	grpcClient, err := createGrpcClient(&config.CommitPeerCfg, config.TlsEnabled)
+func NewDeliverClient(config *ConnectionConfig) (DeliverClient, error) {
+	grpcClient, err := CreateGRPCClient(config)
 	if err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to peer %s", config.CommitPeerCfg.Address))
+		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to peer %s", config.Address))
 		logger.Errorf("%s", err)
 		return nil, err
 	}
-	conn, err := grpcClient.NewConnection(config.CommitPeerCfg.Address, config.CommitPeerCfg.ServerNameOverride)
+	conn, err := grpcClient.NewConnection(config.Address, config.ServerNameOverride)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to commit peer %s", config.CommitPeerCfg.Address))
+		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to commit peer %s", config.Address))
 	}
 
 	return &deliverClient{
-		peerAddr:           config.CommitPeerCfg.Address,
-		serverNameOverride: config.CommitPeerCfg.ServerNameOverride,
+		peerAddr:           config.Address,
+		serverNameOverride: config.ServerNameOverride,
 		grpcClient:         grpcClient,
 		conn:               conn,
 	}, nil

@@ -48,21 +48,21 @@ type ordererClient struct {
 	conn               *grpc.ClientConn
 }
 
-func NewOrdererClient(config *ClientConfig) (OrdererClient, error) {
-	grpcClient, err := createGrpcClient(&config.OrdererCfg, config.TlsEnabled)
+func NewOrdererClient(config *ConnectionConfig) (OrdererClient, error) {
+	grpcClient, err := CreateGRPCClient(config)
 	if err != nil {
-		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to orderer %s", config.OrdererCfg.Address))
+		err = errors.WithMessage(err, fmt.Sprintf("failed to create a GRPCClient to orderer %s", config.Address))
 		logger.Errorf("%s", err)
 		return nil, err
 	}
-	conn, err := grpcClient.NewConnection(config.OrdererCfg.Address, config.OrdererCfg.ServerNameOverride)
+	conn, err := grpcClient.NewConnection(config.Address, config.ServerNameOverride)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to orderer %s", config.OrdererCfg.Address))
+		return nil, errors.WithMessage(err, fmt.Sprintf("failed to connect to orderer %s", config.Address))
 	}
 
 	return &ordererClient{
-		ordererAddr:        config.OrdererCfg.Address,
-		serverNameOverride: config.OrdererCfg.ServerNameOverride,
+		ordererAddr:        config.Address,
+		serverNameOverride: config.ServerNameOverride,
 		grpcClient:         grpcClient,
 		conn:               conn,
 	}, nil
