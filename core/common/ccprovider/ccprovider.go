@@ -511,6 +511,7 @@ type TransactionParams struct {
 	TXSimulator          ledger.TxSimulator
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
 	CollectionStore      privdata.CollectionStore
+	IsInitTransaction    bool
 
 	// this is additional data passed to the chaincode
 	ProposalDecorations map[string][]byte

@@ -67,6 +67,7 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 		TXSimulator:          txParams.TXSimulator,
 		HistoryQueryExecutor: txParams.HistoryQueryExecutor,
 		CollectionStore:      txParams.CollectionStore,
+		IsInitTransaction:    txParams.IsInitTransaction,
 
 		queryIteratorMap:    map[string]commonledger.ResultsIterator{},
 		pendingQueryResults: map[string]*PendingQueryResult{},

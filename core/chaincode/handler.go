@@ -626,6 +626,9 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), chaincodeName, getState.Key, txContext.ChainID)
 
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
@@ -663,6 +666,9 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 
 	var metadata map[string][]byte
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
@@ -712,6 +718,9 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 	chaincodeName := h.ChaincodeName()
 	collection := getStateByRange.Collection
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
@@ -833,6 +842,9 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 	chaincodeName := h.ChaincodeName()
 	collection := getQueryResult.Collection
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
@@ -1006,6 +1018,9 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 	chaincodeName := h.ChaincodeName()
 	collection := putState.Collection
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		err = txContext.TXSimulator.SetPrivateData(chaincodeName, collection, putState.Key, putState.Value)
 	} else {
 		err = txContext.TXSimulator.SetState(chaincodeName, putState.Key, putState.Value)
@@ -1035,6 +1050,9 @@ func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 	chaincodeName := h.ChaincodeName()
 	collection := putStateMetadata.Collection
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		err = txContext.TXSimulator.SetPrivateDataMetadata(chaincodeName, collection, putStateMetadata.Key, metadata)
 	} else {
 		err = txContext.TXSimulator.SetStateMetadata(chaincodeName, putStateMetadata.Key, metadata)
@@ -1056,6 +1074,9 @@ func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *Transactio
 	chaincodeName := h.ChaincodeName()
 	collection := delState.Collection
 	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
 		err = txContext.TXSimulator.DeletePrivateData(chaincodeName, collection, delState.Key)
 	} else {
 		err = txContext.TXSimulator.DeleteState(chaincodeName, delState.Key)
@@ -1181,6 +1202,8 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 	defer chaincodeLogger.Debugf("Exit")
 
 	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
+	txParams.IsInitTransaction = (msg.Type == pb.ChaincodeMessage_INIT)
+
 	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {
 		return nil, err
