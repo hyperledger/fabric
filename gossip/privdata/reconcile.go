@@ -176,7 +176,7 @@ func (r *Reconciler) reconcile() (int, uint64, uint64, error) {
 
 	pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
 	// commit missing private data that was reconciled and log mismatched
-	pvtdataHashMismatch, err := r.CommitPvtData(pvtDataToCommit)
+	pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit)
 	r.logMismatched(pvtdataHashMismatch)
 	if err != nil {
 		return 0, 0, 0, errors.Wrap(err, "failed to commit private data")

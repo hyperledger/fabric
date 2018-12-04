@@ -221,7 +221,7 @@ func (mock *committerMock) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvt
 	return args.Error(0)
 }
 
-func (mock *committerMock) CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+func (mock *committerMock) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
 	args := mock.Called(blockPvtData)
 	return args.Get(0).([]*ledger.PvtdataHashMismatch), args.Error(1)
 }
