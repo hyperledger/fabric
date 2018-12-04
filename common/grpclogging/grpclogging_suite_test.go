@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-//go:generate protoc --go_out=plugins=grpc:. testpb/echo.proto
+//go:generate protoc --proto_path=$GOPATH/src/github.com/hyperledger/fabric/common/grpclogging/testpb --go_out=plugins=grpc:$GOPATH/src $GOPATH/src/github.com/hyperledger/fabric/common/grpclogging/testpb/echo.proto
 
 func TestGrpclogging(t *testing.T) {
 	RegisterFailHandler(Fail)

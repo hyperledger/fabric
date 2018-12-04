@@ -58,7 +58,7 @@ type isTokenExpectation_Expectation interface {
 }
 
 type TokenExpectation_PlainExpectation struct {
-	PlainExpectation *PlainExpectation `protobuf:"bytes,1,opt,name=plain_expectation,json=plainExpectation,oneof"`
+	PlainExpectation *PlainExpectation `protobuf:"bytes,1,opt,name=plain_expectation,json=plainExpectation,proto3,oneof"`
 }
 
 func (*TokenExpectation_PlainExpectation) isTokenExpectation_Expectation() {}
@@ -172,13 +172,15 @@ type isPlainExpectation_Payload interface {
 }
 
 type PlainExpectation_ImportExpectation struct {
-	ImportExpectation *PlainTokenExpectation `protobuf:"bytes,1,opt,name=import_expectation,json=importExpectation,oneof"`
-}
-type PlainExpectation_TransferExpectation struct {
-	TransferExpectation *PlainTokenExpectation `protobuf:"bytes,2,opt,name=transfer_expectation,json=transferExpectation,oneof"`
+	ImportExpectation *PlainTokenExpectation `protobuf:"bytes,1,opt,name=import_expectation,json=importExpectation,proto3,oneof"`
 }
 
-func (*PlainExpectation_ImportExpectation) isPlainExpectation_Payload()   {}
+type PlainExpectation_TransferExpectation struct {
+	TransferExpectation *PlainTokenExpectation `protobuf:"bytes,2,opt,name=transfer_expectation,json=transferExpectation,proto3,oneof"`
+}
+
+func (*PlainExpectation_ImportExpectation) isPlainExpectation_Payload() {}
+
 func (*PlainExpectation_TransferExpectation) isPlainExpectation_Payload() {}
 
 func (m *PlainExpectation) GetPayload() isPlainExpectation_Payload {
@@ -280,7 +282,7 @@ func _PlainExpectation_OneofSizer(msg proto.Message) (n int) {
 // certain outputs will be matched
 type PlainTokenExpectation struct {
 	// Outputs contains the expected outputs
-	Outputs              []*PlainOutput `protobuf:"bytes,1,rep,name=outputs" json:"outputs,omitempty"`
+	Outputs              []*PlainOutput `protobuf:"bytes,1,rep,name=outputs,proto3" json:"outputs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
