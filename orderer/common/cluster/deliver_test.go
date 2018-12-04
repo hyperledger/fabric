@@ -412,9 +412,14 @@ func TestBlockPullerClone(t *testing.T) {
 	// last block sequence is 100
 	osn1.enqueueResponse(100)
 	osn1.enqueueResponse(1)
+	// The block puller is expected to disconnect after pulling
+	// a single block. So signal the server-side to avoid
+	// grabbing the next block after block 1 is pulled.
+	osn1.blockResponses <- nil
 
 	dialer := newCountingDialer()
 	bp := newBlockPuller(dialer, osn1.srv.Address())
+	bp.FetchTimeout = time.Millisecond * 100
 	// Pull a block at a time and don't buffer them
 	bp.MaxTotalBufferBytes = 1
 	// Clone the block puller
@@ -431,8 +436,6 @@ func TestBlockPullerClone(t *testing.T) {
 	// clone should not be affected
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
-	// Sending a block after the block puller is closed results in the server side routine to finish
-	osn1.enqueueResponse(200)
 
 	// The clone block puller should not have cached the internal state
 	// from its origin block puller, thus it should probe again for the last block
