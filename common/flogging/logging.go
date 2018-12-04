@@ -83,7 +83,10 @@ func (s *Logging) Apply(c Config) error {
 	}
 
 	if c.LogSpec == "" {
-		c.LogSpec = "INFO"
+		c.LogSpec = os.Getenv("FABRIC_LOGGING_SPEC")
+	}
+	if c.LogSpec == "" {
+		c.LogSpec = defaultLevel.String()
 	}
 
 	err = s.LoggerLevels.ActivateSpec(c.LogSpec)

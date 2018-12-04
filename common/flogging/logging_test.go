@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -27,6 +28,23 @@ func TestNew(t *testing.T) {
 		LogSpec: "::=borken=::",
 	})
 	assert.EqualError(t, err, "invalid logging specification '::=borken=::': bad segment '=borken='")
+}
+
+func TestNewWithEnvironment(t *testing.T) {
+	oldSpec, set := os.LookupEnv("FABRIC_LOGGING_SPEC")
+	if set {
+		defer os.Setenv("FABRIC_LOGGING_SPEC", oldSpec)
+	}
+
+	os.Setenv("FABRIC_LOGGING_SPEC", "fatal")
+	logging, err := flogging.New(flogging.Config{})
+	assert.NoError(t, err)
+	assert.Equal(t, zapcore.FatalLevel, logging.DefaultLevel())
+
+	os.Unsetenv("FABRIC_LOGGING_SPEC")
+	logging, err = flogging.New(flogging.Config{})
+	assert.NoError(t, err)
+	assert.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
 }
 
 //go:generate counterfeiter -o mock/write_syncer.go -fake-name WriteSyncer . writeSyncer
