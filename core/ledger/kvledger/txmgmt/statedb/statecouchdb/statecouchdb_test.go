@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/integration/runner"
 )
 
@@ -687,5 +688,75 @@ func TestPaginatedQueryValidation(t *testing.T) {
 
 	err = validateQueryMetadata(queryOptions)
 	assert.Error(t, err, "An should have been thrown for an invalid options")
+}
 
+func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	db, err := env.DBProvider.GetDBHandle("testrangescanfiltercouchinternaldocs")
+	assert.NoError(t, err)
+	couchDatabse, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
+	assert.NoError(t, err)
+	db.Open()
+	defer db.Close()
+	_, err = couchDatabse.CreateIndex(`{
+		"index" : {"fields" : ["asset_name"]},
+			"ddoc" : "indexAssetName",
+			"name" : "indexAssetName",
+			"type" : "json"
+		}`)
+	assert.NoError(t, err)
+
+	_, err = couchDatabse.CreateIndex(`{
+		"index" : {"fields" : ["assetValue"]},
+			"ddoc" : "indexAssetValue",
+			"name" : "indexAssetValue",
+			"type" : "json"
+		}`)
+	assert.NoError(t, err)
+
+	batch := statedb.NewUpdateBatch()
+	for i := 1; i <= 3; i++ {
+		keySmallerThanDesignDoc := fmt.Sprintf("Key-%d", i)
+		keyGreaterThanDesignDoc := fmt.Sprintf("key-%d", i)
+		jsonValue := fmt.Sprintf(`{"asset_name": "marble-%d"}`, i)
+		batch.Put("ns", keySmallerThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
+		batch.Put("ns", keyGreaterThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
+	}
+	db.ApplyUpdates(batch, version.NewHeight(2, 2))
+	assert.NoError(t, err)
+
+	// The Keys in db are in this order
+	// Key-1, Key-2, Key-3,_design/indexAssetNam, _design/indexAssetValue, key-1, key-2, key-3
+	// query different ranges and verify results
+	s, err := newQueryScanner("ns", couchDatabse, "", 3, 3, "", "", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2", "Key-3"})
+	assert.Equal(t, "key-1", s.queryDefinition.startKey)
+
+	s, err = newQueryScanner("ns", couchDatabse, "", 4, 4, "", "", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2", "Key-3", "key-1"})
+	assert.Equal(t, "key-2", s.queryDefinition.startKey)
+
+	s, err = newQueryScanner("ns", couchDatabse, "", 2, 2, "", "", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2"})
+	assert.Equal(t, "Key-3", s.queryDefinition.startKey)
+	s.getNextStateRangeScanResults()
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-3", "key-1"})
+	assert.Equal(t, "key-2", s.queryDefinition.startKey)
+
+	s, err = newQueryScanner("ns", couchDatabse, "", 2, 2, "", "_", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"key-1", "key-2"})
+	assert.Equal(t, "key-3", s.queryDefinition.startKey)
+}
+
+func assertQueryResults(t *testing.T, results []*couchdb.QueryResult, expectedIds []string) {
+	var actualIds []string
+	for _, res := range results {
+		actualIds = append(actualIds, res.ID)
+	}
+	assert.Equal(t, expectedIds, actualIds)
 }

@@ -118,12 +118,10 @@ func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchdb.CouchDa
 
 // ProcessIndexesForChaincodeDeploy creates indexes for a specified namespace
 func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, fileEntries []*ccprovider.TarFileEntry) error {
-
 	db, err := vdb.getNamespaceDBHandle(namespace)
 	if err != nil {
 		return err
 	}
-
 	for _, fileEntry := range fileEntries {
 		indexData := fileEntry.FileContent
 		filename := fileEntry.FileHeader.Name
@@ -133,9 +131,7 @@ func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, fileE
 				"error creating index from file [%s] for channel [%s]", filename, namespace))
 		}
 	}
-
 	return nil
-
 }
 
 func (vdb *VersionedDB) GetDBType() string {
@@ -266,9 +262,7 @@ const returnCount = "count"
 // endKey is exclusive
 // metadata contains a map of additional query options
 func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
-
 	logger.Debugf("Entering GetStateRangeScanIteratorWithMetadata  namespace: %s  startKey: %s  endKey: %s  metadata: %v", namespace, startKey, endKey, metadata)
-
 	// Get the internalQueryLimit from core.yaml
 	internalQueryLimit := int32(ledgerconfig.GetInternalQueryLimit())
 	requestedLimit := int32(0)
@@ -291,7 +285,6 @@ func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, 
 }
 
 func (scanner *queryScanner) getNextStateRangeScanResults() error {
-
 	queryLimit := scanner.queryDefinition.internalQueryLimit
 	if scanner.paginationInfo.requestedLimit > 0 {
 		moreResultsNeeded := scanner.paginationInfo.requestedLimit - scanner.resultsInfo.totalRecordsReturned
@@ -299,34 +292,69 @@ func (scanner *queryScanner) getNextStateRangeScanResults() error {
 			queryLimit = moreResultsNeeded
 		}
 	}
-	queryResult, nextStartKey, err := scanner.db.ReadDocRange(scanner.queryDefinition.startKey, scanner.queryDefinition.endKey,
-		queryLimit)
+	queryResult, nextStartKey, err := rangeScanFilterCouchInternalDocs(scanner.db,
+		scanner.queryDefinition.startKey, scanner.queryDefinition.endKey, queryLimit)
 	if err != nil {
-		logger.Debugf("Error calling ReadDocRange(): %s\n", err.Error())
 		return err
 	}
-
 	scanner.resultsInfo.results = queryResult
 	scanner.queryDefinition.startKey = nextStartKey
 	scanner.paginationInfo.cursor = 0
-
 	return nil
+}
+
+func rangeScanFilterCouchInternalDocs(db *couchdb.CouchDatabase,
+	startKey, endKey string, queryLimit int32,
+) ([]*couchdb.QueryResult, string, error) {
+	var finalResults []*couchdb.QueryResult
+	var finalNextStartKey string
+	for {
+		results, nextStartKey, err := db.ReadDocRange(startKey, endKey, queryLimit)
+		if err != nil {
+			logger.Debugf("Error calling ReadDocRange(): %s\n", err.Error())
+			return nil, "", err
+		}
+		var filteredResults []*couchdb.QueryResult
+		for _, doc := range results {
+			if !isCouchInternalKey(doc.ID) {
+				filteredResults = append(filteredResults, doc)
+			}
+		}
+
+		finalResults = append(finalResults, filteredResults...)
+		finalNextStartKey = nextStartKey
+		queryLimit = int32(len(results) - len(filteredResults))
+		if queryLimit == 0 || finalNextStartKey == "" {
+			break
+		}
+		startKey = finalNextStartKey
+	}
+	var err error
+	for i := 0; isCouchInternalKey(finalNextStartKey); i++ {
+		_, finalNextStartKey, err = db.ReadDocRange(finalNextStartKey, endKey, 1)
+		logger.Debugf("i=%d, finalNextStartKey=%s", i, finalNextStartKey)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	return finalResults, finalNextStartKey, nil
+}
+
+func isCouchInternalKey(key string) bool {
+	return len(key) != 0 && key[0] == '_'
 }
 
 // ExecuteQuery implements method in VersionedDB interface
 func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
-
 	queryResult, err := vdb.ExecuteQueryWithMetadata(namespace, query, nil)
 	if err != nil {
 		return nil, err
 	}
-
 	return queryResult, nil
 }
 
 // ExecuteQueryWithMetadata implements method in VersionedDB interface
 func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
-
 	logger.Debugf("Entering ExecuteQueryWithMetadata  namespace: %s,  query: %s,  metadata: %v", namespace, query, metadata)
 	// Get the querylimit from core.yaml
 	internalQueryLimit := int32(ledgerconfig.GetInternalQueryLimit())
@@ -360,38 +388,32 @@ func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metada
 // executeQueryWithBookmark executes a "paging" query with a bookmark, this method allows a
 // paged query without returning a new query iterator
 func (scanner *queryScanner) executeQueryWithBookmark() error {
-
 	queryLimit := scanner.queryDefinition.internalQueryLimit
 	if scanner.paginationInfo.requestedLimit > 0 {
 		if scanner.paginationInfo.requestedLimit-scanner.resultsInfo.totalRecordsReturned < scanner.queryDefinition.internalQueryLimit {
 			queryLimit = scanner.paginationInfo.requestedLimit - scanner.resultsInfo.totalRecordsReturned
 		}
 	}
-
 	queryString, err := applyAdditionalQueryOptions(scanner.queryDefinition.query,
 		queryLimit, scanner.paginationInfo.bookmark)
 	if err != nil {
 		logger.Debugf("Error calling applyAdditionalQueryOptions(): %s\n", err.Error())
 		return err
 	}
-
 	queryResult, bookmark, err := scanner.db.QueryDocuments(queryString)
 	if err != nil {
 		logger.Debugf("Error calling QueryDocuments(): %s\n", err.Error())
 		return err
 	}
-
 	scanner.resultsInfo.results = queryResult
 	scanner.paginationInfo.bookmark = bookmark
 	scanner.paginationInfo.cursor = 0
-
 	return nil
 }
 
 func validateQueryMetadata(metadata map[string]interface{}) error {
 	for key, keyVal := range metadata {
 		switch key {
-
 		case optionBookmark:
 			//Verify the bookmark is a string
 			if _, ok := keyVal.(string); ok {
@@ -584,10 +606,8 @@ type resultsInfo struct {
 
 func newQueryScanner(namespace string, db *couchdb.CouchDatabase, query string, internalQueryLimit,
 	limit int32, bookmark, startKey, endKey string) (*queryScanner, error) {
-
 	scanner := &queryScanner{namespace, db, &queryDefinition{startKey, endKey, query, internalQueryLimit}, &paginationInfo{-1, limit, bookmark}, &resultsInfo{0, nil}}
 	var err error
-
 	// query is defined, then execute the query and return the records and bookmark
 	if scanner.queryDefinition.query != "" {
 		err = scanner.executeQueryWithBookmark()
@@ -598,24 +618,19 @@ func newQueryScanner(namespace string, db *couchdb.CouchDatabase, query string, 
 		return nil, err
 	}
 	scanner.paginationInfo.cursor = -1
-
 	return scanner, nil
 }
 
 func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
-
 	//test for no results case
 	if len(scanner.resultsInfo.results) == 0 {
 		return nil, nil
 	}
-
 	// increment the cursor
 	scanner.paginationInfo.cursor++
-
 	// check to see if additional records are needed
 	// requery if the cursor exceeds the internalQueryLimit
 	if scanner.paginationInfo.cursor >= scanner.queryDefinition.internalQueryLimit {
-
 		var err error
 		// query is defined, then execute the query and return the records and bookmark
 		if scanner.queryDefinition.query != "" {
@@ -626,30 +641,23 @@ func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		//if no more results, then return
 		if len(scanner.resultsInfo.results) == 0 {
 			return nil, nil
 		}
-
 	}
-
 	//If the cursor is greater than or equal to the number of result records, return
 	if scanner.paginationInfo.cursor >= int32(len(scanner.resultsInfo.results)) {
 		return nil, nil
 	}
-
 	selectedResultRecord := scanner.resultsInfo.results[scanner.paginationInfo.cursor]
 	key := selectedResultRecord.ID
-
 	// remove the reserved fields from CouchDB JSON and return the value and version
 	kv, err := couchDocToKeyValue(&couchdb.CouchDoc{JSONValue: selectedResultRecord.Value, Attachments: selectedResultRecord.Attachments})
 	if err != nil {
 		return nil, err
 	}
-
 	scanner.resultsInfo.totalRecordsReturned++
-
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
 		VersionedValue: *kv.VersionedValue}, nil
