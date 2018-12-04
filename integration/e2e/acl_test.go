@@ -83,7 +83,7 @@ var _ = Describe("EndToEndACL", func() {
 
 	AfterEach(func() {
 		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait()).Should(Receive())
+		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 		network.Cleanup()
 		os.RemoveAll(testDir)
 	})

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -45,9 +46,13 @@ var _ = Describe("Health", func() {
 
 	AfterEach(func() {
 		if process != nil {
-			process.Signal(syscall.SIGKILL)
-			Eventually(process.Wait).Should(Receive())
+			process.Signal(syscall.SIGTERM)
+			Eventually(process.Wait, network.EventuallyTimeout).Should(Receive())
 		}
+		if network != nil {
+			network.Cleanup()
+		}
+		os.RemoveAll(testDir)
 	})
 
 	Context("when the docker config is bad", func() {
