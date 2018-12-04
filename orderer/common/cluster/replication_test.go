@@ -87,8 +87,7 @@ func TestIsReplicationNeeded(t *testing.T) {
 func TestReplicateChainsFailures(t *testing.T) {
 	for _, testCase := range []struct {
 		name                    string
-		blocks                  []*common.Block
-		expectedError           string
+		isProbeResponseDelayed  bool
 		latestBlockSeqInOrderer uint64
 		ledgerFactoryError      error
 		appendBlockError        error
@@ -96,18 +95,21 @@ func TestReplicateChainsFailures(t *testing.T) {
 		mutateBlocks            func([]*common.Block)
 	}{
 		{
-			name:          "no block received",
-			expectedError: "failed obtaining the latest block for channel system",
+			name: "no block received",
+			expectedPanic: "Failed pulling system channel: " +
+				"failed obtaining the latest block for channel system",
 		},
 		{
 			name: "latest block seq is less than boot block seq",
-			expectedError: "latest height found among system channel(system) orderers is 19," +
+			expectedPanic: "Failed pulling system channel: " +
+				"latest height found among system channel(system) orderers is 19," +
 				" but the boot block's sequence is 21",
 			latestBlockSeqInOrderer: 18,
 		},
 		{
 			name: "hash chain mismatch",
-			expectedError: "block header mismatch on sequence 11, " +
+			expectedPanic: "Failed pulling system channel: " +
+				"block header mismatch on sequence 11, " +
 				"expected 9cd61b7e9a5ea2d128cc877e5304e7205888175a8032d40b97db7412dca41d9e, got 010203",
 			latestBlockSeqInOrderer: 21,
 			mutateBlocks: func(systemChannelBlocks []*common.Block) {
@@ -136,6 +138,13 @@ func TestReplicateChainsFailures(t *testing.T) {
 			appendBlockError:        errors.New("IO error"),
 			expectedPanic:           "Failed to write block 0: IO error",
 		},
+		{
+			name:                    "failure pulling the system chain",
+			latestBlockSeqInOrderer: 21,
+			expectedPanic: "Failed pulling system channel: " +
+				"failed obtaining the latest block for channel system",
+			isProbeResponseDelayed: true,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			systemChannelBlocks := createBlockChain(0, 21)
@@ -156,18 +165,25 @@ func TestReplicateChainsFailures(t *testing.T) {
 			bp := newBlockPuller(dialer, osn.srv.Address())
 			bp.FetchTimeout = time.Millisecond * 100
 
+			cl := &mocks.ChannelLister{}
+			cl.On("Channels").Return(nil)
+			cl.On("Close")
+
 			r := cluster.Replicator{
 				Logger:        flogging.MustGetLogger("test"),
 				BootBlock:     systemChannelBlocks[21],
 				SystemChannel: "system",
 				LedgerFactory: lf,
 				Puller:        bp,
+				ChannelLister: cl,
 			}
 
+			if !testCase.isProbeResponseDelayed {
+				osn.enqueueResponse(testCase.latestBlockSeqInOrderer)
+				osn.enqueueResponse(testCase.latestBlockSeqInOrderer)
+			}
 			osn.addExpectProbeAssert()
-			osn.enqueueResponse(testCase.latestBlockSeqInOrderer)
 			osn.addExpectProbeAssert()
-			osn.enqueueResponse(testCase.latestBlockSeqInOrderer)
 			osn.addExpectPullAssert(0)
 			for _, block := range systemChannelBlocks {
 				osn.blockResponses <- &orderer.DeliverResponse{
@@ -175,15 +191,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 				}
 			}
 
-			if testCase.expectedPanic == "" {
-				err := r.PullChannel("system")
-				assert.EqualError(t, err, testCase.expectedError)
-			} else {
-				assert.PanicsWithValue(t, testCase.expectedPanic, func() {
-					r.PullChannel("system")
-				})
-			}
-
+			assert.PanicsWithValue(t, testCase.expectedPanic, r.ReplicateChains)
 			bp.Close()
 			dialer.assertAllConnectionsClosed(t)
 		})

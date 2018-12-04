@@ -91,9 +91,28 @@ func Main() {
 
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *localconfig.TopLevel) {
-	genesisBlock := extractGenesisBlock(conf)
-	clusterType := isClusterType(genesisBlock)
+	bootstrapBlock := extractBootstrapBlock(conf)
+	clusterType := isClusterType(bootstrapBlock)
 	signer := localmsp.NewSigner()
+
+	lf, _ := createLedgerFactory(conf)
+
+	clusterDialer := &cluster.PredicateDialer{}
+	clusterConfig := initializeClusterConfig(conf)
+	clusterDialer.SetConfig(clusterConfig)
+
+	// Only clusters that are equipped with a recent config block can replicate.
+	if clusterType && conf.General.GenesisMethod == "file" {
+		r := &replicationInitiator{
+			logger:         logger,
+			secOpts:        clusterConfig.SecOpts,
+			bootstrapBlock: bootstrapBlock,
+			conf:           conf,
+			lf:             &ledgerFactory{lf},
+			signer:         signer,
+		}
+		r.replicateIfNeeded()
+	}
 
 	opsSystem := newOperationsSystem(conf.Operations)
 	err := opsSystem.Start()
@@ -111,10 +130,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		ClientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
 	}
 
-	clusterDialer := &cluster.PredicateDialer{}
-	clusterConfig := initializeClusterConfig(conf)
-	clusterDialer.SetConfig(clusterConfig)
-
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		// only need to do this if mutual TLS is required or if the orderer node is part of a cluster
 		if grpcServer.MutualTLSRequired() || clusterType {
@@ -126,7 +141,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
-	manager := initializeMultichannelRegistrar(clusterType, clusterDialer, serverConfig, grpcServer, conf, signer, metricsProvider, tlsCallback)
+	manager := initializeMultichannelRegistrar(bootstrapBlock, clusterDialer, serverConfig, grpcServer, conf, signer, metricsProvider, lf, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
 
@@ -317,20 +332,20 @@ func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {
 	}
 }
 
-func extractGenesisBlock(conf *localconfig.TopLevel) *cb.Block {
-	var genesisBlock *cb.Block
+func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
+	var bootstrapBlock *cb.Block
 
 	// Select the bootstrapping mechanism
 	switch conf.General.GenesisMethod {
 	case "provisional":
-		genesisBlock = encoder.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
+		bootstrapBlock = encoder.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
 	case "file":
-		genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
+		bootstrapBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 	default:
 		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
 	}
 
-	return genesisBlock
+	return bootstrapBlock
 }
 
 func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
@@ -391,16 +406,16 @@ func initializeLocalMsp(conf *localconfig.TopLevel) {
 	}
 }
 
-func initializeMultichannelRegistrar(isClusterType bool,
+func initializeMultichannelRegistrar(bootstrapBlock *cb.Block,
 	clusterDialer *cluster.PredicateDialer,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
 	conf *localconfig.TopLevel,
 	signer crypto.LocalSigner,
 	metricsProvider metrics.Provider,
+	lf blockledger.Factory,
 	callbacks ...func(bundle *channelconfig.Bundle)) *multichannel.Registrar {
-	lf, _ := createLedgerFactory(conf)
-	genesisBlock := extractGenesisBlock(conf)
+	genesisBlock := extractBootstrapBlock(conf)
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
 		initializeBootstrapChannel(genesisBlock, lf)
@@ -418,7 +433,7 @@ func initializeMultichannelRegistrar(isClusterType bool,
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
-	if isClusterType {
+	if isClusterType(bootstrapBlock) {
 		raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar)
 		consenters["etcdraft"] = raftConsenter
 	}

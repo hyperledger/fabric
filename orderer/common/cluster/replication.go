@@ -110,7 +110,9 @@ func (r *Replicator) ReplicateChains() {
 		r.PullChannel(channel)
 	}
 	// Last, pull the system chain
-	r.PullChannel(r.SystemChannel)
+	if err := r.PullChannel(r.SystemChannel); err != nil {
+		r.Logger.Panicf("Failed pulling system channel: %v", err)
+	}
 	r.LedgerFactory.Close()
 }
 
@@ -351,6 +353,11 @@ func lastConfigFromBlock(block *common.Block) (uint64, error) {
 		return 0, errors.New("no metadata in block")
 	}
 	return utils.GetLastConfigIndexFromBlock(block)
+}
+
+// Close closes the ChainInspector
+func (ci *ChainInspector) Close() {
+	ci.Puller.Close()
 }
 
 // Channels returns the list of channels
