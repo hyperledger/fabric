@@ -256,7 +256,6 @@ func TestNewOrdererGroup(t *testing.T) {
 	})
 
 	t.Run("etcd/raft-based Orderer", func(t *testing.T) {
-		t.Skip()
 		config := configtxgentest.Load(genesisconfig.SampleDevModeEtcdRaftProfile)
 		group, _ := NewOrdererGroup(config.Orderer)
 		consensusType := group.GetValues()[channelconfig.ConsensusTypeKey]
