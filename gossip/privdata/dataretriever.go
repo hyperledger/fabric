@@ -7,15 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	gossip2 "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/pkg/errors"
 )
 
 // StorageDataRetriever defines an API to retrieve private date from the storage
@@ -64,7 +62,7 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 	height, err := dr.store.LedgerHeight()
 	if err != nil {
 		// if there is an error getting info from the ledger, we need to try to read from transient store
-		return nil, false, fmt.Errorf("wasn't able to read ledger height, due to %s", err)
+		return nil, false, errors.Wrap(err, "wasn't able to read ledger height")
 	}
 	if height <= blockNum {
 		logger.Debug("Current ledger height ", height, "is below requested block sequence number",
@@ -112,7 +110,7 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 
 	pvtData, err := dr.store.GetPvtDataByNum(blockNum, filter)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("wasn't able to obtain private data, block sequence number", blockNum, "due to", err))
+		return nil, errors.Errorf("wasn't able to obtain private data, block sequence number %d, due to %s", blockNum, err)
 	}
 
 	results := make(Dig2PvtRWSetWithConfig)
@@ -137,24 +135,24 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 
 		confHistoryRetriever, err := dr.store.GetConfigHistoryRetriever()
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("cannot obtain configuration history retriever, for collection, ", dig.Collection,
-				" txID ", dig.TxId, " block sequence number ", dig.BlockSeq, " due to", err))
+			return nil, errors.Errorf("cannot obtain configuration history retriever, for collection <%s>"+
+				" txID <%s> block sequence number <%d> due to <%s>", dig.Collection, dig.TxId, dig.BlockSeq, err)
 		}
 
 		configInfo, err := confHistoryRetriever.MostRecentCollectionConfigBelow(dig.BlockSeq, dig.Namespace)
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("cannot find recent collection config update below block sequence = ", dig.BlockSeq,
-				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace))
+			return nil, errors.Errorf("cannot find recent collection config update below block sequence = %d,"+
+				" collection name = <%s> for chaincode <%s>", dig.BlockSeq, dig.Collection, dig.Namespace)
 		}
 
 		if configInfo == nil {
-			return nil, errors.New(fmt.Sprint("no collection config update below block sequence = ", dig.BlockSeq,
-				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace, " is available "))
+			return nil, errors.Errorf("no collection config update below block sequence = <%d>"+
+				" collection name = <%s> for chaincode <%s> is available ", dig.BlockSeq, dig.Collection, dig.Namespace)
 		}
 		configs := extractCollectionConfig(configInfo.CollectionConfig, dig.Collection)
 		if configs == nil {
-			return nil, errors.New(fmt.Sprint("no collection config was found for collection ", dig.Collection,
-				" namespace ", dig.Namespace, " txID ", dig.TxId))
+			return nil, errors.Errorf("no collection config was found for collection <%s>"+
+				" namespace <%s> txID <%s>", dig.Collection, dig.Namespace, dig.TxId)
 		}
 		pvtRWSetWithConfig.CollectionConfig = configs
 		results[common.DigKey{
@@ -173,8 +171,8 @@ func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter m
 	results := &util.PrivateRWSetWithConfig{}
 	it, err := dr.store.GetTxPvtRWSetByTxid(dig.TxId, filter)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("was not able to retrieve private data from transient store, namespace", dig.Namespace,
-			", collection name", dig.Collection, ", txID", dig.TxId, ", due to", err))
+		return nil, errors.Errorf("was not able to retrieve private data from transient store, namespace <%s>"+
+			", collection name %s, txID <%s>, due to <%s>", dig.Namespace, dig.Collection, dig.TxId, err)
 	}
 	defer it.Close()
 
@@ -182,8 +180,8 @@ func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter m
 	for {
 		res, err := it.NextWithConfig()
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("error getting next element out of private data iterator, namespace", dig.Namespace,
-				", collection name", dig.Collection, ", txID", dig.TxId, ", due to", err))
+			return nil, errors.Errorf("error getting next element out of private data iterator, namespace <%s>"+
+				", collection name <%s>, txID <%s>, due to <%s>", dig.Namespace, dig.Collection, dig.TxId, err)
 		}
 		if res == nil {
 			return results, nil
@@ -229,13 +227,13 @@ func (dr *dataRetriever) extractPvtRWsets(pvtRWSets []*rwset.NsPvtReadWriteSet, 
 	for _, nsws := range pvtRWSets {
 		// and in each namespace - iterate over all collections
 		if nsws.Namespace != namespace {
-			logger.Warning("Received private data namespace ", nsws.Namespace, " instead of ", namespace, " skipping...")
+			logger.Debug("Received private data namespace ", nsws.Namespace, " instead of ", namespace, " skipping...")
 			continue
 		}
 		for _, col := range nsws.CollectionPvtRwset {
 			// This isn't the collection we're looking for
 			if col.CollectionName != collectionName {
-				logger.Warning("Received private data collection ", col.CollectionName, " instead of ", collectionName, " skipping...")
+				logger.Debug("Received private data collection ", col.CollectionName, " instead of ", collectionName, " skipping...")
 				continue
 			}
 			// Add the collection pRWset to the accumulated set
