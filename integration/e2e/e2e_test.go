@@ -151,7 +151,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("basic single node etcdraft network with 2 orgs", func() {
+	Describe("basic single node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
@@ -172,7 +172,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("three node etcdraft network with 2 orgs", func() {
+	Describe("three node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
@@ -250,7 +250,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("etcd raft, checking valid configuration update of type B", func() {
+	Describe("etcd raft, checking valid configuration update of type B", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
@@ -299,7 +299,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	PDescribe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
+	Describe("basic single node etcdraft network with 2 orgs and 2 channels", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
