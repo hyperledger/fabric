@@ -1,5 +1,4 @@
 /*
-	"github.com/golang/protobuf/proto"
 Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
@@ -34,6 +33,7 @@ var _ = Describe("LSCC", func() {
 	BeforeEach(func() {
 		fakeSupport = &mock.FileSystemSupport{}
 		fakeSCCProvider = &mock.SystemChaincodeProvider{}
+		fakeQueryExecutor = &mock.QueryExecutor{}
 
 		l = &lscc.LifeCycleSysCC{
 			Support:     fakeSupport,
@@ -82,29 +82,14 @@ var _ = Describe("LSCC", func() {
 		})
 
 		It("returns the chaincode deployment spec for a valid chaincode", func() {
-			ccci, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
+			ccci, err := l.ChaincodeContainerInfo("chaincode-data-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ccci).To(Equal(ccprovider.DeploymentSpecToChaincodeContainerInfo(deploymentSpec)))
-
-			Expect(fakeSCCProvider.GetQueryExecutorForLedgerCallCount()).To(Equal(1))
-			Expect(fakeSCCProvider.GetQueryExecutorForLedgerArgsForCall(0)).To(Equal("channel-foo"))
 
 			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
 			getStateNamespace, getStateCCName := fakeQueryExecutor.GetStateArgsForCall(0)
 			Expect(getStateNamespace).To(Equal("lscc"))
 			Expect(getStateCCName).To(Equal("chaincode-data-name"))
-			Expect(fakeQueryExecutor.DoneCallCount()).To(Equal(1))
-		})
-
-		Context("when the query executor cannot be retrieved", func() {
-			BeforeEach(func() {
-				fakeSCCProvider.GetQueryExecutorForLedgerReturns(nil, errors.New("fake-error"))
-			})
-
-			It("wraps and returns the error", func() {
-				_, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
-				Expect(err).To(MatchError("could not retrieve QueryExecutor for channel channel-foo: fake-error"))
-			})
 		})
 
 		Context("when the get state query fails", func() {
@@ -113,8 +98,8 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
-				Expect(err).To(MatchError("could not retrieve state for chaincode chaincode-data-name on channel channel-foo: fake-error"))
+				_, err := l.ChaincodeContainerInfo("chaincode-data-name", fakeQueryExecutor)
+				Expect(err).To(MatchError("could not retrieve state for chaincode chaincode-data-name: fake-error"))
 			})
 		})
 
@@ -124,8 +109,8 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.ChaincodeContainerInfo("channel-foo", "chaincode-data-name")
-				Expect(err).To(MatchError("chaincode chaincode-data-name not found on channel channel-foo"))
+				_, err := l.ChaincodeContainerInfo("chaincode-data-name", fakeQueryExecutor)
+				Expect(err).To(MatchError("chaincode chaincode-data-name not found"))
 			})
 		})
 	})
