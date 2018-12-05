@@ -53,6 +53,46 @@ members at a certain point in time.
   use private data collections when transaction data must be kept confidential
   from ordering service nodes.
 
+## A use case to explain collections
+
+Consider a group of five organizations on a channel who trade produce:
+
+* **A Farmer** selling his goods abroad
+* **A Distributor** moving goods abroad
+* **A Shipper** moving goods between parties
+* **A Wholesaler** purchasing goods from distributors
+* **A Retailer** purchasing goods from shippers and wholesalers
+
+The **Distributor** might want to make private transactions with the
+**Farmer** and **Shipper** to keep the terms of the trades confidential from
+the **Wholesaler** and the **Retailer** (so as not to expose the markup they're
+charging).
+
+The **Distributor** may also want to have a separate private data relationship
+with the **Wholesaler** because it charges them a lower price than it does the
+**Retailer**.
+
+The **Wholesaler** may also want to have a private data relationship with the
+**Retailer** and the **Shipper**.
+
+Rather than defining many small channels for each of these relationships, multiple
+private data collections **(PDC)** can be defined to share private data between:
+
+1. PDC1: **Distributor**, **Farmer** and **Shipper**
+2. PDC2: **Distributor** and **Wholesaler**
+3. PDC3: **Wholesaler**, **Retailer** and **Shipper**
+
+![private-data.private-data](./PrivateDataConcept-1.png)
+
+Using this example, peers owned by the **Distributor** will have multiple private
+databases inside their ledger which includes the private data from the
+**Distributor**, **Farmer** and **Shipper** relationship and the
+**Distributor** and **Wholesaler** relationship. Because these databases are kept
+separate from the database that holds the channel ledger, private data is
+sometimes referred to as "SideDB".
+
+![private-data.private-data](./PrivateDataConcept-3.png)
+
 ## Transaction flow with private data
 
 When private data collections are referenced in chaincode, the transaction flow
@@ -93,46 +133,6 @@ documentation on [transaction flow](../txflow.html).
    transaction and the block. Upon validation/commit, the private data is moved to
    their copy of the private state database and private writeset storage. The
    private data is then deleted from the `transient data store`.
-
-### A use case to explain collections
-
-Consider a group of five organizations on a channel who trade produce:
-
-* **A Farmer** selling his goods abroad
-* **A Distributor** moving goods abroad
-* **A Shipper** moving goods between parties
-* **A Wholesaler** purchasing goods from distributors
-* **A Retailer** purchasing goods from shippers and wholesalers
-
-The **Distributor** might want to make private transactions with the
-**Farmer** and **Shipper** to keep the terms of the trades confidential from
-the **Wholesaler** and the **Retailer** (so as not to expose the markup they're
-charging).
-
-The **Distributor** may also want to have a separate private data relationship
-with the **Wholesaler** because it charges them a lower price than it does the
-**Retailer**.
-
-The **Wholesaler** may also want to have a private data relationship with the
-**Retailer** and the **Shipper**.
-
-Rather than defining many small channels for each of these relationships, multiple
-private data collections **(PDC)** can be defined to share private data between:
-
-1. PDC1: **Distributor**, **Farmer** and **Shipper**
-2. PDC2: **Distributor** and **Wholesaler**
-3. PDC3: **Wholesaler**, **Retailer** and **Shipper**
-
-![private-data.private-data](./PrivateDataConcept-1.png)
-
-Using this example, peers owned by the **Distributor** will have multiple private
-databases inside their ledger which includes the private data from the
-**Distributor**, **Farmer** and **Shipper** relationship and the
-**Distributor** and **Wholesaler** relationship. Because these databases are kept
-separate from the database that holds the channel ledger, private data is
-sometimes referred to as "SideDB".
-
-![private-data.private-data](./PrivateDataConcept-3.png)
 
 ## How a private data collection is defined
 
