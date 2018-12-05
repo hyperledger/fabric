@@ -2369,6 +2369,8 @@ func (n *network) elect(id uint64) (tick int) {
 	}
 
 	// now observe leader change on other nodes
+
+	n.connLock.RLock()
 	for _, c := range n.chains {
 		if c.id == id {
 			continue
@@ -2382,6 +2384,7 @@ func (n *network) elect(id uint64) (tick int) {
 			Eventually(c.observe).Should(Receive(Equal(id)))
 		}
 	}
+	n.connLock.RUnlock()
 
 	n.leader = id
 	return tick
