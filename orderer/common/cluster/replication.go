@@ -366,8 +366,10 @@ func (ci *ChainInspector) Channels() []string {
 	channels := make(map[string]struct{})
 	lastConfigBlockNum := ci.LastConfigBlock.Header.Number
 	var block *common.Block
+	var prevHash []byte
 	for seq := uint64(1); seq < lastConfigBlockNum; seq++ {
 		block = ci.Puller.PullBlock(seq)
+		ci.validateHashPointer(block, prevHash)
 		channel, err := IsNewChannelBlock(block)
 		if err != nil {
 			// If we failed to classify a block, something is wrong in the system chain
@@ -375,6 +377,8 @@ func (ci *ChainInspector) Channels() []string {
 			ci.Logger.Panic("Failed classifying block", seq, ":", err)
 			continue
 		}
+		// Set the previous hash for the next iteration
+		prevHash = block.Header.Hash()
 		if channel == "" {
 			ci.Logger.Info("Block", seq, "doesn't contain a new channel")
 			continue
@@ -393,6 +397,17 @@ func (ci *ChainInspector) Channels() []string {
 	}
 
 	return flattenChannelMap(channels)
+}
+
+func (ci *ChainInspector) validateHashPointer(block *common.Block, prevHash []byte) {
+	if prevHash == nil {
+		return
+	}
+	if bytes.Equal(block.Header.PreviousHash, prevHash) {
+		return
+	}
+	ci.Logger.Panicf("Claimed previous hash of block %d is %x but actual previous hash is %x",
+		block.Header.Number, block.Header.PreviousHash, prevHash)
 }
 
 func flattenChannelMap(m map[string]struct{}) []string {
