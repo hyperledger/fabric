@@ -44,7 +44,7 @@ func TestEncrypt(t *testing.T) {
 		EncErr:       expectedErr,
 	}
 
-	csp := CSP{encryptors: encryptors}
+	csp := CSP{Encryptors: encryptors}
 
 	ct, err := csp.Encrypt(expectedKey, expectedPlaintext, expectedOpts)
 	assert.Equal(t, expectedCiphertext, ct)

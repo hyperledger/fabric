@@ -42,7 +42,7 @@ var _ = Describe("Credential Request", func() {
 			It("returns no error and a signature", func() {
 				signature, err := CredentialRequestSigner.Sign(
 					handlers.NewUserSecretKey(nil, false),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -59,7 +59,7 @@ var _ = Describe("Credential Request", func() {
 			It("returns an error", func() {
 				signature, err := CredentialRequestSigner.Sign(
 					handlers.NewUserSecretKey(nil, false),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 				)
 				Expect(err).To(MatchError("sign error"))
@@ -141,18 +141,6 @@ var _ = Describe("Credential Request", func() {
 				})
 			})
 
-			Context("and the digest is not the idemix empty digest", func() {
-				It("returns error", func() {
-					signature, err := CredentialRequestSigner.Sign(
-						handlers.NewUserSecretKey(nil, false),
-						[]byte{1, 2, 3, 4},
-						&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
-					)
-					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
-					Expect(signature).To(BeNil())
-				})
-			})
-
 		})
 	})
 
@@ -182,7 +170,7 @@ var _ = Describe("Credential Request", func() {
 				valid, err := CredentialRequestVerifier.Verify(
 					handlers.NewIssuerPublicKey(nil),
 					[]byte("fake signature"),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -199,7 +187,7 @@ var _ = Describe("Credential Request", func() {
 				valid, err := CredentialRequestVerifier.Verify(
 					handlers.NewIssuerPublicKey(nil),
 					[]byte("fake signature"),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err).To(MatchError("verify error"))
@@ -235,25 +223,12 @@ var _ = Describe("Credential Request", func() {
 				})
 			})
 
-			Context("and the digest is not the idemix empty digest", func() {
-				It("returns error", func() {
-					valid, err := CredentialRequestVerifier.Verify(
-						handlers.NewIssuerPublicKey(nil),
-						[]byte("fake signature"),
-						[]byte{1, 2, 3, 4},
-						&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
-					)
-					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
-					Expect(valid).To(BeFalse())
-				})
-			})
-
 			Context("and nil options are passed", func() {
 				It("returns error", func() {
 					valid, err := CredentialRequestVerifier.Verify(
 						handlers.NewIssuerPublicKey(nil),
 						[]byte("fake signature"),
-						bccsp.IdemixEmptyDigest(),
+						nil,
 						nil,
 					)
 					Expect(err).To(MatchError("invalid options, expected *IdemixCredentialRequestSignerOpts"))
@@ -266,7 +241,7 @@ var _ = Describe("Credential Request", func() {
 					valid, err := CredentialRequestVerifier.Verify(
 						handlers.NewIssuerPublicKey(nil),
 						[]byte("fake signature"),
-						bccsp.IdemixEmptyDigest(),
+						nil,
 						&bccsp.IdemixCRISignerOpts{},
 					)
 					Expect(err).To(MatchError("invalid options, expected *IdemixCredentialRequestSignerOpts"))
@@ -401,7 +376,7 @@ var _ = Describe("Credential", func() {
 				valid, err := CredentialVerifier.Verify(
 					handlers.NewUserSecretKey(nil, false),
 					[]byte("fake signature"),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -418,7 +393,7 @@ var _ = Describe("Credential", func() {
 				valid, err := CredentialVerifier.Verify(
 					handlers.NewUserSecretKey(nil, false),
 					[]byte("fake signature"),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 				)
 				Expect(err).To(MatchError("verify error"))
@@ -454,25 +429,12 @@ var _ = Describe("Credential", func() {
 				})
 			})
 
-			Context("and the digest is not the idemix empty digest", func() {
-				It("returns error", func() {
-					valid, err := CredentialVerifier.Verify(
-						handlers.NewUserSecretKey(nil, false),
-						[]byte("fake signature"),
-						[]byte{1, 2, 3, 4},
-						&bccsp.IdemixCredentialSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
-					)
-					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
-					Expect(valid).To(BeFalse())
-				})
-			})
-
 			Context("and the signature is empty", func() {
 				It("returns error", func() {
 					valid, err := CredentialVerifier.Verify(
 						handlers.NewUserSecretKey(nil, false),
 						nil,
-						bccsp.IdemixEmptyDigest(),
+						nil,
 						&bccsp.IdemixCredentialSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
 					)
 					Expect(err).To(MatchError("invalid signature, it must not be empty"))

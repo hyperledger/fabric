@@ -179,9 +179,6 @@ func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 	if !ok {
 		return nil, errors.New("invalid options, expected *IdemixCRISignerOpts")
 	}
-	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
-		return nil, errors.New("invalid digest, the idemix empty digest is expected")
-	}
 
 	return s.Revocation.Sign(
 		revocationSecretKey.privKey,
@@ -203,9 +200,6 @@ func (v *CriVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.S
 	criOpts, ok := opts.(*bccsp.IdemixCRISignerOpts)
 	if !ok {
 		return false, errors.New("invalid options, expected *IdemixCRISignerOpts")
-	}
-	if !reflect.DeepEqual(digest, bccsp.IdemixEmptyDigest()) {
-		return false, errors.New("invalid digest, the idemix empty digest is expected")
 	}
 	if len(signature) == 0 {
 		return false, errors.New("invalid signature, it must not be empty")

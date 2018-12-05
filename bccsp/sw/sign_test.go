@@ -43,7 +43,7 @@ func TestSign(t *testing.T) {
 		Value:     expectetValue,
 		Err:       nil,
 	}
-	csp := CSP{signers: signers}
+	csp := CSP{Signers: signers}
 	value, err := csp.Sign(expectedKey, expectetDigest, expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)
@@ -56,7 +56,7 @@ func TestSign(t *testing.T) {
 		Value:     nil,
 		Err:       expectedErr,
 	}
-	csp = CSP{signers: signers}
+	csp = CSP{Signers: signers}
 	value, err = csp.Sign(expectedKey, expectetDigest, expectedOpts)
 	assert.Nil(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())

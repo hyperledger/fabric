@@ -241,7 +241,7 @@ var _ = Describe("CRI", func() {
 			It("returns no error and a signature", func() {
 				signature, err := CriSigner.Sign(
 					handlers.NewRevocationSecretKey(nil, false),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -258,7 +258,7 @@ var _ = Describe("CRI", func() {
 			It("returns an error", func() {
 				signature, err := CriSigner.Sign(
 					handlers.NewRevocationSecretKey(nil, false),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).To(MatchError("sign error"))
@@ -307,17 +307,6 @@ var _ = Describe("CRI", func() {
 				})
 			})
 
-			Context("and the digest is not the idemix empty digest", func() {
-				It("returns an error", func() {
-					signature, err := CriSigner.Sign(
-						handlers.NewRevocationSecretKey(nil, false),
-						[]byte{1, 2, 3, 4},
-						&bccsp.IdemixCRISignerOpts{},
-					)
-					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
-					Expect(signature).To(BeNil())
-				})
-			})
 		})
 	})
 
@@ -342,7 +331,7 @@ var _ = Describe("CRI", func() {
 				valid, err := CriVerifier.Verify(
 					handlers.NewRevocationPublicKey(nil),
 					[]byte("fake signature"),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -359,7 +348,7 @@ var _ = Describe("CRI", func() {
 				valid, err := CriVerifier.Verify(
 					handlers.NewRevocationPublicKey(nil),
 					[]byte("fake signature"),
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err).To(MatchError("verify error"))
@@ -395,25 +384,12 @@ var _ = Describe("CRI", func() {
 				})
 			})
 
-			Context("and the digest is not the idemix empty digest", func() {
-				It("returns error", func() {
-					valid, err := CriVerifier.Verify(
-						handlers.NewRevocationPublicKey(nil),
-						[]byte("fake signature"),
-						[]byte{1, 2, 3, 4},
-						&bccsp.IdemixCRISignerOpts{},
-					)
-					Expect(err).To(MatchError("invalid digest, the idemix empty digest is expected"))
-					Expect(valid).To(BeFalse())
-				})
-			})
-
 			Context("and the signature is empty", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
 						handlers.NewRevocationPublicKey(nil),
 						nil,
-						bccsp.IdemixEmptyDigest(),
+						nil,
 						&bccsp.IdemixCRISignerOpts{},
 					)
 					Expect(err).To(MatchError("invalid signature, it must not be empty"))

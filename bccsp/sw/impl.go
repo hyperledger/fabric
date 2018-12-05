@@ -36,14 +36,14 @@ var (
 type CSP struct {
 	ks bccsp.KeyStore
 
-	keyGenerators map[reflect.Type]KeyGenerator
-	keyDerivers   map[reflect.Type]KeyDeriver
-	keyImporters  map[reflect.Type]KeyImporter
-	encryptors    map[reflect.Type]Encryptor
-	decryptors    map[reflect.Type]Decryptor
-	signers       map[reflect.Type]Signer
-	verifiers     map[reflect.Type]Verifier
-	hashers       map[reflect.Type]Hasher
+	KeyGenerators map[reflect.Type]KeyGenerator
+	KeyDerivers   map[reflect.Type]KeyDeriver
+	KeyImporters  map[reflect.Type]KeyImporter
+	Encryptors    map[reflect.Type]Encryptor
+	Decryptors    map[reflect.Type]Decryptor
+	Signers       map[reflect.Type]Signer
+	Verifiers     map[reflect.Type]Verifier
+	Hashers       map[reflect.Type]Hasher
 }
 
 func New(keyStore bccsp.KeyStore) (*CSP, error) {
@@ -74,7 +74,7 @@ func (csp *CSP) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
 	}
 
-	keyGenerator, found := csp.keyGenerators[reflect.TypeOf(opts)]
+	keyGenerator, found := csp.KeyGenerators[reflect.TypeOf(opts)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'KeyGenOpts' provided [%v]", opts)
 	}
@@ -107,7 +107,7 @@ func (csp *CSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, er
 		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	keyDeriver, found := csp.keyDerivers[reflect.TypeOf(k)]
+	keyDeriver, found := csp.KeyDerivers[reflect.TypeOf(k)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'Key' provided [%v]", k)
 	}
@@ -140,7 +140,7 @@ func (csp *CSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Ke
 		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	keyImporter, found := csp.keyImporters[reflect.TypeOf(opts)]
+	keyImporter, found := csp.KeyImporters[reflect.TypeOf(opts)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'KeyImportOpts' provided [%v]", opts)
 	}
@@ -180,7 +180,7 @@ func (csp *CSP) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error)
 		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	hasher, found := csp.hashers[reflect.TypeOf(opts)]
+	hasher, found := csp.Hashers[reflect.TypeOf(opts)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'HashOpt' provided [%v]", opts)
 	}
@@ -201,7 +201,7 @@ func (csp *CSP) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	hasher, found := csp.hashers[reflect.TypeOf(opts)]
+	hasher, found := csp.Hashers[reflect.TypeOf(opts)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'HashOpt' provided [%v]", opts)
 	}
@@ -230,7 +230,7 @@ func (csp *CSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signatu
 	}
 
 	keyType := reflect.TypeOf(k)
-	signer, found := csp.signers[keyType]
+	signer, found := csp.Signers[keyType]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'SignKey' provided [%s]", keyType)
 	}
@@ -256,7 +256,7 @@ func (csp *CSP) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerO
 		return false, errors.New("Invalid digest. Cannot be empty.")
 	}
 
-	verifier, found := csp.verifiers[reflect.TypeOf(k)]
+	verifier, found := csp.Verifiers[reflect.TypeOf(k)]
 	if !found {
 		return false, errors.Errorf("Unsupported 'VerifyKey' provided [%v]", k)
 	}
@@ -277,7 +277,7 @@ func (csp *CSP) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts)
 		return nil, errors.New("Invalid Key. It must not be nil.")
 	}
 
-	encryptor, found := csp.encryptors[reflect.TypeOf(k)]
+	encryptor, found := csp.Encryptors[reflect.TypeOf(k)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'EncryptKey' provided [%v]", k)
 	}
@@ -293,7 +293,7 @@ func (csp *CSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts
 		return nil, errors.New("Invalid Key. It must not be nil.")
 	}
 
-	decryptor, found := csp.decryptors[reflect.TypeOf(k)]
+	decryptor, found := csp.Decryptors[reflect.TypeOf(k)]
 	if !found {
 		return nil, errors.Errorf("Unsupported 'DecryptKey' provided [%v]", k)
 	}
@@ -318,21 +318,21 @@ func (csp *CSP) AddWrapper(t reflect.Type, w interface{}) error {
 	}
 	switch dt := w.(type) {
 	case KeyGenerator:
-		csp.keyGenerators[t] = dt
+		csp.KeyGenerators[t] = dt
 	case KeyImporter:
-		csp.keyImporters[t] = dt
+		csp.KeyImporters[t] = dt
 	case KeyDeriver:
-		csp.keyDerivers[t] = dt
+		csp.KeyDerivers[t] = dt
 	case Encryptor:
-		csp.encryptors[t] = dt
+		csp.Encryptors[t] = dt
 	case Decryptor:
-		csp.decryptors[t] = dt
+		csp.Decryptors[t] = dt
 	case Signer:
-		csp.signers[t] = dt
+		csp.Signers[t] = dt
 	case Verifier:
-		csp.verifiers[t] = dt
+		csp.Verifiers[t] = dt
 	case Hasher:
-		csp.hashers[t] = dt
+		csp.Hashers[t] = dt
 	default:
 		return errors.Errorf("wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
 	}

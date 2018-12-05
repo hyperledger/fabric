@@ -189,7 +189,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	valid, err := msp.csp.Verify(
 		UserKey,
 		conf.Signer.Cred,
-		bccsp.IdemixEmptyDigest(),
+		nil,
 		&bccsp.IdemixCredentialSignerOpts{
 			IssuerPK: IssuerPublicKey,
 			Attributes: []bccsp.IdemixAttribute{
@@ -207,7 +207,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	// Create the cryptographic evidence that this identity is valid
 	proof, err := msp.csp.Sign(
 		UserKey,
-		bccsp.IdemixEmptyDigest(),
+		nil,
 		&bccsp.IdemixSignerOpts{
 			Credential: conf.Signer.Cred,
 			Nym:        NymKey,
@@ -340,7 +340,7 @@ func (id *idemixidentity) verifyProof() error {
 	valid, err := id.msp.csp.Verify(
 		id.msp.ipk,
 		id.associationProof,
-		bccsp.IdemixEmptyDigest(),
+		nil,
 		&bccsp.IdemixSignerOpts{
 			RevocationPublicKey: id.msp.revocationPK,
 			Attributes: []bccsp.IdemixAttribute{

@@ -22,13 +22,6 @@ const (
 	AlgNoRevocation RevocationAlgorithm = iota
 )
 
-// IdemixEmptyDigest is used every time an idemix-related signed operation is not supposed
-// to take any digest in input. The underlying code ensure that the passed digest is that
-// returned by this function. This applies to credential request, credential, CRI
-func IdemixEmptyDigest() []byte {
-	return []byte("idemix-empty-digest")
-}
-
 // IdemixIssuerKeyGenOpts contains the options for the Idemix Issuer key-generation.
 // A list of attribytes may be optionally passed
 type IdemixIssuerKeyGenOpts struct {

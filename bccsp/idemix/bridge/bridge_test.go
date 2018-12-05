@@ -663,7 +663,7 @@ var _ = Describe("Idemix Bridge", func() {
 			CredentialRequestVerifier = &handlers.CredentialRequestVerifier{CredRequest: CredRequest}
 			credRequest, err = CredentialRequestSigner.Sign(
 				UserKey,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -700,7 +700,7 @@ var _ = Describe("Idemix Bridge", func() {
 			CriVerifier = &handlers.CriVerifier{Revocation: Revocation}
 			cri, err = CriSigner.Sign(
 				RevocationKey,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -711,7 +711,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err := CredentialRequestVerifier.Verify(
 				IssuerPublicKey,
 				credRequest,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -721,7 +721,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err = CredentialVerifier.Verify(
 				UserKey,
 				credential,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCredentialSignerOpts{
 					IssuerPK: IssuerPublicKey,
 					Attributes: []bccsp.IdemixAttribute{
@@ -740,7 +740,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err = CriVerifier.Verify(
 				RevocationPublicKey,
 				cri,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -753,7 +753,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialRequestVerifier.Verify(
 					IssuerPublicKey,
 					credRequest,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-apple-pine-apple-pine-apple")},
 				)
 				Expect(err.Error()).To(BeEquivalentTo(fmt.Sprintf("invalid nonce, expected [%v], got [%v]", []byte("pine-apple-pine-apple-pine-apple"), IssuerNonce)))
@@ -764,7 +764,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialRequestVerifier.Verify(
 					IssuerPublicKey,
 					credRequest,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-aple-pine-apple-pinapple")},
 				)
 				Expect(err.Error()).To(BeEquivalentTo("invalid issuer nonce, expected length 32, got 29"))
@@ -780,7 +780,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialRequestVerifier.Verify(
 					IssuerPublicKey,
 					credRequest,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err.Error()).To(BeEquivalentTo("zero knowledge proof is invalid"))
@@ -811,7 +811,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					nil,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -832,7 +832,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					[]byte{0, 1, 2, 3, 4},
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -860,7 +860,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					credential,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -881,7 +881,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					credential,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -902,7 +902,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
 					credential,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
@@ -925,7 +925,7 @@ var _ = Describe("Idemix Bridge", func() {
 				valid, err := CriVerifier.Verify(
 					RevocationPublicKey,
 					cri,
-					bccsp.IdemixEmptyDigest(),
+					nil,
 					&bccsp.IdemixCRISignerOpts{},
 				)
 				Expect(err.Error()).To(BeEquivalentTo("EpochPKSig invalid"))

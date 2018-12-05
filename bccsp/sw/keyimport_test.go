@@ -45,7 +45,7 @@ func TestKeyImport(t *testing.T) {
 		Value:   expectetValue,
 		Err:     expectedErr,
 	}
-	csp := CSP{keyImporters: keyImporters}
+	csp := CSP{KeyImporters: keyImporters}
 	value, err := csp.KeyImport(expectedRaw, expectedOpts)
 	assert.Nil(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())
@@ -57,7 +57,7 @@ func TestKeyImport(t *testing.T) {
 		Value:   expectetValue,
 		Err:     nil,
 	}
-	csp = CSP{keyImporters: keyImporters}
+	csp = CSP{KeyImporters: keyImporters}
 	value, err = csp.KeyImport(expectedRaw, expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)

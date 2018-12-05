@@ -68,7 +68,7 @@ var _ = Describe("Idemix Bridge", func() {
 			// Credential Request for User
 			credRequest, err = CSP.Sign(
 				UserKey,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -98,7 +98,7 @@ var _ = Describe("Idemix Bridge", func() {
 			// CRI
 			cri, err = CSP.Sign(
 				RevocationKey,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -110,7 +110,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err := CSP.Verify(
 				IssuerPublicKey,
 				credRequest,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -120,7 +120,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err = CSP.Verify(
 				UserKey,
 				credential,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCredentialSignerOpts{
 					IssuerPK: IssuerPublicKey,
 					Attributes: []bccsp.IdemixAttribute{
@@ -139,7 +139,7 @@ var _ = Describe("Idemix Bridge", func() {
 			valid, err = CSP.Verify(
 				RevocationPublicKey,
 				cri,
-				bccsp.IdemixEmptyDigest(),
+				nil,
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())

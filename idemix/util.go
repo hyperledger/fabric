@@ -60,6 +60,12 @@ func appendBytesG1(data []byte, index int, E *FP256BN.ECP) int {
 	E.ToBytes(data[index:index+length], false)
 	return index + length
 }
+func EcpToBytes(E *FP256BN.ECP) []byte {
+	length := 2*FieldBytes + 1
+	res := make([]byte, length)
+	E.ToBytes(res, false)
+	return res
+}
 func appendBytesG2(data []byte, index int, E *FP256BN.ECP2) int {
 	length := 4 * FieldBytes
 	E.ToBytes(data[index : index+length])
