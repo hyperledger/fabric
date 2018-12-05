@@ -4,19 +4,20 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package statsd
+package namer
 
 import (
+	"github.com/hyperledger/fabric/common/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("This is the thing", func() {
-	var n *namer
+	var n *Namer
 
 	BeforeEach(func() {
-		n = &namer{
+		n = &Namer{
 			namespace:  "namespace",
 			subsystem:  "subsystem",
 			name:       "name",
@@ -95,13 +96,79 @@ var _ = Describe("This is the thing", func() {
 	})
 
 	DescribeTable("#fqname",
-		func(n *namer, expectedName string) {
+		func(n *Namer, expectedName string) {
 			n.nameFormat = "%{#fqname}"
 			Expect(n.Format()).To(Equal(expectedName))
 		},
-		Entry("missing nothing", &namer{namespace: "namespace", subsystem: "subsystem", name: "name"}, "namespace.subsystem.name"),
-		Entry("missing namespace", &namer{namespace: "", subsystem: "subsystem", name: "name"}, "subsystem.name"),
-		Entry("missing subsystem", &namer{namespace: "namespace", subsystem: "", name: "name"}, "namespace.name"),
-		Entry("missing namespace and subsystem", &namer{namespace: "", subsystem: "", name: "name"}, "name"),
+		Entry("missing nothing", &Namer{namespace: "namespace", subsystem: "subsystem", name: "name"}, "namespace.subsystem.name"),
+		Entry("missing namespace", &Namer{namespace: "", subsystem: "subsystem", name: "name"}, "subsystem.name"),
+		Entry("missing subsystem", &Namer{namespace: "namespace", subsystem: "", name: "name"}, "namespace.name"),
+		Entry("missing namespace and subsystem", &Namer{namespace: "", subsystem: "", name: "name"}, "name"),
 	)
+
+	Describe("NewCounterNamer", func() {
+		It("creates a namer from CounterOpts", func() {
+			namer := NewCounterNamer(metrics.CounterOpts{
+				Namespace:    "namespace",
+				Subsystem:    "subsystem",
+				Name:         "name",
+				StatsdFormat: "name-format",
+				LabelNames:   []string{"label-one", "label-two"},
+			})
+			Expect(namer).To(Equal(&Namer{
+				namespace:  "namespace",
+				subsystem:  "subsystem",
+				name:       "name",
+				nameFormat: "name-format",
+				labelNames: map[string]struct{}{
+					"label-one": {},
+					"label-two": {},
+				},
+			}))
+		})
+	})
+
+	Describe("NewGaugeNamer", func() {
+		It("creates a namer from GaugeOpts", func() {
+			namer := NewGaugeNamer(metrics.GaugeOpts{
+				Namespace:    "namespace",
+				Subsystem:    "subsystem",
+				Name:         "name",
+				StatsdFormat: "name-format",
+				LabelNames:   []string{"label-one", "label-two"},
+			})
+			Expect(namer).To(Equal(&Namer{
+				namespace:  "namespace",
+				subsystem:  "subsystem",
+				name:       "name",
+				nameFormat: "name-format",
+				labelNames: map[string]struct{}{
+					"label-one": {},
+					"label-two": {},
+				},
+			}))
+		})
+	})
+
+	Describe("NewHistogramNamer", func() {
+		It("creates a namer from HistogramOpts", func() {
+			namer := NewHistogramNamer(metrics.HistogramOpts{
+				Namespace:    "namespace",
+				Subsystem:    "subsystem",
+				Name:         "name",
+				StatsdFormat: "name-format",
+				LabelNames:   []string{"label-one", "label-two"},
+			})
+			Expect(namer).To(Equal(&Namer{
+				namespace:  "namespace",
+				subsystem:  "subsystem",
+				name:       "name",
+				nameFormat: "name-format",
+				labelNames: map[string]struct{}{
+					"label-one": {},
+					"label-two": {},
+				},
+			}))
+		})
+	})
 })
