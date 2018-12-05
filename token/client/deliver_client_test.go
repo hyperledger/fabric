@@ -21,7 +21,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-var _ = Describe("OrdererClient", func() {
+//go:generate counterfeiter -o mock/deliver_server.go -fake-name DeliverServer . deliverServer
+
+type deliverServer interface {
+	pb.DeliverServer
+}
+
+var _ = Describe("DeliverClient", func() {
 	var (
 		channelId             string
 		creator               []byte
@@ -31,7 +37,7 @@ var _ = Describe("OrdererClient", func() {
 		deliverResp *pb.DeliverResponse
 		fakeTxid    string
 
-		fakeSigner          *mock.SignerIdentity
+		fakeSigningIdentity *mock.SigningIdentity
 		fakeDeliverFiltered *mock.DeliverFiltered
 	)
 
@@ -64,13 +70,13 @@ var _ = Describe("OrdererClient", func() {
 		}
 		expectedPayloadData = ProtoMarshal(seekInfo)
 
-		fakeSigner = &mock.SignerIdentity{}
-		fakeSigner.SignReturns([]byte("envelop-signature"), nil)
+		fakeSigningIdentity = &mock.SigningIdentity{}
+		fakeSigningIdentity.SignReturns([]byte("envelop-signature"), nil)
 
 		fakeTxid = "test_txid_123"
 		deliverResp = &pb.DeliverResponse{
 			Type: &pb.DeliverResponse_FilteredBlock{
-				FilteredBlock: createFilteredBlock(channelId, fakeTxid),
+				FilteredBlock: createFilteredBlock(channelId, pb.TxValidationCode_VALID, fakeTxid),
 			},
 		}
 		fakeDeliverFiltered = &mock.DeliverFiltered{}
@@ -81,7 +87,7 @@ var _ = Describe("OrdererClient", func() {
 
 	Describe("CreateDeliverEnvelope", func() {
 		It("returns expected envelope", func() {
-			envelope, err := client.CreateDeliverEnvelope(channelId, creator, fakeSigner, nil)
+			envelope, err := client.CreateDeliverEnvelope(channelId, creator, fakeSigningIdentity, nil)
 			Expect(err).NotTo(HaveOccurred())
 
 			payload := common.Payload{}
@@ -105,18 +111,18 @@ var _ = Describe("OrdererClient", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(signatureHeader.Creator).To(Equal(creator))
 
-			Expect(fakeSigner.SignCallCount()).To(Equal(1))
-			raw := fakeSigner.SignArgsForCall(0)
+			Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+			raw := fakeSigningIdentity.SignArgsForCall(0)
 			Expect(raw).To(Equal(envelope.Payload))
 		})
 
-		Context("when SignerIdentity returns error", func() {
+		Context("when SigningIdentity returns error", func() {
 			BeforeEach(func() {
-				fakeSigner.SignReturns(nil, errors.New("flying-pineapple"))
+				fakeSigningIdentity.SignReturns(nil, errors.New("flying-pineapple"))
 			})
 
 			It("returns an error", func() {
-				_, err := client.CreateDeliverEnvelope(channelId, creator, fakeSigner, nil)
+				_, err := client.CreateDeliverEnvelope(channelId, creator, fakeSigningIdentity, nil)
 				Expect(err).To(MatchError("flying-pineapple"))
 			})
 		})

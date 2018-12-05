@@ -19,25 +19,23 @@ import (
 	peercommon "github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	tk "github.com/hyperledger/fabric/token"
 	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("token.client")
 
+// TxSubmitter will submit token transactions to the orderer
+// and create a channel to write/read transaction completion event
 type TxSubmitter struct {
-	Config        *ClientConfig
-	Signer        SignerIdentity
-	Creator       []byte
-	OrdererClient OrdererClient
-	DeliverClient DeliverClient
+	Config          *ClientConfig
+	SigningIdentity tk.SigningIdentity
+	Creator         []byte
+	OrdererClient   OrdererClient
+	DeliverClient   DeliverClient
 }
 
 // TxEvent contains information for token transaction commit
-// If application wants to be notified when a token transaction is committed,
-// do the following:
-// - create a event chan with size 1 or bigger, e.g. txChan := make(chan TxEvent, 1)
-// - call client.SubmitTransactionWithChan(txBytes, txChan)
-// - implement a function to read TxEvent from txChan so that it will be notified when transaction is committed or failed
 type TxEvent struct {
 	Txid       string
 	Committed  bool
@@ -45,7 +43,7 @@ type TxEvent struct {
 	Err        error
 }
 
-// NewTransactionSubmitter creates a new TxSubmitter from token client config
+// NewTxSubmitter creates a new TxSubmitter from token client config
 func NewTxSubmitter(config ClientConfig) (*TxSubmitter, error) {
 	err := ValidateClientConfig(config)
 	if err != nil {
@@ -57,11 +55,11 @@ func NewTxSubmitter(config ClientConfig) (*TxSubmitter, error) {
 	}
 	peercommon.InitCrypto(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
 
-	Signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	signingIdentity, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		return nil, err
 	}
-	creator, err := Signer.Serialize()
+	creator, err := signingIdentity.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -77,99 +75,80 @@ func NewTxSubmitter(config ClientConfig) (*TxSubmitter, error) {
 	}
 
 	return &TxSubmitter{
-		Config:        &config,
-		Signer:        Signer,
-		Creator:       creator,
-		OrdererClient: ordererClient,
-		DeliverClient: deliverClient,
+		Config:          &config,
+		SigningIdentity: signingIdentity,
+		Creator:         creator,
+		OrdererClient:   ordererClient,
+		DeliverClient:   deliverClient,
 	}, nil
 }
 
-// SubmitTransaction submits a token transaction to fabric.
-// It takes TokenTransaction bytes and waitTimeInSeconds as input parameters.
-// The 'waitTimeInSeconds' indicates how long to wait for transaction commit event.
+// Submit submits a token transaction to fabric orderer.
+// It takes a transaction envelope and waitTimeout as input parameters.
+// The 'waitTimeout' indicates how long to wait for transaction commit event.
 // If it is 0, the function will not wait for transaction to be committed.
 // If it is greater than 0, the function will wait until timeout or transaction is committed, whichever is earlier
-func (s *TxSubmitter) SubmitTransaction(txEnvelope *common.Envelope, waitTimeInSeconds int) (committed bool, txId string, err error) {
-	if waitTimeInSeconds > 0 {
-		waitTime := time.Second * time.Duration(waitTimeInSeconds)
-		ctx, cancelFunc := context.WithTimeout(context.Background(), waitTime)
-		defer cancelFunc()
-		localCh := make(chan TxEvent, 1)
-		committed, txId, err = s.sendTransactionInternal(txEnvelope, ctx, localCh, true)
-		close(localCh)
-		return
-	} else {
-		committed, txId, err = s.sendTransactionInternal(txEnvelope, context.Background(), nil, false)
-		return
-	}
-}
-
-// SubmitTransactionWithChan submits a token transaction to fabric with an event channel.
-// This function does not wait for transaction commit and returns as soon as the orderer client receives the response.
-// The application will be notified on transaction completion by reading events from the eventCh.
-// When the transaction is committed or failed, an event will be added to eventCh so that the application will be notified.
-// If eventCh has buffer size 0 or its buffer is full, an error will be returned.
-func (s *TxSubmitter) SubmitTransactionWithChan(txEnvelope *common.Envelope, eventCh chan TxEvent) (committed bool, txId string, err error) {
-	committed, txId, err = s.sendTransactionInternal(txEnvelope, context.Background(), eventCh, false)
-	return
-}
-
-func (s *TxSubmitter) sendTransactionInternal(txEnvelope *common.Envelope, ctx context.Context, eventCh chan TxEvent, waitForCommit bool) (bool, string, error) {
-	if eventCh != nil && cap(eventCh) == 0 {
-		return false, "", errors.New("eventCh buffer size must be greater than 0")
-	}
-	if eventCh != nil && len(eventCh) == cap(eventCh) {
-		return false, "", errors.New("eventCh buffer is full. Read events and try again")
+// It returns orderer status, committed boolean, and error.
+func (s *TxSubmitter) Submit(txEnvelope *common.Envelope, waitTimeout time.Duration) (*common.Status, bool, error) {
+	if txEnvelope == nil {
+		return nil, false, errors.New("envelope is nil")
 	}
 
 	txid, err := getTransactionId(txEnvelope)
 	if err != nil {
-		return false, "", err
+		return nil, false, err
 	}
 
 	broadcast, err := s.OrdererClient.NewBroadcast(context.Background())
 	if err != nil {
-		return false, "", err
+		return nil, false, err
 	}
 
-	committed := false
-	if eventCh != nil {
+	var eventCh chan TxEvent
+	var ctx context.Context
+	var cancelFunc context.CancelFunc
+	if waitTimeout > 0 {
+		ctx, cancelFunc = context.WithTimeout(context.Background(), waitTimeout)
+		defer cancelFunc()
 		deliverFiltered, err := s.DeliverClient.NewDeliverFiltered(ctx)
 		if err != nil {
-			return false, "", err
+			return nil, false, err
 		}
-		blockEnvelope, err := CreateDeliverEnvelope(s.Config.ChannelID, s.Creator, s.Signer, s.DeliverClient.Certificate())
+		blockEnvelope, err := CreateDeliverEnvelope(s.Config.ChannelID, s.Creator, s.SigningIdentity, s.DeliverClient.Certificate())
 		if err != nil {
-			return false, "", err
+			return nil, false, err
 		}
 		err = DeliverSend(deliverFiltered, s.Config.CommitterPeer.Address, blockEnvelope)
 		if err != nil {
-			return false, "", err
+			return nil, false, err
 		}
+		eventCh = make(chan TxEvent, 1)
 		go DeliverReceive(deliverFiltered, s.Config.CommitterPeer.Address, txid, eventCh)
 	}
 
 	err = BroadcastSend(broadcast, s.Config.Orderer.Address, txEnvelope)
 	if err != nil {
-		return false, txid, err
+		return nil, false, err
 	}
 
 	// wait for response from orderer broadcast - it does not wait for commit peer response
 	responses := make(chan common.Status)
 	errs := make(chan error, 1)
 	go BroadcastReceive(broadcast, s.Config.Orderer.Address, responses, errs)
-	_, err = BroadcastWaitForResponse(responses, errs)
+	status, err := BroadcastWaitForResponse(responses, errs)
 
 	// wait for commit event from deliver service in this case
-	if eventCh != nil && waitForCommit {
+	committed := false
+	if err == nil && waitTimeout > 0 {
 		committed, err = DeliverWaitForResponse(ctx, eventCh, txid)
 	}
 
-	return committed, txid, err
+	return &status, committed, err
 }
 
-func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (string, *common.Envelope, error) {
+// CreateTxEnvelope creates a transaction envelope from the serialized TokenTransaction.
+// It returns the transaction envelope, transaction id, and error.
+func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (*common.Envelope, string, error) {
 	var tlsCertHash []byte
 	var err error
 	// check for client certificate and compute SHA2-256 on certificate if present
@@ -179,22 +158,22 @@ func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (string, *common.Envelope
 		if err != nil {
 			err = errors.New("failed to compute SHA256 on client certificate")
 			logger.Errorf("%s", err)
-			return "", nil, err
+			return nil, "", err
 		}
 	}
 
 	txid, header, err := CreateHeader(common.HeaderType_TOKEN_TRANSACTION, s.Config.ChannelID, s.Creator, tlsCertHash)
 	if err != nil {
-		return txid, nil, err
+		return nil, txid, err
 	}
 
-	txEnvelope, err := CreateEnvelope(txBytes, header, s.Signer)
-	return txid, txEnvelope, err
+	txEnvelope, err := CreateEnvelope(txBytes, header, s.SigningIdentity)
+	return txEnvelope, txid, err
 }
 
 // CreateHeader creates common.Header for a token transaction
 // tlsCertHash is for client TLS cert, only applicable when ClientAuthRequired is true
-func CreateHeader(txType common.HeaderType, channelID string, creator []byte, tlsCertHash []byte) (string, *common.Header, error) {
+func CreateHeader(txType common.HeaderType, channelId string, creator []byte, tlsCertHash []byte) (string, *common.Header, error) {
 	ts, err := ptypes.TimestampProto(time.Now())
 	if err != nil {
 		return "", nil, err
@@ -212,9 +191,9 @@ func CreateHeader(txType common.HeaderType, channelID string, creator []byte, tl
 
 	chdr := &common.ChannelHeader{
 		Type:        int32(txType),
-		ChannelId:   channelID,
+		ChannelId:   channelId,
 		TxId:        txId,
-		Epoch:       uint64(0),
+		Epoch:       0,
 		Timestamp:   ts,
 		TlsCertHash: tlsCertHash,
 	}
@@ -240,8 +219,8 @@ func CreateHeader(txType common.HeaderType, channelID string, creator []byte, tl
 	return txId, header, nil
 }
 
-// CreateEnvelope creates a common.Envelope with given tx bytes, header, and Signer
-func CreateEnvelope(data []byte, header *common.Header, signer SignerIdentity) (*common.Envelope, error) {
+// CreateEnvelope creates a common.Envelope with given tx bytes, header, and SigningIdentity
+func CreateEnvelope(data []byte, header *common.Header, signingIdentity tk.SigningIdentity) (*common.Envelope, error) {
 	payload := &common.Payload{
 		Header: header,
 		Data:   data,
@@ -252,7 +231,7 @@ func CreateEnvelope(data []byte, header *common.Header, signer SignerIdentity) (
 		return nil, errors.Wrap(err, "failed to marshal common.Payload")
 	}
 
-	signature, err := signer.Sign(payloadBytes)
+	signature, err := signingIdentity.Sign(payloadBytes)
 	if err != nil {
 		return nil, err
 	}

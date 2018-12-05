@@ -87,7 +87,7 @@ func (prover *ProverPeer) CreateSignedCommand(payload interface{}, signingIdenti
 		return nil, err
 	}
 
-	creator, err := signingIdentity.GetPublicVersion().Serialize()
+	creator, err := signingIdentity.Serialize()
 	if err != nil {
 		return nil, err
 	}

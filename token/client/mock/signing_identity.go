@@ -8,16 +8,6 @@ import (
 )
 
 type SigningIdentity struct {
-	GetPublicVersionStub        func() token.Identity
-	getPublicVersionMutex       sync.RWMutex
-	getPublicVersionArgsForCall []struct {
-	}
-	getPublicVersionReturns struct {
-		result1 token.Identity
-	}
-	getPublicVersionReturnsOnCall map[int]struct {
-		result1 token.Identity
-	}
 	SerializeStub        func() ([]byte, error)
 	serializeMutex       sync.RWMutex
 	serializeArgsForCall []struct {
@@ -45,58 +35,6 @@ type SigningIdentity struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *SigningIdentity) GetPublicVersion() token.Identity {
-	fake.getPublicVersionMutex.Lock()
-	ret, specificReturn := fake.getPublicVersionReturnsOnCall[len(fake.getPublicVersionArgsForCall)]
-	fake.getPublicVersionArgsForCall = append(fake.getPublicVersionArgsForCall, struct {
-	}{})
-	fake.recordInvocation("GetPublicVersion", []interface{}{})
-	fake.getPublicVersionMutex.Unlock()
-	if fake.GetPublicVersionStub != nil {
-		return fake.GetPublicVersionStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.getPublicVersionReturns
-	return fakeReturns.result1
-}
-
-func (fake *SigningIdentity) GetPublicVersionCallCount() int {
-	fake.getPublicVersionMutex.RLock()
-	defer fake.getPublicVersionMutex.RUnlock()
-	return len(fake.getPublicVersionArgsForCall)
-}
-
-func (fake *SigningIdentity) GetPublicVersionCalls(stub func() token.Identity) {
-	fake.getPublicVersionMutex.Lock()
-	defer fake.getPublicVersionMutex.Unlock()
-	fake.GetPublicVersionStub = stub
-}
-
-func (fake *SigningIdentity) GetPublicVersionReturns(result1 token.Identity) {
-	fake.getPublicVersionMutex.Lock()
-	defer fake.getPublicVersionMutex.Unlock()
-	fake.GetPublicVersionStub = nil
-	fake.getPublicVersionReturns = struct {
-		result1 token.Identity
-	}{result1}
-}
-
-func (fake *SigningIdentity) GetPublicVersionReturnsOnCall(i int, result1 token.Identity) {
-	fake.getPublicVersionMutex.Lock()
-	defer fake.getPublicVersionMutex.Unlock()
-	fake.GetPublicVersionStub = nil
-	if fake.getPublicVersionReturnsOnCall == nil {
-		fake.getPublicVersionReturnsOnCall = make(map[int]struct {
-			result1 token.Identity
-		})
-	}
-	fake.getPublicVersionReturnsOnCall[i] = struct {
-		result1 token.Identity
-	}{result1}
 }
 
 func (fake *SigningIdentity) Serialize() ([]byte, error) {
@@ -225,8 +163,6 @@ func (fake *SigningIdentity) SignReturnsOnCall(i int, result1 []byte, result2 er
 func (fake *SigningIdentity) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getPublicVersionMutex.RLock()
-	defer fake.getPublicVersionMutex.RUnlock()
 	fake.serializeMutex.RLock()
 	defer fake.serializeMutex.RUnlock()
 	fake.signMutex.RLock()

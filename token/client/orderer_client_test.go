@@ -17,17 +17,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate counterfeiter -o mock/ab_server.go -fake-name AtomicBroadcastServer . abServer
+
+type abServer interface {
+	ab.AtomicBroadcastServer
+}
+
 var _ = Describe("OrdererClient", func() {
 	var (
 		broadcastResp *ab.BroadcastResponse
 
-		fakeSigner    *mock.SignerIdentity
+		fakeSigning   *mock.SigningIdentity
 		fakeBroadcast *mock.Broadcast
 	)
 
 	BeforeEach(func() {
-		fakeSigner = &mock.SignerIdentity{}
-		fakeSigner.SignReturns([]byte("envelop-signature"), nil)
+		fakeSigning = &mock.SigningIdentity{}
+		fakeSigning.SignReturns([]byte("envelop-signature"), nil)
 
 		broadcastResp = &ab.BroadcastResponse{Status: common.Status_SUCCESS}
 		fakeBroadcast = &mock.Broadcast{}

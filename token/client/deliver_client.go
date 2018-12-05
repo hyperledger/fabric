@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	tk "github.com/hyperledger/fabric/token"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -100,7 +101,7 @@ func (d *deliverClient) Certificate() *tls.Certificate {
 }
 
 // create a signed envelope with SeekPosition_Newest for block
-func CreateDeliverEnvelope(channelId string, creator []byte, signer SignerIdentity, cert *tls.Certificate) (*common.Envelope, error) {
+func CreateDeliverEnvelope(channelId string, creator []byte, signingIdentity tk.SigningIdentity, cert *tls.Certificate) (*common.Envelope, error) {
 	var tlsCertHash []byte
 	var err error
 	// check for client certificate and compute SHA2-256 on certificate if present
@@ -143,7 +144,7 @@ func CreateDeliverEnvelope(channelId string, creator []byte, signer SignerIdenti
 		return nil, errors.Wrap(err, "error marshaling SeekInfo")
 	}
 
-	envelope, err := CreateEnvelope(raw, header, signer)
+	envelope, err := CreateEnvelope(raw, header, signingIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +161,7 @@ func DeliverSend(df DeliverFiltered, address string, envelope *common.Envelope) 
 	return nil
 }
 
-func DeliverReceive(df DeliverFiltered, address string, txid string, eventCh chan TxEvent) error {
+func DeliverReceive(df DeliverFiltered, address string, txid string, eventCh chan<- TxEvent) error {
 	event := TxEvent{
 		Txid:       txid,
 		Committed:  false,
@@ -213,7 +214,7 @@ read:
 // DeliverWaitForResponse waits for either eventChan has value (i.e., response has been received) or ctx is timed out
 // This function assumes that the eventCh is only for the specified txid
 // If an eventCh is shared by multiple transactions, a loop should be used to listen to events from multiple transactions
-func DeliverWaitForResponse(ctx context.Context, eventCh chan TxEvent, txid string) (bool, error) {
+func DeliverWaitForResponse(ctx context.Context, eventCh <-chan TxEvent, txid string) (bool, error) {
 	select {
 	case event, _ := <-eventCh:
 		if txid == event.Txid {

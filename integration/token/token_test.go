@@ -17,6 +17,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/token"
 	tokenclient "github.com/hyperledger/fabric/token/client"
 	. "github.com/onsi/ginkgo"
@@ -139,11 +140,12 @@ func RunTokenTransactionSubmit(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.P
 	mockTokenTxBytes, err := proto.Marshal(mockTokenTx)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, txEnvelope, err := txSubmitter.CreateTxEnvelope(mockTokenTxBytes)
+	txEnvelope, _, err := txSubmitter.CreateTxEnvelope(mockTokenTxBytes)
 	Expect(err).NotTo(HaveOccurred())
-	committed, _, err := txSubmitter.SubmitTransaction(txEnvelope, 60)
+	ordererStatus, committed, err := txSubmitter.Submit(txEnvelope, 60*time.Second)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(committed).To(Equal(true))
+	Expect(*ordererStatus).To(Equal(common.Status_SUCCESS))
 }
 
 // update configtx.yaml with V1_4_FABTOKEN_EXPERIMENTAL: true

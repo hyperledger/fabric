@@ -31,7 +31,6 @@ var _ = Describe("TokenClient", func() {
 		channelId            string
 		commandHeader        *token.Header
 		signedCommandResp    *token.SignedCommandResponse
-		fakeIdentity         *mock.Identity
 		fakeSigningIdentity  *mock.SigningIdentity
 		fakeRandomnessReader io.Reader
 		fakeProverClient     *mock.ProverClient
@@ -51,7 +50,6 @@ var _ = Describe("TokenClient", func() {
 			ChannelId: channelId,
 		}
 
-		fakeIdentity = &mock.Identity{}
 		fakeSigningIdentity = &mock.SigningIdentity{}
 		fakeRandomnessReader = strings.NewReader(string(nonce))
 		fakeProverClient = &mock.ProverClient{}
@@ -61,8 +59,7 @@ var _ = Describe("TokenClient", func() {
 			Signature: []byte("response-signature"),
 		}
 
-		fakeIdentity.SerializeReturns([]byte("Alice"), nil)
-		fakeSigningIdentity.GetPublicVersionReturns(fakeIdentity)
+		fakeSigningIdentity.SerializeReturns([]byte("Alice"), nil)
 		fakeSigningIdentity.SignReturns([]byte("pineapple"), nil)
 		fakeProverClient.ProcessCommandReturns(signedCommandResp, nil)
 		prover = &client.ProverPeer{RandomnessReader: fakeRandomnessReader, ProverClient: fakeProverClient, ChannelID: channelId, Time: clock}
@@ -102,7 +99,7 @@ var _ = Describe("TokenClient", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(response).To(Equal(signedCommandResp.Response))
 
-			Expect(fakeIdentity.SerializeCallCount()).To(Equal(1))
+			Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 			Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 			raw := fakeSigningIdentity.SignArgsForCall(0)
 			Expect(raw).To(Equal(marshalledCommand))
@@ -114,7 +111,7 @@ var _ = Describe("TokenClient", func() {
 
 		Context("when SigningIdentity serialize fails", func() {
 			BeforeEach(func() {
-				fakeIdentity.SerializeReturns(nil, errors.New("wild-banana"))
+				fakeSigningIdentity.SerializeReturns(nil, errors.New("wild-banana"))
 			})
 
 			It("returns an error", func() {
@@ -135,7 +132,7 @@ var _ = Describe("TokenClient", func() {
 				Expect(err).To(MatchError("wild-banana"))
 
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
-				Expect(fakeIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 				raw := fakeSigningIdentity.SignArgsForCall(0)
 				Expect(raw).To(Equal(marshalledCommand))
@@ -193,7 +190,7 @@ var _ = Describe("TokenClient", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(response).To(Equal(signedCommandResp.Response))
 
-			Expect(fakeIdentity.SerializeCallCount()).To(Equal(1))
+			Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 			Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 			raw := fakeSigningIdentity.SignArgsForCall(0)
 			Expect(raw).To(Equal(marshalledCommand))
@@ -205,13 +202,13 @@ var _ = Describe("TokenClient", func() {
 
 		Context("when Identity serialize fails", func() {
 			BeforeEach(func() {
-				fakeIdentity.SerializeReturns(nil, errors.New("wild-banana"))
+				fakeSigningIdentity.SerializeReturns(nil, errors.New("wild-banana"))
 			})
 
 			It("returns an error", func() {
 				_, err := prover.RequestTransfer(tokenIDs, transferShares, fakeSigningIdentity)
 				Expect(err).To(MatchError("wild-banana"))
-				Expect(fakeIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(0))
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
 			})
@@ -227,7 +224,7 @@ var _ = Describe("TokenClient", func() {
 				Expect(err).To(MatchError("wild-banana"))
 
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
-				Expect(fakeIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 				raw := fakeSigningIdentity.SignArgsForCall(0)
 				Expect(raw).To(Equal(marshalledCommand))
