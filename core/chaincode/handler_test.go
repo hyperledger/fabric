@@ -595,7 +595,7 @@ var _ = Describe("Handler", func() {
 				Expect(value).To(Equal([]byte("put-state-value")))
 			})
 
-			Context("when SetPrivateData fails", func() {
+			Context("when SetPrivateData fails due to ledger error", func() {
 				BeforeEach(func() {
 					fakeTxSimulator.SetPrivateDataReturns(errors.New("godzilla"))
 				})
@@ -603,6 +603,17 @@ var _ = Describe("Handler", func() {
 				It("returns an error", func() {
 					_, err := handler.HandlePutState(incomingMessage, txContext)
 					Expect(err).To(MatchError("godzilla"))
+				})
+			})
+
+			Context("when SetPrivateData fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandlePutState(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
 				})
 			})
 		})
@@ -829,7 +840,7 @@ var _ = Describe("Handler", func() {
 				Expect(key).To(Equal("del-state-key"))
 			})
 
-			Context("when DeletePrivateData returns an error", func() {
+			Context("when DeletePrivateData fails due to ledger error", func() {
 				BeforeEach(func() {
 					fakeTxSimulator.DeletePrivateDataReturns(errors.New("mango"))
 				})
@@ -837,6 +848,17 @@ var _ = Describe("Handler", func() {
 				It("returns an error", func() {
 					_, err := handler.HandleDelState(incomingMessage, txContext)
 					Expect(err).To(MatchError("mango"))
+				})
+			})
+
+			Context("when DeletePrivateData fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandleDelState(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
 				})
 			})
 		})
@@ -936,6 +958,17 @@ var _ = Describe("Handler", func() {
 				It("returns the error from errorIfCreatorHasNoReadAccess", func() {
 					_, err := handler.HandleGetState(incomingMessage, txContext)
 					Expect(err).To(MatchError("no collection config"))
+				})
+			})
+
+			Context("and GetPrivateData fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandleGetState(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
 				})
 			})
 
@@ -1156,6 +1189,17 @@ var _ = Describe("Handler", func() {
 					Expect(err).To(MatchError("no collection config"))
 				})
 			})
+
+			Context("and GetPrivateDataMetadata fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
+				})
+			})
 		})
 
 		Context("when collection is not set", func() {
@@ -1352,6 +1396,17 @@ var _ = Describe("Handler", func() {
 				It("returns the error from GetPrivateDataRangeScanIterator", func() {
 					_, err := handler.HandleGetStateByRange(incomingMessage, txContext)
 					Expect(err).To(MatchError("no collection config"))
+				})
+			})
+
+			Context("and GetPrivateDataRangeScanIterator fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandleGetStateByRange(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
 				})
 			})
 		})
@@ -1722,6 +1777,17 @@ var _ = Describe("Handler", func() {
 				It("returns the error", func() {
 					_, err := handler.HandleGetQueryResult(incomingMessage, txContext)
 					Expect(err).To(MatchError("no collection config"))
+				})
+			})
+
+			Context("and ExecuteQueryOnPrivateData fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandleGetQueryResult(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
 				})
 			})
 		})

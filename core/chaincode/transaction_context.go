@@ -23,6 +23,7 @@ type TransactionContext struct {
 	TXSimulator          ledger.TxSimulator
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
 	CollectionStore      privdata.CollectionStore
+	IsInitTransaction    bool
 
 	// tracks open iterators used for range queries
 	queryMutex          sync.Mutex
