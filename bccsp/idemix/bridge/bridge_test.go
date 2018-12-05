@@ -849,7 +849,13 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("invalid credential", func() {
-				credential[4] = 0
+				// Invalidate credential by changing it in one position
+				if credential[4] == 0 {
+					credential[4] = 1
+				} else {
+					credential[4] = 0
+				}
+
 				// Verify Credential
 				valid, err := CredentialVerifier.Verify(
 					UserKey,
