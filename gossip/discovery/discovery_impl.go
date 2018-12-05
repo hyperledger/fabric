@@ -67,14 +67,15 @@ func (ts *timestamp) String() string {
 }
 
 type gossipDiscoveryImpl struct {
-	incTime         uint64
-	seqNum          uint64
-	self            NetworkMember
-	deadLastTS      map[string]*timestamp     // H
-	aliveLastTS     map[string]*timestamp     // V
-	id2Member       map[string]*NetworkMember // all known members
-	aliveMembership *util.MembershipStore
-	deadMembership  *util.MembershipStore
+	incTime          uint64
+	seqNum           uint64
+	self             NetworkMember
+	deadLastTS       map[string]*timestamp     // H
+	aliveLastTS      map[string]*timestamp     // V
+	id2Member        map[string]*NetworkMember // all known members
+	aliveMembership  *util.MembershipStore
+	deadMembership   *util.MembershipStore
+	selfAliveMessage *proto.SignedGossipMessage
 
 	msgStore *aliveMsgStore
 
@@ -417,10 +418,17 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 		InternalEndpoint: internalEndpoint,
 	}
 
-	aliveMsg, err := d.createSignedAliveMessage(true)
-	if err != nil {
-		d.logger.Warningf("Failed creating alive message: %+v", errors.WithStack(err))
-		return
+	var aliveMsg *proto.SignedGossipMessage
+	var err error
+	d.lock.RLock()
+	aliveMsg = d.selfAliveMessage
+	d.lock.RUnlock()
+	if aliveMsg == nil {
+		aliveMsg, err = d.createSignedAliveMessage(true)
+		if err != nil {
+			d.logger.Warningf("Failed creating alive message: %+v", errors.WithStack(err))
+			return
+		}
 	}
 	memResp := d.createMembershipResponse(aliveMsg, targetPeer)
 	if memResp == nil {
@@ -735,6 +743,9 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 			d.logger.Warningf("Failed creating alive message: %+v", errors.WithStack(err))
 			return
 		}
+		d.lock.Lock()
+		d.selfAliveMessage = msg
+		d.lock.Unlock()
 		d.comm.Gossip(msg)
 	}
 }
