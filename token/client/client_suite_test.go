@@ -3,13 +3,16 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package client_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/token/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -41,4 +44,35 @@ func createFilteredBlock(channelId string, validationCode pb.TxValidationCode, t
 		FilteredTransactions: filteredTransactions,
 	}
 	return fb
+}
+
+// getClientConfig returns a valid ClientConfig to test grpc connection
+func getClientConfig(tlsEnabled bool, channelID, ordererEndpoint, committerEndpoint, proverEndpoint string) *client.ClientConfig {
+	config := client.ClientConfig{
+		ChannelID: channelID,
+		MSPInfo: client.MSPInfo{
+			MSPConfigPath: "./testdata/crypto/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp",
+			MSPID:         "Org1MSP",
+			MSPType:       "bccsp",
+		},
+		Orderer: client.ConnectionConfig{
+			Address:           ordererEndpoint,
+			ConnectionTimeout: 1 * time.Second,
+			TLSEnabled:        tlsEnabled,
+			TLSRootCertFile:   "./testdata/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt",
+		},
+		CommitterPeer: client.ConnectionConfig{
+			Address:           committerEndpoint,
+			ConnectionTimeout: 1 * time.Second,
+			TLSEnabled:        tlsEnabled,
+			TLSRootCertFile:   "./testdata/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt",
+		},
+		ProverPeer: client.ConnectionConfig{
+			Address:           proverEndpoint,
+			ConnectionTimeout: 1 * time.Second,
+			TLSEnabled:        tlsEnabled,
+			TLSRootCertFile:   "./testdata/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt",
+		},
+	}
+	return &config
 }

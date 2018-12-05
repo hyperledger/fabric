@@ -13,8 +13,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	peercommon "github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	tk "github.com/hyperledger/fabric/token"
@@ -42,21 +40,8 @@ type TxEvent struct {
 }
 
 // NewTxSubmitter creates a new TxSubmitter from token client config
-func NewTxSubmitter(config ClientConfig) (*TxSubmitter, error) {
-	err := ValidateClientConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	if config.MSPInfo.MSPType == "" {
-		config.MSPInfo.MSPType = "bccsp"
-	}
-	peercommon.InitCrypto(config.MSPInfo.MSPConfigPath, config.MSPInfo.MSPID, config.MSPInfo.MSPType)
-
-	signingIdentity, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		return nil, err
-	}
+func NewTxSubmitter(config *ClientConfig, signingIdentity tk.SigningIdentity) (*TxSubmitter, error) {
+	// get and store serialized identity so that we don't have to call it for every request
 	creator, err := signingIdentity.Serialize()
 	if err != nil {
 		return nil, err
@@ -73,7 +58,7 @@ func NewTxSubmitter(config ClientConfig) (*TxSubmitter, error) {
 	}
 
 	return &TxSubmitter{
-		Config:          &config,
+		Config:          config,
 		SigningIdentity: signingIdentity,
 		Creator:         creator,
 		OrdererClient:   ordererClient,
@@ -92,7 +77,7 @@ func (s *TxSubmitter) Submit(txEnvelope *common.Envelope, waitTimeout time.Durat
 		return nil, false, errors.New("envelope is nil")
 	}
 
-	txid, err := getTransactionId(txEnvelope)
+	txid, err := GetTransactionID(txEnvelope)
 	if err != nil {
 		return nil, false, err
 	}
@@ -235,7 +220,7 @@ func CreateEnvelope(data []byte, header *common.Header, signingIdentity tk.Signi
 	return txEnvelope, nil
 }
 
-func getTransactionId(txEnvelope *common.Envelope) (string, error) {
+func GetTransactionID(txEnvelope *common.Envelope) (string, error) {
 	payload := common.Payload{}
 	err := proto.Unmarshal(txEnvelope.Payload, &payload)
 	if err != nil {

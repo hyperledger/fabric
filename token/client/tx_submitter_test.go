@@ -179,6 +179,32 @@ var _ = Describe("TxSubmitter", func() {
 			})
 		})
 
+		Context("when Broadcast.Send returns error", func() {
+			BeforeEach(func() {
+				fakeBroadcast.SendReturns(errors.New("flying-banana"))
+			})
+
+			It("returns an error", func() {
+				ordererStatus, committed, err := txSubmitter.Submit(txEnvelope, 0)
+				Expect(err.Error()).To(ContainSubstring("flying-banana"))
+				Expect(ordererStatus).To(BeNil())
+				Expect(committed).To(Equal(false))
+			})
+		})
+
+		Context("when DeliverFiltered.Send returns error", func() {
+			BeforeEach(func() {
+				fakeDeliverFiltered.SendReturns(errors.New("flying-banana"))
+			})
+
+			It("returns an error", func() {
+				ordererStatus, committed, err := txSubmitter.Submit(txEnvelope, time.Second)
+				Expect(err.Error()).To(ContainSubstring("flying-banana"))
+				Expect(ordererStatus).To(BeNil())
+				Expect(committed).To(Equal(false))
+			})
+		})
+
 		Context("when Broadcast.Recv returns error", func() {
 			BeforeEach(func() {
 				fakeBroadcast.RecvReturnsOnCall(0, nil, errors.New("flying-banana"))
@@ -259,6 +285,66 @@ var _ = Describe("TxSubmitter", func() {
 				Expect(err).To(MatchError(fmt.Sprintf("transaction [%s] status is not valid: NOT_VALIDATED", expectedTxid)))
 			})
 		})
+
+		Context("when SigningIdentity.Sign fails", func() {
+			BeforeEach(func() {
+				fakeSigningIdentity.SignReturns(nil, errors.New("banana-seesaw"))
+			})
+
+			It("returns an error", func() {
+				ordererStatus, committed, err := txSubmitter.Submit(txEnvelope, time.Second)
+				Expect(ordererStatus).To(BeNil())
+				Expect(committed).To(Equal(false))
+				Expect(err).To(MatchError("banana-seesaw"))
+			})
+		})
+
+		Context("when envelope is nil", func() {
+			It("returns an error", func() {
+				ordererStatus, committed, err := txSubmitter.Submit(nil, time.Second)
+				Expect(ordererStatus).To(BeNil())
+				Expect(committed).To(Equal(false))
+				Expect(err).To(MatchError("envelope is nil"))
+			})
+		})
+
+		Context("when envelope has invalid payload", func() {
+			BeforeEach(func() {
+				txEnvelope = &common.Envelope{
+					Payload:   []byte("invalid-payload"),
+					Signature: []byte("envelop-signature"),
+				}
+			})
+
+			It("returns an error", func() {
+				ordererStatus, committed, err := txSubmitter.Submit(txEnvelope, 10*time.Second)
+				Expect(ordererStatus).To(BeNil())
+				Expect(committed).To(Equal(false))
+				Expect(err.Error()).To(ContainSubstring("failed to unmarshal envelope payload"))
+			})
+		})
+
+		Context("when envelope has invalid header", func() {
+			BeforeEach(func() {
+				payload := &common.Payload{
+					Header: &common.Header{
+						ChannelHeader: []byte("invalid-channel-header"),
+					},
+					Data: []byte("tx-data"),
+				}
+				txEnvelope = &common.Envelope{
+					Payload:   ProtoMarshal(payload),
+					Signature: []byte("envelop-signature"),
+				}
+			})
+
+			It("returns an error", func() {
+				ordererStatus, committed, err := txSubmitter.Submit(txEnvelope, 10*time.Second)
+				Expect(ordererStatus).To(BeNil())
+				Expect(committed).To(Equal(false))
+				Expect(err.Error()).To(ContainSubstring("failed to unmarshal channel header"))
+			})
+		})
 	})
 
 	Describe("CreateTxEnvelope", func() {
@@ -328,7 +414,7 @@ var _ = Describe("TxSubmitter", func() {
 
 	Describe("NewTxSubmitter", func() {
 		var (
-			config          client.ClientConfig
+			config          *client.ClientConfig
 			ordererListener net.Listener
 			deliverListener net.Listener
 			ordererServer   *grpc.Server
@@ -345,29 +431,9 @@ var _ = Describe("TxSubmitter", func() {
 			deliverListener, err = net.Listen("tcp", "127.0.0.1:")
 			Expect(err).To(BeNil())
 
-			config = client.ClientConfig{
-				ChannelID: channelID,
-				MSPInfo: client.MSPInfo{
-					MSPConfigPath: "./testdata/crypto/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp",
-					MSPID:         "Org1MSP",
-					MSPType:       "bccsp",
-				},
-				Orderer: client.ConnectionConfig{
-					Address:           ordererListener.Addr().String(),
-					ConnectionTimeout: 1 * time.Second,
-					TLSEnabled:        true,
-					TLSRootCertFile:   "./testdata/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt",
-				},
-				CommitterPeer: client.ConnectionConfig{
-					Address:           deliverListener.Addr().String(),
-					ConnectionTimeout: 1 * time.Second,
-					TLSEnabled:        true,
-					TLSRootCertFile:   "./testdata/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt",
-				},
-				ProverPeer: client.ConnectionConfig{
-					Address: "dummy",
-				},
-			}
+			ordererEndpoint := ordererListener.Addr().String()
+			deliverEndpoint := deliverListener.Addr().String()
+			config = getClientConfig(true, channelID, ordererEndpoint, deliverEndpoint, "dummy_endpoint")
 		})
 
 		AfterEach(func() {
@@ -409,11 +475,11 @@ var _ = Describe("TxSubmitter", func() {
 			pb.RegisterDeliverServer(deliverServer, &mock.DeliverServer{})
 			go deliverServer.Serve(deliverListener)
 
-			submitter, err := client.NewTxSubmitter(config)
+			submitter, err := client.NewTxSubmitter(config, fakeSigningIdentity)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(submitter.Config).To(Equal(&config))
-			Expect(submitter.Creator).NotTo(BeNil())
-			Expect(submitter.SigningIdentity).NotTo(BeNil())
+			Expect(submitter.Config).To(Equal(config))
+			Expect(submitter.Creator).To(Equal([]byte("creator")))
+			Expect(submitter.SigningIdentity).To(Equal(fakeSigningIdentity))
 
 			// verify OrdererClient can create a broadcast client
 			broadcastClient, err := submitter.OrdererClient.NewBroadcast(context.Background())
@@ -439,18 +505,18 @@ var _ = Describe("TxSubmitter", func() {
 			pb.RegisterDeliverServer(deliverServer, &mock.DeliverServer{})
 			go deliverServer.Serve(deliverListener)
 
-			submitter, err := client.NewTxSubmitter(config)
+			submitter, err := client.NewTxSubmitter(config, fakeSigningIdentity)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(submitter.Config).To(Equal(&config))
-			Expect(submitter.Creator).NotTo(BeNil())
-			Expect(submitter.SigningIdentity).NotTo(BeNil())
+			Expect(submitter.Config).To(Equal(config))
+			Expect(submitter.Creator).To(Equal([]byte("creator")))
+			Expect(submitter.SigningIdentity).To(Equal(fakeSigningIdentity))
 
 			// verify OrdererClient can create a broadcast client
 			broadcastClient, err := submitter.OrdererClient.NewBroadcast(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(broadcastClient).NotTo(BeNil())
 
-			// verify DeliverClient can create a broadcast client
+			// verify DeliverClient can create a deliver filtered client
 			dfClient, err := submitter.DeliverClient.NewDeliverFiltered(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(dfClient).NotTo(BeNil())
@@ -462,7 +528,7 @@ var _ = Describe("TxSubmitter", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := client.NewTxSubmitter(config)
+				_, err := client.NewTxSubmitter(config, fakeSigningIdentity)
 				Expect(err.Error()).To(ContainSubstring("failed to connect to orderer"))
 			})
 		})
@@ -476,7 +542,7 @@ var _ = Describe("TxSubmitter", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := client.NewTxSubmitter(config)
+				_, err := client.NewTxSubmitter(config, fakeSigningIdentity)
 				Expect(err.Error()).To(ContainSubstring("failed to connect to commit peer"))
 			})
 		})
@@ -487,8 +553,19 @@ var _ = Describe("TxSubmitter", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := client.NewTxSubmitter(config)
+				_, err := client.NewTxSubmitter(config, fakeSigningIdentity)
 				Expect(err.Error()).To(ContainSubstring("unable to load TLS cert from " + config.Orderer.TLSRootCertFile))
+			})
+		})
+
+		Context("when SigningIdentity.Serialize fails", func() {
+			BeforeEach(func() {
+				fakeSigningIdentity.SerializeReturns(nil, errors.New("banana-seesaw"))
+			})
+
+			It("returns an error", func() {
+				_, err := client.NewTxSubmitter(config, fakeSigningIdentity)
+				Expect(err).To(MatchError("banana-seesaw"))
 			})
 		})
 	})
@@ -569,6 +646,7 @@ var _ = Describe("Create a header", func() {
 	Describe("CreateHeader", func() {
 		It("returns expected header", func() {
 			txid, header, err := client.CreateHeader(txType, channelID, creator, nil)
+			Expect(err).NotTo(HaveOccurred())
 
 			channelHeader := common.ChannelHeader{}
 			err = proto.Unmarshal(header.ChannelHeader, &channelHeader)
