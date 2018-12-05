@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/bccsp/idemix/handlers"
@@ -78,13 +77,10 @@ func (*User) NewPublicNymFromBytes(raw []byte) (r handlers.Ecp, err error) {
 		}
 	}()
 
-	ecpProto := &cryptolib.ECP{}
-	err = proto.Unmarshal(raw, ecpProto)
-	if err != nil {
-		return
-	}
+	// raw is the concatenation of two big integers
+	lHalve := len(raw) / 2
 
-	r = &Ecp{E: FP256BN.NewECPbigs(FP256BN.FromBytes(ecpProto.X), FP256BN.FromBytes(ecpProto.Y))}
+	r = &Ecp{E: FP256BN.NewECPbigs(FP256BN.FromBytes(raw[:lHalve]), FP256BN.FromBytes(raw[lHalve:]))}
 
 	return
 }

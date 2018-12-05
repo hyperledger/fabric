@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
 	"github.com/hyperledger/fabric/idemix"
 )
@@ -26,5 +25,9 @@ type Ecp struct {
 }
 
 func (o *Ecp) Bytes() ([]byte, error) {
-	return proto.Marshal(idemix.EcpToProto(o.E))
+	var res []byte
+	res = append(res, idemix.BigToBytes(o.E.GetX())...)
+	res = append(res, idemix.BigToBytes(o.E.GetY())...)
+
+	return res, nil
 }

@@ -297,7 +297,7 @@ func (msp *idemixmsp) deserializeIdentityInternal(serializedID []byte) (Identity
 		&bccsp.IdemixNymPublicKeyImportOpts{Temporary: true},
 	)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to import revocation public key")
+		return nil, errors.WithMessage(err, "failed to import nym public key")
 	}
 
 	// OU
@@ -614,6 +614,8 @@ func (id *idemixidentity) Serialize() ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not serialize nym of identity %s", id.id)
 	}
+	// This is an assumption on how the underlying idemix implementation work.
+	// TODO: change this in future version
 	serialized.NymX = raw[:len(raw)/2]
 	serialized.NymY = raw[len(raw)/2:]
 	ouBytes, err := proto.Marshal(id.OU)
