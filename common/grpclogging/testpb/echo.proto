@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 syntax = "proto3";
 
-option go_package = "testpb";
+option go_package = "github.com/hyperledger/fabric/common/grpclogging/testpb";
 
 package testpb;
 

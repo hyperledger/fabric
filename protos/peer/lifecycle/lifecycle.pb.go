@@ -117,8 +117,8 @@ func (m *InstallChaincodeResult) GetHash() []byte {
 // QueryInstalledChaincodeArgs is the message returned by
 // '+lifecycle.QueryInstalledChaincode'
 type QueryInstalledChaincodeArgs struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Version              string   `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
