@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
@@ -69,22 +70,24 @@ func (*dummyReceivedMessage) Ack(err error) {
 }
 
 type dummyCommModule struct {
-	msgsReceived uint32
-	msgsSent     uint32
-	id           string
-	presumeDead  chan common.PKIidType
-	detectedDead chan string
-	streams      map[string]proto.Gossip_GossipStreamClient
-	conns        map[string]*grpc.ClientConn
-	lock         *sync.RWMutex
-	incMsgs      chan proto.ReceivedMessage
-	lastSeqs     map[string]uint64
-	shouldGossip bool
-	mock         *mock.Mock
+	validatedMessages chan *proto.SignedGossipMessage
+	msgsReceived      uint32
+	msgsSent          uint32
+	id                string
+	presumeDead       chan common.PKIidType
+	detectedDead      chan string
+	streams           map[string]proto.Gossip_GossipStreamClient
+	conns             map[string]*grpc.ClientConn
+	lock              *sync.RWMutex
+	incMsgs           chan proto.ReceivedMessage
+	lastSeqs          map[string]uint64
+	shouldGossip      bool
+	mock              *mock.Mock
 }
 
 type gossipInstance struct {
-	comm *dummyCommModule
+	msgInterceptor func(*proto.SignedGossipMessage)
+	comm           *dummyCommModule
 	Discovery
 	gRGCserv      *grpc.Server
 	lsnr          net.Listener
@@ -95,7 +98,20 @@ type gossipInstance struct {
 }
 
 func (comm *dummyCommModule) ValidateAliveMsg(am *proto.SignedGossipMessage) bool {
+	comm.lock.RLock()
+	c := comm.validatedMessages
+	comm.lock.RUnlock()
+
+	if c != nil {
+		c <- am
+	}
 	return true
+}
+
+func (comm *dummyCommModule) recordValidation(validatedMessages chan *proto.SignedGossipMessage) {
+	comm.lock.Lock()
+	defer comm.lock.Unlock()
+	comm.validatedMessages = validatedMessages
 }
 
 func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
@@ -251,6 +267,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 			lgr.Warning("Failed deserializing GossipMessage from envelope:", err)
 			continue
 		}
+		g.msgInterceptor(gMsg)
 
 		lgr.Debug(g.Discovery.Self().Endpoint, "Got message:", gMsg)
 		g.comm.incMsgs <- &dummyReceivedMessage{
@@ -332,6 +349,10 @@ func createDiscoveryInstanceWithNoGossipWithDisclosurePolicy(port int, id string
 }
 
 func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy) *gossipInstance {
+	return createDiscoveryInstanceThatGossipsWithInterceptors(port, id, bootstrapPeers, shouldGossip, pol, func(_ *proto.SignedGossipMessage) {})
+}
+
+func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy, f func(*proto.SignedGossipMessage)) *gossipInstance {
 	comm := &dummyCommModule{
 		conns:        make(map[string]*grpc.ClientConn),
 		streams:      make(map[string]proto.Gossip_GossipStreamClient),
@@ -366,7 +387,7 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 		})
 	}
 
-	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip, port: port}
+	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip, port: port, msgInterceptor: f}
 
 	proto.RegisterGossipServer(s, gossInst)
 	go s.Serve(ll)
@@ -474,6 +495,196 @@ func TestConnect(t *testing.T) {
 	am, _ = mr2.GetMemReq().SelfInformation.ToGossipMessage()
 	assert.Nil(t, am.SecretEnvelope)
 	stopInstances(t, instances)
+}
+
+func TestValidation(t *testing.T) {
+	t.Parallel()
+
+	// Scenarios: This test contains the following sub-tests:
+	// 1) alive message validation: a message is validated <==> it entered the message store
+	// 2) request/response message validation:
+	//   2.1) alive messages from membership requests/responses are validated.
+	//   2.2) once alive messages enter the message store, reception of them via membership responses
+	//        doesn't trigger validation, but via membership requests - do.
+
+	wrapReceivedMessage := func(msg *proto.SignedGossipMessage) proto.ReceivedMessage {
+		return &dummyReceivedMessage{
+			msg: msg,
+			info: &proto.ConnectionInfo{
+				ID: common.PKIidType("testID"),
+			},
+		}
+	}
+
+	requestMessagesReceived := make(chan *proto.SignedGossipMessage, 100)
+	responseMessagesReceived := make(chan *proto.SignedGossipMessage, 100)
+	aliveMessagesReceived := make(chan *proto.SignedGossipMessage, 5000)
+
+	var membershipRequest atomic.Value
+	var membershipResponseWithAlivePeers atomic.Value
+	var membershipResponseWithDeadPeers atomic.Value
+
+	recordMembershipRequest := func(req *proto.SignedGossipMessage) {
+		msg, _ := req.GetMemReq().SelfInformation.ToGossipMessage()
+		membershipRequest.Store(req)
+		requestMessagesReceived <- msg
+	}
+
+	recordMembershipResponse := func(res *proto.SignedGossipMessage) {
+		memRes := res.GetMemRes()
+		if len(memRes.GetAlive()) > 0 {
+			membershipResponseWithAlivePeers.Store(res)
+		}
+		if len(memRes.GetDead()) > 0 {
+			membershipResponseWithDeadPeers.Store(res)
+		}
+		responseMessagesReceived <- res
+	}
+
+	interceptor := func(msg *proto.SignedGossipMessage) {
+		if memReq := msg.GetMemReq(); memReq != nil {
+			recordMembershipRequest(msg)
+			return
+		}
+
+		if memRes := msg.GetMemRes(); memRes != nil {
+			recordMembershipResponse(msg)
+			return
+		}
+		// Else, it's an alive message
+		aliveMessagesReceived <- msg
+	}
+
+	// p3 is the boot peer of p1, and p1 is the boot peer of p2.
+	// p1 sends a (membership) request to p3, and receives a (membership) response back.
+	// p2 sends a (membership) request to p1.
+	// Therefore, p1 receives both a membership request and a response.
+	p1 := createDiscoveryInstanceThatGossipsWithInterceptors(4675, "p1", []string{bootPeer(4677)}, true, noopPolicy, interceptor)
+	p2 := createDiscoveryInstance(4676, "p2", []string{bootPeer(4675)})
+	p3 := createDiscoveryInstance(4677, "p3", nil)
+	instances := []*gossipInstance{p1, p2, p3}
+
+	assertMembership(t, instances, 2)
+
+	instances = []*gossipInstance{p1, p2}
+	// Stop p3 and wait until its death is detected
+	p3.Stop()
+	assertMembership(t, instances, 1)
+	// Force p1 to send a membership request so it can receive back a response
+	// with dead peers.
+	p1.InitiateSync(1)
+
+	// Wait until a response with a dead peer is received
+	waitUntilOrFail(t, func() bool {
+		return membershipResponseWithDeadPeers.Load() != nil
+	})
+
+	p1.Stop()
+	p2.Stop()
+
+	close(aliveMessagesReceived)
+	t.Log("Recorded", len(aliveMessagesReceived), "alive messages")
+	t.Log("Recorded", len(requestMessagesReceived), "request messages")
+	t.Log("Recorded", len(responseMessagesReceived), "response messages")
+
+	// Ensure we got alive messages from membership requests and from membership responses
+	assert.NotNil(t, membershipResponseWithAlivePeers.Load())
+	assert.NotNil(t, membershipRequest.Load())
+
+	t.Run("alive message", func(t *testing.T) {
+		t.Parallel()
+		// Spawn a new peer - p4
+		p4 := createDiscoveryInstance(4678, "p1", nil)
+		defer p4.Stop()
+		// Record messages validated
+		validatedMessages := make(chan *proto.SignedGossipMessage, 5000)
+		p4.comm.recordValidation(validatedMessages)
+		tmpMsgs := make(chan *proto.SignedGossipMessage, 5000)
+		// Replay the messages sent to p1 into p4, and also save them into a temporary channel
+		for msg := range aliveMessagesReceived {
+			p4.comm.incMsgs <- wrapReceivedMessage(msg)
+			tmpMsgs <- msg
+		}
+
+		// Simulate the messages received by p4 into the message store
+		policy := proto.NewGossipMessageComparator(0)
+		msgStore := msgstore.NewMessageStore(policy, func(_ interface{}) {})
+		close(tmpMsgs)
+		for msg := range tmpMsgs {
+			if msgStore.Add(msg) {
+				// Ensure the message was verified if it can be added into the message store
+				expectedMessage := <-validatedMessages
+				assert.Equal(t, expectedMessage, msg)
+			}
+		}
+		// Ensure we didn't validate any other messages.
+		assert.Empty(t, validatedMessages)
+	})
+
+	req := membershipRequest.Load().(*proto.SignedGossipMessage)
+	res := membershipResponseWithDeadPeers.Load().(*proto.SignedGossipMessage)
+	// Ensure the membership response contains both alive and dead peers
+	assert.Len(t, res.GetMemRes().GetAlive(), 2)
+	assert.Len(t, res.GetMemRes().GetDead(), 1)
+
+	for _, testCase := range []struct {
+		name                  string
+		expectedAliveMessages int
+		port                  int
+		message               *proto.SignedGossipMessage
+		shouldBeReValidated   bool
+	}{
+		{
+			name: "membership request",
+			expectedAliveMessages: 1,
+			message:               req,
+			port:                  4679,
+			shouldBeReValidated:   true,
+		},
+		{
+			name: "membership response",
+			expectedAliveMessages: 3,
+			message:               res,
+			port:                  4680,
+		},
+	} {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			p := createDiscoveryInstance(testCase.port, "p", nil)
+			defer p.Stop()
+			// Record messages validated
+			validatedMessages := make(chan *proto.SignedGossipMessage, testCase.expectedAliveMessages)
+			p.comm.recordValidation(validatedMessages)
+
+			p.comm.incMsgs <- wrapReceivedMessage(testCase.message)
+			// Ensure all messages were validated
+			for i := 0; i < testCase.expectedAliveMessages; i++ {
+				validatedMsg := <-validatedMessages
+				// send the message directly to be included in the message store
+				p.comm.incMsgs <- wrapReceivedMessage(validatedMsg)
+			}
+			// Wait for the messages to be validated
+			for i := 0; i < testCase.expectedAliveMessages; i++ {
+				<-validatedMessages
+			}
+			// Not more than testCase.expectedAliveMessages should have been validated
+			assert.Empty(t, validatedMessages)
+
+			if !testCase.shouldBeReValidated {
+				// Re-submit the message twice and ensure it wasn't validated.
+				// If it is validated, panic would occur because an enqueue to the validatesMessages channel
+				// would be attempted and the channel is closed.
+				close(validatedMessages)
+			}
+			p.comm.incMsgs <- wrapReceivedMessage(testCase.message)
+			p.comm.incMsgs <- wrapReceivedMessage(testCase.message)
+			// Wait until the size of the channel is zero. It means at least one message was processed.
+			waitUntilOrFail(t, func() bool {
+				return len(p.comm.incMsgs) == 0
+			})
+		})
+	}
 }
 
 func TestUpdate(t *testing.T) {

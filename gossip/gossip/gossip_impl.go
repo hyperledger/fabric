@@ -420,12 +420,6 @@ func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 		return false
 	}
 
-	if msg.GetGossipMessage().IsAliveMsg() {
-		if !g.disSecAdap.ValidateAliveMsg(msg.GetGossipMessage()) {
-			return false
-		}
-	}
-
 	if msg.GetGossipMessage().IsStateInfoMsg() {
 		if err := g.validateStateInfoMsg(msg.GetGossipMessage()); err != nil {
 			g.logger.Warningf("StateInfo message %v is found invalid: %v", msg, err)
@@ -1017,7 +1011,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessag
 		claimedPKIID := am.Membership.PkiId
 		err := sa.idMapper.Put(claimedPKIID, identity)
 		if err != nil {
-			sa.logger.Warningf("Failed validating identity of %v reason: %+v", am, errors.WithStack(err))
+			sa.logger.Debugf("Failed validating identity of %v reason: %+v", am, errors.WithStack(err))
 			return false
 		}
 	} else {
