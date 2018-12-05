@@ -161,26 +161,20 @@ func (lscc *LifeCycleSysCC) InvokableExternal() bool   { return true }
 func (lscc *LifeCycleSysCC) InvokableCC2CC() bool      { return true }
 func (lscc *LifeCycleSysCC) Enabled() bool             { return true }
 
-func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, ccName string) (*ccprovider.ChaincodeContainerInfo, error) {
-	qe, err := lscc.SCCProvider.GetQueryExecutorForLedger(channelID)
+func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(chaincodeName string, qe ledger.QueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve QueryExecutor for channel %s", channelID)
-	}
-	defer qe.Done()
-
-	chaincodeDataBytes, err := qe.GetState("lscc", ccName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s on channel %s", ccName, channelID)
+		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s", chaincodeName)
 	}
 
 	if chaincodeDataBytes == nil {
-		return nil, errors.Errorf("chaincode %s not found on channel %s", ccName, channelID)
+		return nil, errors.Errorf("chaincode %s not found", chaincodeName)
 	}
 
 	// Note, although it looks very tempting to replace the bulk of this function with
 	// the below 'ChaincodeDefinition' call, the 'getCCCode' call provides us security
 	// by side-effect, so we must leave it as is for now.
-	cds, _, err := lscc.getCCCode(ccName, chaincodeDataBytes)
+	cds, _, err := lscc.getCCCode(chaincodeName, chaincodeDataBytes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get chaincode code")
 	}
@@ -188,8 +182,8 @@ func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, ccName string) (*c
 	return ccprovider.DeploymentSpecToChaincodeContainerInfo(cds), nil
 }
 
-func (lscc *LifeCycleSysCC) ChaincodeDefinition(chaincodeName string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
-	chaincodeDataBytes, err := txsim.GetState("lscc", chaincodeName)
+func (lscc *LifeCycleSysCC) ChaincodeDefinition(chaincodeName string, qe ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s", chaincodeName)
 	}
