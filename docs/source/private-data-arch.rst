@@ -180,6 +180,38 @@ data), to chaincode invocation on the peer.  The chaincode can retrieve the
 ``transient`` field by calling the `GetTransient() API <https://github.com/hyperledger/fabric/blob/8b3cbda97e58d1a4ff664219244ffd1d89d7fba8/core/chaincode/shim/interfaces.go#L315-L321>`_.
 This ``transient`` field gets excluded from the channel transaction.
 
+Reconciliation
+~~~~~~~~~~~~~~
+
+Starting in v1.4, a background process allows peers who are part of a collection
+to receive data they were entitled to receive but did not --- because of a network
+failure, for example --- by keeping track of the "missing" data and periodically
+trying to fetch the data from peers that are expected to have it.
+
+This "reconciliation" also applies to new organizations (and their peers) that
+are added to an existing collection. The same background process described above
+will also attempt to fetch private data that was committed before they joined
+the collection.
+
+Note that this private data reconciliation feature only works on peers running
+v1.4 or later of Fabric.
+
+Access control in private data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Until version 1.3, `access control <access_control.html`_ to private data was
+defined in the chaincode. However, because it is commonly desirable to limit
+access to private to the clients of the member organizations, a ``member_only_read``
+configuration definition has been added in v1.4. For more information about
+configuration definitions and how to set them, refer back to the
+:ref:`private-data-collection-definition>` section of this topic.
+
+This new configuration is boolean, and value of ``true`` indicates that the peer
+enforces that only clients belonging to one of the collection member organizations
+are allowed access to private data. Under this configuration, if a client from a
+non-member org attempts to execute a chaincode function that performs a read of
+a private data, the chaincode invocation is terminated with an error.
+
 Considerations when using private data
 --------------------------------------
 
