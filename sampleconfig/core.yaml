@@ -525,12 +525,10 @@ chaincode:
         vscc: enable
         qscc: enable
 
-    # System chaincode plugins: in addition to being imported and compiled
-    # into fabric through core/chaincode/importsysccs.go, system chaincodes
-    # can also be loaded as shared objects compiled as Go plugins.
+    # System chaincode plugins: 
+    # System chaincodes can be loaded as shared objects compiled as Go plugins.
     # See examples/plugins/scc for an example.
-    # Like regular system chaincodes, plugins must also be white listed in the
-    # chaincode.system section above.
+    # Plugins must be white listed in the chaincode.system section above.
     systemPlugins:
       # example configuration:
       # - enabled: true
