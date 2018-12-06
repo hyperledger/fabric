@@ -63,6 +63,14 @@ Collection definitions are composed of five properties:
   data obsolete from the network. To keep private data indefinitely, that is, to
   never purge private data, set the ``blockToLive`` property to ``0``.
 
+* ``memberOnlyRead``: a value of ``true`` indicates that peers automatically
+  enforce that only clients belonging to one of the collection member organizations
+  are allowed read access to private data. If a client from a non-member org
+  attempts to execute a chaincode function that performs a read of a private data,
+  the chaincode invocation is terminated with an error. Utilize a value of
+  ``false`` if you would like to encode more granular access control within
+  individual chaincode functions.
+
 Here is a sample collection definition JSON file, containing an array of two
 collection definitions:
 
@@ -74,14 +82,16 @@ collection definitions:
      "policy": "OR('Org1MSP.member', 'Org2MSP.member')",
      "requiredPeerCount": 0,
      "maxPeerCount": 3,
-     "blockToLive":1000000
+     "blockToLive":1000000,
+     "memberOnlyRead": true
   },
   {
      "name": "collectionMarblePrivateDetails",
      "policy": "OR('Org1MSP.member')",
      "requiredPeerCount": 0,
      "maxPeerCount": 3,
-     "blockToLive":3
+     "blockToLive":3,
+     "memberOnlyRead": true
   }
  ]
 
@@ -184,33 +194,36 @@ Reconciliation
 ~~~~~~~~~~~~~~
 
 Starting in v1.4, a background process allows peers who are part of a collection
-to receive data they were entitled to receive but did not --- because of a network
-failure, for example --- by keeping track of the "missing" data and periodically
-trying to fetch the data from peers that are expected to have it.
+to receive data they were entitled to receive but did not yet receive --- because of
+a network failure, for example --- by keeping track of private data that was "missing"
+at the time of block commit. The peer will periodically attempt to fetch the private
+data from other collection member peers that are expected to have it.
 
-This "reconciliation" also applies to new organizations (and their peers) that
-are added to an existing collection. The same background process described above
+This "reconciliation" also applies to peers of new organizations that are added to
+an existing collection. The same background process described above
 will also attempt to fetch private data that was committed before they joined
 the collection.
 
 Note that this private data reconciliation feature only works on peers running
 v1.4 or later of Fabric.
 
-Access control in private data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Access control for private data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Until version 1.3, `access control <access_control.html`_ to private data was
-defined in the chaincode. However, because it is commonly desirable to limit
-access to private to the clients of the member organizations, a ``member_only_read``
-configuration definition has been added in v1.4. For more information about
+Until version 1.3, access control to private data based on collection membership
+was enforced for peers only. Access control based on the organization of the
+chaincode proposal submitter was required to be encoded in chaincode logic.
+Starting in v1.4 a collection configuration option ``memberOnlyRead`` can
+automatically enforce access control based on the organization of the chaincode
+proposal submitter. For more information about collection
 configuration definitions and how to set them, refer back to the
-:ref:`private-data-collection-definition>` section of this topic.
+`Private data collection definition`_  section of this topic.
 
-This new configuration is boolean, and value of ``true`` indicates that the peer
-enforces that only clients belonging to one of the collection member organizations
-are allowed access to private data. Under this configuration, if a client from a
-non-member org attempts to execute a chaincode function that performs a read of
-a private data, the chaincode invocation is terminated with an error.
+.. note:: If you would like more granular access control, you can set
+          ``memberOnlyRead`` to false. You can then apply your own access
+          control logic in chaincode, for example by calling the GetCreator()
+          chaincode API or using the client identity
+          `chaincode library <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim/ext/cid>`__ .
 
 Considerations when using private data
 --------------------------------------
@@ -246,14 +259,6 @@ Limitations:
   chaincode function to make the updates. Note that calls to GetPrivateData() to retrieve
   individual keys can be made in the same transaction as PutPrivateData() calls, since
   all peers can validate key reads based on the hashed key version.
-* Note that private data collections only define which organization’s peers
-  are authorized to receive and store private data, and consequently implies
-  which peers can be used to query private data. Private data collections do not
-  by themselves limit access control within chaincode. For example if
-  non-authorized clients are able to invoke chaincode on peers that have access
-  to the private data, the chaincode logic still needs a means to enforce access
-  control as usual, for example by calling the GetCreator() chaincode API or
-  using the client identity `chaincode library <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim/ext/cid>`__ .
 
 Using Indexes with collections
 ------------------------------
