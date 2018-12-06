@@ -823,6 +823,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 						logger.Debugf("[%s] Retrieved attachment data", dbclient.DBName)
 						attachment.AttachmentBytes = respBody
+						attachment.Length = uint64(len(attachment.AttachmentBytes))
 						attachment.Name = p.FileName()
 						attachments = append(attachments, attachment)
 
@@ -835,6 +836,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 						}
 						logger.Debugf("[%s] Retrieved attachment data", dbclient.DBName)
 						attachment.AttachmentBytes = partdata
+						attachment.Length = uint64(len(attachment.AttachmentBytes))
 						attachment.Name = p.FileName()
 						attachments = append(attachments, attachment)
 
