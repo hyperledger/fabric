@@ -13,6 +13,8 @@ Operations Guides
    access_control.md
    idemix
    idemixgen
+   operations_service
+   metrics_reference
    error-handling
    logging-control
    enable_tls
