@@ -46,7 +46,6 @@ type RaftStorage struct {
 // If data presents in specified disk, they are loaded to reconstruct storage state.
 func CreateStorage(
 	lg *flogging.FabricLogger,
-	applied uint64,
 	walDir string,
 	snapDir string,
 	ram MemoryStorage,
@@ -69,7 +68,7 @@ func CreateStorage(
 		lg.Debugf("Loaded snapshot at Term %d and Index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
 	}
 
-	w, err := createWAL(lg, walDir, applied, snapshot)
+	w, err := createWAL(lg, walDir, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -104,13 +103,8 @@ func createSnapshotter(snapDir string) (*snap.Snapshotter, error) {
 
 }
 
-func createWAL(lg *flogging.FabricLogger, walDir string, applied uint64, snapshot *raftpb.Snapshot) (*wal.WAL, error) {
-	hasWAL := wal.Exist(walDir)
-	if !hasWAL && applied != 0 {
-		return nil, errors.Errorf("applied index is not zero but no WAL data found")
-	}
-
-	if !hasWAL {
+func createWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (*wal.WAL, error) {
+	if !wal.Exist(walDir) {
 		lg.Infof("No WAL data found, creating new WAL at path '%s'", walDir)
 		// TODO(jay_guo) add metadata to be persisted with wal once we need it.
 		// use case could be data dump and restore on a new node.

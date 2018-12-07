@@ -188,39 +188,6 @@ var _ = Describe("Consenter", func() {
 		Expect(err).To(MatchError("failed to detect own Raft ID because no matching certificate found"))
 	})
 
-	It("fails to handle chain if WAL is expected but no data found", func() {
-		c := &etcdraftproto.Consenter{ServerTlsCert: []byte("cert.orderer0.org0")}
-		m := &etcdraftproto.Metadata{
-			Consenters: []*etcdraftproto.Consenter{c},
-			Options: &etcdraftproto.Options{
-				TickInterval:    100,
-				ElectionTick:    10,
-				HeartbeatTick:   1,
-				MaxInflightMsgs: 256,
-				MaxSizePerMsg:   1048576,
-			},
-		}
-		metadata := utils.MarshalOrPanic(m)
-		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
-
-		dir, err := ioutil.TempDir("", "wal-")
-		Expect(err).NotTo(HaveOccurred())
-		defer os.RemoveAll(dir)
-
-		consenter := newConsenter(chainGetter)
-		consenter.EtcdRaftConfig.WALDir = walDir
-		consenter.EtcdRaftConfig.SnapDir = snapDir
-
-		d := &etcdraftproto.RaftMetadata{
-			Consenters: map[uint64]*etcdraftproto.Consenter{1: c},
-			RaftIndex:  uint64(2),
-		}
-		chain, err := consenter.HandleChain(support, &common.Metadata{Value: utils.MarshalOrPanic(d)})
-
-		Expect(chain).To(BeNil())
-		Expect(err).To(MatchError(ContainSubstring("no WAL data found")))
-	})
-
 	It("fails to handle chain if etcdraft options have not been provided", func() {
 		m := &etcdraftproto.Metadata{
 			Consenters: []*etcdraftproto.Consenter{
