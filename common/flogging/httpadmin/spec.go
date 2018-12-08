@@ -75,6 +75,7 @@ func (h *SpecHandler) sendResponse(resp http.ResponseWriter, code int, payload i
 
 	resp.WriteHeader(code)
 
+	resp.Header().Set("Content-Type", "application/json")
 	if err := encoder.Encode(payload); err != nil {
 		h.Logger.Errorw("failed to encode payload", "error", err)
 	}
