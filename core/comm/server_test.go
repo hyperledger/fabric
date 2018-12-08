@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 )
@@ -1836,88 +1835,4 @@ func TestServerInterceptors(t *testing.T) {
 			grpc.WithInsecure()})
 	assert.Equal(t, grpc.ErrorDesc(err), msg, "Expected error from second ssi")
 	assert.Equal(t, uint32(2), atomic.LoadUint32(&ssiCount), "Expected both ssi handlers to be invoked")
-}
-
-func TestHealthCheck(t *testing.T) {
-	t.Parallel()
-
-	var tests = []struct {
-		name    string
-		config  comm.ServerConfig
-		service string
-		status  healthpb.HealthCheckResponse_ServingStatus
-		errMsg  string
-	}{
-		{
-			name: "Enabled_Serving",
-			config: comm.ServerConfig{
-				HealthCheckEnabled: true,
-			},
-			service: "EmptyService",
-			status:  healthpb.HealthCheckResponse_SERVING,
-		},
-		{
-			name: "Enabled_Serving_Empty_Name",
-			config: comm.ServerConfig{
-				HealthCheckEnabled: true,
-			},
-			service: "",
-			status:  healthpb.HealthCheckResponse_SERVING,
-		},
-		{
-			name: "Enabled_UnknownService",
-			config: comm.ServerConfig{
-				HealthCheckEnabled: true,
-			},
-			service: "UnknownService",
-			status:  healthpb.HealthCheckResponse_UNKNOWN,
-		},
-		{
-			name: "Disabled",
-			config: comm.ServerConfig{
-				HealthCheckEnabled: false,
-			},
-			service: "EmptyService",
-			status:  healthpb.HealthCheckResponse_UNKNOWN,
-		},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			lis, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				t.Fatalf("failed to start listener: [%s]", err)
-			}
-			srv, err := comm.NewGRPCServerFromListener(lis, test.config)
-			if err != nil {
-				t.Fatalf("failed to create server: [%s]", err)
-			}
-			testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
-			go srv.Start()
-			defer srv.Stop()
-
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			defer cancel()
-			//create GRPC client conn
-			conn, err := grpc.DialContext(
-				ctx,
-				lis.Addr().String(),
-				grpc.WithBlock(),
-				grpc.WithInsecure(),
-			)
-			if err != nil {
-				t.Fatalf("failed to create client: [%s]", err)
-			}
-			defer conn.Close()
-			hc := healthpb.NewHealthClient(conn)
-			req := &healthpb.HealthCheckRequest{
-				Service: test.service,
-			}
-			res, err := hc.Check(ctx, req)
-			assert.Equal(t, test.status, res.GetStatus())
-		})
-	}
-
 }
