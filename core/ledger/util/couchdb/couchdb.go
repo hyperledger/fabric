@@ -97,12 +97,12 @@ type QueryResponse struct {
 }
 
 // DocMetadata is used for capturing CouchDB document header info,
-// used to capture id, version, rev and determine if attachments are returned in the query from CouchDB
+// used to capture id, version, rev and attachments returned in the query from CouchDB
 type DocMetadata struct {
-	ID              string          `json:"_id"`
-	Rev             string          `json:"_rev"`
-	Version         string          `json:"~version"`
-	AttachmentsInfo json.RawMessage `json:"_attachments"`
+	ID              string                     `json:"_id"`
+	Rev             string                     `json:"_rev"`
+	Version         string                     `json:"~version"`
+	AttachmentsInfo map[string]*AttachmentInfo `json:"_attachments"`
 }
 
 //DocID is a minimal structure for capturing the ID from a query result
@@ -158,9 +158,9 @@ type CreateIndexResponse struct {
 //AttachmentInfo contains the definition for an attached file for couchdb
 type AttachmentInfo struct {
 	Name            string
-	ContentType     string
+	ContentType     string `json:"content_type"`
 	Length          uint64
-	AttachmentBytes []byte
+	AttachmentBytes []byte `json:"data"`
 }
 
 //FileDetails defines the structure needed to send an attachment to couchdb
@@ -886,6 +886,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 	queryParms.Set("limit", strconv.FormatInt(int64(limit+1), 10))
 	queryParms.Add("include_docs", "true")
 	queryParms.Add("inclusive_end", "false") // endkey should be exclusive to be consistent with goleveldb
+	queryParms.Add("attachments", "true")    // get the attachments as well
 
 	//Append the startKey if provided
 	if startKey != "" {
@@ -965,12 +966,14 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit int32
 
 			logger.Debugf("[%s] Adding JSON document and attachments for id: %s", dbclient.DBName, docMetadata.ID)
 
-			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
-			if err != nil {
-				return nil, "", err
+			attachments := []*AttachmentInfo{}
+			for attachmentName, attachment := range docMetadata.AttachmentsInfo {
+				attachment.Name = attachmentName
+
+				attachments = append(attachments, attachment)
 			}
 
-			var addDocument = &QueryResult{docMetadata.ID, couchDoc.JSONValue, couchDoc.Attachments}
+			var addDocument = &QueryResult{docMetadata.ID, row.Doc, attachments}
 			results = append(results, addDocument)
 
 		} else {
@@ -1082,6 +1085,8 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) ([]*QueryResult, str
 			return nil, "", errors.Wrap(err3, "error unmarshalling json data")
 		}
 
+		// JSON Query results never have attachments
+		// The If block below will never be executed
 		if docMetadata.AttachmentsInfo != nil {
 
 			logger.Debugf("[%s] Adding JSON docment and attachments for id: %s", dbclient.DBName, docMetadata.ID)
