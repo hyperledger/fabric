@@ -176,23 +176,23 @@ In order for gossip to work effectively, peers need to be able to obtain the
 endpoint information of peers in their own organization as well as from peers in
 other organizations.
 
-The ``CORE_PEER_GOSSIP_BOOTSTRAP`` property in the ``core.yaml`` of the peer is
-used to bootstrap gossip within an organization. If you are using gossip, you
-will typically configure all the peers in your organization to point to an initial set of
-bootstrap peers (you can specific a space-separated list of peers). Peers
-can bootstrap from different peers as well, but in that case you need to make
-sure that there is a bootstrap path across all peers. Peers within an organization
-will typically communicate on their internal endpoints (meaning you do not have
-to expose all the peers in an organization publicly). When the peer contacts the bootstrap
-peer, it passes its endpoint info and then gossip is used to distribute the
-information about all the peers in the organization among the peers in that
-organization.
+When a peer is bootstrapped it will use ``peer.gossip.bootstrap`` in its
+``core.yaml`` to advertise itself and exchange membership information, building
+a view of all available peers within its own organization.
 
-Bootstrap information is similarly required to establish communication across
-organizations. The initial cross-organization bootstrap information is provided
+The ``peer.gossip.bootstrap`` property in the ``core.yaml`` of the peer is
+used to bootstrap gossip **within an organization**. If you are using gossip, you
+will typically configure all the peers in your organization to point to an initial set of
+bootstrap peers (you can specify a space-separated list of peers). The internal
+endpoint is usually auto-computed by the peer itself or just passed explicitly
+via ``core.peer.address`` in ``core.yaml``. If you need to overwrite this value,
+you can export ``CORE_PEER_GOSSIP_ENDPOINT`` as an environment variable.
+
+Bootstrap information is similarly required to establish communication **across
+organizations**. The initial cross-organization bootstrap information is provided
 via the "anchor peers" setting described above. If you want to make other peers
 in your organization known to other organizations, you need to set the
-``CORE_PEER_GOSSIP_EXTERNALENDPOINT`` property in the ``core.yaml`` of your peer.
+``peer.gossip.externalendpoint`` in the ``core.yaml`` of your peer.
 If this is not set, the endpoint information of the peer will not be broadcast
 to peers in other organizations.
 
@@ -200,8 +200,8 @@ To set these properties, issue:
 
 ::
 
-    export CORE_PEER_GOSSIP_BOOTSTRAP=<the_peer_endpoint>
-    export CORE_PEER_GOSSIP_EXTERNALENDPOINT=<the_peer_endpoint>
+    export CORE_PEER_GOSSIP_BOOTSTRAP=<a list of peer endpoints within the peer's org>
+    export CORE_PEER_GOSSIP_EXTERNALENDPOINT=<the peer endpoint, as known outside the org>
 
 Gossip messaging
 ----------------
