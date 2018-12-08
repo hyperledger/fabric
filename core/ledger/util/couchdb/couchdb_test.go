@@ -1262,6 +1262,12 @@ func TestRichQuery(t *testing.T) {
 	//There should be 4 results
 	testutil.AssertEquals(t, len(*queryResult), 4)
 
+	//Attachments retrieved should be correct
+	testutil.AssertEquals(t, (*queryResult)[0].Attachments[0].AttachmentBytes, attachment2.AttachmentBytes)
+	testutil.AssertEquals(t, (*queryResult)[1].Attachments[0].AttachmentBytes, attachment3.AttachmentBytes)
+	testutil.AssertEquals(t, (*queryResult)[2].Attachments[0].AttachmentBytes, attachment4.AttachmentBytes)
+	testutil.AssertEquals(t, (*queryResult)[3].Attachments[0].AttachmentBytes, attachment5.AttachmentBytes)
+
 	//Test query with for tom  -------------------------------------------------------------------
 	queryString = `{"selector":{"owner":{"$eq":"tom"}}}`
 
