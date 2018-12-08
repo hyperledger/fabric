@@ -871,12 +871,12 @@ func newOperationsSystem() *operations.System {
 		Logger:        flogging.MustGetLogger("peer.operations"),
 		ListenAddress: viper.GetString("operations.listenAddress"),
 		Metrics: operations.MetricsOptions{
-			Provider: viper.GetString("operations.metrics.provider"),
+			Provider: viper.GetString("metrics.provider"),
 			Statsd: &operations.Statsd{
-				Network:       viper.GetString("operations.metrics.statsd.network"),
-				Address:       viper.GetString("operations.metrics.statsd.address"),
-				WriteInterval: viper.GetDuration("operations.metrics.statsd.writeInterval"),
-				Prefix:        viper.GetString("operations.metrics.statsd.prefix"),
+				Network:       viper.GetString("metrics.statsd.network"),
+				Address:       viper.GetString("metrics.statsd.address"),
+				WriteInterval: viper.GetDuration("metrics.statsd.writeInterval"),
+				Prefix:        viper.GetString("metrics.statsd.prefix"),
 			},
 		},
 		TLS: operations.TLS{

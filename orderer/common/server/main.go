@@ -112,7 +112,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		r.replicateIfNeeded()
 	}
 
-	opsSystem := newOperationsSystem(conf.Operations)
+	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
 	err := opsSystem.Start()
 	if err != nil {
 		logger.Panicf("failed to initialize operations subsystem: %s", err)
@@ -423,25 +423,25 @@ func (l logFunc) Log(keyvals ...interface{}) error {
 	return l(keyvals...)
 }
 
-func newOperationsSystem(conf localconfig.Operations) *operations.System {
+func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {
 	return operations.NewSystem(operations.Options{
 		Logger:        flogging.MustGetLogger("orderer.operations"),
-		ListenAddress: conf.ListenAddress,
+		ListenAddress: ops.ListenAddress,
 		Metrics: operations.MetricsOptions{
-			Provider: conf.Metrics.Provider,
+			Provider: metrics.Provider,
 			Statsd: &operations.Statsd{
-				Network:       conf.Metrics.Statsd.Network,
-				Address:       conf.Metrics.Statsd.Address,
-				WriteInterval: conf.Metrics.Statsd.WriteInterval,
-				Prefix:        conf.Metrics.Statsd.Prefix,
+				Network:       metrics.Statsd.Network,
+				Address:       metrics.Statsd.Address,
+				WriteInterval: metrics.Statsd.WriteInterval,
+				Prefix:        metrics.Statsd.Prefix,
 			},
 		},
 		TLS: operations.TLS{
-			Enabled:            conf.TLS.Enabled,
-			CertFile:           conf.TLS.Certificate,
-			KeyFile:            conf.TLS.PrivateKey,
-			ClientCertRequired: conf.TLS.ClientAuthRequired,
-			ClientCACertFiles:  conf.TLS.ClientRootCAs,
+			Enabled:            ops.TLS.Enabled,
+			CertFile:           ops.TLS.Certificate,
+			KeyFile:            ops.TLS.PrivateKey,
+			ClientCertRequired: ops.TLS.ClientAuthRequired,
+			ClientCACertFiles:  ops.TLS.ClientRootCAs,
 		},
 	})
 }

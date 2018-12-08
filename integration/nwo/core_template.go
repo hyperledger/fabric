@@ -199,11 +199,11 @@ operations:
     clientRootCAs:
       files:
       - {{ .PeerLocalTLSDir Peer }}/ca.crt
-  metrics:
-    provider: {{ .MetricsProvider }}
-    statsd:
-      network: udp
-      address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
-      writeInterval: 5s
-      prefix: {{ ReplaceAll (ToLower Peer.ID) "." "_" }}
+metrics:
+  provider: {{ .MetricsProvider }}
+  statsd:
+    network: udp
+    address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
+    writeInterval: 5s
+    prefix: {{ ReplaceAll (ToLower Peer.ID) "." "_" }}
 `

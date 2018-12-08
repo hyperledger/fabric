@@ -611,12 +611,40 @@ ledger:
 
 ###############################################################################
 #
-#    Metrics section
+#    Operations section
 #
+###############################################################################
+operations:
+    # host and port for the operations server
+    listenAddress: 127.0.0.1:9443
+
+    # TLS configuration for the operations endpoint
+    tls:
+        # TLS enabled
+        enabled: false
+
+        # path to PEM encoded server certificate for the operations server
+        cert:
+            file:
+
+        # path to PEM encoded server key for the operations server
+        key:
+            file:
+
+        # require client certificate authentication to access all resources
+        clientAuthRequired: false
+
+        # paths to PEM encoded ca certificates to trust for client authentication
+        clientRootCAs:
+            files: []
+
+###############################################################################
+#
+#    Metrics section
 #
 ###############################################################################
 metrics:
-    # statsd, prometheus, or disabled
+    # metrics provider is one of statsd, prometheus, or disabled
     provider: disabled
 
     # statsd configuration
@@ -627,38 +655,9 @@ metrics:
         # statsd server address
         address: 127.0.0.1:8125
 
-        # the interval at which locally cached counters and gauges are pushsed
+        # the interval at which locally cached counters and gauges are pushed
         # to statsd; timings are pushed immediately
         writeInterval: 10s
 
-        # prefix is prepended to all emitted statsd merics
-        prefix: peer
-
-    prometheus:
-        # listen address for prometheus scrape endpoint
-        listenAddress: 127.0.0.1:8080
-
-        # path to expose the metrics handler
-        handlerPath: /metrics
-
-        tls:
-            # TLS enabled
-            enabled: true
-
-            # path to PEM encoded server certificate for the scrape server
-            cert:
-                file: tls/server.crt
-
-            # path to PEM encoded server key for the scrape server
-            key:
-                file: tls/server.key
-
-            # require client certificate authentication to access metrics
-            # endpoint
-            clientAuthRequired: true
-
-            # paths to PEM encoded ca certificates to use for client
-            # authentication
-            clientRootCAs:
-                files:
-                - tls/ca.crt
+        # prefix is prepended to all emitted statsd metrics
+        prefix:
