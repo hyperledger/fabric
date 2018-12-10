@@ -179,13 +179,16 @@ var _ = Describe("Consenter", func() {
 			},
 		}
 		metadata := utils.MarshalOrPanic(m)
+		support := &consensusmocks.FakeConsenterSupport{}
 		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
+		support.ChainIDReturns("foo")
 
 		consenter := newConsenter(chainGetter)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
-		Expect(chain).To(BeNil())
-		Expect(err).To(MatchError("failed to detect own Raft ID because no matching certificate found"))
+		Expect(chain).To(Not(BeNil()))
+		Expect(err).To(Not(HaveOccurred()))
+		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {
