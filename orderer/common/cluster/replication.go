@@ -59,9 +59,6 @@ type LedgerFactory interface {
 	// GetOrCreate gets an existing ledger (if it exists)
 	// or creates it if it does not
 	GetOrCreate(chainID string) (LedgerWriter, error)
-
-	// Close releases all resources acquired by the factory
-	Close()
 }
 
 //go:generate mockery -dir . -name ChannelLister -case underscore -output mocks/
@@ -88,7 +85,6 @@ type Replicator struct {
 // IsReplicationNeeded returns whether replication is needed,
 // or the cluster node can resume standard boot flow.
 func (r *Replicator) IsReplicationNeeded() (bool, error) {
-	defer r.LedgerFactory.Close()
 	systemChannelLedger, err := r.LedgerFactory.GetOrCreate(r.SystemChannel)
 	if err != nil {
 		return false, err
@@ -122,7 +118,6 @@ func (r *Replicator) ReplicateChains() {
 	if err := r.PullChannel(r.SystemChannel); err != nil {
 		r.Logger.Panicf("Failed pulling system channel: %v", err)
 	}
-	r.LedgerFactory.Close()
 }
 
 func (r *Replicator) discoverChannels() []string {

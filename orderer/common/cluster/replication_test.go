@@ -67,7 +67,6 @@ func TestIsReplicationNeeded(t *testing.T) {
 			ledgerWriter.On("Height").Return(testCase.systemChannelHeight)
 
 			ledgerFactory := &mocks.LedgerFactory{}
-			ledgerFactory.On("Close")
 			ledgerFactory.On("GetOrCreate", "system").Return(ledgerWriter, testCase.systemChannelError)
 
 			r := cluster.Replicator{
@@ -84,8 +83,6 @@ func TestIsReplicationNeeded(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, testCase.replicationNeeded, ok)
 			}
-			// Ensure ledger resources are closed at the end
-			ledgerFactory.AssertCalled(t, "Close")
 		})
 	}
 }
@@ -455,7 +452,6 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
-	lf.AssertNumberOfCalls(t, "Close", 1)
 }
 
 func TestParticipant(t *testing.T) {
