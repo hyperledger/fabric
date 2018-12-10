@@ -72,17 +72,25 @@ func makeTestCase(ledgerHeight uint64, mcs api.MessageCryptoService, shouldSucce
 		deliverer := &mocks.MockBlocksDeliverer{Pos: ledgerHeight}
 		deliverer.MockRecv = rcv
 		provider := NewBlocksProvider("***TEST_CHAINID***", deliverer, gossipServiceAdapter, mcs)
-		defer provider.Stop()
-		ready := make(chan struct{})
+
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+
 		go func() {
-			go provider.DeliverBlocks()
-			// Send notification
-			ready <- struct{}{}
+			defer wg.Done()
+			provider.DeliverBlocks()
 		}()
 
-		time.Sleep(time.Second)
-
+		for {
+			time.Sleep(100 * time.Millisecond)
+			if deliverer.RecvCount() > 0 {
+				provider.Stop()
+				break
+			}
+		}
 		assertDelivery(t, gossipServiceAdapter, deliverer, shouldSucceed)
+
+		wg.Wait()
 	}
 }
 
@@ -94,7 +102,7 @@ func assertDelivery(t *testing.T, ga *mocks.MockGossipServiceAdapter, deliverer 
 		if !shouldSucceed {
 			assert.Fail(t, "Should not have succeede")
 		}
-		assert.True(t, deliverer.RecvCount() == ga.AddPayloadCount())
+		assert.Equal(t, deliverer.RecvCount(), ga.AddPayloadCount())
 	case <-time.After(time.Second):
 		if shouldSucceed {
 			assert.Fail(t, "Didn't gossip a block within a timely manner")
