@@ -59,7 +59,8 @@ updated.
 From an operational perspective, it's worth noting that the process for gathering
 logs has changed in v1.4, from ``CORE_LOGGING_LEVEL`` (for the peer) and
 ``ORDERER_GENERAL_LOGLEVEL`` (for the orderer) to ``FABRIC_LOGGING_SPEC`` (the new
-operations service). For more information, check out :doc:`operations_service`.
+operations service). For more information, check out the
+`Fabric release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
 
 Prerequisites
 ~~~~~~~~~~~~~
