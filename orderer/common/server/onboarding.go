@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 type replicationInitiator struct {
@@ -33,8 +34,11 @@ func (ri *replicationInitiator) replicateIfNeeded() {
 	}
 
 	consenterCert := etcdraft.ConsenterCertificate(ri.secOpts.Certificate)
-
-	pullerConfig := cluster.PullerConfigFromTopLevelConfig(ri.conf, ri.secOpts.Key, ri.secOpts.Certificate, ri.signer)
+	systemChannelName, err := utils.GetChainIDFromBlock(ri.bootstrapBlock)
+	if err != nil {
+		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
+	}
+	pullerConfig := cluster.PullerConfigFromTopLevelConfig(systemChannelName, ri.conf, ri.secOpts.Key, ri.secOpts.Certificate, ri.signer)
 	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, ri.bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
@@ -44,7 +48,7 @@ func (ri *replicationInitiator) replicateIfNeeded() {
 
 	replicator := &cluster.Replicator{
 		LedgerFactory:    ri.lf,
-		SystemChannel:    ri.conf.General.SystemChannel,
+		SystemChannel:    systemChannelName,
 		BootBlock:        ri.bootstrapBlock,
 		Logger:           pullerLogger,
 		AmIPartOfChannel: consenterCert.IsConsenterOfChannel,

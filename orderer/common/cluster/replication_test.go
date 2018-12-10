@@ -45,8 +45,14 @@ func TestIsReplicationNeeded(t *testing.T) {
 			bootBlock:           &common.Block{Header: &common.BlockHeader{Number: 99}},
 		},
 		{
-			name:                "replication is needed",
+			name:                "replication is needed - bootstrap block's index equal to height",
 			systemChannelHeight: 99,
+			bootBlock:           &common.Block{Header: &common.BlockHeader{Number: 99}},
+			replicationNeeded:   true,
+		},
+		{
+			name:                "replication is needed - no ledger",
+			systemChannelHeight: 0,
 			bootBlock:           &common.Block{Header: &common.BlockHeader{Number: 99}},
 			replicationNeeded:   true,
 		},
@@ -61,7 +67,6 @@ func TestIsReplicationNeeded(t *testing.T) {
 			ledgerWriter.On("Height").Return(testCase.systemChannelHeight)
 
 			ledgerFactory := &mocks.LedgerFactory{}
-			ledgerFactory.On("Close")
 			ledgerFactory.On("GetOrCreate", "system").Return(ledgerWriter, testCase.systemChannelError)
 
 			r := cluster.Replicator{
@@ -78,8 +83,6 @@ func TestIsReplicationNeeded(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, testCase.replicationNeeded, ok)
 			}
-			// Ensure ledger resources are closed at the end
-			ledgerFactory.AssertCalled(t, "Close")
 		})
 	}
 }
@@ -211,7 +214,6 @@ func TestPullerConfigFromTopLevelConfig(t *testing.T) {
 
 	topLevelConfig := &localconfig.TopLevel{
 		General: localconfig.General{
-			SystemChannel: "system",
 			Cluster: localconfig.Cluster{
 				ReplicationBufferSize: 100,
 				RPCTimeout:            time.Hour,
@@ -219,7 +221,7 @@ func TestPullerConfigFromTopLevelConfig(t *testing.T) {
 		},
 	}
 
-	config := cluster.PullerConfigFromTopLevelConfig(topLevelConfig, []byte{1, 2, 3}, []byte{3, 2, 1}, signer)
+	config := cluster.PullerConfigFromTopLevelConfig("system", topLevelConfig, []byte{1, 2, 3}, []byte{3, 2, 1}, signer)
 	assert.Equal(t, expected, config)
 }
 
@@ -449,7 +451,6 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
-	lf.AssertNumberOfCalls(t, "Close", 1)
 }
 
 func TestParticipant(t *testing.T) {
