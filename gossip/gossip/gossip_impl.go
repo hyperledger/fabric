@@ -1264,10 +1264,11 @@ func (g *gossipServiceImpl) disclosurePolicy(remotePeer *discovery.NetworkMember
 			// or the message has an external endpoint, and the remote peer also has one
 			return bytes.Equal(org, remotePeerOrg) || msg.GetAliveMsg().Membership.Endpoint != "" && remotePeer.Endpoint != ""
 		}, func(msg *proto.SignedGossipMessage) *proto.Envelope {
+			envelope := protoG.Clone(msg.Envelope).(*proto.Envelope)
 			if !bytes.Equal(g.selfOrg, remotePeerOrg) {
-				msg.SecretEnvelope = nil
+				envelope.SecretEnvelope = nil
 			}
-			return msg.Envelope
+			return envelope
 		}
 }
 
