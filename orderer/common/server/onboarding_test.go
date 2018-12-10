@@ -147,6 +147,13 @@ func TestReplicateIfNeeded(t *testing.T) {
 		return res
 	}
 
+	bootBlockWithCorruptedPayload := copyBlock(bootBlock, 100)
+	env := &common.Envelope{}
+	proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env)
+	payload := &common.Payload{}
+	proto.Unmarshal(env.Payload, payload)
+	payload.Data = []byte{1, 2, 3}
+
 	deliverServer.blockResponses <- &orderer.DeliverResponse{
 		Type: &orderer.DeliverResponse_Block{Block: bootBlock},
 	}
@@ -201,8 +208,16 @@ func TestReplicateIfNeeded(t *testing.T) {
 		{
 			name:               "Block puller initialization failure panics",
 			systemLedgerHeight: 10,
-			panicValue:         "Failed creating puller config from bootstrap block: block data is nil",
-			bootBlock:          &common.Block{Header: &common.BlockHeader{Number: 10}},
+			panicValue:         "Failed creating puller config from bootstrap block: unable to decode TLS certificate PEM: ",
+			bootBlock:          bootBlockWithCorruptedPayload,
+			conf:               &localconfig.TopLevel{},
+			secOpts:            &comm.SecureOptions{},
+		},
+		{
+			name:               "Extraction of sytem channel name fails",
+			systemLedgerHeight: 10,
+			panicValue:         "Failed extracting system channel name from bootstrap block: failed to retrieve channel id - block is empty",
+			bootBlock:          &common.Block{Header: &common.BlockHeader{Number: 100}},
 			conf:               &localconfig.TopLevel{},
 			secOpts:            &comm.SecureOptions{},
 		},
@@ -238,7 +253,7 @@ func TestReplicateIfNeeded(t *testing.T) {
 		{
 			name: "Replication is needed, but pulling fails",
 			panicValue: "Failed pulling system channel: " +
-				"failed obtaining the latest block for channel system",
+				"failed obtaining the latest block for channel testchainid",
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          bootBlock,

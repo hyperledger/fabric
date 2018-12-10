@@ -214,7 +214,6 @@ func TestPullerConfigFromTopLevelConfig(t *testing.T) {
 
 	topLevelConfig := &localconfig.TopLevel{
 		General: localconfig.General{
-			SystemChannel: "system",
 			Cluster: localconfig.Cluster{
 				ReplicationBufferSize: 100,
 				RPCTimeout:            time.Hour,
@@ -222,7 +221,7 @@ func TestPullerConfigFromTopLevelConfig(t *testing.T) {
 		},
 	}
 
-	config := cluster.PullerConfigFromTopLevelConfig(topLevelConfig, []byte{1, 2, 3}, []byte{3, 2, 1}, signer)
+	config := cluster.PullerConfigFromTopLevelConfig("system", topLevelConfig, []byte{1, 2, 3}, []byte{3, 2, 1}, signer)
 	assert.Equal(t, expected, config)
 }
 
