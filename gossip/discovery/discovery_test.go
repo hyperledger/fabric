@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	protoG "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -35,7 +36,7 @@ var timeout = time.Second * time.Duration(15)
 
 func init() {
 	util.SetupTestLogging()
-	aliveTimeInterval := time.Duration(time.Millisecond * 100)
+	aliveTimeInterval := time.Duration(time.Millisecond * 300)
 	SetAliveTimeInterval(aliveTimeInterval)
 	SetAliveExpirationTimeout(10 * aliveTimeInterval)
 	SetAliveExpirationCheckInterval(aliveTimeInterval)
@@ -298,9 +299,11 @@ func (g *gossipInstance) Stop() {
 	}
 	g.gRGCserv.Stop()
 	g.lsnr.Close()
+	g.comm.lock.Lock()
 	for _, stream := range g.comm.streams {
 		stream.CloseSend()
 	}
+	g.comm.lock.Unlock()
 	for _, conn := range g.comm.conns {
 		conn.Close()
 	}
@@ -361,8 +364,9 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 
 	discSvc := NewDiscoveryService(self, comm, comm, pol)
 	for _, bootPeer := range bootstrapPeers {
-		discSvc.Connect(NetworkMember{Endpoint: bootPeer, InternalEndpoint: bootPeer}, func() (*PeerIdentification, error) {
-			return &PeerIdentification{SelfOrg: true, ID: common.PKIidType(bootPeer)}, nil
+		bp := bootPeer
+		discSvc.Connect(NetworkMember{Endpoint: bp, InternalEndpoint: bootPeer}, func() (*PeerIdentification, error) {
+			return &PeerIdentification{SelfOrg: true, ID: common.PKIidType(bp)}, nil
 		})
 	}
 
@@ -463,7 +467,6 @@ func TestConnect(t *testing.T) {
 		})
 		inst.comm.mock.On("Ping", mock.Anything)
 		inst.comm.lock.Unlock()
-
 		instances = append(instances, inst)
 		j := (i + 1) % 10
 		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
@@ -474,12 +477,6 @@ func TestConnect(t *testing.T) {
 	}
 
 	time.Sleep(time.Second * 3)
-	assert.Len(t, firstSentMemReqMsgs, 10)
-	close(firstSentMemReqMsgs)
-	for firstSentSelfMsg := range firstSentMemReqMsgs {
-		assert.Nil(t, firstSentSelfMsg.Envelope.SecretEnvelope)
-	}
-
 	fullMembership := func() bool {
 		return nodeNum-1 == len(instances[nodeNum-1].GetMembership())
 	}
@@ -493,6 +490,11 @@ func TestConnect(t *testing.T) {
 	am, _ = mr2.GetMemReq().SelfInformation.ToGossipMessage()
 	assert.Nil(t, am.SecretEnvelope)
 	stopInstances(t, instances)
+	assert.Len(t, firstSentMemReqMsgs, 10)
+	close(firstSentMemReqMsgs)
+	for firstSentSelfMsg := range firstSentMemReqMsgs {
+		assert.Nil(t, firstSentSelfMsg.Envelope.SecretEnvelope)
+	}
 }
 
 func TestUpdate(t *testing.T) {
@@ -804,7 +806,7 @@ func TestDisclosurePolicyWithPull(t *testing.T) {
 	// Now, we shutdown instance 0 and ensure that peers that shouldn't know it,
 	// do not know it via membership requests
 	stopInstances(t, []*gossipInstance{instances1[0]})
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 6)
 	for _, inst := range append(instances1[1:], instances2...) {
 		if peersThatShouldBeKnownToPeers[inst.port][0] == 8610 {
 			assert.Equal(t, 1, inst.Discovery.(*gossipDiscoveryImpl).deadMembership.Size())
@@ -856,15 +858,16 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 				// Else, expose peers with even ids to other peers with even ids
 				return portOfAliveMsg%2 == 0 && targetPort%2 == 0
 			}, func(msg *proto.SignedGossipMessage) *proto.Envelope {
+				envelope := protoG.Clone(msg.Envelope).(*proto.Envelope)
 				if selfPort < 8615 && targetPort >= 8615 {
-					msg.Envelope.SecretEnvelope = nil
+					envelope.SecretEnvelope = nil
 				}
 
 				if selfPort >= 8615 && targetPort < 8615 {
-					msg.Envelope.SecretEnvelope = nil
+					envelope.SecretEnvelope = nil
 				}
 
-				return msg.Envelope
+				return envelope
 			}
 	}
 }
