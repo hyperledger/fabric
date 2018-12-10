@@ -45,8 +45,14 @@ func TestIsReplicationNeeded(t *testing.T) {
 			bootBlock:           &common.Block{Header: &common.BlockHeader{Number: 99}},
 		},
 		{
-			name:                "replication is needed",
+			name:                "replication is needed - bootstrap block's index equal to height",
 			systemChannelHeight: 99,
+			bootBlock:           &common.Block{Header: &common.BlockHeader{Number: 99}},
+			replicationNeeded:   true,
+		},
+		{
+			name:                "replication is needed - no ledger",
+			systemChannelHeight: 0,
 			bootBlock:           &common.Block{Header: &common.BlockHeader{Number: 99}},
 			replicationNeeded:   true,
 		},

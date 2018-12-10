@@ -94,7 +94,16 @@ func (r *Replicator) IsReplicationNeeded() (bool, error) {
 		return false, err
 	}
 
-	lastBlockSeq := systemChannelLedger.Height() - 1
+	height := systemChannelLedger.Height()
+	var lastBlockSeq uint64
+	// If Height is 0 then lastBlockSeq would be 2^64 - 1,
+	// so make it 0 to take care of the overflow.
+	if height == 0 {
+		lastBlockSeq = 0
+	} else {
+		lastBlockSeq = height - 1
+	}
+
 	if r.BootBlock.Header.Number > lastBlockSeq {
 		return true, nil
 	}
