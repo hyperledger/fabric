@@ -250,8 +250,8 @@ type ChaincodeStubInterface interface {
 	// prefixed with 0x00 as composite key namespace.
 	PutPrivateData(collection string, key string, value []byte) error
 
-	// DelState records the specified `key` to be deleted in the private writeset of
-	// the transaction. Note that only hash of the private writeset goes into the
+	// DelPrivateData records the specified `key` to be deleted in the private writeset
+	// of the transaction. Note that only hash of the private writeset goes into the
 	// transaction proposal response (which is sent to the client who issued the
 	// transaction) and the actual private writeset gets temporarily stored in a
 	// transient store. The `key` and its value will be deleted from the collection
