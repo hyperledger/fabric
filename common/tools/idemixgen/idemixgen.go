@@ -43,6 +43,7 @@ var (
 
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
+	genCAInput              = genSignerConfig.Flag("ca-input", "The folder where CA's secrets are stored").String()
 	genCredOU               = genSignerConfig.Flag("org-unit", "The Organizational Unit of the default signer").Short('u').String()
 	genCredIsAdmin          = genSignerConfig.Flag("admin", "Make the default signer admin").Short('a').Bool()
 	genCredEnrollmentId     = genSignerConfig.Flag("enrollmentId", "The enrollment id of the default signer").Short('e').String()
@@ -93,18 +94,39 @@ func main() {
 		} else {
 			roleMask = msp.GetRoleMaskFromIdemixRole(msp.MEMBER)
 		}
-		config, err := idemixca.GenerateSignerConfig(roleMask, *genCredOU, *genCredEnrollmentId, *genCredRevocationHandle, readIssuerKey(), readRevocationKey())
+		if *genCAInput == "" {
+			genCAInput = outputDir
+		}
+		ipk, ipkRaw := readIssuerKey()
+		rsk := readRevocationKey()
+		rpk := readRevocationPublicKey()
+
+		config, err := idemixca.GenerateSignerConfig(
+			roleMask,
+			*genCredOU,
+			*genCredEnrollmentId,
+			*genCredRevocationHandle,
+			ipk, rsk,
+		)
 		handleError(err)
 
 		path := filepath.Join(*outputDir, msp.IdemixConfigDirUser)
 		checkDirectoryNotExists(path, fmt.Sprintf("This MSP config already contains a directory \"%s\"", path))
 
 		// Write config to file
-		handleError(os.Mkdir(filepath.Join(*outputDir, msp.IdemixConfigDirUser), 0770))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirUser), 0770))
 		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirUser, msp.IdemixConfigFileSigner), config)
+
+		// Write CA public info in case genCAInput != outputDir
+		if *genCAInput != *outputDir {
+			handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0770))
+			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), rpk)
+			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipkRaw)
+		}
 
 	case version.FullCommand():
 		printVersion()
+
 	}
 }
 
@@ -118,13 +140,13 @@ func writeFile(path string, contents []byte) {
 }
 
 // readIssuerKey reads the issuer key from the current directory
-func readIssuerKey() *idemix.IssuerKey {
-	path := filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey)
+func readIssuerKey() (*idemix.IssuerKey, []byte) {
+	path := filepath.Join(*genCAInput, IdemixDirIssuer, IdemixConfigIssuerSecretKey)
 	isk, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open issuer secret key file: %s", path))
 	}
-	path = filepath.Join(*outputDir, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey)
+	path = filepath.Join(*genCAInput, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey)
 	ipkBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open issuer public key file: %s", path))
@@ -133,11 +155,11 @@ func readIssuerKey() *idemix.IssuerKey {
 	handleError(proto.Unmarshal(ipkBytes, ipk))
 	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
-	return key
+	return key, ipkBytes
 }
 
 func readRevocationKey() *ecdsa.PrivateKey {
-	path := filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey)
+	path := filepath.Join(*genCAInput, IdemixDirIssuer, IdemixConfigRevocationKey)
 	keyBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
@@ -153,6 +175,16 @@ func readRevocationKey() *ecdsa.PrivateKey {
 	return key
 }
 
+func readRevocationPublicKey() []byte {
+	path := filepath.Join(*genCAInput, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey)
+	keyBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
+	}
+
+	return keyBytes
+}
+
 // checkDirectoryNotExists checks whether a directory with the given path already exists and exits if this is the case
 func checkDirectoryNotExists(path string, errorMessage string) {
 	_, err := os.Stat(path)
@@ -163,7 +195,7 @@ func checkDirectoryNotExists(path string, errorMessage string) {
 
 func handleError(err error) {
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

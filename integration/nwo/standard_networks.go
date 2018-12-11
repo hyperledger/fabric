@@ -86,6 +86,26 @@ func BasicSolo() *Config {
 	}
 }
 
+func BasicSoloWithIdemix() *Config {
+	config := BasicSolo()
+
+	// Add idemix organization
+	config.Organizations = append(config.Organizations, &Organization{
+		Name:          "Org3",
+		MSPID:         "Org3MSP",
+		MSPType:       "idemix",
+		Domain:        "org3.example.com",
+		EnableNodeOUs: false,
+		Users:         0,
+		CA:            &CA{Hostname: "ca"},
+	})
+	// Add idemix organization to consortium
+	config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org3")
+	config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org3")
+
+	return config
+}
+
 func BasicKafka() *Config {
 	config := BasicSolo()
 	config.Consensus.Type = "kafka"
