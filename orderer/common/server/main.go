@@ -452,6 +452,7 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 			ClientCertRequired: ops.TLS.ClientAuthRequired,
 			ClientCACertFiles:  ops.TLS.ClientRootCAs,
 		},
+		Version: metadata.Version,
 	})
 }
 
