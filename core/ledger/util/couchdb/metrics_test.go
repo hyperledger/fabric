@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package couchdb
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -40,7 +41,7 @@ func TestAPIProcessTimeMetric(t *testing.T) {
 	url, err := url.Parse("http://locahost:0")
 	gt.Expect(err).NotTo(HaveOccurred(), "Error when trying to parse URL")
 
-	couchInstance.handleRequest(http.MethodGet, "db_name", "function_name", url, nil, "", "", 0, true, nil)
+	couchInstance.handleRequest(context.Background(), http.MethodGet, "db_name", "function_name", url, nil, "", "", 0, true, nil)
 	gt.Expect(fakeHistogram.ObserveCallCount()).To(Equal(1))
 	gt.Expect(fakeHistogram.ObserveArgsForCall(0)).NotTo(BeZero())
 	gt.Expect(fakeHistogram.WithArgsForCall(0)).To(Equal([]string{
