@@ -117,6 +117,7 @@ type Chain struct {
 
 	configChangeAppliedC   chan struct{} // Notifies that a Raft configuration change has been applied
 	configChangeInProgress bool          // Flag to indicate node waiting for Raft config change to be applied
+	checkingFailover       uint32        // Flag to indicate whenever node checked for reconfiguration
 	raftMetadataLock       sync.RWMutex
 
 	clock clock.Clock // Tests can inject a fake clock
@@ -242,6 +243,8 @@ func (c *Chain) Start() {
 	}
 
 	close(c.startC)
+
+	atomic.StoreUint32(&c.checkingFailover, 1)
 
 	go c.serveRaft()
 	go c.serveRequest()
@@ -379,6 +382,11 @@ func (c *Chain) Step(req *orderer.StepRequest, sender uint64) error {
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
+	}
+
+	checkingFailover := atomic.LoadUint32(&c.checkingFailover)
+	if checkingFailover == 1 {
+		return errors.Errorf("node bootstrapping has not finished")
 	}
 
 	lead := atomic.LoadUint64(&c.leader)
@@ -602,7 +610,6 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if block == nil {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
-
 		c.BlockCreator.commitBlock(block)
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
@@ -650,6 +657,8 @@ func (c *Chain) serveRaft() {
 				newLead := atomic.LoadUint64(&rd.SoftState.Lead)
 				lead := atomic.LoadUint64(&c.leader)
 				if newLead != lead {
+					atomic.StoreUint32(&c.checkingFailover, 1)
+
 					c.logger.Infof("Raft leader changed: %d -> %d", lead, newLead)
 					atomic.StoreUint64(&c.leader, newLead)
 
@@ -657,8 +666,7 @@ func (c *Chain) serveRaft() {
 						c.resignC <- struct{}{}
 					}
 
-					// becoming a leader and configuration change is in progress
-					if newLead == c.raftID && c.configChangeInProgress {
+					if newLead == c.raftID {
 						// need to read recent config updates of replica set
 						// and finish reconfiguration
 						c.handleReconfigurationFailover()
@@ -669,6 +677,8 @@ func (c *Chain) serveRaft() {
 					case c.observeC <- newLead:
 					default:
 					}
+
+					atomic.StoreUint32(&c.checkingFailover, 0)
 				}
 			}
 
@@ -930,27 +940,44 @@ func (c *Chain) writeConfigBlock(b block) error {
 // handleReconfigurationFailover read last configuration block and proposes
 // new raft configuration
 func (c *Chain) handleReconfigurationFailover() {
-	b := c.support.Block(c.support.Height() - 1)
-	if b == nil {
-		c.logger.Panic("nil block, failed to read last written block")
+	if c.support.Height() <= 1 {
+		return // nothing to failover just started the chain
 	}
-	if !utils.IsConfigBlock(b) {
-		// a node (leader or follower) leaving updateMembership in context of serverReq go routine,
-		// *iff* configuration entry has appeared and successfully applied.
-		// while it's blocked in updateMembership, it cannot commit any other block,
-		// therefore we guarantee the last block is config block
-		c.logger.Panic("while handling reconfiguration failover last expected block should be configuration")
+	lastBlock := c.support.Block(c.support.Height() - 1)
+	if lastBlock == nil {
+		c.logger.Panicf("nil block, failed to read last written block, blockNum = %d, ledger height = %d, raftID = %d", c.support.Height()-1, c.support.Height(), c.raftID)
 	}
-
-	metadata, raftMetadata := c.newRaftMetadata(b)
-
-	var changes *MembershipChanges
-	if metadata != nil {
-		changes = ComputeMembershipChanges(raftMetadata.Consenters, metadata.Consenters)
+	if !utils.IsConfigBlock(lastBlock) {
+		return
 	}
 
-	confChange := changes.UpdateRaftMetadataAndConfChange(raftMetadata)
-	if err := c.node.ProposeConfChange(context.TODO(), *confChange); err != nil {
+	// extract membership mapping from configuration block metadata
+	// and compare with Raft configuration
+	metadata, err := utils.GetMetadataFromBlock(lastBlock, common.BlockMetadataIndex_ORDERER)
+	if err != nil {
+		c.logger.Panicf("Error extracting orderer metadata: %+v", err)
+	}
+
+	raftMetadata := &etcdraft.RaftMetadata{}
+	if err := proto.Unmarshal(metadata.Value, raftMetadata); err != nil {
+		c.logger.Panicf("Failed to unmarshal block's metadata: %+v", err)
+	}
+
+	// extracting current Raft configuration state
+	confState := c.node.ApplyConfChange(raftpb.ConfChange{})
+
+	if len(confState.Nodes) == len(raftMetadata.Consenters) {
+		// since configuration change could only add one node or
+		// remove one node at a time, if raft nodes state size
+		// equal to membership stored in block metadata field,
+		// that means everything is in sync and no need to propose
+		// update
+		return
+	}
+
+	raftConfChange := ConfChange(raftMetadata, confState)
+
+	if err := c.node.ProposeConfChange(context.TODO(), raftConfChange); err != nil {
 		c.logger.Warnf("failed to propose configuration update to Raft node: %s", err)
 	}
 }
