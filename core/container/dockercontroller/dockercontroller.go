@@ -264,7 +264,8 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 
 	// stream stdout and stderr to chaincode logger
 	if attachStdout {
-		go vm.streamOutput(client, containerName)
+		containerLogger := flogging.MustGetLogger("peer.chaincode." + containerName)
+		streamOutput(dockerLogger, client, containerName, containerLogger)
 	}
 
 	// upload specified files to the container before starting it
@@ -309,7 +310,7 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, args, env []string, filesToUpload ma
 }
 
 // streamOutput mirrors output from the named container to a fabric logger.
-func (vm *DockerVM) streamOutput(client dockerClient, containerName string) {
+func streamOutput(logger *flogging.FabricLogger, client dockerClient, containerName string, containerLogger *flogging.FabricLogger) {
 	// Launch a few go routines to manage output streams from the container.
 	// They will be automatically destroyed when the container exits
 	attached := make(chan struct{})
@@ -337,18 +338,17 @@ func (vm *DockerVM) streamOutput(client dockerClient, containerName string) {
 	}()
 
 	go func() {
+		defer r.Close() // ensure the pipe reader gets closed
+
 		// Block here until the attachment completes or we timeout
 		select {
 		case <-attached: // successful attach
 			close(attached) // close indicates the streams can now be copied
 
 		case <-time.After(10 * time.Second):
-			dockerLogger.Errorf("Timeout while attaching to IO channel in container %s", containerName)
+			logger.Errorf("Timeout while attaching to IO channel in container %s", containerName)
 			return
 		}
-
-		// create a logger for the chaincode
-		containerLogger := flogging.MustGetLogger("peer.chaincode." + containerName)
 
 		is := bufio.NewReader(r)
 		for {
@@ -359,9 +359,11 @@ func (vm *DockerVM) streamOutput(client dockerClient, containerName string) {
 			case nil:
 				containerLogger.Info(line)
 			case io.EOF:
-				dockerLogger.Infof("Container %s has closed its IO channel", containerName)
+				logger.Infof("Container %s has closed its IO channel", containerName)
+				return
 			default:
-				dockerLogger.Errorf("Error reading container output: %s", err)
+				logger.Errorf("Error reading container output: %s", err)
+				return
 			}
 		}
 	}()

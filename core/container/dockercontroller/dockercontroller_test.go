@@ -19,6 +19,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/common/util"
@@ -28,6 +29,7 @@ import (
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -177,6 +179,38 @@ func Test_Start(t *testing.T) {
 
 	err = dvm.Start(ccid, args, env, files, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
+}
+
+func Test_streamOutput(t *testing.T) {
+	gt := NewGomegaWithT(t)
+
+	logger, recorder := floggingtest.NewTestLogger(t)
+	containerLogger, containerRecorder := floggingtest.NewTestLogger(t)
+
+	client := &mockClient{}
+	errCh := make(chan error, 1)
+	optsCh := make(chan docker.AttachToContainerOptions, 1)
+	client.attachToContainerStub = func(opts docker.AttachToContainerOptions) error {
+		optsCh <- opts
+		return <-errCh
+	}
+
+	streamOutput(logger, client, "container-name", containerLogger)
+
+	var opts docker.AttachToContainerOptions
+	gt.Eventually(optsCh).Should(Receive(&opts))
+	gt.Eventually(opts.Success).Should(BeSent(struct{}{}))
+	gt.Eventually(opts.Success).Should(BeClosed())
+
+	fmt.Fprintf(opts.OutputStream, "message-one\n")
+	fmt.Fprintf(opts.OutputStream, "message-two") // does not get written
+	gt.Eventually(containerRecorder).Should(gbytes.Say("message-one"))
+	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
+
+	close(errCh)
+	gt.Eventually(recorder).Should(gbytes.Say("Container container-name has closed its IO channel"))
+	gt.Consistently(recorder.Entries).Should(HaveLen(1))
+	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
 }
 
 func Test_BuildMetric(t *testing.T) {
@@ -373,6 +407,8 @@ func (m *mockBuilder) Build() (io.Reader, error) {
 type mockClient struct {
 	noSuchImgErrReturned bool
 	pingErr              bool
+
+	attachToContainerStub func(docker.AttachToContainerOptions) error
 }
 
 var getClientErr, createErr, uploadErr, noSuchImgErr, buildErr, removeImgErr,
@@ -404,6 +440,9 @@ func (c *mockClient) UploadToContainer(id string, opts docker.UploadToContainerO
 }
 
 func (c *mockClient) AttachToContainer(opts docker.AttachToContainerOptions) error {
+	if c.attachToContainerStub != nil {
+		return c.attachToContainerStub(opts)
+	}
 	if opts.Success != nil {
 		opts.Success <- struct{}{}
 	}
