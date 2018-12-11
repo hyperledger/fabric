@@ -254,7 +254,7 @@ func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.Metadata, 
 	return nil, nil
 }
 
-// ConfigEnvelopeFromBlock extracts configuration envelop from the block based on the
+// ConfigEnvelopeFromBlock extracts configuration envelope from the block based on the
 // config type, i.e. HeaderType_ORDERER_TRANSACTION or HeaderType_CONFIG
 func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 	if block == nil {
@@ -263,7 +263,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 
 	envelope, err := utils.ExtractEnvelope(block, 0)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to extract envelop from the block")
+		return nil, errors.Wrapf(err, "failed to extract envelope from the block")
 	}
 
 	channelHeader, err := utils.ChannelHeader(envelope)
@@ -307,7 +307,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.Metadata, 
 
 	payload, err := utils.ExtractPayload(configEnvelope)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed extract payload from config envelope")
+		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}
 	// get config update
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
