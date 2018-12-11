@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -886,6 +887,7 @@ func newOperationsSystem() *operations.System {
 			ClientCertRequired: viper.GetBool("operations.tls.clientAuthRequired"),
 			ClientCACertFiles:  viper.GetStringSlice("operations.tls.clientRootCAs.files"),
 		},
+		Version: metadata.Version,
 	})
 }
 

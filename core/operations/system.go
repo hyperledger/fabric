@@ -53,6 +53,7 @@ type Options struct {
 	ListenAddress string
 	Metrics       MetricsOptions
 	TLS           TLS
+	Version       string
 }
 
 type System struct {
@@ -67,6 +68,7 @@ type System struct {
 	httpServer      *http.Server
 	mux             *http.ServeMux
 	addr            string
+	versionGauge    metrics.Gauge
 }
 
 func NewSystem(o Options) *System {
@@ -108,6 +110,8 @@ func (s *System) Start() error {
 		return err
 	}
 
+	s.versionGauge.With("version", s.options.Version).Set(1)
+
 	listener, err := s.listen()
 	if err != nil {
 		return err
@@ -115,6 +119,7 @@ func (s *System) Start() error {
 	s.addr = listener.Addr().String()
 
 	go s.httpServer.Serve(listener)
+
 	return nil
 }
 
@@ -167,10 +172,12 @@ func (s *System) initializeMetricsProvider() error {
 		ks := kitstatsd.New(prefix, s)
 		s.Provider = &statsd.Provider{Statsd: ks}
 		s.statsd = ks
+		s.versionGauge = versionGauge(s.Provider)
 		return nil
 
 	case "prometheus":
 		s.Provider = &prometheus.Provider{}
+		s.versionGauge = versionGauge(s.Provider)
 		s.mux.Handle("/metrics", s.handlerChain(prom.Handler(), s.options.TLS.Enabled))
 		return nil
 
@@ -180,6 +187,7 @@ func (s *System) initializeMetricsProvider() error {
 		}
 
 		s.Provider = &disabled.Provider{}
+		s.versionGauge = versionGauge(s.Provider)
 		return nil
 	}
 }
