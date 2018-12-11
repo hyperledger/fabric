@@ -1455,7 +1455,6 @@ func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v tx
 }
 
 func TestTokenValidTransaction(t *testing.T) {
-	t.Skip("Skipping TestTokenValidTransaction until token transaction is enabled after v1.4")
 	l, v := setupLedgerAndValidatorWithFabTokenCapabilities(t)
 	defer ledgermgmt.CleanupTestEnv()
 	defer l.Close()
@@ -1489,7 +1488,6 @@ func TestTokenCapabilityNotEnabled(t *testing.T) {
 }
 
 func TestTokenDuplicateTxId(t *testing.T) {
-	t.Skip("Skipping TestTokenDuplicateTxId until token transaction is enabled after v1.4")
 	theLedger := new(mockLedger)
 	vcs := struct {
 		*mocktxvalidator.Support

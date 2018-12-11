@@ -310,11 +310,10 @@ func serve(args []string) error {
 	defer service.GetGossipService().Stop()
 
 	// register prover grpc service
-	// FAB-12971 disable prover service before v1.4 cut. Will uncomment after v1.4 cut
-	// err = registerProverService(peerServer, aclProvider, signingIdentity)
-	// if err != nil {
-	// 	return err
-	// }
+	err = registerProverService(peerServer, aclProvider, signingIdentity)
+	if err != nil {
+		return err
+	}
 
 	// initialize system chaincodes
 
