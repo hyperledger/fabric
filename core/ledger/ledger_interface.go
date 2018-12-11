@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/protos/common"
@@ -24,6 +25,7 @@ type Initializer struct {
 	DeployedChaincodeInfoProvider DeployedChaincodeInfoProvider
 	MembershipInfoProvider        MembershipInfoProvider
 	MetricsProvider               metrics.Provider
+	HealthCheckRegistry           HealthCheckRegistry
 }
 
 // PeerLedgerProvider provides handle to ledger instances
@@ -499,3 +501,9 @@ type MembershipInfoProvider interface {
 
 //go:generate counterfeiter -o mock/deployed_ccinfo_provider.go -fake-name DeployedChaincodeInfoProvider . DeployedChaincodeInfoProvider
 //go:generate counterfeiter -o mock/membership_info_provider.go -fake-name MembershipInfoProvider . MembershipInfoProvider
+
+//go:generate counterfeiter -o mock/health_check_registry.go -fake-name HealthCheckRegistry . HealthCheckRegistry
+
+type HealthCheckRegistry interface {
+	RegisterChecker(string, healthz.HealthChecker) error
+}

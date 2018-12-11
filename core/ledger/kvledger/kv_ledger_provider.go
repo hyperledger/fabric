@@ -85,7 +85,7 @@ func (provider *Provider) Initialize(initializer *ledger.Initializer) error {
 	provider.stateListeners = stateListeners
 	provider.collElgNotifier = collElgNotifier
 	provider.bookkeepingProvider = bookkeeping.NewProvider()
-	provider.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(provider.bookkeepingProvider, initializer.MetricsProvider)
+	provider.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(provider.bookkeepingProvider, initializer.MetricsProvider, initializer.HealthCheckRegistry)
 	if err != nil {
 		return err
 	}

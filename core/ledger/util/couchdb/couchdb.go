@@ -8,6 +8,7 @@ package couchdb
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -408,7 +409,7 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	//get the number of retries for startup
 	maxRetriesOnStartup := couchInstance.conf.MaxRetriesOnStartup
 
-	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, "", "VerifyCouchConfig", connectURL, nil,
+	resp, couchDBReturn, err := couchInstance.handleRequest(context.Background(), http.MethodGet, "", "VerifyCouchConfig", connectURL, nil,
 		couchInstance.conf.Username, couchInstance.conf.Password, maxRetriesOnStartup, true, nil)
 
 	if err != nil {
@@ -436,6 +437,20 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	}
 
 	return dbResponse, couchDBReturn, nil
+}
+
+// HealthCheck checks if the peer is able to communicate with CouchDB
+func (couchInstance *CouchInstance) HealthCheck(ctx context.Context) error {
+	connectURL, err := url.Parse(couchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err)
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", couchInstance.conf.URL)
+	}
+	_, _, err = couchInstance.handleRequest(ctx, http.MethodHead, "", "HealthCheck", connectURL, nil, "", "", 0, true, nil)
+	if err != nil {
+		return fmt.Errorf("failed to connect to couch db [%s]", err)
+	}
+	return nil
 }
 
 //DropDatabase provides method to drop an existing database
@@ -1614,7 +1629,7 @@ func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 		}
 
 		//handle the request for saving/deleting the couchdb data
-		resp, couchDBReturn, errResp = dbclient.CouchInstance.handleRequest(method, dbName, functionName, connectURL,
+		resp, couchDBReturn, errResp = dbclient.CouchInstance.handleRequest(context.Background(), method, dbName, functionName, connectURL,
 			data, rev, multipartBoundary, maxRetries, keepConnectionOpen, queryParms, id)
 
 		//If there was a 409 conflict error during the save/delete, log it and retry it.
@@ -1634,7 +1649,7 @@ func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 func (dbclient *CouchDatabase) handleRequest(method, functionName string, connectURL *url.URL, data []byte, rev, multipartBoundary string,
 	maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string) (*http.Response, *DBReturn, error) {
 
-	return dbclient.CouchInstance.handleRequest(
+	return dbclient.CouchInstance.handleRequest(context.Background(),
 		method, dbclient.DBName, functionName, connectURL, data, rev, multipartBoundary,
 		maxRetries, keepConnectionOpen, queryParms, pathElements...,
 	)
@@ -1644,7 +1659,7 @@ func (dbclient *CouchDatabase) handleRequest(method, functionName string, connec
 // If it returns an error, it ensures that the response body is closed, else it is the
 // callee's responsibility to close response correctly.
 // Any http error or CouchDB error (4XX or 500) will result in a golang error getting returned
-func (couchInstance *CouchInstance) handleRequest(method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
+func (couchInstance *CouchInstance) handleRequest(ctx context.Context, method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
 	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string) (*http.Response, *DBReturn, error) {
 
 	logger.Debugf("Entering handleRequest()  method=%s  url=%v  dbName=%s", method, connectURL, dbName)
@@ -1687,6 +1702,7 @@ func (couchInstance *CouchInstance) handleRequest(method, dbName, functionName s
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error creating http request")
 		}
+		req.WithContext(ctx)
 
 		//set the request to close on completion if shared connections are not allowSharedConnection
 		//Current CouchDB has a problem with zero length attachments, do not allow the connection to be reused.

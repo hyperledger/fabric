@@ -180,6 +180,7 @@ func serve(args []string) error {
 			DeployedChaincodeInfoProvider: deployedCCInfoProvider,
 			MembershipInfoProvider:        membershipInfoProvider,
 			MetricsProvider:               metricsProvider,
+			HealthCheckRegistry:           opsSystem,
 		},
 	)
 

@@ -7,6 +7,7 @@ package statecouchdb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -69,6 +70,11 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.Version
 // Close closes the underlying db instance
 func (provider *VersionedDBProvider) Close() {
 	// No close needed on Couch
+}
+
+// HealthCheck checks to see if the couch instance of the peer is healthy
+func (provider *VersionedDBProvider) HealthCheck(ctx context.Context) error {
+	return provider.couchInstance.HealthCheck(ctx)
 }
 
 // VersionedDB implements VersionedDB interface
