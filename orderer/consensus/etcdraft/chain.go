@@ -247,7 +247,7 @@ func (c *Chain) Start() {
 
 	close(c.startC)
 
-	atomic.StoreUint32(&c.checkingFailover, 1)
+	c.startCheckingFailover()
 
 	go c.serveRaft()
 	go c.serveRequest()
@@ -387,8 +387,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		return err
 	}
 
-	checkingFailover := atomic.LoadUint32(&c.checkingFailover)
-	if checkingFailover == 1 {
+	if c.isFailoverInProgress() {
 		return errors.Errorf("node bootstrapping has not finished")
 	}
 
@@ -660,7 +659,7 @@ func (c *Chain) serveRaft() {
 				newLead := atomic.LoadUint64(&rd.SoftState.Lead)
 				lead := atomic.LoadUint64(&c.leader)
 				if newLead != lead {
-					atomic.StoreUint32(&c.checkingFailover, 1)
+					c.startCheckingFailover()
 
 					c.logger.Infof("Raft leader changed: %d -> %d", lead, newLead)
 					atomic.StoreUint64(&c.leader, newLead)
@@ -681,7 +680,7 @@ func (c *Chain) serveRaft() {
 					default:
 					}
 
-					atomic.StoreUint32(&c.checkingFailover, 0)
+					c.doneCheckingFailover()
 				}
 			}
 
@@ -1000,4 +999,20 @@ func (c *Chain) newRaftMetadata(block *common.Block) (*etcdraft.Metadata, *etcdr
 	}
 	c.raftMetadataLock.RUnlock()
 	return metadata, raftMetadata
+}
+
+// startCheckingFailover set failover check flag on
+func (c *Chain) startCheckingFailover() {
+	atomic.StoreUint32(&c.checkingFailover, 1)
+}
+
+// doneCheckingFailover set failover check flag off
+func (c *Chain) doneCheckingFailover() {
+	atomic.StoreUint32(&c.checkingFailover, 0)
+}
+
+// isFailoverInProgress returns true if there is failover check
+// is currently in progress and has not finished yet
+func (c *Chain) isFailoverInProgress() bool {
+	return atomic.LoadUint32(&c.checkingFailover) == 1
 }
