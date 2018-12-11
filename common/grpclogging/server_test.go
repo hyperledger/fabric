@@ -560,14 +560,18 @@ var _ = Describe("Server", func() {
 			var expectedErr error
 
 			BeforeEach(func() {
-				expectedErr = &statusError{Status: status.New(codes.Aborted, "aborted")}
-				fakeEchoService.EchoStreamReturns(expectedErr)
+				errCh := make(chan error)
+				fakeEchoService.EchoStreamStub = func(svr testpb.EchoService_EchoStreamServer) error { return <-errCh }
 
 				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
 
 				err = streamClient.Send(&testpb.Message{Message: "hello"})
 				Expect(err).NotTo(HaveOccurred())
+
+				expectedErr = &statusError{Status: status.New(codes.Aborted, "aborted")}
+				errCh <- expectedErr
+
 				_, err = streamClient.Recv()
 				Expect(err).To(HaveOccurred())
 			})
