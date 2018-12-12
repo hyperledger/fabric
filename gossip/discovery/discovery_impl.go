@@ -337,6 +337,10 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
 			return
 		}
 
+		if !d.crypt.ValidateAliveMsg(selfInfoGossipMsg) {
+			return
+		}
+
 		if d.msgStore.CheckValid(selfInfoGossipMsg) {
 			d.handleAliveMessage(selfInfoGossipMsg)
 		}
@@ -354,11 +358,16 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
 	}
 
 	if m.IsAliveMsg() {
-		if !d.msgStore.Add(m) {
+		if !d.msgStore.CheckValid(m) || !d.crypt.ValidateAliveMsg(m) {
 			return
 		}
-		d.handleAliveMessage(m)
+		// If the message was sent by me, ignore it and don't forward it further
+		if d.isSentByMe(m) {
+			return
+		}
 
+		d.msgStore.Add(m)
+		d.handleAliveMessage(m)
 		d.comm.Forward(msg)
 		return
 	}
@@ -376,7 +385,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
 				return
 			}
 
-			if d.msgStore.CheckValid(am) {
+			if d.msgStore.CheckValid(am) && d.crypt.ValidateAliveMsg(am) {
 				d.handleAliveMessage(am)
 			}
 		}
@@ -387,14 +396,10 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
 				d.logger.Warningf("Membership response contains an invalid message from an offline peer %+v", errors.WithStack(err))
 				return
 			}
-			if !d.crypt.ValidateAliveMsg(dm) {
-				d.logger.Debugf("Alive message isn't authentic, someone spoofed %s's identity", dm.GetAliveMsg().Membership)
-				continue
-			}
 
-			if !d.msgStore.CheckValid(dm) {
-				//Newer alive message exist
-				return
+			// Newer alive message exists or the message isn't authentic
+			if !d.msgStore.CheckValid(dm) || !d.crypt.ValidateAliveMsg(dm) {
+				continue
 			}
 
 			newDeadMembers := []*proto.SignedGossipMessage{}
@@ -493,26 +498,11 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 	d.logger.Debug("Entering", m)
 	defer d.logger.Debug("Exiting")
 
-	if !d.crypt.ValidateAliveMsg(m) {
-		d.logger.Debugf("Alive message isn't authentic, someone must be spoofing %s's identity", m.GetAliveMsg())
+	if d.isSentByMe(m) {
 		return
 	}
 
 	pkiID := m.GetAliveMsg().Membership.PkiId
-	if equalPKIid(pkiID, d.self.PKIid) {
-		d.logger.Debug("Got alive message about ourselves,", m)
-		diffExternalEndpoint := d.self.Endpoint != m.GetAliveMsg().Membership.Endpoint
-		var diffInternalEndpoint bool
-		secretEnvelope := m.GetSecretEnvelope()
-		if secretEnvelope != nil && secretEnvelope.InternalEndpoint() != "" {
-			diffInternalEndpoint = secretEnvelope.InternalEndpoint() != d.self.InternalEndpoint
-		}
-		if diffInternalEndpoint || diffExternalEndpoint {
-			d.logger.Error("Bad configuration detected: Received AliveMessage from a peer with the same PKI-ID as myself:", m.GossipMessage)
-		}
-
-		return
-	}
 
 	ts := m.GetAliveMsg().Timestamp
 
@@ -563,6 +553,24 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 
 	}
 	// else, ignore the message because it is too old
+}
+
+func (d *gossipDiscoveryImpl) isSentByMe(m *proto.SignedGossipMessage) bool {
+	pkiID := m.GetAliveMsg().Membership.PkiId
+	if !equalPKIid(pkiID, d.self.PKIid) {
+		return false
+	}
+	d.logger.Debug("Got alive message about ourselves,", m)
+	diffExternalEndpoint := d.self.Endpoint != m.GetAliveMsg().Membership.Endpoint
+	var diffInternalEndpoint bool
+	secretEnvelope := m.GetSecretEnvelope()
+	if secretEnvelope != nil && secretEnvelope.InternalEndpoint() != "" {
+		diffInternalEndpoint = secretEnvelope.InternalEndpoint() != d.self.InternalEndpoint
+	}
+	if diffInternalEndpoint || diffExternalEndpoint {
+		d.logger.Error("Bad configuration detected: Received AliveMessage from a peer with the same PKI-ID as myself:", m.GossipMessage)
+	}
+	return true
 }
 
 func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t proto.PeerTime) {
