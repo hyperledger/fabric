@@ -1586,21 +1586,21 @@ var _ = Describe("Chain", func() {
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
-					stub := c1.support.WriteConfigBlockStub
+					stub1 := c1.support.WriteConfigBlockStub
 					c1.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
-						stub(block, metadata)
+						stub1(block, metadata)
 						network.disconnect(1)
 					}
 
-					stub = c2.support.WriteConfigBlockStub
-					c1.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
-						stub(block, metadata)
+					stub2 := c2.support.WriteConfigBlockStub
+					c2.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
+						stub2(block, metadata)
 						network.disconnect(2)
 					}
 
-					stub = c3.support.WriteConfigBlockStub
+					stub3 := c3.support.WriteConfigBlockStub
 					c3.support.WriteConfigBlockStub = func(block *common.Block, metadata []byte) {
-						stub(block, metadata)
+						stub3(block, metadata)
 						network.disconnect(3)
 					}
 
