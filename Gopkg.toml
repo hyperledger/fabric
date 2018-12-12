@@ -158,6 +158,10 @@ noverify = [
   version = "1.9.0"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/sykesm/zap-logfmt"
+
+[[constraint]]
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
   version = "1.0.0"
 

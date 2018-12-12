@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
 	logging "github.com/op/go-logging"
+	zaplogfmt "github.com/sykesm/zap-logfmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -101,9 +102,10 @@ func (s *Logging) Apply(c Config) error {
 	s.SetWriter(c.Writer)
 
 	var formatter logging.Formatter
-	if s.Encoding() == JSON {
+	switch s.Encoding() {
+	case JSON, LOGFMT:
 		formatter = SetFormat(defaultFormat)
-	} else {
+	default:
 		formatter = SetFormat(c.Format)
 	}
 
@@ -125,6 +127,11 @@ func (s *Logging) SetFormat(format string) error {
 
 	if format == "json" {
 		s.encoding = JSON
+		return nil
+	}
+
+	if format == "logfmt" {
+		s.encoding = LOGFMT
 		return nil
 	}
 
@@ -214,6 +221,7 @@ func (s *Logging) ZapLogger(name string) *zap.Logger {
 		Encoders: map[Encoding]zapcore.Encoder{
 			JSON:    zapcore.NewJSONEncoder(s.encoderConfig),
 			CONSOLE: fabenc.NewFormatEncoder(s.multiFormatter),
+			LOGFMT:  zaplogfmt.NewEncoder(s.encoderConfig),
 		},
 		Selector: s,
 		Output:   s,
