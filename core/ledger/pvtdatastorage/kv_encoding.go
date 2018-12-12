@@ -129,7 +129,7 @@ func decodeMissingDataKey(keyBytes []byte) *missingDataKey {
 		return key
 	}
 
-	splittedKey := bytes.Split(keyBytes[1:], []byte{nilByte})
+	splittedKey := bytes.SplitN(keyBytes[1:], []byte{nilByte}, 3) //encoded bytes for blknum may contain empty bytes
 	key.ns = string(splittedKey[0])
 	key.coll = string(splittedKey[1])
 	key.blkNum, _ = util.DecodeReverseOrderVarUint64(splittedKey[2])
