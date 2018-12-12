@@ -8,6 +8,7 @@ package pvtdatastorage
 
 import (
 	"bytes"
+	math "math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,4 +78,41 @@ func TestEligibleMissingdataRange(t *testing.T) {
 		assert.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
 		assert.Equal(t, bytes.Compare(keyOfPreviousBlock, endKey), 1)
 	}
+}
+
+func TestEncodeDecodeMissingdataKey(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		testEncodeDecodeMissingdataKey(t, uint64(i))
+	}
+	testEncodeDecodeMissingdataKey(t, math.MaxUint64) // corner case
+}
+
+func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
+	key := &missingDataKey{
+		nsCollBlk: nsCollBlk{
+			ns:     "ns",
+			coll:   "coll",
+			blkNum: blkNum,
+		},
+	}
+
+	t.Run("ineligibileKey",
+		func(t *testing.T) {
+			key.isEligible = false
+			decodedKey := decodeMissingDataKey(
+				encodeMissingDataKey(key),
+			)
+			assert.Equal(t, key, decodedKey)
+		},
+	)
+
+	t.Run("ineligibileKey",
+		func(t *testing.T) {
+			key.isEligible = true
+			decodedKey := decodeMissingDataKey(
+				encodeMissingDataKey(key),
+			)
+			assert.Equal(t, key, decodedKey)
+		},
+	)
 }
