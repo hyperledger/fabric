@@ -1805,6 +1805,33 @@ var _ = Describe("Chain", func() {
 					})
 			})
 
+			It("leader retransmits lost messages", func() {
+				// This tests that heartbeats will trigger leader to retransmit lost MsgApp
+
+				c1.cutter.CutNext = true
+
+				stepCnt := c1.rpc.StepCallCount()
+				network.disconnect(1) // drop MsgApp
+
+				err := c1.Order(env, 0)
+				Expect(err).ToNot(HaveOccurred())
+
+				network.exec(
+					func(c *chain) {
+						Consistently(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(0))
+					})
+
+				// Since the leader has 2 followers, assert that we actually dropped MsgApp for both of them.
+				Eventually(c1.rpc.StepCallCount).Should(Equal(stepCnt + 2))
+				network.connect(1) // reconnect leader
+
+				c1.clock.Increment(interval) // trigger a heartbeat
+				network.exec(
+					func(c *chain) {
+						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
+					})
+			})
+
 			It("allows the leader to create multiple normal blocks without having to wait for them to be written out", func() {
 				// this ensures that the created blocks are not written out
 				network.disconnect(1)
