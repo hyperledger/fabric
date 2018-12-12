@@ -26,6 +26,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestToGossipMessageNilEnvelope(t *testing.T) {
+	memReq := &MembershipRequest{}
+	_, err := memReq.SelfInformation.ToGossipMessage()
+	assert.EqualError(t, err, "nil envelope")
+}
+
 func TestToString(t *testing.T) {
 	// Ensure we don't print the byte content when we
 	// log messages.
