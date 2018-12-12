@@ -27,7 +27,7 @@ type MetadataProvider interface {
 	GetMetadataAsTarEntries() ([]byte, error)
 }
 
-// Interface for validating the specification and and writing the package for
+// Interface for validating the specification and writing the package for
 // the given platform
 type Platform interface {
 	Name() string
