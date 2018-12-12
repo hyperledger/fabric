@@ -393,7 +393,12 @@ To learn how to upgrade your Fabric CA server, click over to the
 Upgrade Node SDK clients
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note:: Upgrade Fabric CA before upgrading Node SDK clients.
+.. note:: Upgrade Fabric and Fabric CA before upgrading Node SDK clients.
+          Fabric and Fabric CA are tested for backwards compatibility with
+          older SDK clients. While newer SDK clients often work with older
+          Fabric and Fabric CA releases, they may expose features that
+          are not yet available in the older Fabric and Fabric CA releases,
+          and are not tested for full compatibility.
 
 Use NPM to upgrade any ``Node.js`` client by executing these commands in the
 root directory of your application:
