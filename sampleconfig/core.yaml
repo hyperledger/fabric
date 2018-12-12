@@ -518,14 +518,13 @@ chaincode:
     # whitelist, add "myscc: enable" to the list below, and register in
     # chaincode/importsysccs.go
     system:
-        +lifecycle: enable
         cscc: enable
         lscc: enable
         escc: enable
         vscc: enable
         qscc: enable
 
-    # System chaincode plugins: 
+    # System chaincode plugins:
     # System chaincodes can be loaded as shared objects compiled as Go plugins.
     # See examples/plugins/scc for an example.
     # Plugins must be white listed in the chaincode.system section above.
