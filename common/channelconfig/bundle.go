@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
@@ -35,49 +36,49 @@ type Bundle struct {
 	configtxManager configtx.Validator
 }
 
-// PolicyManager returns the policy manager constructed for this config
+// PolicyManager returns the policy manager constructed for this config.
 func (b *Bundle) PolicyManager() policies.Manager {
 	return b.policyManager
 }
 
-// MSPManager returns the MSP manager constructed for this config
+// MSPManager returns the MSP manager constructed for this config.
 func (b *Bundle) MSPManager() msp.MSPManager {
 	return b.channelConfig.MSPManager()
 }
 
-// ChannelConfig returns the config.Channel for the chain
+// ChannelConfig returns the config.Channel for the chain.
 func (b *Bundle) ChannelConfig() Channel {
 	return b.channelConfig
 }
 
 // OrdererConfig returns the config.Orderer for the channel
-// and whether the Orderer config exists
+// and whether the Orderer config exists.
 func (b *Bundle) OrdererConfig() (Orderer, bool) {
 	result := b.channelConfig.OrdererConfig()
 	return result, result != nil
 }
 
-// ConsortiumsConfig() returns the config.Consortiums for the channel
-// and whether the consortiums config exists
+// ConsortiumsConfig returns the config.Consortiums for the channel
+// and whether the consortiums config exists.
 func (b *Bundle) ConsortiumsConfig() (Consortiums, bool) {
 	result := b.channelConfig.ConsortiumsConfig()
 	return result, result != nil
 }
 
 // ApplicationConfig returns the configtxapplication.SharedConfig for the channel
-// and whether the Application config exists
+// and whether the Application config exists.
 func (b *Bundle) ApplicationConfig() (Application, bool) {
 	result := b.channelConfig.ApplicationConfig()
 	return result, result != nil
 }
 
-// ConfigtxValidator returns the configtx.Validator for the channel
+// ConfigtxValidator returns the configtx.Validator for the channel.
 func (b *Bundle) ConfigtxValidator() configtx.Validator {
 	return b.configtxManager
 }
 
 // ValidateNew checks if a new bundle's contained configuration is valid to be derived from the current bundle.
-// This allows checks of the nature "Make sure that the consensus type did not change." which is otherwise
+// This allows checks of the nature "Make sure that the consensus type did not change".
 func (b *Bundle) ValidateNew(nb Resources) error {
 	if oc, ok := b.OrdererConfig(); ok {
 		noc, ok := nb.OrdererConfig()
@@ -85,8 +86,20 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			return errors.New("Current config has orderer section, but new config does not")
 		}
 
-		if oc.ConsensusType() != noc.ConsensusType() {
-			return errors.Errorf("Attempted to change consensus type from %s to %s", oc.ConsensusType(), noc.ConsensusType())
+		// Prevent consensus-type migration when capabilities Kafka2RaftMigration is disabled
+		if !oc.Capabilities().Kafka2RaftMigration() {
+			if oc.ConsensusType() != noc.ConsensusType() {
+				return errors.Errorf("Attempted to change consensus type from %s to %s",
+					oc.ConsensusType(), noc.ConsensusType())
+			}
+			if noc.ConsensusMigrationState() != ab.ConsensusType_MIG_STATE_NONE || noc.ConsensusMigrationContext() != 0 {
+				return errors.Errorf("New config has unexpected consensus-migration state or context: (%s/%d) should be (MIG_STATE_NONE/0)",
+					noc.ConsensusMigrationState().String(), noc.ConsensusMigrationContext())
+			}
+		} else {
+			if err := validateMigrationStep(oc, noc); err != nil {
+				return err
+			}
 		}
 
 		for orgName, org := range oc.Organizations() {
@@ -233,6 +246,102 @@ func preValidate(config *cb.Config) error {
 					return errors.New("cannot enable application capabilities without orderer support first")
 				}
 			}
+		}
+	}
+
+	return nil
+}
+
+// validateMigrationStep checks the validity of the state transitions of a possible migration step.
+// Since at this point we don't know whether it is a system or standard channel, we allow a wider range of options.
+// The migration state machine (for both types of channels) is enforced in the chain implementation.
+func validateMigrationStep(oc Orderer, noc Orderer) error {
+	oldType := oc.ConsensusType()
+	oldState := oc.ConsensusMigrationState()
+	newType := noc.ConsensusType()
+	newState := noc.ConsensusMigrationState()
+	newContext := noc.ConsensusMigrationContext()
+
+	// The following code explicitly checks for permitted transitions; all other transitions return an error.
+	if oldType != newType {
+		// Consensus-type changes from Kafka to Raft in the "green" path:
+		// - The system channel starts the migration
+		// - A standard channel prepares the context, type change Kafka to Raft
+		// - The system channel commits the migration, type change Kafka to Raft
+		// Consensus-type changes from Raft to Kafka in the "abort" path:
+		// - The system channel starts the migration
+		// - A standard channel prepares the context, type change Kafka to Raft
+		// - The system channel aborts the migration
+		// - The standard channel reverts the type back, type change Raft to Kafka
+		if oldType == "kafka" && newType == "etcdraft" {
+			// On the system channels, this is permitted, green path commit
+			isSysCommit := oldState == ab.ConsensusType_MIG_STATE_START && newState == ab.ConsensusType_MIG_STATE_COMMIT
+			// On the standard channels, this is permitted, green path context
+			isStdCtx := oldState == ab.ConsensusType_MIG_STATE_NONE && newState == ab.ConsensusType_MIG_STATE_CONTEXT
+			if isSysCommit || isStdCtx {
+				logger.Debugf("Kafka-to-etcdraft migration, config update, state transition: %s to %s", oldState, newState)
+			} else {
+				return errors.Errorf("Attempted to change consensus type from %s to %s, unexpected migration state transition: %s to %s",
+					oldType, newType, oldState, newState)
+			}
+		} else if oldType == "etcdraft" && newType == "kafka" {
+			// On the standard channels, this is permitted, abort path
+			if oldState == ab.ConsensusType_MIG_STATE_CONTEXT && newState == ab.ConsensusType_MIG_STATE_NONE {
+				logger.Debugf("Kafka-to-etcdraft migration, config update, state transition: %s to %s", oldState, newState)
+			} else {
+				return errors.Errorf("Attempted to change consensus type from %s to %s, unexpected migration state transition: %s to %s",
+					oldType, newType, oldState, newState)
+			}
+		} else {
+			return errors.Errorf("Attempted to change consensus type from %s to %s, only kafka to etcdraft is supported",
+				oldType, newType)
+		}
+	} else {
+		// On the system channel & standard channels, this is always permitted, not a migration
+		isNotMig := oldState == ab.ConsensusType_MIG_STATE_NONE && newState == ab.ConsensusType_MIG_STATE_NONE
+
+		// Migration state may change when the type stays the same
+		if oldType == "kafka" {
+			// On the system channel, these transitions are permitted
+			// In the "green" path: the system channel starts migration
+			isSysStart := oldState == ab.ConsensusType_MIG_STATE_NONE && newState == ab.ConsensusType_MIG_STATE_START
+			// In the "abort" path: the system channel aborts a migration
+			isSysAbort := oldState == ab.ConsensusType_MIG_STATE_START && newState == ab.ConsensusType_MIG_STATE_ABORT
+			// In the "abort" path: the system channel reconfigures after an abort, not a migration
+			isSysNotMigAfterAbort := oldState == ab.ConsensusType_MIG_STATE_ABORT && newState == ab.ConsensusType_MIG_STATE_NONE
+			// In the "abort" path: the system channel starts a new migration attempt after an abort
+			isSysStartAfterAbort := oldState == ab.ConsensusType_MIG_STATE_ABORT && newState == ab.ConsensusType_MIG_STATE_START
+			if !(isNotMig || isSysStart || isSysAbort || isSysNotMigAfterAbort || isSysStartAfterAbort) {
+				return errors.Errorf("Consensus type %s, unexpected migration state transition: %s to %s",
+					oldType, oldState, newState)
+			} else if newState != ab.ConsensusType_MIG_STATE_NONE {
+				logger.Debugf("Kafka-to-etcdraft migration, config update, state transition: %s to %s", oldState, newState)
+			}
+		} else if oldType == "etcdraft" {
+			// On the system channel, this is permitted
+			// In the "green" path: the system channel reconfigures after a successful migration
+			isSysAfterSuccess := oldState == ab.ConsensusType_MIG_STATE_COMMIT && newState == ab.ConsensusType_MIG_STATE_NONE
+			// On the standard channels, this is permitted
+			// In the "green" path: a standard channel reconfigures after a successful migration
+			isStdAfterSuccess := oldState == ab.ConsensusType_MIG_STATE_CONTEXT && newState == ab.ConsensusType_MIG_STATE_NONE
+			if !(isNotMig || isSysAfterSuccess || isStdAfterSuccess) {
+				return errors.Errorf("Consensus type %s, unexpected migration state transition: %s to %s",
+					oldType, oldState.String(), newState)
+			}
+		}
+	}
+
+	// Check for a valid range on migration context
+	switch newState {
+	case ab.ConsensusType_MIG_STATE_START, ab.ConsensusType_MIG_STATE_ABORT, ab.ConsensusType_MIG_STATE_NONE:
+		if newContext != 0 {
+			return errors.Errorf("Consensus migration state %s, unexpected migration context: %d (expected: 0)",
+				newState, newContext)
+		}
+	case ab.ConsensusType_MIG_STATE_CONTEXT, ab.ConsensusType_MIG_STATE_COMMIT:
+		if newContext <= 0 {
+			return errors.Errorf("Consensus migration state %s, unexpected migration context: %d (expected >0)",
+				newState, newContext)
 		}
 	}
 
