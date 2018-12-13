@@ -385,7 +385,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 			txID = chdr.TxId
 			if !v.Support.Capabilities().FabToken() {
-				logger.Errorf("FabToken capability is not enabled. Unsupported transaction type [%s] in block [%d] transaction [%d]",
+				logger.Debugf("Unsupported transaction type [%s] in block number [%d] transaction index [%d]: FabToken capability is not enabled",
 					common.HeaderType(chdr.Type), block.Header.Number, tIdx)
 				results <- &blockValidationResult{
 					tIdx:           tIdx,
@@ -401,12 +401,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				results <- erroneousResultEntry
 				return
 			}
-
-			// Set the namespace of the invocation field
-			txsChaincodeName = &sysccprovider.ChaincodeInstance{
-				ChainID:          channel,
-				ChaincodeName:    "Token",
-				ChaincodeVersion: ""}
 		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 			configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 			if err != nil {
@@ -471,7 +465,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 // in the ledger or no decision can be made for whether such transaction exists;
 // the function returns nil if it has ensured that there is no such duplicate, such
 // that its consumer can proceed with the transaction processing
-func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, ldgr ledger.PeerLedger) (errorTuple *blockValidationResult) {
+func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, ldgr ledger.PeerLedger) *blockValidationResult {
 
 	// Retrieve the transaction identifier of the input header
 	txID := chdr.TxId
@@ -479,30 +473,27 @@ func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, 
 	// Look for a transaction with the same identifier inside the ledger
 	_, err := ldgr.GetTransactionByID(txID)
 
-	// if returned error is nil, it means that there is already a tx in
-	// the ledger with the supplied id
-	if err == nil {
+	switch err.(type) {
+	case nil:
+		// invalid case, returned error is nil. It means that there is already a tx in the ledger with the same id
 		logger.Error("Duplicate transaction found, ", txID, ", skipping")
 		return &blockValidationResult{
 			tIdx:           tIdx,
 			validationCode: peer.TxValidationCode_DUPLICATE_TXID,
 		}
-	}
-
-	// if returned error is not of type blkstorage.NotFoundInIndexErr, it means
-	// we could not verify whether a tx with the supplied id is in the ledger
-	if _, isNotFoundInIndexErrType := err.(ledger.NotFoundInIndexErr); !isNotFoundInIndexErrType {
-		logger.Errorf("Ledger failure while attempting to detect duplicate status for "+
-			"txid %s, err '%s'. Aborting", txID, err)
+	case ledger.NotFoundInIndexErr:
+		// valid case, returned error is of type NotFoundInIndexErr.
+		// It means that no tx with the same id is found in the ledger
+		return nil
+	default:
+		// invalid case, returned error is not of type NotFoundInIndexErr.
+		// It means that we could not verify whether a tx with the supplied id is in the ledger
+		logger.Errorf("Ledger failure while attempting to detect duplicate status for txid %s: %s", txID, err)
 		return &blockValidationResult{
 			tIdx: tIdx,
 			err:  err,
 		}
 	}
-
-	// it otherwise means that there is no transaction with the same identifier
-	// residing in the ledger
-	return nil
 }
 
 // generateCCKey generates a unique identifier for chaincode in specific channel

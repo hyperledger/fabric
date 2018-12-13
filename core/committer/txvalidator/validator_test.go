@@ -244,19 +244,8 @@ func getTokenTx(t *testing.T) *common.Envelope {
 		),
 	}
 
-	// assemble a transaction from that proposal and endorsement
-	// create a transaction
-	taa := &peer.TransactionAction{Header: hdr.SignatureHeader, Payload: tdBytes}
-	taas := make([]*peer.TransactionAction, 1)
-	taas[0] = taa
-	tx := &peer.Transaction{Actions: taas}
-
-	// serialize the tx
-	txBytes, err := utils.GetBytesTransaction(tx)
-	assert.NoError(t, err)
-
 	// create the payload
-	payl := &common.Payload{Header: hdr, Data: txBytes}
+	payl := &common.Payload{Header: hdr, Data: tdBytes}
 	paylBytes, err := utils.GetBytesPayload(payl)
 	assert.NoError(t, err)
 
