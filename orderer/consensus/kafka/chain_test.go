@@ -17,7 +17,8 @@ import (
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	lmock "github.com/hyperledger/fabric/orderer/consensus/kafka/mock"
+	mockkafka "github.com/hyperledger/fabric/orderer/consensus/kafka/mock"
+	mockconsensus "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -28,6 +29,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/Shopify/sarama/mocks"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -2272,6 +2274,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
 				assert.Equal(t, uint64(1), counts[indexProcessRegularError], "Expected 1 REGULAR message error")
 			})
+
+			//TODO test migration config transactions
+
 		})
 	})
 
@@ -2577,6 +2582,7 @@ func TestResubmission(t *testing.T) {
 				errorChan:                      errorChan,
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
+				migrationStatusStepper:         migration.NewStatusStepper(mockSupport.IsSystemChannel(), mockSupport.ChainID()),
 			}
 
 			var counts []uint64
@@ -2766,6 +2772,7 @@ func TestResubmission(t *testing.T) {
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
 				doneReprocessingMsgInFlight:    doneReprocessing,
+				migrationStatusStepper:         migration.NewStatusStepper(mockSupport.IsSystemChannel(), mockSupport.ChainID()),
 			}
 
 			var counts []uint64
@@ -3433,7 +3440,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker2.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{}, &lmock.HealthChecker{})
+		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeMigrationController{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3522,7 +3529,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{}, &lmock.HealthChecker{})
+		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeMigrationController{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3584,7 +3591,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &lmock.MetricsProvider{}, &lmock.HealthChecker{})
+		consenter, _ := New(mockLocalConfig, &mockkafka.MetricsProvider{}, &mockkafka.HealthChecker{}, &mockconsensus.FakeMigrationController{})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3652,7 +3659,7 @@ func TestHealthCheck(t *testing.T) {
 	var err error
 
 	ch := newChannel("mockChannelFoo", defaultPartition)
-	mockSyncProducer := &lmock.SyncProducer{}
+	mockSyncProducer := &mockkafka.SyncProducer{}
 	chain := &chainImpl{
 		channel:  ch,
 		producer: mockSyncProducer,
@@ -3775,4 +3782,8 @@ func (c *mockConsenterSupport) ChainID() string {
 func (c *mockConsenterSupport) Height() uint64 {
 	args := c.Called()
 	return args.Get(0).(uint64)
+}
+
+func (c *mockConsenterSupport) IsSystemChannel() bool {
+	return false
 }

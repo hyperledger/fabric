@@ -15,9 +15,13 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
-	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -75,6 +79,7 @@ func newChain(
 		haltChan:                    make(chan struct{}),
 		startChan:                   make(chan struct{}),
 		doneReprocessingMsgInFlight: doneReprocessingMsgInFlight,
+		migrationStatusStepper:      migration.NewStatusStepper(support.IsSystemChannel(), support.ChainID()),
 	}, nil
 }
 
@@ -120,6 +125,15 @@ type chainImpl struct {
 	timer <-chan time.Time
 
 	replicaIDs []int32
+
+	// provides access to the consensus-type migration status of the chain,
+	// and allows stepping through the state machine.
+	migrationStatusStepper migration.StatusStepper
+}
+
+// MigrationStatus provides access to the consensus-type migration status of the chain.
+func (chain *chainImpl) MigrationStatus() migration.Status {
+	return chain.migrationStatusStepper
 }
 
 // Errored returns a channel which will close when a partition consumer error
@@ -212,12 +226,17 @@ func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
 }
 
 func (chain *chainImpl) order(env *cb.Envelope, configSeq uint64, originalOffset int64) error {
+	// During consensus-type migration: stop all normal txs on the system-channel and standard-channels.
+	if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
+		return fmt.Errorf("[channel: %s] cannot enqueue, consensus-type migration pending", chain.ChainID())
+	}
+
 	marshaledEnv, err := utils.Marshal(env)
 	if err != nil {
-		return fmt.Errorf("cannot enqueue, unable to marshal envelope because = %s", err)
+		return fmt.Errorf("[channel: %s] cannot enqueue, unable to marshal envelope because = %s", chain.ChainID(), err)
 	}
 	if !chain.enqueue(newNormalMessage(marshaledEnv, configSeq, originalOffset)) {
-		return fmt.Errorf("cannot enqueue")
+		return fmt.Errorf("[channel: %s] cannot enqueue", chain.ChainID())
 	}
 	return nil
 }
@@ -228,6 +247,21 @@ func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
 }
 
 func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, originalOffset int64) error {
+	// During consensus-type migration, stop channel creation
+	if chain.ConsenterSupport.IsSystemChannel() && chain.migrationStatusStepper.IsPending() {
+		ordererTx, err := isOrdererTx(config)
+		if err != nil {
+			err = errors.Wrap(err, "cannot determine if config-tx is of type ORDERER_TX, on system channel")
+			logger.Warning(err)
+			return err
+		}
+		if ordererTx {
+			str := "cannot enqueue, consensus-type migration pending: ORDERER_TX on system channel, blocking channel creation"
+			logger.Info(str)
+			return errors.Errorf(str)
+		}
+	}
+
 	marshaledConfig, err := utils.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("cannot enqueue, unable to marshal config because %s", err)
@@ -821,6 +855,11 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			offset = chain.lastOriginalOffsetProcessed
 		}
 
+		// During consensus-type migration, drop normal messages that managed to sneak in past Order, possibly from other orderers
+		if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
+			logger.Warningf("[channel: %s] Normal message is dropped, consensus-type migration pending", chain.ChainID())
+			return nil
+		}
 		commitNormalMsg(env, offset)
 
 	case ab.KafkaMessageRegular_CONFIG:
@@ -887,13 +926,113 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			offset = chain.lastOriginalOffsetProcessed
 		}
 
-		commitConfigMsg(env, offset)
+		// Evaluate a potential consensus-type migration step
+		doCommit, err := chain.processMigrationStep(env)
+		if err != nil {
+			return errors.Wrapf(err, "[channel: %s] error processing config message for possible migration step", chain.ChainID())
+		}
+
+		if doCommit {
+			commitConfigMsg(env, offset)
+		} else {
+			logger.Infof("[channel: %s] Dropping config message with offset %d, because of consensus-type migration step", chain.ChainID(), receivedOffset)
+		}
 
 	default:
 		return fmt.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
 	}
 
 	return nil
+}
+
+// processMigrationStep evaluates the consensus-type migration state machine,
+// and returns "true" if the config block should be committed by the block-writer.
+// The method returns immediately if the migration capability is disabled.
+// If migration steps into the COMMIT stage, the bootstrap file will be replaced.
+//
+// Illegal transitions triggered by the user are dropped, unexpected states (which indicate a bug) cause panic.
+func (chain *chainImpl) processMigrationStep(configTx *cb.Envelope) (commitBlock bool, err error) {
+
+	if !chain.ConsenterSupport.SharedConfig().Capabilities().Kafka2RaftMigration() {
+		return true, nil
+	}
+
+	payload := utils.UnmarshalPayloadOrPanic(configTx.Payload)
+	if payload.Header == nil {
+		logger.Panicf("Consensus-type migration: Told to process a config tx, but configtx payload header is missing")
+	}
+	chdr := utils.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
+
+	logger.Debugf("[channel: %s] Consensus-type migration: Processing, header: %v", chain.ChainID(), chdr.String())
+
+	switch chdr.Type {
+
+	case int32(cb.HeaderType_ORDERER_TRANSACTION):
+		if chain.migrationStatusStepper.IsPending() || chain.migrationStatusStepper.IsCommitted() {
+			commitBlock = false
+			logger.Debugf("[channel: %s] Consensus-type migration: Dropping ORDERER_TRANSACTION because consensus-type migration pending; Status: %s",
+				chain.ChainID(), chain.migrationStatusStepper)
+		} else {
+			commitBlock = true
+		}
+
+	case int32(cb.HeaderType_CONFIG):
+		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		if err != nil {
+			logger.Panicf("Consensus-type migration: Told to process a config tx with new config, but did not have config envelope encoded: %s", err)
+		}
+		config := configEnvelope.Config
+		bundle, err := channelconfig.NewBundle(chain.ChainID(), config)
+		if err != nil {
+			logger.Panicf("Consensus-type migration: Cannot create new bundle from Config: %s", err)
+		}
+
+		ordconf, ok := bundle.OrdererConfig()
+		if !ok {
+			logger.Debugf("[channel: %s]  Consensus-type migration: Config tx does not have OrdererConfig, ignoring", chain.ChainID())
+			return true, nil
+		}
+
+		nextConsensusType := ordconf.ConsensusType()
+		nextMigState := ordconf.ConsensusMigrationState()
+		nextMigContext := ordconf.ConsensusMigrationContext()
+		logger.Infof("[channel: %s] Consensus-type migration: Processing config tx: type: %s, state: %s, context: %d",
+			chain.ChainID(), nextConsensusType, nextMigState.String(), nextMigContext)
+
+		commitMigration := false                                          // Prevent shadowing of commitBlock
+		commitBlock, commitMigration = chain.migrationStatusStepper.Step( // Evaluate the migration state machine
+			chain.ChainID(), nextConsensusType, nextMigState, nextMigContext, chain.lastCutBlockNumber, chain.consenter.migrationController())
+		logger.Debugf("[channel: %s] Consensus-type migration: commitBlock=%v, commitMigration=%v", chain.ChainID(), commitBlock, commitMigration)
+
+		if commitMigration {
+			if !(chain.IsSystemChannel() && commitBlock) { // Sanity check, this should never happen
+				logger.Panicf("[channel: %s] Consensus-type migration: commitMigration=true, but: systemChannel=%v, commitBlock=%v (expect: true/true)",
+					chain.ChainID(), chain.IsSystemChannel(), commitBlock)
+			}
+
+			// TODO Validate that the Raft ConsensusType.Metadata is valid, i.e. has what seems to be valid consenters, options, etc.
+			// TODO Consider doing this in the broadcast phase as well to provide better feedback to user.
+
+			// Replace the genesis block file (bootstrap file) with the last config of the system channel.
+			block := chain.CreateNextBlock([]*cb.Envelope{configTx})
+			replacer := file.NewReplacer(chain.consenter.bootstrapFile())
+			if err = replacer.ReplaceGenesisBlockFile(block); err != nil {
+				_, context := chain.migrationStatusStepper.StateContext()
+				chain.migrationStatusStepper.SetStateContext(ab.ConsensusType_MIG_STATE_START, context) //Undo the commit
+				logger.Warningf("[channel: %s] Consensus-type migration: Reject Config tx on system channel, cannot replace bootstrap file; Status: %s",
+					chain.ChainID(), chain.migrationStatusStepper.String())
+				return false, err
+			}
+
+			logger.Infof("[channel: %s] Consensus-type migration: committed; Replaced bootstrap file: %s; Status: %s",
+				chain.ChainID(), chain.consenter.bootstrapFile(), chain.migrationStatusStepper.String())
+		}
+
+	default:
+		logger.Panicf("Consensus-type migration: Told to  process a config tx with unknown header type: %v", chdr.Type)
+	}
+
+	return commitBlock, err
 }
 
 func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, receivedOffset int64) error {
@@ -1162,4 +1301,29 @@ func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan 
 	})
 
 	return replicaIDs, getReplicaInfo.retry()
+}
+
+// isOrdererTx detects if the config envelope is holding an ORDERER_TX.
+// This is only called during consensus-type migration, so the extra work
+// (unmarshaling the envelope again) is not that important.
+func isOrdererTx(env *cb.Envelope) (bool, error) {
+	payload, err := utils.UnmarshalPayload(env.Payload)
+	if err != nil {
+		return false, err
+	}
+
+	if payload.Header == nil {
+		return false, errors.Errorf("Abort processing config msg because no head was set")
+	}
+
+	if payload.Header.ChannelHeader == nil {
+		return false, errors.Errorf("Abort processing config msg because no channel header was set")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return false, errors.Errorf("Abort processing config msg because channel header unmarshalling error: %s", err)
+	}
+
+	return chdr.Type == int32(cb.HeaderType_ORDERER_TRANSACTION), nil
 }
