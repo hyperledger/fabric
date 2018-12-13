@@ -1357,12 +1357,6 @@ func TestRichQuery(t *testing.T) {
 			//There should be 2 results for owner="tom" with a limit of 2
 			testutil.AssertEquals(t, len(*queryResult), 2)
 
-			//Test query with invalid index  -------------------------------------------------------------------
-			queryString = "{\"selector\":{\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\",\"indexOwner\"]}"
-
-			_, err = db.QueryDocuments(queryString)
-			testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid index"))
-
 		}
 	}
 }
