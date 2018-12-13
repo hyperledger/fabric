@@ -88,6 +88,10 @@ func (o Orderer) ID() string {
 	return fmt.Sprintf("%s.%s", o.Organization, o.Name)
 }
 
+type OrdererCapabilities struct {
+	V2_0 bool `yaml:"v20,omitempty"`
+}
+
 // Peer defines a peer instance, it's owning organization, and the list of
 // channels that the peer shoudl be joined to.
 type Peer struct {
@@ -144,6 +148,7 @@ type Network struct {
 	SystemChannel    *SystemChannel
 	Channels         []*Channel
 	Consensus        *Consensus
+	OrdererCap       *OrdererCapabilities
 	Orderers         []*Orderer
 	Peers            []*Peer
 	Profiles         []*Profile
@@ -172,6 +177,7 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 		Organizations: c.Organizations,
 		Consensus:     c.Consensus,
+		OrdererCap:    c.OrdererCap,
 		Orderers:      c.Orderers,
 		Peers:         c.Peers,
 		SystemChannel: c.SystemChannel,
@@ -732,6 +738,31 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer) {
 	Eventually(createChannel, n.EventuallyTimeout).Should(Equal(0))
 }
 
+// CreateChannelFail will submit an existing create channel transaction to the
+// specified orderer, but expect to FAIL. The channel transaction must exist
+// at the location returned by CreateChannelTxPath.
+//
+// The orderer must be running when this is called.
+func (n *Network) CreateChannelFail(o *Orderer, channelName string) {
+	peers := n.PeersWithChannel(channelName)
+	if len(peers) == 0 {
+		return
+	}
+
+	createChannelFail := func() int {
+		sess, err := n.PeerAdminSession(peers[0], commands.ChannelCreate{
+			ChannelID:   channelName,
+			Orderer:     n.OrdererAddress(o, ListenPort),
+			File:        n.CreateChannelTxPath(channelName),
+			OutputBlock: "/dev/null",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		return sess.Wait(n.EventuallyTimeout).ExitCode()
+	}
+
+	Eventually(createChannelFail, n.EventuallyTimeout).ShouldNot(Equal(0))
+}
+
 // JoinChannel will join peers to the specified channel. The orderer is used to
 // obtain the current configuration block for the channel.
 //
@@ -879,7 +910,8 @@ func (n *Network) OrdererRunner(o *Orderer) *ginkgomon.Runner {
 		StartCheckTimeout: 15 * time.Second,
 	}
 
-	if n.Consensus.Brokers != 0 {
+	//After consensus-type migration, the #brokers is >0, but the type is etcdraft
+	if n.Consensus.Type == "kafka" && n.Consensus.Brokers != 0 {
 		config.StartCheck = "Start phase completed successfully"
 		config.StartCheckTimeout = 30 * time.Second
 	}
