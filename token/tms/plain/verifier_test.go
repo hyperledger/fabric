@@ -192,6 +192,18 @@ var _ = Describe("Verifier", func() {
 			})
 		})
 
+		Context("when an output has no owner", func() {
+			BeforeEach(func() {
+				importTransaction.GetPlainAction().GetPlainImport().Outputs[0].Owner = []byte{}
+				importTxID = "no-owner-id"
+			})
+
+			It("returns an InvalidTxError", func() {
+				err := verifier.ProcessTx(importTxID, fakePublicInfo, importTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", importTxID)}))
+			})
+		})
+
 	})
 
 	Describe("Output GetState error scenarios", func() {
@@ -485,7 +497,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token input '\x00tokenOutput\x000\x000\x00' spent more than once in single transfer with txID '1'"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token input '\x00tokenOutput\x000\x000\x00' spent more than once in transaction ID '1'"}))
 			})
 		})
 
@@ -512,7 +524,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token type mismatch in inputs and outputs for transfer with ID 1 (wild_pineapple vs TOK1)"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token type mismatch in inputs and outputs for transaction ID 1 (wild_pineapple vs TOK1)"}))
 			})
 		})
 
@@ -539,7 +551,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token sum mismatch in inputs and outputs for transfer with ID 1 (124 vs 111)"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token sum mismatch in inputs and outputs for transaction ID 1 (124 vs 111)"}))
 			})
 		})
 
@@ -586,7 +598,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types in transfer input for txID: 1 (TOK1, TOK2)"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types in input for txID: 1 (TOK1, TOK2)"}))
 			})
 		})
 
@@ -613,7 +625,7 @@ var _ = Describe("Verifier", func() {
 
 			It("returns an InvalidTxError", func() {
 				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types ('TOK1', 'TOK2') in transfer output for txID '1'"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types ('TOK1', 'TOK2') in output for txID '1'"}))
 			})
 		})
 
@@ -654,6 +666,17 @@ var _ = Describe("Verifier", func() {
 				Expect(err).To(HaveOccurred())
 				existingOutputId := string("\x00") + "tokenOutput" + string("\x00") + "0" + string("\x00") + "0" + string("\x00")
 				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
+			})
+		})
+
+		Context("when an output has no owner", func() {
+			BeforeEach(func() {
+				transferTransaction.GetPlainAction().GetPlainTransfer().Outputs[0].Owner = nil
+			})
+
+			It("returns an InvalidTxError", func() {
+				err := verifier.ProcessTx(transferTxID, fakePublicInfo, transferTransaction, memoryLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", transferTxID)}))
 			})
 		})
 	})
@@ -793,7 +816,7 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{
-					Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transfer with ID %s (%d vs %d)", redeemTxID, 100, 111)}))
+					Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", redeemTxID, 100, 111)}))
 			})
 		})
 
@@ -842,7 +865,19 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
 				Expect(err).To(Equal(&customtx.InvalidTxError{
-					Msg: fmt.Sprintf("multiple token types in transfer input for txID: %s (TOK1, TOK2)", redeemTxID)}))
+					Msg: fmt.Sprintf("multiple token types in input for txID: %s (TOK1, TOK2)", redeemTxID)}))
+			})
+		})
+
+		Context("when redeem output has wrong type", func() {
+			BeforeEach(func() {
+				redeemTransaction.GetPlainAction().GetPlainRedeem().Outputs[0].Type = "newtype"
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
+				Expect(err).To(MatchError(fmt.Sprintf(
+					fmt.Sprintf("token type mismatch in inputs and outputs for transaction ID %s (%s vs %s)", redeemTxID, "newtype", "TOK1"))))
 			})
 		})
 
@@ -869,6 +904,56 @@ var _ = Describe("Verifier", func() {
 			It("returns an error", func() {
 				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
 				Expect(err).To(MatchError(fmt.Sprintf(fmt.Sprintf("wrong owner for remaining tokens, should be original owner owner-1, but got owner-2"))))
+			})
+		})
+
+		Context("when output for remaining tokens has no owner", func() {
+			BeforeEach(func() {
+				// do not set owner in the output for unredeemed tokens
+				redeemTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainRedeem{
+								PlainRedeem: &token.PlainTransfer{
+									Inputs: inputIds,
+									Outputs: []*token.PlainOutput{
+										{Type: "TOK1", Quantity: 99},
+										{Type: "TOK1", Quantity: 12},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
+				Expect(err).To(MatchError(fmt.Sprintf(fmt.Sprintf("wrong owner for remaining tokens, should be original owner owner-1, but got "))))
+			})
+		})
+
+		Context("when output for redeemed tokens has owner", func() {
+			BeforeEach(func() {
+				// set owner for the redeem output
+				redeemTransaction.GetPlainAction().GetPlainRedeem().Outputs[0].Owner = []byte("Owner-1")
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, memoryLedger)
+				Expect(err).To(MatchError(fmt.Sprintf(fmt.Sprintf("owner should be nil in a redeem output"))))
+			})
+		})
+
+		Context("when redeem output key already exists", func() {
+			BeforeEach(func() {
+				fakeLedger.GetStateReturns([]byte("state-bytes"), nil)
+			})
+
+			It("returns an error", func() {
+				err := verifier.ProcessTx(redeemTxID, fakePublicInfo, redeemTransaction, fakeLedger)
+				existingOutputID := string("\x00") + "tokenRedeem" + string("\x00") + redeemTxID + string("\x00") + "0" + string("\x00")
+				Expect(err).To(MatchError(fmt.Sprintf("output already exists: %s", existingOutputID)))
 			})
 		})
 	})
@@ -991,7 +1076,7 @@ var _ = Describe("Verifier", func() {
 				}
 
 				err := verifier.ProcessTx(approveTxID, fakePublicInfo, approveTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token input '\x00tokenOutput\x000\x000\x00' spent more than once in single transfer with txID '1'"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token input '\x00tokenOutput\x000\x000\x00' spent more than once in transaction ID '1'"}))
 			})
 		})
 
@@ -1078,7 +1163,7 @@ var _ = Describe("Verifier", func() {
 					},
 				}
 				err = verifier.ProcessTx(approveTxID, fakePublicInfo, approveTransaction, fakeLedger)
-				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types in transfer input for txID: 1 (XYZ, ABC)"}))
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types in input for txID: 1 (XYZ, ABC)"}))
 			})
 		})
 

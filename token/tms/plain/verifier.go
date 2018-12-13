@@ -108,7 +108,7 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("no outputs in transaction: %s", txID)}
 	}
 	for i, output := range outputs {
-		err := v.checkOutputDoesNotExist(i, txID, simulator)
+		err := v.checkOutputDoesNotExist(i, output, txID, simulator)
 		if err != nil {
 			return err
 		}
@@ -116,36 +116,25 @@ func (v *Verifier) checkImportOutputs(outputs []*token.PlainOutput, txID string,
 		if output.Quantity == 0 {
 			return &customtx.InvalidTxError{Msg: fmt.Sprintf("output %d quantity is 0 in transaction: %s", i, txID)}
 		}
+
+		if len(output.Owner) == 0 {
+			return &customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", txID)}
+		}
 	}
 	return nil
 }
 
 func (v *Verifier) checkTransferAction(creator identity.PublicInfo, transferAction *token.PlainTransfer, txID string, simulator ledger.LedgerReader) error {
-	outputType, outputSum, err := v.checkTransferOutputs(transferAction.GetOutputs(), txID, simulator)
-	if err != nil {
-		return err
-	}
-	inputType, inputSum, err := v.checkTransferInputs(creator, transferAction.GetInputs(), txID, simulator)
-	if err != nil {
-		return err
-	}
-	if outputType != inputType {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token type mismatch in inputs and outputs for transfer with ID %s (%s vs %s)", txID, outputType, inputType)}
-	}
-	if outputSum != inputSum {
-		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transfer with ID %s (%d vs %d)", txID, outputSum, inputSum)}
-	}
-	return nil
+	return v.checkInputsAndOutputs(creator, transferAction.GetInputs(), transferAction.GetOutputs(), txID, simulator, true)
 }
 
 func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *token.PlainTransfer, txID string, simulator ledger.LedgerReader) error {
-	// first perform the same checking as transfer
-	err := v.checkTransferAction(creator, redeemAction, txID, simulator)
+	err := v.checkInputsAndOutputs(creator, redeemAction.GetInputs(), redeemAction.GetOutputs(), txID, simulator, false)
 	if err != nil {
 		return err
 	}
 
-	// then perform additional checking for redeem outputs
+	// perform additional checking for redeem outputs
 	// redeem transaction should not have more than 2 outputs.
 	outputs := redeemAction.GetOutputs()
 	if len(outputs) > 2 {
@@ -167,8 +156,40 @@ func (v *Verifier) checkRedeemAction(creator identity.PublicInfo, redeemAction *
 	return nil
 }
 
-func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator ledger.LedgerReader) error {
-	outputID, err := createOutputKey(txID, index)
+// checkInputsAndOutputs checks that inputs and outputs are valid and have same type and sum of quantity
+func (v *Verifier) checkInputsAndOutputs(
+	creator identity.PublicInfo,
+	inputIDs []*token.InputId,
+	outputs []*token.PlainOutput,
+	txID string,
+	simulator ledger.LedgerReader,
+	ownerRequired bool) error {
+
+	outputType, outputSum, err := v.checkOutputs(outputs, txID, simulator, ownerRequired)
+	if err != nil {
+		return err
+	}
+	inputType, inputSum, err := v.checkInputs(creator, inputIDs, txID, simulator)
+	if err != nil {
+		return err
+	}
+	if outputType != inputType {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token type mismatch in inputs and outputs for transaction ID %s (%s vs %s)", txID, outputType, inputType)}
+	}
+	if outputSum != inputSum {
+		return &customtx.InvalidTxError{Msg: fmt.Sprintf("token sum mismatch in inputs and outputs for transaction ID %s (%d vs %d)", txID, outputSum, inputSum)}
+	}
+	return nil
+}
+
+func (v *Verifier) checkOutputDoesNotExist(index int, output *token.PlainOutput, txID string, simulator ledger.LedgerReader) error {
+	var outputID string
+	var err error
+	if output.Owner != nil {
+		outputID, err = createOutputKey(txID, index)
+	} else {
+		outputID, err = createRedeemKey(txID, index)
+	}
 	if err != nil {
 		return &customtx.InvalidTxError{Msg: fmt.Sprintf("error creating output ID: %s", err)}
 	}
@@ -184,25 +205,28 @@ func (v *Verifier) checkOutputDoesNotExist(index int, txID string, simulator led
 	return nil
 }
 
-func (v *Verifier) checkTransferOutputs(outputs []*token.PlainOutput, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
+func (v *Verifier) checkOutputs(outputs []*token.PlainOutput, txID string, simulator ledger.LedgerReader, ownerRequired bool) (string, uint64, error) {
 	tokenType := ""
 	tokenSum := uint64(0)
 	for i, output := range outputs {
-		err := v.checkOutputDoesNotExist(i, txID, simulator)
+		err := v.checkOutputDoesNotExist(i, output, txID, simulator)
 		if err != nil {
 			return "", 0, err
 		}
 		if tokenType == "" {
 			tokenType = output.GetType()
 		} else if tokenType != output.GetType() {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in transfer output for txID '%s'", tokenType, output.GetType(), txID)}
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types ('%s', '%s') in output for txID '%s'", tokenType, output.GetType(), txID)}
+		}
+		if ownerRequired && len(output.GetOwner()) == 0 {
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("missing owner in output for txID '%s'", txID)}
 		}
 		tokenSum += output.GetQuantity()
 	}
 	return tokenType, tokenSum, nil
 }
 
-func (v *Verifier) checkTransferInputs(creator identity.PublicInfo, inputIDs []*token.InputId, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
+func (v *Verifier) checkInputs(creator identity.PublicInfo, inputIDs []*token.InputId, txID string, simulator ledger.LedgerReader) (string, uint64, error) {
 	tokenType := ""
 	inputSum := uint64(0)
 	processedIDs := make(map[string]bool)
@@ -222,10 +246,10 @@ func (v *Verifier) checkTransferInputs(creator identity.PublicInfo, inputIDs []*
 		if tokenType == "" {
 			tokenType = input.GetType()
 		} else if tokenType != input.GetType() {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types in transfer input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("multiple token types in input for txID: %s (%s, %s)", txID, tokenType, input.GetType())}
 		}
 		if processedIDs[inputKey] {
-			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("token input '%s' spent more than once in single transfer with txID '%s'", inputKey, txID)}
+			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("token input '%s' spent more than once in transaction ID '%s'", inputKey, txID)}
 		}
 		processedIDs[inputKey] = true
 		inputSum += input.GetQuantity()
@@ -355,7 +379,7 @@ func (v *Verifier) checkApproveAction(creator identity.PublicInfo, approveAction
 	if err != nil {
 		return err
 	}
-	inputType, inputSum, err := v.checkTransferInputs(creator, approveAction.GetInputs(), txID, simulator)
+	inputType, inputSum, err := v.checkInputs(creator, approveAction.GetInputs(), txID, simulator)
 	if err != nil {
 		return err
 	}
@@ -402,7 +426,7 @@ func (v *Verifier) checkApproveOutputs(creator identity.PublicInfo, output *toke
 			return "", 0, &customtx.InvalidTxError{Msg: fmt.Sprintf("the owner of the output is not valid")}
 		}
 		tokenType = output.GetType()
-		err := v.checkOutputDoesNotExist(0, txID, simulator)
+		err := v.checkOutputDoesNotExist(0, output, txID, simulator)
 		if err != nil {
 			return "", 0, err
 		}
