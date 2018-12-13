@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package inactive
 
 import (
+	"github.com/hyperledger/fabric/orderer/consensus/migration"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -41,4 +42,8 @@ func (c *Chain) Start() {
 
 func (c *Chain) Halt() {
 
+}
+
+func (c *Chain) MigrationStatus() migration.Status {
+	return &migration.StatusImpl{}
 }
