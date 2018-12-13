@@ -164,7 +164,7 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 }
 
 // CurrentConfigBlockNumber retrieves the block number from the header of the
-// current config block. This can be used to detect whena configuration change
+// current config block. This can be used to detect when configuration change
 // has completed.
 func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel string) uint64 {
 	tempDir, err := ioutil.TempDir("", "currentConfigBlock")
