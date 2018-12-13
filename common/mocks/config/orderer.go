@@ -19,6 +19,11 @@ type Orderer struct {
 	ConsensusTypeVal string
 	// ConsensusMetadataVal is returned as the result of ConsensusMetadata()
 	ConsensusMetadataVal []byte
+
+	ConsensusTypeMigrationStateVal ab.ConsensusType_MigrationState
+
+	ConsensusTypeMigrationContextVal uint64
+
 	// BatchSizeVal is returned as the result of BatchSize()
 	BatchSizeVal *ab.BatchSize
 	// BatchTimeoutVal is returned as the result of BatchTimeout()
@@ -41,6 +46,16 @@ func (o *Orderer) ConsensusType() string {
 // ConsensusMetadata returns the ConsensusMetadataVal
 func (o *Orderer) ConsensusMetadata() []byte {
 	return o.ConsensusMetadataVal
+}
+
+// ConsensusMigrationState returns the ConsensusTypeMigrationStateVal
+func (o *Orderer) ConsensusMigrationState() ab.ConsensusType_MigrationState {
+	return o.ConsensusTypeMigrationStateVal
+}
+
+// ConsensusMigrationContext returns the ConsensusTypeMigrationContextVal
+func (o *Orderer) ConsensusMigrationContext() uint64 {
+	return o.ConsensusTypeMigrationContextVal
 }
 
 // BatchSize returns the BatchSizeVal
@@ -86,6 +101,8 @@ type OrdererCapabilities struct {
 
 	// ExpirationVal is returned by ExpirationCheck()
 	ExpirationVal bool
+
+	Kafka2RaftMigVal bool
 }
 
 // Supported returns SupportedErr
@@ -107,4 +124,9 @@ func (oc *OrdererCapabilities) Resubmission() bool {
 // when validating messages
 func (oc *OrdererCapabilities) ExpirationCheck() bool {
 	return oc.ExpirationVal
+}
+
+// Kafka2RaftMigration checks whether the orderer permits a kafka to raft migration.
+func (oc *OrdererCapabilities) Kafka2RaftMigration() bool {
+	return oc.Kafka2RaftMigVal
 }

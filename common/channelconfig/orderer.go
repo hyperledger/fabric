@@ -20,28 +20,28 @@ import (
 )
 
 const (
-	// OrdererGroupKey is the group name for the orderer config
+	// OrdererGroupKey is the group name for the orderer config.
 	OrdererGroupKey = "Orderer"
 )
 
 const (
-	// ConsensusTypeKey is the cb.ConfigItem type key name for the ConsensusType message
+	// ConsensusTypeKey is the cb.ConfigItem type key name for the ConsensusType message.
 	ConsensusTypeKey = "ConsensusType"
 
-	// BatchSizeKey is the cb.ConfigItem type key name for the BatchSize message
+	// BatchSizeKey is the cb.ConfigItem type key name for the BatchSize message.
 	BatchSizeKey = "BatchSize"
 
-	// BatchTimeoutKey is the cb.ConfigItem type key name for the BatchTimeout message
+	// BatchTimeoutKey is the cb.ConfigItem type key name for the BatchTimeout message.
 	BatchTimeoutKey = "BatchTimeout"
 
-	// ChannelRestrictionsKey is the key name for the ChannelRestrictions message
+	// ChannelRestrictionsKey is the key name for the ChannelRestrictions message.
 	ChannelRestrictionsKey = "ChannelRestrictions"
 
-	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message
+	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message.
 	KafkaBrokersKey = "KafkaBrokers"
 )
 
-// OrdererProtos is used as the source of the OrdererConfig
+// OrdererProtos is used as the source of the OrdererConfig.
 type OrdererProtos struct {
 	ConsensusType       *ab.ConsensusType
 	BatchSize           *ab.BatchSize
@@ -51,7 +51,7 @@ type OrdererProtos struct {
 	Capabilities        *cb.Capabilities
 }
 
-// OrdererConfig holds the orderer configuration information
+// OrdererConfig holds the orderer configuration information.
 type OrdererConfig struct {
 	protos *OrdererProtos
 	orgs   map[string]Org
@@ -59,7 +59,7 @@ type OrdererConfig struct {
 	batchTimeout time.Duration
 }
 
-// NewOrdererConfig creates a new instance of the orderer config
+// NewOrdererConfig creates a new instance of the orderer config.
 func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*OrdererConfig, error) {
 	oc := &OrdererConfig{
 		protos: &OrdererProtos{},
@@ -83,7 +83,7 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 	return oc, nil
 }
 
-// ConsensusType returns the configured consensus type
+// ConsensusType returns the configured consensus type.
 func (oc *OrdererConfig) ConsensusType() string {
 	return oc.protos.ConsensusType.Type
 }
@@ -93,34 +93,44 @@ func (oc *OrdererConfig) ConsensusMetadata() []byte {
 	return oc.protos.ConsensusType.Metadata
 }
 
-// BatchSize returns the maximum number of messages to include in a block
+// ConsensusMigrationState return the consensus type migration state.
+func (oc *OrdererConfig) ConsensusMigrationState() ab.ConsensusType_MigrationState {
+	return oc.protos.ConsensusType.MigrationState
+}
+
+// ConsensusMigrationContext return the consensus type migration context.
+func (oc *OrdererConfig) ConsensusMigrationContext() uint64 {
+	return oc.protos.ConsensusType.MigrationContext
+}
+
+// BatchSize returns the maximum number of messages to include in a block.
 func (oc *OrdererConfig) BatchSize() *ab.BatchSize {
 	return oc.protos.BatchSize
 }
 
-// BatchTimeout returns the amount of time to wait before creating a batch
+// BatchTimeout returns the amount of time to wait before creating a batch.
 func (oc *OrdererConfig) BatchTimeout() time.Duration {
 	return oc.batchTimeout
 }
 
 // KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
 // Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
-// used for ordering
+// used for ordering.
 func (oc *OrdererConfig) KafkaBrokers() []string {
 	return oc.protos.KafkaBrokers.Brokers
 }
 
-// MaxChannelsCount returns the maximum count of channels this orderer supports
+// MaxChannelsCount returns the maximum count of channels this orderer supports.
 func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 	return oc.protos.ChannelRestrictions.MaxCount
 }
 
-// Organizations returns a map of the orgs in the channel
+// Organizations returns a map of the orgs in the channel.
 func (oc *OrdererConfig) Organizations() map[string]Org {
 	return oc.orgs
 }
 
-// Capabilities returns the capabilities the ordering network has for this channel
+// Capabilities returns the capabilities the ordering network has for this channel.
 func (oc *OrdererConfig) Capabilities() OrdererCapabilities {
 	return capabilities.NewOrdererProvider(oc.protos.Capabilities.Capabilities)
 }
