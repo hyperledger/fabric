@@ -41,13 +41,19 @@ type node struct {
 	raft.Node
 }
 
-func (n *node) start(fresh, join bool) {
+func (n *node) start(fresh, join, migration bool) {
 	raftPeers := RaftPeers(n.metadata.Consenters)
+	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
 	if fresh {
 		if join {
-			raftPeers = nil
-			n.logger.Info("Starting raft node to join an existing channel")
+			if !migration {
+				raftPeers = nil
+				n.logger.Info("Starting raft node to join an existing channel")
+
+			} else {
+				n.logger.Info("Starting raft node to join an existing channel, after consensus-type migration")
+			}
 		} else {
 			n.logger.Info("Starting raft node as part of a new channel")
 		}
