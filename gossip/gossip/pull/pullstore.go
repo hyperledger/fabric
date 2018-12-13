@@ -171,19 +171,16 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 	if helloMsg := msg.GetHello(); helloMsg != nil {
 		pullMsgType = HelloMsgType
 		p.engine.OnHello(helloMsg.Nonce, m)
-	}
-	if digest := msg.GetDataDig(); digest != nil {
+	} else if digest := msg.GetDataDig(); digest != nil {
 		d := p.PullAdapter.IngressDigFilter(digest)
 		itemIDs = util.BytesToStrings(d.Digests)
 		pullMsgType = DigestMsgType
 		p.engine.OnDigest(itemIDs, d.Nonce, m)
-	}
-	if req := msg.GetDataReq(); req != nil {
+	} else if req := msg.GetDataReq(); req != nil {
 		itemIDs = util.BytesToStrings(req.Digests)
 		pullMsgType = RequestMsgType
 		p.engine.OnReq(itemIDs, req.Nonce, m)
-	}
-	if res := msg.GetDataUpdate(); res != nil {
+	} else if res := msg.GetDataUpdate(); res != nil {
 		itemIDs = make([]string, len(res.Data))
 		items = make([]*proto.SignedGossipMessage, len(res.Data))
 		pullMsgType = ResponseMsgType
