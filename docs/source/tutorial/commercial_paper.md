@@ -118,7 +118,7 @@ You can now create a directory relative to `$GOPATH `where `fabric-samples` will
 be installed:
 
 ```
-$ mkdir -P $GOPATH/src/github.com/hyperledger/
+$ mkdir -p $GOPATH/src/github.com/hyperledger/
 $ cd $GOPATH/src/github.com/hyperledger/
 ```
 
