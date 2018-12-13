@@ -1,18 +1,5 @@
-/*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 package bootstrap
 
@@ -25,4 +12,27 @@ type Helper interface {
 	// GenesisBlock should return the genesis block required to bootstrap
 	// the ledger (be it reading from the filesystem, generating it, etc.)
 	GenesisBlock() *ab.Block
+}
+
+// Replacer provides the ability to to replace the current genesis block used
+// for bootstrapping with the supplied block. It is used during consensus-type
+// migration in order to replace the original genesis block used for
+// bootstrapping with the latest config block of the system channel, which
+// contains the new consensus-type. This will ensure the instantiation of the
+// correct consenter type when the server restarts.
+type Replacer interface {
+	// ReplaceGenesisBlockFile should first copy the current file to a backup
+	// file: <genesis-file-name> => <genesis-file-name>.bak
+	// and then overwrite the original file with the content of the given block.
+	// If something goes wrong during migration, the original file could be
+	// restored from the backup.
+	// An error is returned if the operation was not completed successfully.
+	ReplaceGenesisBlockFile(block *ab.Block) error
+
+	// CheckReadWrite checks whether the current file is readable and writable,
+	// because if it is not, there is no point in attempting to replace. This
+	// check is performed at the beginning of the consensus-type migration
+	// process.
+	// An error is returned if the file is not readable and writable.
+	CheckReadWrite() error
 }
