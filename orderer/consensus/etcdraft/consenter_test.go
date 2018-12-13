@@ -152,7 +152,12 @@ var _ = Describe("Consenter", func() {
 			},
 		}
 		metadata := utils.MarshalOrPanic(m)
-		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
+		support.SharedConfigReturns(&mockconfig.Orderer{
+			ConsensusMetadataVal: metadata,
+			CapabilitiesVal: &mockconfig.OrdererCapabilities{
+				Kafka2RaftMigVal: false,
+			},
+		})
 
 		consenter := newConsenter(chainGetter)
 		consenter.EtcdRaftConfig.WALDir = walDir
@@ -181,7 +186,12 @@ var _ = Describe("Consenter", func() {
 		}
 		metadata := utils.MarshalOrPanic(m)
 		support := &consensusmocks.FakeConsenterSupport{}
-		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
+		support.SharedConfigReturns(&mockconfig.Orderer{
+			ConsensusMetadataVal: metadata,
+			CapabilitiesVal: &mockconfig.OrdererCapabilities{
+				Kafka2RaftMigVal: false,
+			},
+		})
 		support.ChainIDReturns("foo")
 
 		consenter := newConsenter(chainGetter)
@@ -200,7 +210,12 @@ var _ = Describe("Consenter", func() {
 			},
 		}
 		metadata := utils.MarshalOrPanic(m)
-		support.SharedConfigReturns(&mockconfig.Orderer{ConsensusMetadataVal: metadata})
+		support.SharedConfigReturns(&mockconfig.Orderer{
+			ConsensusMetadataVal: metadata,
+			CapabilitiesVal: &mockconfig.OrdererCapabilities{
+				Kafka2RaftMigVal: false,
+			},
+		})
 
 		consenter := newConsenter(chainGetter)
 
