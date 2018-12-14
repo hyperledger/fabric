@@ -12,23 +12,26 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
-	"github.com/hyperledger/fabric/core/ledger/customtx/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	mocktxmgr "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -415,24 +418,28 @@ func TestTxStatsInfo(t *testing.T) {
 				ChaincodeName:     "cc_1",
 				ChaincodeVersion:  "cc_1_v1",
 				SimulationResults: tx1SimulationResults,
+				Type:              common.HeaderType_ENDORSER_TRANSACTION,
 			},
 			{
 				TxID:              "tx_2",
 				ChaincodeName:     "cc_2",
 				ChaincodeVersion:  "cc_2_v1",
 				SimulationResults: tx2SimulationResults,
+				Type:              common.HeaderType_ENDORSER_TRANSACTION,
 			},
 			{
 				TxID:              "tx_3",
 				ChaincodeName:     "cc_3",
 				ChaincodeVersion:  "cc_3_v1",
 				SimulationResults: tx3SimulationResults,
+				Type:              common.HeaderType_ENDORSER_TRANSACTION,
 			},
 			{
 				TxID:              "tx_4",
 				ChaincodeName:     "cc_4",
 				ChaincodeVersion:  "cc_4_v1",
 				SimulationResults: tx4SimulationResults,
+				Type:              common.HeaderType_ENDORSER_TRANSACTION,
 			},
 		},
 	}
@@ -547,4 +554,120 @@ func testutilGenerateTxSimulationResultsAsBytes(
 	pvt, err := simulationRes.GetPvtSimulationBytes()
 	assert.NoError(t, err)
 	return pub, pvt
+}
+
+//go:generate counterfeiter -o mock/txsim.go --fake-name TxSimulator . txSimulator
+type txSimulator interface {
+	ledger.TxSimulator
+}
+
+//go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
+type processor interface {
+	customtx.Processor
+}
+
+//go:generate counterfeiter -o mock/txmgr.go --fake-name TxMgr . txMgr
+type txMgr interface {
+	txmgr.TxMgr
+}
+
+// Test for txType != common.HeaderType_ENDORSER_TRANSACTION
+func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
+	// Register customtx processor
+	mockTxProcessor := new(mock.Processor)
+	mockTxProcessor.GenerateSimulationResultsReturns(nil)
+	customtx.InitializeTestEnv(customtx.Processors{
+		100: mockTxProcessor,
+	})
+
+	// Prepare param1: txmgr.TxMgr
+	kvw := &kvrwset.KVWrite{Key: "key1", IsDelete: false, Value: []byte{0xde, 0xad, 0xbe, 0xef}}
+	kvrw := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{kvw}}
+	mkvrw, _ := proto.Marshal(kvrw)
+	nrws := rwset.NsReadWriteSet{
+		Namespace: "ns1",
+		Rwset:     mkvrw,
+	}
+	pubsimresults := rwset.TxReadWriteSet{
+		DataModel: -1,
+		NsRwset:   []*rwset.NsReadWriteSet{&nrws},
+	}
+	txsimres := &ledger.TxSimulationResults{
+		PubSimulationResults: &pubsimresults,
+		PvtSimulationResults: nil,
+	}
+	txsim_ := new(mock.TxSimulator)
+	txsim_.GetTxSimulationResultsReturns(txsimres, nil)
+	txmgr_ := new(mock.TxMgr)
+	txmgr_.NewTxSimulatorReturns(txsim_, nil)
+
+	// Prepare param2: validateKVFunc
+	alwaysValidKVFunc := func(key string, value []byte) error {
+		return nil
+	}
+
+	// Prepare param3: *common.Block
+	pubSimulationResults := [][]byte{}
+	txids := []string{"tx1"}
+	// Get simulation results for tx1
+	rwSetBuilder := rwsetutil.NewRWSetBuilder()
+	tx1SimulationResults, err := rwSetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	// Add tx1 public rwset to the set of results
+	res, err := tx1SimulationResults.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	pubSimulationResults = append(pubSimulationResults, res)
+	// Construct a block using a transaction simulation result
+	block := testutil.ConstructBlockWithTxidHeaderType(
+		t,
+		10,
+		testutil.ConstructRandomBytes(t, 32),
+		pubSimulationResults,
+		txids,
+		false,
+		100,
+	)
+
+	// Call
+	internalBlock, txsStatInfo, err2 := preprocessProtoBlock(txmgr_, alwaysValidKVFunc, block, false)
+
+	// Prepare expected value
+	expectedPreprocessedBlock := &internal.Block{
+		Num: 10,
+	}
+	value1 := []byte{0xde, 0xad, 0xbe, 0xef}
+	expKVWrite := &kvrwset.KVWrite{
+		Key:      "key1",
+		IsDelete: false,
+		Value:    value1,
+	}
+	expKVRWSet := &kvrwset.KVRWSet{
+		Writes: []*kvrwset.KVWrite{expKVWrite},
+	}
+	expNsRwSet := &rwsetutil.NsRwSet{
+		NameSpace: "ns1",
+		KvRwSet:   expKVRWSet,
+	}
+	expTxRwSet := &rwsetutil.TxRwSet{
+		NsRwSets: []*rwsetutil.NsRwSet{expNsRwSet},
+	}
+	expectedPreprocessedBlock.Txs = append(
+		expectedPreprocessedBlock.Txs,
+		&internal.Transaction{
+			IndexInBlock:            0,
+			ID:                      "tx1",
+			RWSet:                   expTxRwSet,
+			ContainsPostOrderWrites: true,
+		},
+	)
+	expectedTxStatInfo := []*txmgr.TxStatInfo{
+		{
+			TxType: 100,
+		},
+	}
+
+	// Check result
+	assert.NoError(t, err2)
+	assert.Equal(t, expectedPreprocessedBlock, internalBlock)
+	assert.Equal(t, expectedTxStatInfo, txsStatInfo)
 }
