@@ -315,6 +315,11 @@ Starting monitoring on all containers on the network net_basic
 b7f3586e5d0233de5a454df369b8eadab0613886fc9877529587345fc01a3582
 ```
 
+Note that you can pass a port number to the above command if the default port in `monitordocker.sh` is already in use.
+```
+(magnetocorp admin)$ ./monitordocker.sh net_basic <port_number>
+```
+
 This window will now show output from the docker containers, so let's start
 another terminal window which will allow the MagnetoCorp administrator to
 interact with the network.
