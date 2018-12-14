@@ -5,7 +5,7 @@ Writing Your First Application
           Fabric network, you may want to visit the :doc:`key_concepts` section
           prior to continuing.
 
-          It is also worth nothing that this tutorial serves as an introduction
+          It is also worth noting that this tutorial serves as an introduction
           to Fabric applications and uses simple smart contracts and
           applications. For a more in-depth look at Fabric applications and
           smart contracts, check out our
@@ -321,7 +321,7 @@ See how our smart contract is defined using the ``Contract`` class:
 
   class FabCar extends Contract {...
 
-Within this class structure, you'll can see that we have the following
+Within this class structure, you'll see that we have the following
 transactions defined: ``initLedger``, ``queryCar``, ``queryAllCars``,
 ``createCar``, and ``changeCarOwner``. For example:
 
