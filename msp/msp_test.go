@@ -53,6 +53,7 @@ func TestMSPParsers(t *testing.T) {
 
 	sigid := &msp.SigningIdentityInfo{PublicSigner: []byte("barf"), PrivateSigner: nil}
 	_, err = localMsp.(*bccspmsp).getSigningIdentityFromConf(sigid)
+	assert.Error(t, err)
 
 	keyinfo := &msp.KeyInfo{KeyIdentifier: "PEER", KeyMaterial: nil}
 	sigid = &msp.SigningIdentityInfo{PublicSigner: []byte("barf"), PrivateSigner: keyinfo}
