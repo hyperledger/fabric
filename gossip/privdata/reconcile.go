@@ -25,7 +25,7 @@ import (
 
 const (
 	reconcileSleepIntervalConfigKey = "peer.gossip.pvtData.reconcileSleepInterval"
-	reconcileSleepIntervalDefault   = time.Minute * 5
+	reconcileSleepIntervalDefault   = time.Minute * 1
 	reconcileBatchSizeConfigKey     = "peer.gossip.pvtData.reconcileBatchSize"
 	reconcileBatchSizeDefault       = 10
 	reconciliationEnabledConfigKey  = "peer.gossip.pvtData.reconciliationEnabled"
@@ -126,63 +126,71 @@ func (r *Reconciler) run() {
 			return
 		case <-time.After(r.config.sleepInterval):
 			logger.Debug("Start reconcile missing private info")
-			numOfItems, minBlock, maxBlock, err := r.reconcile()
-			if err != nil {
+			if err := r.reconcile(); err != nil {
 				logger.Error("Failed to reconcile missing private info, error: ", err.Error())
 				break
 			}
-			if numOfItems > 0 {
-				logger.Infof("Reconciliation cycle finished successfully. reconciled %d private data keys from blocks range [%d - %d]", numOfItems, minBlock, maxBlock)
-				break
-			}
-			logger.Debug("Reconciliation cycle finished successfully. no items to reconcile")
 		}
 	}
 }
 
 // returns the number of items that were reconciled , minBlock, maxBlock (blocks range) and an error
-func (r *Reconciler) reconcile() (int, uint64, uint64, error) {
+func (r *Reconciler) reconcile() error {
 	missingPvtDataTracker, err := r.GetMissingPvtDataTracker()
 	if err != nil {
 		logger.Error("reconciliation error when trying to get missingPvtDataTrcker:", err)
-		return 0, 0, 0, err
+		return err
 	}
 	if missingPvtDataTracker == nil {
 		logger.Error("got nil as MissingPvtDataTracker, exiting...")
-		return 0, 0, 0, errors.New("got nil as MissingPvtDataTracker, exiting...")
+		return errors.New("got nil as MissingPvtDataTracker, exiting...")
 	}
-	missingPvtDataInfo, err := missingPvtDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(r.config.batchSize)
-	if err != nil {
-		logger.Error("reconciliation error when trying to get missing pvt data info recent blocks:", err)
-		return 0, 0, 0, err
-	}
-	// if missingPvtDataInfo is nil, len will return 0
-	if len(missingPvtDataInfo) == 0 {
-		logger.Debug("No missing private data to reconcile, exiting...")
-		return 0, 0, 0, nil
-	}
-	logger.Debug("got from ledger", len(missingPvtDataInfo), "blocks with missing private data, trying to reconcile...")
-	dig2collectionCfg, minBlock, maxBlock := r.getDig2CollectionConfig(missingPvtDataInfo)
+	totalReconciled, minBlock, maxBlock := 0, uint64(math.MaxUint64), uint64(0)
 
-	fetchedData, err := r.FetchReconciledItems(dig2collectionCfg)
-	if err != nil {
-		logger.Error("reconciliation error when trying to fetch missing items from different peers:", err)
-		return 0, 0, 0, err
-	}
-	if len(fetchedData.AvailableElements) == 0 {
-		logger.Warning("failed to reconcile missing private data from the other peers")
-		return 0, 0, 0, nil
-	}
+	for {
+		missingPvtDataInfo, err := missingPvtDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(r.config.batchSize)
+		if err != nil {
+			logger.Error("reconciliation error when trying to get missing pvt data info recent blocks:", err)
+			return err
+		}
+		// if missingPvtDataInfo is nil, len will return 0
+		if len(missingPvtDataInfo) == 0 {
+			if totalReconciled > 0 {
+				logger.Infof("Reconciliation cycle finished successfully. reconciled %d private data keys from blocks range [%d - %d]", totalReconciled, minBlock, maxBlock)
+			} else {
+				logger.Debug("Reconciliation cycle finished successfully. no items to reconcile")
+			}
+			return nil
+		}
 
-	pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
-	// commit missing private data that was reconciled and log mismatched
-	pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit)
-	r.logMismatched(pvtdataHashMismatch)
-	if err != nil {
-		return 0, 0, 0, errors.Wrap(err, "failed to commit private data")
-	}
+		logger.Debug("got from ledger", len(missingPvtDataInfo), "blocks with missing private data, trying to reconcile...")
 
-	return len(fetchedData.AvailableElements), minBlock, maxBlock, nil
+		dig2collectionCfg, minB, maxB := r.getDig2CollectionConfig(missingPvtDataInfo)
+		fetchedData, err := r.FetchReconciledItems(dig2collectionCfg)
+		if err != nil {
+			logger.Error("reconciliation error when trying to fetch missing items from different peers:", err)
+			return err
+		}
+		if len(fetchedData.AvailableElements) == 0 {
+			logger.Warning("missing private data is not available on other peers")
+			return nil
+		}
+
+		pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
+		// commit missing private data that was reconciled and log mismatched
+		pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit)
+		r.logMismatched(pvtdataHashMismatch)
+		if err != nil {
+			return errors.Wrap(err, "failed to commit private data")
+		}
+		if minB < minBlock {
+			minBlock = minB
+		}
+		if maxB > maxBlock {
+			maxBlock = maxB
+		}
+		totalReconciled += len(fetchedData.AvailableElements)
+	}
 }
 
 type collectionConfigKey struct {
