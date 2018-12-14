@@ -193,7 +193,7 @@ peer:
             reconcileBatchSize: 10
             # reconcileSleepInterval determines the time reconciler sleeps from end of an iteration until the beginning
             # of the next reconciliation iteration.
-            reconcileSleepInterval: 5m
+            reconcileSleepInterval: 1m
             # reconciliationEnabled is a flag that indicates whether private data reconciliation is enable or not.
             reconciliationEnabled: true
 
