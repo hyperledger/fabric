@@ -845,7 +845,7 @@ Query
 
 Let's confirm that our previous invocation executed properly. We initialized the
 key ``a`` with a value of ``100`` and just removed ``10`` with our previous
-invocation. Therefore, a query against ``a`` should reveal ``90``. The syntax
+invocation. Therefore, a query against ``a`` should return ``90``. The syntax
 for query is as follows.
 
 .. code:: bash
@@ -879,7 +879,7 @@ against peer1 in Org2:
    CORE_PEER_LOCALMSPID="Org2MSP"
    CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/tls/ca.crt
 
-Now install the sample Go, Node.js or Java chaincode onto a peer1
+Now install the sample Go, Node.js or Java chaincode onto peer1
 in Org2. These commands place the specified source
 code flavor onto our peer's filesystem.
 
@@ -912,7 +912,16 @@ Query
 
 Let's confirm that we can issue the query to Peer1 in Org2. We initialized the
 key ``a`` with a value of ``100`` and just removed ``10`` with our previous
-invocation. Therefore, a query against ``a`` should still reveal ``90``. The syntax
+invocation. Therefore, a query against ``a`` should still return ``90``. 
+
+peer1 in Org2 must first join the channel before it can respond to queries. The
+channel can be joined by issuing the following command:
+
+.. code:: bash
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp CORE_PEER_ADDRESS=peer1.org2.example.com:7051 CORE_PEER_LOCALMSPID="Org2MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/tls/ca.crt peer channel join -b mychannel.block
+
+After the join command returns, the query can be issued. The syntax
 for query is as follows.
 
 .. code:: bash
