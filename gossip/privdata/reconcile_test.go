@@ -38,7 +38,7 @@ func TestNoItemsToReconcile(t *testing.T) {
 	fetcher.On("FetchReconciledItems", mock.Anything).Return(nil, errors.New("this function shouldn't be called"))
 
 	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
-	_, _, _, err := r.reconcile()
+	err := r.reconcile()
 
 	assert.NoError(t, err)
 }
@@ -74,7 +74,7 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 	}).Return(nil, errors.New("called with no digests"))
 
 	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
-	_, _, _, err := r.reconcile()
+	err := r.reconcile()
 
 	assert.Error(t, err)
 	assert.Equal(t, "called with no digests", err.Error())
@@ -108,7 +108,10 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 		CommittingBlockNum: 1,
 	}
 
-	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(missingInfo, nil)
+	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(missingInfo, nil).Run(func(_ mock.Arguments) {
+		missingPvtDataTracker.Mock = mock.Mock{}
+		missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(nil, nil)
+	})
 	configHistoryRetriever.On("MostRecentCollectionConfigBelow", mock.Anything, mock.Anything).Return(&collectionConfigInfo, nil)
 	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
 	committer.On("GetConfigHistoryRetriever").Return(configHistoryRetriever, nil)
@@ -148,7 +151,7 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
 	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
-	_, _, _, err := r.reconcile()
+	err := r.reconcile()
 
 	assert.NoError(t, err)
 	assert.True(t, commitPvtDataOfOldBlocksHappened)
@@ -181,7 +184,10 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 		CommittingBlockNum: 1,
 	}
 
-	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(missingInfo, nil)
+	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(missingInfo, nil).Run(func(_ mock.Arguments) {
+		missingPvtDataTracker.Mock = mock.Mock{}
+		missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(nil, nil)
+	})
 	configHistoryRetriever.On("MostRecentCollectionConfigBelow", mock.Anything, mock.Anything).Return(&collectionConfigInfo, nil)
 	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
 	committer.On("GetConfigHistoryRetriever").Return(configHistoryRetriever, nil)
@@ -228,6 +234,130 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 	r.Start()
 	wg.Wait()
 	r.Stop()
+
+	assert.True(t, commitPvtDataOfOldBlocksHappened)
+}
+
+func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
+	// Scenario: define batch size to retrieve missing private data to 1
+	// and make sure that even though there are missing data for two blocks
+	// they will be reconciled with one shot.
+	committer := &committerMock{}
+	fetcher := &mocks.ReconciliationFetcher{}
+	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
+	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
+
+	missingInfo := ledger.MissingPvtDataInfo{
+		4: ledger.MissingBlockPvtdataInfo{
+			1: {{Collection: "col1", Namespace: "ns1"}},
+		},
+	}
+
+	collectionConfigInfo := &ledger.CollectionConfigInfo{
+		CollectionConfig: &common.CollectionConfigPackage{
+			Config: []*common.CollectionConfig{
+				{Payload: &common.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &common.StaticCollectionConfig{
+						Name: "col1",
+					},
+				}},
+				{Payload: &common.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &common.StaticCollectionConfig{
+						Name: "col2",
+					},
+				}},
+			},
+		},
+		CommittingBlockNum: 1,
+	}
+
+	stopC := make(chan struct{})
+	nextC := make(chan struct{})
+
+	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).
+		Return(missingInfo, nil).Run(func(_ mock.Arguments) {
+		missingInfo := ledger.MissingPvtDataInfo{
+			3: ledger.MissingBlockPvtdataInfo{
+				2: {{Collection: "col2", Namespace: "ns2"}},
+			},
+		}
+		missingPvtDataTracker.Mock = mock.Mock{}
+		missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).
+			Return(missingInfo, nil).Run(func(_ mock.Arguments) {
+			// here we are making sure that we will first stop
+			// reconciliation so next call to GetMissingPvtDataInfoForMostRecentBlocks
+			// will go into same round
+			<-nextC
+			missingPvtDataTracker.Mock = mock.Mock{}
+			missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).
+				Return(nil, nil)
+		})
+		// make sure we calling stop reconciliation loop, so for sure
+		// in this test we won't get to second round though making sure
+		// we are retrieving on single pass
+		stopC <- struct{}{}
+	})
+
+	configHistoryRetriever.
+		On("MostRecentCollectionConfigBelow", mock.Anything, mock.Anything).
+		Return(collectionConfigInfo, nil)
+
+	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
+	committer.On("GetConfigHistoryRetriever").Return(configHistoryRetriever, nil)
+
+	result := &privdatacommon.FetchedPvtDataContainer{}
+	fetcher.On("FetchReconciledItems", mock.Anything).Run(func(args mock.Arguments) {
+		result.AvailableElements = make([]*gossip2.PvtDataElement, 0)
+		var dig2CollectionConfig = args.Get(0).(privdatacommon.Dig2CollectionConfig)
+		assert.Equal(t, 1, len(dig2CollectionConfig))
+		for digest := range dig2CollectionConfig {
+			hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+			element := &gossip2.PvtDataElement{
+				Digest: &gossip2.PvtDataDigest{
+					TxId:       digest.TxId,
+					BlockSeq:   digest.BlockSeq,
+					Collection: digest.Collection,
+					Namespace:  digest.Namespace,
+					SeqInBlock: digest.SeqInBlock,
+				},
+				Payload: [][]byte{hash},
+			}
+			result.AvailableElements = append(result.AvailableElements, element)
+		}
+	}).Return(result, nil)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var commitPvtDataOfOldBlocksHappened bool
+	pvtDataStore := make([][]*ledger.BlockPvtData, 0)
+	committer.On("CommitPvtDataOfOldBlocks", mock.Anything).Run(func(args mock.Arguments) {
+		var blockPvtData = args.Get(0).([]*ledger.BlockPvtData)
+		assert.Equal(t, 1, len(blockPvtData))
+		pvtDataStore = append(pvtDataStore, blockPvtData)
+		commitPvtDataOfOldBlocksHappened = true
+		wg.Done()
+	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
+
+	r := NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+	r.Start()
+	<-stopC
+	r.Stop()
+	nextC <- struct{}{}
+	wg.Wait()
+
+	assert.Equal(t, 2, len(pvtDataStore))
+	assert.Equal(t, uint64(4), pvtDataStore[0][0].BlockNum)
+	assert.Equal(t, uint64(3), pvtDataStore[1][0].BlockNum)
+
+	assert.Equal(t, uint64(1), pvtDataStore[0][0].WriteSets[1].SeqInBlock)
+	assert.Equal(t, uint64(2), pvtDataStore[1][0].WriteSets[2].SeqInBlock)
+
+	assert.Equal(t, "ns1", pvtDataStore[0][0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
+	assert.Equal(t, "ns2", pvtDataStore[1][0].WriteSets[2].WriteSet.NsPvtRwset[0].Namespace)
+
+	assert.Equal(t, "col1", pvtDataStore[0][0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
+	assert.Equal(t, "col2", pvtDataStore[1][0].WriteSets[2].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
 
 	assert.True(t, commitPvtDataOfOldBlocksHappened)
 }
