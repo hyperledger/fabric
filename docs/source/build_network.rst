@@ -680,8 +680,9 @@ Applications interact with the blockchain ledger through ``chaincode``.  As
 such we need to install the chaincode on every peer that will execute and
 endorse our transactions, and then instantiate the chaincode on the channel.
 
-First, install the sample Go, Node.js or Java chaincode onto one of the four peer nodes.  These commands
-place the specified source code flavor onto our peer's filesystem.
+First, install the sample Go, Node.js or Java chaincode onto the peer0
+node in Org1. These commands place the specified source
+code flavor onto our peer's filesystem.
 
 .. note:: You can only install one version of the source code per chaincode name
           and version.  The source code exists on the peer's file system in the
@@ -712,6 +713,51 @@ place the specified source code flavor onto our peer's filesystem.
     # make note of the -l flag to indicate "java" chaincode
     # for java chaincode -p takes the absolute path to the java chaincode
     peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
+
+When we instantiate the chaincode on the channel, the endorsement policy will be
+set to require endorsements from a peer in both Org1 and Org2. Therefore, we
+also need to install the chaincode on a peer in Org2.
+
+Modify the following four environment variables to issue the install command
+against peer0 in Org2:
+
+.. code:: bash
+
+   # Environment variables for PEER0 in Org2
+
+   CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+   CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+   CORE_PEER_LOCALMSPID="Org2MSP"
+   CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+Now install the sample Go, Node.js or Java chaincode onto a peer0
+in Org2. These commands place the specified source
+code flavor onto our peer's filesystem.
+
+**Golang**
+
+.. code:: bash
+
+    # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
+    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode/chaincode_example02/go/
+
+**Node.js**
+
+.. code:: bash
+
+    # this installs the Node.js chaincode
+    # make note of the -l flag to indicate "node" chaincode
+    # for node chaincode -p takes the absolute path to the node.js chaincode
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
+
+**Java**
+
+.. code:: bash
+
+    # make note of the -l flag to indicate "java" chaincode
+    # for java chaincode -p takes the absolute path to the java chaincode
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
+
 
 Next, instantiate the chaincode on the channel. This will initialize the
 chaincode on the channel, set the endorsement policy for the chaincode, and
@@ -817,6 +863,74 @@ We should see the following:
 Feel free to start over and manipulate the key value pairs and subsequent
 invocations.
 
+Install
+^^^^^^^
+
+Now we will install the chaincode on a third peer, peer1 in Org2. Modify the
+following four environment variables to issue the install command
+against peer1 in Org2:
+
+.. code:: bash
+
+   # Environment variables for PEER1 in Org2
+
+   CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+   CORE_PEER_ADDRESS=peer1.org2.example.com:7051
+   CORE_PEER_LOCALMSPID="Org2MSP"
+   CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/tls/ca.crt
+
+Now install the sample Go, Node.js or Java chaincode onto a peer1
+in Org2. These commands place the specified source
+code flavor onto our peer's filesystem.
+
+**Golang**
+
+.. code:: bash
+
+    # this installs the Go chaincode. For go chaincode -p takes the relative path from $GOPATH/src
+    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode/chaincode_example02/go/
+
+**Node.js**
+
+.. code:: bash
+
+    # this installs the Node.js chaincode
+    # make note of the -l flag to indicate "node" chaincode
+    # for node chaincode -p takes the absolute path to the node.js chaincode
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode/chaincode_example02/node/
+
+**Java**
+
+.. code:: bash
+
+    # make note of the -l flag to indicate "java" chaincode
+    # for java chaincode -p takes the absolute path to the java chaincode
+    peer chaincode install -n mycc -v 1.0 -l java -p /opt/gopath/src/github.com/chaincode/chaincode_example02/java/
+
+Query
+^^^^^
+
+Let's confirm that we can issue the query to Peer1 in Org2. We initialized the
+key ``a`` with a value of ``100`` and just removed ``10`` with our previous
+invocation. Therefore, a query against ``a`` should still reveal ``90``. The syntax
+for query is as follows.
+
+.. code:: bash
+
+  # be sure to set the -C and -n flags appropriately
+
+  peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["query","a"]}'
+
+We should see the following:
+
+.. code:: bash
+
+   Query Result: 90
+
+Feel free to start over and manipulate the key value pairs and subsequent
+invocations.
+
+
 .. _behind-scenes:
 
 What's happening behind the scenes?
@@ -857,7 +971,7 @@ What's happening behind the scenes?
 -  A chaincode - **chaincode_example02** - is installed on ``peer0.org1.example.com`` and
    ``peer0.org2.example.com``
 
--  The chaincode is then "instantiated" on ``peer0.org2.example.com``. Instantiation
+-  The chaincode is then "instantiated" on ``mychannel``. Instantiation
    adds the chaincode to the channel, starts the container for the target peer,
    and initializes the key value pairs associated with the chaincode.  The initial
    values for this example are ["a","100" "b","200"]. This "instantiation" results
@@ -868,15 +982,20 @@ What's happening behind the scenes?
    ``-P "AND ('Org1MSP.peer','Org2MSP.peer')"``, meaning that any
    transaction must be endorsed by a peer tied to Org1 and Org2.
 
--  A query against the value of "a" is issued to ``peer0.org1.example.com``. The
-   chaincode was previously installed on ``peer0.org1.example.com``, so this will start
-   a container for Org1 peer0 by the name of ``dev-peer0.org1.example.com-mycc-1.0``. The result
-   of the query is also returned. No write operations have occurred, so
+-  A query against the value of "a" is issued to ``peer0.org2.example.com``.
+   A container for Org2 peer0 by the name of ``dev-peer0.org2.example.com-mycc-1.0``
+   was started when the chaincode was instantiated. The result
+   of the query is returned. No write operations have occurred, so
    a query against "a" will still return a value of "100".
 
--  An invoke is sent to ``peer0.org1.example.com`` to move "10" from "a" to "b"
+-  An invoke is sent to ``peer0.org1.example.com`` and ``peer0.org2.example.com``
+   to move "10" from "a" to "b"
 
--  The chaincode is then installed on ``peer1.org2.example.com``
+-  A query is sent to ``peer0.org2.example.com`` for the value of "a". A
+   value of 90 is returned, correctly reflecting the previous
+   transaction during which the value for key "a" was modified by 10.
+
+-  The chaincode - **chaincode_example02** - is installed on ``peer1.org2.example.com``
 
 -  A query is sent to ``peer1.org2.example.com`` for the value of "a". This starts a
    third chaincode container by the name of ``dev-peer1.org2.example.com-mycc-1.0``. A
