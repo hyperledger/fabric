@@ -179,10 +179,10 @@ func (r *Reconciler) reconcile() error {
 		pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
 		// commit missing private data that was reconciled and log mismatched
 		pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit)
-		r.logMismatched(pvtdataHashMismatch)
 		if err != nil {
 			return errors.Wrap(err, "failed to commit private data")
 		}
+		r.logMismatched(pvtdataHashMismatch)
 		if minB < minBlock {
 			minBlock = minB
 		}
