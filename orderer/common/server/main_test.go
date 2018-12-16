@@ -4,6 +4,7 @@
 package server
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -381,6 +382,20 @@ func TestUpdateTrustedRoots(t *testing.T) {
 func TestConfigureClusterListener(t *testing.T) {
 	logEntries := make(chan string, 100)
 
+	allocatePort := func() uint16 {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		assert.NoError(t, err)
+		_, portStr, err := net.SplitHostPort(l.Addr().String())
+		assert.NoError(t, err)
+		port, err := strconv.ParseInt(portStr, 10, 64)
+		assert.NoError(t, err)
+		assert.NoError(t, l.Close())
+		t.Log("picked unused port", port)
+		return uint16(port)
+	}
+
+	unUsedPort := allocatePort()
+
 	backupLogger := logger
 	logger = logger.With(zap.Hooks(func(entry zapcore.Entry) error {
 		logEntries <- entry.Message
@@ -503,15 +518,15 @@ func TestConfigureClusterListener(t *testing.T) {
 				General: localconfig.General{
 					Cluster: localconfig.Cluster{
 						ListenAddress:     "99.99.99.99",
-						ListenPort:        5000,
+						ListenPort:        unUsedPort,
 						ServerPrivateKey:  "key",
 						ServerCertificate: "cert",
 						RootCAs:           []string{"ca"},
 					},
 				},
 			},
-			expectedPanic: "Failed creating gRPC server on 99.99.99.99:5000 due to " +
-				"listen tcp 99.99.99.99:5000: bind: cannot assign requested address",
+			expectedPanic: fmt.Sprintf("Failed creating gRPC server on 99.99.99.99:%d due "+
+				"to listen tcp 99.99.99.99:%d: bind: cannot assign requested address", unUsedPort, unUsedPort),
 			generalSrv: &comm.GRPCServer{},
 		},
 		{
