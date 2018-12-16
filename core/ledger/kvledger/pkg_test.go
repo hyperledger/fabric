@@ -17,29 +17,39 @@ limitations under the License.
 package kvledger
 
 import (
+	"math/rand"
 	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
 type testEnv struct {
-	t testing.TB
+	t    testing.TB
+	path string
 }
 
 func newTestEnv(t testing.TB) *testEnv {
-	return createTestEnv(t, "/tmp/fabric/ledgertests/kvledger")
+	path := filepath.Join(
+		os.TempDir(),
+		"fabric",
+		"ledgertests",
+		"kvledger",
+		strconv.Itoa(rand.Int()))
+	return createTestEnv(t, path)
 }
 
 func createTestEnv(t testing.TB, path string) *testEnv {
-	viper.Set("peer.fileSystemPath", path)
-	env := &testEnv{t}
+	env := &testEnv{
+		t:    t,
+		path: path}
 	env.cleanup()
+	viper.Set("peer.fileSystemPath", env.path)
 	return env
 }
 
 func (env *testEnv) cleanup() {
-	path := config.GetPath("peer.fileSystemPath")
-	os.RemoveAll(path)
+	os.RemoveAll(env.path)
 }
