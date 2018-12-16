@@ -138,7 +138,7 @@ func (r *Reconciler) run() {
 func (r *Reconciler) reconcile() error {
 	missingPvtDataTracker, err := r.GetMissingPvtDataTracker()
 	if err != nil {
-		logger.Error("reconciliation error when trying to get missingPvtDataTrcker:", err)
+		logger.Error("reconciliation error when trying to get missingPvtDataTracker:", err)
 		return err
 	}
 	if missingPvtDataTracker == nil {

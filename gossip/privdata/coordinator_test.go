@@ -197,69 +197,6 @@ func (scanner *mockRWSetScanner) NextWithConfig() (*transientstore.EndorserPvtSi
 func (*mockRWSetScanner) Close() {
 }
 
-type committerMock struct {
-	mock.Mock
-}
-
-func (mock *committerMock) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
-	args := mock.Called()
-	return args.Get(0).(ledger.MissingPvtDataTracker), args.Error(1)
-}
-
-func (mock *committerMock) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
-	args := mock.Called()
-	return args.Get(0).(ledger.ConfigHistoryRetriever), args.Error(1)
-}
-
-func (mock *committerMock) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
-	args := mock.Called(blockNum, filter)
-	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)
-}
-
-func (mock *committerMock) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
-	args := mock.Called(blockAndPvtData)
-	return args.Error(0)
-}
-
-func (mock *committerMock) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
-	args := mock.Called(blockPvtData)
-	return args.Get(0).([]*ledger.PvtdataHashMismatch), args.Error(1)
-}
-
-func (mock *committerMock) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
-	args := mock.Called(seqNum)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*ledger.BlockAndPvtData), args.Error(1)
-}
-
-func (mock *committerMock) Commit(block *common.Block) error {
-	args := mock.Called(block)
-	return args.Error(0)
-}
-
-func (mock *committerMock) LedgerHeight() (uint64, error) {
-	args := mock.Called()
-	if args.Get(0) == nil {
-		return uint64(0), args.Error(1)
-	}
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (mock *committerMock) GetBlocks(blockSeqs []uint64) []*common.Block {
-	args := mock.Called(blockSeqs)
-	seqs := args.Get(0)
-	if seqs == nil {
-		return nil
-	}
-	return seqs.([]*common.Block)
-}
-
-func (mock *committerMock) Close() {
-	mock.Called()
-}
-
 type validatorMock struct {
 	err error
 }
@@ -694,7 +631,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		Data:      []byte{6, 7, 8},
 	}
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		t.Fatal("Shouldn't have committed")
 	}).Return(nil)
@@ -771,7 +708,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		assert.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer = &committerMock{}
+	committer = &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		commitHappened = true
@@ -843,7 +780,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	}
 
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	store := &mockTransientStore{t: t}
 
 	fetcher := &fetcherMock{t: t}
@@ -924,7 +861,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		assert.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
@@ -1093,7 +1030,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}).Return(nil)
 	store.On("GetTxPvtRWSetByTxid", "tx3", mock.Anything).Return(&mockRWSetScanner{err: errors.New("uh oh")}, nil)
 	store.On("Persist", mock.Anything, uint64(1), mock.Anything).expectRWSet("ns3", "c3", []byte("rws-pre-image"))
-	committer = &committerMock{}
+	committer = &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
@@ -1131,7 +1068,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		}
 	}).Return(nil)
 	fetcher = &fetcherMock{t: t}
-	committer = &committerMock{}
+	committer = &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
@@ -1168,7 +1105,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		assert.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		privateDataPassed2Ledger := blockAndPrivateData.PvtData
@@ -1254,7 +1191,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 		assert.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		privateDataPassed2Ledger := blockAndPrivateData.PvtData
@@ -1293,7 +1230,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		Data:      []byte{6, 7, 8},
 	}
 	cs := createcollectionStore(sd).thatAcceptsAll()
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	store := &mockTransientStore{t: t}
 	fetcher := &fetcherMock{t: t}
 	coordinator := NewCoordinator(Support{
@@ -1356,7 +1293,7 @@ func TestPurgeByHeight(t *testing.T) {
 		assert.True(t, purgeHappened)
 		purgeHappened = false
 	}
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Return(nil)
 	store := &mockTransientStore{t: t}
 	store.On("PurgeByHeight", uint64(1000)).Return(nil).Once().Run(func(_ mock.Arguments) {
@@ -1394,7 +1331,7 @@ func TestPurgeByHeight(t *testing.T) {
 
 func TestCoordinatorStorePvtData(t *testing.T) {
 	cs := createcollectionStore(common.SignedData{}).thatAcceptsAll()
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	store := &mockTransientStore{t: t}
 	store.On("PersistWithConfig", mock.Anything, uint64(5), mock.Anything).
 		expectRWSet("ns1", "c1", []byte("rws-pre-image")).Return(nil)
@@ -1451,7 +1388,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 		assert.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		// Ensure there is no private data to commit

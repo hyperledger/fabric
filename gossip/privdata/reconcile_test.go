@@ -27,7 +27,7 @@ func TestNoItemsToReconcile(t *testing.T) {
 	// reconciler should identify that we don't have missing data and it doesn't need to call reconciliationFetcher to
 	// fetch missing items.
 	// reconciler shouldn't get an error.
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	fetcher := &mocks.ReconciliationFetcher{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
 	var missingInfo ledger.MissingPvtDataInfo
@@ -47,7 +47,7 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 	// Scenario: reconciler gets an error when trying to read collection config for the missing private data.
 	// as a result it removes the digest slice, and there are no digests to pull.
 	// shouldn't get an error.
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
@@ -83,7 +83,7 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 
 func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	// Scenario: happy path when trying to reconcile missing private data.
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
@@ -159,7 +159,7 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 
 func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 	// Scenario: happy path when trying to reconcile missing private data.
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
@@ -242,7 +242,7 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 	// Scenario: define batch size to retrieve missing private data to 1
 	// and make sure that even though there are missing data for two blocks
 	// they will be reconciled with one shot.
-	committer := &committerMock{}
+	committer := &mocks.Committer{}
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
