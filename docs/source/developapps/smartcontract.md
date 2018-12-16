@@ -64,20 +64,6 @@ This can be really helpful if `papercontract.js` contained multiple smart
 contracts, as transactions with the same name can be scoped by their namespace
 to disambiguate them.
 
-Notice also how the class constructor uses its
-[superclass](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/super)
-to initialize itself with a [namespace](./namespace.html):
-
-```JavaScript
-constructor() {
-    super('org.papernet.commercialpaper');
-}
-```
-
-This can be really helpful if `papercontract.js` contained multiple smart
-contracts, as transactions with the same name can be scoped by their namespace
-to disambiguate them.
-
 ## Transaction definitions
 
 Within the class, locate the **issue** method.
