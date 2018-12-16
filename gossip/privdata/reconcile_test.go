@@ -361,3 +361,66 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 
 	assert.True(t, commitPvtDataOfOldBlocksHappened)
 }
+
+func TestReconciliationFailedToCommit(t *testing.T) {
+	committer := &mocks.Committer{}
+	fetcher := &mocks.ReconciliationFetcher{}
+	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
+	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
+	var missingInfo ledger.MissingPvtDataInfo
+
+	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
+		3: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
+			1: {{Collection: "col1", Namespace: "ns1"}},
+		},
+	}
+
+	collectionConfigInfo := ledger.CollectionConfigInfo{
+		CollectionConfig: &common.CollectionConfigPackage{
+			Config: []*common.CollectionConfig{
+				{Payload: &common.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &common.StaticCollectionConfig{
+						Name: "col1",
+					},
+				}},
+			},
+		},
+		CommittingBlockNum: 1,
+	}
+
+	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(missingInfo, nil).Run(func(_ mock.Arguments) {
+		missingPvtDataTracker.Mock = mock.Mock{}
+		missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(nil, nil)
+	})
+	configHistoryRetriever.On("MostRecentCollectionConfigBelow", mock.Anything, mock.Anything).Return(&collectionConfigInfo, nil)
+	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
+	committer.On("GetConfigHistoryRetriever").Return(configHistoryRetriever, nil)
+
+	result := &privdatacommon.FetchedPvtDataContainer{}
+	fetcher.On("FetchReconciledItems", mock.Anything).Run(func(args mock.Arguments) {
+		var dig2CollectionConfig = args.Get(0).(privdatacommon.Dig2CollectionConfig)
+		assert.Equal(t, 1, len(dig2CollectionConfig))
+		for digest := range dig2CollectionConfig {
+			hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+			element := &gossip2.PvtDataElement{
+				Digest: &gossip2.PvtDataDigest{
+					TxId:       digest.TxId,
+					BlockSeq:   digest.BlockSeq,
+					Collection: digest.Collection,
+					Namespace:  digest.Namespace,
+					SeqInBlock: digest.SeqInBlock,
+				},
+				Payload: [][]byte{hash},
+			}
+			result.AvailableElements = append(result.AvailableElements, element)
+		}
+	}).Return(result, nil)
+
+	committer.On("CommitPvtDataOfOldBlocks", mock.Anything).Return(nil, errors.New("failed to commit"))
+
+	r := &Reconciler{config: &ReconcilerConfig{sleepInterval: time.Minute, batchSize: 1, IsEnabled: true}, ReconciliationFetcher: fetcher, Committer: committer}
+	err := r.reconcile()
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to commit")
+}
