@@ -42,6 +42,7 @@ const (
 var logger = util.GetLogger(util.PrivateDataLogger, "")
 
 //go:generate mockery -dir ../../core/common/privdata/ -name CollectionStore -case underscore -output mocks/
+//go:generate mockery -dir ../../core/committer/ -name Committer -case underscore -output mocks/
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {
