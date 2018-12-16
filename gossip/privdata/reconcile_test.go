@@ -424,3 +424,31 @@ func TestReconciliationFailedToCommit(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to commit")
 }
+
+func TestFailuresWhileReconcilingMissingPvtData(t *testing.T) {
+	committer := &mocks.Committer{}
+	fetcher := &mocks.ReconciliationFetcher{}
+	committer.On("GetMissingPvtDataTracker").Return(nil, errors.New("failed to obtain missing pvt data tracker"))
+
+	r := NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+	err := r.reconcile()
+	assert.Error(t, err)
+	assert.Contains(t, "failed to obtain missing pvt data tracker", err.Error())
+
+	committer.Mock = mock.Mock{}
+	committer.On("GetMissingPvtDataTracker").Return(nil, nil)
+	r = NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+	err = r.reconcile()
+	assert.Error(t, err)
+	assert.Contains(t, "got nil as MissingPvtDataTracker, exiting...", err.Error())
+
+	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
+	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(nil, errors.New("failed get missing pvt data for recent blocks"))
+
+	committer.Mock = mock.Mock{}
+	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
+	r = NewReconciler(committer, fetcher, &ReconcilerConfig{sleepInterval: time.Millisecond * 100, batchSize: 1, IsEnabled: true})
+	err = r.reconcile()
+	assert.Error(t, err)
+	assert.Contains(t, "failed get missing pvt data for recent blocks", err.Error())
+}
