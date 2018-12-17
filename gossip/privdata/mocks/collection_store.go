@@ -36,20 +36,20 @@ func (_m *CollectionStore) AccessFilter(channelName string, collectionPolicyConf
 	return r0, r1
 }
 
-// HasReadAccess provides a mock function with given fields: collCriteria, signedProposal, qe
-func (_m *CollectionStore) HasReadAccess(collCriteria common.CollectionCriteria, signedProposal *peer.SignedProposal, qe ledger.QueryExecutor) (bool, error) {
-	ret := _m.Called(collCriteria, signedProposal, qe)
+// HasReadAccess provides a mock function with given fields: _a0, _a1, _a2
+func (_m *CollectionStore) HasReadAccess(_a0 common.CollectionCriteria, _a1 *peer.SignedProposal, _a2 ledger.QueryExecutor) (bool, error) {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) bool); ok {
-		r0 = rf(collCriteria, signedProposal, qe)
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) error); ok {
-		r1 = rf(collCriteria, signedProposal, qe)
+		r1 = rf(_a0, _a1, _a2)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -57,13 +57,13 @@ func (_m *CollectionStore) HasReadAccess(collCriteria common.CollectionCriteria,
 	return r0, r1
 }
 
-// RetrieveCollection provides a mock function with given fields: collCriteria
-func (_m *CollectionStore) RetrieveCollection(collCriteria common.CollectionCriteria) (privdata.Collection, error) {
-	ret := _m.Called(collCriteria)
+// RetrieveCollection provides a mock function with given fields: _a0
+func (_m *CollectionStore) RetrieveCollection(_a0 common.CollectionCriteria) (privdata.Collection, error) {
+	ret := _m.Called(_a0)
 
 	var r0 privdata.Collection
 	if rf, ok := ret.Get(0).(func(common.CollectionCriteria) privdata.Collection); ok {
-		r0 = rf(collCriteria)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(privdata.Collection)
@@ -72,7 +72,7 @@ func (_m *CollectionStore) RetrieveCollection(collCriteria common.CollectionCrit
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.CollectionCriteria) error); ok {
-		r1 = rf(collCriteria)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -80,13 +80,13 @@ func (_m *CollectionStore) RetrieveCollection(collCriteria common.CollectionCrit
 	return r0, r1
 }
 
-// RetrieveCollectionAccessPolicy provides a mock function with given fields: collCriteria
-func (_m *CollectionStore) RetrieveCollectionAccessPolicy(collCriteria common.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
-	ret := _m.Called(collCriteria)
+// RetrieveCollectionAccessPolicy provides a mock function with given fields: _a0
+func (_m *CollectionStore) RetrieveCollectionAccessPolicy(_a0 common.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
+	ret := _m.Called(_a0)
 
 	var r0 privdata.CollectionAccessPolicy
 	if rf, ok := ret.Get(0).(func(common.CollectionCriteria) privdata.CollectionAccessPolicy); ok {
-		r0 = rf(collCriteria)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(privdata.CollectionAccessPolicy)
@@ -95,7 +95,7 @@ func (_m *CollectionStore) RetrieveCollectionAccessPolicy(collCriteria common.Co
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.CollectionCriteria) error); ok {
-		r1 = rf(collCriteria)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -103,13 +103,13 @@ func (_m *CollectionStore) RetrieveCollectionAccessPolicy(collCriteria common.Co
 	return r0, r1
 }
 
-// RetrieveCollectionConfigPackage provides a mock function with given fields: collCriteria
-func (_m *CollectionStore) RetrieveCollectionConfigPackage(collCriteria common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
-	ret := _m.Called(collCriteria)
+// RetrieveCollectionConfigPackage provides a mock function with given fields: _a0
+func (_m *CollectionStore) RetrieveCollectionConfigPackage(_a0 common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+	ret := _m.Called(_a0)
 
 	var r0 *common.CollectionConfigPackage
 	if rf, ok := ret.Get(0).(func(common.CollectionCriteria) *common.CollectionConfigPackage); ok {
-		r0 = rf(collCriteria)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*common.CollectionConfigPackage)
@@ -118,7 +118,7 @@ func (_m *CollectionStore) RetrieveCollectionConfigPackage(collCriteria common.C
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.CollectionCriteria) error); ok {
-		r1 = rf(collCriteria)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -126,13 +126,13 @@ func (_m *CollectionStore) RetrieveCollectionConfigPackage(collCriteria common.C
 	return r0, r1
 }
 
-// RetrieveCollectionPersistenceConfigs provides a mock function with given fields: collCriteria
-func (_m *CollectionStore) RetrieveCollectionPersistenceConfigs(collCriteria common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
-	ret := _m.Called(collCriteria)
+// RetrieveCollectionPersistenceConfigs provides a mock function with given fields: _a0
+func (_m *CollectionStore) RetrieveCollectionPersistenceConfigs(_a0 common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+	ret := _m.Called(_a0)
 
 	var r0 privdata.CollectionPersistenceConfigs
 	if rf, ok := ret.Get(0).(func(common.CollectionCriteria) privdata.CollectionPersistenceConfigs); ok {
-		r0 = rf(collCriteria)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(privdata.CollectionPersistenceConfigs)
@@ -141,7 +141,7 @@ func (_m *CollectionStore) RetrieveCollectionPersistenceConfigs(collCriteria com
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.CollectionCriteria) error); ok {
-		r1 = rf(collCriteria)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
