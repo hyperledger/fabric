@@ -130,4 +130,38 @@ var _ = Describe("GRPCClient", func() {
 			})
 		})
 	})
+
+	Describe("GetTLSCertHash", func() {
+		var (
+			clientCert tls.Certificate
+		)
+
+		BeforeEach(func() {
+			var err error
+			clientCert, err = tls.LoadX509KeyPair(
+				"./testdata/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/client.crt",
+				"./testdata/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/client.key",
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns cert hash", func() {
+			tlsCertHash, err := client.GetTLSCertHash(&clientCert)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tlsCertHash).NotTo(BeNil())
+		})
+
+		It("returns nil when cert is nil", func() {
+			tlsCertHash, err := client.GetTLSCertHash(nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tlsCertHash).To(BeNil())
+		})
+
+		It("returns nil when clientCert has no certificate", func() {
+			clientCert = tls.Certificate{}
+			tlsCertHash, err := client.GetTLSCertHash(&clientCert)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tlsCertHash).To(BeNil())
+		})
+	})
 })

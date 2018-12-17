@@ -12,8 +12,6 @@ import (
 	"math"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -102,16 +100,10 @@ func (d *deliverClient) Certificate() *tls.Certificate {
 
 // create a signed envelope with SeekPosition_Newest for block
 func CreateDeliverEnvelope(channelId string, creator []byte, signingIdentity tk.SigningIdentity, cert *tls.Certificate) (*common.Envelope, error) {
-	var tlsCertHash []byte
-	var err error
 	// check for client certificate and compute SHA2-256 on certificate if present
-	if cert != nil && len(cert.Certificate) > 0 {
-		tlsCertHash, err = factory.GetDefault().Hash(cert.Certificate[0], &bccsp.SHA256Opts{})
-		if err != nil {
-			err = errors.New("failed to compute SHA256 on client certificate")
-			logger.Errorf("%s", err)
-			return nil, err
-		}
+	tlsCertHash, err := GetTLSCertHash(cert)
+	if err != nil {
+		return nil, err
 	}
 
 	_, header, err := CreateHeader(common.HeaderType_DELIVER_SEEK_INFO, channelId, creator, tlsCertHash)

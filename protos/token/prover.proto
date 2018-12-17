@@ -140,6 +140,10 @@ message Header {
     // Creator of the message.
     // Typically, a marshaled msp.SerializedIdentity
     bytes creator = 4;
+
+    // If mutual TLS is enabled, this represents
+    // the hash of the client's TLS certificate
+    bytes tls_cert_hash = 5;
 }
 
 
