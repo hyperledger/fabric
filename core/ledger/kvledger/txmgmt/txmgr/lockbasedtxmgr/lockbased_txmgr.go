@@ -293,7 +293,9 @@ func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyen
 	// clear the cache and we have already acquired one before reaching here.
 	var hashedCompositeKeys []*privacyenabledstate.HashedCompositeKey
 	for hashedCompositeKey := range uniquePvtData {
-		hashedCompositeKeys = append(hashedCompositeKeys, &hashedCompositeKey)
+		// tempKey ensures a different pointer is added to the slice for each key
+		tempKey := hashedCompositeKey
+		hashedCompositeKeys = append(hashedCompositeKeys, &tempKey)
 	}
 
 	err := db.LoadCommittedVersionsOfPubAndHashedKeys(nil, hashedCompositeKeys)
