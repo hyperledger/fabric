@@ -143,7 +143,6 @@ type RecordingCore struct {
 	zapcore.LevelEnabler
 	encoder  zapcore.Encoder
 	recorder *Recorder
-	fields   []zapcore.Field
 	writer   zapcore.WriteSyncer
 }
 

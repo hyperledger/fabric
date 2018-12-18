@@ -22,7 +22,6 @@ import (
 )
 
 var testDir = filepath.Join(os.TempDir(), "idemixca-test")
-var configName = "testconfig"
 
 func TestIdemixCa(t *testing.T) {
 	cleanup()
