@@ -42,7 +42,6 @@ type ZooKeeper struct {
 	OutputStream io.Writer
 
 	containerID      string
-	hostAddress      string
 	containerAddress string
 	address          string
 
