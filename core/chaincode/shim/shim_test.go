@@ -19,7 +19,7 @@ import (
 	lproto "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -478,12 +478,6 @@ func TestNilEventName(t *testing.T) {
 		t.Error("Event name can not be nil string.")
 	}
 
-}
-
-type testCase struct {
-	name         string
-	ccLogLevel   string
-	shimLogLevel string
 }
 
 func TestSetupChaincodeLogging_shim(t *testing.T) {

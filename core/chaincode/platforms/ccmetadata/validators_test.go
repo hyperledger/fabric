@@ -8,7 +8,6 @@ package ccmetadata
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -299,14 +298,4 @@ func cleanupDir(dir string) error {
 		return nil
 	}
 	return os.Mkdir(dir, os.ModePerm)
-}
-
-func writeToFile(filename string, bytes []byte) error {
-	dir := filepath.Dir(filename)
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(filename, bytes, 0644)
 }

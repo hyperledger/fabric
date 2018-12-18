@@ -36,7 +36,6 @@ import (
 
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
-var logOutput = os.Stderr
 
 var key string
 var cert string

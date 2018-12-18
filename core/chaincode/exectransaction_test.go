@@ -59,7 +59,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -539,40 +539,6 @@ func closeListenerAndSleep(l net.Listener) {
 	}
 }
 
-func executeDeployTransaction(t *testing.T, chainID string, name string, url string) {
-	_, chaincodeSupport, cleanup, err := initPeer(chainID)
-	if err != nil {
-		t.Fail()
-		t.Logf("Error creating peer: %s", err)
-	}
-
-	defer cleanup()
-
-	f := "init"
-	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: url, Version: "0"}, Input: &pb.ChaincodeInput{Args: args}}
-
-	cccid := &ccprovider.CCContext{
-		Name:    name,
-		Version: "0",
-	}
-
-	defer chaincodeSupport.Stop(
-		ccprovider.DeploymentSpecToChaincodeContainerInfo(
-			&pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec},
-		),
-	)
-
-	_, err = deploy(chainID, cccid, spec, 0, chaincodeSupport)
-
-	cID := spec.ChaincodeId.Name
-	if err != nil {
-		t.Fail()
-		t.Logf("Error deploying <%s>: %s", cID, err)
-		return
-	}
-}
-
 // Check the correctness of the final state after transaction execution.
 func checkFinalState(chainID string, cccid *ccprovider.CCContext, a int, b int) error {
 	txid := util.GenerateUUID()
@@ -618,14 +584,9 @@ func checkFinalState(chainID string, cccid *ccprovider.CCContext, a int, b int) 
 }
 
 const (
-	chaincodeExample02GolangPath   = "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-	chaincodeExample04GolangPath   = "github.com/hyperledger/fabric/examples/chaincode/go/example04/cmd"
-	chaincodeEventSenderGolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/eventsender"
-	chaincodePassthruGolangPath    = "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
-	chaincodeExample02JavaPath     = "../../examples/chaincode/java/chaincode_example02"
-	chaincodeExample04JavaPath     = "../../examples/chaincode/java/chaincode_example04"
-	chaincodeExample06JavaPath     = "../../examples/chaincode/java/chaincode_example06"
-	chaincodeEventSenderJavaPath   = "../../examples/chaincode/java/eventsender"
+	chaincodeExample02GolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	chaincodeExample04GolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/example04/cmd"
+	chaincodePassthruGolangPath  = "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
 )
 
 func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string, tc tcicTc, cccid1 *ccprovider.CCContext, expectedA int, expectedB int, nextBlockNumber1, nextBlockNumber2 uint64, chaincodeSupport *ChaincodeSupport) (uint64, uint64) {

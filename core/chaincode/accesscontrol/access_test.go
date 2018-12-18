@@ -30,7 +30,6 @@ type ccSrv struct {
 	l              net.Listener
 	grpcSrv        *grpc.Server
 	t              *testing.T
-	cert           []byte
 	expectedCCname string
 }
 
