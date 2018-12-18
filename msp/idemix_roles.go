@@ -39,23 +39,9 @@ func getRoleMaskFromIdemixRoles(roles []Role) int {
 	return mask
 }
 
-// GetRoleMaskFromMSPRoles Receive a list of roles to combine in a single bitmask
-func getRoleMaskFromMSPRoles(roles []*m.MSPRole) int {
-	mask := 0
-	for _, role := range roles {
-		mask = mask | getIdemixRoleFromMSPRole(role)
-	}
-	return mask
-}
-
 // GetRoleMaskFromIdemixRole return a bitmask for one role
 func GetRoleMaskFromIdemixRole(role Role) int {
 	return getRoleMaskFromIdemixRoles([]Role{role})
-}
-
-// GetRoleMaskFromMSPRole return a bitmask for one role
-func getRoleMaskFromMSPRole(role *m.MSPRole) int {
-	return getRoleMaskFromMSPRoles([]*m.MSPRole{role})
 }
 
 // GetIdemixRoleFromMSPRole gets a MSP Role type and returns the integer value

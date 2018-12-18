@@ -52,11 +52,6 @@ const (
 // index of the revocation handle attribute in the credential
 const rhIndex = 3
 
-// discloseFlags will be passed to the idemix signing and verification routines.
-// It informs idemix to disclose both attributes (OU and Role) when signing,
-// while hiding attributes EnrollmentID and RevocationHandle.
-var discloseFlags = []byte{1, 1, 0, 0}
-
 type idemixmsp struct {
 	csp          bccsp.BCCSP
 	version      MSPVersion
