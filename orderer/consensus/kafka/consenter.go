@@ -50,7 +50,6 @@ type consenterImpl struct {
 	retryOptionsVal localconfig.Retry
 	kafkaVersionVal sarama.KafkaVersion
 	topicDetailVal  *sarama.TopicDetail
-	metricsProvider metrics.Provider
 }
 
 // HandleChain creates/returns a reference to a consensus.Chain object for the
@@ -83,9 +82,4 @@ func (consenter *consenterImpl) retryOptions() localconfig.Retry {
 
 func (consenter *consenterImpl) topicDetail() *sarama.TopicDetail {
 	return consenter.topicDetailVal
-}
-
-// closeable allows the shut down of the calling resource.
-type closeable interface {
-	close() error
 }

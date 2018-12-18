@@ -2290,7 +2290,6 @@ type chain struct {
 	configurator *mocks.Configurator
 	rpc          *mocks.FakeRPC
 	storage      *raft.MemoryStorage
-	walDir       string
 	clock        *fakeclock.FakeClock
 	opts         etcdraft.Options
 	puller       *mocks.FakeBlockPuller
