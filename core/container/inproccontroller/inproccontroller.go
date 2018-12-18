@@ -73,7 +73,7 @@ func (r *Registry) NewVM() container.VM {
 	return NewInprocVM(r)
 }
 
-//Register registers system chaincode with given path. The deploy should be called to initialize
+// Register registers system chaincode with given path. The deploy should be called to initialize
 func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
 	name := ccid.GetName()
 	inprocLogger.Debugf("Registering chaincode instance: %s", name)
@@ -86,9 +86,8 @@ func (r *Registry) Register(ccid *ccintf.CCID, cc shim.Chaincode) error {
 	return nil
 }
 
-//InprocVM is a vm. It is identified by a executable name
+// InprocVM is a vm. It is identified by a executable name
 type InprocVM struct {
-	id       string
 	registry *Registry
 }
 

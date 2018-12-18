@@ -17,8 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type MockShim struct {
-}
+type MockShim struct{}
 
 func (shim MockShim) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return pb.Response{}
@@ -53,15 +52,6 @@ func TestRegisterError(t *testing.T) {
 
 	assert.NotNil(t, err, "err should not be nil")
 }
-
-type AStruct struct {
-}
-
-type AInterface interface {
-	test()
-}
-
-func (as AStruct) test() {}
 
 func TestGetInstanceChaincodeDoesntExist(t *testing.T) {
 	mockInprocContainer := &inprocContainer{
@@ -104,15 +94,7 @@ func TestGetInstaceChaincodeExists(t *testing.T) {
 	assert.Equal(t, r.instRegistry["instName"], ipc, "instRegistry[instName] should contain the correct value")
 }
 
-type MockReader struct {
-}
-
-func (r MockReader) Read(p []byte) (n int, err error) {
-	return 1, nil
-}
-
-type MockCCSupport struct {
-}
+type MockCCSupport struct{}
 
 func (ccs MockCCSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	return nil
@@ -264,12 +246,12 @@ func TestLaunchprocShimStartInProcErr(t *testing.T) {
 	<-done
 }
 
-type MockCCSupportErr struct {
-}
+type MockCCSupportErr struct{}
 
 func (ccs MockCCSupportErr) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	return errors.New("errors")
 }
+
 func TestLaunchprocCCSupportHandleChaincodeStreamError(t *testing.T) {
 	oldShimStartInProc := _shimStartInProc
 	oldInprocLoggerErrorf := _inprocLoggerErrorf
