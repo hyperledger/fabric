@@ -108,7 +108,48 @@ func (p *purgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyena
 		toUpdate.pvtdataKeys.addAll(toAdd.pvtdataKeys)
 		updatedList = append(updatedList, toUpdate)
 	}
+
+	// As the expiring keys list might have been constructed after the last
+	// regular block commit, we need to update the list. This is because,
+	// some of the old pvtData which are being committed might get expired
+	// during the next regular block commit. As a result, the corresponding
+	// hashedKey in the expiring keys list would be missing the pvtData.
+	p.addMissingPvtDataToWorkingSet(pvtUpdateCompositeKeyMap)
+
 	return p.expKeeper.updateBookkeeping(updatedList, nil)
+}
+
+func (p *purgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.PvtdataCompositeKeyMap) {
+	if p.workingset == nil || len(p.workingset.toPurge) == 0 {
+		return
+	}
+
+	for k := range pvtKeys {
+		hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
+			Namespace:      k.Namespace,
+			CollectionName: k.CollectionName,
+			KeyHash:        string(util.ComputeStringHash(k.Key))}
+
+		toPurgeKey, ok := p.workingset.toPurge[hashedCompositeKey]
+		if !ok {
+			// corresponding hashedKey is not present in the
+			// expiring keys list
+			continue
+		}
+
+		// if the purgeKeyOnly is set, it means that the version of the pvtKey
+		// stored in the stateDB is older than the version of the hashedKey.
+		// As a result, only the pvtKey needs to be purged (expiring block height
+		// for the recent hashedKey would be higher). If the recent
+		// pvtKey of the corresponding hashedKey is being committed, we need to
+		// remove the purgeKeyOnly entries from the toPurgeList it is going to be
+		// updated by the commit of missing pvtData
+		if toPurgeKey.purgeKeyOnly {
+			delete(p.workingset.toPurge, hashedCompositeKey)
+		} else {
+			toPurgeKey.key = k.Key
+		}
+	}
 }
 
 // DeleteExpiredAndUpdateBookkeeping implements function in the interface 'PurgeMgr'
