@@ -526,7 +526,7 @@ func TestConfigureClusterListener(t *testing.T) {
 				},
 			},
 			expectedPanic: fmt.Sprintf("Failed creating gRPC server on 99.99.99.99:%d due "+
-				"to listen tcp 99.99.99.99:%d: bind: cannot assign requested address", unUsedPort, unUsedPort),
+				"to listen tcp 99.99.99.99:%d:", unUsedPort, unUsedPort),
 			generalSrv: &comm.GRPCServer{},
 		},
 		{
@@ -557,7 +557,7 @@ func TestConfigureClusterListener(t *testing.T) {
 				f := func() {
 					configureClusterListener(testCase.conf, testCase.generalConf, testCase.generalSrv, loadPEM)
 				}
-				assert.PanicsWithValue(t, testCase.expectedPanic, f)
+				assert.Contains(t, panicMsg(f), testCase.expectedPanic)
 			} else {
 				configureClusterListener(testCase.conf, testCase.generalConf, testCase.generalSrv, loadPEM)
 			}
@@ -593,4 +593,20 @@ func genesisConfig(t *testing.T) *localconfig.TopLevel {
 			},
 		},
 	}
+}
+
+func panicMsg(f func()) string {
+	var message interface{}
+	func() {
+
+		defer func() {
+			message = recover()
+		}()
+
+		f()
+
+	}()
+
+	return message.(string)
+
 }
