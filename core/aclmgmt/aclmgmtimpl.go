@@ -6,12 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 
 package aclmgmt
 
-import (
-	"github.com/hyperledger/fabric/common/flogging"
-)
-
-var aclMgmtLogger = flogging.MustGetLogger("aclmgmt")
-
 //implementation of aclMgmt. CheckACL calls in fabric result in the following flow
 //    if resourceProvider[resourceName]
 //       return resourceProvider[resourceName].CheckACL(...)
