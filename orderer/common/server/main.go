@@ -59,9 +59,9 @@ var logger = flogging.MustGetLogger("orderer.common.server")
 var (
 	app = kingpin.New("orderer", "Hyperledger Fabric orderer node")
 
-	start     = app.Command("start", "Start the orderer node").Default()
-	version   = app.Command("version", "Show version information")
-	benchmark = app.Command("benchmark", "Run orderer in benchmark mode")
+	_       = app.Command("start", "Start the orderer node").Default() // preserved for cli compatibility
+	_       = app.Command("benchmark", "Run orderer in benchmark mode")
+	version = app.Command("version", "Show version information")
 
 	clusterTypes = map[string]struct{}{"etcdraft": {}}
 )

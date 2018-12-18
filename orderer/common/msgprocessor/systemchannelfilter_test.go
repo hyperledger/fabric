@@ -92,10 +92,6 @@ func newMockChainCreator() *mockChainCreator {
 	return mcc
 }
 
-func (mcc *mockChainCreator) newChain(configTx *cb.Envelope) {
-	mcc.newChains = append(mcc.newChains, configTx)
-}
-
 func (mcc *mockChainCreator) ChannelsCount() int {
 	return len(mcc.newChains)
 }

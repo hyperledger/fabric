@@ -36,8 +36,6 @@ var conf *genesisconfig.Profile
 var genesisBlock *cb.Block
 var mockSigningIdentity msp.SigningIdentity
 
-const NoConsortiumChain = "no-consortium-chain"
-
 func init() {
 	flogging.ActivateSpec("orderer.commmon.multichannel=DEBUG")
 	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()

@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"crypto/x509"
 	"sync"
-	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -37,10 +36,9 @@ type ConnectionMapper interface {
 
 // ConnectionStore stores connections to remote nodes
 type ConnectionStore struct {
-	certsByEndpoints atomic.Value
-	lock             sync.RWMutex
-	Connections      ConnectionMapper
-	dialer           SecureDialer
+	lock        sync.RWMutex
+	Connections ConnectionMapper
+	dialer      SecureDialer
 }
 
 // NewConnectionStore creates a new ConnectionStore with the given SecureDialer

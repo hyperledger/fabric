@@ -188,14 +188,3 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	}
 	return s.dh.Handle(srv.Context(), deliverServer)
 }
-
-func (s *server) sendProducer(srv ab.AtomicBroadcast_DeliverServer) func(msg proto.Message) error {
-	return func(msg proto.Message) error {
-		response, ok := msg.(*ab.DeliverResponse)
-		if !ok {
-			logger.Errorf("received wrong response type, expected response type ab.DeliverResponse")
-			return errors.New("expected response type ab.DeliverResponse")
-		}
-		return srv.Send(response)
-	}
-}
