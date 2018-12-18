@@ -22,3 +22,20 @@ func (c Generate) Args() []string {
 		"--output", c.Output,
 	}
 }
+
+type Extend struct {
+	Config string
+	Input  string
+}
+
+func (c Extend) SessionName() string {
+	return "cryptogen-extend"
+}
+
+func (c Extend) Args() []string {
+	return []string{
+		"extend",
+		"--config", c.Config,
+		"--input", c.Input,
+	}
+}
