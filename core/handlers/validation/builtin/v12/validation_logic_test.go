@@ -32,7 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	cutils "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12/mocks"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	corepeer "github.com/hyperledger/fabric/core/peer"
@@ -40,7 +40,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
@@ -1966,15 +1966,6 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	// Test 6: modify the BlockToLive in an existing collection -> error
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
-}
-
-func NewMockProvider() *scc.MocksccProviderImpl {
-	return (&scc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &mc.MockApplication{
-			CapabilitiesRv: &mc.MockApplicationCapabilities{},
-		},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 }
 
 func TestMain(m *testing.M) {
