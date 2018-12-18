@@ -61,9 +61,9 @@ reasons:
 
 A static connection profile is normally created by an administrator who
 understands the network topology in detail. That's because a static profile can
-contain quite a lot of information, and an administrator needs capture this in
-the corresponding connection profile. In contrast, dynamic profiles minimize the
-amount of definition required, and therefore can be a better choice for
+contain quite a lot of information, and an administrator needs to capture this
+in the corresponding connection profile. In contrast, dynamic profiles minimize
+the amount of definition required, and therefore can be a better choice for
 developers who want to get going quickly, or administrators who want to create a
 more responsive gateway. Connection profiles are created in either the YAML or
 JSON format using an editor of choice.
@@ -101,10 +101,10 @@ applies to dynamic gateways; to provide more than one starting point for service
 discovery.
 
 A DigiBank `buy` application would typically configure its gateway with a
-similar connection profile with important difference. Some elements will be the
-same, such as the channel; some elements will overlap, such as the endorsing
-peers. Other elements will be completely different, such as notification peers
-or certificate authorities for example.
+similar connection profile, but with some important differences. Some elements
+will be the same, such as the channel; some elements will overlap, such as the
+endorsing peers. Other elements will be completely different, such as
+notification peers or certificate authorities for example.
 
 The `connectionOptions` passed to a gateway complement the connection profile.
 They allow an application to declare how it would like the gateway to use the
@@ -151,7 +151,7 @@ about it:
 * Line 32: `channels:`
 
   This is the first really important line. `channels:` identifies that what
-  follows is *all* the channels that this connection profile describes. However,
+  follows are *all* the channels that this connection profile describes. However,
   it is good practice to keep different channels in different connection
   profiles, especially if they are used independently of each other.
 
@@ -210,7 +210,7 @@ about it:
   example, an application can request notification from one or all peers within
   its organization, or all organizations within the network -- using [connection
   options](./connectoptions.html).  For this, there needs to be an organization
-  to peer to mapping, and this section provides it.
+  to peer mapping, and this section provides it.
 
 * Line 101: `MagnetoCorp:`
 
@@ -242,7 +242,7 @@ about it:
   The physical information for all previous peers is now listed.  This
   connection profile has three peers for MagnetoCorp: `peer1`, `peer2`, and
   `peer3`; for DigiBank, a single peer `peer9` has its information listed. For
-  all peers, as with orderers, their IP address and port are listed, together
+  each peer, as with orderers, their IP address and port is listed, together
   with gRPC options that can override the defaults used when communicating with
   a particular peer, if necessary.
 
@@ -267,7 +267,7 @@ That's everything you need to know about connection profiles. In summary, a
 connection profile defines sufficient channels, organizations, peers, orderers
 and certificate authorities for an application to configure a gateway. The
 gateway allows the application to focus on business logic rather than the
-details of network topology.
+details of the network topology.
 
 ## Sample
 
