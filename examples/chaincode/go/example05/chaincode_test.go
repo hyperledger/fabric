@@ -16,12 +16,6 @@ import (
 
 var chaincodeName = "ex02"
 
-// chaincode_example05 looks like it wanted to return a JSON response to Query()
-// it doesn't actually do this though, it just returns the sum value
-func jsonResponse(name string, value string) string {
-	return fmt.Sprintf("jsonResponse = \"{\"Name\":\"%v\",\"Value\":\"%v\"}", name, value)
-}
-
 func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte) {
 	res := stub.MockInit("1", args)
 	if res.Status != shim.OK {
