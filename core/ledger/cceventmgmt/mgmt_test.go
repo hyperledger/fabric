@@ -185,11 +185,6 @@ func (p *mockProvider) setChaincodeInstalled(chaincodeDefinition *ChaincodeDefin
 	p.chaincodesInstalled[[2]string{chaincodeDefinition.Name, chaincodeDefinition.Version}] = dbArtifactsTar
 }
 
-func (p *mockProvider) setChaincodeDeployAndInstalled(chainid string, chaincodeDefinition *ChaincodeDefinition, dbArtifactsTar []byte) {
-	p.setChaincodeDeployed(chainid, chaincodeDefinition)
-	p.setChaincodeInstalled(chaincodeDefinition, dbArtifactsTar)
-}
-
 func (p *mockProvider) GetDeployedChaincodeInfo(chainid string, chaincodeDefinition *ChaincodeDefinition) (*ledger.DeployedChaincodeInfo, error) {
 	if p.chaincodesDeployed[[3]string{chainid, chaincodeDefinition.Name, chaincodeDefinition.Version}] {
 		return &ledger.DeployedChaincodeInfo{

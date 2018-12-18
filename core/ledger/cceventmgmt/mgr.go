@@ -198,9 +198,3 @@ func (s *callbackStatus) unsetInstallPending(channelID string) {
 	defer s.l.Unlock()
 	delete(s.installPending, channelID)
 }
-
-func (s *callbackStatus) isInstallPending(channelID string) bool {
-	s.l.Lock()
-	defer s.l.Unlock()
-	return s.installPending[channelID]
-}

@@ -23,10 +23,6 @@ import (
 
 var logger = flogging.MustGetLogger("statecouchdb")
 
-// querySkip is implemented for future use by query paging
-// currently defaulted to 0 and is not used
-const querySkip = 0
-
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
 	couchInstance *couchdb.CouchInstance
@@ -256,7 +252,6 @@ func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey str
 
 const optionBookmark = "bookmark"
 const optionLimit = "limit"
-const returnCount = "count"
 
 // GetStateRangeScanIteratorWithMetadata implements method in VersionedDB interface
 // startKey is inclusive

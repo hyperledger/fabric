@@ -89,26 +89,9 @@ func (s *simulator) setState(ns, key string, val string) {
 	)
 }
 
-func (s *simulator) delState(ns, key string) {
-	s.assert.NoError(
-		s.DeleteState(ns, key),
-	)
-}
-
-func (s *simulator) getPvtdata(ns, coll, key string) {
-	_, err := s.GetPrivateData(ns, coll, key)
-	s.assert.NoError(err)
-}
-
 func (s *simulator) setPvtdata(ns, coll, key string, val string) {
 	s.assert.NoError(
 		s.SetPrivateData(ns, coll, key, []byte(val)),
-	)
-}
-
-func (s *simulator) delPvtdata(ns, coll, key string) {
-	s.assert.NoError(
-		s.DeletePrivateData(ns, coll, key),
 	)
 }
 

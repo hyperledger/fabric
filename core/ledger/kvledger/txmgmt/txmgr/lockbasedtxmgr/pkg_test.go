@@ -64,9 +64,8 @@ var testEnvsMap = map[string]testEnv{
 ///////////// LevelDB Environment //////////////
 
 type lockBasedEnv struct {
-	t            testing.TB
-	name         string
-	testLedgerID string
+	t    testing.TB
+	name string
 
 	testDBEnv privacyenabledstate.TestEnv
 	testDB    privacyenabledstate.DB

@@ -279,9 +279,8 @@ type testHelper struct {
 	bookkeepingEnv *bookkeeping.TestEnv
 	dbEnv          privacyenabledstate.TestEnv
 
-	db             privacyenabledstate.DB
-	purgeMgr       PurgeMgr
-	purgerUsedOnce bool
+	db       privacyenabledstate.DB
+	purgeMgr PurgeMgr
 }
 
 func (h *testHelper) init(t *testing.T, ledgerid string, btlPolicy pvtdatapolicy.BTLPolicy, dbEnv privacyenabledstate.TestEnv) {

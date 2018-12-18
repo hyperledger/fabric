@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"testing"
 
@@ -125,26 +123,6 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 	d.submittedData.recordSubmittedTxs(lgrid,
 		txdeploy1, txdeploy2, txdata1, txdata2, txupgrade1, txupgrade2,
 		txdata3, txdata4, txupgrade3, txupgrade4, txdata5, txdata6, txdata7, txdata8)
-}
-
-func (d *sampleDataHelper) serilizeSubmittedData() []byte {
-	gob.Register(submittedData{})
-	b := bytes.Buffer{}
-	encoder := gob.NewEncoder(&b)
-	d.assert.NoError(encoder.Encode(d.submittedData))
-	by := b.Bytes()
-	d.t.Logf("Serialized submitted data to bytes of len [%d]", len(by))
-	return by
-}
-
-func (d *sampleDataHelper) loadSubmittedData(b []byte) {
-	gob.Register(submittedData{})
-	sd := make(submittedData)
-	buf := bytes.NewBuffer(b)
-	decoder := gob.NewDecoder(buf)
-	d.assert.NoError(decoder.Decode(&sd))
-	d.t.Logf("Deserialized submitted data from bytes of len [%d], submitted data = %#v", len(b), sd)
-	d.submittedData = sd
 }
 
 func (d *sampleDataHelper) verifyLedgerContent(h *testhelper) {

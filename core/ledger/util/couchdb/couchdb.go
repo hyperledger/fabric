@@ -39,9 +39,7 @@ const retryWaitTime = 125
 
 // DBOperationResponse is body for successful database calls.
 type DBOperationResponse struct {
-	Ok  bool
-	id  string
-	rev string
+	Ok bool
 }
 
 // DBInfo is body for database information.
