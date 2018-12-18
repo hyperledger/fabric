@@ -18,7 +18,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/comm"
-	grpc_testdata "github.com/hyperledger/fabric/core/comm/testdata/grpc"
+	"github.com/hyperledger/fabric/core/comm/testpb"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
@@ -153,9 +153,9 @@ type inspectingServer struct {
 	inspector   comm.BindingInspector
 }
 
-func (is *inspectingServer) EmptyCall(ctx context.Context, _ *grpc_testdata.Empty) (*grpc_testdata.Empty, error) {
+func (is *inspectingServer) EmptyCall(ctx context.Context, _ *testpb.Empty) (*testpb.Empty, error) {
 	is.lastContext.Store(ctx)
-	return &grpc_testdata.Empty{}, nil
+	return &testpb.Empty{}, nil
 }
 
 func (is *inspectingServer) inspect(envelope *common.Envelope) error {
@@ -178,7 +178,7 @@ func newInspectingServer(listener net.Listener, inspector comm.BindingInspector)
 		GRPCServer: srv,
 		inspector:  inspector,
 	}
-	grpc_testdata.RegisterTestServiceServer(srv.Server(), is)
+	testpb.RegisterTestServiceServer(srv.Server(), is)
 	return is
 }
 
@@ -217,7 +217,7 @@ func (ins *inspection) inspectBinding(envelope *common.Envelope) error {
 	conn, err := grpc.DialContext(ctx, ins.server.addr, grpc.WithTransportCredentials(ins.creds), grpc.WithBlock())
 	defer conn.Close()
 	assert.NoError(ins.t, err)
-	_, err = grpc_testdata.NewTestServiceClient(conn).EmptyCall(context.Background(), &grpc_testdata.Empty{})
+	_, err = testpb.NewTestServiceClient(conn).EmptyCall(context.Background(), &testpb.Empty{})
 	return ins.server.inspect(envelope)
 }
 

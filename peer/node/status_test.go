@@ -23,7 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/admin"
 	"github.com/hyperledger/fabric/core/comm"
-	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
+	"github.com/hyperledger/fabric/core/comm/testpb"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
 	common2 "github.com/hyperledger/fabric/peer/common"
