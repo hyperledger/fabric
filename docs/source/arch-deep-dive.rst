@@ -1,5 +1,14 @@
-Architecture Explained
-======================
+Architecture Origins
+====================
+
+.. note :: This document represents the initial architectural proposal
+           for Hyperledger Fabric v1.0. While the Hyperledger Fabric
+           implementation has conceptually followed from the architectural
+           proposal, some details have been altered during the
+           implementation. The initial architectural proposal is
+           presented as originally prepared. For a more technically
+           accurate representation of the architecture, please see
+           `Hyperledger Fabric: A Distributed Operating System for Permissioned Blockchains <https://arxiv.org/abs/1801.10228v2>`__.
 
 The Hyperledger Fabric architecture delivers the following advantages:
 
@@ -33,7 +42,7 @@ v1**
 2. Basic workflow of transaction endorsement
 3. Endorsement policies
 
-   **Part II: Post-v1 elements of the architecture**
+**Part II: Post-v1 elements of the architecture**
 
 4. Ledger checkpointing (pruning)
 
