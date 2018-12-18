@@ -310,11 +310,6 @@ func (cs *collectionStore) thatAcceptsNone() *collectionStore {
 	return cs
 }
 
-func (cs *collectionStore) andIsLenient() *collectionStore {
-	cs.lenient = true
-	return cs
-}
-
 func (cs *collectionStore) thatAccepts(cc CollectionCriteria) *collectionStore {
 	sp := collectionAccessPolicy{
 		cs: cs,

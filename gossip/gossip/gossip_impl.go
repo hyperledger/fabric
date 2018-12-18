@@ -45,7 +45,6 @@ type gossipServiceImpl struct {
 	presumedDead          chan common.PKIidType
 	disc                  discovery.Discovery
 	comm                  comm.Comm
-	incTime               time.Time
 	selfOrg               api.OrgIdentityType
 	*comm.ChannelDeMultiplexer
 	logger            util.Logger
@@ -203,18 +202,6 @@ func (g *gossipServiceImpl) LeaveChan(chainID common.ChainID) {
 // any connections to peers with identities that are found invalid
 func (g *gossipServiceImpl) SuspectPeers(isSuspected api.PeerSuspector) {
 	g.certStore.suspectPeers(isSuspected)
-}
-
-func (g *gossipServiceImpl) periodicalIdentityValidation(suspectFunc api.PeerSuspector, interval time.Duration) {
-	for {
-		select {
-		case s := <-g.toDieChan:
-			g.toDieChan <- s
-			return
-		case <-time.After(interval):
-			g.SuspectPeers(suspectFunc)
-		}
-	}
 }
 
 func (g *gossipServiceImpl) learnAnchorPeers(channel string, orgOfAnchorPeers api.OrgIdentityType, anchorPeers []api.AnchorPeer) {
