@@ -12,11 +12,7 @@ import (
 	"github.com/hyperledger/fabric/cmd/common/comm"
 	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
-)
-
-const (
-	v12 = iota
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Config aggregates configuration of TLS and signing
