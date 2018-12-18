@@ -7,9 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"bytes"
 
@@ -33,7 +35,7 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 
 	// fetch the config block
 	output := filepath.Join(tempDir, "config_block.pb")
-	sess, err := n.PeerAdminSession(peer, commands.ChannelFetch{
+	sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
 		ChannelID:  channel,
 		Block:      "config",
 		Orderer:    n.OrdererAddress(orderer, ListenPort),
@@ -157,14 +159,24 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 	// get current configuration block number
 	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
 
-	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, ListenPort),
-		File:      updateFile,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+	Eventually(func() string {
+		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
+			ChannelID: channel,
+			Orderer:   n.OrdererAddress(orderer, ListenPort),
+			File:      updateFile,
+		})
+		if err != nil {
+			return err.Error()
+		}
+		sess.Wait(n.EventuallyTimeout)
+		if sess.ExitCode() != 0 {
+			return fmt.Sprintf("exit code is %d", sess.ExitCode())
+		}
+		if strings.Contains(string(sess.Err.Contents()), "Successfully submitted channel update") {
+			return ""
+		}
+		return fmt.Sprintf("channel update output: %s", string(sess.Err.Contents()))
+	}, n.EventuallyTimeout).Should(BeEmpty())
 
 	// wait for the block to be committed
 	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
@@ -181,7 +193,7 @@ func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel 
 
 	// fetch the config block
 	output := filepath.Join(tempDir, "config_block.pb")
-	sess, err := n.PeerAdminSession(peer, commands.ChannelFetch{
+	sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
 		ChannelID:  channel,
 		Block:      "config",
 		Orderer:    n.OrdererAddress(orderer, ListenPort),
