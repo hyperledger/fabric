@@ -9,13 +9,10 @@ package transaction
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
-
-var logger = flogging.MustGetLogger("fabtoken-processor")
 
 // Processor implements the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
 // for FabToken transactions
