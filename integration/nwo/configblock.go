@@ -21,9 +21,8 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-// GetConfigBlock retrieves the current config block for a channel and
-// unmarshals it.
-func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Config {
+// GetConfigBlock retrieves the current config block for a channel
+func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Block {
 	tempDir, err := ioutil.TempDir("", "getConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
@@ -42,7 +41,12 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 
 	// unmarshal the config block bytes
 	configBlock := UnmarshalBlockFromFile(output)
+	return configBlock
+}
 
+// GetConfig retrieves the last config of the given channel
+func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Config {
+	configBlock := GetConfigBlock(n, peer, orderer, channel)
 	// unmarshal the envelope bytes
 	envelope, err := utils.GetEnvelopeFromBlock(configBlock.Data.Data[0])
 	Expect(err).NotTo(HaveOccurred())
