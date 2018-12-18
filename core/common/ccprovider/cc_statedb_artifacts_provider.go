@@ -18,10 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 )
 
-const (
-	ccPackageStatedbDir = "META-INF/statedb/"
-)
-
 // tarFileEntry encapsulates a file entry and it's contents inside a tar
 type TarFileEntry struct {
 	FileHeader  *tar.Header

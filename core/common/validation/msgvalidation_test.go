@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/token"
@@ -62,15 +61,6 @@ func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, *peer.
 		return nil, nil, fmt.Errorf("GetSignedProposal failed, err %s", err)
 	}
 	return prop, sProp, nil
-}
-
-func setupMSPManagerNoMSPs(channel string) error {
-	err := mgmt.GetManagerForChain(channel).Setup(nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func protoMarshal(t *testing.T, m proto.Message) []byte {
