@@ -351,7 +351,7 @@ func latestHeightAndEndpoint(puller ChainPuller) (string, uint64) {
 	var maxHeight uint64
 	var mostUpToDateEndpoint string
 	for endpoint, height := range puller.HeightsByEndpoints() {
-		if height > maxHeight {
+		if height >= maxHeight {
 			maxHeight = height
 			mostUpToDateEndpoint = endpoint
 		}

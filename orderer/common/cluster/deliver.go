@@ -92,7 +92,7 @@ func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
 // HeightsByEndpoints returns the block heights by endpoints of orderers
 func (p *BlockPuller) HeightsByEndpoints() map[string]uint64 {
 	res := make(map[string]uint64)
-	for endpoint, endpointInfo := range p.probeEndpoints(1).byEndpoints() {
+	for endpoint, endpointInfo := range p.probeEndpoints(0).byEndpoints() {
 		endpointInfo.conn.Close()
 		res[endpoint] = endpointInfo.lastBlockSeq + 1
 	}

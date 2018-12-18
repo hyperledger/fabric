@@ -101,6 +101,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 			name: "no block received",
 			expectedPanic: "Failed pulling system channel: " +
 				"failed obtaining the latest block for channel system",
+			isProbeResponseDelayed: true,
 		},
 		{
 			name: "latest block seq is less than boot block seq",
@@ -189,9 +190,12 @@ func TestReplicateChainsFailures(t *testing.T) {
 			osn.addExpectProbeAssert()
 			osn.addExpectProbeAssert()
 			osn.addExpectPullAssert(0)
-			for _, block := range systemChannelBlocks {
-				osn.blockResponses <- &orderer.DeliverResponse{
-					Type: &orderer.DeliverResponse_Block{Block: block},
+
+			if !testCase.isProbeResponseDelayed {
+				for _, block := range systemChannelBlocks {
+					osn.blockResponses <- &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{Block: block},
+					}
 				}
 			}
 
