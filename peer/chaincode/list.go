@@ -26,8 +26,6 @@ var getInstalledChaincodes bool
 var getInstantiatedChaincodes bool
 var chaincodeListCmd *cobra.Command
 
-const list_cmdname = "list"
-
 // installCmd returns the cobra command for Chaincode Deploy
 func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeListCmd = &cobra.Command{
