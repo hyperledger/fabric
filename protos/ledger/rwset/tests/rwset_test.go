@@ -26,9 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	binaryTestFileName = "rwsetV1ProtoBytes"
-)
+const binaryTestFileName = "rwsetV1ProtoBytes"
 
 // TestRWSetV1BackwardCompatible passes if the 'RWSet' messgae declared in the latest version
 // is able to unmarshal the protobytes that are produced by the 'RWSet' proto message declared in
@@ -43,14 +41,14 @@ func TestRWSetV1BackwardCompatible(t *testing.T) {
 	assert.Equal(t, rwset2, rwset1)
 }
 
-// testPrepareBinaryFileSampleRWSetV1 constructs a proto message for kvrwset and marshals its bytes to file 'rwsetV1ProtoBytes'.
+// PrepareBinaryFileSampleRWSetV1 constructs a proto message for kvrwset and marshals its bytes to file 'rwsetV1ProtoBytes'.
 // this code should be run on fabric version 1.0 so as to produce a sample file of proto message declared in V1
 // In order to invoke this function on V1 code, copy this over on to V1 code, make the first letter as 'T', and finally invoke this function
 // using golang test framwork
-func testPrepareBinaryFileSampleRWSetV1(t *testing.T) {
+func PrepareBinaryFileSampleRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleRWSet())
 	assert.NoError(t, err)
-	assert.NoError(t, ioutil.WriteFile(binaryTestFileName, b, 0775))
+	assert.NoError(t, ioutil.WriteFile(binaryTestFileName, b, 0644))
 }
 
 func constructSampleRWSet() *rwset.TxReadWriteSet {
