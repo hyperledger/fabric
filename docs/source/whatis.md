@@ -340,7 +340,7 @@ out-paces any of the other enterprise blockchain platforms.
 ## Acknowledgement
 
 The preceding is derived from the peer reviewed
-["Hyperledger Fabric: A Distributed Operating System for Permissioned Blockchains"](https://arxiv.org/abs/1801.10228v1) - Elli Androulaki, Artem
+["Hyperledger Fabric: A Distributed Operating System for Permissioned Blockchains"](https://arxiv.org/abs/1801.10228v2) - Elli Androulaki, Artem
 Barger, Vita Bortnikov, Christian Cachin, Konstantinos Christidis, Angelo De
 Caro, David Enyeart, Christopher Ferris, Gennady Laventman, Yacov Manevich,
 Srinivasan Muralidharan, Chet Murthy, Binh Nguyen, Manish Sethi, Gari Singh,
