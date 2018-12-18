@@ -32,16 +32,15 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // LockBasedTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
-	ledgerid              string
-	db                    privacyenabledstate.DB
-	pvtdataPurgeMgr       *pvtdataPurgeMgr
-	validator             validator.Validator
-	stateListeners        []ledger.StateListener
-	ccInfoProvider        ledger.DeployedChaincodeInfoProvider
-	commitRWLock          sync.RWMutex
-	oldBlockCommit        sync.Mutex
-	current               *current
-	lastCommittedBlockNum uint64
+	ledgerid        string
+	db              privacyenabledstate.DB
+	pvtdataPurgeMgr *pvtdataPurgeMgr
+	validator       validator.Validator
+	stateListeners  []ledger.StateListener
+	ccInfoProvider  ledger.DeployedChaincodeInfoProvider
+	commitRWLock    sync.RWMutex
+	oldBlockCommit  sync.Mutex
+	current         *current
 }
 
 type current struct {
@@ -105,9 +104,22 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) (
 	[]*txmgr.TxStatInfo, error,
 ) {
-	block := blockAndPvtdata.Block
+	// Among ValidateAndPrepare(), PrepareExpiringKeys(), and
+	// RemoveStaleAndCommitPvtDataOfOldBlocks(), we can allow only one
+	// function to execute at a time. The reason is that each function calls
+	// LoadCommittedVersions() which would clear the existing entries in the
+	// transient buffer and load new entries (such a transient buffer is not
+	// applicable for the golevelDB). As a result, these three functions can
+	// interleave and nullify the optimization provided by the bulk read API.
+	// Once the ledger cache (FAB-103) is introduced and existing
+	// LoadCommittedVersions() is refactored to return a map, we can allow
+	// these three functions to execute parallely.
 	logger.Debugf("Waiting for purge mgr to finish the background job of computing expirying keys for the block")
 	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
+	txmgr.oldBlockCommit.Lock()
+	defer txmgr.oldBlockCommit.Unlock()
+
+	block := blockAndPvtdata.Block
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
 	batch, txstatsInfo, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
@@ -128,7 +140,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 // (2) acquire a lock on oldBlockCommit
 // (3) checks for stale pvtData by comparing [version, valueHash] and removes stale data
 // (4) creates update batch from the the non-stale pvtData
-// (5) update the BTL bookkeeping managed by the purge manager and prepare expiring keys.
+// (5) update the BTL bookkeeping managed by the purge manager and update expiring keys.
 // (6) commit the non-stale pvt data to the stateDB
 // This function assumes that the passed input contains only transactions that had been
 // marked "Valid". In the current design, this assumption holds true as we store
@@ -143,6 +155,22 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 // function might receive pvtData of both valid and invalid tx. Such a scenario is explained
 // in FAB-12924 and is related to state fork and rebuilding ledger state.
 func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+	// (0) Among ValidateAndPrepare(), PrepareExpiringKeys(), and
+	// RemoveStaleAndCommitPvtDataOfOldBlocks(), we can allow only one
+	// function to execute at a time. The reason is that each function calls
+	// LoadCommittedVersions() which would clear the existing entries in the
+	// transient buffer and load new entries (such a transient buffer is not
+	// applicable for the golevelDB). As a result, these three functions can
+	// interleave and nullify the optimization provided by the bulk read API.
+	// Once the ledger cache (FAB-103) is introduced and existing
+	// LoadCommittedVersions() is refactored to return a map, we can allow
+	// these three functions to execute parallely. However, we cannot remove
+	// the lock on oldBlockCommit as it is also used to avoid interleaving
+	// between Commit() and execution of this function for the correctness.
+	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
+	txmgr.oldBlockCommit.Lock()
+	defer txmgr.oldBlockCommit.Unlock()
+
 	// (1) as the blocksPvtData can contain multiple versions of pvtData for
 	// a given <ns, coll, key>, we need to find duplicate tuples with different
 	// versions and use the one with the higher version
@@ -150,14 +178,6 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	if len(uniquePvtData) == 0 || err != nil {
 		return err
 	}
-
-	// (2) acquire a lock on oldBlockCommit. If the regular block commit has already
-	// acquired this lock, commit of old blocks' pvtData cannot proceed until the lock
-	// is released. This is required as the PrepareForExpiringKeys() used in step (5)
-	// of this function might affect the result of DeleteExpiredAndUpdateBookkeeping()
-	// in Commit()
-	txmgr.oldBlockCommit.Lock()
-	defer txmgr.oldBlockCommit.Unlock()
 
 	// (3) remove the pvt data which does not matches the hashed
 	// value stored in the public state
@@ -168,17 +188,14 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	// (4) create the update batch from the uniquePvtData
 	batch := uniquePvtData.transformToUpdateBatch()
 
-	// (5) update booking in the purge manager and prepare expiring keys.
-	// Though the expiring keys would have been loaded in memory during last
-	// PrepareExpiringKeys from Commit but we rerun this here because,
-	// RemoveStaleAndCommitPvtDataOfOldBlocks may have added new data which might be
-	// eligible for expiry during the next regular block commit.
+	// (5) update booking in the purge manager and update toPurgeList
+	// (i.e., the list of expiry keys). As the expiring keys would have
+	// been constructed during last PrepareExpiringKeys from commit, we need
+	// to update the list. This is because RemoveStaleAndCommitPvtDataOfOldBlocks
+	// may have added new data which might be eligible for expiry during the
+	// next regular block commit.
 	if err := txmgr.pvtdataPurgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(batch.PvtUpdates); err != nil {
 		return err
-	}
-
-	if txmgr.lastCommittedBlockNum > 0 {
-		txmgr.pvtdataPurgeMgr.PrepareForExpiringKeys(txmgr.lastCommittedBlockNum + 1)
 	}
 
 	// (6) commit the pvt data to the stateDB
@@ -284,10 +301,6 @@ func (uniquePvtData uniquePvtDataMap) findAndRemoveStalePvtData(db privacyenable
 }
 
 func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyenabledstate.DB) error {
-	// the regular block validation might have populate the cache already. In that scenario,
-	// this call would be adding more entries to the existing cache. However, it does not affect
-	// the correctness of regular block validation. If an entry already exist for a given
-	// hashedCompositeKey, cache would not be updated.
 	// Note that ClearCachedVersions would not be called till we validate and commit these
 	// pvt data of old blocks. This is because only during the exclusive lock duration, we
 	// clear the cache and we have already acquired one before reaching here.
@@ -418,13 +431,13 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
-	// we need to acquire a lock on oldBlockCommit. This is required because
-	// the DeleteExpiredAndUpdateBookkeeping() would perform incorrect operation if
-	// PrepareForExpiringKeys() in RemoveStaleAndCommitPvtDataOfOldBlocks() is allowed to
-	// execute parallely. RemoveStaleAndCommitPvtDataOfOldBlocks computes the update
-	// batch based on the current state and if we allow regular block commits at the
-	// same time, the former may overwrite the newer versions of the data and we may
-	// end up with an incorrect update batch.
+	// we need to acquire a lock on oldBlockCommit. The following are the two reasons:
+	// (1) the DeleteExpiredAndUpdateBookkeeping() would perform incorrect operation if
+	//        toPurgeList is updated by RemoveStaleAndCommitPvtDataOfOldBlocks().
+	// (2) RemoveStaleAndCommitPvtDataOfOldBlocks computes the update
+	//     batch based on the current state and if we allow regular block commits at the
+	//     same time, the former may overwrite the newer versions of the data and we may
+	//     end up with an incorrect update batch.
 	txmgr.oldBlockCommit.Lock()
 	defer txmgr.oldBlockCommit.Unlock()
 
@@ -472,7 +485,6 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	// In the case of error state listeners will not recieve this call - instead a peer panic is caused by the ledger upon receiveing
 	// an error from this function
 	txmgr.updateStateListeners()
-	txmgr.lastCommittedBlockNum = txmgr.current.blockNum()
 	return nil
 }
 
