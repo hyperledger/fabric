@@ -11,10 +11,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
+	protosorderer "github.com/hyperledger/fabric/protos/orderer"
+	ectdraft_protos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -201,4 +205,63 @@ func UnmarshalBlockFromFile(blockFile string) *common.Block {
 	Expect(err).NotTo(HaveOccurred())
 
 	return block
+}
+
+// AddConsenter adds a new consenter to the given channel
+func AddConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, consenter ectdraft_protos.Consenter) {
+	UpdateConsensusMetadata(n, peer, orderer, channel, func(originalMetadata []byte) []byte {
+		metadata := &ectdraft_protos.Metadata{}
+		err := proto.Unmarshal(originalMetadata, metadata)
+		Expect(err).NotTo(HaveOccurred())
+
+		metadata.Consenters = append(metadata.Consenters, &consenter)
+		newMetadata, err := proto.Marshal(metadata)
+		Expect(err).NotTo(HaveOccurred())
+		return newMetadata
+	})
+}
+
+// RemoveConsenter removes a consenter with the given certificate in PEM format from the given channel
+func RemoveConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, certificate []byte) {
+	UpdateConsensusMetadata(n, peer, orderer, channel, func(originalMetadata []byte) []byte {
+		metadata := &ectdraft_protos.Metadata{}
+		err := proto.Unmarshal(originalMetadata, metadata)
+		Expect(err).NotTo(HaveOccurred())
+
+		var newConsenters []*ectdraft_protos.Consenter
+		for _, consenter := range metadata.Consenters {
+			if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
+				continue
+			}
+			newConsenters = append(newConsenters, consenter)
+		}
+
+		metadata.Consenters = newConsenters
+		newMetadata, err := proto.Marshal(metadata)
+		Expect(err).NotTo(HaveOccurred())
+		return newMetadata
+	})
+}
+
+// ConsensusMetadataMutator receives ConsensusType.Metadata and mutates it
+type ConsensusMetadataMutator func([]byte) []byte
+
+// UpdateConsensusMetadata executes a config update that updates the consensus metadata according to the given ConsensusMetadataMutator
+func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, mutateMetadata ConsensusMetadataMutator) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeValue := &protosorderer.ConsensusType{}
+	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	Expect(err).NotTo(HaveOccurred())
+
+	consensusTypeValue.Metadata = mutateMetadata(consensusTypeValue.Metadata)
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     utils.MarshalOrPanic(consensusTypeValue),
+	}
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }
