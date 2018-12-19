@@ -1719,7 +1719,10 @@ var _ = Describe("Chain", func() {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 
-					By("by making sure remaining two nodes will elect new leader")
+					// Assert c1 has exited
+					Eventually(c1.Errored, LongEventualTimeout).Should(BeClosed())
+
+					By("making sure remaining two nodes will elect new leader")
 
 					// deterministically select nodeID == 2 to be a leader
 					network.elect(2)
