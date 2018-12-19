@@ -655,7 +655,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 	if err != nil {
 		stopChaincode(ctxt, cccid1, chaincodeSupport)
 		stopChaincode(ctxt, cccid2, chaincodeSupport)
-		t.Fatalf("Error initializing chaincode %s(%s)", chaincode2Name, err)
+		t.Fatalf("Error initializing chaincode %s(%+v)", chaincode2Name, err)
 		return nextBlockNumber1, nextBlockNumber2
 	}
 	nextBlockNumber1++

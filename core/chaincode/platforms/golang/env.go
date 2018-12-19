@@ -40,7 +40,7 @@ func getEnv() Env {
 func getGoEnv() (Env, error) {
 	env := getEnv()
 
-	goenvbytes, err := runProgram(env, 10*time.Second, "go", "env")
+	goenvbytes, err := runProgram(env, time.Minute, "go", "env")
 	if err != nil {
 		return nil, err
 	}
