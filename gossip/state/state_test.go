@@ -1095,7 +1095,6 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 		t.Log("Peer node got an answer, ", msg)
 		assert.True(t, msg.GetGossipMessage().GetStateResponse() != nil)
 		wg.Done()
-
 	}()
 
 	readyCh := make(chan struct{})
@@ -1104,11 +1103,12 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 		readyCh <- struct{}{}
 	}()
 
-	time.Sleep(time.Duration(5) * time.Second)
-	t.Log("Sending gossip message with remote state request")
-
 	chainID := common.ChainID(util.GetTestChainID())
+	waitUntilTrueOrTimeout(t, func() bool {
+		return len(peer.g.PeersOfChannel(chainID)) == 1
+	}, 30*time.Second)
 
+	t.Log("Sending gossip message with remote state request")
 	peer.g.Send(&proto.GossipMessage{
 		Content: &proto.GossipMessage_StateRequest{StateRequest: &proto.RemoteStateRequest{StartSeqNum: 0, EndSeqNum: 1}},
 	}, &comm.RemotePeer{Endpoint: peer.g.PeersOfChannel(chainID)[0].Endpoint, PKIID: peer.g.PeersOfChannel(chainID)[0].PKIid})
