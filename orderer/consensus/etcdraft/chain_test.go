@@ -1671,14 +1671,17 @@ var _ = Describe("Chain", func() {
 					err := c1.Configure(configEnv, 0)
 					Expect(err).ToNot(HaveOccurred())
 
-					// every node has written config block to the OSN ledger
-					network.exec(
-						func(c *chain) {
-							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-						})
+					Eventually(c1.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					// Defer assertions on c2&c3 after c2 being elected because we may disconnect c1 too
+					// quickly, and the MsgApps it sends to c2/c3 are dropped. Therefore, this config block
+					// on c2/c3 has not been committed yet. After c2 being elected, new leader will continue
+					// the effort to commit config block, if it's not done yet.
 
 					// electing new leader
 					network.elect(2)
+
+					Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c3.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
 					By("submitting new transaction to follower")
 					c2.cutter.CutNext = true
