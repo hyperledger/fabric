@@ -447,7 +447,7 @@ func TestAbortRPC(t *testing.T) {
 		},
 		{
 			name:       "RPC timeout",
-			rpcTimeout: time.Millisecond * 100,
+			rpcTimeout: time.Second,
 			abortFunc:  func(*cluster.RemoteContext) {},
 		},
 	}
