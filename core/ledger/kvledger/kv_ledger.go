@@ -403,23 +403,26 @@ func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, e
 }
 
 func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+	logger.Debugf("[%s:] Comparing pvtData of [%d] old blocks against the hashes in transaction's rwset to find valid and invalid data",
+		l.ledgerID, len(pvtData))
 	validPvtData, hashMismatches, err := ConstructValidAndInvalidPvtData(pvtData, l.blockStore)
 	if err != nil {
 		return nil, err
 	}
 
+	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(pvtData))
 	err = l.blockStore.CommitPvtDataOfOldBlocks(validPvtData)
 	if err != nil {
 		return nil, err
 	}
 
-	// (2) remove stale pvt data of old blocks and then commit to the stateDB
+	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the stateDB", l.ledgerID, len(pvtData))
 	err = l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(validPvtData)
 	if err != nil {
 		return nil, err
 	}
 
-	// (3) reset the lastUpdatedOldBlockList from the pvtstore
+	logger.Debugf("[%s:] Clearing the bookkeeping information from pvtdatastore", l.ledgerID)
 	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
 		return nil, err
 	}

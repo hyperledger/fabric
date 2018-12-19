@@ -118,6 +118,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	txmgr.oldBlockCommit.Lock()
 	defer txmgr.oldBlockCommit.Unlock()
+	logger.Debug("lock acquired on oldBlockCommit for validating read set version against the committed version")
 
 	block := blockAndPvtdata.Block
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
@@ -167,13 +168,16 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	// these three functions to execute parallely. However, we cannot remove
 	// the lock on oldBlockCommit as it is also used to avoid interleaving
 	// between Commit() and execution of this function for the correctness.
+	logger.Debug("Waiting for purge mgr to finish the background job of computing expirying keys for the block")
 	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	txmgr.oldBlockCommit.Lock()
 	defer txmgr.oldBlockCommit.Unlock()
+	logger.Debug("lock acquired on oldBlockCommit for committing pvtData of old blocks to state database")
 
 	// (1) as the blocksPvtData can contain multiple versions of pvtData for
 	// a given <ns, coll, key>, we need to find duplicate tuples with different
 	// versions and use the one with the higher version
+	logger.Debug("Constructing unique pvtData by removing duplicate entries")
 	uniquePvtData, err := constructUniquePvtData(blocksPvtData)
 	if len(uniquePvtData) == 0 || err != nil {
 		return err
@@ -181,6 +185,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 
 	// (3) remove the pvt data which does not matches the hashed
 	// value stored in the public state
+	logger.Debug("Finding and removing stale pvtData")
 	if err := uniquePvtData.findAndRemoveStalePvtData(txmgr.db); err != nil {
 		return err
 	}
@@ -188,17 +193,19 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	// (4) create the update batch from the uniquePvtData
 	batch := uniquePvtData.transformToUpdateBatch()
 
-	// (5) update booking in the purge manager and update toPurgeList
+	// (5) update bookkeeping in the purge manager and update toPurgeList
 	// (i.e., the list of expiry keys). As the expiring keys would have
 	// been constructed during last PrepareExpiringKeys from commit, we need
 	// to update the list. This is because RemoveStaleAndCommitPvtDataOfOldBlocks
 	// may have added new data which might be eligible for expiry during the
 	// next regular block commit.
+	logger.Debug("Updating bookkeeping info in the purge manager")
 	if err := txmgr.pvtdataPurgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(batch.PvtUpdates); err != nil {
 		return err
 	}
 
 	// (6) commit the pvt data to the stateDB
+	logger.Debug("Committing updates to state database")
 	if err := txmgr.db.ApplyPrivacyAwareUpdates(batch, nil); err != nil {
 		return err
 	}
@@ -442,6 +449,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	//     end up with an incorrect update batch.
 	txmgr.oldBlockCommit.Lock()
 	defer txmgr.oldBlockCommit.Unlock()
+	logger.Debug("lock acquired on oldBlockCommit for committing regular updates to state database")
 
 	// When using the purge manager for the first block commit after peer start, the asynchronous function
 	// 'PrepareForExpiringKeys' is invoked in-line. However, for the subsequent blocks commits, this function is invoked
