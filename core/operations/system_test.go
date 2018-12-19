@@ -65,6 +65,7 @@ var _ = Describe("System", func() {
 				ClientCertRequired: false,
 				ClientCACertFiles:  []string{filepath.Join(tempDir, "client-ca.pem")},
 			},
+			Version: "test-version",
 		}
 
 		system = operations.NewSystem(options)
@@ -239,7 +240,7 @@ var _ = Describe("System", func() {
 			Expect(system.Provider).To(Equal(&prometheus.Provider{}))
 		})
 
-		It("does hosts a secure endpoint for metrics", func() {
+		It("hosts a secure endpoint for metrics", func() {
 			err := system.Start()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -255,6 +256,21 @@ var _ = Describe("System", func() {
 			resp, err = unauthClient.Get(metricsURL)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("records the fabric version", func() {
+			err := system.Start()
+			Expect(err).NotTo(HaveOccurred())
+
+			metricsURL := fmt.Sprintf("https://%s/metrics", system.Addr())
+			resp, err := client.Get(metricsURL)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			body, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(body)).To(ContainSubstring("# TYPE fabric_version gauge"))
+			Expect(string(body)).To(ContainSubstring(`fabric_version{version="test-version"}`))
 		})
 	})
 
@@ -279,6 +295,28 @@ var _ = Describe("System", func() {
 			Expect(system).NotTo(BeNil())
 		})
 
+		recordStats := func(w io.Writer) {
+			defer GinkgoRecover()
+
+			// handle the dial check
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+
+			// handle the payload
+			conn, err = listener.Accept()
+			Expect(err).NotTo(HaveOccurred())
+			defer conn.Close()
+
+			conn.SetReadDeadline(time.Now().Add(time.Minute))
+			_, err = io.Copy(w, conn)
+			if err != nil && err != io.EOF {
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+
 		AfterEach(func() {
 			listener.Close()
 		})
@@ -291,32 +329,20 @@ var _ = Describe("System", func() {
 
 		It("emits statsd metrics", func() {
 			statsBuffer := gbytes.NewBuffer()
-
-			go func(w io.Writer) {
-				defer GinkgoRecover()
-
-				// handle the dial check
-				conn, err := listener.Accept()
-				if err != nil {
-					return
-				}
-				conn.Close()
-
-				// handle the payload
-				conn, err = listener.Accept()
-				Expect(err).NotTo(HaveOccurred())
-				defer conn.Close()
-
-				conn.SetReadDeadline(time.Now().Add(time.Minute))
-				_, err = io.Copy(w, conn)
-				if err != nil && err != io.EOF {
-					Expect(err).NotTo(HaveOccurred())
-				}
-			}(statsBuffer)
+			go recordStats(statsBuffer)
 
 			err := system.Start()
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(statsBuffer).Should(gbytes.Say("prefix.go.mem.gc_last_epoch_nanotime:"))
+			Eventually(statsBuffer).Should(gbytes.Say(`\Qprefix.go.mem.gc_last_epoch_nanotime:\E`))
+		})
+
+		It("emits the fabric version statsd metric", func() {
+			statsBuffer := gbytes.NewBuffer()
+			go recordStats(statsBuffer)
+
+			err := system.Start()
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(statsBuffer).Should(gbytes.Say(`\Qprefix.fabric_version.test-version:1.000000|g\E`))
 		})
 
 		Context("when checking the network and address fails", func() {
