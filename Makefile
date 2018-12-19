@@ -115,7 +115,7 @@ all: native docker checks
 
 checks: basic-checks unit-test integration-test
 
-basic-checks: license spelling trailing-spaces linter
+basic-checks: license spelling trailing-spaces linter check-metrics-doc
 
 desk-check: checks verify
 
@@ -211,6 +211,14 @@ linter: check-deps buildenv
 check-deps: buildenv
 	@echo "DEP: Checking for dependency issues.."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/check_deps.sh
+
+check-metrics-doc: buildenv
+	@echo "METRICS: Checking for outdated reference documentation.."
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/metrics_doc.sh check
+
+generate-metrics-doc: buildenv
+	@echo "Generating metrics reference documentation..."
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/metrics_doc.sh generate
 
 $(BUILD_DIR)/%/chaintool: Makefile
 	@echo "Installing chaintool"
