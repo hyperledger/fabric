@@ -849,17 +849,20 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:99677abdd7b156ae0ab7f0eba2f7b9257214e9959dd506d5daa423cdafb470fb"
+  digest = "1:0a25e2d158566f94027c0eeb72e1d34b0cfba5b8b51dc7c5b1bb04c2d437898b"
   name = "golang.org/x/tools"
   packages = [
     "cmd/goimports",
     "go/ast/astutil",
     "go/gcexportdata",
+    "go/internal/cgo",
     "go/internal/gcimporter",
+    "go/packages",
     "go/types/typeutil",
     "imports",
     "internal/fastwalk",
     "internal/gopathwalk",
+    "internal/semver",
   ]
   pruneopts = "NUT"
   revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
@@ -1002,6 +1005,7 @@
     "golang.org/x/net/context",
     "golang.org/x/sync/semaphore",
     "golang.org/x/tools/cmd/goimports",
+    "golang.org/x/tools/go/packages",
     "google.golang.org/grpc",
     "google.golang.org/grpc/balancer",
     "google.golang.org/grpc/balancer/roundrobin",

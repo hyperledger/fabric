@@ -70,8 +70,8 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_response_size                       | gauge     | The mean response size in bytes from brokers.              | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| couchdb_processing_time                             | histogram |                                                            | database           |
-|                                                     |           |                                                            | function_name      |
+| couchdb_processing_time                             | histogram | Time taken in seconds for the function to complete request | database           |
+|                                                     |           | to CouchDB                                                 | function_name      |
 |                                                     |           |                                                            | result             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | deliver_blocks_sent                                 | counter   | The number of blocks sent by the deliver service.          | channel            |
@@ -92,6 +92,8 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | dockercontroller_chaincode_container_build_duration | histogram | The time to build a chaincode image in seconds.            | chaincode          |
 |                                                     |           |                                                            | success            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| fabric_version                                      | gauge     | The active version of Fabric.                              | version            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | grpc_comm_conn_closed                               | counter   | gRPC connections closed. Open minus closed is the active   |                    |
 |                                                     |           | number of connections.                                     |                    |
@@ -142,6 +144,7 @@ The following metrics are currently exported for consumption by Prometheus.
 |                                                     |           |                                                            | chaincode          |
 |                                                     |           |                                                            | validation_code    |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+
 
 StatsD Metrics
 --------------
@@ -202,7 +205,8 @@ associated with the metric.
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.response_size.%{broker_id}                                              | gauge     | The mean response size in bytes from brokers.              |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| couchdb.processing_time.%{database}.%{function_name}.%{result}                          | histogram |                                                            |
+| couchdb.processing_time.%{database}.%{function_name}.%{result}                          | histogram | Time taken in seconds for the function to complete request |
+|                                                                                         |           | to CouchDB                                                 |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | deliver.blocks_sent.%{channel}.%{filtered}                                              | counter   | The number of blocks sent by the deliver service.          |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
@@ -217,6 +221,8 @@ associated with the metric.
 |                                                                                         |           | deliver service.                                           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | dockercontroller.chaincode_container_build_duration.%{chaincode}.%{success}             | histogram | The time to build a chaincode image in seconds.            |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| fabric_version.%{version}                                                               | gauge     | The active version of Fabric.                              |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | grpc.comm.conn_closed                                                                   | counter   | gRPC connections closed. Open minus closed is the active   |
 |                                                                                         |           | number of connections.                                     |
@@ -252,6 +258,7 @@ associated with the metric.
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | ledger.transaction_count.%{channel}.%{transaction_type}.%{chaincode}.%{validation_code} | counter   | Number of transactions processed.                          |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
