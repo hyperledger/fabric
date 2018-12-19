@@ -139,7 +139,6 @@ var _ = Describe("Server", func() {
 			resp, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp).To(Equal(&testpb.Message{Message: "hi", Sequence: 1}))
-			endTime := time.Now()
 
 			var logMessages []string
 			for _, entry := range observed.AllUntimed() {
@@ -150,6 +149,7 @@ var _ = Describe("Server", func() {
 				"sending unary response", // sending payload
 				"unary call completed",
 			))
+			endTime := time.Now()
 
 			for _, entry := range observed.AllUntimed() {
 				keyNames := map[string]struct{}{}
@@ -377,7 +377,6 @@ var _ = Describe("Server", func() {
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
-			endTime := time.Now()
 
 			Eventually(observed.AllUntimed).Should(HaveLen(3))
 			var logMessages []string
@@ -389,6 +388,7 @@ var _ = Describe("Server", func() {
 				"sending stream message",  // sending payload
 				"streaming call completed",
 			))
+			endTime := time.Now()
 
 			for _, entry := range observed.AllUntimed() {
 				keyNames := map[string]struct{}{}
