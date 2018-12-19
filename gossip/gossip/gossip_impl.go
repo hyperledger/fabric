@@ -746,6 +746,7 @@ func (g *gossipServiceImpl) Stop() {
 	atomic.StoreInt32(&g.stopFlag, int32(1))
 	g.logger.Info("Stopping gossip")
 	g.chanState.stop()
+	g.discAdapter.close()
 	g.disc.Stop()
 	g.certStore.stop()
 	g.toDieChan <- struct{}{}
@@ -753,7 +754,6 @@ func (g *gossipServiceImpl) Stop() {
 	g.ChannelDeMultiplexer.Close()
 	g.stateInfoMsgStore.Stop()
 	g.stopSignal.Wait()
-	g.discAdapter.close()
 	g.comm.Stop()
 }
 
