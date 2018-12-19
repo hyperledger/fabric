@@ -248,7 +248,7 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, orde
 	submitter := network.Peer("Org1", "peer0")
 	signer := network.Peer("Org2", "peer0")
 
-	config := nwo.GetConfigBlock(network, submitter, orderer, channel)
+	config := nwo.GetConfig(network, submitter, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
 	// set the policy
