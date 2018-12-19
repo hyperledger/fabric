@@ -141,8 +141,7 @@ func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
 	}
 	d.lock.RLock()
 	defer d.lock.RUnlock()
-	nm := d.id2Member[string(PKIID)]
-	return nm
+	return copyNetworkMember(d.id2Member[string(PKIID)])
 }
 
 func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
@@ -993,6 +992,16 @@ func (d *gossipDiscoveryImpl) Stop() {
 	atomic.StoreInt32(&d.toDieFlag, int32(1))
 	d.msgStore.Stop()
 	d.toDieChan <- struct{}{}
+}
+
+func copyNetworkMember(member *NetworkMember) *NetworkMember {
+	if member == nil {
+		return nil
+	} else {
+		copiedNetworkMember := &NetworkMember{}
+		*copiedNetworkMember = *member
+		return copiedNetworkMember
+	}
 }
 
 func equalPKIid(a, b common.PKIidType) bool {
