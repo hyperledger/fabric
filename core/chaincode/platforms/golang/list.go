@@ -23,6 +23,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 //runProgram non-nil Env, timeout (typically secs or millisecs), program name and args
@@ -43,16 +45,10 @@ func runProgram(env Env, timeout time.Duration, pgm string, args ...string) ([]b
 	if ctx.Err() == context.DeadlineExceeded {
 		err = fmt.Errorf("timed out after %s", timeout)
 	}
-
 	if err != nil {
-		return nil,
-			fmt.Errorf(
-				"command <%s %s>: failed with error: \"%s\"\n%s",
-				pgm,
-				strings.Join(args, " "),
-				err,
-				string(stdErr.Bytes()))
+		return nil, errors.Errorf("command <%s %s>: failed with error: \"%s\"\n%s", pgm, strings.Join(args, " "), err, stdErr)
 	}
+
 	return out, nil
 }
 
@@ -62,7 +58,7 @@ func list(env Env, template, pkg string) ([]string, error) {
 		env = getEnv()
 	}
 
-	lst, err := runProgram(env, 60*time.Second, "go", "list", "-f", template, pkg)
+	lst, err := runProgram(env, time.Minute, "go", "list", "-f", template, pkg)
 	if err != nil {
 		return nil, err
 	}
