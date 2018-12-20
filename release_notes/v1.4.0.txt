@@ -1,4 +1,4 @@
-v1.4.0-rc1 Release Notes - December 10, 2018
+v1.4.0-rc2 Release Notes - December 20, 2018
 --------------------------------------------
 
 What's New in Hyperledger Fabric v1.4
@@ -122,4 +122,4 @@ Updated to Go version 1.11.1
 Updated baseimage version to 0.4.14
 
 For the full list of improvements and fixes, refer to the release change log:
-https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v140-rc1
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v140-rc2
