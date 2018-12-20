@@ -126,8 +126,8 @@ func TestGetDeploymentPayload(t *testing.T) {
 
 func TestGenerateDockerfile(t *testing.T) {
 	str, _ := platform.GenerateDockerfile()
-	if !strings.Contains(str, "/fabric-baseimage:") {
-		t.Fatalf("should have generated a docker file using the fabric-baseimage, but got %s", str)
+	if !strings.Contains(str, "/fabric-nodeenv:") {
+		t.Fatalf("should have generated a docker file using the fabric-nodeenv, but got %s", str)
 	}
 
 	if !strings.Contains(str, "ADD binpackage.tar /usr/local/src") {

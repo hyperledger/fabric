@@ -39,20 +39,16 @@ var cobraCommand = &cobra.Command{
 
 // GetInfo returns version information for the peer
 func GetInfo() string {
-	if metadata.Version == "" {
-		metadata.Version = "development build"
-	}
-
-	ccinfo := fmt.Sprintf(" Base Image Version: %s\n"+
-		"  Base Docker Namespace: %s\n"+
+	ccinfo := fmt.Sprintf("  Base Docker Namespace: %s\n"+
 		"  Base Docker Label: %s\n"+
 		"  Docker Namespace: %s\n",
-		metadata.BaseVersion, metadata.BaseDockerNamespace,
-		metadata.BaseDockerLabel, metadata.DockerNamespace)
+		metadata.BaseDockerNamespace,
+		metadata.BaseDockerLabel,
+		metadata.DockerNamespace)
 
 	return fmt.Sprintf("%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n"+
 		" OS/Arch: %s\n"+
-		" Chaincode:\n %s\n",
+		" Chaincode:\n%s\n",
 		ProgramName, metadata.Version, metadata.CommitSHA, runtime.Version(),
 		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH), ccinfo)
 }
