@@ -178,14 +178,18 @@ func invokeEmptyStream(address string, dialOptions []grpc.DialOption) (*testpb.E
 		}
 	}()
 
-	if err := stream.Send(new(testpb.Empty)); err != nil {
-		return nil, err
+	// TestServerInterceptors adds an interceptor that does not call the target
+	// StreamHandler and returns an error so Send can return with an io.EOF since
+	// the server side has already terminated. Whether or not we get an error
+	// depends on timing.
+	err = stream.Send(&testpb.Empty{})
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("stream send failed: %s", err)
 	}
 
 	stream.CloseSend()
 	<-waitc
 	return msg, streamErr
-
 }
 
 const (
