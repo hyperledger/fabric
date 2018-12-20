@@ -1,3 +1,40 @@
+## v1.4.0-rc2
+Thu Dec 20 08:36:43 EST 2018
+
+* [47317b2](https://github.com/hyperledger/fabric/commit/47317b2) recon: add debug logs in ledger
+* [5c54bf2](https://github.com/hyperledger/fabric/commit/5c54bf2) opt: lscc state cache in couchDB
+* [ecb8e48](https://github.com/hyperledger/fabric/commit/ecb8e48) [FAB-13271](https://jira.hyperledger.org/browse/FAB-13271) Commercial Paper Updates
+* [85802b9](https://github.com/hyperledger/fabric/commit/85802b9) [FAB-12978](https://jira.hyperledger.org/browse/FAB-12978) Develop Apps: Connection options topic
+* [e9e5ca6](https://github.com/hyperledger/fabric/commit/e9e5ca6) [FAB-13025](https://jira.hyperledger.org/browse/FAB-13025) generate rst metric tables
+* [f91e87c](https://github.com/hyperledger/fabric/commit/f91e87c) Add meter with fabric and go version
+* [863f989](https://github.com/hyperledger/fabric/commit/863f989) recon: at a time, only 1 func. can use the Cache
+* [283bb61](https://github.com/hyperledger/fabric/commit/283bb61) [FAB-12934](https://jira.hyperledger.org/browse/FAB-12934) Develop Apps: Connection profile topic
+* [728f4eb](https://github.com/hyperledger/fabric/commit/728f4eb) [FAB-13327](https://jira.hyperledger.org/browse/FAB-13327) Architecture Explained clarification
+* [df845e0](https://github.com/hyperledger/fabric/commit/df845e0) [FAB-13340](https://jira.hyperledger.org/browse/FAB-13340) Fix reconciliation CouchDB bulk load
+* [cfdb44d](https://github.com/hyperledger/fabric/commit/cfdb44d) [FAB-13303](https://jira.hyperledger.org/browse/FAB-13303) increase reconciliation test coverage
+* [44325b4](https://github.com/hyperledger/fabric/commit/44325b4) [FAB-13302](https://jira.hyperledger.org/browse/FAB-13302) check for err before report mismatches
+* [1954f36](https://github.com/hyperledger/fabric/commit/1954f36) [FAB-13301](https://jira.hyperledger.org/browse/FAB-13301) use generated mocks in pvt data tests
+* [e5b3481](https://github.com/hyperledger/fabric/commit/e5b3481) [FAB-13283](https://jira.hyperledger.org/browse/FAB-13283) Update commercial paper tutorial
+* [fb7ed54](https://github.com/hyperledger/fabric/commit/fb7ed54) [FAB-13292](https://jira.hyperledger.org/browse/FAB-13292) fix version check in bootstrap.sh
+* [158392d](https://github.com/hyperledger/fabric/commit/158392d) [FAB-13282](https://jira.hyperledger.org/browse/FAB-13282) Clarify version of node.js
+* [ba37eff](https://github.com/hyperledger/fabric/commit/ba37eff) [FAB-13269](https://jira.hyperledger.org/browse/FAB-13269) keep reconcile pvt in one pass
+* [3bcdac5](https://github.com/hyperledger/fabric/commit/3bcdac5) [FAB-13288](https://jira.hyperledger.org/browse/FAB-13288) BYFN manual step fixes
+* [02af194](https://github.com/hyperledger/fabric/commit/02af194) [FAB-13277](https://jira.hyperledger.org/browse/FAB-13277) Fix typos in doc
+* [afb2e8d](https://github.com/hyperledger/fabric/commit/afb2e8d) [FAB-11734](https://jira.hyperledger.org/browse/FAB-11734) BYFN endorsement policy
+* [da5de24](https://github.com/hyperledger/fabric/commit/da5de24) [FAB-13224](https://jira.hyperledger.org/browse/FAB-13224) fix blocksprovider unit test flakes
+* [2cda36c](https://github.com/hyperledger/fabric/commit/2cda36c) [FAB-13270](https://jira.hyperledger.org/browse/FAB-13270) fix mkdir cmd
+* [c10e00c](https://github.com/hyperledger/fabric/commit/c10e00c) [FAB-13256](https://jira.hyperledger.org/browse/FAB-13256) Fix What's New link to release notes
+* [c5abc91](https://github.com/hyperledger/fabric/commit/c5abc91) [FAB-13253](https://jira.hyperledger.org/browse/FAB-13253) Improve SDK compatibility doc
+* [a00a80b](https://github.com/hyperledger/fabric/commit/a00a80b) [FAB-13251](https://jira.hyperledger.org/browse/FAB-13251) Add nil check in ToGossipMessage
+* [ccf843c](https://github.com/hyperledger/fabric/commit/ccf843c) [FAB-11608](https://jira.hyperledger.org/browse/FAB-11608) Gossip: Optimize alive message verification
+* [3cbc5cf](https://github.com/hyperledger/fabric/commit/3cbc5cf) Remove +lifecycle enable parameter from core.yaml
+* [0b7aefd](https://github.com/hyperledger/fabric/commit/0b7aefd) [FAB-13239](https://jira.hyperledger.org/browse/FAB-13239) terminate container streaming output loop
+* [05d99ad](https://github.com/hyperledger/fabric/commit/05d99ad) regenerate ledger testdata using release-1.1
+* [e485f77](https://github.com/hyperledger/fabric/commit/e485f77) Fix bug in decoding missingdatakey
+* [5bcbbb5](https://github.com/hyperledger/fabric/commit/5bcbbb5) [FAB-13024](https://jira.hyperledger.org/browse/FAB-13024) Update fabcar doc
+* [0b07d53](https://github.com/hyperledger/fabric/commit/0b07d53) [FAB-12870](https://jira.hyperledger.org/browse/FAB-12870) fix timing flake in grpclogging tests
+* [11fa186](https://github.com/hyperledger/fabric/commit/11fa186) [FAB-13114](https://jira.hyperledger.org/browse/FAB-13114) Prepare for next rel (1.4.0 on release-1.4)
+
 ## v1.4.0-rc1
 Mon Dec 10 13:09:08 EST 2018
 
