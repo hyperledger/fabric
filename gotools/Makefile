@@ -18,7 +18,7 @@ OBJDIR ?= build
 TMP_GOPATH=$(OBJDIR)/gopath
 GOBIN=$(abspath $(TMP_GOPATH)/bin)
 
-GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml misspell manifest-tool
+GOTOOLS = golint govendor protoc-gen-go ginkgo gocov gocov-xml misspell manifest-tool
 GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
 
 # go tool->path mapping
