@@ -13,8 +13,10 @@ excluded_packages=(
 )
 
 # regexes for packages that must be run serially
+# NOTE: these packages are now tested first as they tend to fail more frequently
 serial_packages=(
     "github.com/hyperledger/fabric/gossip"
+    "github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 )
 
 # packages which need to be tested with build tag pluginsenabled
@@ -82,14 +84,14 @@ run_tests() {
     echo ${GO_TAGS}
 
     time {
-        local parallel=$(parallel_test_packages "$@")
-        if [ -n "${parallel}" ]; then
-            go test ${flags} ${race_flags} -tags "$GO_TAGS" ${parallel[@]} -short -timeout=20m
-        fi
-
         local serial=$(serial_test_packages "$@") # race is disabled as well
         if [ -n "${serial}" ]; then
             go test ${flags} -tags "$GO_TAGS" ${serial[@]} -short -p 1 -timeout=20m
+        fi
+
+        local parallel=$(parallel_test_packages "$@")
+        if [ -n "${parallel}" ]; then
+            go test ${flags} ${race_flags} -tags "$GO_TAGS" ${parallel[@]} -short -timeout=20m
         fi
     }
 }
