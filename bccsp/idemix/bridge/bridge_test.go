@@ -788,7 +788,11 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("invalid credential request in verifying credential", func() {
-				credRequest[4] = 0
+				if credRequest[4] == 0 {
+					credRequest[4] = 1
+				} else {
+					credRequest[4] = 0
+				}
 				credential, err := CredentialSigner.Sign(
 					IssuerKey,
 					credRequest,
