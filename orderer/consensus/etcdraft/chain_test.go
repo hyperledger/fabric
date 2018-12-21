@@ -1815,7 +1815,6 @@ var _ = Describe("Chain", func() {
 
 				c1.cutter.CutNext = true
 
-				stepCnt := c1.rpc.StepCallCount()
 				network.disconnect(1) // drop MsgApp
 
 				err := c1.Order(env, 0)
@@ -1826,8 +1825,6 @@ var _ = Describe("Chain", func() {
 						Consistently(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(0))
 					})
 
-				// Since the leader has 2 followers, assert that we actually dropped MsgApp for both of them.
-				Eventually(c1.rpc.StepCallCount).Should(Equal(stepCnt + 2))
 				network.connect(1) // reconnect leader
 
 				c1.clock.Increment(interval) // trigger a heartbeat
@@ -2596,7 +2593,7 @@ func (n *network) elect(id uint64) (tick int) {
 	// results in undeterministic behavior. Therefore
 	// we are going to wait for enough time after each
 	// tick so it could take effect.
-	t := 50 * time.Millisecond
+	t := 10 * time.Millisecond
 
 	n.connLock.RLock()
 	c := n.chains[id]
