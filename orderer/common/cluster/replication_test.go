@@ -204,7 +204,9 @@ func TestReplicateChainsFailures(t *testing.T) {
 
 			dialer := newCountingDialer()
 			bp := newBlockPuller(dialer, osn.srv.Address())
-			bp.FetchTimeout = time.Millisecond * 100
+			// Put a big timeout, to reduce chance of flakes when the server gets stuck
+			// and we get an un-called for timeout.
+			bp.FetchTimeout = time.Hour
 
 			cl := &mocks.ChannelLister{}
 			cl.On("Channels").Return(testCase.channelsReturns)
@@ -229,6 +231,9 @@ func TestReplicateChainsFailures(t *testing.T) {
 			if !testCase.isProbeResponseDelayed {
 				osn.enqueueResponse(testCase.latestBlockSeqInOrderer)
 				osn.enqueueResponse(testCase.latestBlockSeqInOrderer)
+			} else {
+				// Send a nil to force an EOF to the client
+				osn.blockResponses <- nil
 			}
 			osn.addExpectProbeAssert()
 			osn.addExpectProbeAssert()
@@ -240,6 +245,9 @@ func TestReplicateChainsFailures(t *testing.T) {
 						Type: &orderer.DeliverResponse_Block{Block: block},
 					}
 				}
+			} else {
+				// Send a nil to force an EOF to the client
+				osn.blockResponses <- nil
 			}
 
 			assert.PanicsWithValue(t, testCase.expectedPanic, r.ReplicateChains)
@@ -741,7 +749,7 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 		MaxTotalBufferBytes: 1,
 		Channel:             "mychannel",
 		Signer:              &crypto.LocalSigner{},
-		Timeout:             time.Second,
+		Timeout:             time.Hour,
 	}, validBlock)
 	assert.NoError(t, err)
 	defer bp.Close()

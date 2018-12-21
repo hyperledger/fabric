@@ -171,6 +171,9 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	}
 	if seekInfo.GetStart().GetNewest() != nil {
 		resp := <-ds.blocks()
+		if resp == nil {
+			return nil
+		}
 		return stream.Send(resp)
 	}
 	panic(fmt.Sprintf("expected either specified or newest seek but got %v", seekInfo.GetStart()))
