@@ -26,10 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/protos/common"
-	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
-	"github.com/hyperledger/fabric/protos/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -270,32 +267,20 @@ var _ = Describe("EndToEnd", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
-			config := nwo.GetConfig(network, peer, orderer, channel)
-			updatedConfig := proto.Clone(config).(*common.Config)
+			nwo.UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
+				metadata := &etcdraft.Metadata{}
+				err := proto.Unmarshal(originalMetadata, metadata)
+				Expect(err).NotTo(HaveOccurred())
 
-			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-			consensusTypeValue := &protosorderer.ConsensusType{}
-			err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
-			Expect(err).NotTo(HaveOccurred())
+				// update max in flight messages
+				metadata.Options.MaxInflightMsgs = 1000
+				metadata.Options.MaxSizePerMsg = 512
 
-			metadata := &etcdraft.Metadata{}
-			err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
-			Expect(err).NotTo(HaveOccurred())
-
-			// update max in flight messages
-			metadata.Options.MaxInflightMsgs = 1000
-			metadata.Options.MaxSizePerMsg = 512
-
-			// write metadata back
-			consensusTypeValue.Metadata, err = proto.Marshal(metadata)
-			Expect(err).NotTo(HaveOccurred())
-
-			updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
-				ModPolicy: "Admins",
-				Value:     utils.MarshalOrPanic(consensusTypeValue),
-			}
-
-			nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+				// write metadata back
+				newMetadata, err := proto.Marshal(metadata)
+				Expect(err).NotTo(HaveOccurred())
+				return newMetadata
+			})
 		})
 	})
 
