@@ -186,9 +186,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
 
 				By("Starting the orderer again")
-				o4Runner := network.OrdererRunner(orderers[i])
-				ordererRunners = append(ordererRunners, o4Runner)
-				ordererProcesses[i] = ifrit.Invoke(grouper.Member{Name: orderers[i].ID(), Runner: o4Runner})
+				ordererRunner := network.OrdererRunner(orderers[i])
+				ordererRunners = append(ordererRunners, ordererRunner)
+				ordererProcesses[i] = ifrit.Invoke(grouper.Member{Name: orderers[i].ID(), Runner: ordererRunner})
 				Eventually(ordererProcesses[i].Ready()).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
@@ -221,7 +221,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 			network.PortsByOrdererID[o4.ID()] = ports
 
-			network.Orderers = append(network.Orderers, &nwo.Orderer{Name: "orderer4", Organization: "OrdererOrg"})
+			network.Orderers = append(network.Orderers, o4)
 			network.GenerateOrdererConfig(network.Orderer("orderer4"))
 
 			By("Adding orderer4 to the channels")
