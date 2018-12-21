@@ -66,7 +66,7 @@ type LedgerFactory interface {
 // ChannelLister returns a list of channels
 type ChannelLister interface {
 	// Channels returns a list of channels
-	Channels() []string
+	Channels() []ChannelGenesisBlock
 	// Close closes the ChannelLister
 	Close()
 }
@@ -109,22 +109,39 @@ func (r *Replicator) IsReplicationNeeded() (bool, error) {
 // ReplicateChains pulls chains and commits them.
 func (r *Replicator) ReplicateChains() {
 	channels := r.discoverChannels()
-	channels2Pull := r.channelsToPull(channels)
-	r.Logger.Info("Found myself in", len(channels2Pull), "channels:", channels2Pull)
-	for _, channel := range channels2Pull {
-		r.PullChannel(channel)
+	pullHints := r.channelsToPull(channels)
+	totalChannelCount := len(pullHints.channelsToPull) + len(pullHints.channelsNotToPull)
+	r.Logger.Info("Found myself in", len(pullHints.channelsToPull), "channels out of", totalChannelCount, ":", pullHints)
+	for _, channel := range pullHints.channelsToPull {
+		r.PullChannel(channel.ChannelName)
 	}
+	// Next, just commit the genesis blocks of the channels we shouldn't pull.
+	for _, channel := range pullHints.channelsNotToPull {
+		ledger, err := r.LedgerFactory.GetOrCreate(channel.ChannelName)
+		if err != nil {
+			r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel.ChannelName, err)
+		}
+		// Write a placeholder genesis block to the ledger, just to make an inactive.Chain start
+		// when onboarding is finished
+		gb, err := ChannelCreationBlockToGenesisBlock(channel.GenesisBlock)
+		if err != nil {
+			r.Logger.Panicf("Failed converting channel creation block for channel %s to genesis block: %v",
+				channel.ChannelName, err)
+		}
+		r.appendBlockIfNeeded(gb, ledger, channel.ChannelName)
+	}
+
 	// Last, pull the system chain
 	if err := r.PullChannel(r.SystemChannel); err != nil {
 		r.Logger.Panicf("Failed pulling system channel: %v", err)
 	}
 }
 
-func (r *Replicator) discoverChannels() []string {
+func (r *Replicator) discoverChannels() []ChannelGenesisBlock {
 	r.Logger.Debug("Entering")
 	defer r.Logger.Debug("Exiting")
-	channels := r.ChannelLister.Channels()
-	r.Logger.Info("Discovered", len(channels), "channels:", channels)
+	channels := GenesisBlocks(r.ChannelLister.Channels())
+	r.Logger.Info("Discovered", len(channels), "channels:", channels.Names())
 	r.ChannelLister.Close()
 	return channels
 }
@@ -207,13 +224,19 @@ func (r *Replicator) compareBootBlockWithSystemChannelLastConfigBlock(block *com
 		hex.EncodeToString(bootBlockHash), hex.EncodeToString(retrievedBlockHash))
 }
 
-func (r *Replicator) channelsToPull(channels []string) []string {
-	r.Logger.Info("Will now pull channels:", channels)
-	var channelsToPull []string
+type channelPullHints struct {
+	channelsToPull    []ChannelGenesisBlock
+	channelsNotToPull []ChannelGenesisBlock
+}
+
+func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
+	r.Logger.Info("Will now pull channels:", channels.Names())
+	var channelsNotToPull []ChannelGenesisBlock
+	var channelsToPull []ChannelGenesisBlock
 	for _, channel := range channels {
-		r.Logger.Info("Pulling chain for", channel)
+		r.Logger.Info("Probing whether I should pull channel", channel.ChannelName)
 		puller := r.Puller.Clone()
-		puller.Channel = channel
+		puller.Channel = channel.ChannelName
 		// Disable puller buffering when we check whether we are in the channel,
 		// as we only need to know about a single block.
 		bufferSize := puller.MaxTotalBufferBytes
@@ -223,16 +246,20 @@ func (r *Replicator) channelsToPull(channels []string) []string {
 		// Restore the previous buffer size
 		puller.MaxTotalBufferBytes = bufferSize
 		if err == ErrNotInChannel {
-			r.Logger.Info("I do not belong to channel", channel, ", skipping chain retrieval")
+			r.Logger.Info("I do not belong to channel", channel.ChannelName, ", skipping chain retrieval")
+			channelsNotToPull = append(channelsNotToPull, channel)
 			continue
 		}
 		if err != nil {
-			r.Logger.Panicf("Failed classifying whether I belong to channel %s: %v, skipping chain retrieval", channel, err)
+			r.Logger.Panicf("Failed classifying whether I belong to channel %s: %v, skipping chain retrieval", channel.ChannelName, err)
 			continue
 		}
 		channelsToPull = append(channelsToPull, channel)
 	}
-	return channelsToPull
+	return channelPullHints{
+		channelsToPull:    channelsToPull,
+		channelsNotToPull: channelsNotToPull,
+	}
 }
 
 // PullerConfig configures a BlockPuller.
@@ -371,10 +398,29 @@ func (ci *ChainInspector) Close() {
 	ci.Puller.Close()
 }
 
-// Channels returns the list of channels
-// that exist in the chain
-func (ci *ChainInspector) Channels() []string {
-	channels := make(map[string]struct{})
+// ChannelGenesisBlock wraps a Block and its channel name
+type ChannelGenesisBlock struct {
+	ChannelName  string
+	GenesisBlock *common.Block
+}
+
+// GenesisBlocks aggregates several ChannelGenesisBlocks
+type GenesisBlocks []ChannelGenesisBlock
+
+// Names returns the channel names all ChannelGenesisBlocks
+func (gbs GenesisBlocks) Names() []string {
+	var res []string
+	for _, gb := range gbs {
+		res = append(res, gb.ChannelName)
+	}
+	return res
+}
+
+// Channels returns the list of ChannelGenesisBlocks
+// for all channels. Each such ChannelGenesisBlock contains
+// the genesis block of the channel.
+func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
+	channels := make(map[string]ChannelGenesisBlock)
 	lastConfigBlockNum := ci.LastConfigBlock.Header.Number
 	var block *common.Block
 	var prevHash []byte
@@ -395,7 +441,10 @@ func (ci *ChainInspector) Channels() []string {
 			continue
 		}
 		ci.Logger.Info("Block", seq, "contains channel", channel)
-		channels[channel] = struct{}{}
+		channels[channel] = ChannelGenesisBlock{
+			ChannelName:  channel,
+			GenesisBlock: block,
+		}
 	}
 	// At this point, block holds reference to the last block pulled.
 	// We ensure that the hash of the last block pulled, is the previous hash
@@ -421,12 +470,38 @@ func (ci *ChainInspector) validateHashPointer(block *common.Block, prevHash []by
 		block.Header.Number, block.Header.PreviousHash, prevHash)
 }
 
-func flattenChannelMap(m map[string]struct{}) []string {
-	var res []string
-	for channel := range m {
-		res = append(res, channel)
+func flattenChannelMap(m map[string]ChannelGenesisBlock) []ChannelGenesisBlock {
+	var res []ChannelGenesisBlock
+	for _, csb := range m {
+		res = append(res, csb)
 	}
 	return res
+}
+
+// ChannelCreationBlockToGenesisBlock converts a channel creation block to a genesis block
+func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, error) {
+	if block == nil {
+		return nil, errors.New("nil block")
+	}
+	env, err := utils.ExtractEnvelope(block, 0)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := utils.ExtractPayload(env)
+	if err != nil {
+		return nil, err
+	}
+	block.Data.Data = [][]byte{payload.Data}
+	block.Header.Number = 0
+	block.Header.PreviousHash = nil
+	metadata := &common.BlockMetadata{
+		Metadata: make([][]byte, 4),
+	}
+	block.Metadata = metadata
+	metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.LastConfig{
+		Index: 0,
+	})
+	return block, nil
 }
 
 // IsNewChannelBlock returns a name of the channel in case

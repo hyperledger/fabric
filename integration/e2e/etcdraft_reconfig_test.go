@@ -32,11 +32,12 @@ import (
 
 var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	var (
-		testDir   string
-		client    *docker.Client
-		network   *nwo.Network
-		chaincode nwo.Chaincode
-		peer      *nwo.Peer
+		testDir string
+		client  *docker.Client
+		network *nwo.Network
+		mycc    nwo.Chaincode
+		mycc2   nwo.Chaincode
+		peer    *nwo.Peer
 
 		peerProcesses    ifrit.Process
 		ordererProcesses []ifrit.Process
@@ -51,12 +52,19 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		chaincode = nwo.Chaincode{
+		mycc = nwo.Chaincode{
 			Name:    "mycc",
 			Version: "0.0",
 			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
+		}
+		mycc2 = nwo.Chaincode{
+			Name:    "mycc2",
+			Version: "0.0",
+			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
 		}
 	})
 
@@ -236,10 +244,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				"testchannel":   7,
 			}, orderers, peer, network)
 
-			By("Transacting on testchannel")
-			peers := network.PeersWithChannel("testchannel")
-			network.JoinChannel("testchannel", o1, peers...)
-			nwo.DeployChaincode(network, "testchannel", o2, chaincode)
+			By("Joining the peer to testchannel")
+			network.JoinChannel("testchannel", o1, peer)
+			By("Joining the peer to testchannel2")
+			network.JoinChannel("testchannel2", o1, peer)
+
+			By("Deploying mycc and mycc2 to testchannel and testchannel2")
+			deployChaincodes(network, peer, o2, mycc, mycc2)
 
 			By("Waiting for orderers to sync")
 			assertBlockReception(map[string]int{
@@ -247,9 +258,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				"testchannel":   8,
 			}, orderers, peer, network)
 
-			RunQueryInvokeQuery(network, o1, peer, "testchannel")
-
 			By("Transacting on testchannel once more")
+			assertInvoke(network, peer, o1, mycc.Name, "testchannel", "Chaincode invoke successful. result: status:200", 0)
+
 			assertBlockReception(map[string]int{
 				"systemchannel": 9,
 				"testchannel":   9,
@@ -277,15 +288,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, orderers, peer, network)
 
 			By("Ensuring orderer4 doesn't serve testchannel2")
-			sess, err := network.OrdererAdminSession(o4, peer, commands.ChannelFetch{
-				ChannelID:  "testchannel2",
-				Block:      "config",
-				Orderer:    network.OrdererAddress(o4, nwo.ListenPort),
-				OutputFile: "/dev/null",
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say("NOT_FOUND"))
+
+			assertInvoke(network, peer, o4, mycc2.Name, "testchannel2", "channel testchannel2 is not serviced by me", 1)
 
 			By("Ensuring that all orderers don't log errors to the log")
 			assertNoErrorsAreLogged(ordererRunners)
@@ -473,4 +477,36 @@ func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
 		}(runner)
 	}
 	wg.Wait()
+}
+
+func deployChaincodes(n *nwo.Network, p *nwo.Peer, o *nwo.Orderer, mycc nwo.Chaincode, mycc2 nwo.Chaincode) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for channel, chaincode := range map[string]nwo.Chaincode{
+		"testchannel":  mycc,
+		"testchannel2": mycc2,
+	} {
+		go func(channel string, cc nwo.Chaincode) {
+			defer wg.Done()
+			nwo.DeployChaincode(n, channel, o, cc, p)
+		}(channel, chaincode)
+	}
+
+	wg.Wait()
+}
+
+func assertInvoke(network *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, cc string, channel string, expectedOutput string, expectedStatus int) {
+	sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: channel,
+		Orderer:   network.OrdererAddress(o, nwo.ListenPort),
+		Name:      cc,
+		Ctor:      `{"Args":["invoke","a","b","10"]}`,
+		PeerAddresses: []string{
+			network.PeerAddress(peer, nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(expectedStatus))
+	Expect(sess.Err).To(gbytes.Say(expectedOutput))
 }
