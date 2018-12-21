@@ -790,3 +790,210 @@ var _ = Describe("Transactor Approve", func() {
 	})
 
 })
+
+var _ = Describe("Transactor TransferFrom", func() {
+	var (
+		transactor *plain.Transactor
+		shares     []*token.RecipientTransferShare
+	)
+
+	BeforeEach(func() {
+		shares = []*token.RecipientTransferShare{
+			{Recipient: []byte("Alice"), Quantity: 100},
+			{Recipient: []byte("Bob"), Quantity: 200},
+		}
+		transactor = &plain.Transactor{PublicCredential: []byte("Charlie")}
+	})
+
+	Describe("converts a transferFrom request into a token transaction", func() {
+		var (
+			fakeLedger      *mock.LedgerReader
+			transferRequest *token.TransferRequest
+			inputBytes      []byte
+		)
+
+		BeforeEach(func() {
+			input := &token.PlainDelegatedOutput{
+				Owner:      []byte("Owner"),
+				Delegatees: [][]byte{[]byte("Charlie")},
+				Type:       "XYZ",
+				Quantity:   350,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+			fakeLedger = &mock.LedgerReader{}
+			transactor.Ledger = fakeLedger
+			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+		})
+
+		It("creates a valid transferFrom request", func() {
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Charlie"),
+				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				Shares:     shares,
+			}
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainTransfer_From{
+							PlainTransfer_From: &token.PlainTransferFrom{
+								Inputs: []*token.InputId{
+									{TxId: "pot pourri", Index: uint32(0)},
+								},
+								Outputs: []*token.PlainOutput{
+									{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+									{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+								},
+								DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("Owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 50},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		It("creates a valid TransferFrom request without outputs", func() {
+			input := &token.PlainDelegatedOutput{
+				Owner:      []byte("Owner"),
+				Delegatees: [][]byte{[]byte("Charlie")},
+				Type:       "XYZ",
+				Quantity:   300,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Charlie"),
+				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				Shares:     shares,
+			}
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainTransfer_From{
+							PlainTransfer_From: &token.PlainTransferFrom{
+								Inputs: []*token.InputId{
+									{TxId: "pot pourri", Index: uint32(0)},
+								},
+								Outputs: []*token.PlainOutput{
+									{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+									{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+								},
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		It("when inputs are not of the same type", func() {
+			input := &token.PlainDelegatedOutput{
+				Owner:      []byte("Owner"),
+				Delegatees: [][]byte{[]byte("Charlie")},
+				Type:       "ABC",
+				Quantity:   100,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Charlie"),
+				TokenIds: [][]byte{
+					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00")),
+					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "1" + string("\x00"))},
+				Shares: shares,
+			}
+
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("two or more token types specified in input: 'XYZ', 'ABC'"))
+			Expect(tt).To(BeNil())
+		})
+
+		It("when inputs do not belong to the same owner", func() {
+			input := &token.PlainDelegatedOutput{
+				Owner:      []byte("Owner*"),
+				Delegatees: [][]byte{[]byte("Charlie")},
+				Type:       "XYZ",
+				Quantity:   100,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeLedger.GetStateReturnsOnCall(1, inputBytes, nil)
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Charlie"),
+				TokenIds: [][]byte{
+					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00")),
+					[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "1" + string("\x00"))},
+				Shares: shares,
+			}
+
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("two or more token owners specified in input: 'Owner', 'Owner*'"))
+			Expect(tt).To(BeNil())
+		})
+
+		It("when inputs are not sufficient", func() {
+			input := &token.PlainDelegatedOutput{
+				Owner:      []byte("Owner"),
+				Delegatees: [][]byte{[]byte("Charlie")},
+				Type:       "XYZ",
+				Quantity:   100,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Charlie"),
+				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				Shares:     shares,
+			}
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("insufficient funds: 100 < 300"))
+			Expect(tt).To(BeNil())
+		})
+
+		It("when TransferFrom requestor does not own inputs", func() {
+			transactor.PublicCredential = []byte("Dave")
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Dave"),
+				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				Shares:     shares,
+			}
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("requestor is not allowed to transfer inputs"))
+			Expect(tt).To(BeNil())
+		})
+
+		It("when transactor fails to get inputs from ledger", func() {
+			fakeLedger.GetStateReturnsOnCall(0, nil, errors.New("banana"))
+			transferRequest = &token.TransferRequest{
+				Credential: []byte("Charlie"),
+				TokenIds:   [][]byte{[]byte(string("\x00") + "tokenDelegatedOutput" + string("\x00") + "pot pourri" + string("\x00") + "0" + string("\x00"))},
+				Shares:     shares,
+			}
+			tt, err := transactor.RequestTransferFrom(transferRequest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("banana"))
+			Expect(tt).To(BeNil())
+		})
+
+	})
+
+})

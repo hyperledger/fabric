@@ -1235,4 +1235,295 @@ var _ = Describe("Verifier", func() {
 			})
 		})
 	})
+	Describe("Test PlainTransferFrom", func() {
+		var (
+			transferFromTransaction *token.TokenTransaction
+			transferFromTxID        string
+			inputBytes              []byte
+		)
+
+		BeforeEach(func() {
+			transferFromTxID = "1"
+			transferFromTransaction = &token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainTransfer_From{
+							PlainTransfer_From: &token.PlainTransferFrom{
+								Inputs: []*token.InputId{
+									{TxId: "0", Index: 0},
+								},
+								Outputs: []*token.PlainOutput{
+									{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+									{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+								},
+								DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 50},
+							},
+						},
+					},
+				},
+			}
+			input := &token.PlainDelegatedOutput{
+				Owner:      []byte("owner"),
+				Delegatees: [][]byte{[]byte("Charlie")},
+				Type:       "XYZ",
+				Quantity:   350,
+			}
+			var err error
+			inputBytes, err = proto.Marshal(input)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakePublicInfo.PublicReturns([]byte("Charlie"))
+			fakeLedger = &mockledger.LedgerWriter{}
+
+			fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+		})
+
+		Context("when a valid transferFrom is provided", func() {
+			It("is processed successfully", func() {
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the number of owners of delegated inputs is not correct", func() {
+			It("returns an InvalidTxError", func() {
+				input := &token.PlainDelegatedOutput{
+					Owner:      []byte("Alice"),
+					Delegatees: [][]byte{[]byte("Charlie"), []byte("Bob")},
+					Type:       "XYZ",
+					Quantity:   350,
+				}
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeLedger.GetStateReturnsOnCall(0, inputBytes, nil)
+				err = verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "the number of delegatees of delegated input is different from 1: it is 2"}))
+			})
+		})
+
+		Context("when the delegated inputs are already spent", func() {
+			It("returns an InvalidTxError", func() {
+				fakeLedger.GetStateReturnsOnCall(1, []byte("it is spent"), nil)
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "delegated input with ID \x00tokenDelegatedOutput\x000\x000\x00 for transferFrom has already been spent"}))
+			})
+		})
+
+		Context("when a non-existent input is referenced", func() {
+			It("returns an InvalidTxError", func() {
+				fakeLedger.GetStateReturnsOnCall(0, nil, nil)
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "delegated input with ID \x00tokenDelegatedOutput\x000\x000\x00 for transferFrom does not exist"}))
+			})
+		})
+
+		Context("when the creator of the transferFrom transaction is not allowed to spend it", func() {
+			It("returns an InvalidTxError", func() {
+				fakePublicInfo.PublicReturns([]byte("pineapple"))
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transferFrom input with ID \x00tokenDelegatedOutput\x000\x000\x00 cannot be spent by creator"}))
+			})
+		})
+
+		Context("when the same input is spent twice within the same tx", func() {
+			It("returns an InvalidTxError", func() {
+				fakeLedger.GetStateReturnsOnCall(2, inputBytes, nil)
+
+				transferFromTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainTransfer_From{
+								PlainTransfer_From: &token.PlainTransferFrom{
+									Inputs: []*token.InputId{
+										{TxId: "0", Index: 0},
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+										{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+									},
+									DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 50},
+								},
+							},
+						},
+					},
+				}
+
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token delegated input '\x00tokenDelegatedOutput\x000\x000\x00' spent more than once in single transferFrom with txID '1'"}))
+			})
+		})
+
+		Context("when the input type does not match the output type", func() {
+			It("returns an InvalidTxError", func() {
+				transferFromTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainTransfer_From{
+								PlainTransfer_From: &token.PlainTransferFrom{
+									Inputs: []*token.InputId{
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("Alice"), Type: "ABC", Quantity: 100},
+										{Owner: []byte("Bob"), Type: "ABC", Quantity: 200},
+									},
+									DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "ABC", Quantity: 50},
+								},
+							},
+						},
+					},
+				}
+
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token type mismatch in inputs and outputs for transferFrom with ID 1 (ABC vs XYZ)"}))
+			})
+		})
+
+		Context("when the input sum does not match the output sum", func() {
+			It("returns an InvalidTxError", func() {
+				transferFromTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainTransfer_From{
+								PlainTransfer_From: &token.PlainTransferFrom{
+									Inputs: []*token.InputId{
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+										{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+									},
+									DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 70},
+								},
+							},
+						},
+					},
+				}
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "token sum mismatch in inputs and outputs for transferFrom with ID 1 (370 vs 350)"}))
+			})
+		})
+
+		Context("when the input contains multiple token types", func() {
+			It("returns an InvalidTxError", func() {
+				input := &token.PlainDelegatedOutput{
+					Owner:      []byte("owner"),
+					Delegatees: [][]byte{[]byte("Charlie")},
+					Type:       "ABC",
+					Quantity:   100,
+				}
+				var err error
+				inputBytes, err = proto.Marshal(input)
+				Expect(err).NotTo(HaveOccurred())
+				fakeLedger.GetStateReturnsOnCall(2, inputBytes, nil)
+
+				transferFromTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainTransfer_From{
+								PlainTransfer_From: &token.PlainTransferFrom{
+									Inputs: []*token.InputId{
+										{TxId: "0", Index: 0},
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+										{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+									},
+									DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 70},
+								},
+							},
+						},
+					},
+				}
+				err = verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types in transferFrom input for txID: 1 (XYZ, ABC)"}))
+			})
+		})
+
+		Context("when the outputs contain multiple token types", func() {
+			It("returns an InvalidTxError", func() {
+				transferFromTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainTransfer_From{
+								PlainTransfer_From: &token.PlainTransferFrom{
+									Inputs: []*token.InputId{
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+										{Owner: []byte("Bob"), Type: "ABC", Quantity: 200},
+									},
+									DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "XYZ", Quantity: 50},
+								},
+							},
+						},
+					},
+				}
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types ('XYZ', 'ABC') in transferFrom outputs for txID '1'"}))
+			})
+		})
+
+		Context("when the shared output and outputs contain multiple token types", func() {
+			It("returns an InvalidTxError", func() {
+				transferFromTransaction = &token.TokenTransaction{
+					Action: &token.TokenTransaction_PlainAction{
+						PlainAction: &token.PlainTokenAction{
+							Data: &token.PlainTokenAction_PlainTransfer_From{
+								PlainTransfer_From: &token.PlainTransferFrom{
+									Inputs: []*token.InputId{
+										{TxId: "0", Index: 0},
+									},
+									Outputs: []*token.PlainOutput{
+										{Owner: []byte("Alice"), Type: "XYZ", Quantity: 100},
+										{Owner: []byte("Bob"), Type: "XYZ", Quantity: 200},
+									},
+									DelegatedOutput: &token.PlainDelegatedOutput{Owner: []byte("owner"), Delegatees: [][]byte{[]byte("Charlie")}, Type: "ABC", Quantity: 50},
+								},
+							},
+						},
+					},
+				}
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "multiple token types ('ABC', 'XYZ') in transferFrom outputs for txID '1'"}))
+			})
+		})
+
+		Context("when a shared output already exists", func() {
+			It("returns an error", func() {
+				fakeLedger.GetStateReturnsOnCall(2, []byte("a delegated output is already here"), nil)
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				existingOutputId := string("\x00") + "tokenDelegatedOutput" + string("\x00") + "1" + string("\x00") + "0" + string("\x00")
+				Expect(err.Error()).To(Equal(fmt.Sprintf("delegated output already exists: %s", existingOutputId)))
+			})
+		})
+
+		Context("when an output already exists", func() {
+			It("returns an error", func() {
+				fakeLedger.GetStateReturnsOnCall(4, []byte("an output is already here"), nil)
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				existingOutputId := string("\x00") + "tokenOutput" + string("\x00") + "1" + string("\x00") + "0" + string("\x00")
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: fmt.Sprintf("output already exists: %s", existingOutputId)}))
+			})
+		})
+
+		Context("when a transaction already exists", func() {
+			It("returns an error", func() {
+				fakeLedger.GetStateReturnsOnCall(8, []byte("a tx is already here"), nil)
+				err := verifier.ProcessTx(transferFromTxID, fakePublicInfo, transferFromTransaction, fakeLedger)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(&customtx.InvalidTxError{Msg: "transaction already exists: 1"}))
+			})
+		})
+	})
 })
