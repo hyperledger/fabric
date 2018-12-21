@@ -1228,7 +1228,6 @@ func simulateNonParticipantChannelPull(osn *deliverServer) {
 	lastBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&common.Metadata{
 		Value: utils.MarshalOrPanic(&common.LastConfig{Index: 0}),
 	})
-
 	// We first present a channel with a last block of 'lastBlock', that points to
 	// the genesis block
 	osn.addExpectProbeAssert()
@@ -1243,10 +1242,6 @@ func simulateNonParticipantChannelPull(osn *deliverServer) {
 	osn.blockResponses <- &orderer.DeliverResponse{
 		Type: &orderer.DeliverResponse_Block{Block: lastBlock},
 	}
-	osn.blockResponses <- &orderer.DeliverResponse{
-		Type: &orderer.DeliverResponse_Block{Block: lastBlock},
-	}
-	// send nil to make the OSN artificially close the deliver stream
 	osn.blockResponses <- nil
 
 	// and make it send back the genesis block.
