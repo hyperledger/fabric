@@ -195,21 +195,6 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 	return nil
 }
 
-func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
-	switch curve {
-	case elliptic.P224():
-		return oidNamedCurveP224, true
-	case elliptic.P256():
-		return oidNamedCurveP256, true
-	case elliptic.P384():
-		return oidNamedCurveP384, true
-	case elliptic.P521():
-		return oidNamedCurveP521, true
-	}
-
-	return nil, false
-}
-
 func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski []byte, pubKey *ecdsa.PublicKey, err error) {
 	p11lib := csp.ctx
 	session := csp.getSession()
@@ -531,35 +516,6 @@ func listAttrs(p11lib *pkcs11.Ctx, session pkcs11.SessionHandle, obj pkcs11.Obje
 		// Would be friendlier if the bindings provided a way convert Attribute hex to string
 		logger.Debugf("ListAttr: type %d/0x%x, length %d\n%s", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
 	}
-}
-
-func (csp *impl) getSecretValue(ski []byte) []byte {
-	p11lib := csp.ctx
-	session := csp.getSession()
-	defer csp.returnSession(session)
-
-	keyHandle, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyFlag)
-	if err != nil {
-		logger.Warningf("P11: findKeyPairFromSKI [%s]\n", err)
-	}
-	var privKey []byte
-	template := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_VALUE, privKey),
-	}
-
-	// certain errors are tolerated, if value is missing
-	attr, err := p11lib.GetAttributeValue(session, *keyHandle, template)
-	if err != nil {
-		logger.Warningf("P11: get(attrlist) [%s]\n", err)
-	}
-
-	for _, a := range attr {
-		// Would be friendlier if the bindings provided a way convert Attribute hex to string
-		logger.Debugf("ListAttr: type %d/0x%x, length %d\n%s", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
-		return a.Value
-	}
-	logger.Warningf("No Key Value found: %v", err)
-	return nil
 }
 
 var (
