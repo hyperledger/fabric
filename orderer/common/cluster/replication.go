@@ -154,7 +154,7 @@ func (r *Replicator) PullChannel(channel string) error {
 	defer puller.Close()
 	puller.Channel = channel
 
-	endpoint, latestHeight := latestHeightAndEndpoint(puller)
+	endpoint, latestHeight, _ := latestHeightAndEndpoint(puller)
 	if endpoint == "" {
 		return errors.Errorf("failed obtaining the latest block for channel %s", channel)
 	}
@@ -245,8 +245,14 @@ func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 		puller.Close()
 		// Restore the previous buffer size
 		puller.MaxTotalBufferBytes = bufferSize
-		if err == ErrNotInChannel {
-			r.Logger.Info("I do not belong to channel", channel.ChannelName, ", skipping chain retrieval")
+		if err == ErrNotInChannel || err == ErrForbidden {
+			r.Logger.Infof("I do not belong to channel %s or am forbidden pulling it (%v), skipping chain retrieval", channel.ChannelName, err)
+			channelsNotToPull = append(channelsNotToPull, channel)
+			continue
+		}
+		if err == ErrServiceUnavailable {
+			r.Logger.Infof("All orderers in the system channel are either down,"+
+				"or do not service channel %s (%v), skipping chain retrieval", channel.ChannelName, err)
 			channelsNotToPull = append(channelsNotToPull, channel)
 			continue
 		}
@@ -332,7 +338,7 @@ type ChainPuller interface {
 	PullBlock(seq uint64) *common.Block
 
 	// HeightsByEndpoints returns the block heights by endpoints of orderers
-	HeightsByEndpoints() map[string]uint64
+	HeightsByEndpoints() (map[string]uint64, error)
 
 	// Close closes the ChainPuller
 	Close()
@@ -344,6 +350,12 @@ type ChainInspector struct {
 	Puller          ChainPuller
 	LastConfigBlock *common.Block
 }
+
+// ErrForbidden denotes that an ordering node refuses sending blocks due to access control.
+var ErrForbidden = errors.New("forbidden")
+
+// ErrServiceUnavailable denotes that an ordering node is not servicing at the moment.
+var ErrServiceUnavailable = errors.New("service unavailable")
 
 // ErrNotInChannel denotes that an ordering node is not in the channel
 var ErrNotInChannel = errors.New("not in the channel")
@@ -357,7 +369,10 @@ type selfMembershipPredicate func(configBlock *common.Block) error
 // It returns nil if the caller participates in the chain.
 // It may return notInChannelError error in case the caller doesn't participate in the chain.
 func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicate) error {
-	endpoint, latestHeight := latestHeightAndEndpoint(puller)
+	endpoint, latestHeight, err := latestHeightAndEndpoint(puller)
+	if err != nil {
+		return err
+	}
 	if endpoint == "" {
 		return errors.New("no available orderer")
 	}
@@ -374,16 +389,20 @@ func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicat
 	return analyzeLastConfBlock(lastConfigBlock)
 }
 
-func latestHeightAndEndpoint(puller ChainPuller) (string, uint64) {
+func latestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
 	var maxHeight uint64
 	var mostUpToDateEndpoint string
-	for endpoint, height := range puller.HeightsByEndpoints() {
+	heightsByEndpoints, err := puller.HeightsByEndpoints()
+	if err != nil {
+		return "", 0, err
+	}
+	for endpoint, height := range heightsByEndpoints {
 		if height >= maxHeight {
 			maxHeight = height
 			mostUpToDateEndpoint = endpoint
 		}
 	}
-	return mostUpToDateEndpoint, maxHeight
+	return mostUpToDateEndpoint, maxHeight, nil
 }
 
 func lastConfigFromBlock(block *common.Block) (uint64, error) {

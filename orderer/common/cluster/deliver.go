@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric/common/crypto"
@@ -90,14 +91,15 @@ func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
 }
 
 // HeightsByEndpoints returns the block heights by endpoints of orderers
-func (p *BlockPuller) HeightsByEndpoints() map[string]uint64 {
+func (p *BlockPuller) HeightsByEndpoints() (map[string]uint64, error) {
+	endpointsInfo := p.probeEndpoints(0)
 	res := make(map[string]uint64)
-	for endpoint, endpointInfo := range p.probeEndpoints(0).byEndpoints() {
+	for endpoint, endpointInfo := range endpointsInfo.byEndpoints() {
 		endpointInfo.conn.Close()
 		res[endpoint] = endpointInfo.lastBlockSeq + 1
 	}
 	p.Logger.Info("Returning the heights of OSNs mapped by endpoints", res)
-	return res
+	return res, endpointsInfo.err
 }
 
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
@@ -261,23 +263,41 @@ func (p *BlockPuller) probeEndpoints(minRequestedSequence uint64) *endpointInfoB
 	var wg sync.WaitGroup
 	wg.Add(len(p.Endpoints))
 
+	var forbiddenErr uint32
+	var unavailableErr uint32
+
 	for _, endpoint := range p.Endpoints {
 		go func(endpoint string) {
 			defer wg.Done()
-			endpointInfo, err := p.probeEndpoint(endpoint, minRequestedSequence)
+			ei, err := p.probeEndpoint(endpoint, minRequestedSequence)
 			if err != nil {
+				p.Logger.Warningf("Received error of type '%v' from %s", err, endpoint)
+				if err == ErrForbidden {
+					atomic.StoreUint32(&forbiddenErr, 1)
+				}
+				if err == ErrServiceUnavailable {
+					atomic.StoreUint32(&unavailableErr, 1)
+				}
 				return
 			}
-			endpointsInfo <- endpointInfo
+			endpointsInfo <- ei
 		}(endpoint)
 	}
 	wg.Wait()
 
 	close(endpointsInfo)
-	return &endpointInfoBucket{
+	eib := &endpointInfoBucket{
 		bucket: endpointsInfo,
 		logger: p.Logger,
 	}
+
+	if unavailableErr == 1 && len(endpointsInfo) == 0 {
+		eib.err = ErrServiceUnavailable
+	}
+	if forbiddenErr == 1 && len(endpointsInfo) == 0 {
+		eib.err = ErrForbidden
+	}
+	return eib
 }
 
 // probeEndpoint returns a gRPC connection and the latest block sequence of an endpoint with the given
@@ -331,7 +351,7 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 
 	block, err := extractBlockFromResponse(resp)
 	if err != nil {
-		p.Logger.Errorf("Received a bad block from %s: %v", endpoint, err)
+		p.Logger.Errorf("Received %v from %s: %v", resp, endpoint, err)
 		return 0, err
 	}
 	stream.CloseSend()
@@ -382,6 +402,14 @@ func extractBlockFromResponse(resp *orderer.DeliverResponse) (*common.Block, err
 			return nil, errors.New("block metadata is empty")
 		}
 		return block, nil
+	case *orderer.DeliverResponse_Status:
+		if t.Status == common.Status_FORBIDDEN {
+			return nil, ErrForbidden
+		}
+		if t.Status == common.Status_SERVICE_UNAVAILABLE {
+			return nil, ErrServiceUnavailable
+		}
+		return nil, errors.Errorf("faulty node, received: %v", resp)
 	default:
 		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.Type))
 	}
@@ -440,6 +468,7 @@ type endpointInfo struct {
 type endpointInfoBucket struct {
 	bucket <-chan *endpointInfo
 	logger *flogging.FabricLogger
+	err    error
 }
 
 func (eib endpointInfoBucket) byEndpoints() map[string]*endpointInfo {

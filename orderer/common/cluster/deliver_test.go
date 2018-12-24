@@ -485,7 +485,8 @@ func TestBlockPullerHeightsByEndpoints(t *testing.T) {
 	// The third returns the latest block
 	osn3.enqueueResponse(5)
 
-	res := bp.HeightsByEndpoints()
+	res, err := bp.HeightsByEndpoints()
+	assert.NoError(t, err)
 	expected := map[string]uint64{
 		osn3.srv.Address(): 6,
 	}
@@ -880,8 +881,13 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	}
 
 	changeType := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
+		resp.Type = nil
+		return resp
+	}
+
+	statusType := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
 		resp.Type = &orderer.DeliverResponse_Status{
-			Status: common.Status_SUCCESS,
+			Status: common.Status_INTERNAL_SERVER_ERROR,
 		}
 		return resp
 	}
@@ -914,7 +920,12 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 		{
 			name:           "wrong type",
 			corruptBlock:   changeType,
-			expectedErrMsg: "response is of type",
+			expectedErrMsg: "response is of type <nil>, but expected a block",
+		},
+		{
+			name:           "bad type",
+			corruptBlock:   statusType,
+			expectedErrMsg: "faulty node, received: status:INTERNAL_SERVER_ERROR ",
 		},
 		{
 			name:           "wrong number",
