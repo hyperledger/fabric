@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -457,17 +458,23 @@ func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
 	wg.Add(len(ordererRunners))
 
 	assertNoErrors := func(runner *ginkgomon.Runner) {
-		buff := runner.Buffer()
-		// Advance buffer read cursor to the end by reading everything
-		buff.Read(make([]byte, len(buff.Contents())))
-		// Starting from now, there shouldn't be any error strings logged
-		// for 5 seconds.
-		select {
-		case <-time.After(time.Second * 5):
-		case <-buff.Detect("ERRO"):
-			Fail("Detected 'ERRO' in the buffer")
+		buff := runner.Err()
+		readOutput := func() string {
+			out := bytes.Buffer{}
+			// Read until no new input is detected
+			for {
+				b := make([]byte, 1024)
+				n, _ := buff.Read(b)
+				if n == 0 {
+					break
+				}
+				bytesRead := make([]byte, n)
+				copy(bytesRead, b)
+				out.Write(bytesRead)
+			}
+			return out.String()
 		}
-		buff.CancelDetects()
+		Eventually(readOutput, time.Minute, time.Second*5).Should(Not(ContainSubstring("ERRO")))
 	}
 
 	for _, runner := range ordererRunners {
