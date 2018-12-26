@@ -19,27 +19,29 @@ import (
 )
 
 type replicationInitiator struct {
-	logger         *flogging.FabricLogger
-	secOpts        *comm.SecureOptions
-	conf           *localconfig.TopLevel
-	bootstrapBlock *common.Block
-	lf             cluster.LedgerFactory
-	signer         crypto.LocalSigner
+	logger  *flogging.FabricLogger
+	secOpts *comm.SecureOptions
+	conf    *localconfig.TopLevel
+	lf      cluster.LedgerFactory
+	signer  crypto.LocalSigner
 }
 
-func (ri *replicationInitiator) replicateIfNeeded() {
-	if ri.bootstrapBlock.Header.Number == 0 {
+func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) {
+	if bootstrapBlock.Header.Number == 0 {
 		ri.logger.Debug("Booted with a genesis block, replication isn't an option")
 		return
 	}
+	ri.replicateNeededChannels(bootstrapBlock)
+}
 
+func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
 	consenterCert := etcdraft.ConsenterCertificate(ri.secOpts.Certificate)
-	systemChannelName, err := utils.GetChainIDFromBlock(ri.bootstrapBlock)
+	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
 	pullerConfig := cluster.PullerConfigFromTopLevelConfig(systemChannelName, ri.conf, ri.secOpts.Key, ri.secOpts.Certificate, ri.signer)
-	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, ri.bootstrapBlock)
+	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
 	}
@@ -47,19 +49,26 @@ func (ri *replicationInitiator) replicateIfNeeded() {
 	pullerLogger := flogging.MustGetLogger("orderer.common.cluster")
 
 	replicator := &cluster.Replicator{
+		Filter:           filter,
 		LedgerFactory:    ri.lf,
 		SystemChannel:    systemChannelName,
-		BootBlock:        ri.bootstrapBlock,
+		BootBlock:        bootstrapBlock,
 		Logger:           pullerLogger,
 		AmIPartOfChannel: consenterCert.IsConsenterOfChannel,
 		Puller:           puller,
 		ChannelLister: &cluster.ChainInspector{
 			Logger:          pullerLogger,
 			Puller:          puller,
-			LastConfigBlock: ri.bootstrapBlock,
+			LastConfigBlock: bootstrapBlock,
 		},
 	}
 
+	return replicator
+}
+
+func (ri *replicationInitiator) replicateNeededChannels(bootstrapBlock *common.Block) {
+	replicator := ri.createReplicator(bootstrapBlock, cluster.AnyChannel)
+	defer replicator.Puller.Close()
 	replicationNeeded, err := replicator.IsReplicationNeeded()
 	if err != nil {
 		ri.logger.Panicf("Failed determining whether replication is needed: %v", err)
@@ -71,6 +80,21 @@ func (ri *replicationInitiator) replicateIfNeeded() {
 	}
 
 	ri.logger.Info("Will now replicate chains")
+	replicator.ReplicateChains()
+}
+
+func (ri *replicationInitiator) replicateChains(lastConfigBlock *common.Block, chains []string) {
+	ri.logger.Info("Will now replicate chains", chains)
+	wantedChannels := make(map[string]struct{})
+	for _, chain := range chains {
+		wantedChannels[chain] = struct{}{}
+	}
+	filter := func(channelName string) bool {
+		_, exists := wantedChannels[channelName]
+		return exists
+	}
+	replicator := ri.createReplicator(lastConfigBlock, filter)
+	defer replicator.Puller.Close()
 	replicator.ReplicateChains()
 }
 

@@ -27,6 +27,10 @@ const (
 	RetryTimeout = time.Second * 10
 )
 
+func AnyChannel(_ string) bool {
+	return true
+}
+
 // PullerConfigFromTopLevelConfig creates a PullerConfig from a TopLevel config,
 // and from a signer and TLS key cert pair.
 // The PullerConfig's channel is initialized to be the system channel.
@@ -73,6 +77,7 @@ type ChannelLister interface {
 
 // Replicator replicates chains
 type Replicator struct {
+	Filter           func(string) bool
 	SystemChannel    string
 	ChannelLister    ChannelLister
 	Logger           *flogging.FabricLogger
@@ -149,6 +154,10 @@ func (r *Replicator) discoverChannels() []ChannelGenesisBlock {
 // PullChannel pulls the given channel from some orderer,
 // and commits it to the ledger.
 func (r *Replicator) PullChannel(channel string) error {
+	if !r.Filter(channel) {
+		r.Logger.Info("Channel", channel, "shouldn't be pulled. Skipping it")
+		return nil
+	}
 	r.Logger.Info("Pulling channel", channel)
 	puller := r.Puller.Clone()
 	defer puller.Close()

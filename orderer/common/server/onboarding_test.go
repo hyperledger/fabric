@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -117,15 +117,11 @@ func loadPEM(suffix string, t *testing.T) []byte {
 	return b
 }
 
-func TestReplicateIfNeeded(t *testing.T) {
+func TestReplicate(t *testing.T) {
 	t.Parallel()
 
-	caCert := loadPEM("ca.crt", t)
-	key := loadPEM("server.key", t)
-	cert := loadPEM("server.crt", t)
-
-	deliverServer := newServerNode(t, key, cert)
-	defer deliverServer.srv.Stop()
+	var bootBlock common.Block
+	var bootBlockWithCorruptedPayload common.Block
 
 	flogging.ActivateSpec("testReplicateIfNeeded=debug")
 
@@ -135,49 +131,57 @@ func TestReplicateIfNeeded(t *testing.T) {
 	blockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "genesis.block"))
 	assert.NoError(t, err)
 
-	bootBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(blockBytes, bootBlock))
-	bootBlock.Header.Number = 10
-	injectOrdererEndpoint(t, bootBlock, deliverServer.srv.Address())
+	caCert := loadPEM("ca.crt", t)
+	key := loadPEM("server.key", t)
+	cert := loadPEM("server.crt", t)
 
-	copyBlock := func(block *common.Block, seq uint64) *common.Block {
-		res := &common.Block{}
-		proto.Unmarshal(utils.MarshalOrPanic(block), res)
-		res.Header.Number = seq
-		return res
-	}
+	prepareTestCase := func() *deliverServer {
+		deliverServer := newServerNode(t, key, cert)
 
-	bootBlockWithCorruptedPayload := copyBlock(bootBlock, 100)
-	env := &common.Envelope{}
-	proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env)
-	payload := &common.Payload{}
-	proto.Unmarshal(env.Payload, payload)
-	payload.Data = []byte{1, 2, 3}
+		assert.NoError(t, proto.Unmarshal(blockBytes, &bootBlock))
+		bootBlock.Header.Number = 10
+		injectOrdererEndpoint(t, &bootBlock, deliverServer.srv.Address())
 
-	deliverServer.blockResponses <- &orderer.DeliverResponse{
-		Type: &orderer.DeliverResponse_Block{Block: bootBlock},
-	}
-
-	blocks := make([]*common.Block, 11)
-	// Genesis block can be anything... not important for channel traversal
-	// since it is skipped.
-	blocks[0] = &common.Block{Header: &common.BlockHeader{}}
-	for seq := uint64(1); seq <= uint64(10); seq++ {
-		block := copyBlock(bootBlock, seq)
-		block.Header.PreviousHash = blocks[seq-1].Header.Hash()
-		blocks[seq] = block
-		deliverServer.blockResponses <- &orderer.DeliverResponse{
-			Type: &orderer.DeliverResponse_Block{Block: block},
+		copyBlock := func(block *common.Block, seq uint64) common.Block {
+			res := common.Block{}
+			proto.Unmarshal(utils.MarshalOrPanic(block), &res)
+			res.Header.Number = seq
+			return res
 		}
-	}
-	// We close the block responses to mark the server side to return from
-	// the method dispatch.
-	close(deliverServer.blockResponses)
 
-	// We need to ensure the hash chain is valid with respect to the bootstrap block.
-	// Validating the hash chain itself when we traverse channels will be taken care
-	// of in FAB-12926.
-	bootBlock.Header.PreviousHash = blocks[9].Header.Hash()
+		bootBlockWithCorruptedPayload = copyBlock(&bootBlock, 100)
+		env := &common.Envelope{}
+		proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env)
+		payload := &common.Payload{}
+		proto.Unmarshal(env.Payload, payload)
+		payload.Data = []byte{1, 2, 3}
+
+		deliverServer.blockResponses <- &orderer.DeliverResponse{
+			Type: &orderer.DeliverResponse_Block{Block: &bootBlock},
+		}
+
+		blocks := make([]*common.Block, 11)
+		// Genesis block can be anything... not important for channel traversal
+		// since it is skipped.
+		blocks[0] = &common.Block{Header: &common.BlockHeader{}}
+		for seq := uint64(1); seq <= uint64(10); seq++ {
+			block := copyBlock(&bootBlock, seq)
+			block.Header.PreviousHash = blocks[seq-1].Header.Hash()
+			blocks[seq] = &block
+			deliverServer.blockResponses <- &orderer.DeliverResponse{
+				Type: &orderer.DeliverResponse_Block{Block: &block},
+			}
+		}
+		// We close the block responses to mark the server side to return from
+		// the method dispatch.
+		close(deliverServer.blockResponses)
+
+		// We need to ensure the hash chain is valid with respect to the bootstrap block.
+		// Validating the hash chain itself when we traverse channels will be taken care
+		// of in FAB-12926.
+		bootBlock.Header.PreviousHash = blocks[9].Header.Hash()
+		return deliverServer
+	}
 
 	var hooksActivated bool
 
@@ -192,6 +196,7 @@ func TestReplicateIfNeeded(t *testing.T) {
 		signer             crypto.LocalSigner
 		zapHooks           []func(zapcore.Entry) error
 		shouldConnect      bool
+		replicateFunc      func(*replicationInitiator, *common.Block)
 	}{
 		{
 			name:               "Genesis block makes replication be skipped",
@@ -204,14 +209,20 @@ func TestReplicateIfNeeded(t *testing.T) {
 					return nil
 				},
 			},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateIfNeeded(bootstrapBlock)
+			},
 		},
 		{
 			name:               "Block puller initialization failure panics",
 			systemLedgerHeight: 10,
 			panicValue:         "Failed creating puller config from bootstrap block: unable to decode TLS certificate PEM: ",
-			bootBlock:          bootBlockWithCorruptedPayload,
+			bootBlock:          &bootBlockWithCorruptedPayload,
 			conf:               &localconfig.TopLevel{},
 			secOpts:            &comm.SecureOptions{},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateIfNeeded(bootstrapBlock)
+			},
 		},
 		{
 			name:               "Extraction of sytem channel name fails",
@@ -220,23 +231,29 @@ func TestReplicateIfNeeded(t *testing.T) {
 			bootBlock:          &common.Block{Header: &common.BlockHeader{Number: 100}},
 			conf:               &localconfig.TopLevel{},
 			secOpts:            &comm.SecureOptions{},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateIfNeeded(bootstrapBlock)
+			},
 		},
 		{
 			name:               "Is Replication needed fails",
 			systemLedgerHeight: 10,
 			ledgerFactoryErr:   errors.New("I/O error"),
 			panicValue:         "Failed determining whether replication is needed: I/O error",
-			bootBlock:          bootBlock,
+			bootBlock:          &bootBlock,
 			conf:               &localconfig.TopLevel{},
 			secOpts: &comm.SecureOptions{
 				Certificate: cert,
 				Key:         key,
 			},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateIfNeeded(bootstrapBlock)
+			},
 		},
 		{
 			name:               "Replication isn't needed",
 			systemLedgerHeight: 11,
-			bootBlock:          bootBlock,
+			bootBlock:          &bootBlock,
 			conf:               &localconfig.TopLevel{},
 			secOpts: &comm.SecureOptions{
 				Certificate: cert,
@@ -249,6 +266,9 @@ func TestReplicateIfNeeded(t *testing.T) {
 					return nil
 				},
 			},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateIfNeeded(bootstrapBlock)
+			},
 		},
 		{
 			name: "Replication is needed, but pulling fails",
@@ -256,7 +276,7 @@ func TestReplicateIfNeeded(t *testing.T) {
 				"failed obtaining the latest block for channel testchainid",
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
-			bootBlock:          bootBlock,
+			bootBlock:          &bootBlock,
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
 					SystemChannel: "system",
@@ -275,9 +295,83 @@ func TestReplicateIfNeeded(t *testing.T) {
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{caCert},
 			},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateIfNeeded(bootstrapBlock)
+			},
+		},
+		{
+			name:               "Explicit replication is requested, but the channel shouldn't be pulled",
+			shouldConnect:      true,
+			systemLedgerHeight: 10,
+			bootBlock:          &bootBlock,
+			conf: &localconfig.TopLevel{
+				General: localconfig.General{
+					SystemChannel: "system",
+					Cluster: localconfig.Cluster{
+						ReplicationPullTimeout:  time.Millisecond * 100,
+						DialTimeout:             time.Millisecond * 100,
+						RPCTimeout:              time.Millisecond * 100,
+						ReplicationRetryTimeout: time.Millisecond * 100,
+						ReplicationBufferSize:   1,
+					},
+				},
+			},
+			secOpts: &comm.SecureOptions{
+				Certificate:   cert,
+				Key:           key,
+				UseTLS:        true,
+				ServerRootCAs: [][]byte{caCert},
+			},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateChains(bootstrapBlock, []string{"foo"})
+			},
+			zapHooks: []func(entry zapcore.Entry) error{
+				func(entry zapcore.Entry) error {
+					hooksActivated = true
+					possibleLogs := []string{
+						"Will now replicate chains [foo]",
+						"Channel testchainid shouldn't be pulled. Skipping it",
+					}
+					assert.Contains(t, possibleLogs, entry.Message)
+					return nil
+				},
+			},
+		},
+		{
+			name: "Explicit replication is requested, but the channel cannot be pulled",
+			panicValue: "Failed pulling system channel: " +
+				"failed obtaining the latest block for channel testchainid",
+			shouldConnect:      true,
+			systemLedgerHeight: 10,
+			bootBlock:          &bootBlock,
+			conf: &localconfig.TopLevel{
+				General: localconfig.General{
+					SystemChannel: "system",
+					Cluster: localconfig.Cluster{
+						ReplicationPullTimeout:  time.Millisecond * 100,
+						DialTimeout:             time.Millisecond * 100,
+						RPCTimeout:              time.Millisecond * 100,
+						ReplicationRetryTimeout: time.Millisecond * 100,
+						ReplicationBufferSize:   1,
+					},
+				},
+			},
+			secOpts: &comm.SecureOptions{
+				Certificate:   cert,
+				Key:           key,
+				UseTLS:        true,
+				ServerRootCAs: [][]byte{caCert},
+			},
+			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+				ri.replicateChains(bootstrapBlock, []string{"testchainid"})
+			},
 		},
 	} {
+		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
+			deliverServer := prepareTestCase()
+			defer deliverServer.srv.Stop()
+
 			lw := &mocks.LedgerWriter{}
 			lw.On("Height").Return(testCase.systemLedgerHeight).Once()
 
@@ -290,13 +384,14 @@ func TestReplicateIfNeeded(t *testing.T) {
 				logger: flogging.MustGetLogger("testReplicateIfNeeded"),
 				signer: testCase.signer,
 
-				conf:           testCase.conf,
-				bootstrapBlock: testCase.bootBlock,
-				secOpts:        testCase.secOpts,
+				conf:    testCase.conf,
+				secOpts: testCase.secOpts,
 			}
 
 			if testCase.panicValue != "" {
-				assert.PanicsWithValue(t, testCase.panicValue, r.replicateIfNeeded)
+				assert.PanicsWithValue(t, testCase.panicValue, func() {
+					testCase.replicateFunc(r, testCase.bootBlock)
+				})
 				return
 			}
 
@@ -304,7 +399,7 @@ func TestReplicateIfNeeded(t *testing.T) {
 			r.logger = r.logger.WithOptions(zap.Hooks(testCase.zapHooks...))
 
 			// This is the method we're testing.
-			r.replicateIfNeeded()
+			testCase.replicateFunc(r, testCase.bootBlock)
 
 			// Ensure we ran the hooks for a test case that doesn't panic
 			assert.True(t, hooksActivated)

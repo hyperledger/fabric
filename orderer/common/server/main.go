@@ -105,14 +105,13 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	// Only clusters that are equipped with a recent config block can replicate.
 	if clusterType && conf.General.GenesisMethod == "file" {
 		r := &replicationInitiator{
-			logger:         logger,
-			secOpts:        clusterClientConfig.SecOpts,
-			bootstrapBlock: bootstrapBlock,
-			conf:           conf,
-			lf:             &ledgerFactory{lf},
-			signer:         signer,
+			logger:  logger,
+			secOpts: clusterClientConfig.SecOpts,
+			conf:    conf,
+			lf:      &ledgerFactory{lf},
+			signer:  signer,
 		}
-		r.replicateIfNeeded()
+		r.replicateIfNeeded(bootstrapBlock)
 	}
 
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
