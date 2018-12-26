@@ -28,6 +28,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestIsReplicationNeeded(t *testing.T) {
@@ -70,6 +72,7 @@ func TestIsReplicationNeeded(t *testing.T) {
 			ledgerFactory.On("GetOrCreate", "system").Return(ledgerWriter, testCase.systemChannelError)
 
 			r := cluster.Replicator{
+				Filter:        cluster.AnyChannel,
 				Logger:        flogging.MustGetLogger("test"),
 				BootBlock:     testCase.bootBlock,
 				SystemChannel: "system",
@@ -224,6 +227,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 			cl.On("Close")
 
 			r := cluster.Replicator{
+				Filter: cluster.AnyChannel,
 				AmIPartOfChannel: func(configBlock *common.Block) error {
 					return cluster.ErrNotInChannel
 				},
@@ -265,7 +269,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 				osn.blockResponses <- nil
 			}
 
-			assert.PanicsWithValue(t, testCase.expectedPanic, r.ReplicateChains)
+			assert.PanicsWithValue(t, testCase.expectedPanic, func() { r.ReplicateChains() })
 			bp.Close()
 			dialer.assertAllConnectionsClosed(t)
 		})
@@ -340,6 +344,7 @@ func TestReplicateChainsChannelClassificationFailure(t *testing.T) {
 	osn.addExpectPullAssert(21)
 
 	r := cluster.Replicator{
+		Filter: cluster.AnyChannel,
 		AmIPartOfChannel: func(configBlock *common.Block) error {
 			return errors.New("oops")
 		},
@@ -460,6 +465,7 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	lf.On("GetOrCreate", "system").Return(lwSystem, nil)
 
 	r := cluster.Replicator{
+		Filter:        cluster.AnyChannel,
 		LedgerFactory: lf,
 		AmIPartOfChannel: func(configBlock *common.Block) error {
 			return amIPartOfChannelMock.Called().Error(0)
@@ -1378,4 +1384,20 @@ func TestChannelCreationBlockToGenesisBlock(t *testing.T) {
 			assert.EqualError(t, err, testCase.expectedErr)
 		})
 	}
+}
+
+func TestFilter(t *testing.T) {
+	logger := flogging.MustGetLogger("test")
+	logger = logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		assert.Equal(t, "Channel foo shouldn't be pulled. Skipping it", entry.Message)
+		return nil
+	}))
+
+	r := &cluster.Replicator{
+		Filter: func(_ string) bool {
+			return false
+		},
+		Logger: logger,
+	}
+	assert.Nil(t, r.PullChannel("foo"))
 }
