@@ -82,7 +82,7 @@ func TestGetConfigTx(t *testing.T) {
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 7})})
 	rl.Append(block)
 
-	pctx := getConfigTx(rl)
+	pctx := configTx(rl)
 	assert.True(t, proto.Equal(pctx, ctx), "Did not select most recent config transaction")
 }
 
@@ -96,11 +96,11 @@ func TestGetConfigTxFailure(t *testing.T) {
 		}))
 	}
 	rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 11)}))
-	assert.Panics(t, func() { getConfigTx(rl) }, "Should have panicked because there was no config tx")
+	assert.Panics(t, func() { configTx(rl) }, "Should have panicked because there was no config tx")
 
 	block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 12)})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
-	assert.Panics(t, func() { getConfigTx(rl) }, "Should have panicked because of bad last config metadata")
+	assert.Panics(t, func() { configTx(rl) }, "Should have panicked because of bad last config metadata")
 }
 
 // This test checks to make sure the orderer refuses to come up if it cannot find a system channel
@@ -167,6 +167,41 @@ func TestManagerImpl(t *testing.T) {
 	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
 		assert.True(t, proto.Equal(messages[i], utils.ExtractEnvelopeOrPanic(block, i)), "Block contents wrong at index %d", i)
 	}
+}
+
+func TestCreateChain(t *testing.T) {
+	lf, _ := NewRAMLedgerAndFactory(10)
+
+	consenters := make(map[string]consensus.Consenter)
+	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
+
+	manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+	manager.Initialize(consenters)
+
+	ledger, err := lf.GetOrCreate("mychannel")
+	assert.NoError(t, err)
+
+	genesisBlock := encoder.New(conf).GenesisBlockForChannel("mychannel")
+	ledger.Append(genesisBlock)
+
+	// Before creating the chain, it doesn't exist
+	assert.Nil(t, manager.GetChain("mychannel"))
+	// After creating the chain, it exists
+	manager.CreateChain("mychannel")
+	chain := manager.GetChain("mychannel")
+	assert.NotNil(t, chain)
+	// A subsequent creation, replaces the chain.
+	manager.CreateChain("mychannel")
+	chain2 := manager.GetChain("mychannel")
+	assert.NotNil(t, chain2)
+	// They are not the same
+	assert.NotEqual(t, chain, chain2)
+	// The old chain is halted
+	_, ok := <-chain.Chain.(*mockChain).queue
+	assert.False(t, ok)
+	// The new chain is not halted: Close the channel to prove that.
+	close(chain2.Chain.(*mockChain).queue)
+
 }
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain

@@ -316,8 +316,30 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			assertInvoke(network, peer, o4, mycc3.Name, "testchannel3", "channel testchannel3 is not serviced by me", 1)
 			Expect(string(orderer4Runner.Err().Contents())).To(ContainSubstring("I do not belong to channel testchannel2 or am forbidden pulling it (not in the channel), skipping chain retrieval"))
 			Expect(string(orderer4Runner.Err().Contents())).To(ContainSubstring("I do not belong to channel testchannel3 or am forbidden pulling it (forbidden), skipping chain retrieval"))
+
+			By("Adding orderer4 to testchannel2")
+			nwo.AddConsenter(network, peer, o1, "testchannel2", etcdraft.Consenter{
+				ServerTlsCert: orderer4Certificate,
+				ClientTlsCert: orderer4Certificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(o4, nwo.ListenPort)),
+			})
+
+			By("Waiting for orderer4 and to replicate testchannel2")
+			assertBlockReception(map[string]int{
+				"testchannel2": 2,
+			}, []*nwo.Orderer{o4}, peer, network)
+
 			By("Ensuring that all orderers don't log errors to the log")
 			assertNoErrorsAreLogged(ordererRunners)
+
+			By("Submitting a transaction through orderer4")
+			assertInvoke(network, peer, o4, mycc2.Name, "testchannel2", "Chaincode invoke successful. result: status:200", 0)
+
+			By("And ensuring it is propagated amongst all orderers")
+			assertBlockReception(map[string]int{
+				"testchannel2": 3,
+			}, orderers, peer, network)
 		})
 	})
 })
@@ -467,14 +489,17 @@ func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Net
 	Eventually(func() string {
 		sess, err := network.OrdererAdminSession(o, submitter, c)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		if sess.ExitCode() != 0 {
+			return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
+		}
 		sessErr := string(sess.Err.Contents())
 		expected := fmt.Sprintf("Received block: %d", blockSeq)
 		if strings.Contains(sessErr, expected) {
 			return ""
 		}
 		return sessErr
-	}, network.EventuallyTimeout).Should(BeEmpty())
+	}, time.Minute, time.Second).Should(BeEmpty())
 }
 
 func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
