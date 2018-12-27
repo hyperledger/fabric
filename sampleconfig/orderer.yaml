@@ -77,6 +77,10 @@ General:
         # ReplicationRetryTimeout is the maximum duration the ordering node will wait
         # between 2 consecutive attempts.
         ReplicationRetryTimeout: 5s
+        # ReplicationBackgroundRefreshInterval is the time between 2 consecutive attempts
+        # to replicate existing chains that this node was added to, or chains
+        # that this node failed to replicate in the past.
+        ReplicationBackgroundRefreshInterval: 5m
 
         # The below 4 properties should be either set together, or be unset together.
         # If they are set, then the orderer node uses a separate listener for intra-cluster
