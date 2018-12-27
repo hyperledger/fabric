@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/protos/msp"
 )
 
 // NewGossipMessageComparator creates a MessageReplacingPolicy given a maximum number of blocks to hold
@@ -316,7 +317,6 @@ type Signer func(msg []byte) ([]byte, error)
 // to obtain the raw bytes the GossipMessage was un-marshaled from,
 // and the signature over these raw bytes.
 type ReceivedMessage interface {
-
 	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
 	Respond(msg *GossipMessage)
 
@@ -490,21 +490,103 @@ type SignedGossipMessage struct {
 	*GossipMessage
 }
 
+// toString of Payload prints Block message: Data and seq
 func (p *Payload) toString() string {
 	return fmt.Sprintf("Block message: {Data: %d bytes, seq: %d}", len(p.Data), p.SeqNum)
 }
 
+// toString of DataUpdate prints Type, items and nonce
 func (du *DataUpdate) toString() string {
 	mType := PullMsgType_name[int32(du.MsgType)]
 	return fmt.Sprintf("Type: %s, items: %d, nonce: %d", mType, len(du.Data), du.Nonce)
 }
 
-func (mr *MembershipResponse) toString() string {
+// ToString of MembershipResponse prints number of Alive and number of Dead
+func (mr *MembershipResponse) ToString() string {
 	return fmt.Sprintf("MembershipResponse with Alive: %d, Dead: %d", len(mr.Alive), len(mr.Dead))
 }
 
+// toString of StateInfoSnapshot prints items
 func (sis *StateInfoSnapshot) toString() string {
 	return fmt.Sprintf("StateInfoSnapshot with %d items", len(sis.Elements))
+}
+
+// toString of MembershipRequest prints self information
+func (mr *MembershipRequest) toString() string {
+	if mr.SelfInformation == nil {
+		return ""
+	}
+	signGM, err := mr.SelfInformation.ToGossipMessage()
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("Membership Request with self information of %s ", signGM.String())
+}
+
+// ToString of Member prints Endpoint and PKI-id
+func (member *Member) ToString() string {
+	return fmt.Sprint("Membership: Endpoint:", member.Endpoint, " PKI-id:", hex.EncodeToString(member.PkiId))
+}
+
+// ToString of AliveMessage prints Alive Message, Identity and Timestamp
+func (am *AliveMessage) ToString() string {
+	if am.Membership == nil {
+		return "nil Membership"
+	}
+	var sI string
+	serializeIdentity := &msp.SerializedIdentity{}
+	if err := proto.Unmarshal(am.Identity, serializeIdentity); err == nil {
+		sI = serializeIdentity.Mspid + string(serializeIdentity.IdBytes)
+	}
+	return fmt.Sprint("Alive Message:", am.Membership.ToString(), "Identity:", sI, "Timestamp:", am.Timestamp)
+}
+
+// toString of StateInfoPullRequest prints Channel MAC
+func (sipr *StateInfoPullRequest) toString() string {
+	return fmt.Sprint("state_info_pull_req: Channel MAC:", hex.EncodeToString(sipr.Channel_MAC))
+}
+
+// toString of StateInfo prints Timestamp and PKI-id
+func (si *StateInfo) toString() string {
+	return fmt.Sprint("state_info_message: Timestamp:", si.Timestamp, "PKI-id:", hex.EncodeToString(si.PkiId),
+		" channel MAC:", hex.EncodeToString(si.Channel_MAC), " properties:", si.Properties)
+}
+
+// formatDigests formats digest byte arrays into strings depending on the message type
+func formatDigests(msgType PullMsgType, givenDigests [][]byte) []string {
+	var digests []string
+	switch msgType {
+	case PullMsgType_BLOCK_MSG:
+		for _, digest := range givenDigests {
+			digests = append(digests, string(digest))
+		}
+	case PullMsgType_IDENTITY_MSG:
+		for _, digest := range givenDigests {
+			digests = append(digests, hex.EncodeToString(digest))
+		}
+
+	}
+	return digests
+}
+
+// toString of DataDigest prints nonce, msg_type and digests
+func (dig *DataDigest) toString() string {
+	var digests []string
+	digests = formatDigests(dig.MsgType, dig.Digests)
+	return fmt.Sprintf("data_dig: nonce: %d , Msg_type: %s, digests: %v", dig.Nonce, dig.MsgType, digests)
+}
+
+// toString of DataRequest prints nonce, msg_type and digests
+func (dataReq *DataRequest) toString() string {
+	var digests []string
+	digests = formatDigests(dataReq.MsgType, dataReq.Digests)
+	return fmt.Sprintf("data request: nonce: %d , Msg_type: %s, digests: %v", dataReq.Nonce, dataReq.MsgType, digests)
+}
+
+// toString of LeadershipMessage prints PKI-id, Timestamp and Is Declaration
+func (lm *LeadershipMessage) toString() string {
+	return fmt.Sprint("Leadership Message: PKI-id:", hex.EncodeToString(lm.PkiId), " Timestamp:", lm.Timestamp,
+		"Is Declaration ", lm.IsDeclaration)
 }
 
 // String returns a string representation
@@ -531,11 +613,25 @@ func (m *SignedGossipMessage) String() string {
 			update := m.GetDataUpdate()
 			gMsg = fmt.Sprintf("DataUpdate: %s", update.toString())
 		} else if m.GetMemRes() != nil {
-			gMsg = m.GetMemRes().toString()
+			gMsg = m.GetMemRes().ToString()
 		} else if m.IsStateInfoSnapshot() {
 			gMsg = m.GetStateSnapshot().toString()
 		} else if m.GetPrivateRes() != nil {
 			gMsg = m.GetPrivateRes().ToString()
+		} else if m.GetAliveMsg() != nil {
+			gMsg = m.GetAliveMsg().ToString()
+		} else if m.GetMemReq() != nil {
+			gMsg = m.GetMemReq().toString()
+		} else if m.GetStateInfoPullReq() != nil {
+			gMsg = m.GetStateInfoPullReq().toString()
+		} else if m.GetStateInfo() != nil {
+			gMsg = m.GetStateInfo().toString()
+		} else if m.GetDataDig() != nil {
+			gMsg = m.GetDataDig().toString()
+		} else if m.GetDataReq() != nil {
+			gMsg = m.GetDataReq().toString()
+		} else if m.GetLeadershipMsg() != nil {
+			gMsg = m.GetLeadershipMsg().toString()
 		} else {
 			gMsg = m.GossipMessage.String()
 			isSimpleMsg = true

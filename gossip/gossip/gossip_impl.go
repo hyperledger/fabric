@@ -1006,7 +1006,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessag
 	} else {
 		identity, _ = sa.idMapper.Get(am.Membership.PkiId)
 		if identity != nil {
-			sa.logger.Debug("Fetched identity of", am.Membership.PkiId, "from identity store")
+			sa.logger.Debug("Fetched identity of", am.Membership.ToString(), "from identity store")
 		}
 	}
 
