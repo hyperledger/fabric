@@ -53,7 +53,7 @@ func goWithWait(target func()) *waitableGo {
 
 // This test checks that if consenter is halted before a timer fires, nothing is actually written.
 func TestHaltBeforeTimeout(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1ms")
+	batchTimeout, _ := time.ParseDuration("10ms")
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
