@@ -201,7 +201,7 @@ var _ = Describe("Chain", func() {
 		Context("when no Raft leader is elected", func() {
 			It("fails to order envelope", func() {
 				err := chain.Order(env, 0)
-				Expect(err).To(MatchError("node bootstrapping has not finished"))
+				Expect(err).To(MatchError("no Raft leader"))
 			})
 		})
 
