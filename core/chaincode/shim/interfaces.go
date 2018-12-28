@@ -299,7 +299,7 @@ type ChaincodeStubInterface interface {
 	// not detected. That is, other committed transactions may have added,
 	// updated, or removed keys that impact the result set, and this would not
 	// be detected at validation/commit time.  Applications susceptible to this
-	// should therefore not use GetQueryResult as part of transactions that update
+	// should therefore not use GetPrivateDataQueryResult as part of transactions that update
 	// ledger, and should limit use to read-only chaincode operations.
 	GetPrivateDataQueryResult(collection, query string) (StateQueryIteratorInterface, error)
 
