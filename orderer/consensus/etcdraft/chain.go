@@ -155,12 +155,7 @@ func NewChain(
 
 	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
 
-	height := support.Height()
 	fresh := !wal.Exist(opts.WALDir)
-	if fresh && height > 1 {
-		lg.Infof("Etcdraft chain is booted as fresh raft node with existing ledger at block %d", height-1)
-	}
-
 	storage, err := CreateStorage(lg, opts.WALDir, opts.SnapDir, opts.MemoryStorage)
 	if err != nil {
 		return nil, errors.Errorf("failed to restore persisted raft data: %s", err)
@@ -179,7 +174,7 @@ func NewChain(
 		snapBlkNum = b.Header.Number
 	}
 
-	lastBlock := support.Block(height - 1)
+	lastBlock := support.Block(support.Height() - 1)
 
 	return &Chain{
 		configurator:         conf,
@@ -238,10 +233,15 @@ func (c *Chain) Start() {
 	raftPeers := RaftPeers(c.opts.RaftMetadata.Consenters)
 
 	if c.fresh {
-		c.logger.Info("starting new raft node")
+		if c.support.Height() > 1 {
+			raftPeers = nil
+			c.logger.Info("Starting raft node to join an existing channel")
+		} else {
+			c.logger.Info("Starting raft node as part of a new channel")
+		}
 		c.node = raft.StartNode(config, raftPeers)
 	} else {
-		c.logger.Info("restarting raft node")
+		c.logger.Info("Restarting raft node")
 		c.node = raft.RestartNode(config)
 	}
 

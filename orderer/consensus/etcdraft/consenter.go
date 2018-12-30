@@ -117,7 +117,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	// In case chain has been restarted we restore raft metadata
 	// information from the recently committed block meta data
 	// field.
-	raftMetadata, err := readRaftMetadata(metadata, m)
+	raftMetadata, err := ReadRaftMetadata(metadata, m)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read Raft metadata")
 	}
@@ -159,7 +159,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	return NewChain(support, opts, c.Communication, rpc, bp, nil)
 }
 
-func readRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
+// ReadRaftMetadata attempts to read raft metadata from block metadata, if available.
+// otherwise, it reads raft metadata from config metadata supplied.
+func ReadRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
 	m := &etcdraft.RaftMetadata{
 		Consenters:      map[uint64]*etcdraft.Consenter{},
 		NextConsenterId: 1,
