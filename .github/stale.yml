@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+# Number of days of inactivity before an issue becomes stale
+daysUntilStale: 0
+# Number of days of inactivity before a stale issue is closed
+daysUntilClose: 1
+# Issues with these labels will never be considered stale
+# CAUTION: These issues are likely to get _less_ attention since stale bot
+# will never nag anyone about them. Stale bot just reflects the community's
+# actual priorities and adding labels to this list will not change that.
+# If issues you care about are going stale, you need to work with the
+# community to raise their profile, e.g. add more information, reach out on
+# Rocket.Chat, join a community call, etc.
+# WARNING: Please do not change these labels without seeking community
+# consensus first!
+# Label to use when marking an issue as stale
+staleLabel: stale
+only: pulls
+# Comment to post when marking an issue as stale. Set to `false` to disable
+markComment: >
+  Thank you for your contribution!
+  Please use gerrit for the changes, see
+  [documentation here](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html)
+# Comment to post when closing a stale issue. Set to `false` to disable
+closeComment: >
+  Thank you for your contribution!
+  Please use gerrit for the changes, see
+  [documentation here](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html)
