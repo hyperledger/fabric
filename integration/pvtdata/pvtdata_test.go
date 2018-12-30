@@ -552,6 +552,98 @@ var _ bool = Describe("PrivateData", func() {
 				"tx creator does not have read access permission")
 		})
 	})
+
+	Describe("An org should not receive private data after it has been removed from a collection", func() {
+		var (
+			testDir       string
+			network       *nwo.Network
+			process       ifrit.Process
+			orderer       *nwo.Orderer
+			expectedPeers []*nwo.Peer
+		)
+
+		BeforeEach(func() {
+			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
+			By("installing and instantiating chaincode on all peers. All three orgs are memeber of 'collectionMarbles'")
+			chaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config2.json")}
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			By("creating marble1")
+			invokeChaincode(network, "org1", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
+
+			By("waiting for block to propagate")
+			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+		})
+
+		AfterEach(func() {
+			testCleanup(testDir, network, process)
+		})
+
+		It("verify removed org does not get new data", func() {
+			By("verify that initially all three orgs has private data for marble1")
+			verifyAccess(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["readMarble","marble1"]}`,
+				},
+				[]*nwo.Peer{
+					network.Peer("org1", "peer0"),
+					network.Peer("org2", "peer0"),
+					network.Peer("org3", "peer0"),
+				},
+				`{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`,
+			)
+
+			By("upgrading chaincode to remove org3 from collectionMarbles")
+			chaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "2.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json")}
+			nwo.UpgradeChaincode(network, "testchannel", orderer, chaincode)
+
+			By("creating marble2")
+			invokeChaincode(network, "org2", "peer0", "marblesp", `{"Args":["initMarble","marble2","yellow","53","jerry","22"]}`, "testchannel", orderer)
+
+			By("waiting for block to propagate")
+			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org2", "peer0"), "testchannel"))
+
+			By("verifying availability of new private data (marble2) on org1 and org2")
+			verifyAccess(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["readMarble","marble2"]}`,
+				},
+				[]*nwo.Peer{
+					network.Peer("org1", "peer0"),
+					network.Peer("org2", "peer0"),
+				},
+				`{"docType":"marble","name":"marble2","color":"yellow","size":53,"owner":"jerry"}`,
+			)
+			By("verifying that marble2 private data does not exist on peer0.org3")
+			verifyAccessFailed(
+				network,
+				commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "marblesp",
+					Ctor:      `{"Args":["readMarble","marble2"]}`,
+				},
+				network.Peer("org3", "peer0"),
+				"Failed to get state for marble2")
+		})
+	})
 })
 
 func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
