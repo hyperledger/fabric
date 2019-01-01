@@ -165,9 +165,9 @@ following functions apply:
     GetPrivateDataValidationParameter(collection, key string) ([]byte, error)
 
 To help set endorsement policies and marshal them into validation
-parameter byte arrays, the shim provides convenience functions that allow the
-chaincode developer to deal with endorsement policies in terms of the MSP
-identifiers of organizations(`KeyEndorsementPolicy <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim/ext/statebased#KeyEndorsementPolicy>`_):
+parameter byte arrays, the Go shim provides an extension with convenience
+functions that allow the chaincode developer to deal with endorsement policies
+in terms of the MSP identifiers of organizations, see `KeyEndorsementPolicy <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim/ext/statebased#KeyEndorsementPolicy>`_:
 
 .. code-block:: Go
 
@@ -191,6 +191,8 @@ For example, to set an endorsement policy for a key where two specific orgs are
 required to endorse the key change, pass both org ``MSPIDs`` to ``AddOrgs()``,
 and then call ``Policy()`` to construct the endorsement policy byte array that
 can be passed to ``SetStateValidationParameter()``.
+
+To add the shim extension to your chaincode as a dependency, see :ref:`vendoring`.
 
 Validation
 ----------
