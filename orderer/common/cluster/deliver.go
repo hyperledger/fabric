@@ -29,6 +29,7 @@ import (
 // Its operations are not thread safe.
 type BlockPuller struct {
 	// Configuration
+	MaxPullBlockRetries uint64
 	MaxTotalBufferBytes int
 	Signer              crypto.LocalSigner
 	TLSCert             []byte
@@ -80,13 +81,21 @@ func (p *BlockPuller) Close() {
 }
 
 // PullBlock blocks until a block with the given sequence is fetched
-// from some remote ordering node.
+// from some remote ordering node, or until consecutive failures
+// of fetching the block exceeds MaxPullBlockRetries.
 func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
+	retriesLeft := p.MaxPullBlockRetries
 	for {
 		block := p.tryFetchBlock(seq)
 		if block != nil {
 			return block
 		}
+		retriesLeft--
+		if retriesLeft == 0 && p.MaxPullBlockRetries > 0 {
+			p.Logger.Errorf("Failed pulling block %d: retry count exhausted(%d)", seq, p.MaxPullBlockRetries)
+			return nil
+		}
+		time.Sleep(p.RetryTimeout)
 	}
 }
 
