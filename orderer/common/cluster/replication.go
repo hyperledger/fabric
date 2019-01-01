@@ -194,11 +194,17 @@ func (r *Replicator) pullChannelBlocks(channel string, puller ChainPuller, lates
 	}
 	// Pull the genesis block and remember its hash.
 	genesisBlock := puller.PullBlock(0)
+	if genesisBlock == nil {
+		return ErrRetryCountExhausted
+	}
 	r.appendBlockIfNeeded(genesisBlock, ledger, channel)
 	actualPrevHash := genesisBlock.Header.Hash()
 
 	for seq := uint64(1); seq < latestHeight; seq++ {
 		block := puller.PullBlock(seq)
+		if block == nil {
+			return ErrRetryCountExhausted
+		}
 		reportedPrevHash := block.Header.PreviousHash
 		if !bytes.Equal(reportedPrevHash, actualPrevHash) {
 			return errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
@@ -271,6 +277,12 @@ func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 		if err == ErrServiceUnavailable {
 			r.Logger.Infof("All orderers in the system channel are either down,"+
 				"or do not service channel %s (%v), skipping chain retrieval", channel.ChannelName, err)
+			channelsNotToPull = append(channelsNotToPull, channel)
+			continue
+		}
+		if err == ErrRetryCountExhausted {
+			r.Logger.Warningf("Could not obtain blocks needed for classifying whether I am in the channel,"+
+				"skipping the retrieval of the chan %s", channel.ChannelName)
 			channelsNotToPull = append(channelsNotToPull, channel)
 			continue
 		}
@@ -384,6 +396,8 @@ var ErrServiceUnavailable = errors.New("service unavailable")
 // ErrNotInChannel denotes that an ordering node is not in the channel
 var ErrNotInChannel = errors.New("not in the channel")
 
+var ErrRetryCountExhausted = errors.New("retry attempts exhausted")
+
 // selfMembershipPredicate determines whether the caller is found in the given config block
 type selfMembershipPredicate func(configBlock *common.Block) error
 
@@ -398,9 +412,12 @@ func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicat
 		return err
 	}
 	if endpoint == "" {
-		return errors.New("no available orderer")
+		return ErrRetryCountExhausted
 	}
 	lastBlock := puller.PullBlock(latestHeight - 1)
+	if lastBlock == nil {
+		return ErrRetryCountExhausted
+	}
 	lastConfNumber, err := lastConfigFromBlock(lastBlock)
 	if err != nil {
 		return err
@@ -410,6 +427,9 @@ func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicat
 	// So we need to reset the puller if we wish to pull an earlier block.
 	puller.Close()
 	lastConfigBlock := puller.PullBlock(lastConfNumber)
+	if lastConfigBlock == nil {
+		return ErrRetryCountExhausted
+	}
 	return analyzeLastConfBlock(lastConfigBlock)
 }
 
@@ -469,6 +489,9 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 	var prevHash []byte
 	for seq := uint64(1); seq < lastConfigBlockNum; seq++ {
 		block = ci.Puller.PullBlock(seq)
+		if block == nil {
+			ci.Logger.Panicf("Failed pulling block %d from the system channel", seq)
+		}
 		ci.validateHashPointer(block, prevHash)
 		channel, err := IsNewChannelBlock(block)
 		if err != nil {
