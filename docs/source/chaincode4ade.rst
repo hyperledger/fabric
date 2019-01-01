@@ -502,7 +502,7 @@ Chaincode access control
 Chaincode can utilize the client (submitter) certificate for access
 control decisions by calling the GetCreator() function. Additionally
 the Go shim provides extension APIs that extract client identity
-from the submitter's certificate to be used for access control decisions,
+from the submitter's certificate that can be used for access control decisions,
 whether that is based on client identity itself, or the org identity,
 or on a client identity attribute.
 
@@ -516,7 +516,7 @@ submitter information to make such access control decisions.
 See the `client identity (CID) library documentation <https://github.com/hyperledger/fabric/blob/master/core/chaincode/shim/ext/cid/README.md>`_
 for more details.
 
-To add the client identity shim extension to your chaincode as a dependency, see vendoring_.
+To add the client identity shim extension to your chaincode as a dependency, see :ref:`vendoring`.
 
 Chaincode encryption
 --------------------
@@ -541,7 +541,7 @@ that the sample encryption chaincode then leverages.  As such, the chaincode can
 now marry the basic shim APIs of ``Get`` and ``Put`` with the added functionality of
 ``Encrypt`` and ``Decrypt``.
 
-To add the encryption entities extension to your chaincode as a dependency, see vendoring_.
+To add the encryption entities extension to your chaincode as a dependency, see :ref:`vendoring`.
 
 .. _vendoring:
 
@@ -564,7 +564,8 @@ for managing (or "vendoring") these dependencies.  The following demonstrates ho
 
 This imports the external dependencies into a local ``vendor`` directory.
 If you are vendoring the Fabric shim or shim extensions, clone the
-Fabric repository to your $GOPATH src/github.com/hyperledger directory.
+Fabric repository to your $GOPATH/src/github.com/hyperledger directory,
+before executing the govendor commands.
 
 Once dependencies are vendored in your chaincode directory, ``peer chaincode package``
 and ``peer chaincode install`` operations will then include code associated with the
