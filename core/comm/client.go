@@ -60,6 +60,7 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	// Unless asynchronous connect is set, make connection establishment blocking.
 	if !config.AsyncConnect {
 		client.dialOpts = append(client.dialOpts, grpc.WithBlock())
+		client.dialOpts = append(client.dialOpts, grpc.FailOnNonTempDialError(true))
 	}
 	client.timeout = config.Timeout
 	// set send/recv message size to package defaults
