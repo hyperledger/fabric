@@ -59,7 +59,10 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 				template.KeyUsage |= x509.KeyUsageDigitalSignature |
 					x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
 					x509.KeyUsageCRLSign
-				template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
+				template.ExtKeyUsage = []x509.ExtKeyUsage{
+					x509.ExtKeyUsageClientAuth,
+					x509.ExtKeyUsageServerAuth,
+				}
 
 				//set the organization for the subject
 				subject := subjectTemplateAdditional(country, province, locality, orgUnit, streetAddress, postalCode)
