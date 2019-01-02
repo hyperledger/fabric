@@ -104,7 +104,7 @@ var _ = Describe("GRPCClient", func() {
 
 				// verify we can create a connection using grpcClient
 				_, err = grpcClient.NewConnection(connConfig.Address, "")
-				Expect(err).To(MatchError("failed to create new connection: context deadline exceeded"))
+				Expect(err.Error()).To(ContainSubstring("connection refused"))
 			})
 		})
 

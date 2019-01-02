@@ -146,7 +146,7 @@ func TestNewConnection_Timeout(t *testing.T) {
 	}
 	client, err := comm.NewGRPCClient(config)
 	conn, err := client.NewConnection(testAddress, "")
-	assert.Contains(t, err.Error(), "context deadline exceeded")
+	assert.Contains(t, err.Error(), "connection refused")
 	t.Log(err)
 	assert.Nil(t, conn)
 }
@@ -183,7 +183,7 @@ func TestNewConnection(t *testing.T) {
 				Timeout: time.Second,
 			},
 			success:  false,
-			errorMsg: "context deadline exceeded",
+			errorMsg: "connection refused",
 		},
 		{
 			name: "client / server wrong port but with asynchronous should succeed",
@@ -258,7 +258,7 @@ func TestNewConnection(t *testing.T) {
 				ClientAuth:   tls.RequireAndVerifyClientCert,
 			},
 			success:  false,
-			errorMsg: "context deadline exceeded",
+			errorMsg: "tls: bad certificate",
 		},
 		{
 			name: "client TLS / server TLS client cert",
