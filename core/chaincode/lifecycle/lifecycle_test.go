@@ -10,11 +10,14 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var _ = Describe("Lifecycle", func() {
@@ -335,6 +338,118 @@ var _ = Describe("Lifecycle", func() {
 			It("wraps and returns the error", func() {
 				err := l.DefineChaincodeForOrg(testDefinition, fakePublicState, fakeOrgState)
 				Expect(err).To(MatchError("could not serialize chaincode parameters to state: could not write key into state: put-state-error"))
+			})
+		})
+	})
+
+	Describe("Define", func() {
+		var (
+			fakePublicState *mock.ReadWritableState
+			fakeOrgStates   []*mock.ReadWritableState
+
+			testDefinition *lifecycle.ChaincodeDefinition
+
+			publicKVS, org0KVS, org1KVS map[string][]byte
+		)
+
+		BeforeEach(func() {
+			testDefinition = &lifecycle.ChaincodeDefinition{
+				Name:     "cc-name",
+				Sequence: 5,
+				Parameters: &lifecycle.ChaincodeParameters{
+					Version:             "version",
+					Hash:                []byte("hash"),
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
+			}
+
+			publicKVS = map[string][]byte{}
+			fakePublicState = &mock.ReadWritableState{}
+			fakePublicState.GetStateReturns(proto.EncodeVarint(uint64(4)), nil)
+			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
+				return publicKVS[key], nil
+			}
+			fakePublicState.PutStateStub = func(key string, value []byte) error {
+				publicKVS[key] = value
+				return nil
+			}
+			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{
+				Sequence:            4,
+				Version:             "version",
+				Hash:                []byte("hash"),
+				EndorsementPlugin:   "endorsement-plugin",
+				ValidationPlugin:    "validation-plugin",
+				ValidationParameter: []byte("validation-parameter"),
+			}, fakePublicState)
+
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
+			fakeOrgStates = []*mock.ReadWritableState{{}, {}}
+			for i, kvs := range []map[string][]byte{org0KVS, org1KVS} {
+				kvs := kvs
+				fakeOrgStates[i].GetStateStub = func(key string) ([]byte, error) {
+					return kvs[key], nil
+				}
+
+				fakeOrgStates[i].GetStateHashStub = func(key string) ([]byte, error) {
+					return util.ComputeSHA256(kvs[key]), nil
+				}
+
+				fakeOrgStates[i].PutStateStub = func(key string, value []byte) error {
+					kvs[key] = value
+					return nil
+				}
+			}
+
+			l.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters, fakeOrgStates[0])
+			l.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
+		})
+
+		It("applies the chaincode definition and returns the agreements", func() {
+			agreements, err := l.DefineChaincode(testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(agreements).To(Equal([]bool{true, false}))
+		})
+
+		Context("when the public state is not readable", func() {
+			BeforeEach(func() {
+				fakePublicState.GetStateReturns(nil, fmt.Errorf("getstate-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := l.DefineChaincode(testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: getstate-error"))
+			})
+		})
+
+		Context("when the public state is not writable", func() {
+			BeforeEach(func() {
+				fakePublicState.PutStateReturns(fmt.Errorf("putstate-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := l.DefineChaincode(testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).To(MatchError("could not serialize chaincode definition: could not write key into state: putstate-error"))
+			})
+		})
+
+		Context("when the current sequence is not immediately prior to the new", func() {
+			BeforeEach(func() {
+				l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{
+					Sequence:            3,
+					Version:             "version",
+					Hash:                []byte("hash"),
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				}, fakePublicState)
+			})
+
+			It("returns an error", func() {
+				_, err := l.DefineChaincode(testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
 			})
 		})
 	})

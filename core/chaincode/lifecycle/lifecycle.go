@@ -101,6 +101,41 @@ type Lifecycle struct {
 	Serializer     *Serializer
 }
 
+// DefineChaincode takes a chaincode definition, checks that its sequence number is the next allowable sequence number,
+// checks which organizations agree with the definition, and applies the definition to the public world state.
+// It is the responsibility of the caller to check the agreement to determine if the result is valid (typically
+// this means checking that the peer's own org is in agreement.)
+func (l *Lifecycle) DefineChaincode(cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error) {
+	currentSequence, err := l.Serializer.DeserializeFieldAsInt64(NamespacesName, cd.Name, "Sequence", publicState)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get current sequence")
+	}
+
+	if cd.Sequence != currentSequence+1 {
+		return nil, errors.Errorf("requested sequence is %d, but new definition must be sequence %d", cd.Sequence, currentSequence+1)
+	}
+
+	agreement := make([]bool, len(orgStates))
+	privateName := fmt.Sprintf("%s#%d", cd.Name, cd.Sequence)
+	for i, orgState := range orgStates {
+		match, err := l.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters, orgState)
+		agreement[i] = (err == nil && match)
+	}
+
+	if err = l.Serializer.Serialize(NamespacesName, cd.Name, &DefinedChaincode{
+		Sequence:            cd.Sequence,
+		Version:             cd.Parameters.Version,
+		Hash:                cd.Parameters.Hash,
+		EndorsementPlugin:   cd.Parameters.EndorsementPlugin,
+		ValidationPlugin:    cd.Parameters.ValidationPlugin,
+		ValidationParameter: cd.Parameters.ValidationParameter,
+	}, publicState); err != nil {
+		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
+	}
+
+	return agreement, nil
+}
+
 // DefineChaincodeForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
