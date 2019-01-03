@@ -140,6 +140,14 @@ func TestGetServerConfig(t *testing.T) {
 	// keepalive options
 	assert.Equal(t, comm.DefaultKeepaliveOptions, sc.KaOpts,
 		"ServerConfig.KaOpts should be set to default values")
+	viper.Set("peer.keepalive.interval", "60m")
+	sc, _ = GetServerConfig()
+	assert.Equal(t, time.Duration(60)*time.Minute, sc.KaOpts.ServerInterval,
+		"ServerConfig.KaOpts.ServerInterval should be set to 60 min")
+	viper.Set("peer.keepalive.timeout", "30s")
+	sc, _ = GetServerConfig()
+	assert.Equal(t, time.Duration(30)*time.Second, sc.KaOpts.ServerTimeout,
+		"ServerConfig.KaOpts.ServerTimeout should be set to 30 sec")
 	viper.Set("peer.keepalive.minInterval", "2m")
 	sc, _ = GetServerConfig()
 	assert.Equal(t, time.Duration(2)*time.Minute, sc.KaOpts.ServerMinInterval,
