@@ -1399,5 +1399,5 @@ func TestFilter(t *testing.T) {
 		},
 		Logger: logger,
 	}
-	assert.Nil(t, r.PullChannel("foo"))
+	assert.Equal(t, cluster.ErrSkipped, r.PullChannel("foo"))
 }

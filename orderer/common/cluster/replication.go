@@ -77,14 +77,15 @@ type ChannelLister interface {
 
 // Replicator replicates chains
 type Replicator struct {
-	Filter           func(string) bool
-	SystemChannel    string
-	ChannelLister    ChannelLister
-	Logger           *flogging.FabricLogger
-	Puller           *BlockPuller
-	BootBlock        *common.Block
-	AmIPartOfChannel selfMembershipPredicate
-	LedgerFactory    LedgerFactory
+	DoNotPanicIfClusterNotReachable bool
+	Filter                          func(string) bool
+	SystemChannel                   string
+	ChannelLister                   ChannelLister
+	Logger                          *flogging.FabricLogger
+	Puller                          *BlockPuller
+	BootBlock                       *common.Block
+	AmIPartOfChannel                selfMembershipPredicate
+	LedgerFactory                   LedgerFactory
 }
 
 // IsReplicationNeeded returns whether replication is needed,
@@ -112,13 +113,20 @@ func (r *Replicator) IsReplicationNeeded() (bool, error) {
 }
 
 // ReplicateChains pulls chains and commits them.
-func (r *Replicator) ReplicateChains() {
+// Returns the names of the chains replicated successfully.
+func (r *Replicator) ReplicateChains() []string {
+	var replicatedChains []string
 	channels := r.discoverChannels()
 	pullHints := r.channelsToPull(channels)
 	totalChannelCount := len(pullHints.channelsToPull) + len(pullHints.channelsNotToPull)
 	r.Logger.Info("Found myself in", len(pullHints.channelsToPull), "channels out of", totalChannelCount, ":", pullHints)
 	for _, channel := range pullHints.channelsToPull {
-		r.PullChannel(channel.ChannelName)
+		err := r.PullChannel(channel.ChannelName)
+		if err == nil {
+			replicatedChains = append(replicatedChains, channel.ChannelName)
+		} else {
+			r.Logger.Warningf("Failed pulling channel %s: %v", channel.ChannelName, err)
+		}
 	}
 	// Next, just commit the genesis blocks of the channels we shouldn't pull.
 	for _, channel := range pullHints.channelsNotToPull {
@@ -137,9 +145,10 @@ func (r *Replicator) ReplicateChains() {
 	}
 
 	// Last, pull the system chain
-	if err := r.PullChannel(r.SystemChannel); err != nil {
+	if err := r.PullChannel(r.SystemChannel); err != nil && err != ErrSkipped {
 		r.Logger.Panicf("Failed pulling system channel: %v", err)
 	}
+	return replicatedChains
 }
 
 func (r *Replicator) discoverChannels() []ChannelGenesisBlock {
@@ -156,7 +165,7 @@ func (r *Replicator) discoverChannels() []ChannelGenesisBlock {
 func (r *Replicator) PullChannel(channel string) error {
 	if !r.Filter(channel) {
 		r.Logger.Info("Channel", channel, "shouldn't be pulled. Skipping it")
-		return nil
+		return ErrSkipped
 	}
 	r.Logger.Info("Pulling channel", channel)
 	puller := r.Puller.Clone()
@@ -239,7 +248,7 @@ type channelPullHints struct {
 }
 
 func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
-	r.Logger.Info("Will now pull channels:", channels.Names())
+	r.Logger.Info("Will now attempt to pull channels:", channels.Names())
 	var channelsNotToPull []ChannelGenesisBlock
 	var channelsToPull []ChannelGenesisBlock
 	for _, channel := range channels {
@@ -266,9 +275,12 @@ func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 			continue
 		}
 		if err != nil {
-			r.Logger.Panicf("Failed classifying whether I belong to channel %s: %v, skipping chain retrieval", channel.ChannelName, err)
+			if !r.DoNotPanicIfClusterNotReachable {
+				r.Logger.Panicf("Failed classifying whether I belong to channel %s: %v, skipping chain retrieval", channel.ChannelName, err)
+			}
 			continue
 		}
+		r.Logger.Infof("I need to pull channel %s", channel.ChannelName)
 		channelsToPull = append(channelsToPull, channel)
 	}
 	return channelPullHints{
@@ -359,6 +371,9 @@ type ChainInspector struct {
 	Puller          ChainPuller
 	LastConfigBlock *common.Block
 }
+
+// ErrSkipped denotes that replicating a chain was skipped
+var ErrSkipped = errors.New("skipped")
 
 // ErrForbidden denotes that an ordering node refuses sending blocks due to access control.
 var ErrForbidden = errors.New("forbidden")
@@ -520,6 +535,7 @@ func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, err
 		return nil, err
 	}
 	block.Data.Data = [][]byte{payload.Data}
+	block.Header.DataHash = block.Data.Hash()
 	block.Header.Number = 0
 	block.Header.PreviousHash = nil
 	metadata := &common.BlockMetadata{
