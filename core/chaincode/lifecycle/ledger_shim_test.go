@@ -53,6 +53,12 @@ var _ = Describe("LedgerShims", func() {
 			})
 		})
 
+		Describe("GetStateHash", func() {
+			It("panics", func() {
+				Expect(func() { cls.GetStateHash("fake-key") }).To(Panic())
+			})
+		})
+
 		Describe("PutState", func() {
 			BeforeEach(func() {
 				fakeStub.PutPrivateDataReturns(fmt.Errorf("fake-putstate-error"))

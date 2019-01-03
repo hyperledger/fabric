@@ -22,6 +22,12 @@ func (cls *ChaincodePrivateLedgerShim) GetState(key string) ([]byte, error) {
 	return cls.Stub.GetPrivateData(cls.Collection, key)
 }
 
+// GetStateHash return the hash of the pre-image for the key in the configured collection.
+func (cls *ChaincodePrivateLedgerShim) GetStateHash(key string) ([]byte, error) {
+	// XXX implement me
+	panic("unimplemented")
+}
+
 // PutState sets the value for the key in the configured collection.
 func (cls *ChaincodePrivateLedgerShim) PutState(key string, value []byte) error {
 	return cls.Stub.PutPrivateData(cls.Collection, key, value)

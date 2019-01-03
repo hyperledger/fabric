@@ -9,6 +9,7 @@ package lifecycle_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	. "github.com/onsi/ginkgo"
@@ -44,6 +45,21 @@ type sccFunctions interface {
 type readWritableState interface {
 	lifecycle.ReadWritableState
 	lifecycle.OpaqueState
+}
+
+//go:generate counterfeiter -o mock/channel_config.go --fake-name ChannelConfig . channelConfig
+type channelConfig interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mock/application_config.go --fake-name ApplicationConfig . applicationConfig
+type applicationConfig interface {
+	channelconfig.Application
+}
+
+//go:generate counterfeiter -o mock/application_org_config.go --fake-name ApplicationOrgConfig . applicationOrgConfig
+type applicationOrgConfig interface {
+	channelconfig.ApplicationOrg
 }
 
 func TestLifecycle(t *testing.T) {

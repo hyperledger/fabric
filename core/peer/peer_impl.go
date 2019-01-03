@@ -27,6 +27,7 @@ type Operations interface {
 	CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error
 	GetChannelConfig(cid string) channelconfig.Resources
 	GetChannelsInfo() []*pb.ChannelInfo
+	GetStableChannelConfig(cid string) channelconfig.Resources
 	GetCurrConfigBlock(cid string) *common.Block
 	GetLedger(cid string) ledger.PeerLedger
 	GetMSPIDs(cid string) []string
@@ -36,29 +37,31 @@ type Operations interface {
 }
 
 type peerImpl struct {
-	createChainFromBlock func(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error
-	getChannelConfig     func(cid string) channelconfig.Resources
-	getChannelsInfo      func() []*pb.ChannelInfo
-	getCurrConfigBlock   func(cid string) *common.Block
-	getLedger            func(cid string) ledger.PeerLedger
-	getMSPIDs            func(cid string) []string
-	getPolicyManager     func(cid string) policies.Manager
-	initChain            func(cid string)
-	initialize           func(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, mapper plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, pd plugindispatcher.LifecycleResources)
+	createChainFromBlock   func(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources) error
+	getChannelConfig       func(cid string) channelconfig.Resources
+	getChannelsInfo        func() []*pb.ChannelInfo
+	getStableChannelConfig func(cid string) channelconfig.Resources
+	getCurrConfigBlock     func(cid string) *common.Block
+	getLedger              func(cid string) ledger.PeerLedger
+	getMSPIDs              func(cid string) []string
+	getPolicyManager       func(cid string) policies.Manager
+	initChain              func(cid string)
+	initialize             func(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, mapper plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, pd plugindispatcher.LifecycleResources)
 }
 
 // Default provides in implementation of the Peer interface that provides
 // access to the package level state.
 var Default Operations = &peerImpl{
-	createChainFromBlock: CreateChainFromBlock,
-	getChannelConfig:     GetChannelConfig,
-	getChannelsInfo:      GetChannelsInfo,
-	getCurrConfigBlock:   GetCurrConfigBlock,
-	getLedger:            GetLedger,
-	getMSPIDs:            GetMSPIDs,
-	getPolicyManager:     GetPolicyManager,
-	initChain:            InitChain,
-	initialize:           Initialize,
+	createChainFromBlock:   CreateChainFromBlock,
+	getChannelConfig:       GetChannelConfig,
+	getChannelsInfo:        GetChannelsInfo,
+	getStableChannelConfig: GetStableChannelConfig,
+	getCurrConfigBlock:     GetCurrConfigBlock,
+	getLedger:              GetLedger,
+	getMSPIDs:              GetMSPIDs,
+	getPolicyManager:       GetPolicyManager,
+	initChain:              InitChain,
+	initialize:             Initialize,
 }
 
 var DefaultSupport Support = &supportImpl{operations: Default}
@@ -69,7 +72,10 @@ func (p *peerImpl) CreateChainFromBlock(cb *common.Block, ccp ccprovider.Chainco
 func (p *peerImpl) GetChannelConfig(cid string) channelconfig.Resources {
 	return p.getChannelConfig(cid)
 }
-func (p *peerImpl) GetChannelsInfo() []*pb.ChannelInfo           { return p.getChannelsInfo() }
+func (p *peerImpl) GetChannelsInfo() []*pb.ChannelInfo { return p.getChannelsInfo() }
+func (p *peerImpl) GetStableChannelConfig(cid string) channelconfig.Resources {
+	return p.getStableChannelConfig(cid)
+}
 func (p *peerImpl) GetCurrConfigBlock(cid string) *common.Block  { return p.getCurrConfigBlock(cid) }
 func (p *peerImpl) GetLedger(cid string) ledger.PeerLedger       { return p.getLedger(cid) }
 func (p *peerImpl) GetMSPIDs(cid string) []string                { return p.getMSPIDs(cid) }
