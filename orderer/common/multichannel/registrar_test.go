@@ -201,7 +201,6 @@ func TestCreateChain(t *testing.T) {
 	assert.False(t, ok)
 	// The new chain is not halted: Close the channel to prove that.
 	close(chain2.Chain.(*mockChain).queue)
-
 }
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain

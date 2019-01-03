@@ -24,6 +24,7 @@ import (
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
@@ -702,7 +703,7 @@ func TestReplicate(t *testing.T) {
 
 func TestInactiveChainReplicator(t *testing.T) {
 	for _, testCase := range []struct {
-		name                                 string
+		description                          string
 		chainsTracked                        []string
 		ReplicateChainsExpectedInput1        []string
 		ReplicateChainsExpectedInput1Reverse []string
@@ -714,10 +715,10 @@ func TestInactiveChainReplicator(t *testing.T) {
 		genesisBlock                         *common.Block
 	}{
 		{
-			name: "no chains tracked",
+			description: "no chains tracked",
 		},
 		{
-			name:                                 "some chains tracked, but not all succeed replication",
+			description:                          "some chains tracked, but not all succeed replication",
 			chainsTracked:                        []string{"foo", "bar"},
 			ReplicateChainsExpectedInput1:        []string{"foo", "bar"},
 			ReplicateChainsExpectedInput1Reverse: []string{"bar", "foo"},
@@ -729,7 +730,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 			genesisBlock:                         &common.Block{},
 		},
 		{
-			name:                                 "some chains tracked, and all succeed replication but on 2nd pass",
+			description:                          "some chains tracked, and all succeed replication but on 2nd pass",
 			chainsTracked:                        []string{"foo", "bar"},
 			ReplicateChainsExpectedInput1:        []string{"foo", "bar"},
 			ReplicateChainsExpectedInput1Reverse: []string{"bar", "foo"},
@@ -741,7 +742,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 			genesisBlock:                         &common.Block{},
 		},
 	} {
-		t.Run(testCase.name, func(t *testing.T) {
+		t.Run(testCase.description, func(t *testing.T) {
 			scheduler := make(chan time.Time)
 			replicator := &server_mocks.ChainReplicator{}
 			icr := &inactiveChainReplicator{
@@ -799,6 +800,17 @@ func TestInactiveChainReplicator(t *testing.T) {
 			replicator.AssertNumberOfCalls(t, "ReplicateChains", testCase.ReplicateChainsExpectedCallCount)
 		})
 	}
+}
+
+func TestInactiveChainReplicatorChannels(t *testing.T) {
+	icr := &inactiveChainReplicator{
+		logger:                   flogging.MustGetLogger("test"),
+		chains2CreationCallbacks: make(map[string]chainCreation),
+	}
+	icr.TrackChain("foo", &common.Block{}, func() {})
+
+	assert.Equal(t, []cluster.ChannelGenesisBlock{{ChannelName: "foo", GenesisBlock: &common.Block{}}}, icr.Channels())
+	icr.Close()
 }
 
 func TestTrackChainNilGenesisBlock(t *testing.T) {
@@ -859,43 +871,4 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	env.Payload = utils.MarshalOrPanic(payload)
 	block.Data.Data[0] = utils.MarshalOrPanic(env)
 	block.Header.DataHash = block.Data.Hash()
-}
-
-func TestExponentialDuration(t *testing.T) {
-	exp := exponentialDurationSeries(time.Millisecond*100, time.Second)
-	prev := exp()
-	for i := 0; i < 3; i++ {
-		n := exp()
-		assert.Equal(t, prev*2, n)
-		prev = n
-		assert.True(t, n < time.Second)
-	}
-
-	for i := 0; i < 10; i++ {
-		assert.Equal(t, time.Second, exp())
-	}
-}
-
-func TestMakeTickChannel(t *testing.T) {
-	sleepDurations := make(chan time.Duration, 100)
-	fakeSleep := func(d time.Duration) {
-		if d == time.Millisecond*16 {
-			return
-		}
-		// Fake a sleep by putting the duration we sleep
-		// into the waitTimes channel
-		sleepDurations <- d
-	}
-
-	exp := exponentialDurationSeries(time.Millisecond, time.Millisecond*16)
-	c := makeTickChannel(exp, fakeSleep)
-
-	for expectedSleepTime := time.Millisecond; expectedSleepTime <= time.Millisecond*8; expectedSleepTime *= 2 {
-		// Wait for tick
-		<-c
-		// See how much time we slept
-		sleptTime := <-sleepDurations
-		assert.Equal(t, expectedSleepTime, sleptTime)
-	}
-
 }

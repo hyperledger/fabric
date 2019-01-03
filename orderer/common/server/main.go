@@ -510,7 +510,8 @@ func initializeMultichannelRegistrar(
 	metricsProvider metrics.Provider,
 	healthChecker healthChecker,
 	lf blockledger.Factory,
-	callbacks ...func(bundle *channelconfig.Bundle)) *multichannel.Registrar {
+	callbacks ...channelconfig.BundleActor,
+) *multichannel.Registrar {
 	genesisBlock := extractBootstrapBlock(conf)
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
@@ -536,7 +537,8 @@ func initializeMultichannelRegistrar(
 	return registrar
 }
 
-func initializeEtcdraftConsenter(consenters map[string]consensus.Consenter,
+func initializeEtcdraftConsenter(
+	consenters map[string]consensus.Consenter,
 	conf *localconfig.TopLevel,
 	lf blockledger.Factory,
 	clusterDialer *cluster.PredicateDialer,
@@ -544,7 +546,8 @@ func initializeEtcdraftConsenter(consenters map[string]consensus.Consenter,
 	ri *replicationInitiator,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
-	registrar *multichannel.Registrar) {
+	registrar *multichannel.Registrar,
+) {
 	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
 	if replicationRefreshInterval == 0 {
 		replicationRefreshInterval = defaultReplicationBackgroundRefreshInterval
@@ -563,10 +566,11 @@ func initializeEtcdraftConsenter(consenters map[string]consensus.Consenter,
 	}
 
 	exponentialSleep := exponentialDurationSeries(replicationBackgroundInitialRefreshInterval, replicationRefreshInterval)
+	ticker := newTicker(exponentialSleep)
 
 	icr := &inactiveChainReplicator{
 		logger:                            logger,
-		scheduleChan:                      makeTickChannel(exponentialSleep, time.Sleep),
+		scheduleChan:                      ticker.C,
 		quitChan:                          make(chan struct{}),
 		replicator:                        ri,
 		chains2CreationCallbacks:          make(map[string]chainCreation),
