@@ -29,13 +29,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CreateChainCallback creates a new chain
+type CreateChainCallback func()
+
 //go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
 
 // InactiveChainRegistry registers chains that are inactive
 type InactiveChainRegistry interface {
 	// TrackChain tracks a chain with the given name, and calls the given callback
-	// when this chain should be activated.
-	TrackChain(chainName string, genesisBlock *common.Block, createChainCallback func())
+	// when this chain should be created.
+	TrackChain(chainName string, genesisBlock *common.Block, createChain CreateChainCallback)
 }
 
 //go:generate mockery -dir . -name ChainGetter -case underscore -output mocks
@@ -197,8 +200,14 @@ func ReadRaftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.M
 }
 
 // New creates a etcdraft Consenter
-func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
-	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar, icr InactiveChainRegistry) *Consenter {
+func New(
+	clusterDialer *cluster.PredicateDialer,
+	conf *localconfig.TopLevel,
+	srvConf comm.ServerConfig,
+	srv *comm.GRPCServer,
+	r *multichannel.Registrar,
+	icr InactiveChainRegistry,
+) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
 	var cfg Config
