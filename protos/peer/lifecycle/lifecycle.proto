@@ -109,3 +109,18 @@ message QueryDefinedChaincodeResult {
     string validation_plugin = 6;
     bytes validation_parameter = 7;
 }
+
+// QueryDefinedNamespaces is the message used as arguments to
+// `+lifecycle.QueryDefinedNamespaces`.
+message QueryDefinedNamespacesArgs {
+}
+
+// QueryDefinedNamespaces is the message returned by
+// `+lifecycle.QueryDefinedNamespaces`.
+message QueryDefinedNamespacesResult {
+    message Namespace{
+        string type = 1;
+    }
+
+    map<string,Namespace> namespaces = 1; // A map from namespace name to namespace
+}

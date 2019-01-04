@@ -479,7 +479,7 @@ var _ = Describe("SCC", func() {
 			})
 		})
 
-		Describe("DefineChaincodeForMyOrg", func() {
+		Describe("QueryDefinedChaincode", func() {
 			var (
 				arg          *lb.QueryDefinedChaincodeArgs
 				marshaledArg []byte
@@ -527,6 +527,50 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryDefinedChaincode': underlying-error"))
+				})
+			})
+		})
+
+		Describe("QueryDefinedNamespaces", func() {
+			var (
+				arg          *lb.QueryDefinedNamespacesArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryDefinedNamespacesArgs{}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryDefinedNamespaces"), marshaledArg})
+				fakeSCCFuncs.QueryDefinedNamespacesReturns(map[string]string{
+					"foo": "Chaincode",
+					"bar": "Token",
+				}, nil)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryDefinedNamespacesResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeSCCFuncs.QueryDefinedNamespacesCallCount()).To(Equal(1))
+				Expect(fakeSCCFuncs.QueryDefinedNamespacesArgsForCall(0)).To(Equal(&lifecycle.ChaincodePublicLedgerShim{ChaincodeStubInterface: fakeStub}))
+			})
+
+			Context("when the underlying function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryDefinedNamespacesReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryDefinedNamespaces': underlying-error"))
 				})
 			})
 		})

@@ -41,6 +41,10 @@ const (
 	// QueryDefinedChaincodeFuncName is the chaincode function name used to 'define' (previously 'instantiate')
 	// a chaincode in a channel.
 	QueryDefinedChaincodeFuncName = "QueryDefinedChaincode"
+
+	// QueryDefinedNamespaces is the chaincode function name used query which namespaces are currently defined
+	// and what type those namespaces are.
+	QueryDefinedNamespacesFuncName = "QueryDefinedNamespaces"
 )
 
 // SCCFunctions provides a backing implementation with concrete arguments
@@ -63,6 +67,9 @@ type SCCFunctions interface {
 
 	// QueryDefinedChaincode reads a chaincode definition from the public state.
 	QueryDefinedChaincode(name string, publicState ReadableState) (*DefinedChaincode, error)
+
+	// QueryDefinedNamespaces returns all defined namespaces
+	QueryDefinedNamespaces(publicState RangeableState) (map[string]string, error)
 }
 
 //go:generate counterfeiter -o mock/channel_config_source.go --fake-name ChannelConfigSource . ChannelConfigSource
@@ -307,5 +314,21 @@ func (i *Invocation) QueryDefinedChaincode(input *lb.QueryDefinedChaincodeArgs) 
 		ValidationPlugin:    definedChaincode.ValidationPlugin,
 		ValidationParameter: definedChaincode.ValidationParameter,
 		Hash:                definedChaincode.Hash,
+	}, nil
+}
+
+func (i *Invocation) QueryDefinedNamespaces(input *lb.QueryDefinedNamespacesArgs) (proto.Message, error) {
+	namespaces, err := i.SCC.Functions.QueryDefinedNamespaces(&ChaincodePublicLedgerShim{ChaincodeStubInterface: i.Stub})
+	if err != nil {
+		return nil, err
+	}
+	result := map[string]*lb.QueryDefinedNamespacesResult_Namespace{}
+	for namespace, nType := range namespaces {
+		result[namespace] = &lb.QueryDefinedNamespacesResult_Namespace{
+			Type: nType,
+		}
+	}
+	return &lb.QueryDefinedNamespacesResult{
+		Namespaces: result,
 	}, nil
 }
