@@ -212,7 +212,7 @@ As another more complex example:
 
 This defines a signature policy over MSP Principals ``mspP1``,
 ``mspP2``, and ``mspP3``. It requires one signature which satisfies
-``mspP0``, and another signature which either satisfies ``mspP2`` or
+``mspP1``, and another signature which either satisfies ``mspP2`` or
 ``mspP3``.
 
 Hopefully it is clear that complicated and relatively arbitrary logic
