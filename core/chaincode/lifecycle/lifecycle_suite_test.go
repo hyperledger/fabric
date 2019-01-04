@@ -45,6 +45,7 @@ type sccFunctions interface {
 type readWritableState interface {
 	lifecycle.ReadWritableState
 	lifecycle.OpaqueState
+	lifecycle.RangeableState
 }
 
 //go:generate counterfeiter -o mock/channel_config.go --fake-name ChannelConfig . channelConfig

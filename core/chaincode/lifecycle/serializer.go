@@ -32,6 +32,10 @@ type OpaqueState interface {
 	GetStateHash(key string) (value []byte, err error)
 }
 
+type RangeableState interface {
+	GetStateRange(prefix string) (map[string][]byte, error)
+}
+
 type Marshaler func(proto.Message) ([]byte, error)
 
 func (m Marshaler) Marshal(msg proto.Message) ([]byte, error) {
@@ -386,4 +390,23 @@ func (s *Serializer) DeserializeFieldAsUint64(namespace, name, field string, sta
 		return 0, errors.Errorf("expected key %s/fields/%s/%s to encode a value of type Uint64, but was %T", namespace, name, field, value.Type)
 	}
 	return oneOf.Uint64, nil
+}
+
+func (s *Serializer) DeserializeAllMetadata(namespace string, state RangeableState) (map[string]*lb.StateMetadata, error) {
+	prefix := fmt.Sprintf("%s/metadata/", namespace)
+	kvs, err := state.GetStateRange(prefix)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not get state range for namespace %s", namespace))
+	}
+	result := map[string]*lb.StateMetadata{}
+	for key, value := range kvs {
+		name := key[len(prefix):]
+		metadata := &lb.StateMetadata{}
+		err = proto.Unmarshal(value, metadata)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error unmarshaling metadata for key %s", key)
+		}
+		result[name] = metadata
+	}
+	return result, nil
 }

@@ -55,6 +55,19 @@ type ReadWritableState struct {
 		result1 []byte
 		result2 error
 	}
+	GetStateRangeStub        func(prefix string) (map[string][]byte, error)
+	getStateRangeMutex       sync.RWMutex
+	getStateRangeArgsForCall []struct {
+		prefix string
+	}
+	getStateRangeReturns struct {
+		result1 map[string][]byte
+		result2 error
+	}
+	getStateRangeReturnsOnCall map[int]struct {
+		result1 map[string][]byte
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -263,6 +276,57 @@ func (fake *ReadWritableState) GetStateHashReturnsOnCall(i int, result1 []byte, 
 	}{result1, result2}
 }
 
+func (fake *ReadWritableState) GetStateRange(prefix string) (map[string][]byte, error) {
+	fake.getStateRangeMutex.Lock()
+	ret, specificReturn := fake.getStateRangeReturnsOnCall[len(fake.getStateRangeArgsForCall)]
+	fake.getStateRangeArgsForCall = append(fake.getStateRangeArgsForCall, struct {
+		prefix string
+	}{prefix})
+	fake.recordInvocation("GetStateRange", []interface{}{prefix})
+	fake.getStateRangeMutex.Unlock()
+	if fake.GetStateRangeStub != nil {
+		return fake.GetStateRangeStub(prefix)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getStateRangeReturns.result1, fake.getStateRangeReturns.result2
+}
+
+func (fake *ReadWritableState) GetStateRangeCallCount() int {
+	fake.getStateRangeMutex.RLock()
+	defer fake.getStateRangeMutex.RUnlock()
+	return len(fake.getStateRangeArgsForCall)
+}
+
+func (fake *ReadWritableState) GetStateRangeArgsForCall(i int) string {
+	fake.getStateRangeMutex.RLock()
+	defer fake.getStateRangeMutex.RUnlock()
+	return fake.getStateRangeArgsForCall[i].prefix
+}
+
+func (fake *ReadWritableState) GetStateRangeReturns(result1 map[string][]byte, result2 error) {
+	fake.GetStateRangeStub = nil
+	fake.getStateRangeReturns = struct {
+		result1 map[string][]byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ReadWritableState) GetStateRangeReturnsOnCall(i int, result1 map[string][]byte, result2 error) {
+	fake.GetStateRangeStub = nil
+	if fake.getStateRangeReturnsOnCall == nil {
+		fake.getStateRangeReturnsOnCall = make(map[int]struct {
+			result1 map[string][]byte
+			result2 error
+		})
+	}
+	fake.getStateRangeReturnsOnCall[i] = struct {
+		result1 map[string][]byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *ReadWritableState) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -274,6 +338,8 @@ func (fake *ReadWritableState) Invocations() map[string][][]interface{} {
 	defer fake.delStateMutex.RUnlock()
 	fake.getStateHashMutex.RLock()
 	defer fake.getStateHashMutex.RUnlock()
+	fake.getStateRangeMutex.RLock()
+	defer fake.getStateRangeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
