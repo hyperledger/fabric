@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/mock"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
@@ -21,6 +22,7 @@ import (
 func TestCoreWith(t *testing.T) {
 	core := &flogging.Core{
 		Encoders: map[flogging.Encoding]zapcore.Encoder{},
+		Observer: &mock.Observer{},
 	}
 	clone := core.With([]zapcore.Field{zap.String("key", "value")})
 	assert.Equal(t, core, clone)
@@ -186,4 +188,64 @@ func TestCoreSync(t *testing.T) {
 	syncWriter.syncErr = errors.New("bummer")
 	err = core.Sync()
 	assert.EqualError(t, err, "bummer")
+}
+
+func TestObserverCheck(t *testing.T) {
+	observer := &mock.Observer{}
+	entry := zapcore.Entry{
+		Level:   zapcore.DebugLevel,
+		Message: "message",
+	}
+	checkedEntry := &zapcore.CheckedEntry{}
+
+	levels := &flogging.LoggerLevels{}
+	levels.ActivateSpec("debug")
+	core := &flogging.Core{
+		LevelEnabler: zap.LevelEnablerFunc(func(l zapcore.Level) bool { return true }),
+		Levels:       levels,
+		Observer:     observer,
+	}
+
+	ce := core.Check(entry, checkedEntry)
+	assert.Exactly(t, ce, checkedEntry)
+
+	assert.Equal(t, 1, observer.CheckCallCount())
+	observedEntry, observedCE := observer.CheckArgsForCall(0)
+	assert.Equal(t, entry, observedEntry)
+	assert.Equal(t, ce, observedCE)
+}
+
+func TestObserverWriteEntry(t *testing.T) {
+	observer := &mock.Observer{}
+	entry := zapcore.Entry{
+		Level:   zapcore.DebugLevel,
+		Message: "message",
+	}
+	fields := []zapcore.Field{
+		{Key: "key1", Type: zapcore.SkipType},
+		{Key: "key2", Type: zapcore.SkipType},
+	}
+
+	levels := &flogging.LoggerLevels{}
+	levels.ActivateSpec("debug")
+	selector := &sw{}
+	output := &sw{}
+	core := &flogging.Core{
+		LevelEnabler: zap.LevelEnablerFunc(func(l zapcore.Level) bool { return true }),
+		Levels:       levels,
+		Selector:     selector,
+		Encoders: map[flogging.Encoding]zapcore.Encoder{
+			flogging.CONSOLE: zapcore.NewConsoleEncoder(zapcore.EncoderConfig{}),
+		},
+		Output:   output,
+		Observer: observer,
+	}
+
+	err := core.Write(entry, fields)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, observer.WriteEntryCallCount())
+	observedEntry, observedFields := observer.WriteEntryArgsForCall(0)
+	assert.Equal(t, entry, observedEntry)
+	assert.Equal(t, fields, observedFields)
 }
