@@ -77,4 +77,111 @@ var _ = Describe("Issuer", func() {
 			}))
 		})
 	})
+
+	Describe("RequestExpectation", func() {
+		var (
+			outputs            []*token.PlainOutput
+			expectationRequest *token.ExpectationRequest
+		)
+
+		BeforeEach(func() {
+			outputs = []*token.PlainOutput{{
+				Owner:    []byte("token-owner"),
+				Type:     "XYZ",
+				Quantity: 99,
+			}}
+			expectationRequest = &token.ExpectationRequest{
+				Credential: []byte("credential"),
+				Expectation: &token.TokenExpectation{
+					Expectation: &token.TokenExpectation_PlainExpectation{
+						PlainExpectation: &token.PlainExpectation{
+							Payload: &token.PlainExpectation_ImportExpectation{
+								ImportExpectation: &token.PlainTokenExpectation{
+									Outputs: outputs,
+								},
+							},
+						},
+					},
+				},
+			}
+		})
+
+		It("creates a token transaction", func() {
+			tt, err := issuer.RequestExpectation(expectationRequest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tt).To(Equal(&token.TokenTransaction{
+				Action: &token.TokenTransaction_PlainAction{
+					PlainAction: &token.PlainTokenAction{
+						Data: &token.PlainTokenAction_PlainImport{
+							PlainImport: &token.PlainImport{
+								Outputs: outputs,
+							},
+						},
+					},
+				},
+			}))
+		})
+
+		Context("when outputs is nil", func() {
+			BeforeEach(func() {
+				expectationRequest.GetExpectation().GetPlainExpectation().GetImportExpectation().Outputs = nil
+			})
+
+			It("returns an error", func() {
+				_, err := issuer.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no outputs in ExpectationRequest"))
+			})
+		})
+
+		Context("when outputs is empty", func() {
+			BeforeEach(func() {
+				expectationRequest.GetExpectation().GetPlainExpectation().GetImportExpectation().Outputs = []*token.PlainOutput{}
+			})
+
+			It("returns an error", func() {
+				_, err := issuer.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no outputs in ExpectationRequest"))
+			})
+		})
+
+		Context("when ExpectationRequest has nil Expectation", func() {
+			BeforeEach(func() {
+				expectationRequest.Expectation = nil
+			})
+
+			It("returns the error", func() {
+				_, err := issuer.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no token expectation in ExpectationRequest"))
+			})
+		})
+
+		Context("when ExpectationRequest has nil PlainExpectation", func() {
+			BeforeEach(func() {
+				expectationRequest.Expectation = &token.TokenExpectation{}
+			})
+
+			It("returns the error", func() {
+				_, err := issuer.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no plain expectation in ExpectationRequest"))
+			})
+		})
+
+		Context("when ExpectationRequest has nil ImportExpectation", func() {
+			BeforeEach(func() {
+				expectationRequest = &token.ExpectationRequest{
+					Credential: []byte("credential"),
+					Expectation: &token.TokenExpectation{
+						Expectation: &token.TokenExpectation_PlainExpectation{
+							PlainExpectation: &token.PlainExpectation{},
+						},
+					},
+				}
+			})
+
+			It("returns the error", func() {
+				_, err := issuer.RequestExpectation(expectationRequest)
+				Expect(err).To(MatchError("no import expectation in ExpectationRequest"))
+			})
+		})
+	})
 })
