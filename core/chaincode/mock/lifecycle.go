@@ -9,11 +9,11 @@ import (
 )
 
 type Lifecycle struct {
-	ChaincodeContainerInfoStub        func(string, string) (*ccprovider.ChaincodeContainerInfo, error)
+	ChaincodeContainerInfoStub        func(string, ledger.QueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
 	chaincodeContainerInfoMutex       sync.RWMutex
 	chaincodeContainerInfoArgsForCall []struct {
 		arg1 string
-		arg2 string
+		arg2 ledger.QueryExecutor
 	}
 	chaincodeContainerInfoReturns struct {
 		result1 *ccprovider.ChaincodeContainerInfo
@@ -41,12 +41,12 @@ type Lifecycle struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Lifecycle) ChaincodeContainerInfo(arg1 string, arg2 string) (*ccprovider.ChaincodeContainerInfo, error) {
+func (fake *Lifecycle) ChaincodeContainerInfo(arg1 string, arg2 ledger.QueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	ret, specificReturn := fake.chaincodeContainerInfoReturnsOnCall[len(fake.chaincodeContainerInfoArgsForCall)]
 	fake.chaincodeContainerInfoArgsForCall = append(fake.chaincodeContainerInfoArgsForCall, struct {
 		arg1 string
-		arg2 string
+		arg2 ledger.QueryExecutor
 	}{arg1, arg2})
 	fake.recordInvocation("ChaincodeContainerInfo", []interface{}{arg1, arg2})
 	fake.chaincodeContainerInfoMutex.Unlock()
@@ -66,13 +66,13 @@ func (fake *Lifecycle) ChaincodeContainerInfoCallCount() int {
 	return len(fake.chaincodeContainerInfoArgsForCall)
 }
 
-func (fake *Lifecycle) ChaincodeContainerInfoCalls(stub func(string, string) (*ccprovider.ChaincodeContainerInfo, error)) {
+func (fake *Lifecycle) ChaincodeContainerInfoCalls(stub func(string, ledger.QueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)) {
 	fake.chaincodeContainerInfoMutex.Lock()
 	defer fake.chaincodeContainerInfoMutex.Unlock()
 	fake.ChaincodeContainerInfoStub = stub
 }
 
-func (fake *Lifecycle) ChaincodeContainerInfoArgsForCall(i int) (string, string) {
+func (fake *Lifecycle) ChaincodeContainerInfoArgsForCall(i int) (string, ledger.QueryExecutor) {
 	fake.chaincodeContainerInfoMutex.RLock()
 	defer fake.chaincodeContainerInfoMutex.RUnlock()
 	argsForCall := fake.chaincodeContainerInfoArgsForCall[i]

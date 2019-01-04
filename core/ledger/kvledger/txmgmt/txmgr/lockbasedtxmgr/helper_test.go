@@ -16,6 +16,7 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -115,6 +116,77 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 		_, err := queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})
+}
+
+func TestGetPvtdataHash(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		testGetPvtdataHash(t, testEnv)
+	}
+}
+
+func testGetPvtdataHash(t *testing.T, env testEnv) {
+	ledgerid := "test-get-pvtdata-hash"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns", "coll"}: 0,
+		},
+	)
+	env.init(t, ledgerid, btlPolicy)
+	defer env.cleanup()
+	txMgr := env.getTxMgr().(*LockBasedTxMgr)
+	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+
+	batch := privacyenabledstate.NewUpdateBatch()
+	batch.HashUpdates.Put(
+		"ns", "coll",
+		util.ComputeStringHash("existing-key"),
+		util.ComputeStringHash("existing-value"),
+		version.NewHeight(1, 1),
+	)
+	assert.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 5)))
+
+	s, _ := txMgr.NewTxSimulator("test_tx1")
+	simulator := s.(*lockBasedTxSimulator)
+	hash, err := simulator.GetPrivateDataHash("ns", "coll", "non-existing-key")
+	assert.NoError(t, err)
+	assert.Nil(t, hash)
+
+	hash, err = simulator.GetPrivateDataHash("ns", "coll", "existing-key")
+	assert.NoError(t, err)
+	assert.Equal(t, util.ComputeStringHash("existing-value"), hash)
+	simulator.Done()
+
+	simRes, err := simulator.GetTxSimulationResults()
+	assert.NoError(t, err)
+	assert.False(t, simRes.ContainsPvtWrites())
+	txrwset, _ := rwsetutil.TxRwSetFromProtoMsg(simRes.PubSimulationResults)
+
+	expectedRwSet := &rwsetutil.TxRwSet{
+		NsRwSets: []*rwsetutil.NsRwSet{
+			{
+				NameSpace: "ns",
+				KvRwSet:   &kvrwset.KVRWSet{},
+				CollHashedRwSets: []*rwsetutil.CollHashedRwSet{
+					{
+						CollectionName: "coll",
+						HashedRwSet: &kvrwset.HashedRWSet{
+							HashedReads: []*kvrwset.KVReadHash{
+								{
+									KeyHash: util.ComputeStringHash("existing-key"),
+									Version: &kvrwset.Version{BlockNum: 1, TxNum: 1},
+								},
+								{
+									KeyHash: util.ComputeStringHash("non-existing-key"),
+									Version: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	assert.Equal(t, expectedRwSet, txrwset)
 }
 
 func putPvtUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {

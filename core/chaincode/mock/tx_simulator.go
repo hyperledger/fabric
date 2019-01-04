@@ -133,6 +133,21 @@ type TxSimulator struct {
 		result1 []byte
 		result2 error
 	}
+	GetPrivateDataHashStub        func(string, string, string) ([]byte, error)
+	getPrivateDataHashMutex       sync.RWMutex
+	getPrivateDataHashArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 string
+	}
+	getPrivateDataHashReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getPrivateDataHashReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	GetPrivateDataMetadataStub        func(string, string, string) (map[string][]byte, error)
 	getPrivateDataMetadataMutex       sync.RWMutex
 	getPrivateDataMetadataArgsForCall []struct {
@@ -945,6 +960,71 @@ func (fake *TxSimulator) GetPrivateDataReturnsOnCall(i int, result1 []byte, resu
 		})
 	}
 	fake.getPrivateDataReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxSimulator) GetPrivateDataHash(arg1 string, arg2 string, arg3 string) ([]byte, error) {
+	fake.getPrivateDataHashMutex.Lock()
+	ret, specificReturn := fake.getPrivateDataHashReturnsOnCall[len(fake.getPrivateDataHashArgsForCall)]
+	fake.getPrivateDataHashArgsForCall = append(fake.getPrivateDataHashArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("GetPrivateDataHash", []interface{}{arg1, arg2, arg3})
+	fake.getPrivateDataHashMutex.Unlock()
+	if fake.GetPrivateDataHashStub != nil {
+		return fake.GetPrivateDataHashStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getPrivateDataHashReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *TxSimulator) GetPrivateDataHashCallCount() int {
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
+	return len(fake.getPrivateDataHashArgsForCall)
+}
+
+func (fake *TxSimulator) GetPrivateDataHashCalls(stub func(string, string, string) ([]byte, error)) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = stub
+}
+
+func (fake *TxSimulator) GetPrivateDataHashArgsForCall(i int) (string, string, string) {
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
+	argsForCall := fake.getPrivateDataHashArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *TxSimulator) GetPrivateDataHashReturns(result1 []byte, result2 error) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = nil
+	fake.getPrivateDataHashReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxSimulator) GetPrivateDataHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getPrivateDataHashMutex.Lock()
+	defer fake.getPrivateDataHashMutex.Unlock()
+	fake.GetPrivateDataHashStub = nil
+	if fake.getPrivateDataHashReturnsOnCall == nil {
+		fake.getPrivateDataHashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getPrivateDataHashReturnsOnCall[i] = struct {
 		result1 []byte
 		result2 error
 	}{result1, result2}
@@ -2010,6 +2090,8 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.executeUpdateMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
+	fake.getPrivateDataHashMutex.RLock()
+	defer fake.getPrivateDataHashMutex.RUnlock()
 	fake.getPrivateDataMetadataMutex.RLock()
 	defer fake.getPrivateDataMetadataMutex.RUnlock()
 	fake.getPrivateDataMetadataByHashMutex.RLock()
