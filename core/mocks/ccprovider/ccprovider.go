@@ -97,6 +97,10 @@ func (m *MockTxSim) GetPrivateData(namespace, collection, key string) ([]byte, e
 	return nil, nil
 }
 
+func (m *MockTxSim) GetPrivateDataHash(namespace, collection, key string) ([]byte, error) {
+	return nil, nil
+}
+
 func (m *MockTxSim) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
 	return nil, nil
 }

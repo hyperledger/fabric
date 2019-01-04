@@ -1683,6 +1683,11 @@ func (exec *mockQueryExecutor) GetPrivateData(namespace, collection, key string)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
+func (exec *mockQueryExecutor) GetPrivateDataHash(namespace, collection, key string) ([]byte, error) {
+	args := exec.Called(namespace, collection, key)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
 func (exec *mockQueryExecutor) GetPrivateDataMetadataByHash(namespace, collection string, keyhash []byte) (map[string][]byte, error) {
 	args := exec.Called(namespace, collection, keyhash)
 	return args.Get(0).(map[string][]byte), args.Error(1)
