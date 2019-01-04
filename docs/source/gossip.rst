@@ -90,7 +90,7 @@ Alternatively these parameters could be configured and overridden with environme
     export CORE_PEER_GOSSIP_USELEADERELECTION=false
     export CORE_PEER_GOSSIP_ORGLEADER=false
 
-2. Setting ``CORE_PEER_GOSSIP_USELEADERELECTION`` and ``CORE_PEER_GOSSIP_USELEADERELECTION``
+2. Setting ``CORE_PEER_GOSSIP_USELEADERELECTION`` and ``CORE_PEER_GOSSIP_ORGLEADER``
    with ``true`` value is ambiguous and will lead to an error.
 3. In static configuration organization admin is responsible to provide high availability
    of the leader node in case for failure or crashes.
