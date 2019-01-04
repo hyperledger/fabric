@@ -396,6 +396,8 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 
 func CheckPeerStatsdMetrics(contents, prefix string) {
 	By("checking for peer statsd metrics")
+	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_checked.info:"))
+	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_written.info:"))
 	Expect(contents).To(ContainSubstring(prefix + ".go.mem.gc_completed_count:"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"))
@@ -417,6 +419,8 @@ func CheckOrdererStatsdMetrics(contents, prefix string) {
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Deliver."))
 
 	By("checking for orderer metrics")
+	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_checked.info:"))
+	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_written.info:"))
 	Expect(contents).To(ContainSubstring(prefix + ".go.mem.gc_completed_count:"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_received.orderer_AtomicBroadcast.Deliver:"))
 	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_completed.orderer_AtomicBroadcast.Deliver."))

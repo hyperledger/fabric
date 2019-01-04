@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -119,6 +120,8 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	}
 	defer opsSystem.Stop()
 	metricsProvider := opsSystem.Provider
+	logObserver := floggingmetrics.NewObserver(metricsProvider)
+	flogging.Global.SetObserver(logObserver)
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
