@@ -91,3 +91,21 @@ message DefineChaincodeArgs {
 // nothing, but may be extended in the future.
 message DefineChaincodeResult {
 }
+
+// QueryDefinedChaincode is the message used as arguments to
+// `+lifecycle.QueryDefinedChaincode`.
+message QueryDefinedChaincodeArgs {
+    string name = 1;
+}
+
+// DefineChaincodeResult is the message returned by
+// `+lifecycle.QueryDefinedChaincode`.
+message QueryDefinedChaincodeResult {
+    int64 sequence = 1;
+    string name = 2;
+    string version = 3;
+    bytes hash = 4;
+    string endorsement_plugin = 5;
+    string validation_plugin = 6;
+    bytes validation_parameter = 7;
+}

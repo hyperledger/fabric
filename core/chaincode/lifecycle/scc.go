@@ -37,6 +37,10 @@ const (
 	// DefineChaincodeFuncName is the chaincode function name used to 'define' (previously 'instantiate')
 	// a chaincode in a channel.
 	DefineChaincodeFuncName = "DefineChaincode"
+
+	// QueryDefinedChaincodeFuncName is the chaincode function name used to 'define' (previously 'instantiate')
+	// a chaincode in a channel.
+	QueryDefinedChaincodeFuncName = "QueryDefinedChaincode"
 )
 
 // SCCFunctions provides a backing implementation with concrete arguments
@@ -56,6 +60,9 @@ type SCCFunctions interface {
 
 	// DefineChaincode records a new chaincode definition into the public state and returns the orgs which agreed with that definition.
 	DefineChaincode(cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) ([]bool, error)
+
+	// QueryDefinedChaincode reads a chaincode definition from the public state.
+	QueryDefinedChaincode(name string, publicState ReadableState) (*DefinedChaincode, error)
 }
 
 //go:generate counterfeiter -o mock/channel_config_source.go --fake-name ChannelConfigSource . ChannelConfigSource
@@ -285,4 +292,20 @@ func (i *Invocation) DefineChaincode(input *lb.DefineChaincodeArgs) (proto.Messa
 	}
 
 	return &lb.DefineChaincodeResult{}, nil
+}
+
+func (i *Invocation) QueryDefinedChaincode(input *lb.QueryDefinedChaincodeArgs) (proto.Message, error) {
+	definedChaincode, err := i.SCC.Functions.QueryDefinedChaincode(input.Name, i.Stub)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lb.QueryDefinedChaincodeResult{
+		Sequence:            definedChaincode.Sequence,
+		Version:             definedChaincode.Version,
+		EndorsementPlugin:   definedChaincode.EndorsementPlugin,
+		ValidationPlugin:    definedChaincode.ValidationPlugin,
+		ValidationParameter: definedChaincode.ValidationParameter,
+		Hash:                definedChaincode.Hash,
+	}, nil
 }
