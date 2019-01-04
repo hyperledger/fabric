@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -557,6 +558,10 @@ var _ = Describe("Serializer", func() {
 			fakeState.GetStateStub = func(key string) ([]byte, error) {
 				return KVStore[key], nil
 			}
+
+			fakeState.GetStateHashStub = func(key string) ([]byte, error) {
+				return util.ComputeSHA256(KVStore[key]), nil
+			}
 		})
 
 		It("deserializes to the same value that was serialized in", func() {
@@ -568,6 +573,147 @@ var _ = Describe("Serializer", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(testStruct).To(Equal(deserialized))
+
+			matched, err := s.IsSerialized("namespace", "fake", testStruct, fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matched).To(BeTrue())
+		})
+	})
+
+	Describe("IsSerialized", func() {
+		var (
+			kvs map[string][]byte
+		)
+
+		BeforeEach(func() {
+			kvs = map[string][]byte{
+				"namespaces/fields/fake/Bytes": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
+				}),
+				"namespaces/fields/fake/String": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_String_{String_: "string"},
+				}),
+				"namespaces/fields/fake/Uint": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Uint64{Uint64: 93},
+				}),
+				"namespaces/fields/fake/Int": utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Int64{Int64: -3},
+				}),
+				"namespaces/metadata/fake": utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestStruct",
+					Fields:   []string{"Int", "Uint", "String", "Bytes"},
+				}),
+			}
+
+			fakeState.GetStateHashStub = func(key string) ([]byte, error) {
+				return util.ComputeSHA256(kvs[key]), nil
+			}
+		})
+
+		It("checks to see if the structure is stored in the opaque state", func() {
+			matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			_ = matched
+			Expect(matched).To(BeTrue())
+
+			Expect(fakeState.GetStateHashCallCount()).To(Equal(5))
+			Expect(fakeState.GetStateHashArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
+			Expect(fakeState.GetStateHashArgsForCall(1)).To(Equal("namespaces/fields/fake/Int"))
+			Expect(fakeState.GetStateHashArgsForCall(2)).To(Equal("namespaces/fields/fake/Uint"))
+			Expect(fakeState.GetStateHashArgsForCall(3)).To(Equal("namespaces/fields/fake/String"))
+			Expect(fakeState.GetStateHashArgsForCall(4)).To(Equal("namespaces/fields/fake/Bytes"))
+		})
+
+		Context("when the namespace contains extraneous keys", func() {
+			BeforeEach(func() {
+				kvs["namespaces/metadata/fake"] = utils.MarshalOrPanic(&lb.StateMetadata{
+					Datatype: "TestStruct",
+					Fields:   []string{"Int", "Uint", "String", "Bytes", "Other"},
+				})
+				kvs["namespaces/fields/fake/Other"] = utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Bytes{Bytes: []byte("value1")},
+				})
+			})
+
+			It("returns a mismatch", func() {
+				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(matched).To(BeFalse())
+			})
+		})
+
+		Context("when the namespace contains different keys", func() {
+			BeforeEach(func() {
+				kvs["namespaces/fields/fake/Int"] = utils.MarshalOrPanic(&lb.StateData{
+					Type: &lb.StateData_Bytes{Bytes: []byte("value1")},
+				})
+			})
+
+			It("returns a mismatch", func() {
+				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(matched).To(BeFalse())
+			})
+		})
+
+		Context("when the argument is not a pointer", func() {
+			It("fails", func() {
+				_, err := s.IsSerialized("namespaces", "fake", 8, fakeState)
+				Expect(err).To(MatchError("structure for namespace namespaces/fake is not serializable: must be pointer to struct, but got non-pointer int"))
+			})
+		})
+
+		Context("when the namespace does not contains the keys and values", func() {
+			BeforeEach(func() {
+				kvs = map[string][]byte{}
+			})
+
+			It("returns a mismatch", func() {
+				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(matched).To(BeFalse())
+			})
+		})
+
+		Context("when the state metadata cannot be retrieved", func() {
+			BeforeEach(func() {
+				fakeState.GetStateHashReturns(nil, fmt.Errorf("state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("could not get value for key namespaces/metadata/fake: state-error"))
+			})
+		})
+
+		Context("when marshaling a field fails", func() {
+			BeforeEach(func() {
+				s.Marshaler = func(msg proto.Message) ([]byte, error) {
+					if _, ok := msg.(*lb.StateMetadata); ok {
+						return proto.Marshal(msg)
+					}
+					return nil, fmt.Errorf("marshal-error")
+				}
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				Expect(err).To(MatchError("could not marshal value for key namespaces/fields/fake/Int: marshal-error"))
+			})
+		})
+
+		Context("when marshaling a the metadata fails", func() {
+			BeforeEach(func() {
+				s.Marshaler = func(msg proto.Message) ([]byte, error) {
+					return nil, fmt.Errorf("marshal-error")
+				}
+			})
+
+			It("wraps and returns the error", func() {
+				type Other struct{}
+				_, err := s.IsSerialized("namespaces", "fake", &Other{}, fakeState)
+				Expect(err).To(MatchError("could not marshal metadata for namespace namespaces/fake: marshal-error"))
+			})
 		})
 	})
 

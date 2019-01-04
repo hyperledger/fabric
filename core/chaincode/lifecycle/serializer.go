@@ -11,13 +11,13 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/hyperledger/fabric/common/util"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
-//go:generate counterfeiter -o mock/rw_state.go --fake-name ReadWritableState . ReadWritableState
 type ReadWritableState interface {
 	ReadableState
 	PutState(key string, value []byte) error
@@ -26,6 +26,10 @@ type ReadWritableState interface {
 
 type ReadableState interface {
 	GetState(key string) (value []byte, err error)
+}
+
+type OpaqueState interface {
+	GetStateHash(key string) (value []byte, err error)
 }
 
 type Marshaler func(proto.Message) ([]byte, error)
@@ -163,6 +167,75 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 	}
 
 	return nil
+}
+
+// IsSerialized essentially checks if the hashes of a serialized version of a structure matches the hashes
+// of the pre-image of some struct serialized into the database.
+func (s *Serializer) IsSerialized(namespace, name string, structure interface{}, state OpaqueState) (bool, error) {
+	value, allFields, err := s.SerializableChecks(structure)
+	if err != nil {
+		return false, errors.WithMessage(err, fmt.Sprintf("structure for namespace %s/%s is not serializable", namespace, name))
+	}
+
+	fqKeys := make([]string, 0, len(allFields)+1)
+	fqKeys = append(fqKeys, fmt.Sprintf("%s/metadata/%s", namespace, name))
+	for _, field := range allFields {
+		fqKeys = append(fqKeys, fmt.Sprintf("%s/fields/%s/%s", namespace, name, field))
+	}
+
+	existingKeys := map[string][]byte{}
+	for _, fqKey := range fqKeys {
+		value, err := state.GetStateHash(fqKey)
+		if err != nil {
+			return false, errors.WithMessage(err, fmt.Sprintf("could not get value for key %s", fqKey))
+		}
+		existingKeys[fqKey] = value
+	}
+
+	metadata := &lb.StateMetadata{
+		Datatype: value.Type().Name(),
+		Fields:   allFields,
+	}
+	metadataBin, err := s.Marshaler.Marshal(metadata)
+	if err != nil {
+		return false, errors.WithMessage(err, fmt.Sprintf("could not marshal metadata for namespace %s/%s", namespace, name))
+	}
+
+	metadataKeyName := fmt.Sprintf("%s/metadata/%s", namespace, name)
+	if !bytes.Equal(util.ComputeSHA256(metadataBin), existingKeys[metadataKeyName]) {
+		return false, nil
+	}
+
+	for i := 0; i < value.NumField(); i++ {
+		fieldName := value.Type().Field(i).Name
+		fieldValue := value.Field(i)
+
+		keyName := fmt.Sprintf("%s/fields/%s/%s", namespace, name, fieldName)
+
+		stateData := &lb.StateData{}
+		switch fieldValue.Kind() {
+		case reflect.String:
+			stateData.Type = &lb.StateData_String_{String_: fieldValue.String()}
+		case reflect.Int64:
+			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
+		case reflect.Uint64:
+			stateData.Type = &lb.StateData_Uint64{Uint64: fieldValue.Uint()}
+		case reflect.Slice:
+			stateData.Type = &lb.StateData_Bytes{Bytes: fieldValue.Bytes()}
+			// Note, other field kinds and bad slice types have already been checked by SerializableChecks
+		}
+
+		marshaledFieldValue, err := s.Marshaler.Marshal(stateData)
+		if err != nil {
+			return false, errors.WithMessage(err, fmt.Sprintf("could not marshal value for key %s", keyName))
+		}
+
+		if existingValue, ok := existingKeys[keyName]; !ok || !bytes.Equal(existingValue, util.ComputeSHA256(marshaledFieldValue)) {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 // Deserialize accepts a struct (of a type previously serialized) and populates it with the values from the db.
