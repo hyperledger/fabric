@@ -239,6 +239,10 @@ type ChaincodeStubInterface interface {
 	// that has not been committed.
 	GetPrivateData(collection, key string) ([]byte, error)
 
+	// GetPrivateDataHash returns the hash of the value of the specified `key` from the specified
+	// `collection`
+	GetPrivateDataHash(collection, key string) ([]byte, error)
+
 	// PutPrivateData puts the specified `key` and `value` into the transaction's
 	// private writeset. Note that only hash of the private writeset goes into the
 	// transaction proposal response (which is sent to the client who issued the

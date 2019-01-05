@@ -521,6 +521,14 @@ func (stub *ChaincodeStub) GetPrivateData(collection string, key string) ([]byte
 	return stub.handler.handleGetState(collection, key, stub.ChannelId, stub.TxID)
 }
 
+// GetPrivateDataHash documentation can be found in interfaces.go
+func (stub *ChaincodeStub) GetPrivateDataHash(collection string, key string) ([]byte, error) {
+	if collection == "" {
+		return nil, fmt.Errorf("collection must not be an empty string")
+	}
+	return stub.handler.handleGetPrivateDataHash(collection, key, stub.ChannelId, stub.TxID)
+}
+
 // PutPrivateData documentation can be found in interfaces.go
 func (stub *ChaincodeStub) PutPrivateData(collection string, key string, value []byte) error {
 	if collection == "" {
