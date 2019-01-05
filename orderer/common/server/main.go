@@ -103,7 +103,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	clusterDialer.SetConfig(clusterClientConfig)
 
 	r := &replicationInitiator{
-		logger:  logger,
+		logger:  flogging.MustGetLogger("orderer.common.cluster"),
 		secOpts: clusterClientConfig.SecOpts,
 		conf:    conf,
 		lf:      &ledgerFactory{lf},

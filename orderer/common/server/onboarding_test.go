@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -28,6 +29,7 @@ import (
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -117,6 +119,286 @@ func loadPEM(suffix string, t *testing.T) []byte {
 	b, err := ioutil.ReadFile(filepath.Join("testdata", "tls", suffix))
 	assert.NoError(t, err)
 	return b
+}
+
+func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *common.Block) *common.Block {
+	block := &common.Block{
+		Header: &common.BlockHeader{
+			Number:       prevBlock.Header.Number + 1,
+			PreviousHash: prevBlock.Header.Hash(),
+		},
+		Metadata: &common.BlockMetadata{
+			Metadata: [][]byte{{}, {}, {}, {}},
+		},
+		Data: &common.BlockData{
+			Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+				Payload: utils.MarshalOrPanic(&common.Payload{
+					Header: &common.Header{
+						ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+							ChannelId: systemChannel,
+							Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
+						}),
+					},
+					Data: utils.MarshalOrPanic(&common.Envelope{
+						Payload: utils.MarshalOrPanic(&common.Payload{
+							Header: &common.Header{
+								ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+									Type:      int32(common.HeaderType_CONFIG),
+									ChannelId: applicationChannel,
+								}),
+							},
+						}),
+					}),
+				}),
+			})},
+		},
+	}
+
+	block.Header.DataHash = block.Data.Hash()
+	return block
+}
+
+func TestOnboardingChannelUnavailable(t *testing.T) {
+	t.Parallel()
+	// Scenario: During the probing phase of the onboarding,
+	// a channel is deemed relevant and we try to pull it during the
+	// second phase, but alas - precisely at that time - it becomes
+	// unavailable.
+	// The onboarding code is expected to skip the replication after
+	// the maximum attempt number is exhausted, and not to try to replicate
+	// the channel indefinitely.
+
+	caCert := loadPEM("ca.crt", t)
+	key := loadPEM("server.key", t)
+	cert := loadPEM("server.crt", t)
+
+	deliverServer := newServerNode(t, key, cert)
+	defer deliverServer.srv.Stop()
+
+	systemChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "system.block"))
+	assert.NoError(t, err)
+
+	applicationChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "genesis.block"))
+	assert.NoError(t, err)
+
+	testchainidGB := &common.Block{}
+	proto.Unmarshal(applicationChannelBlockBytes, testchainidGB)
+	testchainidGB.Header.Number = 0
+
+	systemChannelGenesisBlock := &common.Block{
+		Header: &common.BlockHeader{
+			Number: 0,
+		},
+		Metadata: &common.BlockMetadata{
+			Metadata: [][]byte{{}, {}, {}},
+		},
+		Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+			Payload: utils.MarshalOrPanic(&common.Payload{
+				Header: &common.Header{},
+			}),
+		})}},
+	}
+	systemChannelGenesisBlock.Header.DataHash = systemChannelGenesisBlock.Data.Hash()
+
+	channelCreationBlock := channelCreationBlock("system", "testchainid", systemChannelGenesisBlock)
+
+	bootBlock := &common.Block{}
+	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, bootBlock))
+	bootBlock.Header.Number = 2
+	bootBlock.Header.PreviousHash = channelCreationBlock.Header.Hash()
+	injectOrdererEndpoint(t, bootBlock, deliverServer.srv.Address())
+	injectConsenterCertificate(t, testchainidGB, cert)
+
+	blocksCommittedToSystemLedger := make(chan uint64, 3)
+	blocksCommittedToApplicationLedger := make(chan uint64, 1)
+
+	systemLedger := &mocks.LedgerWriter{}
+	systemLedger.On("Height").Return(uint64(0))
+	systemLedger.On("Append", mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
+		seq := arguments.Get(0).(*common.Block).Header.Number
+		blocksCommittedToSystemLedger <- seq
+	})
+
+	appLedger := &mocks.LedgerWriter{}
+	appLedger.On("Height").Return(uint64(0))
+	appLedger.On("Append", mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
+		seq := arguments.Get(0).(*common.Block).Header.Number
+		blocksCommittedToApplicationLedger <- seq
+	})
+
+	lf := &mocks.LedgerFactory{}
+	lf.On("GetOrCreate", "system").Return(systemLedger, nil)
+	lf.On("GetOrCreate", "testchainid").Return(appLedger, nil)
+	lf.On("Close")
+
+	config := &localconfig.TopLevel{
+		General: localconfig.General{
+			SystemChannel: "system",
+			Cluster: localconfig.Cluster{
+				ReplicationPullTimeout:  time.Hour,
+				DialTimeout:             time.Hour,
+				RPCTimeout:              time.Hour,
+				ReplicationRetryTimeout: time.Millisecond,
+				ReplicationBufferSize:   1,
+				ReplicationMaxRetries:   5,
+			},
+		},
+	}
+
+	secConfig := &comm.SecureOptions{
+		Certificate:   cert,
+		Key:           key,
+		UseTLS:        true,
+		ServerRootCAs: [][]byte{caCert},
+	}
+
+	r := &replicationInitiator{
+		lf:      lf,
+		logger:  flogging.MustGetLogger("testOnboarding"),
+		conf:    config,
+		secOpts: secConfig,
+	}
+
+	type event struct {
+		expectedLog  string
+		responseFunc func(chan *orderer.DeliverResponse)
+	}
+
+	var probe, pullSystemChannel, pullAppChannel, failedPulling bool
+
+	var loggerHooks []zap.Option
+
+	for _, e := range []event{
+		{
+			expectedLog: "Probing whether I should pull channel testchainid",
+			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
+				probe = true
+
+				// At this point the client will re-connect, so close the stream.
+				blockResponses <- nil
+				// And send the genesis block of the application channel 'testchainid'
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: testchainidGB,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: testchainidGB,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: testchainidGB,
+					},
+				}
+				blockResponses <- nil
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: testchainidGB,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: testchainidGB,
+					},
+				}
+				blockResponses <- nil
+			},
+		},
+		{
+			expectedLog: "Pulling channel system",
+			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
+				pullSystemChannel = true
+
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: bootBlock,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: bootBlock,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: systemChannelGenesisBlock,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: channelCreationBlock,
+					},
+				}
+				blockResponses <- &orderer.DeliverResponse{
+					Type: &orderer.DeliverResponse_Block{
+						Block: bootBlock,
+					},
+				}
+			},
+		},
+		{
+			expectedLog: "Pulling channel testchainid",
+			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
+				pullAppChannel = true
+
+				for i := 0; i < config.General.Cluster.ReplicationMaxRetries+1; i++ {
+					// Send once the genesis block, to make the client think this is a valid OSN endpoint
+					deliverServer.blockResponses <- &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{
+							Block: testchainidGB,
+						},
+					}
+					// Send EOF to make the client abort and retry again
+					deliverServer.blockResponses <- nil
+				}
+			},
+		},
+		{
+			expectedLog: "Failed pulling channel testchainid: retry attempts exhausted",
+			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
+				failedPulling = true
+			},
+		},
+	} {
+		event := e
+		loggerHooks = append(loggerHooks, zap.Hooks(func(entry zapcore.Entry) error {
+			if strings.Contains(entry.Message, event.expectedLog) {
+				event.responseFunc(deliverServer.blockResponses)
+			}
+			return nil
+		}))
+	}
+
+	// Program the logger to intercept the event
+	r.logger = r.logger.WithOptions(loggerHooks...)
+
+	// Send the latest system channel block (sequence 2) that is identical to the bootstrap block
+	deliverServer.blockResponses <- &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Block{
+			Block: bootBlock,
+		},
+	}
+	// Send a channel creation block (sequence 1) that denotes creation of 'testchainid'
+	deliverServer.blockResponses <- &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Block{
+			Block: channelCreationBlock,
+		},
+	}
+
+	r.replicateIfNeeded(bootBlock)
+
+	// Ensure all events were invoked
+	assert.True(t, probe)
+	assert.True(t, pullSystemChannel)
+	assert.True(t, pullAppChannel)
+	assert.True(t, failedPulling)
+
+	// Ensure system channel was fully pulled
+	assert.Len(t, blocksCommittedToSystemLedger, 3)
+	// But the application channel only contains 1 block (the genesis block)
+	assert.Len(t, blocksCommittedToApplicationLedger, 1)
 }
 
 func TestReplicate(t *testing.T) {
@@ -329,12 +611,15 @@ func TestReplicate(t *testing.T) {
 			},
 			zapHooks: []func(entry zapcore.Entry) error{
 				func(entry zapcore.Entry) error {
-					hooksActivated = true
 					possibleLogs := []string{
 						"Will now replicate chains [foo]",
 						"Channel testchainid shouldn't be pulled. Skipping it",
 					}
-					assert.Contains(t, possibleLogs, entry.Message)
+					for _, possibleLog := range possibleLogs {
+						if entry.Message == possibleLog {
+							hooksActivated = true
+						}
+					}
 					return nil
 				},
 			},
@@ -530,6 +815,32 @@ func TestLedgerFactory(t *testing.T) {
 	lw, err := lf.GetOrCreate("mychannel")
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(0), lw.Height())
+}
+
+func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byte) {
+	env, err := utils.ExtractEnvelope(block, 0)
+	assert.NoError(t, err)
+	payload, err := utils.ExtractPayload(env)
+	assert.NoError(t, err)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	assert.NoError(t, err)
+	consensus := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey]
+	consensus.Value = utils.MarshalOrPanic(&orderer.ConsensusType{
+		Type: "etcdraft",
+		Metadata: utils.MarshalOrPanic(&etcdraft.Metadata{
+			Consenters: []*etcdraft.Consenter{
+				{
+					ServerTlsCert: tlsCert,
+					ClientTlsCert: tlsCert,
+				},
+			},
+		}),
+	})
+
+	payload.Data = utils.MarshalOrPanic(confEnv)
+	env.Payload = utils.MarshalOrPanic(payload)
+	block.Data.Data[0] = utils.MarshalOrPanic(env)
+	block.Header.DataHash = block.Data.Hash()
 }
 
 func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {

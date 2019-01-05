@@ -54,19 +54,19 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
 	}
-
-	pullerLogger := flogging.MustGetLogger("orderer.common.cluster")
+	puller.MaxPullBlockRetries = uint64(ri.conf.General.Cluster.ReplicationMaxRetries)
+	puller.RetryTimeout = ri.conf.General.Cluster.ReplicationRetryTimeout
 
 	replicator := &cluster.Replicator{
 		Filter:           filter,
 		LedgerFactory:    ri.lf,
 		SystemChannel:    systemChannelName,
 		BootBlock:        bootstrapBlock,
-		Logger:           pullerLogger,
+		Logger:           ri.logger,
 		AmIPartOfChannel: consenterCert.IsConsenterOfChannel,
 		Puller:           puller,
 		ChannelLister: &cluster.ChainInspector{
-			Logger:          pullerLogger,
+			Logger:          ri.logger,
 			Puller:          puller,
 			LastConfigBlock: bootstrapBlock,
 		},

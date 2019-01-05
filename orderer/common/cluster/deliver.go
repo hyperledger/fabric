@@ -82,7 +82,7 @@ func (p *BlockPuller) Close() {
 
 // PullBlock blocks until a block with the given sequence is fetched
 // from some remote ordering node, or until consecutive failures
-// of fetching the block exceeds MaxPullBlockRetries.
+// of fetching the block exceed MaxPullBlockRetries.
 func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
 	retriesLeft := p.MaxPullBlockRetries
 	for {

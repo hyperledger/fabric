@@ -71,6 +71,7 @@ type Cluster struct {
 	ReplicationPullTimeout               time.Duration
 	ReplicationRetryTimeout              time.Duration
 	ReplicationBackgroundRefreshInterval time.Duration
+	ReplicationMaxRetries                int
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -218,6 +219,9 @@ var Defaults = TopLevel{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
 		},
+		Cluster: Cluster{
+			ReplicationMaxRetries: 12,
+		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
 		BCCSP:       bccsp.GetDefaultOpts(),
@@ -339,6 +343,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.GenesisProfile = Defaults.General.GenesisProfile
 		case c.General.SystemChannel == "":
 			c.General.SystemChannel = Defaults.General.SystemChannel
+		case c.General.Cluster.ReplicationMaxRetries == 0:
+			c.General.Cluster.ReplicationMaxRetries = 12
 
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
