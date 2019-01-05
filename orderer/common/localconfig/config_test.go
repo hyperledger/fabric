@@ -132,6 +132,15 @@ func TestKafkaSASLPlain(t *testing.T) {
 	}
 }
 
+func TestClusterDefaults(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+	cfg, err := Load()
+
+	assert.NoError(t, err)
+	assert.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
+}
+
 func TestSystemChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()

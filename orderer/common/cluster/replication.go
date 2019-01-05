@@ -126,6 +126,9 @@ func (r *Replicator) ReplicateChains() []string {
 			replicatedChains = append(replicatedChains, channel.ChannelName)
 		} else {
 			r.Logger.Warningf("Failed pulling channel %s: %v", channel.ChannelName, err)
+			// Append the channel we failed pulling to the channels not to pull, in order to commit the genesis block
+			// so that we mark it for replication in the future.
+			pullHints.channelsNotToPull = append(pullHints.channelsNotToPull, channel)
 		}
 	}
 	// Next, just commit the genesis blocks of the channels we shouldn't pull.
@@ -405,7 +408,11 @@ type selfMembershipPredicate func(configBlock *common.Block) error
 // It receives a ChainPuller that should already be calibrated for the chain,
 // and a selfMembershipPredicate that is used to detect whether the caller should service the chain.
 // It returns nil if the caller participates in the chain.
-// It may return notInChannelError error in case the caller doesn't participate in the chain.
+// It may return:
+// ErrNotInChannel in case the caller doesn't participate in the chain.
+// ErrForbidden in case the caller is forbidden from pulling the block.
+// ErrServiceUnavailable in case all orderers reachable cannot complete the request.
+// ErrRetryCountExhausted in case no orderer is reachable.
 func Participant(puller ChainPuller, analyzeLastConfBlock selfMembershipPredicate) error {
 	endpoint, latestHeight, err := latestHeightAndEndpoint(puller)
 	if err != nil {
