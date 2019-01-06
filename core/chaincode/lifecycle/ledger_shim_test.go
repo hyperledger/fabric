@@ -145,8 +145,18 @@ var _ = Describe("LedgerShims", func() {
 		})
 
 		Describe("GetStateHash", func() {
-			It("panics", func() {
-				Expect(func() { cls.GetStateHash("fake-key") }).To(Panic())
+			BeforeEach(func() {
+				fakeStub.GetPrivateDataHashReturns([]byte("fake-hash"), fmt.Errorf("fake-error"))
+			})
+
+			It("passes through to the chaincode stub", func() {
+				res, err := cls.GetStateHash("fake-key")
+				Expect(res).To(Equal([]byte("fake-hash")))
+				Expect(err).To(MatchError("fake-error"))
+				Expect(fakeStub.GetPrivateDataHashCallCount()).To(Equal(1))
+				collection, key := fakeStub.GetPrivateDataHashArgsForCall(0)
+				Expect(collection).To(Equal("fake-collection"))
+				Expect(key).To(Equal("fake-key"))
 			})
 		})
 
