@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	proto2 "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -66,6 +67,7 @@ type distributorImpl struct {
 	chainID string
 	gossipAdapter
 	CollectionAccessFactory
+	pushAckTimeout time.Duration
 }
 
 // CollectionAccessFactory an interface to generate collection access policy
@@ -107,6 +109,7 @@ func NewDistributor(chainID string, gossip gossipAdapter, factory CollectionAcce
 		chainID:                 chainID,
 		gossipAdapter:           gossip,
 		CollectionAccessFactory: factory,
+		pushAckTimeout:          viper.GetDuration("peer.gossip.pvtData.pushAckTimeout"),
 	}
 }
 
@@ -199,8 +202,6 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return nil, err
 	}
 
-	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
-
 	eligiblePeers := d.eligiblePeersOfChannel(routingFilter)
 	identitySets := d.identitiesOfEligiblePeers(eligiblePeers, colAP)
 
@@ -216,7 +217,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 			}
 			peer2SendPerOrg := selectionPeers[rand.Intn(len(selectionPeers))]
 			sc := gossip2.SendCriteria{
-				Timeout:  pushAckTimeout,
+				Timeout:  d.pushAckTimeout,
 				Channel:  gossipCommon.ChainID(d.chainID),
 				MaxPeers: 1,
 				MinAck:   required,
@@ -246,7 +247,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount()
 	// collection policy parameters
 	sc := gossip2.SendCriteria{
-		Timeout:  pushAckTimeout,
+		Timeout:  d.pushAckTimeout,
 		Channel:  gossipCommon.ChainID(d.chainID),
 		MaxPeers: maximumPeerCount,
 		MinAck:   requiredPeerCount,
