@@ -206,8 +206,6 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return nil, err
 	}
 
-	pushAckTimeout := viper.GetDuration("peer.gossip.pvtData.pushAckTimeout")
-
 	eligiblePeers := d.eligiblePeersOfChannel(routingFilter)
 	identitySets := d.identitiesOfEligiblePeers(eligiblePeers, colAP)
 
@@ -223,7 +221,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 			}
 			peer2SendPerOrg := selectionPeers[rand.Intn(len(selectionPeers))]
 			sc := gossip2.SendCriteria{
-				Timeout:  pushAckTimeout,
+				Timeout:  d.pushAckTimeout,
 				Channel:  gossipCommon.ChainID(d.chainID),
 				MaxPeers: 1,
 				MinAck:   required,
@@ -253,7 +251,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount()
 	// collection policy parameters
 	sc := gossip2.SendCriteria{
-		Timeout:  pushAckTimeout,
+		Timeout:  d.pushAckTimeout,
 		Channel:  gossipCommon.ChainID(d.chainID),
 		MaxPeers: maximumPeerCount,
 		MinAck:   requiredPeerCount,
