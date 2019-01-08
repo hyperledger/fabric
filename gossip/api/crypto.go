@@ -18,7 +18,6 @@ import (
 // and authenticate remote peers and data they send, as well as to verify
 // received blocks from the ordering service.
 type MessageCryptoService interface {
-
 	// GetPKIidOfCert returns the PKI-ID of a peer's identity
 	// If any error occurs, the method return nil
 	// This method does not validate peerIdentity.
@@ -71,6 +70,10 @@ type PeerIdentityInfo struct {
 // PeerIdentitySet aggregates a PeerIdentityInfo slice
 type PeerIdentitySet []PeerIdentityInfo
 
+// PeerIdentityFilter defines predicate function used to filter
+// peer identities
+type PeerIdentityFilter func(info PeerIdentityInfo) bool
+
 // ByOrg sorts the PeerIdentitySet by organizations of its peers
 func (pis PeerIdentitySet) ByOrg() map[string]PeerIdentitySet {
 	m := make(map[string]PeerIdentitySet)
@@ -87,6 +90,18 @@ func (pis PeerIdentitySet) ByID() map[string]PeerIdentityInfo {
 		m[string(id.PKIId)] = id
 	}
 	return m
+}
+
+// Filter filters identities based on predicate, returns new  PeerIdentitySet
+// with filtered ids.
+func (pis PeerIdentitySet) Filter(filter PeerIdentityFilter) PeerIdentitySet {
+	var result PeerIdentitySet
+	for _, id := range pis {
+		if filter(id) {
+			result = append(result, id)
+		}
+	}
+	return result
 }
 
 // PeerIdentityType is the peer's certificate
