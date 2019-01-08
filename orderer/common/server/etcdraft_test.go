@@ -59,6 +59,10 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, cmd, orderer, tempDir, genesisBlockPath, fabricRootDir)
 	defer ordererProcess.Kill()
+	// General.Cluster.ReplicationMaxRetries is not specified in the orderer.yaml, so let's ensure
+	// it is really configured autonomously via the localconfig code.
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.ReplicationMaxRetries = 12"))
+	// Wait until the the node starts up and elects itself as a single leader in a single node cluster.
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Starting cluster listener on 127.0.0.1:5612"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
