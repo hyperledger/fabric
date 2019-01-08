@@ -112,8 +112,7 @@ type Chain struct {
 
 	clock clock.Clock // Tests can inject a fake clock
 
-	support      consensus.ConsenterSupport
-	BlockCreator *blockCreator
+	support consensus.ConsenterSupport
 
 	appliedIndex uint64
 
@@ -160,8 +159,6 @@ func NewChain(
 		snapBlkNum = b.Header.Number
 	}
 
-	lastBlock := support.Block(support.Height() - 1)
-
 	c := &Chain{
 		configurator:     conf,
 		rpc:              rpc,
@@ -176,7 +173,6 @@ func NewChain(
 		observeC:         observeC,
 		support:          support,
 		fresh:            fresh,
-		BlockCreator:     newBlockCreator(lastBlock, lg),
 		appliedIndex:     opts.RaftMetadata.RaftIndex,
 		lastSnapBlockNum: snapBlkNum,
 		puller:           puller,
@@ -403,6 +399,7 @@ func (c *Chain) serveRequest() {
 
 	var leader uint64
 	submitC := c.submitC
+	var bc *blockCreator
 
 	for {
 		select {
@@ -429,7 +426,7 @@ func (c *Chain) serveRequest() {
 					stop()
 				}
 
-				proposedConfigBlock := c.propose(batches...)
+				proposedConfigBlock := c.propose(bc, batches...)
 				if proposedConfigBlock {
 					submitC = nil // stop accepting new envelopes
 				}
@@ -452,14 +449,21 @@ func (c *Chain) serveRequest() {
 					// follower -> leader
 					if newLeader == c.raftID {
 						elected = true
+
+						lastBlock := c.support.Block(c.support.Height() - 1)
+						bc = &blockCreator{
+							hash:   lastBlock.Header.Hash(),
+							number: lastBlock.Header.Number,
+							logger: c.logger,
+						}
 					}
 
 					// leader -> follower
 					if leader == c.raftID {
 						_ = c.support.BlockCutter().Cut()
-						c.BlockCreator.resetCreatedBlocks()
 						stop()
 						submitC = c.submitC
+						bc = nil
 					}
 
 					leader = newLeader
@@ -502,7 +506,7 @@ func (c *Chain) serveRequest() {
 			}
 
 			c.logger.Debugf("Batch timer expired, creating block")
-			c.propose(batch) // we are certain this is normal block, no need to block
+			c.propose(bc, batch) // we are certain this is normal block, no need to block
 
 		case sn := <-c.snapC:
 			if sn.Metadata.Index <= c.appliedIndex {
@@ -530,7 +534,6 @@ func (c *Chain) serveRequest() {
 // writeBlock returns a bool indicating whether we
 // should unblock submitC to accept new envelopes
 func (c *Chain) writeBlock(block *common.Block, index uint64) bool {
-	c.BlockCreator.commitBlock(block)
 	if utils.IsConfigBlock(block) {
 		return c.writeConfigBlock(block, index)
 	}
@@ -582,9 +585,9 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 
 // propose returns true if config block is in-flight and we should
 // block waiting for it to be committed before accepting new env
-func (c *Chain) propose(batches ...[]*common.Envelope) (configInFlight bool) {
+func (c *Chain) propose(bc *blockCreator, batches ...[]*common.Envelope) (configInFlight bool) {
 	for _, batch := range batches {
-		b := c.BlockCreator.createNextBlock(batch)
+		b := bc.createNextBlock(batch)
 		data := utils.MarshalOrPanic(b)
 		if err := c.node.Propose(context.TODO(), data); err != nil {
 			c.logger.Errorf("Failed to propose block to raft: %s", err)
@@ -623,7 +626,6 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if block == nil {
 			return errors.Errorf("failed to fetch block %d from cluster", next)
 		}
-		c.BlockCreator.commitBlock(block)
 		if utils.IsConfigBlock(block) {
 			c.support.WriteConfigBlock(block, nil)
 		} else {
