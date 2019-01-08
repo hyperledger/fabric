@@ -19,7 +19,7 @@ using the ``--collections-config`` flag. If using a client SDK, check the `SDK
 documentation <https://fabric-sdk-node.github.io/>`_ for information on providing the collection
 definition.
 
-Collection definitions are composed of five properties:
+Collection definitions are composed of the following properties:
 
 * ``name``: Name of the collection.
 
