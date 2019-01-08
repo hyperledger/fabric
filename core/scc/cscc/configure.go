@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -35,17 +36,19 @@ import (
 
 // New creates a new instance of the CSCC.
 // Typically, only one will be created per peer instance.
-func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, aclProvider aclmgmt.ACLProvider) *PeerConfiger {
+func New(ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider,
+	aclProvider aclmgmt.ACLProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker: policy.NewPolicyChecker(
 			peer.NewChannelPolicyManagerGetter(),
 			mgmt.GetLocalMSP(),
 			mgmt.NewLocalMSPPrincipalGetter(),
 		),
-		configMgr:   peer.NewConfigSupport(),
-		ccp:         ccp,
-		sccp:        sccp,
-		aclProvider: aclProvider,
+		configMgr:              peer.NewConfigSupport(),
+		ccp:                    ccp,
+		sccp:                   sccp,
+		aclProvider:            aclProvider,
+		deployedCCInfoProvider: deployedCCInfoProvider,
 	}
 }
 
@@ -61,11 +64,12 @@ func (e *PeerConfiger) Enabled() bool             { return true }
 // configuration transaction coming in from the ordering service, the
 // committer calls this system chaincode to process the transaction.
 type PeerConfiger struct {
-	policyChecker policy.PolicyChecker
-	configMgr     config.Manager
-	ccp           ccprovider.ChaincodeProvider
-	sccp          sysccprovider.SystemChaincodeProvider
-	aclProvider   aclmgmt.ACLProvider
+	policyChecker          policy.PolicyChecker
+	configMgr              config.Manager
+	ccp                    ccprovider.ChaincodeProvider
+	sccp                   sysccprovider.SystemChaincodeProvider
+	aclProvider            aclmgmt.ACLProvider
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -161,7 +165,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
-		return joinChain(cid, block, e.ccp, e.sccp)
+		return joinChain(cid, block, e.ccp, e.sccp, e.deployedCCInfoProvider)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -232,8 +236,8 @@ func validateConfigBlock(block *common.Block) error {
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) pb.Response {
-	if err := peer.CreateChainFromBlock(block, ccp, sccp); err != nil {
+func joinChain(chainID string, block *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) pb.Response {
+	if err := peer.CreateChainFromBlock(block, ccp, sccp, deployedCCInfoProvider); err != nil {
 		return shim.Error(err.Error())
 	}
 

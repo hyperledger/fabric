@@ -242,7 +242,7 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 			continue
 		}
 		// Create a chain if we get a valid ledger with config block
-		if err = createChain(cid, ledger, cb, ccp, sccp, pm); err != nil {
+		if err = createChain(cid, ledger, cb, ccp, sccp, pm, deployedCCInfoProvider); err != nil {
 			peerLogger.Warningf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 			continue
@@ -291,7 +291,10 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 }
 
 // createChain creates a new chain object and insert it into the chains
-func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper) error {
+func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider,
+	sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+) error {
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return err
@@ -404,7 +407,8 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
 	csStoreSupport := &CollectionSupport{
-		PeerLedger: ledger,
+		PeerLedger:             ledger,
+		DeployedCCInfoProvider: deployedCCInfoProvider,
 	}
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(csStoreSupport)
 
@@ -428,7 +432,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 }
 
 // CreateChainFromBlock creates a new chain from config block
-func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) error {
+func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error {
 	cid, err := utils.GetChainIDFromBlock(cb)
 	if err != nil {
 		return err
@@ -439,7 +443,7 @@ func CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sc
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
 
-	return createChain(cid, l, cb, ccp, sccp, pluginMapper)
+	return createChain(cid, l, cb, ccp, sccp, pluginMapper, deployedCCInfoProvider)
 }
 
 // GetLedger returns the ledger of the chain with chain ID. Note that this
@@ -716,6 +720,7 @@ func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.
 // the gossip in createChain() -- FAB-13037
 type CollectionSupport struct {
 	ledger.PeerLedger
+	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 }
 
 func (cs *CollectionSupport) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
@@ -724,6 +729,10 @@ func (cs *CollectionSupport) GetQueryExecutorForLedger(cid string) (ledger.Query
 
 func (*CollectionSupport) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 	return mspmgmt.GetManagerForChain(chainID)
+}
+
+func (cs *CollectionSupport) GetCollectionInfoProvider() ledger.DeployedChaincodeInfoProvider {
+	return cs.DeployedCCInfoProvider
 }
 
 //

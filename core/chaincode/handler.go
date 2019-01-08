@@ -145,6 +145,8 @@ type Handler struct {
 	QueryResponseBuilder QueryResponseBuilder
 	// LedgerGetter is used to get the ledger associated with a channel
 	LedgerGetter LedgerGetter
+	// DeployedCCInfoProvider is used to initialize the Collection Store
+	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	// UUIDGenerator is used to generate UUIDs
 	UUIDGenerator UUIDGenerator
 	// AppConfig is used to retrieve the application config for a channel
@@ -1271,7 +1273,8 @@ func (h *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.P
 
 func (h *Handler) getCollectionStore(channelID string) privdata.CollectionStore {
 	csStoreSupport := &peer.CollectionSupport{
-		PeerLedger: h.LedgerGetter.GetLedger(channelID),
+		PeerLedger:             h.LedgerGetter.GetLedger(channelID),
+		DeployedCCInfoProvider: h.DeployedCCInfoProvider,
 	}
 	return privdata.NewSimpleCollectionStore(csStoreSupport)
 
