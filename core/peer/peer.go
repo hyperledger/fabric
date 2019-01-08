@@ -22,6 +22,7 @@ import (
 	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
@@ -44,7 +45,6 @@ import (
 	"github.com/hyperledger/fabric/token/transaction"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"golang.org/x/sync/semaphore"
 )
 
 var peerLogger = flogging.MustGetLogger("peer")
@@ -199,7 +199,7 @@ func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
 
 // validationWorkersSemaphore is the semaphore used to ensure that
 // there are not too many concurrent tx validation goroutines
-var validationWorkersSemaphore *semaphore.Weighted
+var validationWorkersSemaphore semaphore.Semaphore
 
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
@@ -211,7 +211,7 @@ func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccp
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
 	}
-	validationWorkersSemaphore = semaphore.NewWeighted(int64(nWorkers))
+	validationWorkersSemaphore = semaphore.New(nWorkers)
 
 	pluginMapper = pm
 	chainInitializer = init
@@ -382,7 +382,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 
 	vcs := struct {
 		*chainSupport
-		*semaphore.Weighted
+		semaphore.Semaphore
 	}{cs, validationWorkersSemaphore}
 	validator := txvalidator.NewTxValidator(cid, vcs, sccp, pm)
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
