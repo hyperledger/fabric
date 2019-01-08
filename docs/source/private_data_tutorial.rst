@@ -46,7 +46,7 @@ data, and how long the private data is persisted in the private database. Later,
 we will demonstrate how chaincode APIs ``PutPrivateData`` and ``GetPrivateData``
 are used to map the collection to the private data being secured.
 
-A collection definition is composed of five properties:
+A collection definition is composed of the following properties:
 
 .. _blockToLive:
 
@@ -69,6 +69,10 @@ A collection definition is composed of five properties:
   To keep private data indefinitely, that is, to never purge private data, set
   the ``blockToLive`` property to ``0``.
 
+- ``memberOnlyRead``: a value of ``true`` indicates that peers automatically
+  enforce that only clients belonging to one of the collection member organizations
+  are allowed read access to private data.
+
 To illustrate usage of private data, the marbles private data example contains
 two private data collection definitions: ``collectionMarbles``
 and ``collectionMarblePrivateDetails``. The ``policy`` property in the
@@ -90,7 +94,8 @@ topic.
         "policy": "OR('Org1MSP.member', 'Org2MSP.member')",
         "requiredPeerCount": 0,
         "maxPeerCount": 3,
-        "blockToLive":1000000
+        "blockToLive":1000000,
+        "memberOnlyRead": true
    },
 
    {
@@ -98,7 +103,8 @@ topic.
         "policy": "OR('Org1MSP.member')",
         "requiredPeerCount": 0,
         "maxPeerCount": 3,
-        "blockToLive":3
+        "blockToLive":3,
+        "memberOnlyRead": true
    }
  ]
 
@@ -191,40 +197,46 @@ For example, in the following snippet of the ``initMarble`` function,
 
 .. code-block:: GO
 
-  // ==== Create marble object and marshal to JSON ====
-	objectType := "marble"
-	marble := &marble{objectType, marbleName, color, size, owner}
+  // ==== Create marble object, marshal to JSON, and save to state ====
+	marble := &marble{
+		ObjectType: "marble",
+		Name:       marbleInput.Name,
+		Color:      marbleInput.Color,
+		Size:       marbleInput.Size,
+		Owner:      marbleInput.Owner,
+	}
 	marbleJSONasBytes, err := json.Marshal(marble)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	//Alternatively, build the marble json string manually if you don't want to use struct marshalling
-	//marbleJSONasString := `{"docType":"Marble",  "name": "` + marbleName + `", "color": "` + color + `", "size": ` + strconv.Itoa(size) + `, "owner": "` + owner + `"}`
-	//marbleJSONasBytes := []byte(str)
 
 	// === Save marble to state ===
-	err = stub.PutPrivateData("collectionMarbles", marbleName, marbleJSONasBytes)
+	err = stub.PutPrivateData("collectionMarbles", marbleInput.Name, marbleJSONasBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	// ==== Save marble private details ====
-	objectType = "marblePrivateDetails"
-	marblePrivateDetails := &marblePrivateDetails{objectType, marbleName, price}
+	// ==== Create marble private details object with price, marshal to JSON, and save to state ====
+	marblePrivateDetails := &marblePrivateDetails{
+		ObjectType: "marblePrivateDetails",
+		Name:       marbleInput.Name,
+		Price:      marbleInput.Price,
+	}
 	marblePrivateDetailsBytes, err := json.Marshal(marblePrivateDetails)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutPrivateData("collectionMarblePrivateDetails", marbleName, marblePrivateDetailsBytes)
+	err = stub.PutPrivateData("collectionMarblePrivateDetails", marbleInput.Name, marblePrivateDetailsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
+
 To summarize, the policy definition above for our ``collection.json``
-allows all peers in Org1 and Org2 can store and transact (endorse, commit,
-query) with the marbles private data ``name, color, size, owner`` in their
+allows all peers in Org1 and Org2 to store and transact
+with the marbles private data ``name, color, size, owner`` in their
 private database. But only peers in Org1 can store and transact with
-the ``price`` private data in an additional private database.
+the ``price`` private data in its private database.
 
 As an additional data privacy benefit, since a collection is being used,
 only the private data hashes go through orderer, not the private data itself,
@@ -416,13 +428,19 @@ submit a request to add a marble:
  Invoke the marbles ``initMarble`` function which
  creates a marble with private data ---  name ``marble1`` owned by ``tom`` with a color
  ``blue``, size ``35`` and price of ``99``. Recall that private data **price**
- will be stored separately from the public data **name, owner, color, size**.
+ will be stored separately from the private data **name, owner, color, size**.
  For this reason, the ``initMarble`` function calls the ``PutPrivateData()`` API
- twice to persist the private data, once using each collection.
+ twice to persist the private data, once for each collection. Also note that
+ the private data is passed using the ``--transient`` flag. Inputs passed
+ as transient data will not be persisted in the transaction in order to keep
+ the data private. Transient data is passed as binary data and therefore when
+ using CLI it must be base64 encoded. We use an environment variable
+ to capture the base64 encoded value.
 
  .. code:: bash
 
-   peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble","marble1","blue","35","tom","99"]}'
+   export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64)
+   peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}'  --transient "{\"marble\":\"$MARBLE\"}"
 
  You should see results similar to:
 
@@ -501,6 +519,8 @@ function which passes ``collectionMarblePrivateDetails`` as an argument.
 Now :guilabel:`Try it yourself`
 
  Query for the ``name, color, size and owner`` private data of ``marble1`` as a member of Org1.
+ Note that since queries do not get recorded on the ledger, there is no need to pass
+ the marble name as a transient input.
 
  .. code:: bash
 
@@ -680,7 +700,8 @@ price private data is purged.
 
  .. code:: bash
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble","marble2","blue","35","tom","99"]}'
+    export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64)
+    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 
  Switch back to the Terminal window and view the private data logs for this peer
  again. You should see the block height increase by 1.
@@ -708,7 +729,8 @@ price private data is purged.
 
  .. code:: bash
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble","marble2","joe"]}'
+    export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"joe\"}" | base64)
+    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
  Switch back to the Terminal window and view the private data logs for this peer
  again. You should see the block height increase by 1.
@@ -735,7 +757,8 @@ price private data is purged.
 
  .. code:: bash
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble","marble2","tom"]}'
+    export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"tom\"}" | base64)
+    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
  Switch back to the Terminal window and view the private data logs for this peer
  again. You should see the block height increase by 1.
@@ -763,7 +786,8 @@ price private data is purged.
 
  .. code:: bash
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble","marble2","jerry"]}'
+    export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64)
+    peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
  Switch back to the Terminal window and view the private data logs for this peer
  again. You should see the block height increase by 1.
