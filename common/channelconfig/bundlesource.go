@@ -21,14 +21,17 @@ import (
 // type bugs.
 type BundleSource struct {
 	bundle    atomic.Value
-	callbacks []func(*Bundle)
+	callbacks []BundleActor
 }
+
+// BundleActor performs an operation based on the given bundle
+type BundleActor func(bundle *Bundle)
 
 // NewBundleSource creates a new BundleSource with an initial Bundle value
 // The callbacks will be invoked whenever the Update method is called for the
 // BundleSource.  Note, these callbacks are called immediately before this function
 // returns.
-func NewBundleSource(bundle *Bundle, callbacks ...func(*Bundle)) *BundleSource {
+func NewBundleSource(bundle *Bundle, callbacks ...BundleActor) *BundleSource {
 	bs := &BundleSource{
 		callbacks: callbacks,
 	}
