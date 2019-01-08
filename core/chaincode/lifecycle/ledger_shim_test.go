@@ -191,4 +191,82 @@ var _ = Describe("LedgerShims", func() {
 			})
 		})
 	})
+
+	Describe("SimpleQueryExecutorShim", func() {
+		var (
+			sqes                    *lifecycle.SimpleQueryExecutorShim
+			fakeSimpleQueryExecutor *mock.SimpleQueryExecutor
+		)
+
+		BeforeEach(func() {
+			fakeSimpleQueryExecutor = &mock.SimpleQueryExecutor{}
+			sqes = &lifecycle.SimpleQueryExecutorShim{
+				Namespace:           "cc-namespace",
+				SimpleQueryExecutor: fakeSimpleQueryExecutor,
+			}
+		})
+
+		Describe("GetState", func() {
+			BeforeEach(func() {
+				fakeSimpleQueryExecutor.GetStateReturns([]byte("fake-state"), fmt.Errorf("fake-error"))
+			})
+
+			It("passes through to the query executor", func() {
+				res, err := sqes.GetState("fake-prefix")
+				Expect(res).To(Equal([]byte("fake-state")))
+				Expect(err).To(MatchError("fake-error"))
+			})
+		})
+
+		Describe("GetStateRange", func() {
+			var (
+				resItr *mock.ResultsIterator
+			)
+
+			BeforeEach(func() {
+				resItr = &mock.ResultsIterator{}
+				resItr.NextReturnsOnCall(0, &queryresult.KV{
+					Key:   "fake-key",
+					Value: []byte("key-value"),
+				}, nil)
+				fakeSimpleQueryExecutor.GetStateRangeScanIteratorReturns(resItr, nil)
+			})
+
+			It("passes through to the query executor", func() {
+				res, err := sqes.GetStateRange("fake-key")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(Equal(map[string][]byte{
+					"fake-key": []byte("key-value"),
+				}))
+
+				Expect(fakeSimpleQueryExecutor.GetStateRangeScanIteratorCallCount()).To(Equal(1))
+				namespace, start, end := fakeSimpleQueryExecutor.GetStateRangeScanIteratorArgsForCall(0)
+				Expect(namespace).To(Equal("cc-namespace"))
+				Expect(start).To(Equal("fake-key"))
+				Expect(end).To(Equal("fake-key\x7f"))
+			})
+
+			Context("when the result iterator returns an error", func() {
+				BeforeEach(func() {
+					resItr.NextReturns(nil, fmt.Errorf("fake-error"))
+				})
+
+				It("returns the error", func() {
+					_, err := sqes.GetStateRange("fake-key")
+					Expect(err).To(MatchError("could not iterate over range: fake-error"))
+				})
+			})
+
+			Context("when getting the state iterator fails", func() {
+				BeforeEach(func() {
+					fakeSimpleQueryExecutor.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("fake-range-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := sqes.GetStateRange("fake-key")
+					Expect(err).To(MatchError("could not get state iterator: fake-range-error"))
+				})
+			})
+		})
+	})
 })

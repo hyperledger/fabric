@@ -7,24 +7,34 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 
 	"github.com/pkg/errors"
 )
 
+type StateIterator interface {
+	Close() error
+	Next() (*queryresult.KV, error)
+}
+
 // StateIteratorToMap takes an iterator, and iterates over the entire thing, encoding the KVs
 // into a map, and then closes it.
-func StateIteratorToMap(itr shim.StateQueryIteratorInterface) (map[string][]byte, error) {
+func StateIteratorToMap(itr StateIterator) (map[string][]byte, error) {
 	defer itr.Close()
 	result := map[string][]byte{}
-	for itr.HasNext() {
+	for {
 		entry, err := itr.Next()
 		if err != nil {
 			return nil, errors.WithMessage(err, "could not iterate over range")
 		}
+		if entry == nil {
+			return result, nil
+		}
 		result[entry.Key] = entry.Value
 	}
-	return result, nil
 }
 
 // ChaincodePublicLedgerShim decorates the chaincode shim to support the state interfaces
@@ -40,7 +50,22 @@ func (cls *ChaincodePublicLedgerShim) GetStateRange(prefix string) (map[string][
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get state iterator")
 	}
-	return StateIteratorToMap(itr)
+	return StateIteratorToMap(&ChaincodeResultIteratorShim{ResultsIterator: itr})
+}
+
+type ChaincodeResultIteratorShim struct {
+	ResultsIterator shim.StateQueryIteratorInterface
+}
+
+func (cris *ChaincodeResultIteratorShim) Next() (*queryresult.KV, error) {
+	if !cris.ResultsIterator.HasNext() {
+		return nil, nil
+	}
+	return cris.ResultsIterator.Next()
+}
+
+func (cris *ChaincodeResultIteratorShim) Close() error {
+	return cris.ResultsIterator.Close()
 }
 
 // ChaincodePrivateLedgerShim wraps the chaincode shim to make access to keys in a collection
@@ -57,7 +82,7 @@ func (cls *ChaincodePrivateLedgerShim) GetStateRange(prefix string) (map[string]
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get state iterator")
 	}
-	return StateIteratorToMap(itr)
+	return StateIteratorToMap(&ChaincodeResultIteratorShim{ResultsIterator: itr})
 }
 
 // GetState returns the value for the key in the configured collection.
@@ -78,4 +103,43 @@ func (cls *ChaincodePrivateLedgerShim) PutState(key string, value []byte) error 
 // DelState deletes the key in the configured collection.
 func (cls *ChaincodePrivateLedgerShim) DelState(key string) error {
 	return cls.Stub.DelPrivateData(cls.Collection, key)
+}
+
+// SimpleQueryExecutorShim implements the ReadableState and RangeableState interfaces
+// based on an underlying ledger.SimpleQueryExecutor
+type SimpleQueryExecutorShim struct {
+	Namespace           string
+	SimpleQueryExecutor ledger.SimpleQueryExecutor
+}
+
+func (sqes *SimpleQueryExecutorShim) GetState(key string) ([]byte, error) {
+	return sqes.SimpleQueryExecutor.GetState(sqes.Namespace, key)
+}
+
+func (sqes *SimpleQueryExecutorShim) GetStateRange(prefix string) (map[string][]byte, error) {
+	itr, err := sqes.SimpleQueryExecutor.GetStateRangeScanIterator(sqes.Namespace, prefix, prefix+"\x7f")
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get state iterator")
+	}
+	return StateIteratorToMap(&ResultsIteratorShim{ResultsIterator: itr})
+}
+
+type ResultsIteratorShim struct {
+	ResultsIterator commonledger.ResultsIterator
+}
+
+func (ris *ResultsIteratorShim) Next() (*queryresult.KV, error) {
+	res, err := ris.ResultsIterator.Next()
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		return nil, nil
+	}
+	return res.(*queryresult.KV), err
+}
+
+func (ris *ResultsIteratorShim) Close() error {
+	ris.ResultsIterator.Close()
+	return nil
 }

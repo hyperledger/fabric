@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -53,6 +54,11 @@ type readWritableState interface {
 //go:generate counterfeiter -o mock/query_executor.go --fake-name SimpleQueryExecutor . simpleQueryExecutor
 type simpleQueryExecutor interface {
 	ledger.SimpleQueryExecutor
+}
+
+//go:generate counterfeiter -o mock/results_iterator.go --fake-name ResultsIterator . resultsIterator
+type resultsIterator interface {
+	commonledger.ResultsIterator
 }
 
 //go:generate counterfeiter -o mock/chaincode_lifecycle.go --fake-name ChaincodeLifecycle . chaincodeLifecycle
