@@ -1,3 +1,19 @@
+## v1.4.0
+Tue Jan  8 12:04:49 EST 2019
+
+* [b43fcc7](https://github.com/hyperledger/fabric/commit/b43fcc7) [FAB-12056](https://jira.hyperledger.org/browse/FAB-12056) Pvt data tutorial to use transient
+* [491df44](https://github.com/hyperledger/fabric/commit/491df44) [FAB-13357](https://jira.hyperledger.org/browse/FAB-13357) Fixed error in fabric gossip documentation
+* [24c409a](https://github.com/hyperledger/fabric/commit/24c409a) [BE-510] Policies documentation typo fix
+* [a83e1ca](https://github.com/hyperledger/fabric/commit/a83e1ca) [FAB-13411](https://jira.hyperledger.org/browse/FAB-13411) fix flake in TestServerInterceptors
+* [7203735](https://github.com/hyperledger/fabric/commit/7203735) [FAB-12995](https://jira.hyperledger.org/browse/FAB-12995) Add new functions to the example cc
+* [3c0d63c](https://github.com/hyperledger/fabric/commit/3c0d63c) Explicitly set ext key usage for CA
+* [155120d](https://github.com/hyperledger/fabric/commit/155120d) Increase timeout for TestHaltBeforeTimeout
+* [7d09ca6](https://github.com/hyperledger/fabric/commit/7d09ca6) [FAB-13463](https://jira.hyperledger.org/browse/FAB-13463) Document vendoring - part2
+* [b17d88f](https://github.com/hyperledger/fabric/commit/b17d88f) [FAB-13463](https://jira.hyperledger.org/browse/FAB-13463) Document vendoring for shim extensions
+* [99959b9](https://github.com/hyperledger/fabric/commit/99959b9) [FAB-13381](https://jira.hyperledger.org/browse/FAB-13381) Update dev mode documentation
+* [9cd9fce](https://github.com/hyperledger/fabric/commit/9cd9fce) [FAB-13351](https://jira.hyperledger.org/browse/FAB-13351) Test Robustification
+* [0311c83](https://github.com/hyperledger/fabric/commit/0311c83) [FAB-13391](https://jira.hyperledger.org/browse/FAB-13391) Prepare for next release (1.4.0)
+
 ## v1.4.0-rc2
 Thu Dec 20 08:36:43 EST 2018
 
