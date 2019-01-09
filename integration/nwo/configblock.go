@@ -105,9 +105,12 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
 
-	// wait for the block to be committed
-	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
-	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+	// wait for the block to be committed to all peers that
+	// have joined the channel
+	for _, peer := range n.PeersWithChannel(channel) {
+		ccb := func() uint64 { return CurrentConfigBlockNumber(n, peer, orderer, channel) }
+		Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+	}
 }
 
 // UpdateOrdererConfig computes, signs, and submits a configuration update which requires orderers signature and waits
