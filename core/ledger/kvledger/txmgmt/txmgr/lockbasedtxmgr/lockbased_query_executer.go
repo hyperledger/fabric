@@ -70,6 +70,11 @@ func (q *lockBasedQueryExecutor) GetPrivateData(namespace, collection, key strin
 	return q.helper.getPrivateData(namespace, collection, key)
 }
 
+func (q *lockBasedQueryExecutor) GetPrivateDataHash(namespace, collection, key string) ([]byte, error) {
+	valueHash, _, err := q.helper.getPrivateDataValueHash(namespace, collection, key)
+	return valueHash, err
+}
+
 // GetPrivateDataMetadata implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetPrivateDataMetadata(namespace, collection, key string) (map[string][]byte, error) {
 	return q.helper.getPrivateDataMetadata(namespace, collection, key)
