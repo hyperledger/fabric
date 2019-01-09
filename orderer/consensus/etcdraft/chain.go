@@ -407,13 +407,6 @@ func (c *Chain) serveRequest() {
 		c.justElected = true
 		submitC = nil
 
-		lastBlock := c.support.Block(c.support.Height() - 1)
-		bc = &blockCreator{
-			hash:   lastBlock.Header.Hash(),
-			number: lastBlock.Header.Number,
-			logger: c.logger,
-		}
-
 		// if there is unfinished ConfChange, we should resume the effort to propose it as
 		// new leader, and wait for it to be committed before start serving new requests.
 		if cc := c.getInFlightConfChange(); cc != nil {
@@ -496,7 +489,26 @@ func (c *Chain) serveRequest() {
 
 			c.apply(app.entries)
 
-			if !c.configInflight {
+			if c.justElected {
+				msgInflight := c.node.lastIndex() > c.appliedIndex
+				if msgInflight || c.configInflight {
+					c.logger.Debugf("There are in flight blocks, new leader should not serve requests")
+					continue
+				}
+
+				c.logger.Infof("Start accepting requests as Raft leader")
+				lastBlock := c.support.Block(c.support.Height() - 1)
+				bc = &blockCreator{
+					hash:   lastBlock.Header.Hash(),
+					number: lastBlock.Header.Number,
+					logger: c.logger,
+				}
+				submitC = c.submitC
+				c.justElected = false
+			} else if c.configInflight {
+				c.logger.Debugf("Config block or ConfChange in flight, pause accepting transaction")
+				submitC = nil
+			} else {
 				submitC = c.submitC
 			}
 

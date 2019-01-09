@@ -18,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -1868,6 +1869,86 @@ var _ = Describe("Chain", func() {
 					func(c *chain) {
 						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(10))
 					})
+			})
+
+			It("new leader should wait for in-fight blocks to commit before accepting new env", func() {
+				// Scenario: when a node is elected as new leader and there are still in-flight blocks,
+				// it should not immediately start accepting new envelopes, instead it should wait for
+				// those in-flight blocks to be committed, otherwise we may create uncle block which
+				// forks and panicks chain.
+				//
+				// Steps:
+				// - start raft cluster with three nodes and genesis block0
+				// - order env1 on c1, which creates block1
+				// - drop MsgApp from 1 to 3
+				// - drop second round of MsgApp sent from 1 to 2, so that block1 is only committed on c1
+				// - disconnect c1 and elect c2
+				// - order env2 on c2. This env must NOT be immediately accepted, otherwise c2 would create
+				//   an uncle block1 based on block0.
+				// - c2 commits block1
+				// - c2 accepts env2, and creates block2
+				// - c2 commits block2
+				c1.cutter.CutNext = true
+				c2.cutter.CutNext = true
+
+				step := c1.rpc.StepStub
+				c1.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					stepMsg := &raftpb.Message{}
+					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+
+					if dest == 3 {
+						return nil, nil
+					}
+
+					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) == 0 {
+						return nil, nil
+					}
+
+					return step(dest, msg)
+				}
+
+				Expect(c1.Order(env, 0)).NotTo(HaveOccurred())
+
+				Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+				Consistently(c2.support.WriteBlockCallCount).Should(Equal(0))
+				Consistently(c3.support.WriteBlockCallCount).Should(Equal(0))
+
+				network.disconnect(1)
+
+				step = c2.rpc.StepStub
+				c2.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					stepMsg := &raftpb.Message{}
+					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+
+					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
+						for _, ent := range stepMsg.Entries {
+							if len(ent.Data) != 0 {
+								return nil, nil
+							}
+						}
+					}
+					return step(dest, msg)
+				}
+
+				network.elect(2)
+
+				go func() {
+					Expect(c2.Order(env, 0)).NotTo(HaveOccurred())
+				}()
+
+				Consistently(c2.support.WriteBlockCallCount).Should(Equal(0))
+				Consistently(c3.support.WriteBlockCallCount).Should(Equal(0))
+
+				c2.rpc.StepStub = step
+				c2.clock.Increment(interval)
+
+				Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+				Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+
+				b, _ := c2.support.WriteBlockArgsForCall(0)
+				Expect(b.Header.Number).To(Equal(uint64(1)))
+				b, _ = c2.support.WriteBlockArgsForCall(1)
+				Expect(b.Header.Number).To(Equal(uint64(2)))
 			})
 
 			Context("handling config blocks", func() {
