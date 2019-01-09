@@ -1828,6 +1828,21 @@ var _ = Describe("Chain", func() {
 					})
 			})
 
+			When("follower is disconnected", func() {
+				It("should return error when receiving an env", func() {
+					network.disconnect(2)
+
+					By("Ticking node 2 until it becomes pre-candidate")
+					Eventually(func() <-chan raft.SoftState {
+						c2.clock.Increment(interval)
+						return c2.observe
+					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StatePreCandidate})))
+
+					err := c2.Order(env, 0)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
 			It("leader retransmits lost messages", func() {
 				// This tests that heartbeats will trigger leader to retransmit lost MsgApp
 
