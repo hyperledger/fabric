@@ -101,7 +101,7 @@ type Chain struct {
 
 	submitC  chan *submit
 	applyC   chan apply
-	observeC chan<- uint64         // Notifies external observer on leader change (passed in optionally as an argument for tests)
+	observeC chan<- raft.SoftState // Notifies external observer on leader change (passed in optionally as an argument for tests)
 	haltC    chan struct{}         // Signals to goroutines that the chain is halting
 	doneC    chan struct{}         // Closes when the chain halts
 	startC   chan struct{}         // Closes when the node is started
@@ -138,7 +138,7 @@ func NewChain(
 	conf Configurator,
 	rpc RPC,
 	puller BlockPuller,
-	observeC chan<- uint64) (*Chain, error) {
+	observeC chan<- raft.SoftState) (*Chain, error) {
 
 	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
 
@@ -478,12 +478,12 @@ func (c *Chain) serveRequest() {
 					}
 
 					leader = newLeader
+				}
 
-					// notify external observer
-					select {
-					case c.observeC <- leader:
-					default:
-					}
+				// notify external observer
+				select {
+				case c.observeC <- raft.SoftState{Lead: leader, RaftState: app.soft.RaftState}:
+				default:
 				}
 			}
 
