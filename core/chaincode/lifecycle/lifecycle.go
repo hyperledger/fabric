@@ -12,6 +12,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -79,6 +82,7 @@ type ChaincodeParameters struct {
 	EndorsementPlugin   string
 	ValidationPlugin    string
 	ValidationParameter []byte
+	Collections         *cb.CollectionConfigPackage
 }
 
 // DefinedChaincode contains the chaincode parameters, as well as the sequence number of the definition.
@@ -92,6 +96,7 @@ type DefinedChaincode struct {
 	EndorsementPlugin   string
 	ValidationPlugin    string
 	ValidationParameter []byte
+	Collections         *cb.CollectionConfigPackage
 }
 
 // ChaincodeStore provides a way to persist chaincodes
@@ -141,6 +146,7 @@ func (l *Lifecycle) DefineChaincode(cd *ChaincodeDefinition, publicState ReadWri
 		EndorsementPlugin:   cd.Parameters.EndorsementPlugin,
 		ValidationPlugin:    cd.Parameters.ValidationPlugin,
 		ValidationParameter: cd.Parameters.ValidationParameter,
+		Collections:         cd.Parameters.Collections,
 	}, publicState); err != nil {
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
@@ -185,6 +191,11 @@ func (l *Lifecycle) DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState R
 			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but ValidationParameter '%x' != '%x'", currentSequence, cd.Name, definedChaincode.ValidationParameter, cd.Parameters.ValidationParameter)
 		case !bytes.Equal(definedChaincode.Hash, cd.Parameters.Hash):
 			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Hash '%x' != '%x'", currentSequence, cd.Name, definedChaincode.Hash, cd.Parameters.Hash)
+		case !proto.Equal(definedChaincode.Collections, cd.Parameters.Collections):
+			if proto.Equal(definedChaincode.Collections, &cb.CollectionConfigPackage{}) && cd.Parameters.Collections == nil {
+				break
+			}
+			return errors.Errorf("attempted to define the current sequence (%d) for namespace %s, but Collections do not match", currentSequence, cd.Name)
 		default:
 		}
 	}

@@ -14,9 +14,12 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	cb "github.com/hyperledger/fabric/protos/common"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var _ = Describe("Lifecycle", func() {
@@ -192,11 +195,10 @@ var _ = Describe("Lifecycle", func() {
 			committedDefinition := &lifecycle.ChaincodeParameters{}
 			err = l.Serializer.Deserialize("namespaces", "cc-name#5", committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(committedDefinition).To(Equal(&lifecycle.ChaincodeParameters{
-				Version:             "version",
-				Hash:                []byte{},
-				ValidationParameter: []byte{},
-			}))
+			Expect(committedDefinition.Version).To(Equal("version"))
+			Expect(committedDefinition.Hash).To(BeEmpty())
+			Expect(committedDefinition.ValidationParameter).To(BeEmpty())
+			Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
 		})
 
 		Context("when the sequence number already has a definition", func() {
@@ -291,6 +293,25 @@ var _ = Describe("Lifecycle", func() {
 				It("returns an error", func() {
 					err := l.DefineChaincodeForOrg(testDefinition, fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but Hash '' != '646966666572656e74'"))
+				})
+			})
+
+			Context("when the Collections differ from the current definition", func() {
+				BeforeEach(func() {
+					testDefinition.Parameters.Collections = &cb.CollectionConfigPackage{
+						Config: []*cb.CollectionConfig{
+							{
+								Payload: &cb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &cb.StaticCollectionConfig{Name: "foo"},
+								},
+							},
+						},
+					}
+				})
+
+				It("returns an error", func() {
+					err := l.DefineChaincodeForOrg(testDefinition, fakePublicState, fakeOrgState)
+					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but Collections do not match"))
 				})
 			})
 		})
@@ -489,6 +510,7 @@ var _ = Describe("Lifecycle", func() {
 				EndorsementPlugin:   "endorsement-plugin",
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
+				Collections:         &cb.CollectionConfigPackage{},
 			}))
 		})
 
