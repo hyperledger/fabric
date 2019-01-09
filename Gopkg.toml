@@ -114,10 +114,6 @@ noverify = [
   name = "golang.org/x/net"
 
 [[constraint]]
-  branch = "master"
-  name = "golang.org/x/sync"
-
-[[constraint]]
   name = "golang.org/x/tools"
   revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
 

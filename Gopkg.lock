@@ -796,14 +796,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e0140c0c868c6e0f01c0380865194592c011fe521d6e12d78bfd33e756fe018a"
-  name = "golang.org/x/sync"
-  packages = ["semaphore"]
-  pruneopts = "NUT"
-  revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
-
-[[projects]]
-  branch = "master"
   digest = "1:847ffe30bb2463c17bf12bac2558b63f5dc104fd5920c8adf8c150a08cd176fb"
   name = "golang.org/x/sys"
   packages = [
@@ -1010,7 +1002,6 @@
     "golang.org/x/crypto/sha3",
     "golang.org/x/lint/golint",
     "golang.org/x/net/context",
-    "golang.org/x/sync/semaphore",
     "golang.org/x/tools/cmd/goimports",
     "golang.org/x/tools/go/packages",
     "google.golang.org/grpc",

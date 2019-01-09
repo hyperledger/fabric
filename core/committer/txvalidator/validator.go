@@ -33,10 +33,10 @@ import (
 // Support provides all of the needed to evaluate the VSCC
 type Support interface {
 	// Acquire implements semaphore-like acquire semantics
-	Acquire(ctx context.Context, n int64) error
+	Acquire(ctx context.Context) error
 
 	// Release implements semaphore-like release semantics
-	Release(n int64)
+	Release()
 
 	// Ledger returns the ledger associated with this validator
 	Ledger() ledger.PeerLedger
@@ -150,10 +150,10 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	go func() {
 		for tIdx, d := range block.Data.Data {
 			// ensure that we don't have too many concurrent validation workers
-			v.Support.Acquire(context.Background(), 1)
+			v.Support.Acquire(context.Background())
 
 			go func(index int, data []byte) {
-				defer v.Support.Release(1)
+				defer v.Support.Release()
 
 				v.validateTx(&blockValidationRequest{
 					d:     data,
