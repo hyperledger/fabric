@@ -166,6 +166,10 @@ func (l *Lifecycle) DefineChaincodeForOrg(cd *ChaincodeDefinition, publicState R
 
 	requestedSequence := cd.Sequence
 
+	if currentSequence == requestedSequence && requestedSequence == 0 {
+		return errors.Errorf("requested sequence is 0, but first definable sequence number is 1")
+	}
+
 	if requestedSequence < currentSequence {
 		return errors.Errorf("currently defined sequence %d is larger than requested sequence %d", currentSequence, requestedSequence)
 	}

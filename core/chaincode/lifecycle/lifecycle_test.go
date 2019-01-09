@@ -201,6 +201,17 @@ var _ = Describe("Lifecycle", func() {
 			Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
 		})
 
+		Context("when the current sequence is undefined and the requested sequence is 0", func() {
+			BeforeEach(func() {
+				fakePublicKVStore = map[string][]byte{}
+			})
+
+			It("returns an error", func() {
+				err := l.DefineChaincodeForOrg(&lifecycle.ChaincodeDefinition{}, fakePublicState, fakeOrgState)
+				Expect(err).To(MatchError("requested sequence is 0, but first definable sequence number is 1"))
+			})
+		})
+
 		Context("when the sequence number already has a definition", func() {
 			BeforeEach(func() {
 				fakePublicKVStore = map[string][]byte{}
@@ -362,7 +373,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 	})
 
-	Describe("Define", func() {
+	Describe("DefineChaincode", func() {
 		var (
 			fakePublicState *mock.ReadWritableState
 			fakeOrgStates   []*mock.ReadWritableState
