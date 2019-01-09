@@ -123,3 +123,8 @@ func (n *node) takeSnapshot(index uint64, cs *raftpb.ConfState, data []byte) {
 		n.logger.Panicf("Failed to create snapshot at index %d: %s", index, err)
 	}
 }
+
+func (n *node) lastIndex() uint64 {
+	i, _ := n.storage.ram.LastIndex()
+	return i
+}
