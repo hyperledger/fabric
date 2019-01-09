@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
+	cb "github.com/hyperledger/fabric/protos/common"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	. "github.com/onsi/ginkgo"
@@ -307,6 +308,7 @@ var _ = Describe("SCC", func() {
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
+					Collections:         &cb.CollectionConfigPackage{},
 				}
 
 				marshaledArg, err = proto.Marshal(arg)
@@ -333,6 +335,7 @@ var _ = Describe("SCC", func() {
 						EndorsementPlugin:   "endorsement-plugin",
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
+						Collections:         arg.Collections,
 					},
 				}))
 				Expect(pubState).To(Equal(fakeStub))
@@ -370,6 +373,7 @@ var _ = Describe("SCC", func() {
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
+					Collections:         &cb.CollectionConfigPackage{},
 				}
 
 				marshaledArg, err = proto.Marshal(arg)
@@ -407,6 +411,7 @@ var _ = Describe("SCC", func() {
 						EndorsementPlugin:   "endorsement-plugin",
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
+						Collections:         arg.Collections,
 					},
 				}))
 				Expect(pubState).To(Equal(fakeStub))
@@ -502,6 +507,7 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 					Hash:                []byte("hash"),
+					Collections:         &cb.CollectionConfigPackage{},
 				}, nil)
 			})
 
@@ -511,6 +517,15 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryDefinedChaincodeResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(proto.Equal(payload, &lb.QueryDefinedChaincodeResult{
+					Sequence:            2,
+					Version:             "version",
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+					Hash:                []byte("hash"),
+					Collections:         &cb.CollectionConfigPackage{},
+				})).To(BeTrue())
 
 				Expect(fakeSCCFuncs.QueryDefinedChaincodeCallCount()).To(Equal(1))
 				name, pubState := fakeSCCFuncs.QueryDefinedChaincodeArgsForCall(0)

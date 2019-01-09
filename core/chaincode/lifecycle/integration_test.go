@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -174,6 +175,7 @@ var _ = Describe("Integration", func() {
 				ValidationPlugin:    "builtin",
 				ValidationParameter: []byte("validation-parameter"),
 				Hash:                []byte("hash-value"),
+				Collections:         &cb.CollectionConfigPackage{},
 			})).To(BeTrue())
 		})
 	})
