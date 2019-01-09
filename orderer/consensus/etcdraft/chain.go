@@ -399,7 +399,7 @@ func (c *Chain) serveRequest() {
 		ticking = false
 	}
 
-	var leader uint64
+	var soft raft.SoftState
 	submitC := c.submitC
 	var bc *blockCreator
 
@@ -434,8 +434,13 @@ func (c *Chain) serveRequest() {
 				continue
 			}
 
+			if soft.RaftState == raft.StatePreCandidate || soft.RaftState == raft.StateCandidate {
+				s.errC <- errors.Errorf("no Raft leader")
+				continue
+			}
+
 			var err error
-			switch leader {
+			switch soft.Lead {
 			case raft.None: // no Raft leader
 				c.logger.Debugf("Request is dropped because there is no Raft leader")
 				err = errors.Errorf("no Raft leader")
@@ -457,8 +462,8 @@ func (c *Chain) serveRequest() {
 				}
 
 			default: // this is follower
-				c.logger.Debugf("Forwarding submit request to raft leader %d", leader)
-				err = c.rpc.SendSubmit(leader, s.req)
+				c.logger.Debugf("Forwarding submit request to raft leader %d", soft.Lead)
+				err = c.rpc.SendSubmit(soft.Lead, s.req)
 			}
 
 			s.errC <- err // send error back to submitter
@@ -466,23 +471,23 @@ func (c *Chain) serveRequest() {
 		case app := <-c.applyC:
 			if app.soft != nil {
 				newLeader := atomic.LoadUint64(&app.soft.Lead) // etcdraft requires atomic access
-				if newLeader != leader {
-					c.logger.Infof("Raft leader changed: %d -> %d", leader, newLeader)
+				if newLeader != soft.Lead {
+					c.logger.Infof("Raft leader changed: %d -> %d", soft.Lead, newLeader)
 
 					if newLeader == c.raftID {
 						becomeLeader()
 					}
 
-					if leader == c.raftID {
+					if soft.Lead == c.raftID {
 						becomeFollower()
 					}
-
-					leader = newLeader
 				}
+
+				soft = raft.SoftState{Lead: newLeader, RaftState: app.soft.RaftState}
 
 				// notify external observer
 				select {
-				case c.observeC <- raft.SoftState{Lead: leader, RaftState: app.soft.RaftState}:
+				case c.observeC <- soft:
 				default:
 				}
 			}
