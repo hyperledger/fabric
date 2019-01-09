@@ -16,7 +16,7 @@ import (
 )
 
 func TestNewSemaphorePanic(t *testing.T) {
-	assert.PanicsWithValue(t, "count must be greater than 0", func() { semaphore.New(0) })
+	assert.PanicsWithValue(t, "permits must be greater than 0", func() { semaphore.New(0) })
 }
 
 func TestSemaphoreBlocking(t *testing.T) {
