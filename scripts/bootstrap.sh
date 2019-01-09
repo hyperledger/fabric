@@ -133,6 +133,7 @@ binaryDownload() {
 }
 
 binariesInstall() {
+  cd ${BINARIES_INSTALL_PATH}
   echo "===> Downloading version ${FABRIC_TAG} platform specific fabric binaries"
   binaryDownload ${BINARY_FILE} https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/${BINARY_FILE}
   if [ $? -eq 22 ]; then
@@ -198,6 +199,7 @@ else
   : ${THIRDPARTY_TAG:="$THIRDPARTY_IMAGE_VERSION"}
 fi
 
+BINARIES_INSTALL_PATH=$(pwd)
 BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
 CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
 
