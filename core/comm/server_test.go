@@ -380,7 +380,13 @@ func loadChildOrg(parent, child int) (testOrg, error) {
 func loadTLSKeyPairFromFile(keyFile, certFile string) (tls.Certificate, error) {
 
 	certPEMBlock, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
 	keyPEMBlock, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
 	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 
 	if err != nil {
@@ -772,6 +778,9 @@ func TestVerifyCertificateCallback(t *testing.T) {
 
 	probeTLS := func(endpoint string, clientKeyPair *tlsgen.CertKeyPair) error {
 		cert, err := tls.X509KeyPair(clientKeyPair.Cert, clientKeyPair.Key)
+		if err != nil {
+			return err
+		}
 		tlsCfg := &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      x509.NewCertPool(),

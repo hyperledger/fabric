@@ -145,6 +145,7 @@ func TestNewConnection_Timeout(t *testing.T) {
 		Timeout: 1 * time.Second,
 	}
 	client, err := comm.NewGRPCClient(config)
+	assert.Nil(t, err)
 	conn, err := client.NewConnection(testAddress, "")
 	assert.Contains(t, err.Error(), "connection refused")
 	t.Log(err)
@@ -557,6 +558,7 @@ func loadCerts(t *testing.T) testCerts {
 		filepath.Join("testdata", "certs", "Org1-server1-cert.pem"),
 		filepath.Join("testdata", "certs", "Org1-server1-key.pem"),
 	)
+	assert.NoError(t, err)
 
 	return certs
 }

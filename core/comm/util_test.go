@@ -218,6 +218,7 @@ func (ins *inspection) inspectBinding(envelope *common.Envelope) error {
 	defer conn.Close()
 	assert.NoError(ins.t, err)
 	_, err = testpb.NewTestServiceClient(conn).EmptyCall(context.Background(), &testpb.Empty{})
+	assert.NoError(ins.t, err)
 	return ins.server.inspect(envelope)
 }
 
