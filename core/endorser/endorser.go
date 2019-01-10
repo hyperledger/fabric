@@ -95,6 +95,9 @@ type Support interface {
 
 	// GetLedgerHeight returns ledger height for given channelID
 	GetLedgerHeight(channelID string) (uint64, error)
+
+	// GetDeployedCCInfoProvider returns ledger.DeployedChaincodeInfoProvider
+	GetDeployedCCInfoProvider() ledger.DeployedChaincodeInfoProvider
 }
 
 // Endorser provides the Endorser service ProcessProposal
@@ -252,7 +255,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 				txParams.TXSimulator.Done()
 				return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
 			}
-			pvtDataWithConfig, err := e.AssemblePvtRWSet(simResult.PvtSimulationResults, txParams.TXSimulator)
+			pvtDataWithConfig, err := e.AssemblePvtRWSet(simResult.PvtSimulationResults, txParams.TXSimulator, e.s.GetDeployedCCInfoProvider())
 			// To read collection config need to read collection updates before
 			// releasing the lock, hence txParams.TXSimulator.Done()  moved down here
 			txParams.TXSimulator.Done()

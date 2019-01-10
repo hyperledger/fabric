@@ -40,6 +40,7 @@ type MockSupport struct {
 	IsJavaErr                        error
 	GetApplicationConfigRv           channelconfig.Application
 	GetApplicationConfigBoolRv       bool
+	DeployedCCInfoProvider           ledger.DeployedChaincodeInfoProvider
 }
 
 func (s *MockSupport) Serialize() ([]byte, error) {
@@ -124,4 +125,8 @@ func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd ccprovid
 
 func (s *MockSupport) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	return s.GetApplicationConfigRv, s.GetApplicationConfigBoolRv
+}
+
+func (s *MockSupport) GetDeployedCCInfoProvider() ledger.DeployedChaincodeInfoProvider {
+	return s.DeployedCCInfoProvider
 }
