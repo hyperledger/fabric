@@ -1,30 +1,35 @@
 What's new in v1.4
 ==================
 
+Hyperledger Fabric's First long term support release
+----------------------------------------------------
+
 Hyperledger Fabric has matured since the initial v1.0 release, and so has the
-community of Fabric operators and developers. The Fabric developers have been
-working with network operators and application developers to deliver v1.4 with
-a focus on production operations and developer ease of use. The two major
-release themes for Hyperledger Fabric v1.4 revolve around these two areas:
+community of Fabric operators. The Fabric developers have been working with
+network operators to deliver v1.4 with a focus on stability and production
+operations. As such, v1.4 will be our first long term support release.
 
-* **Serviceability and Operations**: As more Hyperledger Fabric networks get
-  deployed and enter a production state, serviceability and operational aspects
-  are critical. Fabric v1.4 takes a giant leap forward with logging improvements,
-  health checks, and operational metrics. Along with a focus on stability
-  and fixes, Fabric v1.4 is the recommended release for production operations.
-  Future fixes will be delivered on the v1.4.x stream, while new features are
-  being developed in the v2.0 stream.
+Our policy to date has been to provide bug fix (patch) releases for our most
+recent major or minor release until the next major or minor release has been
+published. We plan to continue this policy for subsequent releases. However,
+for Hyperledger Fabric v1.4, the Fabric maintainers are pledging to provide
+bug fixes for a period of one year from the date of release. This will likely
+result in a series of patch releases (v1.4.1, v1.4.2, …), where multiple fixes
+are bundled into a patch release.
 
-* **Improved programming model for developing applications**: Writing
-  decentralized applications has just gotten easier. Programming model
-  improvements in the Node.js SDK and Node.js chaincode makes the development
-  of decentralized applications more intuitive, allowing you to focus
-  on your application logic. The existing npm packages are still available for
-  use, while the new npm packages provide a layer of abstraction to improve
-  developer productivity and ease of use.
+If you are running with Hyperledger Fabric v1.4, you can be assured that
+you will be able to safely upgrade to any of the subsequent patch releases.
+In the advent that there is need of some upgrade process to remedy a defect,
+we will provide that process with the patch release.
 
 Serviceability and operations improvements
 ------------------------------------------
+
+As more Hyperledger Fabric networks get
+deployed and enter a production state, serviceability and operational aspects
+are critical. Fabric v1.4 takes a giant leap forward with logging improvements,
+health checks, and operational metrics. As such, Fabric v1.4
+is the recommended release for production operations.
 
 * :doc:`operations_service`:
   The new RESTful operations service provides operators with three
@@ -42,8 +47,14 @@ Serviceability and operations improvements
 Improved programming model for developing applications
 ------------------------------------------------------
 
-The new Node.js SDK and chaincode programming model makes developing decentralized
-applications easier and improves developer productivity. New documentation helps you
+Writing decentralized applications has just gotten easier. Programming model
+improvements in the Node.js SDK and Node.js chaincode makes the development
+of decentralized applications more intuitive, allowing you to focus
+on your application logic. The existing npm packages are still available for
+use, while the new npm packages provide a layer of abstraction to improve
+developer productivity and ease of use.
+
+New documentation helps you
 understand the various aspects of creating a decentralized application for
 Hyperledger Fabric, using a commercial paper business network scenario.
 
