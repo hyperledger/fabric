@@ -107,6 +107,9 @@ type Chain struct {
 	startC   chan struct{}         // Closes when the node is started
 	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
 
+	errorCLock sync.RWMutex
+	errorC     chan struct{} // returned by Errored()
+
 	raftMetadataLock     sync.RWMutex
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
@@ -172,6 +175,7 @@ func NewChain(
 		doneC:            make(chan struct{}),
 		startC:           make(chan struct{}),
 		snapC:            make(chan *raftpb.Snapshot),
+		errorC:           make(chan struct{}),
 		observeC:         observeC,
 		support:          support,
 		fresh:            fresh,
@@ -226,6 +230,7 @@ func (c *Chain) Start() {
 
 	c.node.start(c.fresh, c.support.Height() > 1)
 	close(c.startC)
+	close(c.errorC)
 
 	go c.serveRequest()
 }
@@ -297,7 +302,9 @@ func (c *Chain) WaitReady() error {
 
 // Errored returns a channel that closes when the chain stops.
 func (c *Chain) Errored() <-chan struct{} {
-	return c.doneC
+	c.errorCLock.RLock()
+	defer c.errorCLock.RUnlock()
+	return c.errorC
 }
 
 // Halt stops the chain.
@@ -372,6 +379,10 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 type apply struct {
 	entries []raftpb.Entry
 	soft    *raft.SoftState
+}
+
+func isCandidate(state raft.StateType) bool {
+	return state == raft.StatePreCandidate || state == raft.StateCandidate
 }
 
 func (c *Chain) serveRequest() {
@@ -483,6 +494,23 @@ func (c *Chain) serveRequest() {
 					}
 				}
 
+				foundLeader := soft.Lead == raft.None && newLeader != raft.None
+				quitCandidate := isCandidate(soft.RaftState) && !isCandidate(app.soft.RaftState)
+
+				if foundLeader || quitCandidate {
+					c.errorCLock.Lock()
+					c.errorC = make(chan struct{})
+					c.errorCLock.Unlock()
+				}
+
+				if isCandidate(app.soft.RaftState) || newLeader == raft.None {
+					select {
+					case <-c.errorC:
+					default:
+						close(c.errorC)
+					}
+				}
+
 				soft = raft.SoftState{Lead: newLeader, RaftState: app.soft.RaftState}
 
 				// notify external observer
@@ -546,6 +574,12 @@ func (c *Chain) serveRequest() {
 			}
 
 		case <-c.doneC:
+			select {
+			case <-c.errorC: // avoid closing closed channel
+			default:
+				close(c.errorC)
+			}
+
 			c.logger.Infof("Stop serving requests")
 			return
 		}
