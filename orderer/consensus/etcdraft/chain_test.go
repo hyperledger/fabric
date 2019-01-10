@@ -356,9 +356,10 @@ var _ = Describe("Chain", func() {
 			})
 
 			It("unblocks Errored if chain is halted", func() {
-				Expect(chain.Errored()).NotTo(Receive())
+				errorC := chain.Errored()
+				Expect(errorC).NotTo(BeClosed())
 				chain.Halt()
-				Expect(chain.Errored()).Should(BeClosed())
+				Eventually(errorC).Should(BeClosed())
 			})
 
 			Describe("Config updates", func() {
@@ -1738,6 +1739,7 @@ var _ = Describe("Chain", func() {
 
 					// Assert c1 has exited
 					Eventually(c1.Errored, LongEventualTimeout).Should(BeClosed())
+					close(c1.stopped)
 
 					By("making sure remaining two nodes will elect new leader")
 
@@ -1832,14 +1834,24 @@ var _ = Describe("Chain", func() {
 				It("should return error when receiving an env", func() {
 					network.disconnect(2)
 
+					errorC := c2.Errored()
+					Consistently(errorC).ShouldNot(BeClosed()) // assert that errorC is not closed
+
 					By("Ticking node 2 until it becomes pre-candidate")
 					Eventually(func() <-chan raft.SoftState {
 						c2.clock.Increment(interval)
 						return c2.observe
 					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StatePreCandidate})))
 
+					Eventually(errorC).Should(BeClosed())
 					err := c2.Order(env, 0)
 					Expect(err).To(HaveOccurred())
+
+					network.connect(2)
+					c1.clock.Increment(interval)
+					Expect(errorC).To(BeClosed())
+
+					Eventually(c2.Errored).ShouldNot(BeClosed())
 				})
 			})
 
@@ -2406,6 +2418,7 @@ type chain struct {
 
 	observe   chan raft.SoftState
 	unstarted chan struct{}
+	stopped   chan struct{}
 
 	*etcdraft.Chain
 }
@@ -2461,6 +2474,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 		clock:        clock,
 		opts:         opts,
 		unstarted:    ch,
+		stopped:      make(chan struct{}),
 		configurator: configurator,
 		puller:       puller,
 		ledger: map[uint64]*common.Block{
@@ -2649,9 +2663,15 @@ func (n *network) stop(ids ...uint64) {
 		}
 	}
 
-	for _, c := range nodes {
-		n.chains[c].Halt()
-		<-n.chains[c].Errored()
+	for _, id := range nodes {
+		c := n.chains[id]
+		c.Halt()
+		<-c.Errored()
+		select {
+		case <-c.stopped:
+		default:
+			close(c.stopped)
+		}
 	}
 }
 
@@ -2727,7 +2747,7 @@ func (n *network) elect(id uint64) (tick int) {
 		}
 
 		select {
-		case <-c.Errored(): // skip if node is exit
+		case <-c.stopped: // skip check if node n is stopped
 		case <-n.connectivity[c.id]: // skip check if node n is disconnected
 		case <-c.unstarted: // skip check if node is not started yet
 		default:
