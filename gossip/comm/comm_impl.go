@@ -638,8 +638,8 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 		}
 	}()
 	select {
-	case <-time.NewTicker(timeout).C:
-		return nil, errors.Errorf("Timed out waiting for connection message from %s", address)
+	case <-time.After(timeout):
+		return nil, errors.Errorf("timed out waiting for connection message from %s", address)
 	case m := <-incChan:
 		return m, nil
 	case err := <-errChan:
