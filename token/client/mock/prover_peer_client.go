@@ -2,6 +2,7 @@
 package mock
 
 import (
+	tls "crypto/tls"
 	sync "sync"
 
 	token "github.com/hyperledger/fabric/protos/token"
@@ -10,6 +11,16 @@ import (
 )
 
 type ProverPeerClient struct {
+	CertificateStub        func() *tls.Certificate
+	certificateMutex       sync.RWMutex
+	certificateArgsForCall []struct {
+	}
+	certificateReturns struct {
+		result1 *tls.Certificate
+	}
+	certificateReturnsOnCall map[int]struct {
+		result1 *tls.Certificate
+	}
 	CreateProverClientStub        func() (*grpc.ClientConn, token.ProverClient, error)
 	createProverClientMutex       sync.RWMutex
 	createProverClientArgsForCall []struct {
@@ -26,6 +37,58 @@ type ProverPeerClient struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ProverPeerClient) Certificate() *tls.Certificate {
+	fake.certificateMutex.Lock()
+	ret, specificReturn := fake.certificateReturnsOnCall[len(fake.certificateArgsForCall)]
+	fake.certificateArgsForCall = append(fake.certificateArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Certificate", []interface{}{})
+	fake.certificateMutex.Unlock()
+	if fake.CertificateStub != nil {
+		return fake.CertificateStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.certificateReturns
+	return fakeReturns.result1
+}
+
+func (fake *ProverPeerClient) CertificateCallCount() int {
+	fake.certificateMutex.RLock()
+	defer fake.certificateMutex.RUnlock()
+	return len(fake.certificateArgsForCall)
+}
+
+func (fake *ProverPeerClient) CertificateCalls(stub func() *tls.Certificate) {
+	fake.certificateMutex.Lock()
+	defer fake.certificateMutex.Unlock()
+	fake.CertificateStub = stub
+}
+
+func (fake *ProverPeerClient) CertificateReturns(result1 *tls.Certificate) {
+	fake.certificateMutex.Lock()
+	defer fake.certificateMutex.Unlock()
+	fake.CertificateStub = nil
+	fake.certificateReturns = struct {
+		result1 *tls.Certificate
+	}{result1}
+}
+
+func (fake *ProverPeerClient) CertificateReturnsOnCall(i int, result1 *tls.Certificate) {
+	fake.certificateMutex.Lock()
+	defer fake.certificateMutex.Unlock()
+	fake.CertificateStub = nil
+	if fake.certificateReturnsOnCall == nil {
+		fake.certificateReturnsOnCall = make(map[int]struct {
+			result1 *tls.Certificate
+		})
+	}
+	fake.certificateReturnsOnCall[i] = struct {
+		result1 *tls.Certificate
+	}{result1}
 }
 
 func (fake *ProverPeerClient) CreateProverClient() (*grpc.ClientConn, token.ProverClient, error) {
@@ -89,6 +152,8 @@ func (fake *ProverPeerClient) CreateProverClientReturnsOnCall(i int, result1 *gr
 func (fake *ProverPeerClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.certificateMutex.RLock()
+	defer fake.certificateMutex.RUnlock()
 	fake.createProverClientMutex.RLock()
 	defer fake.createProverClientMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

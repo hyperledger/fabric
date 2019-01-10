@@ -11,8 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -149,17 +147,10 @@ func (s *TxSubmitter) Submit(txEnvelope *common.Envelope, waitTimeout time.Durat
 // CreateTxEnvelope creates a transaction envelope from the serialized TokenTransaction.
 // It returns the transaction envelope, transaction id, and error.
 func (s *TxSubmitter) CreateTxEnvelope(txBytes []byte) (*common.Envelope, string, error) {
-	var tlsCertHash []byte
-	var err error
 	// check for client certificate and compute SHA2-256 on certificate if present
-	cert := s.OrdererClient.Certificate()
-	if cert != nil && len(cert.Certificate) > 0 {
-		tlsCertHash, err = factory.GetDefault().Hash(cert.Certificate[0], &bccsp.SHA256Opts{})
-		if err != nil {
-			err = errors.New("failed to compute SHA256 on client certificate")
-			logger.Errorf("%s", err)
-			return nil, "", err
-		}
+	tlsCertHash, err := GetTLSCertHash(s.OrdererClient.Certificate())
+	if err != nil {
+		return nil, "", err
 	}
 
 	txid, header, err := CreateHeader(common.HeaderType_TOKEN_TRANSACTION, s.Config.ChannelID, s.Creator, tlsCertHash)
