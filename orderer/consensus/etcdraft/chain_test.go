@@ -1592,9 +1592,9 @@ var _ = Describe("Chain", func() {
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, addConsenterConfigValue()))
 					c1.cutter.CutNext = true
 
-					step := c1.rpc.StepStub
+					step1 := c1.getStepFunc()
 					count := c1.rpc.StepCallCount() // record current step call count
-					c1.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					c1.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
 						// disconnect network after 4 MsgApp are sent by c1:
 						// - 2 MsgApp to c2 & c3 that replicate data to raft followers
 						// - 2 MsgApp to c2 & c3 that instructs followers to commit data
@@ -1606,8 +1606,8 @@ var _ = Describe("Chain", func() {
 							}()
 						}
 
-						return step(dest, msg)
-					}
+						return step1(dest, msg)
+					})
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
@@ -1918,8 +1918,8 @@ var _ = Describe("Chain", func() {
 				c1.cutter.CutNext = true
 				c2.cutter.CutNext = true
 
-				step := c1.rpc.StepStub
-				c1.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+				step1 := c1.getStepFunc()
+				c1.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
 					stepMsg := &raftpb.Message{}
 					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
 
@@ -1931,8 +1931,8 @@ var _ = Describe("Chain", func() {
 						return nil, nil
 					}
 
-					return step(dest, msg)
-				}
+					return step1(dest, msg)
+				})
 
 				Expect(c1.Order(env, 0)).NotTo(HaveOccurred())
 
@@ -1942,8 +1942,8 @@ var _ = Describe("Chain", func() {
 
 				network.disconnect(1)
 
-				step = c2.rpc.StepStub
-				c2.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+				step2 := c2.getStepFunc()
+				c2.setStepFunc(func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
 					stepMsg := &raftpb.Message{}
 					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
 
@@ -1954,8 +1954,8 @@ var _ = Describe("Chain", func() {
 							}
 						}
 					}
-					return step(dest, msg)
-				}
+					return step2(dest, msg)
+				})
 
 				network.elect(2)
 
@@ -1966,7 +1966,7 @@ var _ = Describe("Chain", func() {
 				Consistently(c2.support.WriteBlockCallCount).Should(Equal(0))
 				Consistently(c3.support.WriteBlockCallCount).Should(Equal(0))
 
-				c2.rpc.StepStub = step
+				c2.setStepFunc(step2)
 				c2.clock.Increment(interval)
 
 				Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
@@ -2399,8 +2399,13 @@ func marshalOrPanic(pb proto.Message) []byte {
 }
 
 // helpers to facilitate tests
+type stepFunc func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error)
+
 type chain struct {
 	id uint64
+
+	stepLock sync.RWMutex
+	step     stepFunc
 
 	support      *consensusmocks.FakeConsenterSupport
 	cutter       *mockblockcutter.Receiver
@@ -2524,6 +2529,18 @@ func (c *chain) init() {
 	c.Chain = ch
 }
 
+func (c *chain) setStepFunc(f stepFunc) {
+	c.stepLock.Lock()
+	c.step = f
+	c.stepLock.Unlock()
+}
+
+func (c *chain) getStepFunc() stepFunc {
+	c.stepLock.RLock()
+	defer c.stepLock.RUnlock()
+	return c.step
+}
+
 type network struct {
 	leader uint64
 	chains map[uint64]*chain
@@ -2552,7 +2569,7 @@ func (n *network) addConnection(id uint64) {
 func (n *network) addChain(c *chain) {
 	n.addConnection(c.id)
 
-	c.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+	c.step = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
 		n.connLock.RLock()
 		defer n.connLock.RUnlock()
 
@@ -2564,6 +2581,12 @@ func (n *network) addChain(c *chain) {
 		}
 
 		return nil, nil
+	}
+
+	c.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+		c.stepLock.RLock()
+		defer c.stepLock.RUnlock()
+		return c.step(dest, msg)
 	}
 
 	c.rpc.SendSubmitStub = func(dest uint64, msg *orderer.SubmitRequest) error {
