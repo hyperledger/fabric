@@ -1,0 +1,29 @@
+{
+  "ChannelID":"",
+  "MSPInfo":{
+    "MSPConfigPath":"",
+    "MSPID":"",
+    "MSPType":""
+  },
+  "Orderer":{
+    "Address":"127.0.0.1:7050",
+    "ConnectionTimeout":0,
+    "TLSEnabled":false,
+    "TLSRootCertFile":"",
+    "ServerNameOverride":""
+  },
+  "CommitterPeer":{
+    "Address":"127.0.0.1:7051",
+    "ConnectionTimeout":0,
+    "TLSEnabled":false,
+    "TLSRootCertFile":"",
+    "ServerNameOverride":""
+  },
+  "ProverPeer":{
+    "Address":"127.0.0.1:7051",
+    "ConnectionTimeout":0,
+    "TLSEnabled":false,
+    "TLSRootCertFile":"",
+    "ServerNameOverride":""
+  }
+}

@@ -22,9 +22,9 @@ type ConnectionConfig struct {
 }
 
 type MSPInfo struct {
-	MSPConfigPath string `yaml:"mspConfigPath"`
-	MSPID         string `yaml:"mspId"`
-	MSPType       string `yaml:"mspType"`
+	MSPConfigPath string
+	MSPID         string
+	MSPType       string
 }
 
 // ClientConfig will be updated after the CR for token client config is merged, where the config data
