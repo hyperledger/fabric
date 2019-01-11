@@ -1021,6 +1021,7 @@
     "google.golang.org/grpc/balancer",
     "google.golang.org/grpc/balancer/roundrobin",
     "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/connectivity",
     "google.golang.org/grpc/credentials",
     "google.golang.org/grpc/grpclog",
     "google.golang.org/grpc/keepalive",

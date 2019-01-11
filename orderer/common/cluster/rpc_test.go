@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc"
 )
 
 func TestRPCStep(t *testing.T) {
@@ -52,7 +53,8 @@ func TestRPCStep(t *testing.T) {
 			client := &mocks.ClusterClient{}
 			client.On("Step", mock.Anything, mock.Anything).Return(testcase.stepReturns...)
 			comm.On("Remote", "mychannel", uint64(1)).Return(&cluster.RemoteContext{
-				Client: client,
+				ProbeConn: func(_ *grpc.ClientConn) error { return nil },
+				Client:    client,
 			}, testcase.remoteErr)
 
 			rpc := &cluster.RPC{
