@@ -108,3 +108,28 @@ func TestInvalidLoggerName(t *testing.T) {
 		})
 	}
 }
+
+func TestCheck(t *testing.T) {
+	l := &flogging.Logging{}
+	observer := &mock.Observer{}
+	e := zapcore.Entry{}
+
+	// set observer
+	l.SetObserver(observer)
+	l.Check(e, nil)
+	assert.Equal(t, 1, observer.CheckCallCount())
+	e, ce := observer.CheckArgsForCall(0)
+	assert.Equal(t, e, zapcore.Entry{})
+	assert.Nil(t, ce)
+
+	l.WriteEntry(e, nil)
+	assert.Equal(t, 1, observer.WriteEntryCallCount())
+	e, f := observer.WriteEntryArgsForCall(0)
+	assert.Equal(t, e, zapcore.Entry{})
+	assert.Nil(t, f)
+
+	//	remove observer
+	l.SetObserver(nil)
+	l.Check(zapcore.Entry{}, nil)
+	assert.Equal(t, 1, observer.CheckCallCount())
+}

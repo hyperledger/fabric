@@ -144,6 +144,11 @@ The following metrics are currently exported for consumption by Prometheus.
 |                                                     |           |                                                            | chaincode          |
 |                                                     |           |                                                            | validation_code    |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| logging_entries_checked                             | counter   | Number of log entries checked against the active logging   | level              |
+|                                                     |           | level                                                      |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| logging_entries_written                             | counter   | Number of log entries that are written                     | level              |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 
 
 StatsD Metrics
@@ -257,6 +262,11 @@ associated with the metric.
 |                                                                                         |           | state db.                                                  |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | ledger.transaction_count.%{channel}.%{transaction_type}.%{chaincode}.%{validation_code} | counter   | Number of transactions processed.                          |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| logging.entries_checked.%{level}                                                        | counter   | Number of log entries checked against the active logging   |
+|                                                                                         |           | level                                                      |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| logging.entries_written.%{level}                                                        | counter   | Number of log entries that are written                     |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 
 
