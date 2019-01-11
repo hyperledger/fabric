@@ -89,7 +89,7 @@ func CacheConfiguration() (err error) {
 	}
 
 	localAddress, localAddressError = getLocalAddress()
-	peerEndpoint, _ = getPeerEndpoint()
+	peerEndpoint, peerEndpointError = getPeerEndpoint()
 
 	configurationCached = true
 
