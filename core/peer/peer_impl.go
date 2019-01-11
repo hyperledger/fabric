@@ -23,7 +23,7 @@ import (
 // on singletons in the package. This is a step towards moving from package
 // level data for the peer to instance level data.
 type Operations interface {
-	CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) error
+	CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error
 	GetChannelConfig(cid string) channelconfig.Resources
 	GetChannelsInfo() []*pb.ChannelInfo
 	GetCurrConfigBlock(cid string) *common.Block
@@ -35,7 +35,7 @@ type Operations interface {
 }
 
 type peerImpl struct {
-	createChainFromBlock func(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) error
+	createChainFromBlock func(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error
 	getChannelConfig     func(cid string) channelconfig.Resources
 	getChannelsInfo      func() []*pb.ChannelInfo
 	getCurrConfigBlock   func(cid string) *common.Block
@@ -62,8 +62,8 @@ var Default Operations = &peerImpl{
 
 var DefaultSupport Support = &supportImpl{operations: Default}
 
-func (p *peerImpl) CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider) error {
-	return p.createChainFromBlock(cb, ccp, sccp)
+func (p *peerImpl) CreateChainFromBlock(cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) error {
+	return p.createChainFromBlock(cb, ccp, sccp, deployedCCInfoProvider)
 }
 func (p *peerImpl) GetChannelConfig(cid string) channelconfig.Resources {
 	return p.getChannelConfig(cid)

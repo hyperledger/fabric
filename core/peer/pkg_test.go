@@ -22,6 +22,7 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/comm/testpb"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
@@ -168,7 +169,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
 		viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
 		viper.Set("peer.fileSystemPath", testDir)
-		err = peer.Default.CreateChainFromBlock(block, nil, nil)
+		err = peer.Default.CreateChainFromBlock(block, nil, nil, &mock.DeployedChaincodeInfoProvider{})
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}

@@ -26,6 +26,9 @@ type Support interface {
 	// GetIdentityDeserializer returns an IdentityDeserializer
 	// instance for the specified chain
 	GetIdentityDeserializer(chainID string) msp.IdentityDeserializer
+
+	// GetCollectionInfoProvider returns CollectionInfoProvider
+	GetCollectionInfoProvider() ledger.DeployedChaincodeInfoProvider
 }
 
 // StateGetter retrieves data from the state
@@ -48,25 +51,32 @@ type simpleCollectionStore struct {
 // by a ledger supplied by the specified ledgerGetter with
 // an internal name formed as specified by the supplied
 // collectionNamer function
-func NewSimpleCollectionStore(s Support) CollectionStore {
+func NewSimpleCollectionStore(s Support) *simpleCollectionStore {
 	return &simpleCollectionStore{s}
 }
 
 func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*common.CollectionConfigPackage, error) {
-	if qe != nil {
-		return RetrieveCollectionConfigPackageFromState(cc, qe)
+	var err error
+	if qe == nil {
+		qe, err = c.s.GetQueryExecutorForLedger(cc.Channel)
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
+		}
+		defer qe.Done()
 	}
-
-	qe, err := c.s.GetQueryExecutorForLedger(cc.Channel)
+	ccInfo, err := c.s.GetCollectionInfoProvider().ChaincodeInfo(cc.Namespace, qe)
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
+		return nil, err
 	}
-	defer qe.Done()
-	return RetrieveCollectionConfigPackageFromState(cc, qe)
+	if ccInfo == nil {
+		return nil, errors.Errorf("Chaincode [%s] does not exist", cc.Namespace)
+	}
+	return ccInfo.CollectionConfigPkg, nil
 }
 
 // RetrieveCollectionConfigPackageFromState retrieves the collection config package from the given key from the given state
 func RetrieveCollectionConfigPackageFromState(cc common.CollectionCriteria, state State) (*common.CollectionConfigPackage, error) {
+
 	cb, err := state.GetState("lscc", BuildCollectionKVSKey(cc.Namespace))
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error while retrieving collection for collection criteria %#v", cc))
@@ -93,24 +103,22 @@ func ParseCollectionConfig(colBytes []byte) (*common.CollectionConfigPackage, er
 }
 
 func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*common.StaticCollectionConfig, error) {
-	collections, err := c.retrieveCollectionConfigPackage(cc, qe)
+	var err error
+	if qe == nil {
+		qe, err = c.s.GetQueryExecutorForLedger(cc.Channel)
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
+		}
+		defer qe.Done()
+	}
+	collConfig, err := c.s.GetCollectionInfoProvider().CollectionInfo(cc.Namespace, cc.Collection, qe)
 	if err != nil {
 		return nil, err
 	}
-	if collections == nil {
-		return nil, nil
+	if collConfig == nil {
+		return nil, NoSuchCollectionError(cc)
 	}
-	for _, cconf := range collections.Config {
-		switch cconf := cconf.Payload.(type) {
-		case *common.CollectionConfig_StaticCollectionConfig:
-			if cconf.StaticCollectionConfig.Name == cc.Collection {
-				return cconf.StaticCollectionConfig, nil
-			}
-		default:
-			return nil, errors.New("unexpected collection type")
-		}
-	}
-	return nil, NoSuchCollectionError(cc)
+	return collConfig, nil
 }
 
 func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*SimpleCollection, error) {

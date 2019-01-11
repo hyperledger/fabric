@@ -56,6 +56,7 @@ import (
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/operations"
@@ -260,7 +261,7 @@ func serve(args []string) error {
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// Initialize chaincode service
-	chaincodeSupport, ccp, sccp, packageProvider := startChaincodeServer(peerHost, aclProvider, pr, opsSystem)
+	chaincodeSupport, ccp, sccp, packageProvider := startChaincodeServer(peerHost, aclProvider, pr, opsSystem, deployedCCInfoProvider)
 
 	logger.Debugf("Running peer")
 
@@ -629,6 +630,7 @@ func registerChaincodeSupport(
 	pr *platforms.Registry,
 	lifecycleSCC *lifecycle.SCC,
 	ops *operations.System,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 ) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
@@ -675,6 +677,7 @@ func registerChaincodeSupport(
 		pr,
 		peer.DefaultSupport,
 		ops.Provider,
+		deployedCCInfoProvider,
 	)
 	ipRegistry.ChaincodeSupport = chaincodeSupport
 	ccp := chaincode.NewProvider(chaincodeSupport)
@@ -684,7 +687,7 @@ func registerChaincodeSupport(
 		ccSrv = authenticator.Wrap(ccSrv)
 	}
 
-	csccInst := cscc.New(ccp, sccp, aclProvider)
+	csccInst := cscc.New(ccp, sccp, aclProvider, deployedCCInfoProvider)
 	qsccInst := qscc.New(aclProvider)
 
 	//Now that chaincode is initialized, register all system chaincodes.
@@ -706,6 +709,7 @@ func startChaincodeServer(
 	aclProvider aclmgmt.ACLProvider,
 	pr *platforms.Registry,
 	ops *operations.System,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 ) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *persistence.PackageProvider) {
 	// Setup chaincode path
 	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
@@ -750,6 +754,7 @@ func startChaincodeServer(
 		pr,
 		lifecycleSCC,
 		ops,
+		deployedCCInfoProvider,
 	)
 	go ccSrv.Start()
 	return chaincodeSupport, ccp, sccp, packageProvider
