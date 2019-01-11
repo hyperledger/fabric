@@ -7,12 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -22,6 +25,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -33,7 +37,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 		chaincode nwo.Chaincode
 		peer      *nwo.Peer
 
-		peerProc, ordererProc, o1Proc ifrit.Process
+		peerProc, ordererProc, o1Proc, o2Proc, o3Proc ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -54,10 +58,13 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 	})
 
 	AfterEach(func() {
-		if o1Proc != nil {
-			o1Proc.Signal(syscall.SIGTERM)
-			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+		for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
+			if oProc != nil {
+				oProc.Signal(syscall.SIGTERM)
+				Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
 		}
+
 		if ordererProc != nil {
 			ordererProc.Signal(syscall.SIGTERM)
 			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
@@ -216,6 +223,48 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(b1.Header.Bytes()).To(Equal(b2.Header.Bytes()))
 		})
 	})
+
+	When("The leader dies", func() {
+		It("Elects a new leader", func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, 33000, components)
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			By("Running the orderer nodes")
+			o1Runner := network.OrdererRunner(o1)
+			o2Runner := network.OrdererRunner(o2)
+			o3Runner := network.OrdererRunner(o3)
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o2Proc.Ready()).Should(BeClosed())
+			Eventually(o3Proc.Ready()).Should(BeClosed())
+
+			By("Waiting for them to elect a leader")
+			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
+			remainingAliveRunners := []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner}
+			leader := findLeader(remainingAliveRunners)
+
+			leaderIndex := leader - 1
+			By(fmt.Sprintf("Killing the leader (%d)", leader))
+			ordererProcesses[leaderIndex].Signal(syscall.SIGTERM)
+			By("Waiting for it to die")
+			Eventually(ordererProcesses[leaderIndex].Wait(), network.EventuallyTimeout).Should(Receive())
+
+			// Remove the leader from the orderer runners
+			remainingAliveRunners = append(remainingAliveRunners[:leaderIndex], remainingAliveRunners[leaderIndex+1:]...)
+
+			By("Waiting for a new leader to be elected")
+			leader = findLeader(remainingAliveRunners)
+			By(fmt.Sprintf("Orderer %d took over as a leader", leader))
+		})
+	})
 })
 
 func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
@@ -244,4 +293,43 @@ func RunQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel stri
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say(strconv.Itoa(expect)))
+}
+
+func findLeader(ordererRunners []*ginkgomon.Runner) int {
+	var wg sync.WaitGroup
+	wg.Add(len(ordererRunners))
+
+	findLeader := func(runner *ginkgomon.Runner) int {
+		defer GinkgoRecover()
+		Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+
+		idBuff := make([]byte, 1)
+		runner.Err().Read(idBuff)
+
+		newLeader, err := strconv.ParseInt(string(idBuff), 10, 32)
+		Expect(err).To(BeNil())
+		return int(newLeader)
+	}
+
+	leaders := make(chan int, len(ordererRunners))
+
+	for _, runner := range ordererRunners {
+		go func(runner *ginkgomon.Runner) {
+			defer wg.Done()
+			leader := findLeader(runner)
+			leaders <- leader
+		}(runner)
+	}
+
+	wg.Wait()
+
+	close(leaders)
+	firstLeader := <-leaders
+	for leader := range leaders {
+		if firstLeader != leader {
+			Fail(fmt.Sprintf("First leader is %d but saw %d also as a leader", firstLeader, leader))
+		}
+	}
+
+	return firstLeader
 }
