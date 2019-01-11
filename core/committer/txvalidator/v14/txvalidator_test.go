@@ -48,11 +48,12 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	}
 
 	mockVsccValidator := &validator.MockVsccValidator{}
-	vcs := struct {
-		*mocktxvalidator.Support
-		semaphore.Semaphore
-	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}}, semaphore.New(10)}
-	tValidator := &TxValidator{"", vcs, mockVsccValidator}
+	tValidator := &TxValidator{
+		ChainID:          "",
+		Semaphore:        semaphore.New(10),
+		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
+		Vscc:             mockVsccValidator,
+	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	assert.Equal(t, &common.BlockchainInfo{
@@ -124,11 +125,12 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	mockVsccValidator := &validator.MockVsccValidator{}
 	acv := &config.MockApplicationCapabilities{}
-	vcs := struct {
-		*mocktxvalidator.Support
-		semaphore.Semaphore
-	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv}, semaphore.New(10)}
-	tValidator := &TxValidator{"", vcs, mockVsccValidator}
+	tValidator := &TxValidator{
+		ChainID:          "",
+		Semaphore:        semaphore.New(10),
+		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv},
+		Vscc:             mockVsccValidator,
+	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	assert.Equal(t, &common.BlockchainInfo{
@@ -212,11 +214,12 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	defer ledger.Close()
 
-	vcs := struct {
-		*mocktxvalidator.Support
-		semaphore.Semaphore
-	}{&mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}}, semaphore.New(10)}
-	tValidator := &TxValidator{"", vcs, &validator.MockVsccValidator{}}
+	tValidator := &TxValidator{
+		ChainID:          "",
+		Semaphore:        semaphore.New(10),
+		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
+		Vscc:             &validator.MockVsccValidator{},
+	}
 
 	mockSigner, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	assert.NoError(t, err)

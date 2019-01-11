@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -189,7 +190,7 @@ var chains = struct {
 
 var chainInitializer func(string)
 
-var pluginMapper txvalidator.PluginMapper
+var pluginMapper plugin.Mapper
 
 var mockMSPIDGetter func(string) []string
 
@@ -205,7 +206,7 @@ var validationWorkersSemaphore semaphore.Semaphore
 // function should be called at the start up when the ledger and gossip
 // ready
 func Initialize(init func(string), ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider,
-	pm txvalidator.PluginMapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
@@ -292,7 +293,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider,
-	sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper,
+	sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 ) error {
 	chanConf, err := retrievePersistedChannelConfig(ledger)
@@ -383,11 +384,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		peerSingletonCallback,
 	)
 
-	vcs := struct {
-		*chainSupport
-		semaphore.Semaphore
-	}{cs, validationWorkersSemaphore}
-	validator := txvalidator.NewTxValidator(cid, vcs, sccp, pm)
+	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, sccp, pm)
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {

@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -30,14 +31,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Support provides all of the needed to evaluate the VSCC
-type Support interface {
+// Semaphore provides to the validator means for synchronisation
+type Semaphore interface {
 	// Acquire implements semaphore-like acquire semantics
 	Acquire(ctx context.Context) error
 
 	// Release implements semaphore-like release semantics
 	Release()
+}
 
+// ChannelResources provides access to channel artefacts or
+// functions to interact with them
+type ChannelResources interface {
 	// Ledger returns the ledger associated with this validator
 	Ledger() ledger.PeerLedger
 
@@ -55,13 +60,6 @@ type Support interface {
 	Capabilities() channelconfig.ApplicationCapabilities
 }
 
-//Validator interface which defines API to validate block transactions
-// and return the bit array mask indicating invalid transactions which
-// didn't pass validation.
-type Validator interface {
-	Validate(block *common.Block) error
-}
-
 // private interface to decouple tx validator
 // and vscc execution, in order to increase
 // testability of TxValidator
@@ -73,9 +71,10 @@ type vsccValidator interface {
 // reference to the ledger to enable tx simulation
 // and execution of vscc
 type TxValidator struct {
-	ChainID string
-	Support Support
-	Vscc    vsccValidator
+	ChainID          string
+	Semaphore        Semaphore
+	ChannelResources ChannelResources
+	Vscc             vsccValidator
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -96,13 +95,14 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(chainID string, support Support, sccp sysccprovider.SystemChaincodeProvider, pm PluginMapper) *TxValidator {
+func NewTxValidator(chainID string, sem Semaphore, cr ChannelResources, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := NewPluginValidator(pm, support.Ledger(), &dynamicDeserializer{support: support}, &dynamicCapabilities{support: support})
+	pluginValidator := NewPluginValidator(pm, cr.Ledger(), &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
 	return &TxValidator{
-		ChainID: chainID,
-		Support: support,
-		Vscc:    newVSCCValidator(chainID, support, sccp, pluginValidator)}
+		ChainID:          chainID,
+		Semaphore:        sem,
+		ChannelResources: cr,
+		Vscc:             newVSCCValidator(chainID, cr, sccp, pluginValidator)}
 }
 
 func (v *TxValidator) chainExists(chain string) bool {
@@ -150,10 +150,10 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	go func() {
 		for tIdx, d := range block.Data.Data {
 			// ensure that we don't have too many concurrent validation workers
-			v.Support.Acquire(context.Background())
+			v.Semaphore.Acquire(context.Background())
 
 			go func(index int, data []byte) {
-				defer v.Support.Release()
+				defer v.Semaphore.Release()
 
 				v.validateTx(&blockValidationRequest{
 					d:     data,
@@ -208,7 +208,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 
 	// if we operate with this capability, we mark invalid any transaction that has a txid
 	// which is equal to that of a previous tx in this block
-	if v.Support.Capabilities().ForbidDuplicateTXIdInBlock() {
+	if v.ChannelResources.Capabilities().ForbidDuplicateTXIdInBlock() {
 		markTXIdDuplicates(txidArray, txsfltr)
 	}
 
@@ -298,7 +298,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var txsChaincodeName *sysccprovider.ChaincodeInstance
 		var txsUpgradedChaincode *sysccprovider.ChaincodeInstance
 
-		if payload, txResult = validation.ValidateTransaction(env, v.Support.Capabilities()); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env, v.ChannelResources.Capabilities()); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
@@ -334,7 +334,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			txID = chdr.TxId
 
 			// Check duplicate transactions
-			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.Support.Ledger())
+			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.ChannelResources.Ledger())
 			if erroneousResultEntry != nil {
 				results <- erroneousResultEntry
 				return
@@ -384,7 +384,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		} else if common.HeaderType(chdr.Type) == common.HeaderType_TOKEN_TRANSACTION {
 
 			txID = chdr.TxId
-			if !v.Support.Capabilities().FabToken() {
+			if !v.ChannelResources.Capabilities().FabToken() {
 				logger.Debugf("Unsupported transaction type [%s] in block number [%d] transaction index [%d]: FabToken capability is not enabled",
 					common.HeaderType(chdr.Type), block.Header.Number, tIdx)
 				results <- &blockValidationResult{
@@ -396,7 +396,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 			// Check if there is a duplicate of such transaction in the ledger and
 			// obtain the corresponding result that acknowledges the error type
-			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.Support.Ledger())
+			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.ChannelResources.Ledger())
 			if erroneousResultEntry != nil {
 				results <- erroneousResultEntry
 				return
@@ -413,7 +413,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 
-			if err := v.Support.Apply(configEnvelope); err != nil {
+			if err := v.ChannelResources.Apply(configEnvelope); err != nil {
 				err = errors.WithMessage(err, "error validating config which passed initial validity checks")
 				logger.Criticalf("%+v", err)
 				results <- &blockValidationResult{
@@ -621,62 +621,62 @@ func (v *TxValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*sy
 }
 
 type dynamicDeserializer struct {
-	support Support
+	cr ChannelResources
 }
 
 func (ds *dynamicDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	return ds.support.MSPManager().DeserializeIdentity(serializedIdentity)
+	return ds.cr.MSPManager().DeserializeIdentity(serializedIdentity)
 }
 
 func (ds *dynamicDeserializer) IsWellFormed(identity *mspprotos.SerializedIdentity) error {
-	return ds.support.MSPManager().IsWellFormed(identity)
+	return ds.cr.MSPManager().IsWellFormed(identity)
 }
 
 type dynamicCapabilities struct {
-	support Support
+	cr ChannelResources
 }
 
 func (ds *dynamicCapabilities) ACLs() bool {
-	return ds.support.Capabilities().ACLs()
+	return ds.cr.Capabilities().ACLs()
 }
 
 func (ds *dynamicCapabilities) CollectionUpgrade() bool {
-	return ds.support.Capabilities().CollectionUpgrade()
+	return ds.cr.Capabilities().CollectionUpgrade()
 }
 
 // FabToken returns true if fabric token function is supported.
 func (ds *dynamicCapabilities) FabToken() bool {
-	return ds.support.Capabilities().FabToken()
+	return ds.cr.Capabilities().FabToken()
 }
 
 func (ds *dynamicCapabilities) ForbidDuplicateTXIdInBlock() bool {
-	return ds.support.Capabilities().ForbidDuplicateTXIdInBlock()
+	return ds.cr.Capabilities().ForbidDuplicateTXIdInBlock()
 }
 
 func (ds *dynamicCapabilities) KeyLevelEndorsement() bool {
-	return ds.support.Capabilities().KeyLevelEndorsement()
+	return ds.cr.Capabilities().KeyLevelEndorsement()
 }
 
 func (ds *dynamicCapabilities) MetadataLifecycle() bool {
-	return ds.support.Capabilities().MetadataLifecycle()
+	return ds.cr.Capabilities().MetadataLifecycle()
 }
 
 func (ds *dynamicCapabilities) PrivateChannelData() bool {
-	return ds.support.Capabilities().PrivateChannelData()
+	return ds.cr.Capabilities().PrivateChannelData()
 }
 
 func (ds *dynamicCapabilities) Supported() error {
-	return ds.support.Capabilities().Supported()
+	return ds.cr.Capabilities().Supported()
 }
 
 func (ds *dynamicCapabilities) V1_1Validation() bool {
-	return ds.support.Capabilities().V1_1Validation()
+	return ds.cr.Capabilities().V1_1Validation()
 }
 
 func (ds *dynamicCapabilities) V1_2Validation() bool {
-	return ds.support.Capabilities().V1_2Validation()
+	return ds.cr.Capabilities().V1_2Validation()
 }
 
 func (ds *dynamicCapabilities) V1_3Validation() bool {
-	return ds.support.Capabilities().V1_3Validation()
+	return ds.cr.Capabilities().V1_3Validation()
 }

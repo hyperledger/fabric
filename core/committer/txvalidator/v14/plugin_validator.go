@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
+	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
@@ -22,24 +23,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// MapBasedPluginMapper maps plugin names to their corresponding factories
-type MapBasedPluginMapper map[string]validation.PluginFactory
-
-// PluginFactoryByName returns a plugin factory for the given plugin name, or nil if not found
-func (m MapBasedPluginMapper) PluginFactoryByName(name PluginName) validation.PluginFactory {
-	return m[string(name)]
-}
-
-//go:generate mockery -dir . -name PluginMapper -case underscore -output mocks/
-//go:generate mockery -dir ../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
-//go:generate mockery -dir ../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
-
-// PluginMapper maps plugin names to their corresponding factory instance.
-// Returns nil if the name isn't associated to any plugin.
-type PluginMapper interface {
-	PluginFactoryByName(name PluginName) validation.PluginFactory
-}
-
+//go:generate mockery -dir ../plugin/ -name Mapper -case underscore -output mocks/
+//go:generate mockery -dir ../../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
+//go:generate mockery -dir ../../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
 //go:generate mockery -dir . -name QueryExecutorCreator -case underscore -output mocks/
 
 // QueryExecutorCreator creates new query executors
@@ -68,22 +54,22 @@ func (c Context) String() string {
 // PluginValidator values transactions with validation plugins
 type PluginValidator struct {
 	sync.Mutex
-	pluginChannelMapping map[PluginName]*pluginsByChannel
-	PluginMapper
+	pluginChannelMapping map[vp.Name]*pluginsByChannel
+	vp.Mapper
 	QueryExecutorCreator
 	msp.IdentityDeserializer
 	capabilities Capabilities
 }
 
-//go:generate mockery -dir ../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
-//go:generate mockery -dir ../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
+//go:generate mockery -dir ../../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
+//go:generate mockery -dir ../../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
 
 // NewPluginValidator creates a new PluginValidator
-func NewPluginValidator(pm PluginMapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities) *PluginValidator {
+func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities) *PluginValidator {
 	return &PluginValidator{
 		capabilities:         capabilities,
-		pluginChannelMapping: make(map[PluginName]*pluginsByChannel),
-		PluginMapper:         pm,
+		pluginChannelMapping: make(map[vp.Name]*pluginsByChannel),
+		Mapper:               pm,
 		QueryExecutorCreator: qec,
 		IdentityDeserializer: deserializer,
 	}
@@ -96,7 +82,7 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 			Reason: fmt.Sprintf("plugin with name %s couldn't be used: %v", ctx.VSCCName, err),
 		}
 	}
-	err = plugin.Validate(ctx.Block, ctx.Namespace, ctx.Seq, 0, SerializedPolicy(ctx.Policy))
+	err = plugin.Validate(ctx.Block, ctx.Namespace, ctx.Seq, 0, vp.SerializedPolicy(ctx.Policy))
 	validityStatus := "valid"
 	if err != nil {
 		validityStatus = fmt.Sprintf("invalid: %v", err)
@@ -106,33 +92,30 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 }
 
 func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, error) {
-	pluginFactory := pv.PluginFactoryByName(PluginName(ctx.VSCCName))
+	pluginFactory := pv.FactoryByName(vp.Name(ctx.VSCCName))
 	if pluginFactory == nil {
 		return nil, errors.Errorf("plugin with name %s wasn't found", ctx.VSCCName)
 	}
 
-	pluginsByChannel := pv.getOrCreatePluginChannelMapping(PluginName(ctx.VSCCName), pluginFactory)
+	pluginsByChannel := pv.getOrCreatePluginChannelMapping(vp.Name(ctx.VSCCName), pluginFactory)
 	return pluginsByChannel.createPluginIfAbsent(ctx.Channel)
 
 }
 
-func (pv *PluginValidator) getOrCreatePluginChannelMapping(plugin PluginName, pf validation.PluginFactory) *pluginsByChannel {
+func (pv *PluginValidator) getOrCreatePluginChannelMapping(plugin vp.Name, pf validation.PluginFactory) *pluginsByChannel {
 	pv.Lock()
 	defer pv.Unlock()
-	endorserChannelMapping, exists := pv.pluginChannelMapping[PluginName(plugin)]
+	endorserChannelMapping, exists := pv.pluginChannelMapping[vp.Name(plugin)]
 	if !exists {
 		endorserChannelMapping = &pluginsByChannel{
 			pluginFactory:    pf,
 			channels2Plugins: make(map[string]validation.Plugin),
 			pv:               pv,
 		}
-		pv.pluginChannelMapping[PluginName(plugin)] = endorserChannelMapping
+		pv.pluginChannelMapping[vp.Name(plugin)] = endorserChannelMapping
 	}
 	return endorserChannelMapping
 }
-
-// PluginName defines the name of the plugin as it appears in the configuration
-type PluginName string
 
 type pluginsByChannel struct {
 	sync.RWMutex
@@ -239,12 +222,4 @@ type ResultsIteratorImpl struct {
 
 func (it *ResultsIteratorImpl) Next() (QueryResult, error) {
 	return it.ResultsIterator.Next()
-}
-
-// SerializedPolicy defines a marshaled policy
-type SerializedPolicy []byte
-
-// Bytes returns te bytes of the SerializedPolicy
-func (sp SerializedPolicy) Bytes() []byte {
-	return sp
 }

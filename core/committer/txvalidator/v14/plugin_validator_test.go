@@ -14,9 +14,10 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/mocks/ledger"
-	"github.com/hyperledger/fabric/core/committer/txvalidator"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/testdata"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v14/mocks"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v14/testdata"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	"github.com/hyperledger/fabric/msp"
@@ -28,7 +29,7 @@ import (
 )
 
 func TestValidateWithPlugin(t *testing.T) {
-	pm := make(txvalidator.MapBasedPluginMapper)
+	pm := make(plugin.MapBasedMapper)
 	qec := &mocks.QueryExecutorCreator{}
 	deserializer := &mocks.IdentityDeserializer{}
 	capabilites := &mocks.Capabilities{}
@@ -69,7 +70,7 @@ func TestValidateWithPlugin(t *testing.T) {
 }
 
 func TestSamplePlugin(t *testing.T) {
-	pm := make(txvalidator.MapBasedPluginMapper)
+	pm := make(plugin.MapBasedMapper)
 	qec := &mocks.QueryExecutorCreator{}
 
 	qec.On("NewQueryExecutor").Return(&ledger.MockQueryExecutor{
