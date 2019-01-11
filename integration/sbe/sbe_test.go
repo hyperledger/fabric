@@ -10,12 +10,14 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/protos/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -112,6 +114,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 
+	syncLedgerHeights(n, peerOrg1, peerOrg2)
+
 	By("org2 checks that setting the value was successful by reading it")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
@@ -160,6 +164,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 
+	syncLedgerHeights(n, peerOrg1, peerOrg2)
+
 	By("org2 checks that setting the value was successful by reading it")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
@@ -194,6 +200,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("val1"))
 
+	syncLedgerHeights(n, peerOrg2, peerOrg1)
+
 	By("org1 adds org2 to the ep of the key")
 	sess, err = n.PeerUserSession(peerOrg1, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
@@ -221,6 +229,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(sess).To(gbytes.Say(string(orgsList)))
 
+	syncLedgerHeights(n, peerOrg1, peerOrg2)
+
 	By("org2 sets the value of the key")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
@@ -244,6 +254,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("val1"))
+
+	syncLedgerHeights(n, peerOrg2, peerOrg1)
 
 	By("org1 and org2 set the value of the key")
 	sess, err = n.PeerUserSession(peerOrg1, "User1", commands.ChaincodeInvoke{
@@ -270,6 +282,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("val4"))
 
+	syncLedgerHeights(n, peerOrg1, peerOrg2)
+
 	By("org2 deletes org1 from the ep of the key")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
@@ -293,6 +307,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, time.Minute).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say(string(orgsList)))
+
+	syncLedgerHeights(n, peerOrg2, peerOrg1)
 
 	By("org1 and org2 delete org1 from the ep of the key")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeInvoke{
@@ -343,6 +359,8 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("cc2cc_org2"))
 
+	syncLedgerHeights(n, peerOrg2, peerOrg1)
+
 	By("org1 uses cc2cc to set the value of the key")
 	sess, err = n.PeerUserSession(peerOrg1, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
@@ -366,4 +384,27 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("cc2cc_org2"))
+}
+
+func getLedgerHeight(n *nwo.Network, peer *nwo.Peer, channelName string) int {
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChannelInfo{
+		ChannelID: channelName,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
+	var channelInfo = common.BlockchainInfo{}
+	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	return int(channelInfo.Height)
+}
+
+func syncLedgerHeights(n *nwo.Network, peer1 *nwo.Peer, peer2 *nwo.Peer) {
+	// get height from peer1
+	height := getLedgerHeight(n, peer1, "testchannel")
+	// wait for same height on peer2
+	Eventually(func() int {
+		return getLedgerHeight(n, peer2, "testchannel")
+	}, n.EventuallyTimeout).Should(Equal(height))
+
 }
