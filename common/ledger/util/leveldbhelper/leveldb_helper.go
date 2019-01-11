@@ -38,7 +38,7 @@ type DB struct {
 	conf    *Conf
 	db      *leveldb.DB
 	dbState dbState
-	mux     sync.Mutex
+	mux     sync.RWMutex
 
 	readOpts        *opt.ReadOptions
 	writeOptsNoSync *opt.WriteOptions
@@ -96,6 +96,8 @@ func (dbInst *DB) Close() {
 
 // Get returns the value for the given key
 func (dbInst *DB) Get(key []byte) ([]byte, error) {
+	dbInst.mux.RLock()
+	defer dbInst.mux.RUnlock()
 	value, err := dbInst.db.Get(key, dbInst.readOpts)
 	if err == leveldb.ErrNotFound {
 		value = nil
@@ -110,6 +112,8 @@ func (dbInst *DB) Get(key []byte) ([]byte, error) {
 
 // Put saves the key/value
 func (dbInst *DB) Put(key []byte, value []byte, sync bool) error {
+	dbInst.mux.RLock()
+	defer dbInst.mux.RUnlock()
 	wo := dbInst.writeOptsNoSync
 	if sync {
 		wo = dbInst.writeOptsSync
@@ -124,6 +128,8 @@ func (dbInst *DB) Put(key []byte, value []byte, sync bool) error {
 
 // Delete deletes the given key
 func (dbInst *DB) Delete(key []byte, sync bool) error {
+	dbInst.mux.RLock()
+	defer dbInst.mux.RUnlock()
 	wo := dbInst.writeOptsNoSync
 	if sync {
 		wo = dbInst.writeOptsSync
@@ -140,11 +146,15 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
 func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) iterator.Iterator {
+	dbInst.mux.RLock()
+	defer dbInst.mux.RUnlock()
 	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
 }
 
 // WriteBatch writes a batch
 func (dbInst *DB) WriteBatch(batch *leveldb.Batch, sync bool) error {
+	dbInst.mux.RLock()
+	defer dbInst.mux.RUnlock()
 	wo := dbInst.writeOptsNoSync
 	if sync {
 		wo = dbInst.writeOptsSync
