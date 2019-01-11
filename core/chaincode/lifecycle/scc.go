@@ -21,6 +21,9 @@ import (
 )
 
 const (
+	// LifecycleNamespace is the namespace in the statedb where lifecycle information is stored
+	LifecycleNamespace = "+lifecycle"
+
 	//InstalledChaincodeFuncName is the chaincode function name used to install a chaincode
 	InstallChaincodeFuncName = "InstallChaincode"
 
@@ -100,7 +103,7 @@ type SCC struct {
 
 // Name returns "+lifecycle"
 func (scc *SCC) Name() string {
-	return "+lifecycle"
+	return LifecycleNamespace
 }
 
 // Path returns "github.com/hyperledger/fabric/core/chaincode/lifecycle"

@@ -2377,6 +2377,23 @@ var _ = Describe("Handler", func() {
 				Expect(name).To(Equal("target-chaincode-name"))
 				Expect(version).To(Equal("target-chaincode-version"))
 				Expect(cd).To(Equal(targetDefinition))
+
+			})
+			Context("when the chaincode definition is not ChaincodeData", func() {
+				BeforeEach(func() {
+					type wrapper struct {
+						*ccprovider.ChaincodeData
+					}
+
+					fakeDefinitionGetter.ChaincodeDefinitionReturns(wrapper{ChaincodeData: targetDefinition}, nil)
+				})
+
+				It("does not check the instantiation policy", func() {
+					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeInstantiationPolicyChecker.CheckInstantiationPolicyCallCount()).To(Equal(0))
+				})
 			})
 
 			Context("when getting the chaincode definition fails", func() {

@@ -490,11 +490,10 @@ func (*ChaincodeData) ProtoMessage() {}
 
 // ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
 type ChaincodeContainerInfo struct {
-	Name        string
-	Version     string
-	Path        string
-	Type        string
-	CodePackage []byte
+	Name    string
+	Version string
+	Path    string
+	Type    string
 
 	// ContainerType is not a great name, but 'DOCKER' and 'SYSTEM' are the valid types
 	ContainerType string

@@ -1214,9 +1214,11 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 
 		version = cd.CCVersion()
 
-		err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
-		if err != nil {
-			return nil, errors.WithStack(err)
+		if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
+			err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, version, cData)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
 		}
 	}
 
