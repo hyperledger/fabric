@@ -78,7 +78,7 @@ func UnaryServerInterceptor(logger *zap.Logger, opts ...Option) grpc.UnaryServer
 		logger := logger
 		startTime := time.Now()
 
-		fields := getFields(ctx, startTime, info.FullMethod)
+		fields := getFields(ctx, info.FullMethod)
 		logger = logger.With(fields...)
 		ctx = WithFields(ctx, fields)
 
@@ -114,7 +114,7 @@ func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServ
 		ctx := stream.Context()
 		startTime := time.Now()
 
-		fields := getFields(ctx, startTime, info.FullMethod)
+		fields := getFields(ctx, info.FullMethod)
 		logger = logger.With(fields...)
 		ctx = WithFields(ctx, fields)
 
@@ -137,8 +137,8 @@ func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServ
 	}
 }
 
-func getFields(ctx context.Context, startTime time.Time, method string) []zapcore.Field {
-	fields := []zap.Field{zap.Time("grpc.start_time", startTime)}
+func getFields(ctx context.Context, method string) []zapcore.Field {
+	var fields []zap.Field
 	if parts := strings.Split(method, "/"); len(parts) == 3 {
 		fields = append(fields, zap.String("grpc.service", parts[1]), zap.String("grpc.method", parts[2]))
 	}
