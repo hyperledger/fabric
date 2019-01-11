@@ -4,19 +4,28 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package semaphore provides an implementation of a counting semaphore.
 package semaphore
 
 import "context"
 
+// Semaaphore is a buffered channel based implementation of a counting
+// semaphore.
 type Semaphore chan struct{}
 
-func New(count int) Semaphore {
-	if count <= 0 {
-		panic("count must be greater than 0")
+// New creates a Semaphore with the specified number of permits.
+func New(permits int) Semaphore {
+	if permits <= 0 {
+		panic("permits must be greater than 0")
 	}
-	return make(chan struct{}, count)
+	return make(chan struct{}, permits)
 }
 
+// Acquire acquires a permit. This call will block until a permit is available
+// or the provided context is completed.
+//
+// If the provided context is completed, the method will return the
+// cancellation error.
 func (s Semaphore) Acquire(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
@@ -26,6 +35,7 @@ func (s Semaphore) Acquire(ctx context.Context) error {
 	}
 }
 
+// Release releases a permit.
 func (s Semaphore) Release() {
 	select {
 	case <-s:
