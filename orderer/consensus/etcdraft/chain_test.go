@@ -1830,6 +1830,75 @@ var _ = Describe("Chain", func() {
 					})
 			})
 
+			When("MaxInflightMsgs is reached", func() {
+				BeforeEach(func() {
+					network.exec(func(c *chain) { c.opts.MaxInflightMsgs = 1 })
+				})
+
+				It("waits for in flight blocks to be committed", func() {
+					c1.cutter.CutNext = true
+					// disconnect c1 to disrupt consensus
+					network.disconnect(1)
+
+					Expect(c1.Order(env, 0)).To(Succeed())
+
+					doneProp := make(chan struct{})
+					go func() {
+						Expect(c1.Order(env, 0)).To(Succeed())
+						close(doneProp)
+					}()
+					// expect second `Order` to block
+					Consistently(doneProp).ShouldNot(BeClosed())
+					network.exec(func(c *chain) {
+						Consistently(c.support.WriteBlockCallCount).Should(BeZero())
+					})
+
+					network.connect(1)
+					c1.clock.Increment(interval)
+
+					Eventually(doneProp).Should(BeClosed())
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+					})
+				})
+
+				It("resets block in flight when steps down from leader", func() {
+					c1.cutter.CutNext = true
+					c2.cutter.CutNext = true
+					// disconnect c1 to disrupt consensus
+					network.disconnect(1)
+
+					Expect(c1.Order(env, 0)).To(Succeed())
+
+					doneProp := make(chan struct{})
+					go func() {
+						defer GinkgoRecover()
+
+						Expect(c1.Order(env, 0)).To(Succeed())
+						close(doneProp)
+					}()
+					// expect second `Order` to block
+					Consistently(doneProp).ShouldNot(BeClosed())
+					network.exec(func(c *chain) {
+						Consistently(c.support.WriteBlockCallCount).Should(BeZero())
+					})
+
+					network.elect(2)
+					Expect(c3.Order(env, 0)).To(Succeed())
+					Eventually(c1.support.WriteBlockCallCount).Should(Equal(0))
+					Eventually(c2.support.WriteBlockCallCount).Should(Equal(1))
+					Eventually(c3.support.WriteBlockCallCount).Should(Equal(1))
+
+					network.connect(1)
+					c2.clock.Increment(interval)
+
+					Eventually(doneProp).Should(BeClosed())
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount).Should(Equal(2))
+					})
+				})
+			})
+
 			When("follower is disconnected", func() {
 				It("should return error when receiving an env", func() {
 					network.disconnect(2)
