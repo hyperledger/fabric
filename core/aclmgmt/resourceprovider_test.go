@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -54,6 +55,8 @@ func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedD
 	//this could be non nil or some error
 	return err
 }
+
+//go:generate counterfeiter -o mocks/defaultaclprovider.go --fake-name DefaultACLProvider . defaultACLProvider
 
 func TestPolicyBase(t *testing.T) {
 	peval := &mockPolicyEvaluatorImpl{pmap: map[string]string{"res": "pol"}, peval: map[string]error{"pol": nil}}
@@ -94,6 +97,16 @@ func TestPolicyBad(t *testing.T) {
 	sProp.ProposalBytes = utils.MarshalOrPanic(prop)
 	err = pprov.CheckACL("res", sProp)
 	assert.Error(t, err)
+}
+
+// test to ensure ptypes are processed by default provider
+func TestForceDefaultsForPType(t *testing.T) {
+	defAclProvider := &mocks.DefaultACLProvider{}
+	defAclProvider.CheckACLReturns(nil)
+	defAclProvider.IsPtypePolicyReturns(true)
+	rp := &resourceProvider{defaultProvider: defAclProvider}
+	err := rp.CheckACL("aptype", "somechannel", struct{}{})
+	assert.NoError(t, err)
 }
 
 func init() {
