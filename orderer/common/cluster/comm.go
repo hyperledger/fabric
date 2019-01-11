@@ -18,6 +18,8 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 const (
@@ -302,9 +304,19 @@ func (c *Comm) createRemoteContext(stub *Stub) func() (*RemoteContext, error) {
 			return nil, err
 		}
 
+		probeConnection := func(conn *grpc.ClientConn) error {
+			connState := conn.GetState()
+			if connState == connectivity.Connecting {
+				return errors.Errorf("connection to %d(%s) is in state %s", stub.ID, stub.Endpoint, connState)
+			}
+			return nil
+		}
+
 		clusterClient := orderer.NewClusterClient(conn)
 
 		rc := &RemoteContext{
+			ProbeConn:  probeConnection,
+			conn:       conn,
 			RPCTimeout: timeout,
 			Client:     clusterClient,
 			onAbort: func() {
@@ -394,6 +406,8 @@ type RemoteContext struct {
 	submitLock         sync.Mutex
 	cancelSubmitStream func()
 	submitStream       orderer.Cluster_SubmitClient
+	ProbeConn          func(conn *grpc.ClientConn) error
+	conn               *grpc.ClientConn
 }
 
 // SubmitStream creates a new Submit stream
@@ -416,6 +430,9 @@ func (rc *RemoteContext) SubmitStream() (orderer.Cluster_SubmitClient, error) {
 
 // Step passes an implementation-specific message to another cluster member.
 func (rc *RemoteContext) Step(req *orderer.StepRequest) (*orderer.StepResponse, error) {
+	if err := rc.ProbeConn(rc.conn); err != nil {
+		return nil, err
+	}
 	ctx, abort := context.WithCancel(context.TODO())
 	ctx, cancel := context.WithTimeout(ctx, rc.RPCTimeout)
 	defer cancel()
