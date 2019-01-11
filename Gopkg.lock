@@ -562,11 +562,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:d90953024a4d46f93d08b2b995e9ebb33027d47130fb8b5577485fed14a981bb"
+  digest = "1:aa2da1df3327c3a338bb42f978407c07de74cd0a5bef35e9411881dffd444214"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
     "prometheus/internal",
+    "prometheus/promhttp",
   ]
   pruneopts = "NUT"
   revision = "1cafe34db7fdec6022e17e00e1c1ea501022f3e4"
@@ -979,6 +980,7 @@
     "github.com/op/go-logging",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/rcrowley/go-metrics",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
