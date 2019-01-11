@@ -119,7 +119,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	util.SetVal("peer.gossip.useLeaderElection", true)
 	util.SetVal("peer.gossip.orgLeader", false)
 	n := 10
-	gossips := startPeers(t, n, 20100)
+	gossips := startPeers(t, n, 20100, 0, 1, 2, 3, 4)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -178,7 +178,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	util.SetVal("peer.gossip.orgLeader", true)
 
 	n := 2
-	gossips := startPeers(t, n, 20200)
+	gossips := startPeers(t, n, 20200, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -232,7 +232,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	util.SetVal("peer.gossip.orgLeader", false)
 
 	n := 2
-	gossips := startPeers(t, n, 20300)
+	gossips := startPeers(t, n, 20300, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -272,7 +272,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	util.SetVal("peer.gossip.orgLeader", true)
 
 	n := 2
-	gossips := startPeers(t, n, 20400)
+	gossips := startPeers(t, n, 20400, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -297,7 +297,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 				Committer: &mockLedgerInfo{1},
 				Store:     &mockTransientStore{},
 			})
-		}, "Dynamic leader lection based and static connection to ordering service can't exist simultaniosly")
+		}, "Dynamic leader election based and static connection to ordering service can't exist simultaneously")
 	}
 
 	stopPeers(gossips)
@@ -390,7 +390,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	// Creating gossip service instances for peers
 	n := 10
-	gossips := startPeers(t, n, 20500)
+	gossips := startPeers(t, n, 20500, 0, 1, 2, 3, 4)
 
 	// Joining all peers to first channel
 	channelName := "chanA"
@@ -629,7 +629,7 @@ func addPeersToChannel(t *testing.T, n int, portPrefix int, channel string, peer
 	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
 }
 
-func startPeers(t *testing.T, n int, portPrefix int) []GossipService {
+func startPeers(t *testing.T, n int, portPrefix int, boot ...int) []GossipService {
 
 	peers := make([]GossipService, n)
 	wg := sync.WaitGroup{}
@@ -637,7 +637,7 @@ func startPeers(t *testing.T, n int, portPrefix int) []GossipService {
 		wg.Add(1)
 		go func(i int) {
 
-			peers[i] = newGossipInstance(portPrefix, i, 100, 0, 1, 2, 3, 4, 5)
+			peers[i] = newGossipInstance(portPrefix, i, 100, boot...)
 			wg.Done()
 		}(i)
 	}
