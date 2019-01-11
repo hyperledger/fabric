@@ -181,3 +181,8 @@ func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd ccprovid
 func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
 	return s.PeerSupport.GetApplicationConfig(cid)
 }
+
+// GetDeployedCCInfoProvider returns ledger.DeployedChaincodeInfoProvider
+func (s *SupportImpl) GetDeployedCCInfoProvider() ledger.DeployedChaincodeInfoProvider {
+	return s.ChaincodeSupport.DeployedCCInfoProvider
+}

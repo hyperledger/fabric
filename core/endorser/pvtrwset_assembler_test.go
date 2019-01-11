@@ -12,24 +12,12 @@ package endorser
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
-
-// CollectionConfigRetriever is mock type for the CollectionConfigRetriever type
-type mockCollectionConfigRetriever struct {
-	mock.Mock
-}
-
-// GetState provides a mock function with given fields: namespace, key
-func (_m *mockCollectionConfigRetriever) GetState(namespace string, key string) ([]byte, error) {
-	result := _m.Called(namespace, key)
-	return result.Get(0).([]byte), result.Error(1)
-}
 
 func TestAssemblePvtRWSet(t *testing.T) {
 	collectionsConfigCC1 := &common.CollectionConfigPackage{
@@ -50,11 +38,15 @@ func TestAssemblePvtRWSet(t *testing.T) {
 			},
 		},
 	}
-	colB, err := proto.Marshal(collectionsConfigCC1)
-	assert.NoError(t, err)
 
-	configRetriever := &mockCollectionConfigRetriever{}
-	configRetriever.On("GetState", "lscc", privdata.BuildCollectionKVSKey("myCC")).Return(colB, nil)
+	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	mockDeployedCCInfoProvider.ChaincodeInfoReturns(
+		&ledger.DeployedChaincodeInfo{
+			CollectionConfigPkg: collectionsConfigCC1,
+			Name:                "myCC",
+		},
+		nil,
+	)
 
 	assembler := rwSetAssembler{}
 
@@ -73,7 +65,7 @@ func TestAssemblePvtRWSet(t *testing.T) {
 		},
 	}
 
-	pvtReadWriteSetWithConfigInfo, err := assembler.AssemblePvtRWSet(privData, configRetriever)
+	pvtReadWriteSetWithConfigInfo, err := assembler.AssemblePvtRWSet(privData, nil, mockDeployedCCInfoProvider)
 	assert.NoError(t, err)
 	assert.NotNil(t, pvtReadWriteSetWithConfigInfo)
 	assert.NotNil(t, pvtReadWriteSetWithConfigInfo.PvtRwset)

@@ -12,8 +12,7 @@ package endorser
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/transientstore"
@@ -27,7 +26,11 @@ type PvtRWSetAssembler interface {
 	// augmenting it into TxPvtReadWriteSetWithConfigInfo adding
 	// information about collections config available related
 	// to private read-write set
-	AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet, txsim CollectionConfigRetriever) (*transientstore.TxPvtReadWriteSetWithConfigInfo, error)
+	AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet,
+		txsim ledger.SimpleQueryExecutor,
+		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) (
+		*transientstore.TxPvtReadWriteSetWithConfigInfo, error,
+	)
 }
 
 // CollectionConfigRetriever encapsulates sub-functionality of ledger.TxSimulator
@@ -44,7 +47,10 @@ type rwSetAssembler struct {
 // augmenting it into TxPvtReadWriteSetWithConfigInfo adding
 // information about collections config available related
 // to private read-write set
-func (as *rwSetAssembler) AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet, txsim CollectionConfigRetriever) (*transientstore.TxPvtReadWriteSetWithConfigInfo, error) {
+func (as *rwSetAssembler) AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet,
+	txsim ledger.SimpleQueryExecutor, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) (
+	*transientstore.TxPvtReadWriteSetWithConfigInfo, error,
+) {
 	txPvtRwSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset:          privData,
 		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
@@ -53,20 +59,14 @@ func (as *rwSetAssembler) AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet, tx
 	for _, pvtRwset := range privData.NsPvtRwset {
 		namespace := pvtRwset.Namespace
 		if _, found := txPvtRwSetWithConfig.CollectionConfigs[namespace]; !found {
-			cb, err := txsim.GetState("lscc", privdata.BuildCollectionKVSKey(namespace))
+			ccInfo, err := deployedCCInfoProvider.ChaincodeInfo(namespace, txsim)
 			if err != nil {
 				return nil, errors.WithMessage(err, fmt.Sprintf("error while retrieving collection config for chaincode %#v", namespace))
 			}
-			if cb == nil {
+			colCP := ccInfo.CollectionConfigPkg
+			if colCP == nil {
 				return nil, errors.New(fmt.Sprintf("no collection config for chaincode %#v", namespace))
 			}
-
-			colCP := &common.CollectionConfigPackage{}
-			err = proto.Unmarshal(cb, colCP)
-			if err != nil {
-				return nil, errors.Wrapf(err, "invalid configuration for collection criteria %#v", namespace)
-			}
-
 			txPvtRwSetWithConfig.CollectionConfigs[namespace] = colCP
 		}
 	}
