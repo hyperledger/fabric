@@ -9,8 +9,10 @@ package lifecycle_test
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -101,6 +103,33 @@ var _ = Describe("Lifecycle", func() {
 				Expect(hash).To(BeNil())
 				Expect(err).To(MatchError("could not retrieve hash for chaincode 'name:version': fake-error"))
 			})
+		})
+	})
+
+	Describe("QueryInstalledChaincodes", func() {
+		var chaincodes []chaincode.InstalledChaincode
+
+		BeforeEach(func() {
+			chaincodes = []chaincode.InstalledChaincode{
+				{
+					Name:    "cc1-name",
+					Version: "cc1-version",
+					Id:      []byte("cc1-hash"),
+				},
+				{
+					Name:    "cc2-name",
+					Version: "cc2-version",
+					Id:      []byte("cc2-hash"),
+				},
+			}
+
+			fakeCCStore.ListInstalledChaincodesReturns(chaincodes, fmt.Errorf("fake-error"))
+		})
+
+		It("passes through to the backing chaincode store", func() {
+			result, err := l.QueryInstalledChaincodes()
+			Expect(result).To(Equal(chaincodes))
+			Expect(err).To(MatchError(fmt.Errorf("fake-error")))
 		})
 	})
 })
