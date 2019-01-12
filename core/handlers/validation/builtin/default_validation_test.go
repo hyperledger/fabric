@@ -52,6 +52,7 @@ func TestErrorConversion(t *testing.T) {
 		},
 	}
 
+	capabilities.On("V2_0Validation").Return(false)
 	capabilities.On("V1_3Validation").Return(false)
 	capabilities.On("V1_2Validation").Return(true)
 
