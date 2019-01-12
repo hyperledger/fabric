@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,9 +44,12 @@ func TestTicker(t *testing.T) {
 		}
 
 		ticker.stop()
-		// Ensure no more ticks are received
-		_, ok := <-ticker.C
-		assert.False(t, ok)
+		// Ensure the ticker channel is closed once stop() is called.
+		gt := gomega.NewGomegaWithT(t)
+		gt.Eventually(func() bool {
+			_, ok := <-ticker.C
+			return ok
+		}).Should(gomega.BeFalse())
 	})
 
 	t.Run("Stop ticker concurrently", func(t *testing.T) {
