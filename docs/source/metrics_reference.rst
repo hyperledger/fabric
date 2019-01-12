@@ -93,6 +93,30 @@ The following metrics are currently exported for consumption by Prometheus.
 | dockercontroller_chaincode_container_build_duration | histogram | The time to build a chaincode image in seconds.            | chaincode          |
 |                                                     |           |                                                            | success            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_chaincode_instantiation_failures           | counter   | The number of chaincode instantiations or upgrade that     | channel            |
+|                                                     |           | have failed.                                               | chaincode          |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_duplicate_transaction_failures             | counter   | The number of failed proposals due to duplicate            | channel            |
+|                                                     |           | transaction ID.                                            | chaincode          |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_endorsement_failures                       | counter   | The number of failed endorsements.                         | channel            |
+|                                                     |           |                                                            | chaincode          |
+|                                                     |           |                                                            | chaincodeerror     |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_proposal_acl_failures                      | counter   | The number of proposals that failed ACL checks.            | channel            |
+|                                                     |           |                                                            | chaincode          |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_proposal_validation_failures               | counter   | The number of proposals that have failed initial           |                    |
+|                                                     |           | validation.                                                |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_proposals_received                         | counter   | The number of proposals received.                          |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_propsal_duration                           | histogram | The time to complete a proposal.                           | channel            |
+|                                                     |           |                                                            | chaincode          |
+|                                                     |           |                                                            | success            |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
+| endorser_successful_proposals                       | counter   | The number of successful proposals.                        |                    |
++-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | fabric_version                                      | gauge     | The active version of Fabric.                              | version            |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | grpc_comm_conn_closed                               | counter   | gRPC connections closed. Open minus closed is the active   |                    |
@@ -226,6 +250,25 @@ associated with the metric.
 |                                                                                         |           | deliver service.                                           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | dockercontroller.chaincode_container_build_duration.%{chaincode}.%{success}             | histogram | The time to build a chaincode image in seconds.            |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.chaincode_instantiation_failures.%{channel}.%{chaincode}                       | counter   | The number of chaincode instantiations or upgrade that     |
+|                                                                                         |           | have failed.                                               |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.duplicate_transaction_failures.%{channel}.%{chaincode}                         | counter   | The number of failed proposals due to duplicate            |
+|                                                                                         |           | transaction ID.                                            |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.endorsement_failures.%{channel}.%{chaincode}.%{chaincodeerror}                 | counter   | The number of failed endorsements.                         |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.proposal_acl_failures.%{channel}.%{chaincode}                                  | counter   | The number of proposals that failed ACL checks.            |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.proposal_validation_failures                                                   | counter   | The number of proposals that have failed initial           |
+|                                                                                         |           | validation.                                                |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.proposals_received                                                             | counter   | The number of proposals received.                          |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.propsal_duration.%{channel}.%{chaincode}.%{success}                            | histogram | The time to complete a proposal.                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.successful_proposals                                                           | counter   | The number of successful proposals.                        |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | fabric_version.%{version}                                                               | gauge     | The active version of Fabric.                              |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
