@@ -71,7 +71,7 @@ func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.Collec
 	if ccInfo == nil {
 		return nil, errors.Errorf("Chaincode [%s] does not exist", cc.Namespace)
 	}
-	return ccInfo.CollectionConfigPkg, nil
+	return ccInfo.AllCollectionsConfigPkg(), nil
 }
 
 // RetrieveCollectionConfigPackageFromState retrieves the collection config package from the given key from the given state

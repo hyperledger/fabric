@@ -57,6 +57,10 @@ func (p *DeployedCCInfoProvider) UpdatedChaincodes(stateUpdates map[string][]*kv
 	return lifecycleInfo, nil
 }
 
+func (p *DeployedCCInfoProvider) ImplicitCollections(channelName string) ([]*common.StaticCollectionConfig, error) {
+	return nil, nil
+}
+
 // ChaincodeInfo implements function in interface ledger.DeployedChaincodeInfoProvider
 func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 	chaincodeDataBytes, err := qe.GetState(lsccNamespace, chaincodeName)
@@ -72,10 +76,10 @@ func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string
 		return nil, err
 	}
 	return &ledger.DeployedChaincodeInfo{
-		Name:                chaincodeName,
-		Hash:                chaincodeData.Id,
-		Version:             chaincodeData.Version,
-		CollectionConfigPkg: collConfigPkg,
+		Name:                        chaincodeName,
+		Hash:                        chaincodeData.Id,
+		Version:                     chaincodeData.Version,
+		ExplicitCollectionConfigPkg: collConfigPkg,
 	}, nil
 }
 

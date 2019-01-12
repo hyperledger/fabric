@@ -12,6 +12,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -115,16 +116,89 @@ func TestMgr(t *testing.T) {
 	})
 }
 
+func TestWithImplicitColls(t *testing.T) {
+	dbPath := "/tmp/fabric/core/ledger/confighistory"
+	collConfigPackage := testutilCreateCollConfigPkg([]string{"Explicit-coll-1", "Explicit-coll-2"})
+	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	mockCCInfoProvider.ImplicitCollectionsReturns(
+		[]*common.StaticCollectionConfig{
+			{
+				Name: "Implicit-coll-1",
+			},
+			{
+				Name: "Implicit-coll-2",
+			},
+		},
+		nil,
+	)
+	env := newTestEnv(t, dbPath, mockCCInfoProvider)
+	defer env.cleanup()
+	mgr := env.mgr
+
+	// add explicit collections at height 20
+	batch, err := prepareDBBatch(
+		map[string]*common.CollectionConfigPackage{
+			"chaincode1": collConfigPackage,
+		},
+		20,
+	)
+	assert.NoError(t, err)
+	dbHandle := mgr.dbProvider.getDB("ledger1")
+	assert.NoError(t, dbHandle.writeBatch(batch, true))
+
+	onlyImplicitCollections := testutilCreateCollConfigPkg(
+		[]string{"Implicit-coll-1", "Implicit-coll-2"},
+	)
+
+	explicitAndImplicitCollections := testutilCreateCollConfigPkg(
+		[]string{"Explicit-coll-1", "Explicit-coll-2", "Implicit-coll-1", "Implicit-coll-2"},
+	)
+
+	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{info: &common.BlockchainInfo{Height: 1000}}
+	t.Run("MostRecentCollectionConfigBelow50", func(t *testing.T) {
+		// explicit collections added at height 20 should be merged with the implicit collections
+		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retrievedConfig, err := retriever.MostRecentCollectionConfigBelow(50, "chaincode1")
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(retrievedConfig.CollectionConfig, explicitAndImplicitCollections))
+	})
+
+	t.Run("MostRecentCollectionConfigBelow10", func(t *testing.T) {
+		// No explicit collections below height 10, should return only implicit collections
+		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retrievedConfig, err := retriever.MostRecentCollectionConfigBelow(10, "chaincode1")
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(retrievedConfig.CollectionConfig, onlyImplicitCollections))
+	})
+
+	t.Run("CollectionConfigAt50", func(t *testing.T) {
+		// No explicit collections at height 50, should return only implicit collections
+		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retrievedConfig, err := retriever.CollectionConfigAt(50, "chaincode1")
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(retrievedConfig.CollectionConfig, onlyImplicitCollections))
+	})
+
+	t.Run("CollectionConfigAt20", func(t *testing.T) {
+		// Explicit collections at height 20, should be merged with implicit collections
+		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retrievedConfig, err := retriever.CollectionConfigAt(20, "chaincode1")
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(retrievedConfig.CollectionConfig, explicitAndImplicitCollections))
+	})
+
+}
+
 type testEnv struct {
 	dbPath string
-	mgr    Mgr
+	mgr    *mgr
 	t      *testing.T
 }
 
 func newTestEnv(t *testing.T, dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) *testEnv {
 	env := &testEnv{dbPath: dbPath, t: t}
 	env.cleanup()
-	env.mgr = newMgr(ccInfoProvider, dbPath)
+	env.mgr = newMgr(ccInfoProvider, dbPath).(*mgr)
 	return env
 }
 
@@ -135,10 +209,7 @@ func (env *testEnv) cleanup() {
 
 func sampleCollectionConfigPackage(collNamePart1 string, collNamePart2 uint64) *common.CollectionConfigPackage {
 	collName := fmt.Sprintf("%s-%d", collNamePart1, collNamePart2)
-	collConfig := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{
-		StaticCollectionConfig: &common.StaticCollectionConfig{Name: collName}}}
-	collConfigPackage := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{collConfig}}
-	return collConfigPackage
+	return testutilCreateCollConfigPkg([]string{collName})
 }
 
 func testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
@@ -152,9 +223,27 @@ func testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 		nil,
 	)
 	mockCCInfoProvider.ChaincodeInfoReturns(
-		&ledger.DeployedChaincodeInfo{Name: chaincodeName, CollectionConfigPkg: collConfigPackage},
+		&ledger.DeployedChaincodeInfo{Name: chaincodeName, ExplicitCollectionConfigPkg: collConfigPackage},
 		nil,
 	)
+}
+
+func testutilCreateCollConfigPkg(collNames []string) *common.CollectionConfigPackage {
+	pkg := &common.CollectionConfigPackage{
+		Config: []*common.CollectionConfig{},
+	}
+	for _, collName := range collNames {
+		pkg.Config = append(pkg.Config,
+			&common.CollectionConfig{
+				Payload: &common.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &common.StaticCollectionConfig{
+						Name: collName,
+					},
+				},
+			},
+		)
+	}
+	return pkg
 }
 
 type dummyLedgerInfoRetriever struct {

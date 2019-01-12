@@ -463,20 +463,48 @@ type PvtdataHashMismatch struct {
 }
 
 // DeployedChaincodeInfoProvider is a dependency that is used by ledger to build collection config history
-// LSCC module is expected to provide an implementation fo this dependencys
+// LSCC module is expected to provide an implementation for this dependencys
 type DeployedChaincodeInfoProvider interface {
+	// Namespaces returns the slice of the namespaces that are used for maintaining chaincode lifecycle data
 	Namespaces() []string
+	// UpdatedChaincodes returns the chaincodes that are getting updated by the supplied 'stateUpdates'
 	UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite) ([]*ChaincodeLifecycleInfo, error)
+	// ChaincodeInfo returns the info about a deployed chaincode
 	ChaincodeInfo(channelName, chaincodeName string, qe SimpleQueryExecutor) (*DeployedChaincodeInfo, error)
+	// CollectionInfo returns the proto msg that defines the named collection. This function can be called for both explicit and implicit collections
 	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	// ImplicitCollections returns a slice that contains one proto msg for each of the implicit collections
+	ImplicitCollections(channelName string) ([]*common.StaticCollectionConfig, error)
 }
 
 // DeployedChaincodeInfo encapsulates chaincode information from the deployed chaincodes
 type DeployedChaincodeInfo struct {
-	Name                string
-	Hash                []byte
-	Version             string
-	CollectionConfigPkg *common.CollectionConfigPackage
+	Name                        string
+	Hash                        []byte
+	Version                     string
+	ExplicitCollectionConfigPkg *common.CollectionConfigPackage
+	ImplicitCollections         []*common.StaticCollectionConfig
+}
+
+// GetAllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
+func (dci DeployedChaincodeInfo) AllCollectionsConfigPkg() *common.CollectionConfigPackage {
+	var combinedColls []*common.CollectionConfig
+	if dci.ExplicitCollectionConfigPkg != nil {
+		for _, explicitColl := range dci.ExplicitCollectionConfigPkg.Config {
+			combinedColls = append(combinedColls, explicitColl)
+		}
+	}
+	for _, implicitColl := range dci.ImplicitCollections {
+		c := &common.CollectionConfig{}
+		c.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
+		combinedColls = append(combinedColls, c)
+	}
+	if combinedColls == nil {
+		return nil
+	}
+	return &common.CollectionConfigPackage{
+		Config: combinedColls,
+	}
 }
 
 // ChaincodeLifecycleInfo captures the update info of a chaincode
@@ -491,8 +519,8 @@ type ChaincodeLifecycleDetails struct {
 	Updated bool // true, if an existing chaincode is updated (false for newly deployed chaincodes).
 	// Following attributes are meaningful only if 'Updated' is true
 	HashChanged        bool     // true, if the chaincode code package is changed
-	CollectionsUpdated []string // names of the collections that are either added or updated
-	CollectionsRemoved []string // names of the collections that are removed
+	CollectionsUpdated []string // names of the explicit collections that are either added or updated
+	CollectionsRemoved []string // names of the explicit collections that are removed
 }
 
 // MembershipInfoProvider is a dependency that is used by ledger to determine whether the current peer is

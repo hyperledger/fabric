@@ -25,13 +25,13 @@ func TestCollElgNotifier(t *testing.T) {
 	// Returns 3 collections - the bool value indicates the eligibility of peer for corresponding collection
 	mockDeployedChaincodeInfoProvider.ChaincodeInfoReturnsOnCall(0,
 		&ledger.DeployedChaincodeInfo{
-			CollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
+			ExplicitCollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
 				map[string]bool{"coll1": true, "coll2": true, "coll3": false})}, nil)
 
 	// post commit - returns 4 collections
 	mockDeployedChaincodeInfoProvider.ChaincodeInfoReturnsOnCall(1,
 		&ledger.DeployedChaincodeInfo{
-			CollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
+			ExplicitCollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
 				map[string]bool{"coll1": false, "coll2": true, "coll3": true, "coll4": true})}, nil)
 
 	mockMembershipInfoProvider := &mock.MembershipInfoProvider{}

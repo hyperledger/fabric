@@ -58,8 +58,8 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 		}
 		elgEnabledCollNames, err := n.elgEnabledCollNames(
 			ledgerid,
-			existingCCInfo.CollectionConfigPkg,
-			postCommitCCInfo.CollectionConfigPkg,
+			existingCCInfo.ExplicitCollectionConfigPkg,
+			postCommitCCInfo.ExplicitCollectionConfigPkg,
 		)
 		if err != nil {
 			return err

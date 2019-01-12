@@ -34,10 +34,10 @@ func TestChaincodeInfo(t *testing.T) {
 	}
 
 	cc2 := &ledger.DeployedChaincodeInfo{
-		Name:                "cc2",
-		Version:             "cc2_version",
-		Hash:                []byte("cc2_hash"),
-		CollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
+		Name:                        "cc2",
+		Version:                     "cc2_version",
+		Hash:                        []byte("cc2_hash"),
+		ExplicitCollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
 	}
 
 	mockQE := prepareMockQE(t, []*ledger.DeployedChaincodeInfo{cc1, cc2})
@@ -50,7 +50,7 @@ func TestChaincodeInfo(t *testing.T) {
 	ccInfo2, err := ccInfoProvdier.ChaincodeInfo("", "cc2", mockQE)
 	assert.NoError(t, err)
 	assert.Equal(t, cc2.Name, ccInfo2.Name)
-	assert.True(t, proto.Equal(cc2.CollectionConfigPkg, ccInfo2.CollectionConfigPkg))
+	assert.True(t, proto.Equal(cc2.ExplicitCollectionConfigPkg, ccInfo2.ExplicitCollectionConfigPkg))
 
 	ccInfo3, err := ccInfoProvdier.ChaincodeInfo("", "cc3", mockQE)
 	assert.NoError(t, err)
@@ -65,10 +65,10 @@ func TestCollectionInfo(t *testing.T) {
 	}
 
 	cc2 := &ledger.DeployedChaincodeInfo{
-		Name:                "cc2",
-		Version:             "cc2_version",
-		Hash:                []byte("cc2_hash"),
-		CollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
+		Name:                        "cc2",
+		Version:                     "cc2_version",
+		Hash:                        []byte("cc2_hash"),
+		ExplicitCollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
 	}
 
 	mockQE := prepareMockQE(t, []*ledger.DeployedChaincodeInfo{cc1, cc2})
@@ -96,8 +96,8 @@ func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeI
 		assert.NoError(t, err)
 		lsccTable[cc.Name] = chaincodeDataBytes
 
-		if cc.CollectionConfigPkg != nil {
-			collConfigPkgByte, err := proto.Marshal(cc.CollectionConfigPkg)
+		if cc.ExplicitCollectionConfigPkg != nil {
+			collConfigPkgByte, err := proto.Marshal(cc.ExplicitCollectionConfigPkg)
 			assert.NoError(t, err)
 			lsccTable[privdata.BuildCollectionKVSKey(cc.Name)] = collConfigPkgByte
 		}

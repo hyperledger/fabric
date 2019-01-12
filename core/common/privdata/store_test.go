@@ -101,7 +101,7 @@ func TestCollectionStore(t *testing.T) {
 	support.CollectionInfoProvider.CollectionInfoReturns(scc, nil)
 	support.CollectionInfoProvider.ChaincodeInfoReturns(
 		&ledger.DeployedChaincodeInfo{
-			CollectionConfigPkg: ccp,
+			ExplicitCollectionConfigPkg: ccp,
 		}, nil)
 
 	ccc, err := cs.RetrieveCollectionConfigPackage(ccr)
