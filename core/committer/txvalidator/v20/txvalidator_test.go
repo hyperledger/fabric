@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
-	"github.com/hyperledger/fabric/core/mocks/validator"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -28,6 +27,13 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
+
+type mockDispatcher struct {
+}
+
+func (v *mockDispatcher) Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode) {
+	return nil, peer.TxValidationCode_VALID
+}
 
 func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []byte, nBlocks int) {
 	txid := util2.GenerateUUID()
@@ -44,12 +50,12 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
-	mockVsccValidator := &validator.MockVsccValidator{}
+	mockDispatcher := &mockDispatcher{}
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
-		Vscc:             mockVsccValidator,
+		dispatcher:       mockDispatcher,
 	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -120,7 +126,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
-	mockVsccValidator := &validator.MockVsccValidator{}
+	mockDispatcher := &mockDispatcher{}
 	acv := &config.MockApplicationCapabilities{
 		ForbidDuplicateTXIdInBlockRv: true,
 	}
@@ -128,7 +134,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv},
-		Vscc:             mockVsccValidator,
+		dispatcher:       mockDispatcher,
 	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -208,7 +214,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
-		Vscc:             &validator.MockVsccValidator{},
+		dispatcher:       &mockDispatcher{},
 	}
 
 	mockSigner, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()

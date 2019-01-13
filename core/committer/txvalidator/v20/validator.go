@@ -17,6 +17,7 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -58,21 +59,20 @@ type ChannelResources interface {
 	Capabilities() channelconfig.ApplicationCapabilities
 }
 
-// private interface to decouple tx validator
-// and vscc execution, in order to increase
-// testability of TxValidator
-type vsccValidator interface {
-	VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode)
+// dispatcher is a private interface to decouple tx validator
+// and plugin dispatcher
+type dispatcher interface {
+	Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode)
 }
 
 // implementation of Validator interface, keeps
 // reference to the ledger to enable tx simulation
-// and execution of vscc
+// and execution of plugins
 type TxValidator struct {
 	ChainID          string
 	Semaphore        Semaphore
 	ChannelResources ChannelResources
-	Vscc             vsccValidator
+	dispatcher       dispatcher
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -93,12 +93,12 @@ type blockValidationResult struct {
 // NewTxValidator creates new transactions validator
 func NewTxValidator(chainID string, sem Semaphore, cr ChannelResources, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := NewPluginValidator(pm, cr.Ledger(), &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
+	pluginValidator := plugindispatcher.NewPluginValidator(pm, cr.Ledger(), &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
 	return &TxValidator{
 		ChainID:          chainID,
 		Semaphore:        sem,
 		ChannelResources: cr,
-		Vscc:             newVSCCValidator(chainID, cr, sccp, pluginValidator)}
+		dispatcher:       plugindispatcher.New(chainID, cr, sccp, pluginValidator)}
 }
 
 func (v *TxValidator) chainExists(chain string) bool {
@@ -268,7 +268,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		// is properly formed, properly signed and that the security
 		// chain binding proposal to endorsements to tx holds. We do
 		// NOT check the validity of endorsements, though. That's a
-		// job for VSCC below
+		// job for the validation plugins
 		logger.Debugf("[%s] validateTx starts for block %p env %p txn %d", v.ChainID, block, env, tIdx)
 		defer logger.Debugf("[%s] validateTx completes for block %p env %p txn %d", v.ChainID, block, env, tIdx)
 		var payload *common.Payload
@@ -317,11 +317,11 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 
-			// Validate tx with vscc and policy
-			logger.Debug("Validating transaction vscc tx validate")
-			err, cde := v.Vscc.VSCCValidateTx(tIdx, payload, d, block)
+			// Validate tx with plugins
+			logger.Debug("Validating transaction with plugins")
+			err, cde := v.dispatcher.Dispatch(tIdx, payload, d, block)
 			if err != nil {
-				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error: %s", txID, err)
+				logger.Errorf("Dispatch for transaction txId = %s returned error: %s", txID, err)
 				switch err.(type) {
 				case *commonerrors.VSCCExecutionFailureError:
 					results <- &blockValidationResult{

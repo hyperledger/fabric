@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package txvalidator
+package plugindispatcher
 
 import (
 	"fmt"
@@ -23,9 +23,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockery -dir ../plugin/ -name Mapper -case underscore -output mocks/
-//go:generate mockery -dir ../../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
-//go:generate mockery -dir ../../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
+//go:generate mockery -dir ../../plugin/ -name Mapper -case underscore -output mocks/
+//go:generate mockery -dir ../../../../handlers/validation/api/ -name PluginFactory -case underscore -output mocks/
+//go:generate mockery -dir ../../../../handlers/validation/api/ -name Plugin -case underscore -output mocks/
 //go:generate mockery -dir . -name QueryExecutorCreator -case underscore -output mocks/
 
 // QueryExecutorCreator creates new query executors
@@ -36,19 +36,19 @@ type QueryExecutorCreator interface {
 // Context defines information about a transaction
 // that is being validated
 type Context struct {
-	Seq       int
-	Envelope  []byte
-	TxID      string
-	Channel   string
-	VSCCName  string
-	Policy    []byte
-	Namespace string
-	Block     *common.Block
+	Seq        int
+	Envelope   []byte
+	TxID       string
+	Channel    string
+	PluginName string
+	Policy     []byte
+	Namespace  string
+	Block      *common.Block
 }
 
 // String returns a string representation of this Context
 func (c Context) String() string {
-	return fmt.Sprintf("Tx %s, seq %d out of %d in block %d for channel %s with validation plugin %s", c.TxID, c.Seq, len(c.Block.Data.Data), c.Block.Header.Number, c.Channel, c.VSCCName)
+	return fmt.Sprintf("Tx %s, seq %d out of %d in block %d for channel %s with validation plugin %s", c.TxID, c.Seq, len(c.Block.Data.Data), c.Block.Header.Number, c.Channel, c.PluginName)
 }
 
 // PluginValidator values transactions with validation plugins
@@ -61,8 +61,8 @@ type PluginValidator struct {
 	capabilities Capabilities
 }
 
-//go:generate mockery -dir ../../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
-//go:generate mockery -dir ../../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
+//go:generate mockery -dir ../../../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
+//go:generate mockery -dir ../../../../../msp/ -name IdentityDeserializer -case underscore -output mocks/
 
 // NewPluginValidator creates a new PluginValidator
 func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities) *PluginValidator {
@@ -79,7 +79,7 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 	plugin, err := pv.getOrCreatePlugin(ctx)
 	if err != nil {
 		return &validation.ExecutionFailureError{
-			Reason: fmt.Sprintf("plugin with name %s couldn't be used: %v", ctx.VSCCName, err),
+			Reason: fmt.Sprintf("plugin with name %s couldn't be used: %v", ctx.PluginName, err),
 		}
 	}
 	err = plugin.Validate(ctx.Block, ctx.Namespace, ctx.Seq, 0, vp.SerializedPolicy(ctx.Policy))
@@ -92,12 +92,12 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 }
 
 func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, error) {
-	pluginFactory := pv.FactoryByName(vp.Name(ctx.VSCCName))
+	pluginFactory := pv.FactoryByName(vp.Name(ctx.PluginName))
 	if pluginFactory == nil {
-		return nil, errors.Errorf("plugin with name %s wasn't found", ctx.VSCCName)
+		return nil, errors.Errorf("plugin with name %s wasn't found", ctx.PluginName)
 	}
 
-	pluginsByChannel := pv.getOrCreatePluginChannelMapping(vp.Name(ctx.VSCCName), pluginFactory)
+	pluginsByChannel := pv.getOrCreatePluginChannelMapping(vp.Name(ctx.PluginName), pluginFactory)
 	return pluginsByChannel.createPluginIfAbsent(ctx.Channel)
 
 }
