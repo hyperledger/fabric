@@ -192,11 +192,9 @@ func (v *TxValidator) Validate(block *common.Block) error {
 		return err
 	}
 
-	// if we operate with this capability, we mark invalid any transaction that has a txid
+	// we mark invalid any transaction that has a txid
 	// which is equal to that of a previous tx in this block
-	if v.ChannelResources.Capabilities().ForbidDuplicateTXIdInBlock() {
-		markTXIdDuplicates(txidArray, txsfltr)
-	}
+	markTXIdDuplicates(txidArray, txsfltr)
 
 	// make sure no transaction has skipped validation
 	err = v.allValidated(txsfltr, block)
