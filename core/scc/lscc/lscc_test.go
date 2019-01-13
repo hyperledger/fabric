@@ -121,23 +121,23 @@ func TestInstall(t *testing.T) {
 
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
 
-	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub)
-	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub)
-	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub)
-	testInstall(t, "", "0", path, false, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub)
-	testInstall(t, "example02", "1{}0", path, false, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub)
-	testInstall(t, "example02", "0", path, true, InvalidStatedbArtifactsErr("").Error(), "Alice", scc, stub)
-	testInstall(t, "example02", "0", path, false, "access denied for [install]", "Bob", scc, stub)
-	testInstall(t, "example02-2", "1.0-alpha+001", path, false, "", "Alice", scc, stub)
-	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, false, "", "Alice", scc, stub)
+	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub, nil)
+	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub, nil)
+	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub, nil)
+	testInstall(t, "", "0", path, false, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub, nil)
+	testInstall(t, "example02", "1{}0", path, false, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub, nil)
+	testInstall(t, "example02", "0", path, true, InvalidStatedbArtifactsErr("").Error(), "Alice", scc, stub, nil)
+	testInstall(t, "example02", "0", path, false, "access denied for [install]", "Bob", scc, stub, errors.New("authorization error"))
+	testInstall(t, "example02-2", "1.0-alpha+001", path, false, "", "Alice", scc, stub, nil)
+	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, false, "", "Alice", scc, stub, nil)
 
 	scc.Support.(*lscc.MockSupport).PutChaincodeToLocalStorageErr = errors.New("barf")
 
-	testInstall(t, "example02", "0", path, false, "barf", "Alice", scc, stub)
-	testInstall(t, "lscc", "0", path, false, "cannot install: lscc is the name of a system chaincode", "Alice", scc, stub)
+	testInstall(t, "example02", "0", path, false, "barf", "Alice", scc, stub, nil)
+	testInstall(t, "lscc", "0", path, false, "cannot install: lscc is the name of a system chaincode", "Alice", scc, stub, nil)
 }
 
-func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *LifeCycleSysCC, stub *shim.MockStub) {
+func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *LifeCycleSysCC, stub *shim.MockStub, aclErr error) {
 	identityDeserializer := &policymocks.MockIdentityDeserializer{
 		Identity: []byte("Alice"),
 		Msg:      []byte("msg1"),
@@ -163,6 +163,9 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte(caller), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
+
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Lscc_Install, "", sProp).Return(aclErr)
 
 	if expectedErrorMsg == "" {
 		res := stub.MockInvokeWithSignedProposal("1", args, sProp)
@@ -763,6 +766,8 @@ func TestGetInstalledChaincodes(t *testing.T) {
 			identityDeserializer.Msg = sProp.ProposalBytes
 			sProp.Signature = sProp.ProposalBytes
 
+			mockAclProvider.Reset()
+			mockAclProvider.On("CheckACL", resources.Lscc_GetInstalledChaincodes, "", sProp).Return(errors.New("authorization failure"))
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
 			assert.NotEqual(t, int32(shim.OK), res.Status)
 			assert.Contains(t, res.Message, "access denied for ["+function+"]")
@@ -771,6 +776,8 @@ func TestGetInstalledChaincodes(t *testing.T) {
 			identityDeserializer.Msg = sProp.ProposalBytes
 			sProp.Signature = sProp.ProposalBytes
 
+			mockAclProvider.Reset()
+			mockAclProvider.On("CheckACL", resources.Lscc_GetInstalledChaincodes, "", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
 			assert.NotEqual(t, int32(shim.OK), res.Status)
 			assert.Equal(t, "proto: Marshal called with nil", res.Message)

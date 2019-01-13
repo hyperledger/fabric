@@ -154,9 +154,8 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 				"of configuration block, because of %s", cid, err))
 		}
 
-		// 2. check local MSP Admins policy
-		// TODO: move to ACLProvider once it will support chainless ACLs
-		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+		// 2. check join policy.
+		if err = e.aclProvider.CheckACL(resources.Cscc_JoinChain, "", sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: [%s]", fname, cid, err))
 		}
 
@@ -191,9 +190,8 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 		}
 		return e.simulateConfigTreeUpdate(args[1], args[2])
 	case GetChannels:
-		// 2. check local MSP Members policy
-		// TODO: move to ACLProvider once it will support chainless ACLs
-		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Members, sp); err != nil {
+		// 2. check get channels policy
+		if err = e.aclProvider.CheckACL(resources.Cscc_GetChannels, "", sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", fname, err))
 		}
 

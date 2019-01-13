@@ -137,6 +137,8 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected to fail having zero arguments")
 	assert.Equal(t, res.Message, "Incorrect number of arguments, 0")
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_GetChannels, "", (*pb.SignedProposal)(nil)).Return(errors.New("Failed authorization"))
 	args := [][]byte{[]byte("GetChannels")}
 	res = stub.MockInvokeWithSignedProposal("3", args, nil)
 	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected to fail no signed proposal provided")
@@ -170,6 +172,8 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 	}
 
 	// Failed path: expected to have at least one argument
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", (*pb.SignedProposal)(nil)).Return(nil)
 	args := [][]byte{[]byte("JoinChain")}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain should have failed with invalid number of args: %v", args)
@@ -191,6 +195,8 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 	}
 
 	// Failed path: wrong parameter type
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", (*pb.SignedProposal)(nil)).Return(nil)
 	args := [][]byte{[]byte("JoinChain"), []byte("action")}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain should have failed with null genesis block.  args: %v", args)
@@ -283,6 +289,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 
 	// Try fail path with nil block
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", sProp).Return(nil)
 	res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
 	assert.Equal(t, res.Status, int32(shim.ERROR))
 
@@ -296,6 +304,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", sProp).Return(nil)
 	badBlockBytes := utils.MarshalOrPanic(badBlock)
 	res = stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), badBlockBytes}, sProp)
 	assert.Equal(t, res.Status, int32(shim.ERROR))
@@ -307,6 +317,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	// This call must fail
 	sProp.Signature = nil
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", sProp).Return(errors.New("Failed authorization"))
 	res = stub.MockInvokeWithSignedProposal("3", args, sProp)
 	if res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain must fail : %v", res.Message)
@@ -340,6 +352,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	}
 
 	// get channels for the peer
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_GetChannels, "", sProp).Return(nil)
 	args = [][]byte{[]byte(GetChannels)}
 	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
 	if res.Status != shim.OK {
@@ -516,6 +530,8 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	blockBytes := utils.MarshalOrPanic(block)
 
 	// Failed path: wrong parameter type
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", resources.Cscc_JoinChain, "", (*pb.SignedProposal)(nil)).Return(nil)
 	args := [][]byte{[]byte("JoinChain"), []byte(blockBytes)}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain should have failed with wrong genesis block.  args: %v", args)
