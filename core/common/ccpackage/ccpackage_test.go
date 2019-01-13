@@ -163,6 +163,63 @@ func TestCreateSignedCCDepSpecForInstall(t *testing.T) {
 	}
 }
 
+func TestCreateSignedCCDepSpecForInstallWithEndorsements(t *testing.T) {
+	mspid, _ := localmsp.GetIdentifier()
+	sigpolicy := createInstantiationPolicy(mspid, mspprotos.MSPRole_ADMIN)
+	env1, err := ownerCreateCCDepSpec([]byte("codepackage"), sigpolicy, signer)
+	if err != nil || env1 == nil {
+		t.Fatalf("error owner creating package %s", err)
+		return
+	}
+
+	env2, err := ownerCreateCCDepSpec([]byte("codepackage"), sigpolicy, signer)
+	if err != nil || env2 == nil {
+		t.Fatalf("error owner creating package %s", err)
+		return
+	}
+
+	pack := []*common.Envelope{env1, env2}
+	env, err := CreateSignedCCDepSpecForInstall(pack)
+	if err != nil || env == nil {
+		t.Fatalf("error creating install package %s", err)
+		return
+	}
+
+	p := &common.Payload{}
+	if err = proto.Unmarshal(env.Payload, p); err != nil {
+		t.Fatalf("fatal error unmarshal payload")
+		return
+	}
+
+	cip2 := &peer.SignedChaincodeDeploymentSpec{}
+	if err = proto.Unmarshal(p.Data, cip2); err != nil {
+		t.Fatalf("fatal error unmarshal cip")
+		return
+	}
+
+	if len(cip2.OwnerEndorsements) != 2 {
+		t.Fatalf("invalid number of endorsements %d", len(cip2.OwnerEndorsements))
+		return
+	}
+
+	p = &common.Payload{}
+	if err = proto.Unmarshal(env1.Payload, p); err != nil {
+		t.Fatalf("fatal error unmarshal payload")
+		return
+	}
+
+	cip1 := &peer.SignedChaincodeDeploymentSpec{}
+	if err = proto.Unmarshal(p.Data, cip1); err != nil {
+		t.Fatalf("fatal error unmarshal cip")
+		return
+	}
+
+	if len(cip1.OwnerEndorsements) != 1 {
+		t.Fatalf("invalid number of endorsements %d", len(cip1.OwnerEndorsements))
+		return
+	}
+}
+
 func TestMismatchedCodePackages(t *testing.T) {
 	mspid, _ := localmsp.GetIdentifier()
 	sigpolicy := createInstantiationPolicy(mspid, mspprotos.MSPRole_ADMIN)
