@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -32,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gutil "github.com/hyperledger/fabric/gossip/util"
@@ -359,12 +361,15 @@ func newCommitter() committer.Committer {
 	return committer.NewLedgerCommitter(ldgr)
 }
 
-func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor, g gossip.Gossip) *peerNode {
+func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
+	acceptor peerIdentityAcceptor, g gossip.Gossip) *peerNode {
 	return newPeerNodeWithGossipWithValidator(config, committer, acceptor, g, &validator.MockValidator{})
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNodeWithGossipWithValidator(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor, g gossip.Gossip, v txvalidator.Validator) *peerNode {
+func newPeerNodeWithGossipWithValidatorWithMetrics(config *gossip.Config, committer committer.Committer,
+	acceptor peerIdentityAcceptor, g gossip.Gossip, v txvalidator.Validator,
+	stateMetrics *metrics.StateMetrics) *peerNode {
 	cs := &cryptoServiceMock{acceptor: acceptor}
 	// Gossip component based on configuration provided and communication module
 	if g == nil {
@@ -382,7 +387,7 @@ func newPeerNodeWithGossipWithValidator(config *gossip.Config, committer committ
 		TransientStore: &mockTransientStore{},
 		Committer:      committer,
 	}, pcomm.SignedData{})
-	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord)
+	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord, stateMetrics)
 	if sp == nil {
 		return nil
 	}
@@ -394,6 +399,20 @@ func newPeerNodeWithGossipWithValidator(config *gossip.Config, committer committ
 		commit: committer,
 		cs:     cs,
 	}
+}
+
+// add metrics provider for metrics testing
+func newPeerNodeWithGossipWithMetrics(config *gossip.Config, committer committer.Committer,
+	acceptor peerIdentityAcceptor, g gossip.Gossip, stateMetrics *metrics.StateMetrics) *peerNode {
+	return newPeerNodeWithGossipWithValidatorWithMetrics(config, committer, acceptor, g,
+		&validator.MockValidator{}, stateMetrics)
+}
+
+// Constructing pseudo peer node, simulating only gossip and state transfer part
+func newPeerNodeWithGossipWithValidator(config *gossip.Config, committer committer.Committer,
+	acceptor peerIdentityAcceptor, g gossip.Gossip, v txvalidator.Validator) *peerNode {
+	stateMetrics := metrics.NewGossipMetrics(&disabled.Provider{}).StateMetrics
+	return newPeerNodeWithGossipWithValidatorWithMetrics(config, committer, acceptor, g, v, stateMetrics)
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
@@ -1388,7 +1407,8 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 	coord1.On("Close")
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}}
-	st := NewGossipStateProvider(chainID, servicesAdapater, coord1)
+	stateMetrics := metrics.NewGossipMetrics(&disabled.Provider{}).StateMetrics
+	st := NewGossipStateProvider(chainID, servicesAdapater, coord1, stateMetrics)
 	defer st.Stop()
 
 	// Mocked state request message
@@ -1619,12 +1639,14 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 
 	cryptoService := &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}
 
+	stateMetrics := metrics.NewGossipMetrics(&disabled.Provider{}).StateMetrics
+
 	mediator := &ServicesMediator{GossipAdapter: peers["peer1"], MCSAdapter: cryptoService}
-	peer1State := NewGossipStateProvider(chainID, mediator, peers["peer1"].coord)
+	peer1State := NewGossipStateProvider(chainID, mediator, peers["peer1"].coord, stateMetrics)
 	defer peer1State.Stop()
 
 	mediator = &ServicesMediator{GossipAdapter: peers["peer2"], MCSAdapter: cryptoService}
-	peer2State := NewGossipStateProvider(chainID, mediator, peers["peer2"].coord)
+	peer2State := NewGossipStateProvider(chainID, mediator, peers["peer2"].coord, stateMetrics)
 	defer peer2State.Stop()
 
 	// Make sure state was replicated
