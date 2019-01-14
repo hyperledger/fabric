@@ -183,7 +183,8 @@ const sampleCollectionConfigGood = `[
 		"requiredPeerCount": 3,
 		"maxPeerCount": 483279847,
 		"blockToLive":10,
-		"memberOnlyRead": true
+		"memberOnlyRead": true,
+		"memberOnlyWrite": true
 	}
 ]`
 
@@ -210,6 +211,7 @@ func TestCollectionParsing(t *testing.T) {
 	assert.Equal(t, pol, conf.MemberOrgsPolicy.GetSignaturePolicy())
 	assert.Equal(t, 10, int(conf.BlockToLive))
 	assert.Equal(t, true, conf.MemberOnlyRead)
+	assert.Equal(t, true, conf.MemberOnlyWrite)
 	t.Logf("conf=%s", conf)
 
 	cc, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigBad))
