@@ -32,6 +32,26 @@ message ConsensusType {
     string type = 1;
     // Opaque metadata, dependent on the consensus type.
     bytes metadata = 2;
+
+    // MigrationState defines the possible states of a consensus-type migration.
+    // NONE represents that migration is not taking place.
+    enum MigrationState {
+        MIG_STATE_NONE = 0;
+        MIG_STATE_START = 1;
+        MIG_STATE_COMMIT = 2;
+        MIG_STATE_ABORT = 3;
+        MIG_STATE_CONTEXT = 4;
+    }
+    // The state of a consensus-type migration.
+    // On the system channel this could be START|COMMIT|ABORT.
+    // On a standard channel this is CONTEXT.
+    // When migration is not taking place it is set to NONE.
+    MigrationState migration_state = 3;
+    // The context of a standard channel consensus-type migration.
+    // On a standard channel, this is the system channel block height of the config-update-tx that START migration.
+    // On a standard channel, this must be >0. On a system channel, this is =0.
+    // When migration is not taking place it is set =0.
+    uint64 migration_context = 4;
 }
 
 message BatchSize {
