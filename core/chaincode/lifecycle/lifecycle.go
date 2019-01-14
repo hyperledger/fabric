@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/chaincode"
+	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -110,12 +111,18 @@ type PackageParser interface {
 	Parse(data []byte) (*persistence.ChaincodePackage, error)
 }
 
+//go:generate counterfeiter -o mock/legacy_lifecycle.go --fake-name LegacyLifecycle . LegacyLifecycle
+type LegacyLifecycle interface {
+	corechaincode.Lifecycle
+}
+
 // Lifecycle implements the lifecycle operations which are invoked
 // by the SCC as well as internally
 type Lifecycle struct {
 	ChaincodeStore ChaincodeStore
 	PackageParser  PackageParser
 	Serializer     *Serializer
+	LegacyImpl     LegacyLifecycle
 }
 
 // DefineChaincode takes a chaincode definition, checks that its sequence number is the next allowable sequence number,

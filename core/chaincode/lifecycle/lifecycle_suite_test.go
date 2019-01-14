@@ -10,8 +10,10 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -46,6 +48,16 @@ type readWritableState interface {
 	lifecycle.ReadWritableState
 	lifecycle.OpaqueState
 	lifecycle.RangeableState
+}
+
+//go:generate counterfeiter -o mock/query_executor.go --fake-name SimpleQueryExecutor . simpleQueryExecutor
+type simpleQueryExecutor interface {
+	ledger.SimpleQueryExecutor
+}
+
+//go:generate counterfeiter -o mock/chaincode_lifecycle.go --fake-name ChaincodeLifecycle . chaincodeLifecycle
+type chaincodeLifecycle interface {
+	chaincode.Lifecycle
 }
 
 //go:generate counterfeiter -o mock/channel_config.go --fake-name ChannelConfig . channelConfig

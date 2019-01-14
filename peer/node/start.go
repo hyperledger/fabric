@@ -627,10 +627,11 @@ func registerChaincodeSupport(
 	grpcServer *comm.GRPCServer,
 	ccEndpoint string,
 	ca tlsgen.CA,
+	ccPackageParser *persistence.ChaincodePackageParser,
+	ccStore *persistence.Store,
 	packageProvider *persistence.PackageProvider,
 	aclProvider aclmgmt.ACLProvider,
 	pr *platforms.Registry,
-	lifecycleSCC *lifecycle.SCC,
 	ops *operations.System,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 ) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *lscc.LifeCycleSysCC) {
@@ -643,6 +644,23 @@ func registerChaincodeSupport(
 
 	sccp := scc.NewProvider(peer.Default, peer.DefaultSupport, ipRegistry)
 	lsccInst := lscc.New(sccp, aclProvider, pr)
+
+	lifecycleImpl := &lifecycle.Lifecycle{
+		PackageParser:  ccPackageParser,
+		ChaincodeStore: ccStore,
+		LegacyImpl:     lsccInst,
+	}
+
+	mspID := viper.GetString("peer.localMspId")
+
+	lifecycleSCC := &lifecycle.SCC{
+		Dispatcher: &dispatcher.Dispatcher{
+			Protobuf: &dispatcher.ProtobufImpl{},
+		},
+		Functions:           lifecycleImpl,
+		OrgMSPID:            mspID,
+		ChannelConfigSource: peer.Default,
+	}
 
 	dockerProvider := dockercontroller.NewProvider(
 		viper.GetString("peer.id"),
@@ -667,7 +685,7 @@ func registerChaincodeSupport(
 		ca.CertBytes(),
 		authenticator,
 		packageProvider,
-		lsccInst,
+		lifecycleImpl,
 		aclProvider,
 		container.NewVMController(
 			map[string]container.VMProvider{
@@ -728,20 +746,6 @@ func startChaincodeServer(
 		Store:    ccStore,
 	}
 
-	mspID := viper.GetString("peer.localMspId")
-
-	lifecycleSCC := &lifecycle.SCC{
-		Dispatcher: &dispatcher.Dispatcher{
-			Protobuf: &dispatcher.ProtobufImpl{},
-		},
-		Functions: &lifecycle.Lifecycle{
-			PackageParser:  ccPackageParser,
-			ChaincodeStore: ccStore,
-		},
-		OrgMSPID:            mspID,
-		ChannelConfigSource: peer.Default,
-	}
-
 	// Create a self-signed CA for chaincode service
 	ca, err := tlsgen.NewCA()
 	if err != nil {
@@ -755,10 +759,11 @@ func startChaincodeServer(
 		ccSrv,
 		ccEndpoint,
 		ca,
+		ccPackageParser,
+		ccStore,
 		packageProvider,
 		aclProvider,
 		pr,
-		lifecycleSCC,
 		ops,
 		deployedCCInfoProvider,
 	)
