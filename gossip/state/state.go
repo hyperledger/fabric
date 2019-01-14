@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -164,6 +165,8 @@ type GossipStateProviderImpl struct {
 	blockingMode bool
 
 	config *Configuration
+
+	stateMetrics *metrics.StateMetrics
 }
 
 var logger = util.GetLogger(util.StateLogger, "")
@@ -230,7 +233,7 @@ func readConfiguration() *Configuration {
 
 // NewGossipStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
-func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources) GossipStateProvider {
+func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources, stateMetrics *metrics.StateMetrics) GossipStateProvider {
 
 	gossipChan, _ := services.Accept(func(message interface{}) bool {
 		// Get only data messages
@@ -290,8 +293,12 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		// Channel to read direct messages from other peers
 		commChan: commChan,
 
-		// Create a queue for payload received
-		payloads: NewPayloadsBuffer(height),
+		// Create a queue for payloads, wrapped in a metrics buffer
+		payloads: &metricsBuffer{
+			PayloadsBuffer: NewPayloadsBuffer(height),
+			sizeMetrics:    stateMetrics.PayloadBufferSize,
+			chainID:        chainID,
+		},
 
 		ledger: ledger,
 
@@ -308,6 +315,8 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		requestValidator: &stateRequestValidator{},
 
 		config: config,
+
+		stateMetrics: stateMetrics,
 	}
 
 	logger.Infof("Updating metadata information, "+
@@ -847,16 +856,23 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 
 func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.PvtDataCollections) error {
 
+	t1 := time.Now()
+
 	// Commit block with available private transactions
 	if err := s.ledger.StoreBlock(block, pvtData); err != nil {
 		logger.Errorf("Got error while committing(%+v)", errors.WithStack(err))
 		return err
 	}
 
+	sinceT1 := time.Since(t1)
+	s.stateMetrics.CommitDuration.With("channel", s.chainID).Observe(sinceT1.Seconds())
+
 	// Update ledger height
 	s.mediator.UpdateLedgerHeight(block.Header.Number+1, common2.ChainID(s.chainID))
 	logger.Debugf("[%s] Committed block [%d] with %d transaction(s)",
 		s.chainID, block.Header.Number, len(block.Data.Data))
+
+	s.stateMetrics.Height.With("channel", s.chainID).Set(float64(block.Header.Number + 1))
 
 	return nil
 }
