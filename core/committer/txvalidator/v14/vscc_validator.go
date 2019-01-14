@@ -30,16 +30,16 @@ import (
 // the vscc chaincode and validate block transactions
 type VsccValidatorImpl struct {
 	chainID         string
-	support         Support
+	cr              ChannelResources
 	sccprovider     sysccprovider.SystemChaincodeProvider
 	pluginValidator *PluginValidator
 }
 
 // newVSCCValidator creates new vscc validator
-func newVSCCValidator(chainID string, support Support, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *VsccValidatorImpl {
+func newVSCCValidator(chainID string, cr ChannelResources, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *VsccValidatorImpl {
 	return &VsccValidatorImpl{
 		chainID:         chainID,
-		support:         support,
+		cr:              cr,
 		sccprovider:     sccp,
 		pluginValidator: pluginValidator,
 	}
@@ -110,7 +110,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 	}
 
 	var wrNamespace []string
-	alwaysEnforceOriginalNamespace := v.support.Capabilities().V1_2Validation()
+	alwaysEnforceOriginalNamespace := v.cr.Capabilities().V1_2Validation()
 	if alwaysEnforceOriginalNamespace {
 		wrNamespace = append(wrNamespace, ccID)
 		if respPayload.Events != nil {
@@ -274,7 +274,7 @@ func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 }
 
 func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (ccprovider.ChaincodeDefinition, error) {
-	l := v.support.Ledger()
+	l := v.cr.Ledger()
 	if l == nil {
 		return nil, errors.New("nil ledger instance")
 	}
@@ -346,7 +346,7 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 		// when we are validating a system CC, we use the default
 		// VSCC and a default policy that requires one signature
 		// from any of the members of the channel
-		p := cauthdsl.SignedByAnyMember(v.support.GetMSPIDs(chdr.ChannelId))
+		p := cauthdsl.SignedByAnyMember(v.cr.GetMSPIDs(chdr.ChannelId))
 		policy, err = utils.Marshal(p)
 		if err != nil {
 			return nil, nil, nil, err
@@ -365,7 +365,7 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	}
 
 	// only look at collection data if we support that capability
-	if v.support.Capabilities().PrivateChannelData() {
+	if v.cr.Capabilities().PrivateChannelData() {
 		// check for private writes for all collections
 		for _, c := range ns.CollHashedRwSets {
 			if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
@@ -373,7 +373,7 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 			}
 
 			// only look at private metadata writes if we support that capability
-			if v.support.Capabilities().KeyLevelEndorsement() {
+			if v.cr.Capabilities().KeyLevelEndorsement() {
 				// private metadata updates
 				if c.HashedRwSet != nil && len(c.HashedRwSet.MetadataWrites) > 0 {
 					return true
@@ -383,7 +383,7 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	}
 
 	// only look at metadata writes if we support that capability
-	if v.support.Capabilities().KeyLevelEndorsement() {
+	if v.cr.Capabilities().KeyLevelEndorsement() {
 		// public metadata updates
 		if ns.KvRwSet != nil && len(ns.KvRwSet.MetadataWrites) > 0 {
 			return true
