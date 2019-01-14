@@ -68,13 +68,13 @@ var _ = Describe("Handler", func() {
 
 		responseNotifier = make(chan *pb.ChaincodeMessage, 1)
 		txContext = &chaincode.TransactionContext{
-			ChainID:                 "channel-id",
-			TXSimulator:             fakeTxSimulator,
-			HistoryQueryExecutor:    fakeHistoryQueryExecutor,
-			ResponseNotifier:        responseNotifier,
-			CollectionStore:         fakeCollectionStore,
-			AllowedCollectionAccess: make(map[string]bool),
+			ChainID:              "channel-id",
+			TXSimulator:          fakeTxSimulator,
+			HistoryQueryExecutor: fakeHistoryQueryExecutor,
+			ResponseNotifier:     responseNotifier,
+			CollectionStore:      fakeCollectionStore,
 		}
+		txContext.InitializeCollectionACLCache()
 
 		fakeACLProvider = &mock.ACLProvider{}
 		fakeDefinitionGetter = &mock.ChaincodeDefinitionGetter{}
@@ -581,6 +581,7 @@ var _ = Describe("Handler", func() {
 				payload, err := proto.Marshal(request)
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(false, true, nil) // to
 			})
 
 			It("calls SetPrivateData on the transaction simulator", func() {
@@ -598,6 +599,7 @@ var _ = Describe("Handler", func() {
 			Context("when SetPrivateData fails due to ledger error", func() {
 				BeforeEach(func() {
 					fakeTxSimulator.SetPrivateDataReturns(errors.New("godzilla"))
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, true, nil) // to
 				})
 
 				It("returns an error", func() {
@@ -614,6 +616,19 @@ var _ = Describe("Handler", func() {
 				It("returns the error from errorIfInitTransaction", func() {
 					_, err := handler.HandlePutState(incomingMessage, txContext)
 					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
+				})
+			})
+
+			Context("when SetPrivateData fails due to no write access permission", func() {
+				BeforeEach(func() {
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
+				})
+
+				It("returns the error from errorIfCreatorHasNoWriteAccess", func() {
+					_, err := handler.HandlePutState(incomingMessage, txContext)
+					Expect(err).To(MatchError("tx creator does not have write access" +
+						" permission on privatedata in chaincodeName:cc-instance-name" +
+						" collectionName: collection-name"))
 				})
 			})
 		})
@@ -729,6 +744,7 @@ var _ = Describe("Handler", func() {
 				payload, err := proto.Marshal(request)
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(false, true, nil) // to
 			})
 
 			It("calls SetPrivateDataMetadata on the transaction simulator", func() {
@@ -745,7 +761,7 @@ var _ = Describe("Handler", func() {
 				}))
 			})
 
-			Context("when SetPrivateDataMetadata fails", func() {
+			Context("when SetPrivateDataMetadata fails due to ledger error", func() {
 				BeforeEach(func() {
 					fakeTxSimulator.SetPrivateDataMetadataReturns(errors.New("godzilla"))
 				})
@@ -753,6 +769,30 @@ var _ = Describe("Handler", func() {
 				It("returns an error", func() {
 					_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
 					Expect(err).To(MatchError("godzilla"))
+				})
+			})
+
+			Context("when SetPrivateDataMetadata fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
+				})
+			})
+
+			Context("when SetPrivateDataMetadata fails due to no write access permission", func() {
+				BeforeEach(func() {
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
+				})
+
+				It("returns the error from errorIfCreatorHasNoWriteAccess", func() {
+					_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+					Expect(err).To(MatchError("tx creator does not have write access" +
+						" permission on privatedata in chaincodeName:cc-instance-name" +
+						" collectionName: collection-name"))
 				})
 			})
 		})
@@ -827,6 +867,7 @@ var _ = Describe("Handler", func() {
 				payload, err := proto.Marshal(request)
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(false, true, nil) // to
 			})
 
 			It("calls DeletePrivateData on the transaction simulator", func() {
@@ -859,6 +900,19 @@ var _ = Describe("Handler", func() {
 				It("returns the error from errorIfInitTransaction", func() {
 					_, err := handler.HandleDelState(incomingMessage, txContext)
 					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
+				})
+			})
+
+			Context("when DeletePrivateData fails due to no write access permission", func() {
+				BeforeEach(func() {
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
+				})
+
+				It("returns the error from errorIfCreatorHasNoWriteAccess", func() {
+					_, err := handler.HandleDelState(incomingMessage, txContext)
+					Expect(err).To(MatchError("tx creator does not have write access" +
+						" permission on privatedata in chaincodeName:cc-instance-name" +
+						" collectionName: collection-name"))
 				})
 			})
 		})
@@ -910,7 +964,7 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
 
-				fakeCollectionStore.HasReadAccessReturns(true, nil)
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil)
 				fakeTxSimulator.GetPrivateDataReturns([]byte("get-private-data-response"), nil)
 				expectedResponse.Payload = []byte("get-private-data-response")
 			})
@@ -937,9 +991,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and GetPrivateData fails due to no read access", func() {
+			Context("and GetPrivateData fails due to no read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, nil)
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
 				})
 
 				It("returns the error from errorIfCreatorHasNoReadAccess", func() {
@@ -950,9 +1004,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and GetPrivateData fails due to error in checking the read access", func() {
+			Context("and GetPrivateData fails due to error in checking the read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, errors.New("no collection config"))
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, errors.New("no collection config"))
 				})
 
 				It("returns the error from errorIfCreatorHasNoReadAccess", func() {
@@ -974,13 +1028,25 @@ var _ = Describe("Handler", func() {
 
 			Context("and GetPrivateData returns the response message", func() {
 				BeforeEach(func() {
-					txContext.AllowedCollectionAccess["collection-name"] = true
-					fakeCollectionStore.HasReadAccessReturns(false, nil) // to
+					//txContext.CollectionACLCache.put("collection-name", true, false)
+					//fakeCollectionStore.HasReadAccessReturns(false, nil) // to
 					// ensure that the access cache is used
 				})
 
 				It("returns the the response message from GetPrivateData", func() {
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil) // to
 					resp, err := handler.HandleGetState(incomingMessage, txContext)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp).To(Equal(&pb.ChaincodeMessage{
+						Type:      pb.ChaincodeMessage_RESPONSE,
+						Payload:   []byte("get-private-data-response"),
+						Txid:      "tx-id",
+						ChannelId: "channel-id",
+					}))
+					// as the cache hit should happen in CollectionACLCache, the following
+					// RetrieveReadWritePermissionReturns should not be called
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil) // to
+					resp, err = handler.HandleGetState(incomingMessage, txContext)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(resp).To(Equal(&pb.ChaincodeMessage{
 						Type:      pb.ChaincodeMessage_RESPONSE,
@@ -1203,7 +1269,7 @@ var _ = Describe("Handler", func() {
 				metadata := map[string][]byte{
 					"get-state-metakey": []byte("get-private-metadata-response"),
 				}
-				fakeCollectionStore.HasReadAccessReturns(true, nil)
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil)
 				fakeTxSimulator.GetPrivateDataMetadataReturns(metadata, nil)
 				responsePayload, err := proto.Marshal(&pb.StateMetadataResult{
 					Entries: []*pb.StateMetadata{{
@@ -1243,9 +1309,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and GetPrivateDataMetadata fails due to no read access", func() {
+			Context("and GetPrivateDataMetadata fails due to no read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, nil)
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
 				})
 
 				It("returns the error from GetPrivateDataMetadata", func() {
@@ -1256,9 +1322,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and GetPrivateDataMetadata fails due to error in checking the read access", func() {
+			Context("and GetPrivateDataMetadata fails due to error in checking the read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, errors.New("no collection config"))
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, errors.New("no collection config"))
 				})
 
 				It("returns the error from GetPrivateDataMetadata", func() {
@@ -1425,7 +1491,7 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
 
-				fakeCollectionStore.HasReadAccessReturns(true, nil)
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil)
 				fakeTxSimulator.GetPrivateDataRangeScanIteratorReturns(fakeIterator, nil)
 			})
 
@@ -1452,9 +1518,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and GetPrivateDataRangeScanIterator fails due to no read access", func() {
+			Context("and GetPrivateDataRangeScanIterator fails due to no read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, nil)
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
 				})
 
 				It("returns the error from GetPrivateDataRangeScanIterator", func() {
@@ -1465,9 +1531,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and GetPrivateDataRangeScanIterator fails due to error in checking the read access", func() {
+			Context("and GetPrivateDataRangeScanIterator fails due to error in checking the read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, errors.New("no collection config"))
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, errors.New("no collection config"))
 				})
 
 				It("returns the error from GetPrivateDataRangeScanIterator", func() {
@@ -1795,7 +1861,7 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				incomingMessage.Payload = payload
 
-				fakeCollectionStore.HasReadAccessReturns(true, nil)
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil)
 				fakeTxSimulator.ExecuteQueryOnPrivateDataReturns(fakeIterator, nil)
 			})
 
@@ -1833,9 +1899,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and ExecuteQueryOnPrivateData fails due to no read access", func() {
+			Context("and ExecuteQueryOnPrivateData fails due to no read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, nil)
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
 				})
 
 				It("returns the error", func() {
@@ -1846,9 +1912,9 @@ var _ = Describe("Handler", func() {
 				})
 			})
 
-			Context("and ExecuteQueryOnPrivateData fails due to error in checking the read access", func() {
+			Context("and ExecuteQueryOnPrivateData fails due to error in checking the read access permission", func() {
 				BeforeEach(func() {
-					fakeCollectionStore.HasReadAccessReturns(false, errors.New("no collection config"))
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, errors.New("no collection config"))
 				})
 
 				It("returns the error", func() {

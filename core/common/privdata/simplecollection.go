@@ -46,6 +46,8 @@ func (sc *SimpleCollection) RequiredPeerCount() int {
 	return int(sc.conf.RequiredPeerCount)
 }
 
+// MaximumPeerCount returns the maximum number of peers
+// to which the private data will be sent
 func (sc *SimpleCollection) MaximumPeerCount() int {
 	return int(sc.conf.MaximumPeerCount)
 }
@@ -61,8 +63,16 @@ func (sc *SimpleCollection) AccessFilter() Filter {
 	}
 }
 
+// IsMemberOnlyRead returns whether only collection member
+// has the read permission
 func (sc *SimpleCollection) IsMemberOnlyRead() bool {
 	return sc.conf.MemberOnlyRead
+}
+
+// IsMemberOnlyWrite returns whether only collection member
+// has the write permission
+func (sc *SimpleCollection) IsMemberOnlyWrite() bool {
+	return sc.conf.MemberOnlyWrite
 }
 
 // Setup configures a simple collection object based on a given

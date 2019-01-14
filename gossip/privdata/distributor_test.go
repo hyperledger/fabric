@@ -62,6 +62,11 @@ func (mock *collectionAccessPolicyMock) IsMemberOnlyRead() bool {
 	return args.Get(0).(bool)
 }
 
+func (mock *collectionAccessPolicyMock) IsMemberOnlyWrite() bool {
+	args := mock.Called()
+	return args.Get(0).(bool)
+}
+
 func (mock *collectionAccessPolicyMock) Setup(requiredPeerCount int, maxPeerCount int,
 	accessFilter privdata.Filter, orgs []string, memberOnlyRead bool) {
 	mock.On("AccessFilter").Return(accessFilter)

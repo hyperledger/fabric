@@ -36,7 +36,27 @@ type TransactionContext struct {
 	// invoke (even in case of chaincode-calling-chaincode,
 	// we do not need to store the namespace in the map and
 	// collection alone is sufficient.
-	AllowedCollectionAccess map[string]bool
+	CollectionACLCache CollectionACLCache
+}
+
+// CollectionACLCache encapsulates a cache that stores read
+// write permission on a collection
+type CollectionACLCache map[string]*readWritePermission
+
+type readWritePermission struct {
+	read, write bool
+}
+
+func (c CollectionACLCache) put(collection string, rwPermission *readWritePermission) {
+	c[collection] = rwPermission
+}
+
+func (c CollectionACLCache) get(collection string) *readWritePermission {
+	return c[collection]
+}
+
+func (t *TransactionContext) InitializeCollectionACLCache() {
+	t.CollectionACLCache = make(CollectionACLCache)
 }
 
 func (t *TransactionContext) InitializeQueryContext(queryID string, iter commonledger.ResultsIterator) {

@@ -337,7 +337,7 @@ func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privda
 	panic("implement me")
 }
 
-func (cs *collectionStore) HasReadAccess(cc common.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, error) {
+func (cs *collectionStore) RetrieveReadWritePermission(cc common.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
 	panic("implement me")
 }
 
@@ -383,6 +383,10 @@ func (cap *collectionAccessPolicy) MaximumPeerCount() int {
 }
 
 func (cap *collectionAccessPolicy) IsMemberOnlyRead() bool {
+	return false
+}
+
+func (cap *collectionAccessPolicy) IsMemberOnlyWrite() bool {
 	return false
 }
 
