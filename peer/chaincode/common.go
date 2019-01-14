@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
@@ -49,7 +48,7 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 // getChaincodeDeploymentSpec get chaincode deployment spec given the chaincode spec
 func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.ChaincodeDeploymentSpec, error) {
 	var codePackageBytes []byte
-	if chaincode.IsDevMode() == false && crtPkg {
+	if crtPkg {
 		var err error
 		if err = checkSpec(spec); err != nil {
 			return nil, err
