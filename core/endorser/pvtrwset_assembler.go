@@ -26,7 +26,8 @@ type PvtRWSetAssembler interface {
 	// augmenting it into TxPvtReadWriteSetWithConfigInfo adding
 	// information about collections config available related
 	// to private read-write set
-	AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet,
+	AssemblePvtRWSet(channelName string,
+		privData *rwset.TxPvtReadWriteSet,
 		txsim ledger.SimpleQueryExecutor,
 		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) (
 		*transientstore.TxPvtReadWriteSetWithConfigInfo, error,
@@ -47,8 +48,10 @@ type rwSetAssembler struct {
 // augmenting it into TxPvtReadWriteSetWithConfigInfo adding
 // information about collections config available related
 // to private read-write set
-func (as *rwSetAssembler) AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet,
-	txsim ledger.SimpleQueryExecutor, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) (
+func (as *rwSetAssembler) AssemblePvtRWSet(channelName string,
+	privData *rwset.TxPvtReadWriteSet,
+	txsim ledger.SimpleQueryExecutor,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider) (
 	*transientstore.TxPvtReadWriteSetWithConfigInfo, error,
 ) {
 	txPvtRwSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{
@@ -59,7 +62,7 @@ func (as *rwSetAssembler) AssemblePvtRWSet(privData *rwset.TxPvtReadWriteSet,
 	for _, pvtRwset := range privData.NsPvtRwset {
 		namespace := pvtRwset.Namespace
 		if _, found := txPvtRwSetWithConfig.CollectionConfigs[namespace]; !found {
-			ccInfo, err := deployedCCInfoProvider.ChaincodeInfo(namespace, txsim)
+			ccInfo, err := deployedCCInfoProvider.ChaincodeInfo(channelName, namespace, txsim)
 			if err != nil {
 				return nil, errors.WithMessage(err, fmt.Sprintf("error while retrieving collection config for chaincode %#v", namespace))
 			}

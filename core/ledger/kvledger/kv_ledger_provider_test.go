@@ -328,7 +328,7 @@ func testutilNewProviderWithCollectionConfig(t *testing.T, namespace string, btl
 	}
 	collectionConfPkg := &common.CollectionConfigPackage{Config: conf}
 
-	mockCCInfoProvider.ChaincodeInfoStub = func(ccName string, qe lgr.SimpleQueryExecutor) (*lgr.DeployedChaincodeInfo, error) {
+	mockCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*lgr.DeployedChaincodeInfo, error) {
 		if ccName == namespace {
 			return &lgr.DeployedChaincodeInfo{
 				Name: namespace, CollectionConfigPkg: collectionConfPkg}, nil
@@ -336,7 +336,7 @@ func testutilNewProviderWithCollectionConfig(t *testing.T, namespace string, btl
 		return nil, nil
 	}
 
-	mockCCInfoProvider.CollectionInfoStub = func(ccName, collName string, qe lgr.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
+	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe lgr.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
 		if ccName == namespace {
 			return collMap[collName], nil
 		}

@@ -64,7 +64,7 @@ func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.Collec
 		}
 		defer qe.Done()
 	}
-	ccInfo, err := c.s.GetCollectionInfoProvider().ChaincodeInfo(cc.Namespace, qe)
+	ccInfo, err := c.s.GetCollectionInfoProvider().ChaincodeInfo(cc.Channel, cc.Namespace, qe)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *simpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCri
 		}
 		defer qe.Done()
 	}
-	collConfig, err := c.s.GetCollectionInfoProvider().CollectionInfo(cc.Namespace, cc.Collection, qe)
+	collConfig, err := c.s.GetCollectionInfoProvider().CollectionInfo(cc.Channel, cc.Namespace, cc.Collection, qe)
 	if err != nil {
 		return nil, err
 	}

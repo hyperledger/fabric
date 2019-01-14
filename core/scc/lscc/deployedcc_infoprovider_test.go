@@ -43,16 +43,16 @@ func TestChaincodeInfo(t *testing.T) {
 	mockQE := prepareMockQE(t, []*ledger.DeployedChaincodeInfo{cc1, cc2})
 	ccInfoProvdier := &lscc.DeployedCCInfoProvider{}
 
-	ccInfo1, err := ccInfoProvdier.ChaincodeInfo("cc1", mockQE)
+	ccInfo1, err := ccInfoProvdier.ChaincodeInfo("", "cc1", mockQE)
 	assert.NoError(t, err)
 	assert.Equal(t, cc1, ccInfo1)
 
-	ccInfo2, err := ccInfoProvdier.ChaincodeInfo("cc2", mockQE)
+	ccInfo2, err := ccInfoProvdier.ChaincodeInfo("", "cc2", mockQE)
 	assert.NoError(t, err)
 	assert.Equal(t, cc2.Name, ccInfo2.Name)
 	assert.True(t, proto.Equal(cc2.CollectionConfigPkg, ccInfo2.CollectionConfigPkg))
 
-	ccInfo3, err := ccInfoProvdier.ChaincodeInfo("cc3", mockQE)
+	ccInfo3, err := ccInfoProvdier.ChaincodeInfo("", "cc3", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, ccInfo3)
 }
@@ -74,15 +74,15 @@ func TestCollectionInfo(t *testing.T) {
 	mockQE := prepareMockQE(t, []*ledger.DeployedChaincodeInfo{cc1, cc2})
 	ccInfoProvdier := &lscc.DeployedCCInfoProvider{}
 
-	collInfo1, err := ccInfoProvdier.CollectionInfo("cc1", "non-existing-coll-in-cc1", mockQE)
+	collInfo1, err := ccInfoProvdier.CollectionInfo("", "cc1", "non-existing-coll-in-cc1", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, collInfo1)
 
-	collInfo2, err := ccInfoProvdier.CollectionInfo("cc2", "cc2_coll1", mockQE)
+	collInfo2, err := ccInfoProvdier.CollectionInfo("", "cc2", "cc2_coll1", mockQE)
 	assert.NoError(t, err)
 	assert.Equal(t, "cc2_coll1", collInfo2.Name)
 
-	collInfo3, err := ccInfoProvdier.CollectionInfo("cc2", "non-existing-coll-in-cc2", mockQE)
+	collInfo3, err := ccInfoProvdier.CollectionInfo("", "cc2", "non-existing-coll-in-cc2", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, collInfo3)
 }

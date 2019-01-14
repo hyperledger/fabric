@@ -35,7 +35,7 @@ func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.St
 			// TODO handle delete case when delete is implemented in lifecycle
 			continue
 		}
-		deployedCCInfo, err := deployCCInfoProvider.ChaincodeInfo(updatedChaincode.Name, postCommitQE)
+		deployedCCInfo, err := deployCCInfoProvider.ChaincodeInfo(channelName, updatedChaincode.Name, postCommitQE)
 		if err != nil {
 			return err
 		}

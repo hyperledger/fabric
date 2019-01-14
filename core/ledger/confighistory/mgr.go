@@ -71,7 +71,7 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	}
 	updatedCollConfigs := map[string]*common.CollectionConfigPackage{}
 	for _, cc := range updatedCCs {
-		ccInfo, err := m.ccInfoProvider.ChaincodeInfo(cc.Name, trigger.PostCommitQueryExecutor)
+		ccInfo, err := m.ccInfoProvider.ChaincodeInfo(trigger.LedgerID, cc.Name, trigger.PostCommitQueryExecutor)
 		if err != nil {
 			return err
 		}
