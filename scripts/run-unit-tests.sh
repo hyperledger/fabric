@@ -13,7 +13,6 @@ excluded_packages=(
 )
 
 # regexes for packages that must be run serially
-# NOTE: these packages are now tested first as they tend to fail more frequently
 serial_packages=(
     "github.com/hyperledger/fabric/gossip"
 )
