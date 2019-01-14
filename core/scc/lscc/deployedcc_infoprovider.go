@@ -58,7 +58,7 @@ func (p *DeployedCCInfoProvider) UpdatedChaincodes(stateUpdates map[string][]*kv
 }
 
 // ChaincodeInfo implements function in interface ledger.DeployedChaincodeInfoProvider
-func (p *DeployedCCInfoProvider) ChaincodeInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 	chaincodeDataBytes, err := qe.GetState(lsccNamespace, chaincodeName)
 	if err != nil || chaincodeDataBytes == nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (p *DeployedCCInfoProvider) ChaincodeInfo(chaincodeName string, qe ledger.S
 }
 
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider
-func (p *DeployedCCInfoProvider) CollectionInfo(chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
+func (p *DeployedCCInfoProvider) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
 	collConfigPkg, err := fetchCollConfigPkg(chaincodeName, qe)
 	if err != nil || collConfigPkg == nil {
 		return nil, err

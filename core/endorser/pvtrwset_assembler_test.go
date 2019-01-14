@@ -65,7 +65,7 @@ func TestAssemblePvtRWSet(t *testing.T) {
 		},
 	}
 
-	pvtReadWriteSetWithConfigInfo, err := assembler.AssemblePvtRWSet(privData, nil, mockDeployedCCInfoProvider)
+	pvtReadWriteSetWithConfigInfo, err := assembler.AssemblePvtRWSet("", privData, nil, mockDeployedCCInfoProvider)
 	assert.NoError(t, err)
 	assert.NotNil(t, pvtReadWriteSetWithConfigInfo)
 	assert.NotNil(t, pvtReadWriteSetWithConfigInfo.PvtRwset)

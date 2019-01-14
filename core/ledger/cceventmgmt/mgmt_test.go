@@ -109,7 +109,7 @@ func TestLSCCListener(t *testing.T) {
 				{Name: cc1Def.Name},
 			}, nil
 		}
-	mockInfoProvider.ChaincodeInfoStub = func(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+	mockInfoProvider.ChaincodeInfoStub = func(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 		return &ledger.DeployedChaincodeInfo{
 			Name:    chaincodeName,
 			Hash:    cc1Def.Hash,

@@ -47,13 +47,13 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 	for _, ccInfo := range ccLifecycleInfo {
 		ledgerid := trigger.LedgerID
 		ccName := ccInfo.Name
-		if existingCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ccName, qe); err != nil {
+		if existingCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ledgerid, ccName, qe); err != nil {
 			return err
 		}
 		if existingCCInfo == nil { // not an upgrade transaction
 			continue
 		}
-		if postCommitCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ccName, postCommitQE); err != nil {
+		if postCommitCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ledgerid, ccName, postCommitQE); err != nil {
 			return err
 		}
 		elgEnabledCollNames, err := n.elgEnabledCollNames(

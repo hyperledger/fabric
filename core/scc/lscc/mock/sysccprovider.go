@@ -2,11 +2,11 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	policies "github.com/hyperledger/fabric/common/policies"
-	ledger "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type SystemChaincodeProvider struct {

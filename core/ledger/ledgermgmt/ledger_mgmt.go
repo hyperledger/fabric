@@ -202,7 +202,7 @@ func (p *chaincodeInfoProviderImpl) GetDeployedChaincodeInfo(chainid string,
 		return nil, err
 	}
 	defer qe.Done()
-	deployedChaincodeInfo, err := p.deployedCCInfoProvider.ChaincodeInfo(chaincodeDefinition.Name, qe)
+	deployedChaincodeInfo, err := p.deployedCCInfoProvider.ChaincodeInfo(chainid, chaincodeDefinition.Name, qe)
 	if err != nil || deployedChaincodeInfo == nil {
 		return nil, err
 	}

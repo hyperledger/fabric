@@ -467,8 +467,8 @@ type PvtdataHashMismatch struct {
 type DeployedChaincodeInfoProvider interface {
 	Namespaces() []string
 	UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite) ([]*ChaincodeLifecycleInfo, error)
-	ChaincodeInfo(chaincodeName string, qe SimpleQueryExecutor) (*DeployedChaincodeInfo, error)
-	CollectionInfo(chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	ChaincodeInfo(channelName, chaincodeName string, qe SimpleQueryExecutor) (*DeployedChaincodeInfo, error)
+	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
 }
 
 // DeployedChaincodeInfo encapsulates chaincode information from the deployed chaincodes

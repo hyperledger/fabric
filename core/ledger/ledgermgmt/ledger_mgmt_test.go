@@ -21,9 +21,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-
 	"github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -106,7 +105,7 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	CreateLedger(gb)
 
 	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mockDeployedCCInfoProvider.ChaincodeInfoStub = func(ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+	mockDeployedCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 		return constructTestCCInfo(ccName, ccName, ccName), nil
 	}
 

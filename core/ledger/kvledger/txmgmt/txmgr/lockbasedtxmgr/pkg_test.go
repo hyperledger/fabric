@@ -170,7 +170,7 @@ func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []co
 		pkg.Config = append(pkg.Config, &common.CollectionConfig{Payload: sCollConfig})
 	}
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	ccInfoProvider.ChaincodeInfoStub = func(ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+	ccInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 		fmt.Printf("retrieveing info for [%s] from [%s]\n", ccName, m)
 		return &ledger.DeployedChaincodeInfo{Name: ccName, CollectionConfigPkg: m[ccName]}, nil
 	}
