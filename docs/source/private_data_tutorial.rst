@@ -333,7 +333,7 @@ Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/mas
 
     .. code:: bash
 
-       peer chaincode install -n marblesp -v 1.0 -p github.com/chaincode/marbles02_private/go/
+       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
     When it is complete you should see something similar to:
 
@@ -348,7 +348,7 @@ Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/mas
     .. code:: bash
 
        export CORE_PEER_ADDRESS=peer1.org1.example.com:7051
-       peer chaincode install -n marblesp -v 1.0 -p github.com/chaincode/marbles02_private/go/
+       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
  3. Use the CLI to switch to Org2. Copy and paste the following block of
     commands as a group into the peer container and run them all at once.
@@ -365,14 +365,14 @@ Use the `peer chaincode install <http://hyperledger-fabric.readthedocs.io/en/mas
     .. code:: bash
 
        export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
-       peer chaincode install -n marblesp -v 1.0 -p github.com/chaincode/marbles02_private/go/
+       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
  5. Switch the active peer to the second peer in org2 and install the chaincode:
 
     .. code:: bash
 
        export CORE_PEER_ADDRESS=peer1.org2.example.com:7051
-       peer chaincode install -n marblesp -v 1.0 -p github.com/chaincode/marbles02_private/go/
+       peer chaincode install -n marblesp -v 1.0 -p github.com/hyperledger/fabric-samples/chaincode/marbles02_private/go/
 
 Instantiate the chaincode on the channel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -391,11 +391,11 @@ example.
  .. code:: bash
 
    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-   peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n marblesp -v 1.0 -c '{"Args":["init"]}' -P "OR('Org1MSP.member','Org2MSP.member')" --collections-config  $GOPATH/src/github.com/chaincode/marbles02_private/collections_config.json
+   peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n marblesp -v 1.0 -c '{"Args":["init"]}' -P "OR('Org1MSP.member','Org2MSP.member')" --collections-config  $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json
 
  .. note:: When specifying the value of the ``--collections-config`` flag, you will
            need to specify the fully qualified path to the collections_config.json file.
-           For example: ``--collections-config  $GOPATH/src/github.com/chaincode/marbles02_private/collections_config.json``
+           For example: ``--collections-config  $GOPATH/src/github.com/hyperledger/fabric-samples/chaincode/marbles02_private/collections_config.json``
 
  When the instantiation completes successfully you should see something similar to:
 
