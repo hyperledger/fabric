@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cc_test
+package cclifecycle_test
 
 import (
 	"regexp"
@@ -47,14 +47,14 @@ func TestHandleMetadataUpdate(t *testing.T) {
 		assert.Len(t, chaincodes, 2)
 		assert.Equal(t, "mychannel", channel)
 	}
-	cc.HandleMetadataUpdate(f).LifeCycleChangeListener("mychannel", chaincode.MetadataSet{{}, {}})
+	cc.HandleMetadataUpdateFunc(f).HandleMetadataUpdate("mychannel", chaincode.MetadataSet{{}, {}})
 }
 
 func TestEnumerate(t *testing.T) {
 	f := func() ([]chaincode.InstalledChaincode, error) {
 		return []chaincode.InstalledChaincode{{}, {}}, nil
 	}
-	ccs, err := cc.Enumerate(f).Enumerate()
+	ccs, err := cc.EnumerateFunc(f).Enumerate()
 	assert.NoError(t, err)
 	assert.Len(t, ccs, 2)
 }
@@ -62,7 +62,7 @@ func TestEnumerate(t *testing.T) {
 func TestLifecycleInitFailure(t *testing.T) {
 	listCCs := &mocks.Enumerator{}
 	listCCs.On("Enumerate").Return(nil, errors.New("failed accessing DB"))
-	lc, err := cc.NewLifeCycle(listCCs)
+	lc, err := cc.NewLifecycle(listCCs)
 	assert.Nil(t, lc)
 	assert.Contains(t, err.Error(), "failed accessing DB")
 }
@@ -119,11 +119,11 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 		},
 	}, nil)
 
-	lc, err := cc.NewLifeCycle(enum)
+	lc, err := cc.NewLifecycle(enum)
 	assert.NoError(t, err)
 
-	lsnr := &mocks.LifeCycleChangeListener{}
-	lsnr.On("LifeCycleChangeListener", mock.Anything, mock.Anything)
+	lsnr := &mocks.LifecycleChangeListener{}
+	lsnr.On("HandleMetadataUpdate", mock.Anything, mock.Anything)
 	lc.AddListener(lsnr)
 
 	sub, err := lc.NewChannelSubscription("mychannel", queryCreator)
@@ -132,7 +132,7 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 
 	// Ensure that the listener was updated
 	assertLogged(t, recorder, "Listeners for channel mychannel invoked")
-	lsnr.AssertCalled(t, "LifeCycleChangeListener", "mychannel", chaincode.MetadataSet{chaincode.Metadata{
+	lsnr.AssertCalled(t, "HandleMetadataUpdate", "mychannel", chaincode.MetadataSet{chaincode.Metadata{
 		Name:    "cc1",
 		Version: "1.0",
 		Id:      []byte{42},
@@ -212,11 +212,11 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 		},
 	}, nil)
 
-	lc, err := cc.NewLifeCycle(enum)
+	lc, err := cc.NewLifecycle(enum)
 	assert.NoError(t, err)
 
-	lsnr := &mocks.LifeCycleChangeListener{}
-	lsnr.On("LifeCycleChangeListener", mock.Anything, mock.Anything)
+	lsnr := &mocks.LifecycleChangeListener{}
+	lsnr.On("HandleMetadataUpdate", mock.Anything, mock.Anything)
 	lc.AddListener(lsnr)
 
 	// Scenario I: A channel subscription is made but obtaining a new query is not possible.
@@ -224,7 +224,7 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 	sub, err := lc.NewChannelSubscription("mychannel", queryCreator)
 	assert.Nil(t, sub)
 	assert.Contains(t, err.Error(), "failed accessing DB")
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 0)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 0)
 
 	// Scenario II: A channel subscription is made and obtaining a new query succeeds, however - obtaining it once
 	// a deployment notification occurs - fails.
@@ -234,11 +234,11 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 	sub, err = lc.NewChannelSubscription("mychannel", queryCreator)
 	assert.NoError(t, err)
 	assert.NotNil(t, sub)
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 1)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 1)
 	sub.HandleChaincodeDeploy(&cceventmgmt.ChaincodeDefinition{Name: "cc1", Version: "1.0", Hash: []byte{42}}, nil)
 	sub.ChaincodeDeployDone(true)
 	assertLogged(t, recorder, "Failed creating a new query for channel mychannel: failed accessing DB")
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 1)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 1)
 
 	// Scenario III: A channel subscription is made and obtaining a new query succeeds both at subscription initialization
 	// and at deployment notification. However - GetState returns an error.
@@ -248,22 +248,22 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 	sub, err = lc.NewChannelSubscription("mychannel", queryCreator)
 	assert.NoError(t, err)
 	assert.NotNil(t, sub)
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 2)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 2)
 	sub.HandleChaincodeDeploy(&cceventmgmt.ChaincodeDefinition{Name: "cc1", Version: "1.0", Hash: []byte{42}}, nil)
 	sub.ChaincodeDeployDone(true)
 	assertLogged(t, recorder, "Query for channel mychannel for Name=cc1, Version=1.0, Hash=[]byte{0x2a} failed with error failed accessing DB")
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 2)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 2)
 
 	// Scenario IV: A channel subscription is made successfully, and obtaining a new query succeeds at subscription initialization,
 	// however - the deployment notification indicates the deploy failed.
 	// Thus, the lifecycle change listener should not be called.
 	sub, err = lc.NewChannelSubscription("mychannel", queryCreator)
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 3)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 3)
 	assert.NoError(t, err)
 	assert.NotNil(t, sub)
 	sub.HandleChaincodeDeploy(&cceventmgmt.ChaincodeDefinition{Name: "cc1", Version: "1.1", Hash: []byte{42}}, nil)
 	sub.ChaincodeDeployDone(false)
-	lsnr.AssertNumberOfCalls(t, "LifeCycleChangeListener", 3)
+	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 3)
 	assertLogged(t, recorder, "Chaincode deploy for updates [Name=cc1, Version=1.1, Hash=[]byte{0x2a}] failed")
 }
 
@@ -305,13 +305,13 @@ func TestMultipleUpdates(t *testing.T) {
 		},
 	}, nil)
 
-	lc, err := cc.NewLifeCycle(enum)
+	lc, err := cc.NewLifecycle(enum)
 	assert.NoError(t, err)
 
 	var lsnrCalled sync.WaitGroup
 	lsnrCalled.Add(3)
-	lsnr := &mocks.LifeCycleChangeListener{}
-	lsnr.On("LifeCycleChangeListener", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
+	lsnr := &mocks.LifecycleChangeListener{}
+	lsnr.On("HandleMetadataUpdate", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
 		lsnrCalled.Done()
 	})
 	lc.AddListener(lsnr)
@@ -381,7 +381,7 @@ func TestMetadata(t *testing.T) {
 		},
 	}, nil)
 
-	lc, err := cc.NewLifeCycle(enum)
+	lc, err := cc.NewLifecycle(enum)
 	assert.NoError(t, err)
 
 	// Scenario I: No subscription was invoked on the lifecycle

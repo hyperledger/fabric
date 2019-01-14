@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cc
+package cclifecycle
 
 import (
 	"sync"
@@ -23,27 +23,27 @@ var (
 // Lifecycle manages information regarding chaincode lifecycle
 type Lifecycle struct {
 	sync.RWMutex
-	listeners              []LifeCycleChangeListener
+	listeners              []LifecycleChangeListener
 	installedCCs           []chaincode.InstalledChaincode
 	deployedCCsByChannel   map[string]*chaincode.MetadataMapping
 	queryCreatorsByChannel map[string]QueryCreator
 }
 
-// LifeCycleChangeListener runs whenever there is a change to the metadata
+//go:generate mockery -dir . -name LifecycleChangeListener -case underscore  -output mocks/
+
+// LifecycleChangeListener runs whenever there is a change to the metadata
 // of a chaincode in the context of a specific channel
-type LifeCycleChangeListener interface {
-	LifeCycleChangeListener(channel string, chaincodes chaincode.MetadataSet)
+type LifecycleChangeListener interface {
+	HandleMetadataUpdate(channel string, chaincodes chaincode.MetadataSet)
 }
 
-// HandleMetadataUpdate is triggered upon a change in the chaincode lifecycle change
-type HandleMetadataUpdate func(channel string, chaincodes chaincode.MetadataSet)
+// HandleMetadataUpdateFunc is triggered upon a change in the chaincode lifecycle
+type HandleMetadataUpdateFunc func(channel string, chaincodes chaincode.MetadataSet)
 
-//go:generate mockery -dir . -name LifeCycleChangeListener -case underscore  -output mocks/
-
-// LifeCycleChangeListener runs whenever there is a change to the metadata
-// // of a chaincode in the context of a specific channel
-func (mdUpdate HandleMetadataUpdate) LifeCycleChangeListener(channel string, chaincodes chaincode.MetadataSet) {
-	mdUpdate(channel, chaincodes)
+// HandleMetadataUpdate runs whenever there is a change to the metadata
+// of a chaincode in the context of a specific channel
+func (handleMetadataUpdate HandleMetadataUpdateFunc) HandleMetadataUpdate(channel string, chaincodes chaincode.MetadataSet) {
+	handleMetadataUpdate(channel, chaincodes)
 }
 
 //go:generate mockery -dir . -name Enumerator -case underscore  -output mocks/
@@ -54,12 +54,12 @@ type Enumerator interface {
 	Enumerate() ([]chaincode.InstalledChaincode, error)
 }
 
-// Enumerate enumerates installed chaincodes
-type Enumerate func() ([]chaincode.InstalledChaincode, error)
+// EnumerateFunc enumerates installed chaincodes
+type EnumerateFunc func() ([]chaincode.InstalledChaincode, error)
 
 // Enumerate enumerates chaincodes
-func (listCCs Enumerate) Enumerate() ([]chaincode.InstalledChaincode, error) {
-	return listCCs()
+func (enumerate EnumerateFunc) Enumerate() ([]chaincode.InstalledChaincode, error) {
+	return enumerate()
 }
 
 //go:generate mockery -dir . -name Query -case underscore  -output mocks/
@@ -85,12 +85,12 @@ type QueryCreator interface {
 type QueryCreatorFunc func() (Query, error)
 
 // NewQuery creates a new Query, or error on failure
-func (qc QueryCreatorFunc) NewQuery() (Query, error) {
-	return qc()
+func (queryCreator QueryCreatorFunc) NewQuery() (Query, error) {
+	return queryCreator()
 }
 
-// NewLifeCycle creates a new Lifecycle instance
-func NewLifeCycle(installedChaincodes Enumerator) (*Lifecycle, error) {
+// NewLifecycle creates a new Lifecycle instance
+func NewLifecycle(installedChaincodes Enumerator) (*Lifecycle, error) {
 	installedCCs, err := installedChaincodes.Enumerate()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed listing installed chaincodes")
@@ -98,8 +98,8 @@ func NewLifeCycle(installedChaincodes Enumerator) (*Lifecycle, error) {
 
 	lc := &Lifecycle{
 		installedCCs:           installedCCs,
-		deployedCCsByChannel:   make(map[string]*chaincode.MetadataMapping),
-		queryCreatorsByChannel: make(map[string]QueryCreator),
+		deployedCCsByChannel:   map[string]*chaincode.MetadataMapping{},
+		queryCreatorsByChannel: map[string]QueryCreator{},
 	}
 
 	return lc, nil
@@ -183,7 +183,7 @@ func (lc *Lifecycle) fireChangeListeners(channel string) {
 	lc.RUnlock()
 	for _, listener := range lc.listeners {
 		aggregatedMD := md.Aggregate()
-		listener.LifeCycleChangeListener(channel, aggregatedMD)
+		listener.HandleMetadataUpdate(channel, aggregatedMD)
 	}
 	Logger.Debug("Listeners for channel", channel, "invoked")
 }
@@ -205,7 +205,7 @@ func (lc *Lifecycle) NewChannelSubscription(channel string, queryCreator QueryCr
 }
 
 // AddListener registers the given listener to be triggered upon a lifecycle change
-func (lc *Lifecycle) AddListener(listener LifeCycleChangeListener) {
+func (lc *Lifecycle) AddListener(listener LifecycleChangeListener) {
 	lc.Lock()
 	defer lc.Unlock()
 	lc.listeners = append(lc.listeners, listener)

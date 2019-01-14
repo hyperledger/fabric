@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/admin"
-	cc "github.com/hyperledger/fabric/core/cclifecycle"
+	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -477,11 +477,11 @@ func serve(args []string) error {
 	installedCCs := func() ([]ccdef.InstalledChaincode, error) {
 		return packageProvider.ListInstalledChaincodes()
 	}
-	lifecycle, err := cc.NewLifeCycle(cc.Enumerate(installedCCs))
+	lifecycle, err := cclifecycle.NewLifecycle(cclifecycle.EnumerateFunc(installedCCs))
 	if err != nil {
 		logger.Panicf("Failed creating lifecycle: +%v", err)
 	}
-	onUpdate := cc.HandleMetadataUpdate(func(channel string, chaincodes ccdef.MetadataSet) {
+	onUpdate := cclifecycle.HandleMetadataUpdateFunc(func(channel string, chaincodes ccdef.MetadataSet) {
 		service.GetGossipService().UpdateChaincodes(chaincodes.AsChaincodes(), gossipcommon.ChainID(channel))
 	})
 	lifecycle.AddListener(onUpdate)
@@ -491,7 +491,7 @@ func serve(args []string) error {
 		func(cid string) {
 			logger.Debugf("Deploying system CC, for channel <%s>", cid)
 			sccp.DeploySysCCs(cid, ccp)
-			sub, err := lifecycle.NewChannelSubscription(cid, cc.QueryCreatorFunc(func() (cc.Query, error) {
+			sub, err := lifecycle.NewChannelSubscription(cid, cclifecycle.QueryCreatorFunc(func() (cclifecycle.Query, error) {
 				return peer.GetLedger(cid).NewQueryExecutor()
 			}))
 			if err != nil {
@@ -601,7 +601,7 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cc.Lifecycle) {
+func registerDiscoveryService(coreConfig *peer.Config, peerServer *comm.GRPCServer, polMgr policies.ChannelPolicyManagerGetter, lc *cclifecycle.Lifecycle) {
 	mspID := coreConfig.LocalMspID
 	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
