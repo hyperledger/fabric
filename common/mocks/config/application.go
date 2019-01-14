@@ -46,6 +46,7 @@ type MockApplicationCapabilities struct {
 	MetadataLifecycleRv          bool
 	KeyLevelEndorsementRv        bool
 	V1_3ValidationRv             bool
+	V2_0ValidationRv             bool
 	FabTokenRv                   bool
 }
 
@@ -87,6 +88,10 @@ func (mac *MockApplicationCapabilities) KeyLevelEndorsement() bool {
 
 func (mac *MockApplicationCapabilities) V1_3Validation() bool {
 	return mac.V1_3ValidationRv
+}
+
+func (mac *MockApplicationCapabilities) V2_0Validation() bool {
+	return mac.V2_0ValidationRv
 }
 
 func (mac *MockApplicationCapabilities) FabToken() bool {

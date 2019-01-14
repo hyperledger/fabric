@@ -64,6 +64,8 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 
 	var err error
 	switch {
+	case v.Capabilities.V2_0Validation():
+		fallthrough
 	case v.Capabilities.V1_3Validation():
 		err = v.TxValidatorV1_3.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
 

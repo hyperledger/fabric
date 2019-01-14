@@ -100,6 +100,14 @@ func (ap *ApplicationProvider) V1_3Validation() bool {
 	return ap.v13
 }
 
+// V2_0Validation returns true if this channel supports transaction validation
+// as introduced in v2.0. This includes:
+//  - new chaincode lifecycle
+//  - implicit per-org collections
+func (ap *ApplicationProvider) V2_0Validation() bool {
+	return false
+}
+
 // MetadataLifecycle indicates whether the peer should use the deprecated and problematic
 // v1.0/v1.1/v1.2 lifecycle, or whether it should use the newer per channel peer local chaincode
 // metadata package approach planned for release with Fabric v1.3
