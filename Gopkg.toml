@@ -185,3 +185,7 @@ noverify = [
   [[prune.project]]
       name = "github.com/coreos/etcd"
       non-go = false
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.9.0"
