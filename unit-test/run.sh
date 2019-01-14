@@ -16,7 +16,6 @@ excluded_packages=(
 # NOTE: these packages are now tested first as they tend to fail more frequently
 serial_packages=(
     "github.com/hyperledger/fabric/gossip"
-    "github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 )
 
 # packages which need to be tested with build tag pluginsenabled
