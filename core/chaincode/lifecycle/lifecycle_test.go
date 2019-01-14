@@ -8,10 +8,8 @@ package lifecycle_test
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -144,8 +142,8 @@ var _ = Describe("Lifecycle", func() {
 			fakePublicState *mock.ReadWritableState
 			fakeOrgState    *mock.ReadWritableState
 
-			fakeOrgKVStore    map[string][]byte
-			fakePublicKVStore map[string][]byte
+			fakeOrgKVStore    MapLedgerShim
+			fakePublicKVStore MapLedgerShim
 
 			testDefinition *lifecycle.ChaincodeDefinition
 		)
@@ -160,31 +158,19 @@ var _ = Describe("Lifecycle", func() {
 			}
 
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicKVStore = map[string][]byte{}
+			fakePublicKVStore = MapLedgerShim(map[string][]byte{})
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicState.PutStateStub = func(key string, value []byte) error {
-				fakePublicKVStore[key] = value
-				return nil
-			}
+			fakePublicState.PutStateStub = fakePublicKVStore.PutState
+			fakePublicState.GetStateStub = fakePublicKVStore.GetState
 
-			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
-				return fakePublicKVStore[key], nil
-			}
-
-			fakeOrgKVStore = map[string][]byte{}
+			fakeOrgKVStore = MapLedgerShim(map[string][]byte{})
 			fakeOrgState = &mock.ReadWritableState{}
-			fakeOrgState.PutStateStub = func(key string, value []byte) error {
-				fakeOrgKVStore[key] = value
-				return nil
-			}
-
-			fakeOrgState.GetStateStub = func(key string) ([]byte, error) {
-				return fakeOrgKVStore[key], nil
-			}
+			fakeOrgState.PutStateStub = fakeOrgKVStore.PutState
+			fakeOrgState.GetStateStub = fakeOrgKVStore.GetState
 
 			err := l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{
 				Sequence: 4,
-			}, fakePublicState)
+			}, fakePublicKVStore)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -362,7 +348,6 @@ var _ = Describe("Lifecycle", func() {
 
 		Context("when writing to the public state fails", func() {
 			BeforeEach(func() {
-				fakeOrgState.PutStateStub = nil
 				fakeOrgState.PutStateReturns(fmt.Errorf("put-state-error"))
 			})
 
@@ -380,7 +365,7 @@ var _ = Describe("Lifecycle", func() {
 
 			testDefinition *lifecycle.ChaincodeDefinition
 
-			publicKVS, org0KVS, org1KVS map[string][]byte
+			publicKVS, org0KVS, org1KVS MapLedgerShim
 		)
 
 		BeforeEach(func() {
@@ -396,15 +381,11 @@ var _ = Describe("Lifecycle", func() {
 				},
 			}
 
-			publicKVS = map[string][]byte{}
+			publicKVS = MapLedgerShim(map[string][]byte{})
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
-				return publicKVS[key], nil
-			}
-			fakePublicState.PutStateStub = func(key string, value []byte) error {
-				publicKVS[key] = value
-				return nil
-			}
+			fakePublicState.GetStateStub = publicKVS.GetState
+			fakePublicState.PutStateStub = publicKVS.PutState
+
 			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{
 				Sequence:            4,
 				Version:             "version",
@@ -412,25 +393,16 @@ var _ = Describe("Lifecycle", func() {
 				EndorsementPlugin:   "endorsement-plugin",
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
-			}, fakePublicState)
+			}, publicKVS)
 
-			org0KVS = map[string][]byte{}
-			org1KVS = map[string][]byte{}
+			org0KVS = MapLedgerShim(map[string][]byte{})
+			org1KVS = MapLedgerShim(map[string][]byte{})
 			fakeOrgStates = []*mock.ReadWritableState{{}, {}}
-			for i, kvs := range []map[string][]byte{org0KVS, org1KVS} {
+			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
 				kvs := kvs
-				fakeOrgStates[i].GetStateStub = func(key string) ([]byte, error) {
-					return kvs[key], nil
-				}
-
-				fakeOrgStates[i].GetStateHashStub = func(key string) ([]byte, error) {
-					return util.ComputeSHA256(kvs[key]), nil
-				}
-
-				fakeOrgStates[i].PutStateStub = func(key string, value []byte) error {
-					kvs[key] = value
-					return nil
-				}
+				fakeOrgStates[i].GetStateStub = kvs.GetState
+				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
+				fakeOrgStates[i].PutStateStub = kvs.PutState
 			}
 
 			l.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters, fakeOrgStates[0])
@@ -488,19 +460,15 @@ var _ = Describe("Lifecycle", func() {
 		var (
 			fakePublicState *mock.ReadWritableState
 
-			publicKVS map[string][]byte
+			publicKVS MapLedgerShim
 		)
 
 		BeforeEach(func() {
-			publicKVS = map[string][]byte{}
+			publicKVS = MapLedgerShim(map[string][]byte{})
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
-				return publicKVS[key], nil
-			}
-			fakePublicState.PutStateStub = func(key string, value []byte) error {
-				publicKVS[key] = value
-				return nil
-			}
+			fakePublicState.GetStateStub = publicKVS.GetState
+			fakePublicState.PutStateStub = publicKVS.PutState
+
 			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{
 				Sequence:            4,
 				Version:             "version",
@@ -508,7 +476,7 @@ var _ = Describe("Lifecycle", func() {
 				EndorsementPlugin:   "endorsement-plugin",
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
-			}, fakePublicState)
+			}, publicKVS)
 		})
 
 		It("returns the defined chaincode", func() {
@@ -527,7 +495,7 @@ var _ = Describe("Lifecycle", func() {
 
 		Context("when the chaincode is not defined", func() {
 			BeforeEach(func() {
-				publicKVS = map[string][]byte{}
+				fakePublicState.GetStateReturns(nil, nil)
 			})
 
 			It("returns an error", func() {
@@ -541,30 +509,16 @@ var _ = Describe("Lifecycle", func() {
 		var (
 			fakePublicState *mock.ReadWritableState
 
-			publicKVS map[string][]byte
+			publicKVS MapLedgerShim
 		)
 
 		BeforeEach(func() {
-			publicKVS = map[string][]byte{}
+			publicKVS = MapLedgerShim(map[string][]byte{})
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicState.GetStateStub = func(key string) ([]byte, error) {
-				return publicKVS[key], nil
-			}
-			fakePublicState.PutStateStub = func(key string, value []byte) error {
-				publicKVS[key] = value
-				return nil
-			}
-			fakePublicState.GetStateRangeStub = func(prefix string) (map[string][]byte, error) {
-				result := map[string][]byte{}
-				for key, value := range publicKVS {
-					if strings.HasPrefix(key, prefix) {
-						result[key] = value
-					}
-				}
-				return result, nil
-			}
-			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{}, fakePublicState)
-			l.Serializer.Serialize("namespaces", "other-name", &lifecycle.ChaincodeParameters{}, fakePublicState)
+			fakePublicState.GetStateStub = publicKVS.GetState
+			fakePublicState.GetStateRangeStub = publicKVS.GetStateRange
+			l.Serializer.Serialize("namespaces", "cc-name", &lifecycle.DefinedChaincode{}, publicKVS)
+			l.Serializer.Serialize("namespaces", "other-name", &lifecycle.ChaincodeParameters{}, publicKVS)
 		})
 
 		It("returns the defined namespaces", func() {
