@@ -2,15 +2,15 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 )
 
 type TransactionRegistry struct {
-	AddStub        func(string, string) bool
+	AddStub        func(channelID, txID string) bool
 	addMutex       sync.RWMutex
 	addArgsForCall []struct {
-		arg1 string
-		arg2 string
+		channelID string
+		txID      string
 	}
 	addReturns struct {
 		result1 bool
@@ -18,33 +18,32 @@ type TransactionRegistry struct {
 	addReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	RemoveStub        func(string, string)
+	RemoveStub        func(channelID, txID string)
 	removeMutex       sync.RWMutex
 	removeArgsForCall []struct {
-		arg1 string
-		arg2 string
+		channelID string
+		txID      string
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *TransactionRegistry) Add(arg1 string, arg2 string) bool {
+func (fake *TransactionRegistry) Add(channelID string, txID string) bool {
 	fake.addMutex.Lock()
 	ret, specificReturn := fake.addReturnsOnCall[len(fake.addArgsForCall)]
 	fake.addArgsForCall = append(fake.addArgsForCall, struct {
-		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("Add", []interface{}{arg1, arg2})
+		channelID string
+		txID      string
+	}{channelID, txID})
+	fake.recordInvocation("Add", []interface{}{channelID, txID})
 	fake.addMutex.Unlock()
 	if fake.AddStub != nil {
-		return fake.AddStub(arg1, arg2)
+		return fake.AddStub(channelID, txID)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.addReturns
-	return fakeReturns.result1
+	return fake.addReturns.result1
 }
 
 func (fake *TransactionRegistry) AddCallCount() int {
@@ -53,22 +52,13 @@ func (fake *TransactionRegistry) AddCallCount() int {
 	return len(fake.addArgsForCall)
 }
 
-func (fake *TransactionRegistry) AddCalls(stub func(string, string) bool) {
-	fake.addMutex.Lock()
-	defer fake.addMutex.Unlock()
-	fake.AddStub = stub
-}
-
 func (fake *TransactionRegistry) AddArgsForCall(i int) (string, string) {
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
-	argsForCall := fake.addArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return fake.addArgsForCall[i].channelID, fake.addArgsForCall[i].txID
 }
 
 func (fake *TransactionRegistry) AddReturns(result1 bool) {
-	fake.addMutex.Lock()
-	defer fake.addMutex.Unlock()
 	fake.AddStub = nil
 	fake.addReturns = struct {
 		result1 bool
@@ -76,8 +66,6 @@ func (fake *TransactionRegistry) AddReturns(result1 bool) {
 }
 
 func (fake *TransactionRegistry) AddReturnsOnCall(i int, result1 bool) {
-	fake.addMutex.Lock()
-	defer fake.addMutex.Unlock()
 	fake.AddStub = nil
 	if fake.addReturnsOnCall == nil {
 		fake.addReturnsOnCall = make(map[int]struct {
@@ -89,16 +77,16 @@ func (fake *TransactionRegistry) AddReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *TransactionRegistry) Remove(arg1 string, arg2 string) {
+func (fake *TransactionRegistry) Remove(channelID string, txID string) {
 	fake.removeMutex.Lock()
 	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
-		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("Remove", []interface{}{arg1, arg2})
+		channelID string
+		txID      string
+	}{channelID, txID})
+	fake.recordInvocation("Remove", []interface{}{channelID, txID})
 	fake.removeMutex.Unlock()
 	if fake.RemoveStub != nil {
-		fake.RemoveStub(arg1, arg2)
+		fake.RemoveStub(channelID, txID)
 	}
 }
 
@@ -108,17 +96,10 @@ func (fake *TransactionRegistry) RemoveCallCount() int {
 	return len(fake.removeArgsForCall)
 }
 
-func (fake *TransactionRegistry) RemoveCalls(stub func(string, string)) {
-	fake.removeMutex.Lock()
-	defer fake.removeMutex.Unlock()
-	fake.RemoveStub = stub
-}
-
 func (fake *TransactionRegistry) RemoveArgsForCall(i int) (string, string) {
 	fake.removeMutex.RLock()
 	defer fake.removeMutex.RUnlock()
-	argsForCall := fake.removeArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return fake.removeArgsForCall[i].channelID, fake.removeArgsForCall[i].txID
 }
 
 func (fake *TransactionRegistry) Invocations() map[string][][]interface{} {

@@ -2,14 +2,14 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 )
 
 type SystemCCProvider struct {
-	IsSysCCStub        func(string) bool
+	IsSysCCStub        func(name string) bool
 	isSysCCMutex       sync.RWMutex
 	isSysCCArgsForCall []struct {
-		arg1 string
+		name string
 	}
 	isSysCCReturns struct {
 		result1 bool
@@ -17,10 +17,10 @@ type SystemCCProvider struct {
 	isSysCCReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	IsSysCCAndNotInvokableCC2CCStub        func(string) bool
+	IsSysCCAndNotInvokableCC2CCStub        func(name string) bool
 	isSysCCAndNotInvokableCC2CCMutex       sync.RWMutex
 	isSysCCAndNotInvokableCC2CCArgsForCall []struct {
-		arg1 string
+		name string
 	}
 	isSysCCAndNotInvokableCC2CCReturns struct {
 		result1 bool
@@ -32,22 +32,21 @@ type SystemCCProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SystemCCProvider) IsSysCC(arg1 string) bool {
+func (fake *SystemCCProvider) IsSysCC(name string) bool {
 	fake.isSysCCMutex.Lock()
 	ret, specificReturn := fake.isSysCCReturnsOnCall[len(fake.isSysCCArgsForCall)]
 	fake.isSysCCArgsForCall = append(fake.isSysCCArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("IsSysCC", []interface{}{arg1})
+		name string
+	}{name})
+	fake.recordInvocation("IsSysCC", []interface{}{name})
 	fake.isSysCCMutex.Unlock()
 	if fake.IsSysCCStub != nil {
-		return fake.IsSysCCStub(arg1)
+		return fake.IsSysCCStub(name)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.isSysCCReturns
-	return fakeReturns.result1
+	return fake.isSysCCReturns.result1
 }
 
 func (fake *SystemCCProvider) IsSysCCCallCount() int {
@@ -56,22 +55,13 @@ func (fake *SystemCCProvider) IsSysCCCallCount() int {
 	return len(fake.isSysCCArgsForCall)
 }
 
-func (fake *SystemCCProvider) IsSysCCCalls(stub func(string) bool) {
-	fake.isSysCCMutex.Lock()
-	defer fake.isSysCCMutex.Unlock()
-	fake.IsSysCCStub = stub
-}
-
 func (fake *SystemCCProvider) IsSysCCArgsForCall(i int) string {
 	fake.isSysCCMutex.RLock()
 	defer fake.isSysCCMutex.RUnlock()
-	argsForCall := fake.isSysCCArgsForCall[i]
-	return argsForCall.arg1
+	return fake.isSysCCArgsForCall[i].name
 }
 
 func (fake *SystemCCProvider) IsSysCCReturns(result1 bool) {
-	fake.isSysCCMutex.Lock()
-	defer fake.isSysCCMutex.Unlock()
 	fake.IsSysCCStub = nil
 	fake.isSysCCReturns = struct {
 		result1 bool
@@ -79,8 +69,6 @@ func (fake *SystemCCProvider) IsSysCCReturns(result1 bool) {
 }
 
 func (fake *SystemCCProvider) IsSysCCReturnsOnCall(i int, result1 bool) {
-	fake.isSysCCMutex.Lock()
-	defer fake.isSysCCMutex.Unlock()
 	fake.IsSysCCStub = nil
 	if fake.isSysCCReturnsOnCall == nil {
 		fake.isSysCCReturnsOnCall = make(map[int]struct {
@@ -92,22 +80,21 @@ func (fake *SystemCCProvider) IsSysCCReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CC(arg1 string) bool {
+func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CC(name string) bool {
 	fake.isSysCCAndNotInvokableCC2CCMutex.Lock()
 	ret, specificReturn := fake.isSysCCAndNotInvokableCC2CCReturnsOnCall[len(fake.isSysCCAndNotInvokableCC2CCArgsForCall)]
 	fake.isSysCCAndNotInvokableCC2CCArgsForCall = append(fake.isSysCCAndNotInvokableCC2CCArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("IsSysCCAndNotInvokableCC2CC", []interface{}{arg1})
+		name string
+	}{name})
+	fake.recordInvocation("IsSysCCAndNotInvokableCC2CC", []interface{}{name})
 	fake.isSysCCAndNotInvokableCC2CCMutex.Unlock()
 	if fake.IsSysCCAndNotInvokableCC2CCStub != nil {
-		return fake.IsSysCCAndNotInvokableCC2CCStub(arg1)
+		return fake.IsSysCCAndNotInvokableCC2CCStub(name)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.isSysCCAndNotInvokableCC2CCReturns
-	return fakeReturns.result1
+	return fake.isSysCCAndNotInvokableCC2CCReturns.result1
 }
 
 func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCCallCount() int {
@@ -116,22 +103,13 @@ func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCCallCount() int {
 	return len(fake.isSysCCAndNotInvokableCC2CCArgsForCall)
 }
 
-func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCCalls(stub func(string) bool) {
-	fake.isSysCCAndNotInvokableCC2CCMutex.Lock()
-	defer fake.isSysCCAndNotInvokableCC2CCMutex.Unlock()
-	fake.IsSysCCAndNotInvokableCC2CCStub = stub
-}
-
 func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCArgsForCall(i int) string {
 	fake.isSysCCAndNotInvokableCC2CCMutex.RLock()
 	defer fake.isSysCCAndNotInvokableCC2CCMutex.RUnlock()
-	argsForCall := fake.isSysCCAndNotInvokableCC2CCArgsForCall[i]
-	return argsForCall.arg1
+	return fake.isSysCCAndNotInvokableCC2CCArgsForCall[i].name
 }
 
 func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCReturns(result1 bool) {
-	fake.isSysCCAndNotInvokableCC2CCMutex.Lock()
-	defer fake.isSysCCAndNotInvokableCC2CCMutex.Unlock()
 	fake.IsSysCCAndNotInvokableCC2CCStub = nil
 	fake.isSysCCAndNotInvokableCC2CCReturns = struct {
 		result1 bool
@@ -139,8 +117,6 @@ func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCReturns(result1 bool) {
 }
 
 func (fake *SystemCCProvider) IsSysCCAndNotInvokableCC2CCReturnsOnCall(i int, result1 bool) {
-	fake.isSysCCAndNotInvokableCC2CCMutex.Lock()
-	defer fake.isSysCCAndNotInvokableCC2CCMutex.Unlock()
 	fake.IsSysCCAndNotInvokableCC2CCStub = nil
 	if fake.isSysCCAndNotInvokableCC2CCReturnsOnCall == nil {
 		fake.isSysCCAndNotInvokableCC2CCReturnsOnCall = make(map[int]struct {

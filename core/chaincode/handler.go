@@ -94,7 +94,7 @@ type QueryResponseBuilder interface {
 // ChaincodeDefinitionGetter is responsible for retrieving a chaincode definition
 // from the system. The definition is used by the InstantiationPolicyChecker.
 type ChaincodeDefinitionGetter interface {
-	ChaincodeDefinition(chaincodeName string, txSim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
+	ChaincodeDefinition(chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
 }
 
 // LedgerGetter is used to get ledgers for chaincode.

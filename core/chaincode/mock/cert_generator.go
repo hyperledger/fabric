@@ -2,16 +2,16 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	accesscontrol "github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 )
 
 type CertGenerator struct {
-	GenerateStub        func(string) (*accesscontrol.CertAndPrivKeyPair, error)
+	GenerateStub        func(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
 	generateMutex       sync.RWMutex
 	generateArgsForCall []struct {
-		arg1 string
+		ccName string
 	}
 	generateReturns struct {
 		result1 *accesscontrol.CertAndPrivKeyPair
@@ -25,22 +25,21 @@ type CertGenerator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CertGenerator) Generate(arg1 string) (*accesscontrol.CertAndPrivKeyPair, error) {
+func (fake *CertGenerator) Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error) {
 	fake.generateMutex.Lock()
 	ret, specificReturn := fake.generateReturnsOnCall[len(fake.generateArgsForCall)]
 	fake.generateArgsForCall = append(fake.generateArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("Generate", []interface{}{arg1})
+		ccName string
+	}{ccName})
+	fake.recordInvocation("Generate", []interface{}{ccName})
 	fake.generateMutex.Unlock()
 	if fake.GenerateStub != nil {
-		return fake.GenerateStub(arg1)
+		return fake.GenerateStub(ccName)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.generateReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fake.generateReturns.result1, fake.generateReturns.result2
 }
 
 func (fake *CertGenerator) GenerateCallCount() int {
@@ -49,22 +48,13 @@ func (fake *CertGenerator) GenerateCallCount() int {
 	return len(fake.generateArgsForCall)
 }
 
-func (fake *CertGenerator) GenerateCalls(stub func(string) (*accesscontrol.CertAndPrivKeyPair, error)) {
-	fake.generateMutex.Lock()
-	defer fake.generateMutex.Unlock()
-	fake.GenerateStub = stub
-}
-
 func (fake *CertGenerator) GenerateArgsForCall(i int) string {
 	fake.generateMutex.RLock()
 	defer fake.generateMutex.RUnlock()
-	argsForCall := fake.generateArgsForCall[i]
-	return argsForCall.arg1
+	return fake.generateArgsForCall[i].ccName
 }
 
 func (fake *CertGenerator) GenerateReturns(result1 *accesscontrol.CertAndPrivKeyPair, result2 error) {
-	fake.generateMutex.Lock()
-	defer fake.generateMutex.Unlock()
 	fake.GenerateStub = nil
 	fake.generateReturns = struct {
 		result1 *accesscontrol.CertAndPrivKeyPair
@@ -73,8 +63,6 @@ func (fake *CertGenerator) GenerateReturns(result1 *accesscontrol.CertAndPrivKey
 }
 
 func (fake *CertGenerator) GenerateReturnsOnCall(i int, result1 *accesscontrol.CertAndPrivKeyPair, result2 error) {
-	fake.generateMutex.Lock()
-	defer fake.generateMutex.Unlock()
 	fake.GenerateStub = nil
 	if fake.generateReturnsOnCall == nil {
 		fake.generateReturnsOnCall = make(map[int]struct {
