@@ -98,5 +98,52 @@ func (l *Lifecycle) ChaincodeDefinition(chaincodeName string, qe ledger.SimpleQu
 
 // ChaincodeContainerInfo returns the information necessary to launch a chaincode
 func (l *Lifecycle) ChaincodeContainerInfo(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
-	return l.LegacyImpl.ChaincodeContainerInfo(chaincodeName, qe)
+	state := &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: qe,
+	}
+	metadata, err := l.Serializer.DeserializeMetadata(NamespacesName, chaincodeName, state, false)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize metadata for chaincode %s", chaincodeName))
+	}
+
+	if metadata.Datatype == "" {
+		// If the type is unset, then fallback to the legacy definition
+		return l.LegacyImpl.ChaincodeContainerInfo(chaincodeName, qe)
+	}
+
+	if metadata.Datatype != DefinedChaincodeType {
+		return nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
+	}
+
+	definedChaincode := &DefinedChaincode{}
+	err = l.Serializer.Deserialize(NamespacesName, chaincodeName, definedChaincode, state)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not deserialize chaincode definition for chaincode %s", chaincodeName))
+	}
+
+	// XXX Note, everything below is effectively throw-away.  We need to build and maintain
+	// a cache of current chaincode container info for our peer based ont he state of our
+	// org's implicit collection.  We cannot query it here because it would introduce an
+	// unwanted read dependency.  Also note, this unconditionally reads the chaincode bytes
+	// every time, which will be quite slow.  There is purposefully no optimization here
+	// as it is throwaway code.
+
+	ccPackageBytes, _, _, err := l.ChaincodeStore.Load(definedChaincode.Hash)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not load chaincode from chaincode store for %s:%s (%x)", chaincodeName, definedChaincode.Version, definedChaincode.Hash))
+	}
+
+	ccPackage, err := l.PackageParser.Parse(ccPackageBytes)
+	if err != nil {
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not parse chaincode package for %s:%s (%x)", chaincodeName, definedChaincode.Version, definedChaincode.Hash))
+	}
+
+	return &ccprovider.ChaincodeContainerInfo{
+		Name:          chaincodeName,
+		Version:       definedChaincode.Version,
+		Path:          ccPackage.Metadata.Path,
+		Type:          ccPackage.Metadata.Type,
+		ContainerType: "DOCKER",
+	}, nil
 }
