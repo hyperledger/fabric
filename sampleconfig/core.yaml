@@ -614,6 +614,14 @@ ledger:
     # CouchDB or alternate database for the state.
     enableHistoryDatabase: true
 
+  pvtdataStore:
+    # the maximum db batch size for converting
+    # the ineligible missing data entries to eligible missing data entries
+    collElgProcMaxDbBatchSize: 5000
+    # the minimum duration (in milliseconds) between writing
+    # two consecutive db batches for converting the ineligible missing data entries to eligible missing data entries
+    collElgProcDbBatchesInterval: 1000
+
 ###############################################################################
 #
 #    Operations section
