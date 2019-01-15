@@ -541,6 +541,7 @@ func TestNoTLSCertificate(t *testing.T) {
 }
 
 func TestReconnect(t *testing.T) {
+	t.Skip()
 	t.Parallel()
 	// Scenario: node 1 and node 2 are connected,
 	// and node 2 is taken offline.
