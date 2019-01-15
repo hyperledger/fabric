@@ -779,7 +779,7 @@ func TestAlreadyDeployed(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "alreadydeployed"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
@@ -1157,7 +1157,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "upgradeok"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
@@ -1220,7 +1220,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "upgradebadversion"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
@@ -1294,7 +1294,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	}
 
 	ccname := "mycc"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
@@ -1476,7 +1476,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "upgradewithpoliciesok"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	if err != nil {
@@ -1563,7 +1563,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	// deploy the chaincode with an accept all policy
 
 	ccname := "mycc"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	if err != nil {
@@ -1640,7 +1640,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 
 	ccname := "mycc"
 	ccver := "upgradewithpoliciesfail"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	if err != nil {

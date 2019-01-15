@@ -119,7 +119,7 @@ func TestInstall(t *testing.T) {
 	assert.NotEqual(t, int32(shim.OK), res.Status)
 	assert.Equal(t, "invalid number of arguments to lscc: 1", res.Message)
 
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub)
 	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub)
@@ -174,7 +174,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 }
 
 func TestDeploy(t *testing.T) {
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	testDeploy(t, "example02", "0", path, false, false, true, "", nil, nil, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", nil, nil, nil)
@@ -432,7 +432,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 
 // TestUpgrade tests the upgrade function with various inputs for basic use cases
 func TestUpgrade(t *testing.T) {
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
+	path := "mychaincode"
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", nil, nil, nil)
 	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error(), nil, nil, nil)

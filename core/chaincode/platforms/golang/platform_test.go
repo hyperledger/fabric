@@ -146,7 +146,7 @@ func Test_findSource(t *testing.T) {
 func Test_DeploymentPayload(t *testing.T) {
 	platform := &Platform{}
 
-	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd")
+	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop")
 	assert.NoError(t, err)
 
 	t.Logf("payload size: %d", len(payload))
@@ -171,7 +171,7 @@ func Test_DeploymentPayload(t *testing.T) {
 func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
 	platform := &Platform{}
 
-	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/examples/chaincode/go/marbles02")
+	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noopWithMETA")
 	assert.NoError(t, err)
 
 	t.Logf("payload size: %d", len(payload))
@@ -194,12 +194,12 @@ func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
 				foundIndexArtifact = true
 			}
 		}
-		assert.Equal(t, true, foundIndexArtifact, "should have found statedb index artifact in marbles02 META-INF directory")
+		assert.Equal(t, true, foundIndexArtifact, "should have found statedb index artifact in noopWithMETA META-INF directory")
 	}
 }
 
 func Test_decodeUrl(t *testing.T) {
-	path := "http://github.com/hyperledger/fabric/examples/chaincode/go/map"
+	path := "http://example.com/foo/bar"
 	if _, err := decodeUrl(path); err != nil {
 		t.Fail()
 		t.Logf("Error to decodeUrl unsuccessfully with valid path: %s, %s", path, err)
@@ -229,11 +229,11 @@ func TestValidatePath(t *testing.T) {
 		path string
 		succ bool
 	}{
-		{path: "http://github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
-		{path: "https://github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
-		{path: "github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
-		{path: "github.com/hyperledger/fabric/bad/chaincode/go/map", succ: false},
-		{path: ":github.com/hyperledger/fabric/examples/chaincode/go/map", succ: false},
+		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
+		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
+		{path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
+		{path: "github.com/hyperledger/fabric/bad/chaincode/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: ":github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
 	}
 
 	for _, tst := range tests {
@@ -262,7 +262,6 @@ func updateGopath(t *testing.T, path string) func() {
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
-	defaultGopath := os.Getenv("GOPATH")
 	testdataPath, err := filepath.Abs("testdata")
 	require.NoError(t, err)
 
@@ -273,8 +272,8 @@ func TestGetDeploymentPayload(t *testing.T) {
 		path   string
 		succ   bool
 	}{
-		{gopath: defaultGopath, path: "github.com/hyperledger/fabric/examples/chaincode/go/map", succ: true},
-		{gopath: defaultGopath, path: "github.com/hyperledger/fabric/examples/bad/go/map", succ: false},
+		{gopath: testdataPath, path: "chaincodes/noop", succ: true},
+		{gopath: testdataPath, path: "bad/chaincodes/noop", succ: false},
 		{gopath: testdataPath, path: "chaincodes/BadImport", succ: false},
 		{gopath: testdataPath, path: "chaincodes/BadMetadataInvalidIndex", succ: false},
 		{gopath: testdataPath, path: "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
@@ -317,9 +316,9 @@ func TestGenerateDockerBuild(t *testing.T) {
 	}{
 		{gopath: defaultGopath, spec: spec{CCName: "NoCode", Path: "path/to/nowhere", File: "/bin/warez", Mode: 0100400, SuccessExpected: false}},
 		{gopath: defaultGopath, spec: spec{CCName: "invalidhttp", Path: "https://not/a/valid/path", SuccessExpected: false, RealGen: true}},
-		{gopath: defaultGopath, spec: spec{CCName: "map", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", SuccessExpected: true, RealGen: true}},
-		{gopath: defaultGopath, spec: spec{CCName: "mapBadPath", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/bad/path/to/map.go", Mode: 0100400, SuccessExpected: false}},
-		{gopath: defaultGopath, spec: spec{CCName: "mapBadMode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map", File: "/src/github.com/hyperledger/fabric/examples/chaincode/go/map/map.go", Mode: 0100555, SuccessExpected: false}},
+		{gopath: testdataPath, spec: spec{CCName: "noop", Path: "chaincodes/noop", SuccessExpected: true, RealGen: true}},
+		{gopath: testdataPath, spec: spec{CCName: "noopBadPath", Path: "chaincodes/noop", File: "bad/path/to/chaincode.go", Mode: 0100400, SuccessExpected: false}},
+		{gopath: testdataPath, spec: spec{CCName: "noopBadMode", Path: "chaincodes/noop", File: "chaincodes/noop/chaincode.go", Mode: 0100555, SuccessExpected: false}},
 		{gopath: testdataPath, spec: spec{CCName: "AutoVendor", Path: "chaincodes/AutoVendor/chaincode", SuccessExpected: true, RealGen: true}},
 	}
 

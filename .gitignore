@@ -5,7 +5,6 @@ node-cli/node-cli
 *.pyc
 /bin
 docs/build/*
-examples/e2e_cli/docker-compose-e2e.yamlt
 .idea
 *.iml
 .DS_Store
@@ -40,9 +39,6 @@ TESTS*.xml
 .project
 .gradle
 bin/
-examples/e2e_cli/channel-artifacts/*.tx
-examples/e2e_cli/channel-artifacts/*.block
-examples/e2e_cli/crypto-config/*
 # tox
 .tox/
 # vscode settings

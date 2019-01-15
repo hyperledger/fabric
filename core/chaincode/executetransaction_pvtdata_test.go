@@ -36,7 +36,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	defer cleanup()
 
-	url := "github.com/hyperledger/fabric/examples/chaincode/go/map"
+	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/map"
 	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}
 
 	f := "init"

@@ -586,9 +586,8 @@ func checkFinalState(chainID string, cccid *ccprovider.CCContext, a int, b int) 
 }
 
 const (
-	chaincodeExample02GolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/example02/cmd"
-	chaincodeExample04GolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/example04/cmd"
-	chaincodePassthruGolangPath  = "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
+	chaincodeExample02GolangPath = "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/example02"
+	chaincodePassthruGolangPath  = "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/passthru"
 )
 
 func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string, tc tcicTc, cccid1 *ccprovider.CCContext, expectedA int, expectedB int, nextBlockNumber1, nextBlockNumber2 uint64, chaincodeSupport *ChaincodeSupport) (uint64, uint64) {
@@ -599,7 +598,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 	chaincode2Version := "0"
 	chaincode2Type := tc.chaincodeType
 	chaincode2Path := tc.chaincodePath
-	chaincode2InitArgs := util.ToChaincodeArgs("init", "e", "0")
+	chaincode2InitArgs := util.ToChaincodeArgs("init")
 	chaincode2Creator := []byte([]byte("Alice"))
 
 	// deploy second chaincode on channel1
@@ -634,7 +633,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 			Version: chaincode2Version,
 		},
 		Input: &pb.ChaincodeInput{
-			Args: util.ToChaincodeArgs("invoke", cccid1.Name, "e", "1"),
+			Args: util.ToChaincodeArgs(cccid1.Name, "invoke", "a", "b", "10", ""),
 		},
 	}
 	// Invoke chaincode
@@ -701,7 +700,7 @@ func runChaincodeInvokeChaincode(t *testing.T, channel1 string, channel2 string,
 			Version: chaincode2Version,
 		},
 		Input: &pb.ChaincodeInput{
-			Args: util.ToChaincodeArgs("invoke", cccid1.Name, "e", "1", channel1),
+			Args: util.ToChaincodeArgs(cccid1.Name, "invoke", "a", "b", "10", channel1),
 		},
 	}
 
@@ -757,9 +756,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	mockAclProvider.On("CheckACL", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	testCases := []tcicTc{
-		{pb.ChaincodeSpec_GOLANG, chaincodeExample04GolangPath},
-	}
+	testCase := tcicTc{pb.ChaincodeSpec_GOLANG, chaincodePassthruGolangPath}
 
 	ctx := context.Background()
 
@@ -799,24 +796,22 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	expectedA := initialA
 	expectedB := initialB
 
-	for _, tc := range testCases {
-		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
-			expectedA = expectedA - 10
-			expectedB = expectedB + 10
-			nextBlockNumber1, nextBlockNumber2 = runChaincodeInvokeChaincode(
-				t,
-				channel,
-				channel2,
-				tc,
-				chaincodeCtx,
-				expectedA,
-				expectedB,
-				nextBlockNumber1,
-				nextBlockNumber2,
-				chaincodeSupport,
-			)
-		})
-	}
+	t.Run(testCase.chaincodeType.String(), func(t *testing.T) {
+		expectedA = expectedA - 10
+		expectedB = expectedB + 10
+		nextBlockNumber1, nextBlockNumber2 = runChaincodeInvokeChaincode(
+			t,
+			channel,
+			channel2,
+			testCase,
+			chaincodeCtx,
+			expectedA,
+			expectedB,
+			nextBlockNumber1,
+			nextBlockNumber2,
+			chaincodeSupport,
+		)
+	})
 
 	closeListenerAndSleep(lis)
 }
@@ -908,7 +903,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode but pass bad params
 	f = ccID1
-	args = util.ToChaincodeArgs(f, "invoke", "a")
+	args = util.ToChaincodeArgs(f, "invoke", "a", "")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID2, Input: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
@@ -920,7 +915,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		return
 	}
 
-	if strings.Index(err.Error(), "Error invoking chaincode: Incorrect number of arguments. Expecting 3") < 0 {
+	if strings.Index(err.Error(), "Incorrect number of arguments. Expecting 3") < 0 {
 		t.Fail()
 		t.Logf("Unexpected error %s", err)
 		return
@@ -938,7 +933,7 @@ func TestChaincodeInit(t *testing.T) {
 
 	defer cleanup()
 
-	url := "github.com/hyperledger/fabric/core/chaincode/testdata/chaincode/init_private_data"
+	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/init_private_data"
 	cID := &pb.ChaincodeID{Name: "init_pvtdata", Path: url, Version: "0"}
 
 	f := "init"
@@ -963,7 +958,7 @@ func TestChaincodeInit(t *testing.T) {
 	_, err = deploy(chainID, cccid, spec, nextBlockNumber, chaincodeSupport)
 	assert.Contains(t, err.Error(), "private data APIs are not allowed in chaincode Init")
 
-	url = "github.com/hyperledger/fabric/core/chaincode/testdata/chaincode/init_public_data"
+	url = "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/init_public_data"
 	cID = &pb.ChaincodeID{Name: "init_public_data", Path: url, Version: "0"}
 
 	f = "init"
@@ -1006,7 +1001,7 @@ func TestQueries(t *testing.T) {
 
 	defer cleanup()
 
-	url := "github.com/hyperledger/fabric/examples/chaincode/go/map"
+	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/map"
 	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}
 
 	f := "init"
