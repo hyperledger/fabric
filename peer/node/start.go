@@ -262,7 +262,7 @@ func serve(args []string) error {
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
 	// Initialize chaincode service
-	chaincodeSupport, ccp, sccp, packageProvider := startChaincodeServer(peerHost, aclProvider, pr, opsSystem, deployedCCInfoProvider)
+	chaincodeSupport, ccp, sccp, packageProvider, lsccInst := startChaincodeServer(peerHost, aclProvider, pr, opsSystem, deployedCCInfoProvider)
 
 	logger.Debugf("Running peer")
 
@@ -356,7 +356,7 @@ func serve(args []string) error {
 		}
 		cceventmgmt.GetMgr().Register(cid, sub)
 	}, ccp, sccp, plugin.MapBasedMapper(validationPluginsByName),
-		pr, deployedCCInfoProvider, membershipInfoProvider, metricsProvider)
+		pr, deployedCCInfoProvider, membershipInfoProvider, metricsProvider, lsccInst)
 
 	if viper.GetBool("peer.discovery.enabled") {
 		registerDiscoveryService(peerServer, policyMgr, lifecycle)
@@ -632,7 +632,7 @@ func registerChaincodeSupport(
 	lifecycleSCC *lifecycle.SCC,
 	ops *operations.System,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider) {
+) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *lscc.LifeCycleSysCC) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := viper.GetBool("peer.tls.enabled")
@@ -688,7 +688,7 @@ func registerChaincodeSupport(
 		ccSrv = authenticator.Wrap(ccSrv)
 	}
 
-	csccInst := cscc.New(ccp, sccp, aclProvider, deployedCCInfoProvider)
+	csccInst := cscc.New(ccp, sccp, aclProvider, deployedCCInfoProvider, lsccInst)
 	qsccInst := qscc.New(aclProvider)
 
 	//Now that chaincode is initialized, register all system chaincodes.
@@ -698,7 +698,7 @@ func registerChaincodeSupport(
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer.Server(), ccSrv)
 
-	return chaincodeSupport, ccp, sccp
+	return chaincodeSupport, ccp, sccp, lsccInst
 }
 
 // startChaincodeServer will finish chaincode related initialization, including:
@@ -711,7 +711,7 @@ func startChaincodeServer(
 	pr *platforms.Registry,
 	ops *operations.System,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
-) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *persistence.PackageProvider) {
+) (*chaincode.ChaincodeSupport, ccprovider.ChaincodeProvider, *scc.Provider, *persistence.PackageProvider, *lscc.LifeCycleSysCC) {
 	// Setup chaincode path
 	chaincodeInstallPath := ccprovider.GetChaincodeInstallPathFromViper()
 	ccprovider.SetChaincodesPath(chaincodeInstallPath)
@@ -746,7 +746,7 @@ func startChaincodeServer(
 	if err != nil {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
-	chaincodeSupport, ccp, sccp := registerChaincodeSupport(
+	chaincodeSupport, ccp, sccp, lsccInst := registerChaincodeSupport(
 		ccSrv,
 		ccEndpoint,
 		ca,
@@ -758,7 +758,7 @@ func startChaincodeServer(
 		deployedCCInfoProvider,
 	)
 	go ccSrv.Start()
-	return chaincodeSupport, ccp, sccp, packageProvider
+	return chaincodeSupport, ccp, sccp, packageProvider, lsccInst
 }
 
 func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) bool {

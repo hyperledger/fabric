@@ -107,15 +107,24 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(chainID string, sem Semaphore, cr ChannelResources, lr LedgerResources, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper) *TxValidator {
+func NewTxValidator(
+	chainID string,
+	sem Semaphore,
+	cr ChannelResources,
+	ler LedgerResources,
+	lcr plugindispatcher.LifecycleResources,
+	sccp sysccprovider.SystemChaincodeProvider,
+	pm plugin.Mapper,
+) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := plugindispatcher.NewPluginValidator(pm, lr, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
+	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
 	return &TxValidator{
 		ChainID:          chainID,
 		Semaphore:        sem,
 		ChannelResources: cr,
-		LedgerResources:  lr,
-		Dispatcher:       plugindispatcher.New(chainID, cr, lr, sccp, pluginValidator)}
+		LedgerResources:  ler,
+		Dispatcher:       plugindispatcher.New(chainID, cr, ler, lcr, sccp, pluginValidator),
+	}
 }
 
 func (v *TxValidator) chainExists(chain string) bool {

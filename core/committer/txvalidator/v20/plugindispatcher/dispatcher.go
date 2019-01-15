@@ -14,16 +14,13 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	coreUtil "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -33,31 +30,33 @@ import (
 // ChannelResources provides access to channel artefacts or
 // functions to interact with them
 type ChannelResources interface {
-	// MSPManager returns the MSP manager for this channel
-	MSPManager() msp.MSPManager
-
-	// Apply attempts to apply a configtx to become the new config
-	Apply(configtx *common.ConfigEnvelope) error
-
 	// GetMSPIDs returns the IDs for the application MSPs
 	// that have been defined in the channel
 	GetMSPIDs(cid string) []string
-
-	// Capabilities defines the capabilities for the application portion of this channel
-	Capabilities() channelconfig.ApplicationCapabilities
 }
 
 // LedgerResources provides access to ledger artefacts or
 // functions to interact with them
 type LedgerResources interface {
-	// GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*peer.ProcessedTransaction, error)
-
 	// NewQueryExecutor gives handle to a query executor.
 	// A client can obtain more than one 'QueryExecutor's for parallel execution.
 	// Any synchronization should be performed at the implementation level if required
 	NewQueryExecutor() (ledger.QueryExecutor, error)
 }
+
+// LifecycleResources provides access to chaincode lifecycle artefacts or
+// functions to interact with them
+type LifecycleResources interface {
+	// ValidationInfo returns the name and arguments of the validation plugin for the supplied
+	// chaincode. The function returns two types of errors, unexpected errors and validation
+	// errors. The reason for this is that this function is called from the validation code,
+	// which needs to differentiate the two types of error to halt processing on the channel
+	// if the unexpected error is not nil and mark the transaction as invalid if the validation
+	// error is not nil.
+	ValidationInfo(chaincodeName string, qe ledger.QueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error)
+}
+
+//go:generate mockery -dir . -name LifecycleResources -case underscore -output mocks/
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
 
@@ -66,17 +65,19 @@ var logger = flogging.MustGetLogger("committer.txvalidator")
 type dispatcherImpl struct {
 	chainID         string
 	cr              ChannelResources
-	lr              LedgerResources
+	ler             LedgerResources
+	lcr             LifecycleResources
 	sccprovider     sysccprovider.SystemChaincodeProvider
 	pluginValidator *PluginValidator
 }
 
 // New creates new plugin dispatcher
-func New(chainID string, cr ChannelResources, lr LedgerResources, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *dispatcherImpl {
+func New(chainID string, cr ChannelResources, ler LedgerResources, lcr LifecycleResources, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *dispatcherImpl {
 	return &dispatcherImpl{
 		chainID:         chainID,
 		cr:              cr,
-		lr:              lr,
+		ler:             ler,
+		lcr:             lcr,
 		sccprovider:     sccp,
 		pluginValidator: pluginValidator,
 	}
@@ -213,19 +214,10 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		// validate *EACH* read write set according to its chaincode's endorsement policy
 		for _, ns := range wrNamespace {
 			// Get latest chaincode version, validation plugin name and policy
-			txcc, validationPlugin, policy, err := v.GetInfoForValidate(chdr, ns)
+			validationPlugin, policy, err := v.GetInfoForValidate(chdr, ns)
 			if err != nil {
 				logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
 				return err, peer.TxValidationCode_INVALID_OTHER_REASON
-			}
-
-			// if the namespace corresponds to the cc that was originally
-			// invoked, we check that the version of the cc that was
-			// invoked corresponds to the version that lscc has returned
-			if ns == ccID && txcc.ChaincodeVersion != ccVer {
-				err = errors.Errorf("chaincode %s:%s/%s didn't match %s:%s/%s in lscc", ccID, ccVer, chdr.ChannelId, txcc.ChaincodeName, txcc.ChaincodeVersion, chdr.ChannelId)
-				logger.Errorf("%+v", err)
-				return err, peer.TxValidationCode_EXPIRED_CHAINCODE
 			}
 
 			// invoke the plugin
@@ -259,7 +251,7 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		}
 
 		// Get latest chaincode version, validation plugin name and policy
-		_, validationPlugin, policy, err := v.GetInfoForValidate(chdr, ccID)
+		validationPlugin, policy, err := v.GetInfoForValidate(chdr, ccID)
 		if err != nil {
 			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
 			return err, peer.TxValidationCode_INVALID_OTHER_REASON
@@ -303,48 +295,36 @@ func (v *dispatcherImpl) invokeValidationPlugin(ctx *Context) error {
 	return &commonerrors.VSCCEndorsementPolicyError{Err: err}
 }
 
-func (v *dispatcherImpl) getCDataForCC(chid, ccid string) (ccprovider.ChaincodeDefinition, error) {
-	qe, err := v.lr.NewQueryExecutor()
+func (v *dispatcherImpl) getCDataForCC(ccid string) (string, []byte, error) {
+	qe, err := v.ler.NewQueryExecutor()
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not retrieve QueryExecutor")
+		return "", nil, errors.WithMessage(err, "could not retrieve QueryExecutor")
 	}
 	defer qe.Done()
 
-	bytes, err := qe.GetState("lscc", ccid)
-	if err != nil {
-		return nil, &commonerrors.VSCCInfoLookupFailureError{
-			Reason: fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err),
+	plugin, args, unexpectedErr, validationErr := v.lcr.ValidationInfo(ccid, qe)
+	if unexpectedErr != nil {
+		return "", nil, &commonerrors.VSCCInfoLookupFailureError{
+			Reason: fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, unexpectedErr),
 		}
 	}
-
-	if bytes == nil {
-		return nil, errors.Errorf("lscc's state for [%s] not found.", ccid)
+	if validationErr != nil {
+		return "", nil, validationErr
 	}
 
-	cd := &ccprovider.ChaincodeData{}
-	err = proto.Unmarshal(bytes, cd)
-	if err != nil {
-		return nil, errors.Wrap(err, "unmarshalling ChaincodeQueryResponse failed")
+	if plugin == "" {
+		return "", nil, errors.Errorf("chaincode definition for [%s] is invalid, plugin field must be set", ccid)
 	}
 
-	if cd.Vscc == "" {
-		return nil, errors.Errorf("lscc's state for [%s] is invalid, vscc field must be set", ccid)
+	if len(args) == 0 {
+		return "", nil, errors.Errorf("chaincode definition for [%s] is invalid, policy field must be set", ccid)
 	}
 
-	if len(cd.Policy) == 0 {
-		return nil, errors.Errorf("lscc's state for [%s] is invalid, policy field must be set", ccid)
-	}
-
-	return cd, err
+	return plugin, args, nil
 }
 
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, validation plugin and policy from lscc
-func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
-	cc := &sysccprovider.ChaincodeInstance{
-		ChainID:          chdr.ChannelId,
-		ChaincodeName:    ccID,
-		ChaincodeVersion: coreUtil.GetSysCCVersion(),
-	}
+func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, []byte, error) {
 	validationPlugin := &sysccprovider.ChaincodeInstance{
 		ChainID:          chdr.ChannelId,
 		ChaincodeName:    "vscc",                     // default for system chaincodes
@@ -358,15 +338,12 @@ func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID str
 		// of the validation plugin and of the policy that should be used
 
 		// obtain name of the validation plugin and the policy
-		cd, err := v.getCDataForCC(chdr.ChannelId, ccID)
+		validationPlugin.ChaincodeName, policy, err = v.getCDataForCC(ccID)
 		if err != nil {
 			msg := fmt.Sprintf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
 			logger.Errorf(msg)
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
-		cc.ChaincodeName = cd.CCName()
-		cc.ChaincodeVersion = cd.CCVersion()
-		validationPlugin.ChaincodeName, policy = cd.Validation()
 	} else {
 		// when we are validating a system CC, we use the default
 		// plugin and a default policy that requires one signature
@@ -374,11 +351,11 @@ func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID str
 		p := cauthdsl.SignedByAnyMember(v.cr.GetMSPIDs(chdr.ChannelId))
 		policy, err = utils.Marshal(p)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 
-	return cc, validationPlugin, policy, nil
+	return validationPlugin, policy, nil
 }
 
 // txWritesToNamespace returns true if the supplied NsRwSet
