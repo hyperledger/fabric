@@ -121,7 +121,9 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	}
 
 	mockVsccValidator := &validator.MockVsccValidator{}
-	acv := &config.MockApplicationCapabilities{}
+	acv := &config.MockApplicationCapabilities{
+		ForbidDuplicateTXIdInBlockRv: true,
+	}
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
@@ -143,15 +145,6 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	tValidator.Validate(block)
 
 	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-
-	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
-	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_VALID))
-
-	acv.ForbidDuplicateTXIdInBlockRv = true
-
-	tValidator.Validate(block)
-
-	txsfltr = util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))

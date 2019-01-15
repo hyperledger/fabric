@@ -110,17 +110,14 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 	}
 
 	var wrNamespace []string
-	alwaysEnforceOriginalNamespace := v.cr.Capabilities().V1_2Validation()
-	if alwaysEnforceOriginalNamespace {
-		wrNamespace = append(wrNamespace, ccID)
-		if respPayload.Events != nil {
-			ccEvent := &peer.ChaincodeEvent{}
-			if err = proto.Unmarshal(respPayload.Events, ccEvent); err != nil {
-				return errors.Wrapf(err, "invalid chaincode event"), peer.TxValidationCode_INVALID_OTHER_REASON
-			}
-			if ccEvent.ChaincodeId != ccID {
-				return errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id"), peer.TxValidationCode_INVALID_OTHER_REASON
-			}
+	wrNamespace = append(wrNamespace, ccID)
+	if respPayload.Events != nil {
+		ccEvent := &peer.ChaincodeEvent{}
+		if err = proto.Unmarshal(respPayload.Events, ccEvent); err != nil {
+			return errors.Wrapf(err, "invalid chaincode event"), peer.TxValidationCode_INVALID_OTHER_REASON
+		}
+		if ccEvent.ChaincodeId != ccID {
+			return errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id"), peer.TxValidationCode_INVALID_OTHER_REASON
 		}
 	}
 
@@ -131,7 +128,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 
 		// Check to make sure we did not already populate this chaincode
 		// name to avoid checking the same namespace twice
-		if ns.NameSpace != ccID || !alwaysEnforceOriginalNamespace {
+		if ns.NameSpace != ccID {
 			wrNamespace = append(wrNamespace, ns.NameSpace)
 		}
 
@@ -364,30 +361,20 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 		return true
 	}
 
-	// only look at collection data if we support that capability
-	if v.cr.Capabilities().PrivateChannelData() {
-		// check for private writes for all collections
-		for _, c := range ns.CollHashedRwSets {
-			if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
-				return true
-			}
+	// check for private writes for all collections
+	for _, c := range ns.CollHashedRwSets {
+		if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
+			return true
+		}
 
-			// only look at private metadata writes if we support that capability
-			if v.cr.Capabilities().KeyLevelEndorsement() {
-				// private metadata updates
-				if c.HashedRwSet != nil && len(c.HashedRwSet.MetadataWrites) > 0 {
-					return true
-				}
-			}
+		// private metadata updates
+		if c.HashedRwSet != nil && len(c.HashedRwSet.MetadataWrites) > 0 {
+			return true
 		}
 	}
 
-	// only look at metadata writes if we support that capability
-	if v.cr.Capabilities().KeyLevelEndorsement() {
-		// public metadata updates
-		if ns.KvRwSet != nil && len(ns.KvRwSet.MetadataWrites) > 0 {
-			return true
-		}
+	if ns.KvRwSet != nil && len(ns.KvRwSet.MetadataWrites) > 0 {
+		return true
 	}
 
 	return false
