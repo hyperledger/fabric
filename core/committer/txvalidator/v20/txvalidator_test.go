@@ -15,16 +15,13 @@ import (
 	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	util2 "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/mocks/validator"
-	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -292,120 +289,4 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	// We expect the tx to be invalid because of a bad txid
 	assert.True(t, txsfltr.Flag(0) == peer.TxValidationCode_BAD_PROPOSAL_TXID)
-}
-
-func createCCUpgradeEnvelope(chainID, chaincodeName, chaincodeVersion string, signer msp.SigningIdentity) (*common.Envelope, error) {
-	creator, err := signer.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	spec := &peer.ChaincodeSpec{
-		Type: peer.ChaincodeSpec_Type(peer.ChaincodeSpec_Type_value["GOLANG"]),
-		ChaincodeId: &peer.ChaincodeID{
-			Path:    "github.com/codePath",
-			Name:    chaincodeName,
-			Version: chaincodeVersion,
-		},
-	}
-
-	cds := &peer.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: []byte{}}
-	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, []byte{}, []byte{}, []byte{}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	proposalResponse := &peer.ProposalResponse{
-		Response: &peer.Response{
-			Status: 200, // endorsed successfully
-		},
-		Endorsement: &peer.Endorsement{},
-	}
-
-	return utils.CreateSignedTx(prop, signer, proposalResponse)
-}
-
-func TestGetTxCCInstance(t *testing.T) {
-	// setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		t.Fatalf("Could not initialize msp, err: %s", err)
-	}
-	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("Could not initialize signer, err: %s", err)
-	}
-
-	chainID := util2.GetTestChainID()
-	upgradeCCName := "mycc"
-	upgradeCCVersion := "v1"
-
-	env, err := createCCUpgradeEnvelope(chainID, upgradeCCName, upgradeCCVersion, signer)
-	assert.NoError(t, err)
-
-	// get the payload from the envelope
-	payload, err := utils.GetPayload(env)
-	assert.NoError(t, err)
-
-	expectInvokeCCIns := &sysccprovider.ChaincodeInstance{
-		ChainID:          chainID,
-		ChaincodeName:    "lscc",
-		ChaincodeVersion: "",
-	}
-	expectUpgradeCCIns := &sysccprovider.ChaincodeInstance{
-		ChainID:          chainID,
-		ChaincodeName:    upgradeCCName,
-		ChaincodeVersion: upgradeCCVersion,
-	}
-
-	tValidator := &TxValidator{}
-	invokeCCIns, upgradeCCIns, err := tValidator.getTxCCInstance(payload)
-	if err != nil {
-		t.Fatalf("Get chaincode from tx error: %s", err)
-	}
-	assert.EqualValues(t, expectInvokeCCIns, invokeCCIns)
-	assert.EqualValues(t, expectUpgradeCCIns, upgradeCCIns)
-}
-
-func TestInvalidTXsForUpgradeCC(t *testing.T) {
-	txsChaincodeNames := map[int]*sysccprovider.ChaincodeInstance{
-		0: {ChainID: "chain0", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
-		1: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		2: {ChainID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
-		3: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		4: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
-		5: {ChainID: "chain1", ChaincodeName: "cc1", ChaincodeVersion: "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
-		6: {ChainID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
-		7: {ChainID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v3
-	}
-	upgradedChaincodes := map[int]*sysccprovider.ChaincodeInstance{
-		2: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v1"},
-		6: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v2"},
-		7: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v3"},
-	}
-
-	txsfltr := ledgerUtil.NewTxValidationFlags(8)
-	txsfltr.SetFlag(0, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(1, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(2, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(3, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(4, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(5, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(6, peer.TxValidationCode_VALID)
-	txsfltr.SetFlag(7, peer.TxValidationCode_VALID)
-
-	expectTxsFltr := ledgerUtil.NewTxValidationFlags(8)
-	expectTxsFltr.SetFlag(0, peer.TxValidationCode_VALID)
-	expectTxsFltr.SetFlag(1, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
-	expectTxsFltr.SetFlag(2, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
-	expectTxsFltr.SetFlag(3, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
-	expectTxsFltr.SetFlag(4, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
-	expectTxsFltr.SetFlag(5, peer.TxValidationCode_VALID)
-	expectTxsFltr.SetFlag(6, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
-	expectTxsFltr.SetFlag(7, peer.TxValidationCode_VALID)
-
-	tValidator := &TxValidator{}
-	tValidator.invalidTXsForUpgradeCC(txsChaincodeNames, upgradedChaincodes, txsfltr)
-
-	assert.EqualValues(t, expectTxsFltr, txsfltr)
 }
