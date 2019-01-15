@@ -66,6 +66,8 @@ type MockStub struct {
 	// channel to store ChaincodeEvents
 	ChaincodeEventsChannel chan *pb.ChaincodeEvent
 
+	Creator []byte
+
 	Decorations map[string][]byte
 }
 
@@ -355,9 +357,8 @@ func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, chann
 	return res
 }
 
-// Not implemented
 func (stub *MockStub) GetCreator() ([]byte, error) {
-	return nil, nil
+	return stub.Creator, nil
 }
 
 // Not implemented
