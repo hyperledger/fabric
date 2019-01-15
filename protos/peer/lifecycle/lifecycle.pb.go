@@ -239,7 +239,7 @@ var xxx_messageInfo_QueryInstalledChaincodesArgs proto.InternalMessageInfo
 // '+lifecycle.QueryInstalledChaincodes'.  It returns a list of
 // installed chaincodes.
 type QueryInstalledChaincodesResult struct {
-	InstalledChaincodes  []*QueryInstalledChaincodesResult_InstalledChaincode `protobuf:"bytes,1,rep,name=installed_chaincodes,json=installedChaincodes" json:"installed_chaincodes,omitempty"`
+	InstalledChaincodes  []*QueryInstalledChaincodesResult_InstalledChaincode `protobuf:"bytes,1,rep,name=installed_chaincodes,json=installedChaincodes,proto3" json:"installed_chaincodes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                                             `json:"-"`
 	XXX_unrecognized     []byte                                               `json:"-"`
 	XXX_sizecache        int32                                                `json:"-"`
@@ -277,8 +277,8 @@ func (m *QueryInstalledChaincodesResult) GetInstalledChaincodes() []*QueryInstal
 }
 
 type QueryInstalledChaincodesResult_InstalledChaincode struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Version              string   `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	Hash                 []byte   `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
