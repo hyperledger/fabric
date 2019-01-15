@@ -14,7 +14,6 @@ package protos;
 
 import "peer/proposal_response.proto";
 import "common/common.proto";
-import "token/transaction.proto";
 
 // This message is necessary to facilitate the verification of the signature
 // (in the signature field) over the bytes of the transaction (in the
@@ -43,29 +42,6 @@ message ProcessedTransaction {
 
     // An indication of whether the transaction was validated or invalidated by committing peer
     int32 validationCode = 2;
-}
-
-// TokenEndorserTransaction is for chaincode-based endorsement transactions
-// that use FabToken as payment settlement.
-// It will be serialized as payload data in the envelope:
-//  Envelope
-//  |\_ Signature                                    (signature on the Payload message including
-//  |                                                 the transaction by the creator
-//  |                                                 specified in the Payload.header)
-//   \_ Payload
-//      |\_ Header (1)                               (the header of the proposal that requested
-//      |                                             this action; containing
-//      |                                             channel header, and signature header)
-//       \_ Data (1)                                 (serialised Transaction message)
-//            \_ TokenEndorserTransaction (1)
-//                  \_ TransactionAction (1)         (the transaction action that is same as regular endorser transaction)
-//                  \_ TokenTransaction (1)          (the token transaction matching the token expectation in endorsement response)
-message TokenEndorserTransaction {
-	// TransactionAction defines the regular endorser transaction based on proposal endorsement
-	TransactionAction transaction_action = 1;
-
-	// TokenTransaction satisfies the expectation generated at endorsement time
-	TokenTransaction token_transaction = 2;
 }
 
 // The transaction to be sent to the ordering service. A transaction contains
