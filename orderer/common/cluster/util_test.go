@@ -17,6 +17,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -24,6 +30,8 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestParallelStubActivation(t *testing.T) {
@@ -609,6 +617,103 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 	}
 }
 
+func TestBlockValidationPolicyVerifier(t *testing.T) {
+	t.Parallel()
+	config := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	group, err := encoder.NewChannelGroup(config)
+	assert.NoError(t, err)
+	assert.NotNil(t, group)
+
+	validConfigEnvelope := &common.ConfigEnvelope{
+		Config: &common.Config{
+			ChannelGroup: group,
+		},
+	}
+
+	for _, testCase := range []struct {
+		description   string
+		expectedError string
+		envelope      *common.ConfigEnvelope
+		policyMap     map[string]policies.Policy
+	}{
+		{
+			description:   "policy not found",
+			expectedError: "policy /Channel/Orderer/BlockValidation wasn't found",
+		},
+		{
+			description:   "policy evaluation fails",
+			expectedError: "invalid signature",
+			policyMap: map[string]policies.Policy{
+				"/Channel/Orderer/BlockValidation": &mockpolicies.Policy{
+					Err: errors.New("invalid signature"),
+				},
+			},
+		},
+		{
+			description:   "bad config envelope",
+			expectedError: "config must contain a channel group",
+			policyMap: map[string]policies.Policy{
+				"/Channel/Orderer/BlockValidation": &mockpolicies.Policy{
+					Err: errors.New("invalid signature"),
+				},
+			},
+			envelope: &common.ConfigEnvelope{Config: &common.Config{}},
+		},
+		{
+			description: "good config envelope overrides custom policy manager",
+			policyMap: map[string]policies.Policy{
+				"/Channel/Orderer/BlockValidation": &mockpolicies.Policy{
+					Err: errors.New("invalid signature"),
+				},
+			},
+			envelope: validConfigEnvelope,
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			verifier := &cluster.BlockValidationPolicyVerifier{
+				Logger:  flogging.MustGetLogger("test"),
+				Channel: "mychannel",
+				PolicyMgr: &mockpolicies.Manager{
+					PolicyMap: testCase.policyMap,
+				},
+			}
+
+			err := verifier.VerifyBlockSignature(nil, testCase.envelope)
+			if testCase.expectedError != "" {
+				assert.EqualError(t, err, testCase.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestBlockVerifierAssembler(t *testing.T) {
+	t.Parallel()
+	config := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	group, err := encoder.NewChannelGroup(config)
+	assert.NoError(t, err)
+	assert.NotNil(t, group)
+
+	t.Run("Good config envelope", func(t *testing.T) {
+		bva := &cluster.BlockVerifierAssembler{}
+		verifier, err := bva.VerifierFromConfig(&common.ConfigEnvelope{
+			Config: &common.Config{
+				ChannelGroup: group,
+			},
+		}, "mychannel")
+		assert.NoError(t, err)
+
+		assert.NoError(t, verifier.VerifyBlockSignature(nil, nil))
+	})
+
+	t.Run("Bad config envelope", func(t *testing.T) {
+		bva := &cluster.BlockVerifierAssembler{}
+		_, err := bva.VerifierFromConfig(&common.ConfigEnvelope{}, "mychannel")
+		assert.EqualError(t, err, "failed extracting bundle from envelope: channelconfig Config cannot be nil")
+	})
+}
+
 func TestLastConfigBlock(t *testing.T) {
 	blockRetriever := &mocks.BlockRetriever{}
 	blockRetriever.On("Block", uint64(42)).Return(&common.Block{})
@@ -693,4 +798,142 @@ func TestLastConfigBlock(t *testing.T) {
 			assert.Nil(t, block)
 		})
 	}
+}
+
+func TestVerificationRegistry(t *testing.T) {
+	t.Parallel()
+	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	assert.NoError(t, err)
+
+	block := &common.Block{}
+	assert.NoError(t, proto.Unmarshal(blockBytes, block))
+
+	flogging.ActivateSpec("test=DEBUG")
+	defer flogging.Reset()
+
+	verifier := &mocks.BlockVerifier{}
+
+	for _, testCase := range []struct {
+		description           string
+		verifiersByChannel    map[string]cluster.BlockVerifier
+		blockCommitted        *common.Block
+		channelCommitted      string
+		channelRetrieved      string
+		expectedVerifier      cluster.BlockVerifier
+		verifierFromConfig    cluster.BlockVerifier
+		verifierFromConfigErr error
+		loggedMessages        map[string]struct{}
+	}{
+		{
+			description:      "bad block",
+			blockCommitted:   &common.Block{},
+			channelRetrieved: "foo",
+			channelCommitted: "foo",
+			loggedMessages: map[string]struct{}{
+				"Failed parsing block of channel foo: empty block, content: " +
+					"{\n\t\"data\": null,\n\t\"header\": null,\n\t\"metadata\": null\n}\n": {},
+				"No verifier for channel foo exists": {},
+			},
+			expectedVerifier: nil,
+		},
+		{
+			description:      "not a config block",
+			blockCommitted:   createBlockChain(5, 5)[0],
+			channelRetrieved: "foo",
+			channelCommitted: "foo",
+			loggedMessages: map[string]struct{}{
+				"No verifier for channel foo exists":                           {},
+				"Committed block 5 for channel foo that is not a config block": {},
+			},
+			expectedVerifier: nil,
+		},
+		{
+			description:           "valid block but verifier from config fails",
+			blockCommitted:        block,
+			verifierFromConfigErr: errors.New("invalid MSP config"),
+			channelRetrieved:      "bar",
+			channelCommitted:      "bar",
+			loggedMessages: map[string]struct{}{
+				"Failed creating a verifier from a " +
+					"config block for channel bar: invalid MSP config, " +
+					"content: " + cluster.BlockToString(block): {},
+				"No verifier for channel bar exists": {},
+			},
+			expectedVerifier: nil,
+		},
+		{
+			description:        "valid block and verifier from config succeeds but wrong channel retrieved",
+			blockCommitted:     block,
+			verifierFromConfig: verifier,
+			channelRetrieved:   "foo",
+			channelCommitted:   "bar",
+			loggedMessages: map[string]struct{}{
+				"No verifier for channel foo exists":       {},
+				"Committed config block 0 for channel bar": {},
+			},
+			expectedVerifier:   nil,
+			verifiersByChannel: make(map[string]cluster.BlockVerifier),
+		},
+		{
+			description:        "valid block and verifier from config succeeds",
+			blockCommitted:     block,
+			verifierFromConfig: verifier,
+			channelRetrieved:   "bar",
+			channelCommitted:   "bar",
+			loggedMessages: map[string]struct{}{
+				"Committed config block 0 for channel bar": {},
+			},
+			expectedVerifier:   verifier,
+			verifiersByChannel: make(map[string]cluster.BlockVerifier),
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			verifierFactory := &mocks.VerifierFactory{}
+			verifierFactory.On("VerifierFromConfig",
+				mock.Anything, testCase.channelCommitted).Return(testCase.verifierFromConfig, testCase.verifierFromConfigErr)
+
+			registry := &cluster.VerificationRegistry{
+				Logger:             flogging.MustGetLogger("test"),
+				VerifiersByChannel: testCase.verifiersByChannel,
+				VerifierFactory:    verifierFactory,
+			}
+
+			loggedEntriesByMethods := make(map[string]struct{})
+			// Configure the logger to collect the message logged
+			registry.Logger = registry.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+				loggedEntriesByMethods[entry.Message] = struct{}{}
+				return nil
+			}))
+
+			registry.BlockCommitted(testCase.blockCommitted, testCase.channelCommitted)
+			verifier := registry.RetrieveVerifier(testCase.channelRetrieved)
+
+			assert.Equal(t, testCase.loggedMessages, loggedEntriesByMethods)
+			assert.Equal(t, testCase.expectedVerifier, verifier)
+		})
+	}
+}
+
+func TestLedgerInterceptor(t *testing.T) {
+	block := &common.Block{}
+
+	ledger := &mocks.LedgerWriter{}
+	ledger.On("Append", block).Return(nil).Once()
+
+	var intercepted bool
+
+	var interceptedLedger cluster.LedgerWriter = &cluster.LedgerInterceptor{
+		Channel:      "mychannel",
+		LedgerWriter: ledger,
+		InterceptBlockCommit: func(b *common.Block, channel string) {
+			assert.Equal(t, block, b)
+			assert.Equal(t, "mychannel", channel)
+			intercepted = true
+		},
+	}
+
+	err := interceptedLedger.Append(block)
+	assert.NoError(t, err)
+	assert.True(t, intercepted)
+	ledger.AssertCalled(t, "Append", block)
 }

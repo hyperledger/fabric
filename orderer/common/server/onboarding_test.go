@@ -20,7 +20,9 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
+	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
+	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -871,4 +873,147 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	env.Payload = utils.MarshalOrPanic(payload)
 	block.Data.Data[0] = utils.MarshalOrPanic(env)
 	block.Header.DataHash = block.Data.Hash()
+}
+
+func TestVerifierLoader(t *testing.T) {
+	systemChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "system.block"))
+	assert.NoError(t, err)
+
+	configBlock := &common.Block{}
+	err = proto.Unmarshal(systemChannelBlockBytes, configBlock)
+	assert.NoError(t, err)
+
+	verifier := &mocks.BlockVerifier{}
+
+	for _, testCase := range []struct {
+		description               string
+		ledgerGetOrCreateErr      error
+		ledgerHeight              uint64
+		lastBlock                 *common.Block
+		lastConfigBlock           *common.Block
+		verifierFromConfigReturns cluster.BlockVerifier
+		verifierFromConfigErr     error
+		onFailureInvoked          bool
+		expectedPanic             string
+		expectedLoggedMessages    map[string]struct{}
+		expectedResult            verifiersByChannel
+	}{
+		{
+			description:          "obtaining ledger fails",
+			ledgerGetOrCreateErr: errors.New("IO error"),
+			expectedPanic:        "Failed obtaining ledger for channel mychannel",
+		},
+		{
+			description: "empty ledger",
+			expectedLoggedMessages: map[string]struct{}{
+				"Channel mychannel has no blocks, skipping it": {},
+			},
+			expectedResult: make(verifiersByChannel),
+		},
+		{
+			description:   "block retrieval fails",
+			ledgerHeight:  100,
+			expectedPanic: "Failed retrieving block 99 for channel mychannel",
+		},
+		{
+			description:   "block retrieval succeeds but the block is bad",
+			ledgerHeight:  100,
+			lastBlock:     &common.Block{},
+			expectedPanic: "Failed retrieving config block 99 for channel mychannel",
+		},
+		{
+			description:  "config block retrieved is bad",
+			ledgerHeight: 100,
+			lastBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
+						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 21}),
+					}), {}, {}},
+				},
+			},
+			lastConfigBlock:  &common.Block{Header: &common.BlockHeader{Number: 21}},
+			expectedPanic:    "Failed extracting configuration for channel mychannel from block 21: empty block",
+			onFailureInvoked: true,
+		},
+		{
+			description:  "VerifierFromConfig fails",
+			ledgerHeight: 100,
+			lastBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
+						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 21}),
+					}), {}, {}},
+				},
+			},
+			lastConfigBlock:       configBlock,
+			verifierFromConfigErr: errors.New("failed initializing MSP"),
+			expectedPanic:         "Failed creating verifier for channel mychannel from block 99: failed initializing MSP",
+			onFailureInvoked:      true,
+		},
+		{
+			description:  "VerifierFromConfig succeeds",
+			ledgerHeight: 100,
+			lastBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
+						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 21}),
+					}), {}, {}},
+				},
+			},
+			lastConfigBlock: configBlock,
+			expectedLoggedMessages: map[string]struct{}{
+				"Loaded verifier for channel mychannel from config block at index 99": {},
+			},
+			expectedResult: verifiersByChannel{
+				"mychannel": verifier,
+			},
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			iterator := &deliver_mocks.BlockIterator{}
+			iterator.NextReturnsOnCall(0, testCase.lastBlock, common.Status_SUCCESS)
+			iterator.NextReturnsOnCall(1, testCase.lastConfigBlock, common.Status_SUCCESS)
+
+			ledger := &ledger_mocks.ReadWriter{}
+			ledger.On("Height").Return(testCase.ledgerHeight)
+			ledger.On("Iterator", mock.Anything).Return(iterator, uint64(1))
+
+			ledgerFactory := &server_mocks.Factory{}
+			ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, testCase.ledgerGetOrCreateErr)
+			ledgerFactory.On("ChainIDs").Return([]string{"mychannel"})
+
+			verifierFactory := &mocks.VerifierFactory{}
+			verifierFactory.On("VerifierFromConfig", mock.Anything, "mychannel").Return(verifier, testCase.verifierFromConfigErr)
+
+			var onFailureInvoked bool
+			onFailure := func(_ *common.Block) {
+				onFailureInvoked = true
+			}
+
+			verifierLoader := &verifierLoader{
+				onFailure:       onFailure,
+				ledgerFactory:   ledgerFactory,
+				verifierFactory: verifierFactory,
+				logger:          flogging.MustGetLogger("test"),
+			}
+
+			verifierLoader.logger = verifierLoader.logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+				delete(testCase.expectedLoggedMessages, entry.Message)
+				return nil
+			}))
+
+			if testCase.expectedPanic != "" {
+				f := func() {
+					verifierLoader.loadVerifiers()
+				}
+				assert.PanicsWithValue(t, testCase.expectedPanic, f)
+			} else {
+				res := verifierLoader.loadVerifiers()
+				assert.Equal(t, testCase.expectedResult, res)
+			}
+
+			assert.Equal(t, testCase.onFailureInvoked, onFailureInvoked)
+			assert.Empty(t, testCase.expectedLoggedMessages)
+		})
+	}
 }
