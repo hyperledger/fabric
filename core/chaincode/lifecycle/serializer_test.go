@@ -519,7 +519,7 @@ var _ = Describe("Serializer", func() {
 				}
 
 				err := s.Deserialize("namespaces", "fake", &BadStruct{}, fakeState)
-				Expect(err).To(MatchError("unsupported structure field kind ptr for deserialization for key namespaces/fields/fake/BadField"))
+				Expect(err).To(MatchError("unsupported structure field kind ptr for deserialization for field BadField"))
 			})
 		})
 
@@ -568,6 +568,238 @@ var _ = Describe("Serializer", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(testStruct).To(Equal(deserialized))
+		})
+	})
+
+	Describe("DeserializeMetadata", func() {
+		BeforeEach(func() {
+			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateMetadata{
+				Datatype: "TestDatatype",
+			}), nil)
+		})
+
+		It("deserializes the metadata", func() {
+			result, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proto.Equal(result, &lb.StateMetadata{Datatype: "TestDatatype"})).To(BeTrue())
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
+		})
+
+		Context("when GetState returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
+				Expect(err).To(MatchError("could not query metadata for namespace namespaces/fake: get-state-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("returns an error", func() {
+				_, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
+				Expect(err).To(MatchError("no existing serialized message found"))
+			})
+		})
+
+		Context("when the metadata is invalid", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns([]byte("bad-data"), nil)
+			})
+
+			It("returns an error", func() {
+				_, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
+				Expect(err).To(MatchError("could not unmarshal metadata for namespace namespaces/fake: unexpected EOF"))
+			})
+		})
+	})
+
+	Describe("DeserializeFieldAsString", func() {
+		BeforeEach(func() {
+			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_String_{String_: "string"},
+			}), nil)
+		})
+
+		It("deserializes the field to a string", func() {
+			result, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal("string"))
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))
+		})
+
+		Context("when GetState returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/field: get-state-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("returns the empty string", func() {
+				result, err := s.DeserializeFieldAsString("namespaces", "fake", "field", fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(""))
+			})
+		})
+	})
+
+	Describe("DeserializeFieldAsBytes", func() {
+		BeforeEach(func() {
+			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_Bytes{Bytes: []byte("bytes")},
+			}), nil)
+		})
+
+		It("deserializes the field to a string", func() {
+			result, err := s.DeserializeFieldAsBytes("namespaces", "fake", "field", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal([]byte("bytes")))
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))
+		})
+
+		Context("when GetState returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeFieldAsBytes("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/field: get-state-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("returns nil", func() {
+				result, err := s.DeserializeFieldAsBytes("namespaces", "fake", "field", fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(BeNil())
+			})
+		})
+	})
+
+	Describe("DeserializeFieldAsInt64", func() {
+		BeforeEach(func() {
+			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_Int64{Int64: -3},
+			}), nil)
+		})
+
+		It("deserializes the field to a string", func() {
+			result, err := s.DeserializeFieldAsInt64("namespaces", "fake", "field", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(int64(-3)))
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))
+		})
+
+		Context("when GetState returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeFieldAsInt64("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/field: get-state-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("returns nil", func() {
+				result, err := s.DeserializeFieldAsInt64("namespaces", "fake", "field", fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(int64(0)))
+			})
+		})
+
+		Context("when the field has trailing data", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns([]byte("bad-data"), nil)
+			})
+
+			It("returns an error", func() {
+				_, err := s.DeserializeFieldAsInt64("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not unmarshal state for key namespaces/fields/fake/field: unexpected EOF"))
+			})
+		})
+	})
+
+	Describe("DeserializeFieldAsUint64", func() {
+		BeforeEach(func() {
+			fakeState.GetStateReturns(utils.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_Uint64{Uint64: 93},
+			}), nil)
+		})
+
+		It("deserializes the field to a string", func() {
+			result, err := s.DeserializeFieldAsUint64("namespaces", "fake", "field", fakeState)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(uint64(93)))
+
+			Expect(fakeState.GetStateCallCount()).To(Equal(1))
+			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))
+		})
+
+		Context("when GetState returns an error", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := s.DeserializeFieldAsUint64("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not get state for key namespaces/fields/fake/field: get-state-error"))
+			})
+		})
+
+		Context("when GetState returns nil", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns(nil, nil)
+			})
+
+			It("returns nil", func() {
+				result, err := s.DeserializeFieldAsUint64("namespaces", "fake", "field", fakeState)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(uint64(0)))
+			})
+		})
+
+		Context("when the field is not validly encoded", func() {
+			BeforeEach(func() {
+				fakeState.GetStateReturns([]byte("bad-data"), nil)
+			})
+
+			It("returns an error", func() {
+				_, err := s.DeserializeFieldAsUint64("namespaces", "fake", "field", fakeState)
+				Expect(err).To(MatchError("could not unmarshal state for key namespaces/fields/fake/field: unexpected EOF"))
+			})
 		})
 	})
 })
