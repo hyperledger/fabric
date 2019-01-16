@@ -25,7 +25,7 @@ RUN make gotool.protoc-gen-go \
 	&& cp images/ccenv/main.go $GOPATH/src/input/. \
 	&& cd $GOPATH/src/input \
 	&& $GOPATH/bin/govendor init \
-	&& $GOPATH/bin/govendor add +external github.com/hyperledger/fabric/core/chaincode/shim \
+	&& $GOPATH/bin/govendor add +external github.com/hyperledger/fabric/core/chaincode/shim/... \
 	&& rm $GOPATH/src/input/vendor/vendor.json \
 	&& curl -fL ${CHAINTOOL_URL} > /usr/local/bin/chaintool \
 	&& chmod +x /usr/local/bin/chaintool
