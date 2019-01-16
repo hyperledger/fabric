@@ -15,6 +15,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
@@ -202,7 +205,7 @@ type BlockVerifier interface {
 
 // BlockSequenceVerifier verifies that the given consecutive sequence
 // of blocks is valid.
-type BlockSequenceVerifier func([]*common.Block) error
+type BlockSequenceVerifier func(blocks []*common.Block) error
 
 // Dialer creates a gRPC connection to a remote address
 type Dialer interface {
@@ -401,6 +404,131 @@ func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error)
 		Endpoints:  bundle.ChannelConfig().OrdererAddresses(),
 		TLSRootCAs: tlsCACerts,
 	}, nil
+}
+
+//go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/
+
+// VerifierFactory creates BlockVerifiers.
+type VerifierFactory interface {
+	// VerifierFromConfig creates a BlockVerifier from the given configuration.
+	VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error)
+}
+
+// VerificationRegistry registers verifiers and retrieves them.
+type VerificationRegistry struct {
+	Logger             *flogging.FabricLogger
+	VerifierFactory    VerifierFactory
+	VerifiersByChannel map[string]BlockVerifier
+}
+
+// RetrieveVerifier returns a BlockVerifier for the given channel, or nil if not found.
+func (vr *VerificationRegistry) RetrieveVerifier(channel string) BlockVerifier {
+	verifier, exists := vr.VerifiersByChannel[channel]
+	if exists {
+		return verifier
+	}
+	vr.Logger.Errorf("No verifier for channel %s exists", channel)
+	return nil
+}
+
+// BlockCommitted notifies the VerificationRegistry upon a block commit, which may
+// trigger a registration of a verifier out of the block in case the block is a config block.
+func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel string) {
+	conf, err := ConfigFromBlock(block)
+	// The block doesn't contain a config block, but is a valid block
+	if err == errNotAConfig {
+		vr.Logger.Debugf("Committed block %d for channel %s that is not a config block",
+			block.Header.Number, channel)
+		return
+	}
+	// The block isn't a valid block
+	if err != nil {
+		vr.Logger.Errorf("Failed parsing block of channel %s: %v, content: %s",
+			channel, err, BlockToString(block))
+		return
+	}
+
+	// The block contains a config block
+	verifier, err := vr.VerifierFactory.VerifierFromConfig(conf, channel)
+	if err != nil {
+		vr.Logger.Errorf("Failed creating a verifier from a config block for channel %s: %v, content: %s",
+			channel, err, BlockToString(block))
+		return
+	}
+	vr.VerifiersByChannel[channel] = verifier
+	vr.Logger.Debugf("Committed config block %d for channel %s", block.Header.Number, channel)
+}
+
+// BlockToString returns a string representation of this block.
+func BlockToString(block *common.Block) string {
+	buff := &bytes.Buffer{}
+	protolator.DeepMarshalJSON(buff, block)
+	return buff.String()
+}
+
+// BlockCommitFunc signals a block commit.
+type BlockCommitFunc func(block *common.Block, channel string)
+
+// LedgerInterceptor intercepts block commits.
+type LedgerInterceptor struct {
+	Channel              string
+	InterceptBlockCommit BlockCommitFunc
+	LedgerWriter
+}
+
+// Append commits a block into the ledger, and also fires the configured callback.
+func (interceptor *LedgerInterceptor) Append(block *common.Block) error {
+	defer interceptor.InterceptBlockCommit(block, interceptor.Channel)
+	return interceptor.LedgerWriter.Append(block)
+}
+
+// BlockVerifierAssembler creates a BlockVerifier out of a config envelope
+type BlockVerifierAssembler struct {
+	Logger *flogging.FabricLogger
+}
+
+// VerifierFromConfig creates a BlockVerifier from the given configuration.
+func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error) {
+	bundle, err := channelconfig.NewBundle(channel, configuration.Config)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
+	}
+	policyMgr := bundle.PolicyManager()
+
+	return &BlockValidationPolicyVerifier{
+		Logger:    bva.Logger,
+		PolicyMgr: policyMgr,
+		Channel:   channel,
+	}, nil
+}
+
+// BlockValidationPolicyVerifier verifies signatures based on the block validation policy.
+type BlockValidationPolicyVerifier struct {
+	Logger    *flogging.FabricLogger
+	Channel   string
+	PolicyMgr policies.Manager
+}
+
+// VerifyBlockSignature verifies the signed data associated to a block, optionally with the given config envelope.
+func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*common.SignedData, envelope *common.ConfigEnvelope) error {
+	policyMgr := bv.PolicyMgr
+	// If the envelope passed isn't nil, we should use a different policy manager.
+	if envelope != nil {
+		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.Config)
+		if err != nil {
+			buff := &bytes.Buffer{}
+			protolator.DeepMarshalJSON(buff, envelope.Config)
+			bv.Logger.Errorf("Failed creating a new bundle for channel %s, Config content is: %s", bv.Channel, buff.String())
+			return err
+		}
+		bv.Logger.Infof("Initializing new PolicyManager for channel %s", bv.Channel)
+		policyMgr = bundle.PolicyManager()
+	}
+	policy, exists := policyMgr.GetPolicy(policies.BlockValidation)
+	if !exists {
+		return errors.Errorf("policy %s wasn't found", policies.BlockValidation)
+	}
+	return policy.Evaluate(sd)
 }
 
 //go:generate mockery -dir . -name BlockRetriever -case underscore -output ./mocks/
