@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package txvalidator_test
+package plugindispatcher_test
 
 import (
 	"reflect"
@@ -15,8 +15,8 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/v20"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/testdata"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
@@ -33,10 +33,10 @@ func TestValidateWithPlugin(t *testing.T) {
 	qec := &mocks.QueryExecutorCreator{}
 	deserializer := &mocks.IdentityDeserializer{}
 	capabilites := &mocks.Capabilities{}
-	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
-	ctx := &txvalidator.Context{
-		Namespace: "mycc",
-		VSCCName:  "vscc",
+	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites)
+	ctx := &plugindispatcher.Context{
+		Namespace:  "mycc",
+		PluginName: "vscc",
 	}
 
 	// Scenario I: The plugin isn't found because the map wasn't populated with anything yet
@@ -102,12 +102,12 @@ func TestSamplePlugin(t *testing.T) {
 
 	txnData, _ := proto.Marshal(&transaction)
 
-	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
+	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites)
 	acceptAllPolicyBytes, _ := proto.Marshal(cauthdsl.AcceptAllPolicy)
-	ctx := &txvalidator.Context{
-		Namespace: "mycc",
-		VSCCName:  "vscc",
-		Policy:    acceptAllPolicyBytes,
+	ctx := &plugindispatcher.Context{
+		Namespace:  "mycc",
+		PluginName: "vscc",
+		Policy:     acceptAllPolicyBytes,
 		Block: &common.Block{
 			Header: &common.BlockHeader{},
 			Data: &common.BlockData{

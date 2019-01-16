@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	txvalidatorv20 "github.com/hyperledger/fabric/core/committer/txvalidator/v20"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/testdata"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
