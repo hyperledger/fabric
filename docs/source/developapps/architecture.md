@@ -163,6 +163,20 @@ This second point is actually a key take-away for Hyperledger Fabric; the
 physical design of state vectors is **very important** to optimum performance
 and behaviour. Keep your states separate!
 
+## Trust relationships
+
+We have discussed how the different roles in a network, such as issuer, trader
+or rating agencies as well as different business interests determine who needs
+to sign off on a transaction. In Fabric, these rules are captured by so-called
+[**endorsement policies**](endorsementpolicies.html). The rules can be set on
+a chaincode granularity, as well as for individual state keys.
+
+This means that in PaperNet, we can set one rule for the whole namespace that
+determines which organizations can issue new papers. Later, rules can be set
+and updated for individual papers to capture the trust relationships of buy
+and redeem transactions.
+
+
 In the next topic, we will show you how to combine these design concepts to
 implement the PaperNet commercial paper smart contract, and then an application
 in exploits it!

@@ -12,6 +12,7 @@ solutions.
    namespace.md
    transactioncontext.md
    transactionhandler.md
+   endorsementpolicies.md
    connectionprofile.md
    connectionoptions.md
    wallet.md
