@@ -48,7 +48,7 @@ func (s *Service) Step(ctx context.Context, request *orderer.StepRequest) (*orde
 	defer s.StepLogger.Debugf("Closing connection from %s", addr)
 	response, err := s.Dispatcher.DispatchStep(ctx, request)
 	if err != nil {
-		s.Logger.Warningf("Handling of Step() from %s failed: %+v", addr, err)
+		s.Logger.Warningf("Handling of Step() from %s failed: %v", addr, err)
 	}
 	return response, err
 }

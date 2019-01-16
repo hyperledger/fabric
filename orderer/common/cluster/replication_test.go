@@ -9,6 +9,7 @@ package cluster_test
 import (
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -468,7 +469,7 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	channelLister.On("Channels").Return([]cluster.ChannelGenesisBlock{
 		{ChannelName: "E", GenesisBlock: fakeGB},
 		{ChannelName: "D", GenesisBlock: fakeGB}, {ChannelName: "C", GenesisBlock: fakeGB},
-		{ChannelName: "A"}, {ChannelName: "B", GenesisBlock: fakeGB},
+		{ChannelName: "A", GenesisBlock: fakeGB}, {ChannelName: "B", GenesisBlock: fakeGB},
 	})
 	channelLister.On("Close")
 
@@ -651,9 +652,9 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	// From this point onwards, we pull the blocks for the chain.
 	osn.enqueueResponse(30)
 	osn.addExpectProbeAssert()
-	osn.addExpectPullAssert(0)
+	osn.addExpectPullAssert(10)
 	// Enqueue 31 blocks in its belly
-	for _, block := range createBlockChain(0, 30) {
+	for _, block := range createBlockChain(10, 30) {
 		osn.blockResponses <- &orderer.DeliverResponse{
 			Type: &orderer.DeliverResponse_Block{Block: block},
 		}
@@ -895,14 +896,21 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			bp, err := cluster.BlockPullerFromConfigBlock(testCase.pullerConfig, testCase.block)
+			verifierRetriever := &mocks.VerifierRetriever{}
+			verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(&cluster.NoopBlockVerifier{})
+			bp, err := cluster.BlockPullerFromConfigBlock(testCase.pullerConfig, testCase.block, verifierRetriever)
 			assert.EqualError(t, err, testCase.expectedErr)
 			assert.Nil(t, bp)
 		})
 	}
 }
 
-func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
+func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerifier, expectedLogMsg string, iterations int) {
+	verifierRetriever := &mocks.VerifierRetriever{}
+	for _, blockVerifier := range blockVerifiers {
+		verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(blockVerifier).Once()
+	}
+
 	caCert, err := ioutil.ReadFile(filepath.Join("testdata", "ca.crt"))
 	assert.NoError(t, err)
 
@@ -942,16 +950,23 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 	injectOrdererEndpoint(t, validBlock, osn.srv.Address())
 	validBlock.Header.DataHash = validBlock.Data.Hash()
 
-	blockMsg := &orderer.DeliverResponse_Block{
-		Block: validBlock,
-	}
+	for attempt := 0; attempt < iterations; attempt++ {
+		blockMsg := &orderer.DeliverResponse_Block{
+			Block: validBlock,
+		}
 
-	osn.blockResponses <- &orderer.DeliverResponse{
-		Type: blockMsg,
-	}
+		osn.blockResponses <- &orderer.DeliverResponse{
+			Type: blockMsg,
+		}
 
-	osn.blockResponses <- &orderer.DeliverResponse{
-		Type: blockMsg,
+		osn.blockResponses <- &orderer.DeliverResponse{
+			Type: blockMsg,
+		}
+
+		osn.blockResponses <- nil
+
+		osn.addExpectProbeAssert()
+		osn.addExpectPullAssert(0)
 	}
 
 	bp, err := cluster.BlockPullerFromConfigBlock(cluster.PullerConfig{
@@ -961,15 +976,52 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 		Channel:             "mychannel",
 		Signer:              &crypto.LocalSigner{},
 		Timeout:             time.Hour,
-	}, validBlock)
+	}, validBlock, verifierRetriever)
+	bp.RetryTimeout = time.Millisecond * 10
 	assert.NoError(t, err)
 	defer bp.Close()
 
-	osn.addExpectProbeAssert()
-	osn.addExpectPullAssert(0)
+	var seenExpectedLogMsg bool
+
+	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, expectedLogMsg) {
+			seenExpectedLogMsg = true
+		}
+		return nil
+	}))
 
 	block := bp.PullBlock(0)
 	assert.Equal(t, uint64(0), block.Header.Number)
+	assert.True(t, seenExpectedLogMsg)
+}
+
+func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
+	for _, testCase := range []struct {
+		description        string
+		blockVerifiers     []cluster.BlockVerifier
+		expectedLogMessage string
+		iterations         int
+	}{
+		{
+			description:        "Success",
+			blockVerifiers:     []cluster.BlockVerifier{&cluster.NoopBlockVerifier{}},
+			expectedLogMessage: "Got block 0 of size",
+			iterations:         1,
+		},
+		{
+			description: "Failure",
+			iterations:  2,
+			// First time it returns nil, second time returns like the success case
+			blockVerifiers: []cluster.BlockVerifier{nil, &cluster.NoopBlockVerifier{}},
+			expectedLogMessage: "Failed verifying received blocks: " +
+				"couldn't acquire verifier for channel mychannel",
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			testBlockPullerFromConfig(t, testCase.blockVerifiers,
+				testCase.expectedLogMessage, testCase.iterations)
+		})
+	}
 }
 
 func TestNoopBlockVerifier(t *testing.T) {

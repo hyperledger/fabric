@@ -110,7 +110,7 @@ func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uin
 		}
 	}
 
-	c.Logger.Error("Could not find", string(c.Cert), "among", serverCertificates)
+	c.Logger.Warning("Could not find", string(c.Cert), "among", serverCertificates)
 	return 0, cluster.ErrNotInChannel
 }
 
