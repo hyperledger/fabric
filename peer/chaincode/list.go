@@ -17,6 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -26,7 +27,8 @@ var getInstalledChaincodes bool
 var getInstantiatedChaincodes bool
 var chaincodeListCmd *cobra.Command
 
-// installCmd returns the cobra command for Chaincode Deploy
+// listCmd returns the cobra command for listing
+// the installed or instantiated chaincodes
 func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeListCmd = &cobra.Command{
 		Use:   "list",
@@ -44,6 +46,7 @@ func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"newLifecycle",
 	}
 	attachFlags(chaincodeListCmd, flagList)
 
@@ -71,42 +74,66 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	}
 
 	var prop *pb.Proposal
-	if getInstalledChaincodes && (!getInstantiatedChaincodes) {
-		prop, _, err = utils.CreateGetInstalledChaincodesProposal(creator)
-	} else if getInstantiatedChaincodes && (!getInstalledChaincodes) {
+
+	if (getInstalledChaincodes && getInstantiatedChaincodes) || (!getInstalledChaincodes && !getInstantiatedChaincodes) {
+		return errors.New("must explicitly specify \"--installed\" or \"--instantiated\"")
+	}
+
+	if getInstalledChaincodes {
+		prop, err = getInstalledChaincodesProposal(newLifecycle, creator)
+	}
+
+	if getInstantiatedChaincodes {
 		prop, _, err = utils.CreateGetChaincodesProposal(channelID, creator)
-	} else {
-		return fmt.Errorf("Must explicitly specify \"--installed\" or \"--instantiated\"")
 	}
 
 	if err != nil {
-		return fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
+		return errors.WithMessage(err, "error creating proposal")
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
+		return errors.WithMessage(err, "error creating signed proposal")
 	}
 
 	// list is currently only supported for one peer
 	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return errors.Errorf("Error endorsing %s: %s", chainFuncName, err)
+		return errors.WithMessage(err, "error endorsing proposal")
 	}
 
 	if proposalResponse.Response == nil {
-		return errors.Errorf("Proposal response had nil 'response'")
+		return errors.Errorf("proposal response had nil response")
 	}
 
 	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("Bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
 	}
 
-	cqr := &pb.ChaincodeQueryResponse{}
-	err = proto.Unmarshal(proposalResponse.Response.Payload, cqr)
-	if err != nil {
-		return err
+	return printResponse(getInstalledChaincodes, proposalResponse)
+}
+
+// printResponse prints the information included in the response
+// from the server. If getInstalledChaincodes is set to false, the
+// proposal response will be interpreted as containing instantiated
+// chaincode information.
+func printResponse(getInstalledChaincodes bool, proposalResponse *pb.ProposalResponse) error {
+	var qicr *lb.QueryInstalledChaincodesResult
+	var cqr *pb.ChaincodeQueryResponse
+
+	if newLifecycle {
+		qicr = &lb.QueryInstalledChaincodesResult{}
+		err := proto.Unmarshal(proposalResponse.Response.Payload, qicr)
+		if err != nil {
+			return err
+		}
+	} else {
+		cqr = &pb.ChaincodeQueryResponse{}
+		err := proto.Unmarshal(proposalResponse.Response.Payload, cqr)
+		if err != nil {
+			return err
+		}
 	}
 
 	if getInstalledChaincodes {
@@ -114,9 +141,18 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	} else {
 		fmt.Printf("Get instantiated chaincodes on channel %s:\n", channelID)
 	}
+
+	if qicr != nil {
+		for _, chaincode := range qicr.InstalledChaincodes {
+			fmt.Printf("Name: %s, Version: %s, Hash: %x\n", chaincode.Name, chaincode.Version, chaincode.Hash)
+		}
+		return nil
+	}
+
 	for _, chaincode := range cqr.Chaincodes {
 		fmt.Printf("%v\n", ccInfo{chaincode}.String())
 	}
+
 	return nil
 }
 
@@ -149,4 +185,36 @@ func (cci ccInfo) String() string {
 
 func isBytes(v reflect.Value) bool {
 	return v.Kind() == reflect.Slice && v.Type().Elem().Kind() == reflect.Uint8
+}
+
+func getInstalledChaincodesProposal(newLifecycle bool, creator []byte) (*pb.Proposal, error) {
+	if newLifecycle {
+		return createNewLifecycleQueryInstalledChaincodeProposal(creator)
+	}
+	proposal, _, err := utils.CreateGetInstalledChaincodesProposal(creator)
+	return proposal, err
+}
+
+func createNewLifecycleQueryInstalledChaincodeProposal(creatorBytes []byte) (*pb.Proposal, error) {
+	args := &lb.QueryInstalledChaincodesArgs{}
+
+	argsBytes, err := proto.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+	ccInput := &pb.ChaincodeInput{Args: [][]byte{[]byte("QueryInstalledChaincodes"), argsBytes}}
+
+	cis := &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			ChaincodeId: &pb.ChaincodeID{Name: "+lifecycle"},
+			Input:       ccInput,
+		},
+	}
+
+	proposal, _, err := utils.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error creating proposal for ChaincodeInvocationSpec")
+	}
+
+	return proposal, nil
 }

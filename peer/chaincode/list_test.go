@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,7 +32,7 @@ func TestChaincodeListCmd(t *testing.T) {
 	}
 	installedCqrBytes, err := proto.Marshal(installedCqr)
 	if err != nil {
-		t.Fatalf("Marshale error: %s", err)
+		t.Fatalf("Marshal error: %s", err)
 	}
 
 	mockResponse := &pb.ProposalResponse{
@@ -46,61 +47,99 @@ func TestChaincodeListCmd(t *testing.T) {
 		BroadcastClient: mockBroadcastClient,
 	}
 
-	// reset channelID, it might have been set by previous test
-	channelID = ""
+	cmd := listCmd(mockCF)
 
-	// Get installed chaincodes
-	installedChaincodesCmd := listCmd(mockCF)
+	t.Run("get installed chaincodes - legacy lscc", func(t *testing.T) {
+		resetFlags()
 
-	args := []string{"--installed"}
-	installedChaincodesCmd.SetArgs(args)
-	if err := installedChaincodesCmd.Execute(); err != nil {
-		t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
-	}
+		args := []string{"--installed"}
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err != nil {
+			t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
+		}
+	})
 
-	resetFlags()
+	t.Run("get installed chaincodes - +lifecycle", func(t *testing.T) {
+		resetFlags()
+		queryInstalledChaincodeResult := &lb.QueryInstalledChaincodesResult{
+			InstalledChaincodes: []*lb.QueryInstalledChaincodesResult_InstalledChaincode{
+				{Name: "test1", Version: "v1.0", Hash: []byte("hash1")},
+				{Name: "testcc2", Version: "v2.0", Hash: []byte("hash2")},
+			},
+		}
+		qicrBytes, err := proto.Marshal(queryInstalledChaincodeResult)
+		if err != nil {
+			t.Fatalf("Marshal error: %s", err)
+		}
 
-	// Get instantiated chaincodes
-	instantiatedChaincodesCmd := listCmd(mockCF)
-	args = []string{"--instantiated"}
-	instantiatedChaincodesCmd.SetArgs(args)
-	err = instantiatedChaincodesCmd.Execute()
-	assert.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
+		mockResponse.Response = &pb.Response{Status: 200, Payload: qicrBytes}
 
-	args = []string{"--instantiated", "-C", "mychannel"}
-	instantiatedChaincodesCmd.SetArgs(args)
-	if err := instantiatedChaincodesCmd.Execute(); err != nil {
-		t.Errorf("Run chaincode list cmd to get instantiated chaincodes error:%v", err)
-	}
+		args := []string{"--installed", "--newLifecycle"}
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err != nil {
+			t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
+		}
+	})
 
-	resetFlags()
+	t.Run("get instantiated chaincodes - no channel", func(t *testing.T) {
+		resetFlags()
 
-	// Wrong case: Set both "--installed" and "--instantiated"
-	Cmd := listCmd(mockCF)
-	args = []string{"--installed", "--instantiated"}
-	Cmd.SetArgs(args)
-	err = Cmd.Execute()
-	assert.Error(t, err, "Run chaincode list cmd to get instantiated/installed chaincodes should fail if invoked without -C flag")
+		args := []string{"--instantiated"}
+		cmd.SetArgs(args)
+		err = cmd.Execute()
+		assert.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
+	})
 
-	args = []string{"--installed", "--instantiated", "-C", "mychannel"}
-	Cmd.SetArgs(args)
-	expectErr := fmt.Errorf("Must explicitly specify \"--installed\" or \"--instantiated\"")
-	if err := Cmd.Execute(); err == nil || err.Error() != expectErr.Error() {
-		t.Errorf("Expect error: %s", expectErr)
-	}
+	t.Run("get instantiated chaincodes - no channel", func(t *testing.T) {
+		resetFlags()
 
-	resetFlags()
+		args := []string{"--instantiated"}
+		cmd.SetArgs(args)
+		err = cmd.Execute()
+		assert.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
+	})
 
-	// Wrong case: Miss "--intsalled" and "--instantiated"
-	nilCmd := listCmd(mockCF)
+	t.Run("get instantiated chaincodes - success", func(t *testing.T) {
+		resetFlags()
+		instantiatedChaincodesCmd := listCmd(mockCF)
+		args := []string{"--instantiated", "-C", "mychannel"}
+		instantiatedChaincodesCmd.SetArgs(args)
+		if err := instantiatedChaincodesCmd.Execute(); err != nil {
+			t.Errorf("Run chaincode list cmd to get instantiated chaincodes error:%v", err)
+		}
+	})
 
-	args = []string{"-C", "mychannel"}
-	nilCmd.SetArgs(args)
+	t.Run("both --installed and --instantiated set - no channel", func(t *testing.T) {
+		resetFlags()
 
-	expectErr = fmt.Errorf("Must explicitly specify \"--installed\" or \"--instantiated\"")
-	if err := nilCmd.Execute(); err == nil || err.Error() != expectErr.Error() {
-		t.Errorf("Expect error: %s", expectErr)
-	}
+		// Wrong case: Set both "--installed" and "--instantiated"
+		cmd = listCmd(mockCF)
+		args := []string{"--installed", "--instantiated"}
+		cmd.SetArgs(args)
+		err = cmd.Execute()
+		assert.Error(t, err, "Run chaincode list cmd to get instantiated/installed chaincodes should fail if invoked without -C flag")
+	})
+
+	t.Run("both --installed and --instantiated set - no channel", func(t *testing.T) {
+		resetFlags()
+		args := []string{"--installed", "--instantiated", "-C", "mychannel"}
+		cmd.SetArgs(args)
+		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
+		if err := cmd.Execute(); err == nil || err.Error() != expectErr.Error() {
+			t.Errorf("Expect error: %s", expectErr)
+		}
+	})
+
+	t.Run("neither --installed nor --instantiated set", func(t *testing.T) {
+		resetFlags()
+		args := []string{"-C", "mychannel"}
+		cmd.SetArgs(args)
+
+		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
+		if err := cmd.Execute(); err == nil || err.Error() != expectErr.Error() {
+			t.Errorf("Expect error: %s", expectErr)
+		}
+	})
 }
 
 func TestChaincodeListFailure(t *testing.T) {
@@ -132,7 +171,7 @@ func TestChaincodeListFailure(t *testing.T) {
 	instantiatedChaincodesCmd.SetArgs(args)
 	err = instantiatedChaincodesCmd.Execute()
 	assert.Error(t, err)
-	assert.Regexp(t, "Bad response: 500 - error message", err.Error())
+	assert.Regexp(t, "bad response: 500 - error message", err.Error())
 }
 
 func TestString(t *testing.T) {
