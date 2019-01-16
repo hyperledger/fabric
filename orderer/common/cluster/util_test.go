@@ -567,6 +567,21 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 			block:         &common.Block{Data: &common.BlockData{}},
 		},
 		{
+			name:          "invalid payload",
+			expectedError: "error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
+			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
+		},
+		{
+			name:          "bad genesis block",
+			expectedError: "invalid config envelope: proto: common.ConfigEnvelope: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Header: &common.BlockHeader{}, Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+					Payload: utils.MarshalOrPanic(&common.Payload{
+						Data: []byte{1, 2, 3},
+					}),
+				})}}},
+		},
+		{
 			name:          "invalid envelope in block",
 			expectedError: "error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
 			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
@@ -579,34 +594,33 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 			})}}},
 		},
 		{
-			name:          "nil header in payload",
-			expectedError: "nil header in payload",
-			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{})}}},
-		},
-		{
 			name:          "invalid channel header",
 			expectedError: "error unmarshaling ChannelHeader: proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
-			block: &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-				Payload: utils.MarshalOrPanic(&common.Payload{
-					Header: &common.Header{
-						ChannelHeader: []byte{1, 2, 3},
-					},
-				}),
-			})}}},
+			block: &common.Block{
+				Header: &common.BlockHeader{Number: 1},
+				Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+					Payload: utils.MarshalOrPanic(&common.Payload{
+						Header: &common.Header{
+							ChannelHeader: []byte{1, 2, 3},
+						},
+					}),
+				})}}},
 		},
 		{
 			name:          "invalid config block",
 			expectedError: "invalid config envelope: proto: common.ConfigEnvelope: illegal tag 0 (wire type 1)",
-			block: &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
-				Payload: utils.MarshalOrPanic(&common.Payload{
-					Data: []byte{1, 2, 3},
-					Header: &common.Header{
-						ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
-							Type: int32(common.HeaderType_CONFIG),
-						}),
-					},
-				}),
-			})}}},
+			block: &common.Block{
+				Header: &common.BlockHeader{},
+				Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
+					Payload: utils.MarshalOrPanic(&common.Payload{
+						Data: []byte{1, 2, 3},
+						Header: &common.Header{
+							ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
+								Type: int32(common.HeaderType_CONFIG),
+							}),
+						},
+					}),
+				})}}},
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

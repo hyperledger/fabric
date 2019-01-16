@@ -255,11 +255,17 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 		ServerRootCAs: [][]byte{caCert},
 	}
 
+	verifier := &mocks.BlockVerifier{}
+	verifier.On("VerifyBlockSignature", mock.Anything, mock.Anything).Return(nil)
+	vr := &mocks.VerifierRetriever{}
+	vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
+
 	r := &replicationInitiator{
-		lf:      lf,
-		logger:  flogging.MustGetLogger("testOnboarding"),
-		conf:    config,
-		secOpts: secConfig,
+		verifierRetriever: vr,
+		lf:                lf,
+		logger:            flogging.MustGetLogger("testOnboarding"),
+		conf:              config,
+		secOpts:           secConfig,
 	}
 
 	type event struct {
@@ -484,6 +490,7 @@ func TestReplicate(t *testing.T) {
 		zapHooks           []func(zapcore.Entry) error
 		shouldConnect      bool
 		replicateFunc      func(*replicationInitiator, *common.Block)
+		verificationCount  int
 	}{
 		{
 			name:               "Genesis block makes replication be skipped",
@@ -588,6 +595,7 @@ func TestReplicate(t *testing.T) {
 		},
 		{
 			name:               "Explicit replication is requested, but the channel shouldn't be pulled",
+			verificationCount:  18,
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          &bootBlock,
@@ -666,13 +674,19 @@ func TestReplicate(t *testing.T) {
 			lw.On("Height").Return(testCase.systemLedgerHeight).Once()
 
 			lf := &mocks.LedgerFactory{}
-			lf.On("GetOrCreate", mock.Anything).Return(lw, testCase.ledgerFactoryErr).Once()
+			lf.On("GetOrCreate", mock.Anything).Return(lw, testCase.ledgerFactoryErr).Twice()
 			lf.On("Close")
 
+			verifier := &mocks.BlockVerifier{}
+			verifier.On("VerifyBlockSignature", mock.Anything, mock.Anything).Return(nil)
+			vr := &mocks.VerifierRetriever{}
+			vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
+
 			r := &replicationInitiator{
-				lf:     lf,
-				logger: flogging.MustGetLogger("testReplicateIfNeeded"),
-				signer: testCase.signer,
+				verifierRetriever: vr,
+				lf:                lf,
+				logger:            flogging.MustGetLogger("testReplicateIfNeeded"),
+				signer:            testCase.signer,
 
 				conf:    testCase.conf,
 				secOpts: testCase.secOpts,
@@ -699,6 +713,7 @@ func TestReplicate(t *testing.T) {
 			}()
 
 			assert.Equal(t, testCase.shouldConnect, atomic.LoadInt32(&deliverServer.isConnected) == int32(1))
+			verifier.AssertNumberOfCalls(t, "VerifyBlockSignature", testCase.verificationCount)
 		})
 	}
 }
@@ -825,7 +840,10 @@ func TestTrackChainNilGenesisBlock(t *testing.T) {
 }
 
 func TestLedgerFactory(t *testing.T) {
-	lf := &ledgerFactory{ramledger.New(1)}
+	lf := &ledgerFactory{
+		Factory:       ramledger.New(1),
+		onBlockCommit: func(_ *common.Block, _ string) {},
+	}
 	lw, err := lf.GetOrCreate("mychannel")
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(0), lw.Height())

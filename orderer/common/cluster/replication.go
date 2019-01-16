@@ -124,34 +124,33 @@ func (r *Replicator) ReplicateChains() []string {
 	pullHints := r.channelsToPull(channels)
 	totalChannelCount := len(pullHints.channelsToPull) + len(pullHints.channelsNotToPull)
 	r.Logger.Info("Found myself in", len(pullHints.channelsToPull), "channels out of", totalChannelCount, ":", pullHints)
+
+	// Append the genesis blocks of the application channels we have into the ledger
+	for _, channels := range [][]ChannelGenesisBlock{pullHints.channelsToPull, pullHints.channelsNotToPull} {
+		for _, channel := range channels {
+			ledger, err := r.LedgerFactory.GetOrCreate(channel.ChannelName)
+			if err != nil {
+				r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel.ChannelName, err)
+			}
+			gb, err := ChannelCreationBlockToGenesisBlock(channel.GenesisBlock)
+			if err != nil {
+				r.Logger.Panicf("Failed converting channel creation block for channel %s to genesis block: %v",
+					channel.ChannelName, err)
+			}
+			r.appendBlock(gb, ledger, channel.ChannelName)
+		}
+	}
+
 	for _, channel := range pullHints.channelsToPull {
 		err := r.PullChannel(channel.ChannelName)
 		if err == nil {
 			replicatedChains = append(replicatedChains, channel.ChannelName)
 		} else {
 			r.Logger.Warningf("Failed pulling channel %s: %v", channel.ChannelName, err)
-			// Append the channel we failed pulling to the channels not to pull, in order to commit the genesis block
-			// so that we mark it for replication in the future.
-			pullHints.channelsNotToPull = append(pullHints.channelsNotToPull, channel)
 		}
-	}
-	// Next, just commit the genesis blocks of the channels we shouldn't pull.
-	for _, channel := range pullHints.channelsNotToPull {
-		ledger, err := r.LedgerFactory.GetOrCreate(channel.ChannelName)
-		if err != nil {
-			r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel.ChannelName, err)
-		}
-		// Write a placeholder genesis block to the ledger, just to make an inactive.Chain start
-		// when onboarding is finished
-		gb, err := ChannelCreationBlockToGenesisBlock(channel.GenesisBlock)
-		if err != nil {
-			r.Logger.Panicf("Failed converting channel creation block for channel %s to genesis block: %v",
-				channel.ChannelName, err)
-		}
-		r.appendBlockIfNeeded(gb, ledger, channel.ChannelName)
 	}
 
-	// Last, pull the system chain
+	// Last, pull the system chain.
 	if err := r.PullChannel(r.SystemChannel); err != nil && err != ErrSkipped {
 		r.Logger.Panicf("Failed pulling system channel: %v", err)
 	}
@@ -179,6 +178,11 @@ func (r *Replicator) PullChannel(channel string) error {
 	defer puller.Close()
 	puller.Channel = channel
 
+	ledger, err := r.LedgerFactory.GetOrCreate(channel)
+	if err != nil {
+		r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel, err)
+	}
+
 	endpoint, latestHeight, _ := latestHeightAndEndpoint(puller)
 	if endpoint == "" {
 		return errors.Errorf("failed obtaining the latest block for channel %s", channel)
@@ -191,23 +195,20 @@ func (r *Replicator) PullChannel(channel string) error {
 		return errors.Errorf("latest height found among system channel(%s) orderers is %d, but the boot block's "+
 			"sequence is %d", r.SystemChannel, latestHeight, r.BootBlock.Header.Number)
 	}
-	return r.pullChannelBlocks(channel, puller, latestHeight)
+	return r.pullChannelBlocks(channel, puller, latestHeight, ledger)
 }
 
-func (r *Replicator) pullChannelBlocks(channel string, puller ChainPuller, latestHeight uint64) error {
-	ledger, err := r.LedgerFactory.GetOrCreate(channel)
-	if err != nil {
-		r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel, err)
-	}
-	// Pull the genesis block and remember its hash.
-	genesisBlock := puller.PullBlock(0)
-	if genesisBlock == nil {
+func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, latestHeight uint64, ledger LedgerWriter) error {
+	nextBlockToPull := ledger.Height()
+	// Pull the next block and remember its hash.
+	nextBlock := puller.PullBlock(nextBlockToPull)
+	if nextBlock == nil {
 		return ErrRetryCountExhausted
 	}
-	r.appendBlockIfNeeded(genesisBlock, ledger, channel)
-	actualPrevHash := genesisBlock.Header.Hash()
+	r.appendBlock(nextBlock, ledger, channel)
+	actualPrevHash := nextBlock.Header.Hash()
 
-	for seq := uint64(1); seq < latestHeight; seq++ {
+	for seq := uint64(nextBlockToPull + 1); seq < latestHeight; seq++ {
 		block := puller.PullBlock(seq)
 		if block == nil {
 			return ErrRetryCountExhausted
@@ -220,20 +221,19 @@ func (r *Replicator) pullChannelBlocks(channel string, puller ChainPuller, lates
 		actualPrevHash = block.Header.Hash()
 		if channel == r.SystemChannel && block.Header.Number == r.BootBlock.Header.Number {
 			r.compareBootBlockWithSystemChannelLastConfigBlock(block)
-			r.appendBlockIfNeeded(block, ledger, channel)
+			r.appendBlock(block, ledger, channel)
 			// No need to pull further blocks from the system channel
 			return nil
 		}
-		r.appendBlockIfNeeded(block, ledger, channel)
+		r.appendBlock(block, ledger, channel)
 	}
 	return nil
 }
 
-func (r *Replicator) appendBlockIfNeeded(block *common.Block, ledger LedgerWriter, channel string) {
-	currHeight := ledger.Height()
-	if currHeight >= block.Header.Number+1 {
-		r.Logger.Infof("Already at height %d for channel %s, skipping commit of block %d",
-			currHeight, channel, block.Header.Number)
+func (r *Replicator) appendBlock(block *common.Block, ledger LedgerWriter, channel string) {
+	height := ledger.Height()
+	if height > block.Header.Number {
+		r.Logger.Infof("Skipping commit of block %d for channel %s because height is at %d", block.Header.Number, channel, height)
 		return
 	}
 	if err := ledger.Append(block); err != nil {
@@ -262,6 +262,18 @@ type channelPullHints struct {
 
 func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 	r.Logger.Info("Evaluating channels to pull:", channels.Names())
+
+	// Backup the verifier of the puller
+	verifier := r.Puller.VerifyBlockSequence
+	// Restore it at the end of the function
+	defer func() {
+		r.Puller.VerifyBlockSequence = verifier
+	}()
+	// Set it to be a no-op verifier, because we can't verify latest blocks of channels.
+	r.Puller.VerifyBlockSequence = func(blocks []*common.Block, channel string) error {
+		return nil
+	}
+
 	var channelsNotToPull []ChannelGenesisBlock
 	var channelsToPull []ChannelGenesisBlock
 	for _, channel := range channels {
@@ -318,8 +330,16 @@ type PullerConfig struct {
 	MaxTotalBufferBytes int
 }
 
+//go:generate mockery -dir . -name VerifierRetriever -case underscore -output mocks/
+
+// VerifierRetriever retrieves BlockVerifiers for channels.
+type VerifierRetriever interface {
+	// RetrieveVerifier retrieves a BlockVerifier for the given channel.
+	RetrieveVerifier(channel string) BlockVerifier
+}
+
 // BlockPullerFromConfigBlock returns a BlockPuller that doesn't verify signatures on blocks.
-func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block) (*BlockPuller, error) {
+func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifierRetriever VerifierRetriever) (*BlockPuller, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -350,8 +370,12 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block) (*BlockP
 		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication"),
 		Dialer:  dialer,
 		TLSCert: tlsCertAsDER.Bytes,
-		VerifyBlockSequence: func(blocks []*common.Block) error {
-			return VerifyBlocks(blocks, &NoopBlockVerifier{})
+		VerifyBlockSequence: func(blocks []*common.Block, channel string) error {
+			verifier := verifierRetriever.RetrieveVerifier(channel)
+			if verifier == nil {
+				return errors.Errorf("couldn't acquire verifier for channel %s", channel)
+			}
+			return VerifyBlocks(blocks, verifier)
 		},
 		MaxTotalBufferBytes: conf.MaxTotalBufferBytes,
 		Endpoints:           endpointconfig.Endpoints,

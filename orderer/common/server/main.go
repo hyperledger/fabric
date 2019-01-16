@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/operations"
@@ -102,13 +103,9 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	clusterClientConfig := initializeClusterClientConfig(conf)
 	clusterDialer.SetConfig(clusterClientConfig)
 
-	r := &replicationInitiator{
-		logger:  flogging.MustGetLogger("orderer.common.cluster"),
-		secOpts: clusterClientConfig.SecOpts,
-		conf:    conf,
-		lf:      &ledgerFactory{lf},
-		signer:  signer,
-	}
+	logger := flogging.MustGetLogger("orderer.common.cluster")
+
+	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
 	// Only clusters that are equipped with a recent config block can replicate.
 	if clusterType && conf.General.GenesisMethod == "file" {
 		r.replicateIfNeeded(bootstrapBlock)
@@ -179,6 +176,54 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
+}
+
+func createReplicator(
+	lf blockledger.Factory,
+	bootstrapBlock *cb.Block,
+	conf *localconfig.TopLevel,
+	secOpts *comm.SecureOptions,
+	signer crypto.LocalSigner,
+) *replicationInitiator {
+	logger := flogging.MustGetLogger("orderer.common.cluster")
+
+	vl := &verifierLoader{
+		verifierFactory: &cluster.BlockVerifierAssembler{Logger: logger},
+		onFailure: func(block *cb.Block) {
+			protolator.DeepMarshalJSON(os.Stdout, block)
+		},
+		ledgerFactory: lf,
+		logger:        logger,
+	}
+
+	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
+	if err != nil {
+		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
+	}
+
+	// System channel is not verified because we trust the bootstrap block
+	// and use backward hash chain verification.
+	verifiersByChannel := vl.loadVerifiers()
+	verifiersByChannel[systemChannelName] = &cluster.NoopBlockVerifier{}
+
+	vr := &cluster.VerificationRegistry{
+		Logger:             logger,
+		VerifiersByChannel: verifiersByChannel,
+		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger},
+	}
+
+	ledgerFactory := &ledgerFactory{
+		Factory:       lf,
+		onBlockCommit: vr.BlockCommitted,
+	}
+	return &replicationInitiator{
+		verifierRetriever: vr,
+		logger:            logger,
+		secOpts:           secOpts,
+		conf:              conf,
+		lf:                ledgerFactory,
+		signer:            signer,
+	}
 }
 
 func initializeLogging() {

@@ -205,7 +205,7 @@ type BlockVerifier interface {
 
 // BlockSequenceVerifier verifies that the given consecutive sequence
 // of blocks is valid.
-type BlockSequenceVerifier func(blocks []*common.Block) error
+type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
 
 // Dialer creates a gRPC connection to a remote address
 type Dialer interface {
@@ -267,6 +267,13 @@ func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
 	payload, err := utils.GetPayload(env)
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+	if block.Header.Number == 0 {
+		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid config envelope")
+		}
+		return configEnvelope, nil
 	}
 	if payload.Header == nil {
 		return nil, errors.New("nil header in payload")

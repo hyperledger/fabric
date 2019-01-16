@@ -138,7 +138,7 @@ func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 		return nil
 	}
 
-	if err := p.VerifyBlockSequence(p.blockBuff); err != nil {
+	if err := p.VerifyBlockSequence(p.blockBuff, p.Channel); err != nil {
 		p.Close()
 		p.Logger.Errorf("Failed verifying received blocks: %v", err)
 		return nil
@@ -360,7 +360,7 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 
 	block, err := extractBlockFromResponse(resp)
 	if err != nil {
-		p.Logger.Errorf("Received %v from %s: %v", resp, endpoint, err)
+		p.Logger.Warningf("Received %v from %s: %v", resp, endpoint, err)
 		return 0, err
 	}
 	stream.CloseSend()

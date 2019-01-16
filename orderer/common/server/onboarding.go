@@ -27,12 +27,13 @@ const (
 )
 
 type replicationInitiator struct {
-	channelLister cluster.ChannelLister
-	logger        *flogging.FabricLogger
-	secOpts       *comm.SecureOptions
-	conf          *localconfig.TopLevel
-	lf            cluster.LedgerFactory
-	signer        crypto.LocalSigner
+	verifierRetriever cluster.VerifierRetriever
+	channelLister     cluster.ChannelLister
+	logger            *flogging.FabricLogger
+	secOpts           *comm.SecureOptions
+	conf              *localconfig.TopLevel
+	lf                cluster.LedgerFactory
+	signer            crypto.LocalSigner
 }
 
 func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) {
@@ -50,7 +51,7 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
 	pullerConfig := cluster.PullerConfigFromTopLevelConfig(systemChannelName, ri.conf, ri.secOpts.Key, ri.secOpts.Certificate, ri.signer)
-	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock)
+	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock, ri.verifierRetriever)
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
 	}
@@ -117,10 +118,20 @@ func (ri *replicationInitiator) ReplicateChains(lastConfigBlock *common.Block, c
 
 type ledgerFactory struct {
 	blockledger.Factory
+	onBlockCommit cluster.BlockCommitFunc
 }
 
 func (lf *ledgerFactory) GetOrCreate(chainID string) (cluster.LedgerWriter, error) {
-	return lf.Factory.GetOrCreate(chainID)
+	ledger, err := lf.Factory.GetOrCreate(chainID)
+	if err != nil {
+		return nil, err
+	}
+	interceptedLedger := &cluster.LedgerInterceptor{
+		LedgerWriter:         ledger,
+		Channel:              chainID,
+		InterceptBlockCommit: lf.onBlockCommit,
+	}
+	return interceptedLedger, nil
 }
 
 //go:generate mockery -dir . -name ChainReplicator -case underscore -output mocks
@@ -166,7 +177,7 @@ type chainCreation struct {
 
 // TrackChain tracks a chain with the given name, and calls the given callback
 // when this chain should be activated.
-func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChain etcdraft.CreateChainCallback) {
+func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChainCallback etcdraft.CreateChainCallback) {
 	if genesisBlock == nil {
 		dc.logger.Panicf("Called with a nil genesis block")
 	}
@@ -175,7 +186,7 @@ func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common
 	dc.logger.Infof("Adding %s to the set of chains to track", chain)
 	dc.chains2CreationCallbacks[chain] = chainCreation{
 		genesisBlock: genesisBlock,
-		create:       createChain,
+		create:       createChainCallback,
 	}
 }
 

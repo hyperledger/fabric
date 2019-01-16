@@ -107,7 +107,7 @@ func (d *countingDialer) Dial(address string) (*grpc.ClientConn, error) {
 	return grpc.DialContext(ctx, address, grpc.WithBlock(), grpc.WithInsecure(), balancer)
 }
 
-func noopBlockVerifierf(_ []*common.Block) error {
+func noopBlockVerifierf(_ []*common.Block, _ string) error {
 	return nil
 }
 
@@ -739,7 +739,7 @@ func TestBlockPullerFailures(t *testing.T) {
 	}
 
 	malformBlockSignatureAndRecreateOSNBuffer := func(osn *deliverServer, bp *cluster.BlockPuller) {
-		bp.VerifyBlockSequence = func([]*common.Block) error {
+		bp.VerifyBlockSequence = func(_ []*common.Block, _ string) error {
 			close(osn.blocks())
 			osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
 			osn.enqueueResponse(1)

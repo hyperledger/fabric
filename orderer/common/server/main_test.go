@@ -18,12 +18,15 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
+	"github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -33,9 +36,12 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/common/server/mocks"
+	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -641,4 +647,31 @@ func panicMsg(f func()) string {
 
 	return message.(string)
 
+}
+
+func TestCreateReplicator(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
+
+	iterator := &deliver_mocks.BlockIterator{}
+	iterator.NextReturnsOnCall(0, bootBlock, common.Status_SUCCESS)
+	iterator.NextReturnsOnCall(1, bootBlock, common.Status_SUCCESS)
+
+	ledger := &ledger_mocks.ReadWriter{}
+	ledger.On("Height").Return(uint64(1))
+	ledger.On("Iterator", mock.Anything).Return(iterator, uint64(1))
+
+	ledgerFactory := &server_mocks.Factory{}
+	ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, nil)
+	ledgerFactory.On("ChainIDs").Return([]string{"mychannel"})
+
+	signer := &crypto.LocalSigner{}
+	r := createReplicator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, &comm.SecureOptions{}, signer)
+
+	err := r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
+	assert.EqualError(t, err, "Failed to reach implicit threshold of 1 sub-policies, required 1 remaining")
+
+	err = r.verifierRetriever.RetrieveVerifier("system").VerifyBlockSignature(nil, nil)
+	assert.NoError(t, err)
 }
