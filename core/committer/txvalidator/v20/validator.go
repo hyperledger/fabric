@@ -42,9 +42,6 @@ type Semaphore interface {
 // ChannelResources provides access to channel artefacts or
 // functions to interact with them
 type ChannelResources interface {
-	// Ledger returns the ledger associated with this validator
-	Ledger() ledger.PeerLedger
-
 	// MSPManager returns the MSP manager for this channel
 	MSPManager() msp.MSPManager
 
@@ -59,11 +56,29 @@ type ChannelResources interface {
 	Capabilities() channelconfig.ApplicationCapabilities
 }
 
-// dispatcher is a private interface to decouple tx validator
+// LedgerResources provides access to ledger artefacts or
+// functions to interact with them
+type LedgerResources interface {
+	// GetTransactionByID retrieves a transaction by id
+	GetTransactionByID(txID string) (*peer.ProcessedTransaction, error)
+
+	// NewQueryExecutor gives handle to a query executor.
+	// A client can obtain more than one 'QueryExecutor's for parallel execution.
+	// Any synchronization should be performed at the implementation level if required
+	NewQueryExecutor() (ledger.QueryExecutor, error)
+}
+
+// Dispatcher is an interface to decouple tx validator
 // and plugin dispatcher
-type dispatcher interface {
+type Dispatcher interface {
+	// Dispatch invokes the appropriate validation plugin for the supplied transaction in the block
 	Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode)
 }
+
+//go:generate mockery -dir . -name ChannelResources -case underscore -output mocks/
+//go:generate mockery -dir . -name LedgerResources -case underscore -output mocks/
+//go:generate mockery -dir . -name Dispatcher -case underscore -output mocks/
+//go:generate mockery -dir ../../../ledger/ -name QueryExecutor -case underscore -output mocks/
 
 // implementation of Validator interface, keeps
 // reference to the ledger to enable tx simulation
@@ -72,7 +87,8 @@ type TxValidator struct {
 	ChainID          string
 	Semaphore        Semaphore
 	ChannelResources ChannelResources
-	dispatcher       dispatcher
+	LedgerResources  LedgerResources
+	Dispatcher       Dispatcher
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -91,14 +107,15 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(chainID string, sem Semaphore, cr ChannelResources, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper) *TxValidator {
+func NewTxValidator(chainID string, sem Semaphore, cr ChannelResources, lr LedgerResources, sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := plugindispatcher.NewPluginValidator(pm, cr.Ledger(), &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
+	pluginValidator := plugindispatcher.NewPluginValidator(pm, lr, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
 	return &TxValidator{
 		ChainID:          chainID,
 		Semaphore:        sem,
 		ChannelResources: cr,
-		dispatcher:       plugindispatcher.New(chainID, cr, sccp, pluginValidator)}
+		LedgerResources:  lr,
+		Dispatcher:       plugindispatcher.New(chainID, cr, lr, sccp, pluginValidator)}
 }
 
 func (v *TxValidator) chainExists(chain string) bool {
@@ -311,7 +328,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			txID = chdr.TxId
 
 			// Check duplicate transactions
-			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.ChannelResources.Ledger())
+			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
 			if erroneousResultEntry != nil {
 				results <- erroneousResultEntry
 				return
@@ -319,7 +336,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 			// Validate tx with plugins
 			logger.Debug("Validating transaction with plugins")
-			err, cde := v.dispatcher.Dispatch(tIdx, payload, d, block)
+			err, cde := v.Dispatcher.Dispatch(tIdx, payload, d, block)
 			if err != nil {
 				logger.Errorf("Dispatch for transaction txId = %s returned error: %s", txID, err)
 				switch err.(type) {
@@ -358,7 +375,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 			// Check if there is a duplicate of such transaction in the ledger and
 			// obtain the corresponding result that acknowledges the error type
-			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.ChannelResources.Ledger())
+			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
 			if erroneousResultEntry != nil {
 				results <- erroneousResultEntry
 				return
@@ -425,7 +442,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 // in the ledger or no decision can be made for whether such transaction exists;
 // the function returns nil if it has ensured that there is no such duplicate, such
 // that its consumer can proceed with the transaction processing
-func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, ldgr ledger.PeerLedger) *blockValidationResult {
+func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, ldgr LedgerResources) *blockValidationResult {
 
 	// Retrieve the transaction identifier of the input header
 	txID := chdr.TxId

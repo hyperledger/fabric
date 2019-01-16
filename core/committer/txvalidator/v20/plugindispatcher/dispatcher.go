@@ -33,9 +33,6 @@ import (
 // ChannelResources provides access to channel artefacts or
 // functions to interact with them
 type ChannelResources interface {
-	// Ledger returns the ledger associated with this validator
-	Ledger() ledger.PeerLedger
-
 	// MSPManager returns the MSP manager for this channel
 	MSPManager() msp.MSPManager
 
@@ -50,6 +47,18 @@ type ChannelResources interface {
 	Capabilities() channelconfig.ApplicationCapabilities
 }
 
+// LedgerResources provides access to ledger artefacts or
+// functions to interact with them
+type LedgerResources interface {
+	// GetTransactionByID retrieves a transaction by id
+	GetTransactionByID(txID string) (*peer.ProcessedTransaction, error)
+
+	// NewQueryExecutor gives handle to a query executor.
+	// A client can obtain more than one 'QueryExecutor's for parallel execution.
+	// Any synchronization should be performed at the implementation level if required
+	NewQueryExecutor() (ledger.QueryExecutor, error)
+}
+
 var logger = flogging.MustGetLogger("committer.txvalidator")
 
 // dispatcherImpl is the implementation used to call
@@ -57,15 +66,17 @@ var logger = flogging.MustGetLogger("committer.txvalidator")
 type dispatcherImpl struct {
 	chainID         string
 	cr              ChannelResources
+	lr              LedgerResources
 	sccprovider     sysccprovider.SystemChaincodeProvider
 	pluginValidator *PluginValidator
 }
 
 // New creates new plugin dispatcher
-func New(chainID string, cr ChannelResources, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *dispatcherImpl {
+func New(chainID string, cr ChannelResources, lr LedgerResources, sccp sysccprovider.SystemChaincodeProvider, pluginValidator *PluginValidator) *dispatcherImpl {
 	return &dispatcherImpl{
 		chainID:         chainID,
 		cr:              cr,
+		lr:              lr,
 		sccprovider:     sccp,
 		pluginValidator: pluginValidator,
 	}
@@ -293,12 +304,7 @@ func (v *dispatcherImpl) invokeValidationPlugin(ctx *Context) error {
 }
 
 func (v *dispatcherImpl) getCDataForCC(chid, ccid string) (ccprovider.ChaincodeDefinition, error) {
-	l := v.cr.Ledger()
-	if l == nil {
-		return nil, errors.New("nil ledger instance")
-	}
-
-	qe, err := l.NewQueryExecutor()
+	qe, err := v.lr.NewQueryExecutor()
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not retrieve QueryExecutor")
 	}

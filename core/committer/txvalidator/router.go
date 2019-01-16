@@ -41,6 +41,6 @@ func NewTxValidator(chainID string, sem validatorv14.Semaphore, cr validatorv14.
 	return &routingValidator{
 		ChannelResources: cr,
 		validator_v14:    validatorv14.NewTxValidator(chainID, sem, cr, sccp, pm),
-		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, sccp, pm),
+		validator_v20:    validatorv20.NewTxValidator(chainID, sem, cr, cr.Ledger(), sccp, pm),
 	}
 }
