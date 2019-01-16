@@ -43,7 +43,7 @@ func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.St
 			Name:              deployedCCInfo.Name,
 			Hash:              deployedCCInfo.Hash,
 			Version:           deployedCCInfo.Version,
-			CollectionConfigs: deployedCCInfo.CollectionConfigPkg,
+			CollectionConfigs: deployedCCInfo.ExplicitCollectionConfigPkg,
 		})
 	}
 	return GetMgr().HandleChaincodeDeploy(channelName, chaincodeDefs)

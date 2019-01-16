@@ -331,7 +331,7 @@ func testutilNewProviderWithCollectionConfig(t *testing.T, namespace string, btl
 	mockCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*lgr.DeployedChaincodeInfo, error) {
 		if ccName == namespace {
 			return &lgr.DeployedChaincodeInfo{
-				Name: namespace, CollectionConfigPkg: collectionConfPkg}, nil
+				Name: namespace, ExplicitCollectionConfigPkg: collectionConfPkg}, nil
 		}
 		return nil, nil
 	}

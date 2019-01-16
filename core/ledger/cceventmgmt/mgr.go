@@ -120,7 +120,7 @@ func (m *Mgr) HandleChaincodeInstall(chaincodeDefinition *ChaincodeDefinition, d
 			continue
 		}
 		m.callbackStatus.setInstallPending(chainid)
-		chaincodeDefinition.CollectionConfigs = deployedCCInfo.CollectionConfigPkg
+		chaincodeDefinition.CollectionConfigs = deployedCCInfo.ExplicitCollectionConfigPkg
 		if err := m.invokeHandler(chainid, chaincodeDefinition, dbArtifacts); err != nil {
 			logger.Warningf("Channel [%s]: Error while invoking a listener for handling chaincode install event: %s", chainid, err)
 			return err

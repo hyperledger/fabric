@@ -66,7 +66,7 @@ func (as *rwSetAssembler) AssemblePvtRWSet(channelName string,
 			if err != nil {
 				return nil, errors.WithMessage(err, fmt.Sprintf("error while retrieving collection config for chaincode %#v", namespace))
 			}
-			colCP := ccInfo.CollectionConfigPkg
+			colCP := ccInfo.AllCollectionsConfigPkg()
 			if colCP == nil {
 				return nil, errors.New(fmt.Sprintf("no collection config for chaincode %#v", namespace))
 			}

@@ -46,10 +46,14 @@ func (v *collNameValidator) retrieveCollConfigFromStateDB(ns string) (*common.Co
 	if err != nil {
 		return nil, err
 	}
-	if ccInfo == nil || ccInfo.CollectionConfigPkg == nil {
+	if ccInfo == nil {
 		return nil, &ledger.CollConfigNotDefinedError{Ns: ns}
 	}
-	confPkg := ccInfo.CollectionConfigPkg
+
+	confPkg := ccInfo.AllCollectionsConfigPkg()
+	if confPkg == nil {
+		return nil, &ledger.CollConfigNotDefinedError{Ns: ns}
+	}
 	logger.Debugf("retrieveCollConfigFromStateDB() successfully retrieved - ns=[%s], confPkg=[%s]", ns, confPkg)
 	return confPkg, nil
 }
