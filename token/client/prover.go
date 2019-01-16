@@ -123,8 +123,43 @@ func (prover *ProverPeer) RequestTransfer(
 	return prover.SendCommand(context.Background(), sc)
 }
 
-// SendCommand sends command to prover service and returns marshalled token transaction
+// ListTokens allows the client to submit a list request to a prover peer service;
+// it returns a list of TokenOutput and an error message in the case the request fails
+func (prover *ProverPeer) ListTokens(signingIdentity tk.SigningIdentity) ([]*token.TokenOutput, error) {
+	payload := &token.Command_ListRequest{ListRequest: &token.ListRequest{}}
+	sc, err := prover.CreateSignedCommand(payload, signingIdentity)
+	if err != nil {
+		return nil, err
+	}
+
+	commandResp, err := prover.processCommand(context.Background(), sc)
+	if err != nil {
+		return nil, err
+	}
+
+	if commandResp.GetUnspentTokens() == nil {
+		return nil, errors.New("no UnspentTokens in command response")
+	}
+	return commandResp.GetUnspentTokens().GetTokens(), nil
+}
+
+// SendCommand is for issue, transfer, redeem, approve, and transferFrom commands that will create a token transaction.
+// It calls prover to process command and returns marshalled token transaction.
 func (prover *ProverPeer) SendCommand(ctx context.Context, sc *token.SignedCommand) ([]byte, error) {
+	commandResp, err := prover.processCommand(ctx, sc)
+	if err != nil {
+		return nil, err
+	}
+
+	txBytes, err := proto.Marshal(commandResp.GetTokenTransaction())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal TokenTransaction")
+	}
+	return txBytes, nil
+}
+
+// processCommand calls prover client to send grpc request and returns a CommandResponse
+func (prover *ProverPeer) processCommand(ctx context.Context, sc *token.SignedCommand) (*token.CommandResponse, error) {
 	conn, proverClient, err := prover.ProverPeerClient.CreateProverClient()
 	if conn != nil {
 		defer conn.Close()
@@ -146,11 +181,7 @@ func (prover *ProverPeer) SendCommand(ctx context.Context, sc *token.SignedComma
 		return nil, errors.Errorf("error from prover: %s", commandResp.GetErr().GetMessage())
 	}
 
-	txBytes, err := proto.Marshal(commandResp.GetTokenTransaction())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal TokenTransaction")
-	}
-	return txBytes, nil
+	return commandResp, nil
 }
 
 func (prover *ProverPeer) CreateSignedCommand(payload interface{}, signingIdentity tk.SigningIdentity) (*token.SignedCommand, error) {
@@ -211,6 +242,8 @@ func commandFromPayload(payload interface{}) (*token.Command, error) {
 	case *token.Command_ImportRequest:
 		return &token.Command{Payload: t}, nil
 	case *token.Command_TransferRequest:
+		return &token.Command{Payload: t}, nil
+	case *token.Command_ListRequest:
 		return &token.Command{Payload: t}, nil
 	default:
 		return nil, errors.Errorf("command type not recognized: %T", t)

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/client"
@@ -183,6 +184,33 @@ var _ = Describe("TokenClient", func() {
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
 			})
 		})
+
+		Context("when ProcessCommand returns an error response", func() {
+			BeforeEach(func() {
+				commandResponse := &token.CommandResponse{
+					Payload: &token.CommandResponse_Err{
+						Err: &token.Error{
+							Message: "flying-pineapple",
+							Payload: []byte("payload"),
+						},
+					},
+				}
+				signedCommandResp = &token.SignedCommandResponse{
+					Response:  ProtoMarshal(commandResponse),
+					Signature: []byte("signature"),
+				}
+				fakeProverClient.ProcessCommandReturns(signedCommandResp, nil)
+			})
+
+			It("returns an error", func() {
+				_, err := prover.RequestImport(tokensToIssue, fakeSigningIdentity)
+				Expect(err).To(MatchError("error from prover: flying-pineapple"))
+
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
+			})
+		})
 	})
 
 	Describe("RequestTransfer", func() {
@@ -275,6 +303,183 @@ var _ = Describe("TokenClient", func() {
 				Expect(err).To(MatchError("wild-banana"))
 				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 				Expect(fakeProverPeerClient.CreateProverClientCallCount()).To(Equal(1))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when ProcessCommand returns an error response", func() {
+			BeforeEach(func() {
+				commandResponse := &token.CommandResponse{
+					Payload: &token.CommandResponse_Err{
+						Err: &token.Error{
+							Message: "flying-pineapple",
+							Payload: []byte("payload"),
+						},
+					},
+				}
+				signedCommandResp = &token.SignedCommandResponse{
+					Response:  ProtoMarshal(commandResponse),
+					Signature: []byte("signature"),
+				}
+				fakeProverClient.ProcessCommandReturns(signedCommandResp, nil)
+			})
+
+			It("returns an error", func() {
+				_, err := prover.RequestTransfer(tokenIDs, transferShares, fakeSigningIdentity)
+				Expect(err).To(MatchError("error from prover: flying-pineapple"))
+
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
+			})
+		})
+	})
+
+	Describe("ListTokens", func() {
+		var (
+			marshalledCommand []byte
+			signedCommand     *token.SignedCommand
+			expectedTokens    []*token.TokenOutput
+		)
+		BeforeEach(func() {
+			command := &token.Command{
+				Header: commandHeader,
+				Payload: &token.Command_ListRequest{
+					ListRequest: &token.ListRequest{},
+				},
+			}
+			marshalledCommand = ProtoMarshal(command)
+			signedCommand = &token.SignedCommand{
+				Command:   marshalledCommand,
+				Signature: []byte("pineapple"),
+			}
+
+			// prepare SignedCommandResponse for fakeProverClient to return
+			expectedTokens = []*token.TokenOutput{
+				{Id: []byte("idaz"), Type: "typeaz", Quantity: 135},
+				{Id: []byte("idby"), Type: "typeby", Quantity: 79},
+			}
+			commandResp := &token.CommandResponse{
+				Payload: &token.CommandResponse_UnspentTokens{
+					UnspentTokens: &token.UnspentTokens{
+						Tokens: expectedTokens,
+					},
+				},
+			}
+			signedCommandResp = &token.SignedCommandResponse{
+				Response:  ProtoMarshal(commandResp),
+				Signature: []byte("response-signature"),
+			}
+
+			fakeProverClient.ProcessCommandReturns(signedCommandResp, nil)
+		})
+
+		It("returns unspent tokens", func() {
+			tokens, err := prover.ListTokens(fakeSigningIdentity)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(tokens)).To(Equal(len(expectedTokens)))
+			for i := range tokens {
+				Expect(proto.Equal(tokens[i], expectedTokens[i])).To(BeTrue())
+			}
+
+			Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+			Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+			raw := fakeSigningIdentity.SignArgsForCall(0)
+			Expect(raw).To(Equal(marshalledCommand))
+
+			Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
+			_, sc, _ := fakeProverClient.ProcessCommandArgsForCall(0)
+			Expect(sc).To(Equal(signedCommand))
+		})
+
+		Context("when Identity serialize fails", func() {
+			BeforeEach(func() {
+				fakeSigningIdentity.SerializeReturns(nil, errors.New("banana-seesaw"))
+			})
+
+			It("returns an error", func() {
+				_, err := prover.ListTokens(fakeSigningIdentity)
+				Expect(err).To(MatchError("banana-seesaw"))
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(0))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when SigningIdentity fails to sign", func() {
+			BeforeEach(func() {
+				fakeSigningIdentity.SignReturns(nil, errors.New("banana-seesaw"))
+			})
+
+			It("returns an error", func() {
+				_, err := prover.ListTokens(fakeSigningIdentity)
+				Expect(err).To(MatchError("banana-seesaw"))
+
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when ProcessCommand returns an error", func() {
+			BeforeEach(func() {
+				fakeProverClient.ProcessCommandReturns(nil, errors.New("banana-loop"))
+			})
+
+			It("returns an error", func() {
+				_, err := prover.ListTokens(fakeSigningIdentity)
+				Expect(err).To(MatchError("banana-loop"))
+
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when ProcessCommand returns an error response", func() {
+			BeforeEach(func() {
+				commandResponse := &token.CommandResponse{
+					Payload: &token.CommandResponse_Err{
+						Err: &token.Error{
+							Message: "flying-pineapple",
+							Payload: []byte("payload"),
+						},
+					},
+				}
+				signedCommandResp = &token.SignedCommandResponse{
+					Response:  ProtoMarshal(commandResponse),
+					Signature: []byte("signature"),
+				}
+				fakeProverClient.ProcessCommandReturns(signedCommandResp, nil)
+			})
+
+			It("returns an error", func() {
+				_, err := prover.ListTokens(fakeSigningIdentity)
+				Expect(err).To(MatchError("error from prover: flying-pineapple"))
+
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
+				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when ProcessCommand does not return UnspentTokens", func() {
+			BeforeEach(func() {
+				commandResp := &token.CommandResponse{}
+				signedCommandResp = &token.SignedCommandResponse{
+					Response:  ProtoMarshal(commandResp),
+					Signature: []byte("response-signature"),
+				}
+
+				fakeProverClient.ProcessCommandReturns(signedCommandResp, nil)
+			})
+
+			It("returns an error", func() {
+				_, err := prover.ListTokens(fakeSigningIdentity)
+				Expect(err).To(MatchError("no UnspentTokens in command response"))
+
+				Expect(fakeSigningIdentity.SerializeCallCount()).To(Equal(1))
+				Expect(fakeSigningIdentity.SignCallCount()).To(Equal(1))
 				Expect(fakeProverClient.ProcessCommandCallCount()).To(Equal(1))
 			})
 		})
