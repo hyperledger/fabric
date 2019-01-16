@@ -44,6 +44,7 @@ type Initializer struct {
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 	MembershipInfoProvider        ledger.MembershipInfoProvider
 	MetricsProvider               metrics.Provider
+	HealthCheckRegistry           ledger.HealthCheckRegistry
 }
 
 // Initialize initializes ledgermgmt
@@ -74,6 +75,7 @@ func initialize(initializer *Initializer) {
 		DeployedChaincodeInfoProvider: initializer.DeployedChaincodeInfoProvider,
 		MembershipInfoProvider:        initializer.MembershipInfoProvider,
 		MetricsProvider:               initializer.MetricsProvider,
+		HealthCheckRegistry:           initializer.HealthCheckRegistry,
 	})
 	ledgerProvider = provider
 	logger.Info("ledger mgmt initialized")

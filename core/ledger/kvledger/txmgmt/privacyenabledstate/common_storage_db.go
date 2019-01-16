@@ -10,9 +10,11 @@ import (
 	"encoding/base64"
 	"strings"
 
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -34,11 +36,12 @@ const (
 // CommonStorageDBProvider implements interface DBProvider
 type CommonStorageDBProvider struct {
 	statedb.VersionedDBProvider
+	HealthCheckRegistry ledger.HealthCheckRegistry
 	bookkeepingProvider bookkeeping.Provider
 }
 
 // NewCommonStorageDBProvider constructs an instance of DBProvider
-func NewCommonStorageDBProvider(bookkeeperProvider bookkeeping.Provider, metricsProvider metrics.Provider) (DBProvider, error) {
+func NewCommonStorageDBProvider(bookkeeperProvider bookkeeping.Provider, metricsProvider metrics.Provider, healthCheckRegistry ledger.HealthCheckRegistry) (DBProvider, error) {
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
 	if ledgerconfig.IsCouchDBEnabled() {
@@ -48,7 +51,22 @@ func NewCommonStorageDBProvider(bookkeeperProvider bookkeeping.Provider, metrics
 	} else {
 		vdbProvider = stateleveldb.NewVersionedDBProvider()
 	}
-	return &CommonStorageDBProvider{vdbProvider, bookkeeperProvider}, nil
+
+	dbProvider := &CommonStorageDBProvider{vdbProvider, healthCheckRegistry, bookkeeperProvider}
+
+	err = dbProvider.RegisterHealthChecker()
+	if err != nil {
+		return nil, err
+	}
+
+	return dbProvider, nil
+}
+
+func (p *CommonStorageDBProvider) RegisterHealthChecker() error {
+	if healthChecker, ok := p.VersionedDBProvider.(healthz.HealthChecker); ok {
+		return p.HealthCheckRegistry.RegisterChecker("couchdb", healthChecker)
+	}
+	return nil
 }
 
 // GetDBHandle implements function from interface DBProvider
