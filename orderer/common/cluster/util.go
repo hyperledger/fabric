@@ -402,3 +402,34 @@ func EndpointconfigFromConfigBlock(block *common.Block) (*EndpointConfig, error)
 		TLSRootCAs: tlsCACerts,
 	}, nil
 }
+
+//go:generate mockery -dir . -name BlockRetriever -case underscore -output ./mocks/
+
+// BlockRetriever retrieves blocks
+type BlockRetriever interface {
+	// Block returns a block with the given number,
+	// or nil if such a block doesn't exist.
+	Block(number uint64) *common.Block
+}
+
+// LastConfigBlock returns the last config block relative to the given block.
+func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*common.Block, error) {
+	if block == nil {
+		return nil, errors.New("nil block")
+	}
+	if blockRetriever == nil {
+		return nil, errors.New("nil blockRetriever")
+	}
+	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_LAST_CONFIG) {
+		return nil, errors.New("no metadata in block")
+	}
+	lastConfigBlockNum, err := utils.GetLastConfigIndexFromBlock(block)
+	if err != nil {
+		return nil, err
+	}
+	lastConfigBlock := blockRetriever.Block(lastConfigBlockNum)
+	if lastConfigBlock == nil {
+		return nil, errors.Errorf("unable to retrieve last config block %d", lastConfigBlockNum)
+	}
+	return lastConfigBlock, nil
+}

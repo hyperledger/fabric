@@ -608,3 +608,89 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		})
 	}
 }
+
+func TestLastConfigBlock(t *testing.T) {
+	blockRetriever := &mocks.BlockRetriever{}
+	blockRetriever.On("Block", uint64(42)).Return(&common.Block{})
+	blockRetriever.On("Block", uint64(666)).Return(nil)
+
+	for _, testCase := range []struct {
+		name           string
+		block          *common.Block
+		blockRetriever cluster.BlockRetriever
+		expectedError  string
+	}{
+		{
+			name:           "nil block",
+			expectedError:  "nil block",
+			blockRetriever: blockRetriever,
+		},
+		{
+			name:          "nil support",
+			expectedError: "nil blockRetriever",
+			block:         &common.Block{},
+		},
+		{
+			name:           "nil metadata",
+			expectedError:  "no metadata in block",
+			blockRetriever: blockRetriever,
+			block:          &common.Block{},
+		},
+		{
+			name:           "no last config block metadata",
+			expectedError:  "no metadata in block",
+			blockRetriever: blockRetriever,
+			block: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}},
+				},
+			},
+		},
+		{
+			name:           "bad metadata in block",
+			blockRetriever: blockRetriever,
+			expectedError: "error unmarshaling metadata from block at index " +
+				"[LAST_CONFIG]: proto: common.Metadata: illegal tag 0 (wire type 1)",
+			block: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, {1, 2, 3}},
+				},
+			},
+		},
+		{
+			name: "no block with index",
+			block: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
+						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 666}),
+					})},
+				},
+			},
+			expectedError:  "unable to retrieve last config block 666",
+			blockRetriever: blockRetriever,
+		},
+		{
+			name: "valid last config block",
+			block: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, utils.MarshalOrPanic(&common.Metadata{
+						Value: utils.MarshalOrPanic(&common.LastConfig{Index: 42}),
+					})},
+				},
+			},
+			blockRetriever: blockRetriever,
+		},
+	} {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			block, err := cluster.LastConfigBlock(testCase.block, testCase.blockRetriever)
+			if testCase.expectedError == "" {
+				assert.NoError(t, err)
+				assert.NotNil(t, block)
+				return
+			}
+			assert.EqualError(t, err, testCase.expectedError)
+			assert.Nil(t, block)
+		})
+	}
+}
