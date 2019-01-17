@@ -1891,6 +1891,28 @@ var _ = Describe("Chain", func() {
 				})
 			})
 
+			When("leader is disconnected", func() {
+				It("proactively steps down to follower", func() {
+					network.disconnect(1)
+
+					By("Ticking leader until it steps down")
+					Eventually(func() <-chan raft.SoftState {
+						c1.clock.Increment(interval)
+						return c1.observe
+					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 0, RaftState: raft.StateFollower})))
+
+					By("Ensuring it does not accept message due to the cluster being leaderless")
+					err := c1.Order(env, 0)
+					Expect(err).To(MatchError("no Raft leader"))
+
+					network.elect(2)
+					network.join(1, true)
+
+					err = c1.Order(env, 0)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
 			When("follower is disconnected", func() {
 				It("should return error when receiving an env", func() {
 					network.disconnect(2)
