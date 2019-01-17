@@ -294,7 +294,8 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 
 		if leaderElection {
 			logger.Debug("Delivery uses dynamic leader election mechanism, channel", chainID)
-			g.leaderElection[chainID] = g.newLeaderElectionComponent(chainID, g.onStatusChangeFactory(chainID, support.Committer))
+			g.leaderElection[chainID] = g.newLeaderElectionComponent(chainID, g.onStatusChangeFactory(chainID,
+				support.Committer), g.metrics.ElectionMetrics)
 		} else if isStaticOrgLeader {
 			logger.Debug("This peer is configured to connect to ordering service for blocks delivery, channel", chainID)
 			g.deliveryService[chainID].StartDeliverForChannel(chainID, support.Committer, func() {})
@@ -384,9 +385,10 @@ func (g *gossipServiceImpl) Stop() {
 	g.gossipSvc.Stop()
 }
 
-func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback func(bool)) election.LeaderElectionService {
+func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback func(bool),
+	electionMetrics *gossipMetrics.ElectionMetrics) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
-	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID))
+	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID), electionMetrics)
 	return election.NewLeaderElectionService(adapter, string(PKIid), callback)
 }
 

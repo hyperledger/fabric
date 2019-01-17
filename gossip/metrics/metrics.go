@@ -10,12 +10,14 @@ import "github.com/hyperledger/fabric/common/metrics"
 
 // GossipMetrics encapsulates all of gossip metrics
 type GossipMetrics struct {
-	StateMetrics *StateMetrics
+	StateMetrics    *StateMetrics
+	ElectionMetrics *ElectionMetrics
 }
 
 func NewGossipMetrics(p metrics.Provider) *GossipMetrics {
 	return &GossipMetrics{
-		StateMetrics: newStateMetrics(p),
+		StateMetrics:    newStateMetrics(p),
+		ElectionMetrics: newElectionMetrics(p),
 	}
 }
 
@@ -58,6 +60,28 @@ var (
 		Subsystem:    "payload_buffer",
 		Name:         "size",
 		Help:         "Size of the payload buffer",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+)
+
+// ElectionMetrics encapsulates gossip leader election related metrics
+type ElectionMetrics struct {
+	Declaration metrics.Gauge
+}
+
+func newElectionMetrics(p metrics.Provider) *ElectionMetrics {
+	return &ElectionMetrics{
+		Declaration: p.NewGauge(LeaderDeclerationOpts),
+	}
+}
+
+var (
+	LeaderDeclerationOpts = metrics.GaugeOpts{
+		Namespace:    "gossip",
+		Subsystem:    "leader_election",
+		Name:         "leader",
+		Help:         "Peer is leader (1) or follower (0)",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
