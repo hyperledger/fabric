@@ -677,7 +677,7 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 	cryptoService := &naiveCryptoService{}
 
 	gossip := gossip.NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
-		selfID, nil)
+		selfID, nil, gossipMetrics.NewGossipMetrics(&disabled.Provider{}))
 
 	gossipService := &gossipServiceImpl{
 		mcs:             cryptoService,

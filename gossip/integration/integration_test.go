@@ -13,9 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -52,14 +54,15 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint3 := "localhost:5613"
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	g1, err := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc,
-		defaultSecureDialOpts, nil)
+		defaultSecureDialOpts, nil, gossipMetrics)
 	assert.NoError(t, err)
 	g2, err := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc,
-		defaultSecureDialOpts, nil, endpoint1)
+		defaultSecureDialOpts, nil, gossipMetrics, endpoint1)
 	assert.NoError(t, err)
 	g3, err := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc,
-		defaultSecureDialOpts, nil, endpoint1)
+		defaultSecureDialOpts, nil, gossipMetrics, endpoint1)
 	assert.NoError(t, err)
 	defer g1.Stop()
 	defer g2.Stop()

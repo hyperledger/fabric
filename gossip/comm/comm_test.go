@@ -23,10 +23,12 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
+	gmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -53,8 +55,9 @@ var noopPurgeIdentity = func(_ common.PKIidType, _ api.PeerIdentityType) {
 }
 
 var (
-	naiveSec = &naiveSecProvider{}
-	hmacKey  = []byte{0, 0, 0}
+	naiveSec        = &naiveSecProvider{}
+	hmacKey         = []byte{0, 0, 0}
+	disabledMetrics = gmetrics.NewGossipMetrics(&disabled.Provider{}).CommMetrics
 )
 
 type naiveSecProvider struct {
@@ -114,7 +117,8 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 func newCommInstance(port int, sec *naiveSecProvider) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
 	id := []byte(endpoint)
-	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id, noopPurgeIdentity, sec), id, nil, sec)
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id, noopPurgeIdentity, sec),
+		id, nil, sec, disabledMetrics)
 	return inst, err
 }
 
@@ -278,7 +282,7 @@ func TestHandshake(t *testing.T) {
 	idMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType("localhost:9611"), func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
-	}, naiveSec)
+	}, naiveSec, disabledMetrics)
 	go s.Serve(ll)
 	assert.NoError(t, err)
 	var msg proto.ReceivedMessage
@@ -474,14 +478,16 @@ func TestProdConstructor(t *testing.T) {
 	defer srv.Stop()
 	defer lsnr.Close()
 	id := []byte("localhost:20000")
-	comm1, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec), id, dialOpts, naiveSec)
+	comm1, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec),
+		id, dialOpts, naiveSec, disabledMetrics)
 	go srv.Serve(lsnr)
 
 	srv, lsnr, dialOpts, certs = createGRPCLayer(30000)
 	defer srv.Stop()
 	defer lsnr.Close()
 	id = []byte("localhost:30000")
-	comm2, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec), id, dialOpts, naiveSec)
+	comm2, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec),
+		id, dialOpts, naiveSec, disabledMetrics)
 	go srv.Serve(lsnr)
 	defer comm1.Stop()
 	defer comm2.Stop()
