@@ -12,7 +12,6 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/handlers/validation/api/policies"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -23,87 +22,12 @@ import (
 /**********************************************************************************************************/
 /**********************************************************************************************************/
 
-type policyChecker struct {
-	someEPChecked bool
-	ccEPChecked   bool
-	vpmgr         KeyLevelValidationParameterManager
-	policySupport validation.PolicyEvaluator
-	ccEP          []byte
-	signatureSet  []*common.SignedData
+type RWSetPolicyEvaluatorFactory interface {
+	Evaluator(ccEP []byte) RWSetPolicyEvaluator
 }
 
-func (p *policyChecker) checkCCEPIfCondition(cc string, blockNum, txNum uint64, condition bool) commonerrors.TxValidationError {
-	if condition {
-		return nil
-	}
-
-	// validate against cc ep
-	err := p.policySupport.Evaluate(p.ccEP, p.signatureSet)
-	if err != nil {
-		return policyErr(errors.Wrapf(err, "validation of endorsement policy for chaincode %s in tx %d:%d failed", cc, blockNum, txNum))
-	}
-
-	p.ccEPChecked = true
-	p.someEPChecked = true
-	return nil
-}
-
-func (p *policyChecker) checkCCEPIfNotChecked(cc string, blockNum, txNum uint64) commonerrors.TxValidationError {
-	return p.checkCCEPIfCondition(cc, blockNum, txNum, p.ccEPChecked)
-}
-
-func (p *policyChecker) checkCCEPIfNoEPChecked(cc string, blockNum, txNum uint64) commonerrors.TxValidationError {
-	return p.checkCCEPIfCondition(cc, blockNum, txNum, p.someEPChecked)
-}
-
-func (p *policyChecker) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uint64) commonerrors.TxValidationError {
-	// see if there is a key-level validation parameter for this key
-	vp, err := p.vpmgr.GetValidationParameterForKey(cc, coll, key, blockNum, txNum)
-	if err != nil {
-		// error handling for GetValidationParameterForKey follows this rationale:
-		switch err := errors.Cause(err).(type) {
-		// 1) if there is a conflict because validation params have been updated
-		//    by another transaction in this block, we will get ValidationParameterUpdatedError.
-		//    This should lead to invalidating the transaction by calling policyErr
-		case *ValidationParameterUpdatedError:
-			return policyErr(err)
-		// 2) if the ledger returns "determinstic" errors, that is, errors that
-		//    every peer in the channel will also return (such as errors linked to
-		//    an attempt to retrieve metadata from a non-defined collection) should be
-		//    logged and ignored. The ledger will take the most appropriate action
-		//    when performing its side of the validation.
-		case *ledger.CollConfigNotDefinedError, *ledger.InvalidCollNameError:
-			logger.Warningf(errors.WithMessage(err, "skipping key-level validation").Error())
-			err = nil
-		// 3) any other type of error should return an execution failure which will
-		//    lead to halting the processing on this channel. Note that any non-categorized
-		//    deterministic error would be caught by the default and would lead to
-		//    a processing halt. This would certainly be a bug, but - in the absence of a
-		//    single, well-defined deterministic error returned by the ledger, it is
-		//    best to err on the side of caution and rather halt processing (because a
-		//    deterministic error is treated like an I/O one) rather than risking a fork
-		//    (in case an I/O error is treated as a deterministic one).
-		default:
-			return &commonerrors.VSCCExecutionFailureError{
-				Err: err,
-			}
-		}
-	}
-
-	// if no key-level validation parameter has been specified, the regular cc endorsement policy needs to hold
-	if len(vp) == 0 {
-		return p.checkCCEPIfNotChecked(cc, blockNum, txNum)
-	}
-
-	// validate against key-level vp
-	err = p.policySupport.Evaluate(vp, p.signatureSet)
-	if err != nil {
-		return policyErr(errors.Wrapf(err, "validation of key %s (coll'%s':ns'%s') in tx %d:%d failed", key, coll, cc, blockNum, txNum))
-	}
-
-	p.someEPChecked = true
-
-	return nil
+type RWSetPolicyEvaluator interface {
+	Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.NsRwSet, ns string, sd []*common.SignedData) commonerrors.TxValidationError
 }
 
 /**********************************************************************************************************/
@@ -117,16 +41,19 @@ type blockDependency struct {
 
 // KeyLevelValidator implements per-key level ep validation
 type KeyLevelValidator struct {
-	vpmgr         KeyLevelValidationParameterManager
-	policySupport validation.PolicyEvaluator
-	blockDep      blockDependency
+	vpmgr    KeyLevelValidationParameterManager
+	blockDep blockDependency
+	pef      RWSetPolicyEvaluatorFactory
 }
 
 func NewKeyLevelValidator(policySupport validation.PolicyEvaluator, vpmgr KeyLevelValidationParameterManager) *KeyLevelValidator {
 	return &KeyLevelValidator{
-		vpmgr:         vpmgr,
-		policySupport: policySupport,
-		blockDep:      blockDependency{},
+		vpmgr:    vpmgr,
+		blockDep: blockDependency{},
+		pef: &policyCheckerFactory{
+			policySupport: policySupport,
+			vpmgr:         vpmgr,
+		},
 	}
 }
 
@@ -213,12 +140,7 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 	}
 
 	// construct the policy checker object
-	policyChecker := policyChecker{
-		ccEP:          ccEP,
-		policySupport: klv.policySupport,
-		signatureSet:  signatureSet,
-		vpmgr:         klv.vpmgr,
-	}
+	policyEvaluator := klv.pef.Evaluator(ccEP)
 
 	// unpack the rwset
 	rwset := &rwsetutil.TxRwSet{}
@@ -226,61 +148,8 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 		return policyErr(errors.WithMessage(err, fmt.Sprintf("txRWSet.FromProtoBytes failed on tx (%d,%d)", blockNum, txNum)))
 	}
 
-	// iterate over all writes in the rwset
-	for _, nsRWSet := range rwset.NsRwSets {
-		// skip other namespaces
-		if nsRWSet.NameSpace != cc {
-			continue
-		}
-
-		// public writes
-		// we validate writes against key-level validation parameters
-		// if any are present or the chaincode-wide endorsement policy
-		for _, pubWrite := range nsRWSet.KvRwSet.Writes {
-			err := policyChecker.checkSBAndCCEP(cc, "", pubWrite.Key, blockNum, txNum)
-			if err != nil {
-				return err
-			}
-		}
-		// public metadata writes
-		// we validate writes against key-level validation parameters
-		// if any are present or the chaincode-wide endorsement policy
-		for _, pubMdWrite := range nsRWSet.KvRwSet.MetadataWrites {
-			err := policyChecker.checkSBAndCCEP(cc, "", pubMdWrite.Key, blockNum, txNum)
-			if err != nil {
-				return err
-			}
-		}
-		// writes in collections
-		// we validate writes against key-level validation parameters
-		// if any are present or the chaincode-wide endorsement policy
-		for _, collRWSet := range nsRWSet.CollHashedRwSets {
-			coll := collRWSet.CollectionName
-			for _, hashedWrite := range collRWSet.HashedRwSet.HashedWrites {
-				key := string(hashedWrite.KeyHash)
-				err := policyChecker.checkSBAndCCEP(cc, coll, key, blockNum, txNum)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		// metadata writes in collections
-		// we validate writes against key-level validation parameters
-		// if any are present or the chaincode-wide endorsement policy
-		for _, collRWSet := range nsRWSet.CollHashedRwSets {
-			coll := collRWSet.CollectionName
-			for _, hashedMdWrite := range collRWSet.HashedRwSet.MetadataWrites {
-				key := string(hashedMdWrite.KeyHash)
-				err := policyChecker.checkSBAndCCEP(cc, coll, key, blockNum, txNum)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	// we make sure that we check at least the CCEP to honour FAB-9473
-	return policyChecker.checkCCEPIfNoEPChecked(cc, blockNum, txNum)
+	// return the decision of the policy evaluator
+	return policyEvaluator.Evaluate(blockNum, txNum, rwset.NsRwSets, cc, signatureSet)
 }
 
 // PostValidate implements the function of the StateBasedValidator interface
