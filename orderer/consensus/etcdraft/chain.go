@@ -201,6 +201,7 @@ func NewChain(
 		// PreVote prevents reconnected node from disturbing network.
 		// See etcd/raft doc for more details.
 		PreVote:                   true,
+		CheckQuorum:               true,
 		DisableProposalForwarding: true, // This prevents blocks from being accidentally proposed by followers
 	}
 
