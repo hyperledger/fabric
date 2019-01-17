@@ -119,12 +119,12 @@ func (r *retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeNa
 	if err != nil {
 		return nil, err
 	}
-	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
+	implicitColls, err := r.getImplicitCollection(chaincodeName)
 	if err != nil {
 		return nil, err
 	}
-	defer qe.Done()
-	return addImplicitCollections(compositeKV, r.ledgerID, chaincodeName, qe, r.deployedCCInfoProvider)
+
+	return constructCollectionConfigInfo(compositeKV, implicitColls)
 }
 
 // CollectionConfigAt implements function from the interface ledger.ConfigHistoryRetriever
@@ -143,12 +143,20 @@ func (r *retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 	if err != nil {
 		return nil, err
 	}
+	implicitColls, err := r.getImplicitCollection(chaincodeName)
+	if err != nil {
+		return nil, err
+	}
+	return constructCollectionConfigInfo(compositeKV, implicitColls)
+}
+
+func (r *retriever) getImplicitCollection(chaincodeName string) ([]*common.StaticCollectionConfig, error) {
 	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
 	if err != nil {
 		return nil, err
 	}
 	defer qe.Done()
-	return addImplicitCollections(compositeKV, r.ledgerID, chaincodeName, qe, r.deployedCCInfoProvider)
+	return r.deployedCCInfoProvider.ImplicitCollections(r.ledgerID, chaincodeName, qe)
 }
 
 func prepareDBBatch(chaincodeCollConfigs map[string]*common.CollectionConfigPackage, committingBlockNum uint64) (*batch, error) {
@@ -170,7 +178,10 @@ func compositeKVToCollectionConfig(compositeKV *compositeKV) (*ledger.Collection
 	if err := proto.Unmarshal(compositeKV.value, conf); err != nil {
 		return nil, errors.Wrap(err, "error unmarshalling compositeKV to collection config")
 	}
-	return &ledger.CollectionConfigInfo{CollectionConfig: conf, CommittingBlockNum: compositeKV.blockNum}, nil
+	return &ledger.CollectionConfigInfo{
+		CollectionConfig:   conf,
+		CommittingBlockNum: compositeKV.blockNum,
+	}, nil
 }
 
 func constructCollectionConfigKey(chaincodeName string) string {
@@ -189,17 +200,13 @@ func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwse
 	return m
 }
 
-func addImplicitCollections(
+func constructCollectionConfigInfo(
 	compositeKV *compositeKV,
-	lgrID, ccName string, qe ledger.SimpleQueryExecutor,
-	p ledger.DeployedChaincodeInfoProvider,
+	implicitColls []*common.StaticCollectionConfig,
 ) (*ledger.CollectionConfigInfo, error) {
 	var collConf *ledger.CollectionConfigInfo
 	var err error
-	var implicitColls []*common.StaticCollectionConfig
-	if implicitColls, err = p.ImplicitCollections(lgrID, ccName, qe); err != nil {
-		return nil, err
-	}
+
 	if compositeKV == nil && len(implicitColls) == 0 {
 		return nil, nil
 	}
