@@ -153,12 +153,13 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 }
 
 type collectionConfigJson struct {
-	Name           string `json:"name"`
-	Policy         string `json:"policy"`
-	RequiredCount  int32  `json:"requiredPeerCount"`
-	MaxPeerCount   int32  `json:"maxPeerCount"`
-	BlockToLive    uint64 `json:"blockToLive"`
-	MemberOnlyRead bool   `json:"memberOnlyRead"`
+	Name            string `json:"name"`
+	Policy          string `json:"policy"`
+	RequiredCount   int32  `json:"requiredPeerCount"`
+	MaxPeerCount    int32  `json:"maxPeerCount"`
+	BlockToLive     uint64 `json:"blockToLive"`
+	MemberOnlyRead  bool   `json:"memberOnlyRead"`
+	MemberOnlyWrite bool   `json:"memberOnlyWrite"`
 }
 
 // getCollectionConfig retrieves the collection configuration
@@ -205,6 +206,7 @@ func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
 					MaximumPeerCount:  cconfitem.MaxPeerCount,
 					BlockToLive:       cconfitem.BlockToLive,
 					MemberOnlyRead:    cconfitem.MemberOnlyRead,
+					MemberOnlyWrite:   cconfitem.MemberOnlyWrite,
 				},
 			},
 		}
