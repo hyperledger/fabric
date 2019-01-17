@@ -123,6 +123,10 @@ func (p *peer) Peers() []Peer {
 	return peers
 }
 
+func (p *peer) ReportMetrics(isLeader bool) {
+	p.Mock.Called(isLeader)
+}
+
 func (p *peer) leaderCallback(isLeader bool) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -160,6 +164,7 @@ func createPeer(id int, peerMap map[string]*peer, l *sync.RWMutex) *peer {
 	idStr := fmt.Sprintf("p%d", id)
 	c := make(chan Msg, 100)
 	p := &peer{id: idStr, peers: peerMap, sharedLock: l, msgChan: c, mockedMethods: make(map[string]struct{}), leaderFromCallback: false, callbackInvoked: false}
+	p.On("ReportMetrics", mock.Anything, mock.Anything)
 	p.LeaderElectionService = NewLeaderElectionService(p, idStr, p.leaderCallback)
 	l.Lock()
 	peerMap[idStr] = p
@@ -188,6 +193,21 @@ func waitForMultipleLeadersElection(t *testing.T, peers []*peer, leadersNum int)
 
 func waitForLeaderElection(t *testing.T, peers []*peer) []string {
 	return waitForMultipleLeadersElection(t, peers, 1)
+}
+
+func TestMetrics(t *testing.T) {
+	t.Parallel()
+	// Scenario: spawn a single peer and ensure it reports being a leader after some time.
+	// Then, make it relinquish its leadership and then ensure it reports not being a leader.
+	p := createPeer(0, make(map[string]*peer), &sync.RWMutex{})
+	waitForLeaderElection(t, []*peer{p})
+	// Ensure we sent a leadership declaration during the time of leadership acquisition.
+	p.AssertCalled(t, "ReportMetrics", true)
+	p.Yield()
+	assert.False(t, p.IsLeader())
+	waitForLeaderElection(t, []*peer{p})
+	// Ensure declaration for not being a leader was sent
+	p.AssertCalled(t, "ReportMetrics", false)
 }
 
 func TestInitPeersAtSameTime(t *testing.T) {

@@ -14,10 +14,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	gossipMetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -35,7 +40,8 @@ func TestNewAdapter(t *testing.T) {
 	peersCluster := newClusterOfPeers("0")
 	peersCluster.addPeer("peer0", mockGossip)
 
-	NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"))
+	NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"),
+		gossipMetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics)
 }
 
 func TestAdapterImpl_CreateMessage(t *testing.T) {
@@ -46,7 +52,8 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 	}
 	mockGossip := newGossip("peer0", selfNetworkMember)
 
-	adapter := NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"))
+	adapter := NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"),
+		gossipMetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics)
 	msg := adapter.CreateMessage(true)
 
 	if !msg.(*msgImpl).msg.IsLeadershipMsg() {
@@ -281,10 +288,78 @@ func createCluster(peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
 		}
 
 		mockGossip := newGossip(peerEndpoint, peerMember)
-		adapter := NewAdapter(mockGossip, peerMember.PKIid, []byte("channel0"))
+		adapter := NewAdapter(mockGossip, peerMember.PKIid, []byte("channel0"),
+			gossipMetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics)
 		adapters[peerEndpoint] = adapter.(*adapterImpl)
 		cluster.addPeer(peerEndpoint, mockGossip)
 	}
 
 	return cluster, adapters
+}
+
+type testMetricProvider struct {
+	fakeProvider         *metricsfakes.Provider
+	fakeDeclarationGauge *metricsfakes.Gauge
+}
+
+func testUtilConstructMetricProvider() *testMetricProvider {
+	fakeProvider := &metricsfakes.Provider{}
+	fakeDeclarationGauge := testUtilConstructGauge()
+
+	fakeProvider.NewCounterStub = func(opts metrics.CounterOpts) metrics.Counter {
+		return nil
+	}
+	fakeProvider.NewHistogramStub = func(opts metrics.HistogramOpts) metrics.Histogram {
+		return nil
+	}
+	fakeProvider.NewGaugeStub = func(opts metrics.GaugeOpts) metrics.Gauge {
+		switch opts.Name {
+		case gossipMetrics.LeaderDeclerationOpts.Name:
+			return fakeDeclarationGauge
+		}
+		return nil
+	}
+
+	return &testMetricProvider{
+		fakeProvider,
+		fakeDeclarationGauge,
+	}
+}
+
+func testUtilConstructGauge() *metricsfakes.Gauge {
+	fakeGauge := &metricsfakes.Gauge{}
+	fakeGauge.WithReturns(fakeGauge)
+	return fakeGauge
+}
+
+func TestReportMetrics(t *testing.T) {
+
+	testMetricProvider := testUtilConstructMetricProvider()
+	electionMetrics := gossipMetrics.NewGossipMetrics(testMetricProvider.fakeProvider).ElectionMetrics
+
+	mockGossip := newGossip("", &discovery.NetworkMember{})
+	adapter := NewAdapter(mockGossip, nil, []byte("channel0"), electionMetrics)
+
+	adapter.ReportMetrics(true)
+
+	assert.Equal(t,
+		[]string{"channel", "channel0"},
+		testMetricProvider.fakeDeclarationGauge.WithArgsForCall(0),
+	)
+	assert.EqualValues(t,
+		1,
+		testMetricProvider.fakeDeclarationGauge.SetArgsForCall(0),
+	)
+
+	adapter.ReportMetrics(false)
+
+	assert.Equal(t,
+		[]string{"channel", "channel0"},
+		testMetricProvider.fakeDeclarationGauge.WithArgsForCall(1),
+	)
+	assert.EqualValues(t,
+		0,
+		testMetricProvider.fakeDeclarationGauge.SetArgsForCall(1),
+	)
+
 }

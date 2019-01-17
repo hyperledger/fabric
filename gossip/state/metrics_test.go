@@ -29,14 +29,13 @@ type testMetricProvider struct {
 	fakePayloadBufferSizeGauge *metricsfakes.Gauge
 }
 
-func testUtilConstructMetricProvider(t *testing.T) *testMetricProvider {
+func testUtilConstructMetricProvider() *testMetricProvider {
 	fakeProvider := &metricsfakes.Provider{}
 	fakeHeightGauge := testUtilConstructGuage()
 	fakeCommitDurationHist := testUtilConstructHist()
 	fakePayloadBufferSizeGauge := testUtilConstructGuage()
 
 	fakeProvider.NewCounterStub = func(opts metrics.CounterOpts) metrics.Counter {
-		assert.Fail(t, "Unknown counter name: ", opts.Name)
 		return nil
 	}
 	fakeProvider.NewHistogramStub = func(opts metrics.HistogramOpts) metrics.Histogram {
@@ -44,7 +43,6 @@ func testUtilConstructMetricProvider(t *testing.T) *testMetricProvider {
 		case gossipMetrics.CommitDurationOpts.Name:
 			return fakeCommitDurationHist
 		}
-		assert.Fail(t, "Unknown histogram name: ", opts.Name)
 		return nil
 	}
 	fakeProvider.NewGaugeStub = func(opts metrics.GaugeOpts) metrics.Gauge {
@@ -54,7 +52,6 @@ func testUtilConstructMetricProvider(t *testing.T) *testMetricProvider {
 		case gossipMetrics.HeightOpts.Name:
 			return fakeHeightGauge
 		}
-		assert.Fail(t, "Unknown gauge name: ", opts.Name)
 		return nil
 	}
 
@@ -93,7 +90,7 @@ func TestMetrics(t *testing.T) {
 	committedDurationWG := sync.WaitGroup{}
 	committedDurationWG.Add(1)
 
-	testMetricProvider := testUtilConstructMetricProvider(t)
+	testMetricProvider := testUtilConstructMetricProvider()
 
 	testMetricProvider.fakeHeightGauge.SetStub = func(delta float64) {
 		heightWG.Done()
