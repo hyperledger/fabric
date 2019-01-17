@@ -375,8 +375,8 @@ func NodeExists(id uint64, nodes []uint64) bool {
 
 // ConfChange computes Raft configuration changes based on current Raft configuration state and
 // consenters mapping stored in RaftMetadata
-func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState) raftpb.ConfChange {
-	raftConfChange := raftpb.ConfChange{}
+func ConfChange(raftMetadata *etcdraft.RaftMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+	raftConfChange := &raftpb.ConfChange{}
 
 	raftConfChange.ID = raftMetadata.ConfChangeCounts
 	// need to compute conf changes to propose
