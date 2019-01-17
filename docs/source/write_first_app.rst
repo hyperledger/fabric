@@ -284,8 +284,6 @@ code connects the application to a particular channel within the network,
 .. code:: bash
   const network = await gateway.getNetwork('mychannel');
 
-  const network = await gateway.getNetwork('mychannel');
-
 Within this channel, we can access the smart contract ``fabcar`` to interact
 with the ledger:
 
