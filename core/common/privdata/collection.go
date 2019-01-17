@@ -53,6 +53,10 @@ type CollectionAccessPolicy interface {
 	// IsMemberOnlyRead returns a true if only collection members can read
 	// the private data
 	IsMemberOnlyRead() bool
+
+	// IsMemberOnlyWrite returns a true if only collection members can write
+	// the private data
+	IsMemberOnlyWrite() bool
 }
 
 // CollectionPersistenceConfigs encapsulates configurations related to persistece of a collection
@@ -84,14 +88,14 @@ type Filter func(common.SignedData) bool
 // (3) we would need a cache in collection store to avoid repeated crypto operation.
 //     This would be simple to implement when we introduce IsAMemberOf() APIs.
 type CollectionStore interface {
-	// GetCollection retrieves the collection in the following way:
+	// RetrieveCollection retrieves the collection in the following way:
 	// If the TxID exists in the ledger, the collection that is returned has the
 	// latest configuration that was committed into the ledger before this txID
 	// was committed.
 	// Else - it's the latest configuration for the collection.
 	RetrieveCollection(common.CollectionCriteria) (Collection, error)
 
-	// GetCollectionAccessPolicy retrieves a collection's access policy
+	// RetrieveCollectionAccessPolicy retrieves a collection's access policy
 	RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error)
 
 	// RetrieveCollectionConfigPackage retrieves the whole configuration package
@@ -101,9 +105,10 @@ type CollectionStore interface {
 	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
 	RetrieveCollectionPersistenceConfigs(common.CollectionCriteria) (CollectionPersistenceConfigs, error)
 
-	// HasReadAccess checks whether the creator of the signedProposal has read permission on a
-	// given collection
-	HasReadAccess(common.CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) (bool, error)
+	// RetrieveReadWritePermission retrieves the read-write persmission of the creator of the
+	// signedProposal for a given collection using collection access policy and flags such as
+	// memberOnlyRead & memberOnlyWrite
+	RetrieveReadWritePermission(common.CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) (bool, bool, error)
 
 	CollectionFilter
 }

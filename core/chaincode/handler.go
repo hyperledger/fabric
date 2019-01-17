@@ -579,22 +579,34 @@ func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
-func errorIfCreatorHasNoReadAccess(chaincodeName, collection string, txContext *TransactionContext) error {
-	accessAllowed, err := hasReadAccess(chaincodeName, collection, txContext)
+func errorIfCreatorHasNoReadPermission(chaincodeName, collection string, txContext *TransactionContext) error {
+	rwPermission, err := getReadWritePermission(chaincodeName, collection, txContext)
 	if err != nil {
 		return err
 	}
-	if !accessAllowed {
+	if !rwPermission.read {
 		return errors.Errorf("tx creator does not have read access permission on privatedata in chaincodeName:%s collectionName: %s",
 			chaincodeName, collection)
 	}
 	return nil
 }
 
-func hasReadAccess(chaincodeName, collection string, txContext *TransactionContext) (bool, error) {
+func errorIfCreatorHasNoWritePermission(chaincodeName, collection string, txContext *TransactionContext) error {
+	rwPermission, err := getReadWritePermission(chaincodeName, collection, txContext)
+	if err != nil {
+		return err
+	}
+	if !rwPermission.write {
+		return errors.Errorf("tx creator does not have write access permission on privatedata in chaincodeName:%s collectionName: %s",
+			chaincodeName, collection)
+	}
+	return nil
+}
+
+func getReadWritePermission(chaincodeName, collection string, txContext *TransactionContext) (*readWritePermission, error) {
 	// check to see if read access has already been checked in the scope of this chaincode simulation
-	if txContext.AllowedCollectionAccess[collection] {
-		return true, nil
+	if rwPermission := txContext.CollectionACLCache.get(collection); rwPermission != nil {
+		return rwPermission, nil
 	}
 
 	cc := common.CollectionCriteria{
@@ -603,15 +615,14 @@ func hasReadAccess(chaincodeName, collection string, txContext *TransactionConte
 		Collection: collection,
 	}
 
-	accessAllowed, err := txContext.CollectionStore.HasReadAccess(cc, txContext.SignedProp, txContext.TXSimulator)
+	readP, writeP, err := txContext.CollectionStore.RetrieveReadWritePermission(cc, txContext.SignedProp, txContext.TXSimulator)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	if accessAllowed {
-		txContext.AllowedCollectionAccess[collection] = accessAllowed
-	}
+	rwPermission := &readWritePermission{read: readP, write: writeP}
+	txContext.CollectionACLCache.put(collection, rwPermission)
 
-	return accessAllowed, err
+	return rwPermission, nil
 }
 
 // Handles query to ledger to get state
@@ -631,7 +642,7 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
+		if err := errorIfCreatorHasNoReadPermission(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
 		res, err = txContext.TXSimulator.GetPrivateData(chaincodeName, collection, getState.Key)
@@ -696,7 +707,7 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
+		if err := errorIfCreatorHasNoReadPermission(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
 		metadata, err = txContext.TXSimulator.GetPrivateDataMetadata(chaincodeName, collection, getStateMetadata.Key)
@@ -748,7 +759,7 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
+		if err := errorIfCreatorHasNoReadPermission(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
 		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(chaincodeName, collection,
@@ -872,7 +883,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadAccess(chaincodeName, collection, txContext); err != nil {
+		if err := errorIfCreatorHasNoReadPermission(chaincodeName, collection, txContext); err != nil {
 			return nil, err
 		}
 		executeIter, err = txContext.TXSimulator.ExecuteQueryOnPrivateData(chaincodeName, collection, getQueryResult.Query)
@@ -1048,6 +1059,9 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
+		if err := errorIfCreatorHasNoWritePermission(chaincodeName, collection, txContext); err != nil {
+			return nil, err
+		}
 		err = txContext.TXSimulator.SetPrivateData(chaincodeName, collection, putState.Key, putState.Value)
 	} else {
 		err = txContext.TXSimulator.SetState(chaincodeName, putState.Key, putState.Value)
@@ -1080,6 +1094,9 @@ func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
+		if err := errorIfCreatorHasNoWritePermission(chaincodeName, collection, txContext); err != nil {
+			return nil, err
+		}
 		err = txContext.TXSimulator.SetPrivateDataMetadata(chaincodeName, collection, putStateMetadata.Key, metadata)
 	} else {
 		err = txContext.TXSimulator.SetStateMetadata(chaincodeName, putStateMetadata.Key, metadata)
@@ -1103,6 +1120,9 @@ func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *Transactio
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
+		if err := errorIfCreatorHasNoWritePermission(chaincodeName, collection, txContext); err != nil {
+			return nil, err
 		}
 		err = txContext.TXSimulator.DeletePrivateData(chaincodeName, collection, delState.Key)
 	} else {

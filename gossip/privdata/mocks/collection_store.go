@@ -36,27 +36,6 @@ func (_m *CollectionStore) AccessFilter(channelName string, collectionPolicyConf
 	return r0, r1
 }
 
-// HasReadAccess provides a mock function with given fields: _a0, _a1, _a2
-func (_m *CollectionStore) HasReadAccess(_a0 common.CollectionCriteria, _a1 *peer.SignedProposal, _a2 ledger.QueryExecutor) (bool, error) {
-	ret := _m.Called(_a0, _a1, _a2)
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) bool); ok {
-		r0 = rf(_a0, _a1, _a2)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) error); ok {
-		r1 = rf(_a0, _a1, _a2)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // RetrieveCollection provides a mock function with given fields: _a0
 func (_m *CollectionStore) RetrieveCollection(_a0 common.CollectionCriteria) (privdata.Collection, error) {
 	ret := _m.Called(_a0)
@@ -147,4 +126,32 @@ func (_m *CollectionStore) RetrieveCollectionPersistenceConfigs(_a0 common.Colle
 	}
 
 	return r0, r1
+}
+
+// RetrieveReadWritePermission provides a mock function with given fields: _a0, _a1, _a2
+func (_m *CollectionStore) RetrieveReadWritePermission(_a0 common.CollectionCriteria, _a1 *peer.SignedProposal, _a2 ledger.QueryExecutor) (bool, bool, error) {
+	ret := _m.Called(_a0, _a1, _a2)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) bool); ok {
+		r0 = rf(_a0, _a1, _a2)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 bool
+	if rf, ok := ret.Get(1).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) bool); ok {
+		r1 = rf(_a0, _a1, _a2)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(common.CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) error); ok {
+		r2 = rf(_a0, _a1, _a2)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }

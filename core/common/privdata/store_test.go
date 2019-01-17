@@ -77,6 +77,7 @@ func TestCollectionStore(t *testing.T) {
 		Name:             "mycollection",
 		MemberOrgsPolicy: accessPolicy,
 		MemberOnlyRead:   false,
+		MemberOnlyWrite:  false,
 	}
 
 	support.CollectionInfoProvider.CollectionInfoReturns(scc, nil)
@@ -92,6 +93,7 @@ func TestCollectionStore(t *testing.T) {
 		Name:             "mycollection",
 		MemberOrgsPolicy: accessPolicy,
 		MemberOnlyRead:   true,
+		MemberOnlyWrite:  true,
 	}
 	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{
 		StaticCollectionConfig: scc,
@@ -109,13 +111,30 @@ func TestCollectionStore(t *testing.T) {
 	assert.NotNil(t, ccc)
 
 	signedProp, _ := utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer0"), []byte("msg1"))
-	allowedAccess, err := cs.HasReadAccess(ccr, signedProp, &lm.MockQueryExecutor{})
+	readP, writeP, err := cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
 	assert.NoError(t, err)
-	assert.True(t, allowedAccess)
+	assert.True(t, readP)
+	assert.True(t, writeP)
 
 	// only signer0 and signer1 are the members
 	signedProp, _ = utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
-	allowedAccess, err = cs.HasReadAccess(ccr, signedProp, &lm.MockQueryExecutor{})
+	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
 	assert.NoError(t, err)
-	assert.False(t, allowedAccess)
+	assert.False(t, readP)
+	assert.False(t, writeP)
+
+	scc = &common.StaticCollectionConfig{
+		Name:             "mycollection",
+		MemberOrgsPolicy: accessPolicy,
+		MemberOnlyRead:   false,
+		MemberOnlyWrite:  false,
+	}
+	support.CollectionInfoProvider.CollectionInfoReturns(scc, nil)
+
+	// only signer0 and signer1 are the members
+	signedProp, _ = utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
+	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	assert.NoError(t, err)
+	assert.True(t, readP)
+	assert.True(t, writeP)
 }

@@ -31,7 +31,7 @@ type Support interface {
 	GetCollectionInfoProvider() ledger.DeployedChaincodeInfoProvider
 }
 
-// StateGetter retrieves data from the state
+// State retrieves data from the state
 type State interface {
 	// GetState retrieves the value for the given key in the given namespace
 	GetState(namespace string, key string) ([]byte, error)
@@ -164,23 +164,46 @@ func (c *simpleCollectionStore) RetrieveCollectionPersistenceConfigs(cc common.C
 	return &SimpleCollectionPersistenceConfigs{staticCollectionConfig.BlockToLive}, nil
 }
 
-func (c *simpleCollectionStore) HasReadAccess(cc common.CollectionCriteria, signedProposal *pb.SignedProposal, qe ledger.QueryExecutor) (bool, error) {
-	accessPolicy, err := c.retrieveSimpleCollection(cc, qe)
+// RetrieveReadWritePermission retrieves the read-write persmission of the creator of the
+// signedProposal for a given collection using collection access policy and flags such as
+// memberOnlyRead & memberOnlyWrite
+func (c *simpleCollectionStore) RetrieveReadWritePermission(cc common.CollectionCriteria, signedProposal *pb.SignedProposal,
+	qe ledger.QueryExecutor) (bool, bool, error) {
+
+	collection, err := c.retrieveSimpleCollection(cc, qe)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
-	if !accessPolicy.IsMemberOnlyRead() {
-		return true, nil
+	if canAnyoneReadAndWrite(collection) {
+		return true, true, nil
 	}
 
+	// all members have read-write persmission
+	if isAMember, err := isCreatorOfProposalAMember(signedProposal, collection); err != nil {
+		return false, false, err
+	} else if isAMember {
+		return true, true, nil
+	}
+
+	return !collection.IsMemberOnlyRead(), !collection.IsMemberOnlyWrite(), nil
+}
+
+func canAnyoneReadAndWrite(collection *SimpleCollection) bool {
+	if !collection.IsMemberOnlyRead() && !collection.IsMemberOnlyWrite() {
+		return true
+	}
+	return false
+}
+
+func isCreatorOfProposalAMember(signedProposal *pb.SignedProposal, collection *SimpleCollection) (bool, error) {
 	signedData, err := getSignedData(signedProposal)
 	if err != nil {
 		return false, err
 	}
 
-	hasReadAccess := accessPolicy.AccessFilter()
-	return hasReadAccess(signedData), nil
+	accessFilter := collection.AccessFilter()
+	return accessFilter(signedData), nil
 }
 
 func getSignedData(signedProposal *pb.SignedProposal) (common.SignedData, error) {

@@ -96,7 +96,7 @@ func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(cc fcommon.Co
 	return cs.m[cc.Collection], nil
 }
 
-func (cs mockCollectionStore) HasReadAccess(cc fcommon.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, error) {
+func (cs mockCollectionStore) RetrieveReadWritePermission(cc fcommon.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
 	panic("implement me")
 }
 
@@ -149,6 +149,10 @@ func (mc *mockCollectionAccess) MaximumPeerCount() int {
 }
 
 func (mc *mockCollectionAccess) IsMemberOnlyRead() bool {
+	return false
+}
+
+func (mc *mockCollectionAccess) IsMemberOnlyWrite() bool {
 	return false
 }
 
