@@ -346,7 +346,7 @@ func newGossipConfig(portPrefix, id int, boot ...int) *gossip.Config {
 func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) gossip.Gossip {
 	id := api.PeerIdentityType(config.InternalEndpoint)
 	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, mcs,
-		id, nil)
+		id, nil, metrics.NewGossipMetrics(&disabled.Provider{}))
 }
 
 // Create new instance of KVLedger to be used for testing

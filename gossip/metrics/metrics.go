@@ -12,12 +12,14 @@ import "github.com/hyperledger/fabric/common/metrics"
 type GossipMetrics struct {
 	StateMetrics    *StateMetrics
 	ElectionMetrics *ElectionMetrics
+	CommMetrics     *CommMetrics
 }
 
 func NewGossipMetrics(p metrics.Provider) *GossipMetrics {
 	return &GossipMetrics{
 		StateMetrics:    newStateMetrics(p),
 		ElectionMetrics: newElectionMetrics(p),
+		CommMetrics:     newCommMetrics(p),
 	}
 }
 
@@ -84,5 +86,46 @@ var (
 		Help:         "Peer is leader (1) or follower (0)",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+)
+
+// CommMetrics encapsulates gossip communication related metrics
+type CommMetrics struct {
+	SentMessages     metrics.Counter
+	BufferOverflow   metrics.Counter
+	ReceivedMessages metrics.Counter
+}
+
+func newCommMetrics(p metrics.Provider) *CommMetrics {
+	return &CommMetrics{
+		SentMessages:     p.NewCounter(SentMessagesOpts),
+		BufferOverflow:   p.NewCounter(BufferOverflowOpts),
+		ReceivedMessages: p.NewCounter(ReceivedMessagesOpts),
+	}
+}
+
+var (
+	SentMessagesOpts = metrics.CounterOpts{
+		Namespace:    "gossip",
+		Subsystem:    "comm",
+		Name:         "messages_sent",
+		Help:         "Number of messages sent",
+		StatsdFormat: "%{#fqname}",
+	}
+
+	BufferOverflowOpts = metrics.CounterOpts{
+		Namespace:    "gossip",
+		Subsystem:    "comm",
+		Name:         "overflow_count",
+		Help:         "Number of outgoing queue buffer overflows",
+		StatsdFormat: "%{#fqname}",
+	}
+
+	ReceivedMessagesOpts = metrics.CounterOpts{
+		Namespace:    "gossip",
+		Subsystem:    "comm",
+		Name:         "messages_received",
+		Help:         "Number of messages received",
+		StatsdFormat: "%{#fqname}",
 	}
 )

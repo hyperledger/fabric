@@ -154,8 +154,10 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, metricsProvider
 
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
+		gossipMetrics := gossipMetrics.NewGossipMetrics(metricsProvider)
+
 		gossip, err = integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv,
-			mcs, secureDialOpts, certs, bootPeers...)
+			mcs, secureDialOpts, certs, gossipMetrics, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			mcs:             mcs,
 			gossipSvc:       gossip,
@@ -166,7 +168,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, metricsProvider
 			deliveryFactory: factory,
 			peerIdentity:    peerIdentity,
 			secAdv:          secAdv,
-			metrics:         gossipMetrics.NewGossipMetrics(metricsProvider),
+			metrics:         gossipMetrics,
 		}
 	})
 	return errors.WithStack(err)

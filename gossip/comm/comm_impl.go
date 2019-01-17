@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
@@ -60,7 +61,8 @@ func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
 
 // NewCommInstanceWithServer creates a comm instance that creates an underlying gRPC server
 func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity api.PeerIdentityType,
-	secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor, dialOpts ...grpc.DialOption) (Comm, error) {
+	secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor, commMetrics *metrics.CommMetrics,
+	dialOpts ...grpc.DialOption) (Comm, error) {
 
 	var ll net.Listener
 	var s *grpc.Server
@@ -90,6 +92,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		subscriptions:  make([]chan proto.ReceivedMessage, 0),
 		dialTimeout:    util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout),
 		tlsCerts:       certs,
+		metrics:        commMetrics,
 	}
 	commInst.connStore = newConnStore(commInst, commInst.logger)
 
@@ -108,9 +111,10 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
 func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
-	dialOpts ...grpc.DialOption) (Comm, error) {
+	commMetrics *metrics.CommMetrics, dialOpts ...grpc.DialOption) (Comm, error) {
 
-	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, secureDialOpts, sa, dialOpts...)
+	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, secureDialOpts, sa,
+		commMetrics, dialOpts...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -144,6 +148,7 @@ type commImpl struct {
 	port           int
 	stopping       int32
 	dialTimeout    time.Duration
+	metrics        *metrics.CommMetrics
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -199,7 +204,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 					return nil, errors.New("authentication failure")
 				}
 			}
-			conn := newConnection(cl, cc, stream, nil)
+			conn := newConnection(cl, cc, stream, nil, c.metrics)
 			conn.pkiID = pkiID
 			conn.info = connInfo
 			conn.logger = c.logger
@@ -577,7 +582,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	}
 	c.logger.Debug("Servicing", extractRemoteAddress(stream))
 
-	conn := c.connStore.onConnected(stream, connInfo)
+	conn := c.connStore.onConnected(stream, connInfo, c.metrics)
 
 	h := func(m *proto.SignedGossipMessage) {
 		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
