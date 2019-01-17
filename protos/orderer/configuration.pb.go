@@ -49,22 +49,23 @@ func (x ConsensusType_MigrationState) String() string {
 	return proto.EnumName(ConsensusType_MigrationState_name, int32(x))
 }
 func (ConsensusType_MigrationState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_acd4b7f3e02dac02, []int{0, 0}
+	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{0, 0}
 }
 
 type ConsensusType struct {
+	// The consensus type: "solo", "kafka" or "etcdraft".
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Opaque metadata, dependent on the consensus type.
 	Metadata []byte `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	// The state of a consensus-type migration.
-	// On the system channel this could be START|COMMIT|ABORT.
-	// On a standard channel this is CONTEXT.
+	// On the system channel this could be NONE | START | COMMIT | ABORT.
+	// On a standard channel this could be NONE | CONTEXT.
 	// When migration is not taking place it is set to NONE.
 	MigrationState ConsensusType_MigrationState `protobuf:"varint,3,opt,name=migration_state,json=migrationState,proto3,enum=orderer.ConsensusType_MigrationState" json:"migration_state,omitempty"`
-	// The context of a standard channel consensus-type migration.
-	// On a standard channel, this is the system channel block height of the config-update-tx that START migration.
-	// On a standard channel, this must be >0. On a system channel, this is =0.
-	// When migration is not taking place it is set =0.
+	// The context of a consensus-type migration.
+	// The migration context is the system channel block height of the config-update-tx that START migration.
+	// The context must be present in COMMIT, CONTEXT, and ABORT config-updates, and match the START block height.
+	// On NONE and START it is set =0.
 	MigrationContext     uint64   `protobuf:"varint,4,opt,name=migration_context,json=migrationContext,proto3" json:"migration_context,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -75,7 +76,7 @@ func (m *ConsensusType) Reset()         { *m = ConsensusType{} }
 func (m *ConsensusType) String() string { return proto.CompactTextString(m) }
 func (*ConsensusType) ProtoMessage()    {}
 func (*ConsensusType) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_acd4b7f3e02dac02, []int{0}
+	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{0}
 }
 func (m *ConsensusType) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConsensusType.Unmarshal(m, b)
@@ -142,7 +143,7 @@ func (m *BatchSize) Reset()         { *m = BatchSize{} }
 func (m *BatchSize) String() string { return proto.CompactTextString(m) }
 func (*BatchSize) ProtoMessage()    {}
 func (*BatchSize) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_acd4b7f3e02dac02, []int{1}
+	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{1}
 }
 func (m *BatchSize) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchSize.Unmarshal(m, b)
@@ -196,7 +197,7 @@ func (m *BatchTimeout) Reset()         { *m = BatchTimeout{} }
 func (m *BatchTimeout) String() string { return proto.CompactTextString(m) }
 func (*BatchTimeout) ProtoMessage()    {}
 func (*BatchTimeout) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_acd4b7f3e02dac02, []int{2}
+	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{2}
 }
 func (m *BatchTimeout) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchTimeout.Unmarshal(m, b)
@@ -238,7 +239,7 @@ func (m *KafkaBrokers) Reset()         { *m = KafkaBrokers{} }
 func (m *KafkaBrokers) String() string { return proto.CompactTextString(m) }
 func (*KafkaBrokers) ProtoMessage()    {}
 func (*KafkaBrokers) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_acd4b7f3e02dac02, []int{3}
+	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{3}
 }
 func (m *KafkaBrokers) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_KafkaBrokers.Unmarshal(m, b)
@@ -277,7 +278,7 @@ func (m *ChannelRestrictions) Reset()         { *m = ChannelRestrictions{} }
 func (m *ChannelRestrictions) String() string { return proto.CompactTextString(m) }
 func (*ChannelRestrictions) ProtoMessage()    {}
 func (*ChannelRestrictions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_configuration_acd4b7f3e02dac02, []int{4}
+	return fileDescriptor_configuration_50e2c0f98937cf5a, []int{4}
 }
 func (m *ChannelRestrictions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ChannelRestrictions.Unmarshal(m, b)
@@ -314,10 +315,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("orderer/configuration.proto", fileDescriptor_configuration_acd4b7f3e02dac02)
+	proto.RegisterFile("orderer/configuration.proto", fileDescriptor_configuration_50e2c0f98937cf5a)
 }
 
-var fileDescriptor_configuration_acd4b7f3e02dac02 = []byte{
+var fileDescriptor_configuration_50e2c0f98937cf5a = []byte{
 	// 460 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x92, 0xdf, 0x8a, 0xda, 0x40,
 	0x14, 0xc6, 0x1b, 0x95, 0xee, 0x7a, 0x58, 0x35, 0x8e, 0x2d, 0x84, 0xee, 0x8d, 0x08, 0x0b, 0xd2,
