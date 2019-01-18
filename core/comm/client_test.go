@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"path/filepath"
@@ -23,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm/testpb"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -138,23 +138,14 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), failed)
 }
 
-func TestNewConnection_Timeout(t *testing.T) {
-	t.Parallel()
-	testAddress := "localhost:20040"
-	config := comm.ClientConfig{
-		Timeout: 1 * time.Second,
-	}
-	client, err := comm.NewGRPCClient(config)
-	assert.Nil(t, err)
-	conn, err := client.NewConnection(testAddress, "")
-	assert.Contains(t, err.Error(), "connection refused")
-	t.Log(err)
-	assert.Nil(t, conn)
-}
-
 func TestNewConnection(t *testing.T) {
 	t.Parallel()
 	testCerts := loadCerts(t)
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	badAddress := l.Addr().String()
+	defer l.Close()
 
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(testCerts.caPEM)
@@ -163,12 +154,12 @@ func TestNewConnection(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		clientPort int
-		config     comm.ClientConfig
-		serverTLS  *tls.Config
-		success    bool
-		errorMsg   string
+		name          string
+		clientAddress string
+		config        comm.ClientConfig
+		serverTLS     *tls.Config
+		success       bool
+		errorMsg      string
 	}{
 		{
 			name: "client / server same port",
@@ -178,22 +169,22 @@ func TestNewConnection(t *testing.T) {
 			success: true,
 		},
 		{
-			name:       "client / server wrong port",
-			clientPort: 20040,
+			name:          "client / server wrong port",
+			clientAddress: badAddress,
 			config: comm.ClientConfig{
 				Timeout: time.Second,
 			},
 			success:  false,
-			errorMsg: "connection refused",
+			errorMsg: "(connection refused|context deadline exceeded)",
 		},
 		{
-			name: "client / server wrong port but with asynchronous should succeed",
+			name:          "client / server wrong port but with asynchronous should succeed",
+			clientAddress: badAddress,
 			config: comm.ClientConfig{
 				AsyncConnect: true,
 				Timeout:      testTimeout,
 			},
-			clientPort: 20040,
-			success:    true,
+			success: true,
 		},
 		{
 			name: "client TLS / server no TLS",
@@ -269,8 +260,10 @@ func TestNewConnection(t *testing.T) {
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -292,8 +285,10 @@ func TestNewConnection(t *testing.T) {
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -312,8 +307,10 @@ func TestNewConnection(t *testing.T) {
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -345,8 +342,8 @@ func TestNewConnection(t *testing.T) {
 				t.Fatalf("error creating client for test: %v", err)
 			}
 			address := lis.Addr().String()
-			if test.clientPort > 0 {
-				address = fmt.Sprintf("localhost:%d", test.clientPort)
+			if test.clientAddress != "" {
+				address = test.clientAddress
 			}
 			conn, err := client.NewConnection(address, "")
 			if test.success {
@@ -354,7 +351,7 @@ func TestNewConnection(t *testing.T) {
 				assert.NotNil(t, conn)
 			} else {
 				t.Log(errors.WithStack(err))
-				assert.Contains(t, err.Error(), test.errorMsg)
+				assert.Regexp(t, test.errorMsg, err.Error())
 			}
 		})
 	}
