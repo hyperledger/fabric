@@ -201,6 +201,42 @@ func (lscc *LifeCycleSysCC) ChaincodeDefinition(chaincodeName string, qe ledger.
 	return chaincodeData, nil
 }
 
+// ValidationInfo returns name&arguments of the validation plugin for the supplied chaincode.
+// The function returns two types of errors, unexpected errors and validation errors. The
+// reason for this is that this function is to be called from the validation code, which
+// needs to tell apart the two types of error to halt processing on the channel if the
+// unexpected error is not nil and mark the transaction as invalid if the validation error
+// is not nil.
+func (lscc *LifeCycleSysCC) ValidationInfo(chaincodeName string, qe ledger.QueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error) {
+	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
+	if err != nil {
+		// failure to access the ledger is clearly an unexpected
+		// error since we expect the ledger to be reachable
+		unexpectedErr = errors.Wrapf(err, "could not retrieve state for chaincode %s", chaincodeName)
+		return
+	}
+
+	if chaincodeDataBytes == nil {
+		// no chaincode definition is a validation error since
+		// we're trying to retrieve chaincode definitions for a non-existent chaincode
+		validationErr = errors.Errorf("chaincode %s not found", chaincodeName)
+		return
+	}
+
+	chaincodeData := &ccprovider.ChaincodeData{}
+	err = proto.Unmarshal(chaincodeDataBytes, chaincodeData)
+	if err != nil {
+		// this kind of data corruption is unexpected since our code
+		// always marshals ChaincodeData into these keys
+		unexpectedErr = errors.Wrapf(err, "chaincode %s has bad definition", chaincodeName)
+		return
+	}
+
+	plugin = chaincodeData.Vscc
+	args = chaincodeData.Policy
+	return
+}
+
 //create the chaincode on the given chain
 func (lscc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData) error {
 	cdbytes, err := proto.Marshal(cd)

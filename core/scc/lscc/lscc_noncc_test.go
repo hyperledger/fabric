@@ -165,4 +165,58 @@ var _ = Describe("LSCC", func() {
 			})
 		})
 	})
+
+	Describe("ChaincodeDefinitionForValidation", func() {
+		BeforeEach(func() {
+		})
+
+		It("retrieves the chaincode data from the state", func() {
+			vscc, policy, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+			Expect(validationErr).NotTo(HaveOccurred())
+			Expect(unexpectedErr).NotTo(HaveOccurred())
+			Expect(vscc).To(Equal(ccData.Vscc))
+			Expect(policy).To(Equal(ccData.Policy))
+
+			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
+			namespace, key := fakeQueryExecutor.GetStateArgsForCall(0)
+			Expect(namespace).To(Equal("lscc"))
+			Expect(key).To(Equal("cc-name"))
+		})
+
+		Context("when the state getter fails", func() {
+			BeforeEach(func() {
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("fake-error"))
+			})
+
+			It("returns the wrapped error", func() {
+				_, _, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+				Expect(unexpectedErr).To(MatchError("could not retrieve state for chaincode cc-name: fake-error"))
+				Expect(validationErr).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the state getter does not find the key", func() {
+			BeforeEach(func() {
+				fakeQueryExecutor.GetStateReturns(nil, nil)
+			})
+
+			It("returns an error", func() {
+				_, _, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+				Expect(unexpectedErr).NotTo(HaveOccurred())
+				Expect(validationErr).To(MatchError("chaincode cc-name not found"))
+			})
+		})
+
+		Context("when the state getter returns invalid data", func() {
+			BeforeEach(func() {
+				fakeQueryExecutor.GetStateReturns([]byte("garbage"), nil)
+			})
+
+			It("wraps and returns the error", func() {
+				_, _, unexpectedErr, validationErr := l.ValidationInfo("cc-name", fakeQueryExecutor)
+				Expect(validationErr).NotTo(HaveOccurred())
+				Expect(unexpectedErr).To(MatchError(MatchRegexp("chaincode cc-name has bad definition: proto:.*")))
+			})
+		})
+	})
 })
