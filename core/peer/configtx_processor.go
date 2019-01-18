@@ -58,15 +58,15 @@ func processChannelConfigTx(txEnv *common.Envelope, simulator ledger.TxSimulator
 		return err
 	}
 	channelConfig := configEnvelope.Config
+	if channelConfig == nil {
+		return fmt.Errorf("Channel config found nil")
+	}
 
 	if err := persistConf(simulator, channelConfigKey, channelConfig); err != nil {
 		return err
 	}
 
 	peerLogger.Debugf("channelConfig=%s", channelConfig)
-	if channelConfig == nil {
-		return fmt.Errorf("Channel config found nil")
-	}
 
 	return nil
 }
