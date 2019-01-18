@@ -10,13 +10,13 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	util2 "github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
@@ -24,26 +24,29 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
+// mockDispatcher is still useful for the parallel test. Auto-generated mocks
+// serialize invocations with locks but we don't need that and the test is
+// much faster with this mock
 type mockDispatcher struct {
+	DispatchRv  peer.TxValidationCode
+	DispatchErr error
 }
 
 func (v *mockDispatcher) Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode) {
-	return nil, peer.TxValidationCode_VALID
+	return v.DispatchErr, v.DispatchRv
 }
 
-func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []byte, nBlocks int) {
-	txid := util2.GenerateUUID()
-	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetState("ns1", "key2", []byte("value2"))
-	simulator.SetState("ns1", "key3", []byte("value3"))
-	simulator.Done()
+func testValidationWithNTXes(t *testing.T, nBlocks int) {
+	rwsb := rwsetutil.NewRWSetBuilder()
+	rwsb.AddToWriteSet("ns1", "key1", []byte("value1"))
+	rwsb.AddToWriteSet("ns1", "key2", []byte("value2"))
+	rwsb.AddToWriteSet("ns1", "key3", []byte("value3"))
 
-	simRes, _ := simulator.GetTxSimulationResults()
+	simRes, _ := rwsb.GetTxSimulationResults()
 	pubSimulationResBytes, _ := simRes.GetPubSimulationBytes()
 	_, err := testutil.ConstructBytesProposalResponsePayload("v1", pubSimulationResBytes)
 	if err != nil {
@@ -51,23 +54,21 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	}
 
 	mockDispatcher := &mockDispatcher{}
+	mockLedger := &mocks.LedgerResources{}
+	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Day after day, day after day"))
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
-		dispatcher:       mockDispatcher,
+		ChannelResources: &mocktxvalidator.Support{ACVal: &config.MockApplicationCapabilities{}},
+		Dispatcher:       mockDispatcher,
+		LedgerResources:  mockLedger,
 	}
-
-	bcInfo, _ := ledger.GetBlockchainInfo()
-	assert.Equal(t, &common.BlockchainInfo{
-		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
-	}, bcInfo)
 
 	sr := [][]byte{}
 	for i := 0; i < nBlocks; i++ {
 		sr = append(sr, pubSimulationResBytes)
 	}
-	block := testutil.ConstructBlock(t, 1, gbHash, sr, true)
+	block := testutil.ConstructBlock(t, 1, []byte("we stuck nor breath nor motion"), sr, true)
 
 	tValidator.Validate(block)
 
@@ -103,23 +104,12 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 }
 
 func TestBlockValidationDuplicateTXId(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest-2.0")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
+	rwsb := rwsetutil.NewRWSetBuilder()
+	rwsb.AddToWriteSet("ns1", "key1", []byte("value1"))
+	rwsb.AddToWriteSet("ns1", "key2", []byte("value2"))
+	rwsb.AddToWriteSet("ns1", "key3", []byte("value3"))
 
-	gb, _ := test.MakeGenesisBlock("TestLedger-2.0")
-	gbHash := gb.Header.Hash()
-	ledger, _ := ledgermgmt.CreateLedger(gb)
-	defer ledger.Close()
-
-	txid := util2.GenerateUUID()
-	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetState("ns1", "key2", []byte("value2"))
-	simulator.SetState("ns1", "key3", []byte("value3"))
-	simulator.Done()
-
-	simRes, _ := simulator.GetTxSimulationResults()
+	simRes, _ := rwsb.GetTxSimulationResults()
 	pubSimulationResBytes, _ := simRes.GetPubSimulationBytes()
 	_, err := testutil.ConstructBytesProposalResponsePayload("v1", pubSimulationResBytes)
 	if err != nil {
@@ -130,23 +120,21 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv := &config.MockApplicationCapabilities{
 		ForbidDuplicateTXIdInBlockRv: true,
 	}
+	mockLedger := &mocks.LedgerResources{}
+	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv},
-		dispatcher:       mockDispatcher,
+		ChannelResources: &mocktxvalidator.Support{ACVal: acv},
+		Dispatcher:       mockDispatcher,
+		LedgerResources:  mockLedger,
 	}
-
-	bcInfo, _ := ledger.GetBlockchainInfo()
-	assert.Equal(t, &common.BlockchainInfo{
-		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
-	}, bcInfo)
 
 	envs := []*common.Envelope{}
 	env, _, err := testutil.ConstructTransaction(t, pubSimulationResBytes, "", true)
 	envs = append(envs, env)
 	envs = append(envs, env)
-	block := testutil.NewBlock(envs, 1, gbHash)
+	block := testutil.NewBlock(envs, 1, []byte("Water, water everywhere and all the boards did shrink"))
 
 	tValidator.Validate(block)
 
@@ -157,64 +145,31 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 }
 
 func TestBlockValidation(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest-2.0")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
-	gb, _ := test.MakeGenesisBlock("TestLedger-2.0")
-	gbHash := gb.Header.Hash()
-	ledger, _ := ledgermgmt.CreateLedger(gb)
-	defer ledger.Close()
-
 	// here we test validation of a block with a single tx
-	testValidationWithNTXes(t, ledger, gbHash, 1)
+	testValidationWithNTXes(t, 1)
 }
 
 func TestParallelBlockValidation(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest-2.0")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
-	gb, _ := test.MakeGenesisBlock("TestLedger-2.0")
-	gbHash := gb.Header.Hash()
-	ledger, _ := ledgermgmt.CreateLedger(gb)
-	defer ledger.Close()
-
 	// here we test validation of a block with 128 txes
-	testValidationWithNTXes(t, ledger, gbHash, 128)
+	testValidationWithNTXes(t, 128)
 }
 
 func TestVeryLargeParallelBlockValidation(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest-2.0")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
-	gb, _ := test.MakeGenesisBlock("TestLedger-2.0")
-	gbHash := gb.Header.Hash()
-	ledger, _ := ledgermgmt.CreateLedger(gb)
-	defer ledger.Close()
-
 	// here we test validation of a block with 4096 txes,
 	// which is larger than both the number of workers in
 	// the pool and the buffer in the channels
-	testValidationWithNTXes(t, ledger, gbHash, 4096)
+	testValidationWithNTXes(t, 4096)
 }
 
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest-2.0")
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-
-	gb, _ := test.MakeGenesisBlock("TestLedger-2.0")
-	ledger, _ := ledgermgmt.CreateLedger(gb)
-
-	defer ledger.Close()
-
+	mockLedger := &mocks.LedgerResources{}
+	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Water, water, everywhere, nor any drop to drink"))
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
-		dispatcher:       &mockDispatcher{},
+		ChannelResources: &mocktxvalidator.Support{ACVal: &config.MockApplicationCapabilities{}},
+		Dispatcher:       &mockDispatcher{},
+		LedgerResources:  mockLedger,
 	}
 
 	mockSigner, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
@@ -273,11 +228,6 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	utils.InitBlockMetadata(block)
 	txsFilter := util.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
-
-	// Commit block to the ledger
-	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{
-		Block: block,
-	})
 
 	// Validation should invalidate transaction,
 	// because it's already committed
