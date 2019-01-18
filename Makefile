@@ -190,7 +190,7 @@ integration-test: gotool.ginkgo ccenv baseos docker-thirdparty
 	./scripts/run-integration-tests.sh
 
 unit-test: unit-test-clean peer-docker docker-thirdparty ccenv baseos
-	unit-test/run.sh
+	./scripts/run-unit-tests.sh
 
 unit-tests: unit-test
 
@@ -409,4 +409,3 @@ release-clean: $(patsubst %,%-release-clean, $(RELEASE_PLATFORMS))
 
 .PHONY: unit-test-clean
 unit-test-clean:
-	cd unit-test && docker-compose down
