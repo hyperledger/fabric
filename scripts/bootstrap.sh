@@ -176,11 +176,11 @@ BINARIES=true
 
 # Parse commandline args pull out
 # version and/or ca-version strings first
-if [ ! -z "$1" -a ${1:0:1} != "-" ]; then
+if [ ! -z "$1" -a "${1:0:1}" != "-" ]; then
   VERSION=$1;shift
-  if [ ! -z "$1"  -a ${1:0:1} != "-" ]; then
+  if [ ! -z "$1"  -a "${1:0:1}" != "-" ]; then
     CA_VERSION=$1;shift
-    if [ ! -z "$1"  -a ${1:0:1} != "-" ]; then
+    if [ ! -z "$1"  -a "${1:0:1}" != "-" ]; then
       THIRDPARTY_IMAGE_VERSION=$1;shift
     fi
   fi
