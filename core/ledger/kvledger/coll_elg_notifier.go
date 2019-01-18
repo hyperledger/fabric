@@ -38,7 +38,7 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 	qe := trigger.CommittedStateQueryExecutor
 	postCommitQE := trigger.PostCommitQueryExecutor
 
-	stateUpdates := convertToKVWrites(trigger.StateUpdates)
+	stateUpdates := extractPublicUpdates(trigger.StateUpdates)
 	ccLifecycleInfo, err := n.deployedChaincodeInfoProvider.UpdatedChaincodes(stateUpdates)
 	if err != nil {
 		return err
@@ -126,10 +126,10 @@ func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommit
 	return n.membershipInfoProvider.AmMemberOf(ledgerID, postCommitPolicy)
 }
 
-func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
+func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
 	m := map[string][]*kvrwset.KVWrite{}
 	for ns, updates := range stateUpdates {
-		m[ns] = updates.([]*kvrwset.KVWrite)
+		m[ns] = updates.PublicUpdates
 	}
 	return m
 }

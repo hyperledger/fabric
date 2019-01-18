@@ -105,7 +105,7 @@ func (l *mockStateListener) InterestedInNamespaces() []string {
 func (l *mockStateListener) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	channelName, stateUpdates := trigger.LedgerID, trigger.StateUpdates
 	l.channelName = channelName
-	l.kvWrites = stateUpdates[l.namespace].([]*kvrwset.KVWrite)
+	l.kvWrites = stateUpdates[l.namespace].PublicUpdates
 	return nil
 }
 

@@ -40,6 +40,7 @@ var once sync.Once
 // Initializer encapsulates all the external dependencies for the ledger module
 type Initializer struct {
 	CustomTxProcessors            customtx.Processors
+	StateListeners                []ledger.StateListener
 	PlatformRegistry              *platforms.Registry
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 	MembershipInfoProvider        ledger.MembershipInfoProvider
@@ -65,7 +66,7 @@ func initialize(initializer *Initializer) {
 		initializer.PlatformRegistry,
 		initializer.DeployedChaincodeInfoProvider,
 	})
-	finalStateListeners := addListenerForCCEventsHandler(initializer.DeployedChaincodeInfoProvider, []ledger.StateListener{})
+	finalStateListeners := addListenerForCCEventsHandler(initializer.DeployedChaincodeInfoProvider, initializer.StateListeners)
 	provider, err := kvledger.NewProvider()
 	if err != nil {
 		panic(errors.WithMessage(err, "Error in instantiating ledger provider"))

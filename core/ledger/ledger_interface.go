@@ -367,8 +367,14 @@ type StateUpdateTrigger struct {
 	PostCommitQueryExecutor     SimpleQueryExecutor
 }
 
-// StateUpdates is the generic type to represent the state updates
-type StateUpdates map[string]interface{}
+// StateUpdates encapsulates the state updates
+type StateUpdates map[string]*KVStateUpdates
+
+// KVStateUpdates captures the state updates for a namespace for KV datamodel
+type KVStateUpdates struct {
+	PublicUpdates   []*kvrwset.KVWrite
+	CollHashUpdates map[string][]*kvrwset.KVWriteHash
+}
 
 // ConfigHistoryRetriever allow retrieving history of collection configs
 type ConfigHistoryRetriever interface {
