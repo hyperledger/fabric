@@ -1,17 +1,7 @@
 /*
- Copyright Digital Asset Holdings, LLC 2016 All Rights Reserved.
+Copyright Digital Asset Holdings, LLC. All Rights Reserved.
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
@@ -50,11 +40,13 @@ func signExistingPackage(env *pcommon.Envelope, infile, outfile string) error {
 
 // TestSignExistingPackage signs an existing package
 func TestSignExistingPackage(t *testing.T) {
+	resetFlags()
+	defer resetFlags()
 	pdir := newTempDir()
 	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
-	err := createSignedCDSPackage([]string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", "-S", ccpackfile}, true)
+	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", "-S", ccpackfile}, true)
 	if err != nil {
 		t.Fatalf("error creating signed :%v", err)
 	}
@@ -103,12 +95,14 @@ func TestSignExistingPackage(t *testing.T) {
 
 // TestFailSignUnsignedPackage tries to signs a package that was not originally signed
 func TestFailSignUnsignedPackage(t *testing.T) {
+	resetFlags()
+	defer resetFlags()
 	pdir := newTempDir()
 	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
-	//don't sign it ... no "-S"
-	err := createSignedCDSPackage([]string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", ccpackfile}, true)
+	// don't sign it ... no "-S"
+	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", ccpackfile}, true)
 	if err != nil {
 		t.Fatalf("error creating signed :%v", err)
 	}
