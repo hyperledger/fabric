@@ -985,6 +985,7 @@
     "github.com/onsi/gomega/gbytes",
     "github.com/onsi/gomega/gexec",
     "github.com/onsi/gomega/ghttp",
+    "github.com/onsi/gomega/types",
     "github.com/op/go-logging",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
