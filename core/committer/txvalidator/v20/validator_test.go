@@ -742,44 +742,6 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
 }
 
-func TestInvokeOKSCC(t *testing.T) {
-	v, mockQE, _ := setupValidator()
-	mockQE.On("GetStateMetadata", "lscc", "cc").Return(nil, nil)
-	mockQE.On("GetStateMultipleKeys", "lscc", []string{"cc"}).Return(nil, nil)
-	mockQE.On("GetStateMultipleKeys", "lscc", []string{"cc~collection"}).Return(nil, nil)
-
-	cds := utils.MarshalOrPanic(&peer.ChaincodeDeploymentSpec{
-		ChaincodeSpec: &peer.ChaincodeSpec{
-			Type:        peer.ChaincodeSpec_GOLANG,
-			ChaincodeId: &peer.ChaincodeID{Name: "cc", Version: "ver"},
-			Input:       &peer.ChaincodeInput{},
-		},
-	})
-	cis := &peer.ChaincodeInvocationSpec{
-		ChaincodeSpec: &peer.ChaincodeSpec{
-			ChaincodeId: &peer.ChaincodeID{Name: "lscc", Version: ccVersion},
-			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(util.GetTestChainID()), cds}},
-			Type:        peer.ChaincodeSpec_GOLANG}}
-
-	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, signerSerialized)
-	assert.NoError(t, err)
-	rwsetBuilder := rwsetutil.NewRWSetBuilder()
-	rwsetBuilder.AddToWriteSet("lscc", "cc", utils.MarshalOrPanic(&ccp.ChaincodeData{Name: "cc", Version: "ver", InstantiationPolicy: cauthdsl.MarshaledAcceptAllPolicy}))
-	rwset, err := rwsetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
-	rwsetBytes, err := rwset.GetPubSimulationBytes()
-	assert.NoError(t, err)
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, nil, signer)
-	assert.NoError(t, err)
-	tx, err := utils.CreateSignedTx(prop, signer, presp)
-	assert.NoError(t, err)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
-
-	err = v.Validate(b)
-	assert.NoError(t, err)
-	assertValid(b, t)
-}
-
 func TestInvokeNOKWritesToLSCC(t *testing.T) {
 	ccID := "mycc"
 

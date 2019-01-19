@@ -187,84 +187,36 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	// validation will behave differently depending on the type of
 	// chaincode (system vs. application)
 
-	if !v.sccprovider.IsSysCC(ccID) {
-		// if we're here, we know this is an invocation of an application chaincode;
-		// first of all, we make sure that:
-		// 1) we don't write to LSCC - an application chaincode is free to invoke LSCC
-		//    for instance to get information about itself or another chaincode; however
-		//    these legitimate invocations only ready from LSCC's namespace; currently
-		//    only two functions of LSCC write to its namespace: deploy and upgrade and
-		//    neither should be used by an application chaincode
-		if writesToLSCC {
-			return errors.Errorf("chaincode %s attempted to write to the namespace of LSCC", ccID),
-				peer.TxValidationCode_ILLEGAL_WRITESET
-		}
-		// 2) we don't write to the namespace of a chaincode that we cannot invoke - if
-		//    the chaincode cannot be invoked in the first place, there's no legitimate
-		//    way in which a transaction has a write set that writes to it; additionally
-		//    we don't have any means of verifying whether the transaction had the rights
-		//    to perform that write operation because in v1, system chaincodes do not have
-		//    any endorsement policies to speak of. So if the chaincode can't be invoked
-		//    it can't be written to by an invocation of an application chaincode
-		if writesToNonInvokableSCC {
-			return errors.Errorf("chaincode %s attempted to write to the namespace of a system chaincode that cannot be invoked", ccID),
-				peer.TxValidationCode_ILLEGAL_WRITESET
-		}
+	// 1) we can't write to LSCC - with lifecycle v2.0, LSCC becomes a read-only namespace
+	if writesToLSCC {
+		// TODO: remove with FAB-13773
+		return errors.Errorf("chaincode %s attempted to write to the namespace of LSCC", ccID),
+			peer.TxValidationCode_ILLEGAL_WRITESET
+	}
 
-		// validate *EACH* read write set according to its chaincode's endorsement policy
-		for _, ns := range wrNamespace {
-			// Get latest chaincode version, validation plugin name and policy
-			validationPlugin, policy, err := v.GetInfoForValidate(chdr, ns)
-			if err != nil {
-				logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
-				return err, peer.TxValidationCode_INVALID_OTHER_REASON
-			}
+	// 2) we can't write to the namespace of a chaincode that we cannot invoke
+	if writesToNonInvokableSCC {
+		return errors.Errorf("chaincode %s attempted to write to the namespace of a system chaincode that cannot be invoked", ccID),
+			peer.TxValidationCode_ILLEGAL_WRITESET
+	}
 
-			// invoke the plugin
-			ctx := &Context{
-				Seq:        seq,
-				Envelope:   envBytes,
-				Block:      block,
-				TxID:       chdr.TxId,
-				Channel:    chdr.ChannelId,
-				Namespace:  ns,
-				Policy:     policy,
-				PluginName: validationPlugin.ChaincodeName,
-			}
-			if err = v.invokeValidationPlugin(ctx); err != nil {
-				switch err.(type) {
-				case *commonerrors.VSCCEndorsementPolicyError:
-					return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
-				default:
-					return err, peer.TxValidationCode_INVALID_OTHER_REASON
-				}
-			}
-		}
-	} else {
-		// make sure that we can invoke this system chaincode - if the chaincode
-		// cannot be invoked through a proposal to this peer, we have to drop the
-		// transaction; if we didn't, we wouldn't know how to decide whether it's
-		// valid or not because in v1, system chaincodes have no endorsement policy
-		if v.sccprovider.IsSysCCAndNotInvokableExternal(ccID) {
-			return errors.Errorf("committing an invocation of cc %s is illegal", ccID),
-				peer.TxValidationCode_ILLEGAL_WRITESET
-		}
-
-		// Get latest chaincode version, validation plugin name and policy
-		validationPlugin, policy, err := v.GetInfoForValidate(chdr, ccID)
+	// validate *EACH* read write set according to its chaincode's endorsement policy
+	for _, ns := range wrNamespace {
+		// Get latest chaincode validation plugin name and policy
+		validationPlugin, policy, err := v.GetInfoForValidate(chdr, ns)
 		if err != nil {
 			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
 			return err, peer.TxValidationCode_INVALID_OTHER_REASON
 		}
 
-		// validate the transaction as an invocation of the appropriate plugin
+		// invoke the plugin
 		ctx := &Context{
 			Seq:        seq,
 			Envelope:   envBytes,
 			Block:      block,
 			TxID:       chdr.TxId,
 			Channel:    chdr.ChannelId,
-			Namespace:  ccID,
+			Namespace:  ns,
 			Policy:     policy,
 			PluginName: validationPlugin.ChaincodeName,
 		}
@@ -277,6 +229,7 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 			}
 		}
 	}
+
 	logger.Debugf("[%s] Dispatch completes env bytes %p", chainID, envBytes)
 	return nil, peer.TxValidationCode_VALID
 }
@@ -323,7 +276,7 @@ func (v *dispatcherImpl) getCDataForCC(ccid string) (string, []byte, error) {
 	return plugin, args, nil
 }
 
-// GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, validation plugin and policy from lscc
+// GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, validation plugin and policy
 func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, []byte, error) {
 	validationPlugin := &sysccprovider.ChaincodeInstance{
 		ChainID:          chdr.ChannelId,
