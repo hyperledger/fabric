@@ -37,7 +37,8 @@ var validCollectionNameRegex = regexp.MustCompile(ccmetadata.AllowedCharsCollect
 // Typically this will only be invoked once per peer
 func New(c Capabilities, s StateFetcher, d IdentityDeserializer, pe PolicyEvaluator) *Validator {
 	vpmgr := &KeyLevelValidationParameterManagerImpl{StateFetcher: s}
-	sbv := NewKeyLevelValidator(pe, vpmgr)
+	eval := NewV13Evaluator(pe, vpmgr)
+	sbv := NewKeyLevelValidator(eval, vpmgr)
 
 	return &Validator{
 		capabilities:        c,

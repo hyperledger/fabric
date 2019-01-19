@@ -14,6 +14,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api"
 	vmocks "github.com/hyperledger/fabric/core/handlers/validation/builtin/mocks"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12/mocks"
+	v20mocks "github.com/hyperledger/fabric/core/handlers/validation/builtin/v20/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -28,13 +29,15 @@ func TestInit(t *testing.T) {
 	capabilities := &mocks.Capabilities{}
 	stateFetcher := &mocks.StateFetcher{}
 	polEval := &mocks.PolicyEvaluator{}
+	colRes := &v20mocks.CollectionResources{}
 
-	assert.Equal(t, "stateFetcher not passed in init", defValidation.Init(identityDeserializer, capabilities, polEval).Error())
-	assert.Equal(t, "identityDeserializer not passed in init", defValidation.Init(capabilities, stateFetcher, polEval).Error())
-	assert.Equal(t, "capabilities not passed in init", defValidation.Init(identityDeserializer, stateFetcher, polEval).Error())
-	assert.Equal(t, "policy fetcher not passed in init", defValidation.Init(identityDeserializer, capabilities, stateFetcher).Error())
+	assert.Equal(t, "stateFetcher not passed in init", defValidation.Init(identityDeserializer, capabilities, polEval, colRes).Error())
+	assert.Equal(t, "identityDeserializer not passed in init", defValidation.Init(capabilities, stateFetcher, polEval, colRes).Error())
+	assert.Equal(t, "capabilities not passed in init", defValidation.Init(identityDeserializer, stateFetcher, polEval, colRes).Error())
+	assert.Equal(t, "policy fetcher not passed in init", defValidation.Init(identityDeserializer, capabilities, stateFetcher, colRes).Error())
+	assert.Equal(t, "collection resources not passed in init", defValidation.Init(identityDeserializer, capabilities, stateFetcher, polEval).Error())
 
-	fullDeps := []Dependency{identityDeserializer, capabilities, stateFetcher, polEval}
+	fullDeps := []Dependency{identityDeserializer, capabilities, stateFetcher, polEval, colRes}
 	assert.NoError(t, defValidation.Init(fullDeps...))
 }
 

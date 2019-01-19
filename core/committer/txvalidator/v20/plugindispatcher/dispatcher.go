@@ -16,6 +16,7 @@ import (
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	s "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
@@ -51,6 +52,28 @@ type LifecycleResources interface {
 	// if the unexpected error is not nil and mark the transaction as invalid if the validation
 	// error is not nil.
 	ValidationInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (plugin string, args []byte, unexpectedErr error, validationErr error)
+}
+
+// CollectionResources provides access to collection artefacts
+type CollectionResources interface {
+	// CollectionValidationInfo returns collection-level endorsement policy for the supplied chaincode.
+	// The function returns two types of errors, unexpected errors and validation errors. The
+	// reason for this is that this function is to be called from the validation code, which
+	// needs to tell apart the two types of error to halt processing on the channel if the
+	// unexpected error is not nil and mark the transaction as invalid if the validation error
+	// is not nil.
+	CollectionValidationInfo(chaincodeName, collectionName string, state s.State) (args []byte, unexpectedErr error, validationErr error)
+}
+
+// CollectionAndLifecycleResources provides access to resources
+// about chaincodes and their lifecycle and collections and their
+// policies
+type CollectionAndLifecycleResources interface {
+	LifecycleResources
+
+	// CollectionValidationInfo is exactly like the method defined in CollectionResources but
+	// also takes the channel ID.  This is necessary to determine if the org collection names are valid.
+	CollectionValidationInfo(channelID, chaincodeName, collectionName string, state s.State) (args []byte, unexpectedErr error, validationErr error)
 }
 
 //go:generate mockery -dir . -name LifecycleResources -case underscore -output mocks/

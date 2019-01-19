@@ -92,7 +92,7 @@ func TestKeylevelValidation(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsb := rwsetBytes(t, "cc")
 	prp := []byte("barf")
@@ -133,7 +133,7 @@ func TestKeylevelValidationPvtData(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToPvtAndHashedWriteSet("cc", "coll", "key", []byte("value"))
@@ -171,7 +171,7 @@ func TestKeylevelValidationMetaUpdate(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToMetadataWriteSet("cc", "key", map[string][]byte{})
@@ -209,7 +209,7 @@ func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToHashedMetadataWriteSet("cc", "coll", "key", map[string][]byte{})
@@ -246,7 +246,7 @@ func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
 	mr := &mockState{GetStateMetadataErr: fmt.Errorf("metadata retrieval failure")}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
-	validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 	rwsb := rwsetBytes(t, "cc")
 	prp := []byte("barf")
@@ -277,7 +277,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 		mr := &mockState{GetStateMetadataErr: &ledger.CollConfigNotDefinedError{Ns: "mycc"}}
 		ms := &mockStateFetcher{FetchStateRv: mr}
 		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
-		validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 		assert.NoError(t, err)
@@ -287,7 +287,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 		mr := &mockState{GetStateMetadataErr: &ledger.InvalidCollNameError{Ns: "mycc", Coll: "mycoll"}}
 		ms := &mockStateFetcher{FetchStateRv: mr}
 		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
-		validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 		assert.NoError(t, err)
@@ -297,7 +297,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 		mr := &mockState{GetStateMetadataErr: fmt.Errorf("some I/O error")}
 		ms := &mockStateFetcher{FetchStateRv: mr}
 		pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
-		validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 		assert.Error(t, err)
@@ -316,7 +316,7 @@ func TestCCEPValidation(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToWriteSet("cc", "key", []byte("value"))
@@ -356,7 +356,7 @@ func TestCCEPValidationReads(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToReadSet("cc", "readkey", &version.Height{})
@@ -396,7 +396,7 @@ func TestOnlySBEPChecked(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsb := rwsetBytes(t, "cc")
 	prp := []byte("barf")
@@ -438,7 +438,7 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
 	pe := &mockPolicyEvaluator{}
-	validator := NewKeyLevelValidator(pe, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", &version.Height{})
@@ -477,7 +477,7 @@ func TestKeylevelValidationFailure(t *testing.T) {
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{StateFetcher: ms}
-	validator := NewKeyLevelValidator(&mockPolicyEvaluator{}, pm)
+	validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 	rwsb := rwsetBytes(t, "cc")
 	prp := []byte("barf")

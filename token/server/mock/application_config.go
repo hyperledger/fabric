@@ -2,9 +2,9 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
+	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
 )
 
 type ApplicationConfig struct {

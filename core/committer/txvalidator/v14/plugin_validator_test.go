@@ -43,7 +43,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	// Scenario II: The plugin initialization fails
 	factory := &mocks.PluginFactory{}
 	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("foo")).Once()
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("foo")).Once()
 	factory.On("New").Return(plugin)
 	pm["vscc"] = factory
 	err = v.ValidateWithPlugin(ctx)
@@ -51,7 +51,7 @@ func TestValidateWithPlugin(t *testing.T) {
 
 	// Scenario III: The plugin initialization succeeds but an execution error occurs.
 	// The plugin should pass the error as is.
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	validationErr := &validation.ExecutionFailureError{
 		Reason: "bar",
 	}
@@ -60,7 +60,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	assert.Equal(t, validationErr, err)
 
 	// Scenario IV: The plugin initialization succeeds and the validation passes
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	err = v.ValidateWithPlugin(ctx)
 	assert.NoError(t, err)

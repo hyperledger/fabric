@@ -81,6 +81,7 @@ type Dispatcher interface {
 //go:generate mockery -dir . -name Dispatcher -case underscore -output mocks/
 //go:generate mockery -dir ../../../ledger/ -name QueryExecutor -case underscore -output mocks/
 //go:generate mockery -dir ../../../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
+//go:generate mockery -dir plugindispatcher/ -name CollectionResources -case underscore -output mocks/
 
 // implementation of Validator interface, keeps
 // reference to the ledger to enable tx simulation
@@ -115,12 +116,13 @@ func NewTxValidator(
 	cr ChannelResources,
 	ler LedgerResources,
 	lcr plugindispatcher.LifecycleResources,
+	cor plugindispatcher.CollectionResources,
 	sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper,
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
 ) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr}, channelPolicyManagerGetter)
+	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr}, channelPolicyManagerGetter, cor)
 	return &TxValidator{
 		ChainID:          chainID,
 		Semaphore:        sem,

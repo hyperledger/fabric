@@ -32,6 +32,7 @@ import (
 	vir "github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -66,6 +67,15 @@ var ConfigTxProcessors = customtx.Processors{
 
 // singleton instance to manage credentials for the peer across channel config changes
 var credSupport = comm.GetCredentialSupport()
+
+type CollectionInfoShim struct {
+	plugindispatcher.CollectionAndLifecycleResources
+	ChannelID string
+}
+
+func (cis *CollectionInfoShim) CollectionValidationInfo(chaincodeName, collectionName string, validationState validation.State) ([]byte, error, error) {
+	return cis.CollectionAndLifecycleResources.CollectionValidationInfo(cis.ChannelID, chaincodeName, collectionName, validationState)
+}
 
 type gossipSupport struct {
 	channelconfig.Application
@@ -209,7 +219,8 @@ var validationWorkersSemaphore semaphore.Semaphore
 func Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider,
 	pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider,
-	legacyLifecycleValidation, newLifecycleValidation plugindispatcher.LifecycleResources) {
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources) {
 	nWorkers := viper.GetInt("peer.validatorPoolSize")
 	if nWorkers <= 0 {
 		nWorkers = runtime.NumCPU()
@@ -298,7 +309,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 	sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
-	newLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 ) error {
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
@@ -392,7 +403,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 		New:    newLifecycleValidation,
 		Legacy: legacyLifecycleValidation,
 	}
-	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, vInfoShim, sccp, pm, NewChannelPolicyManagerGetter())
+	validator := txvalidator.NewTxValidator(cid, validationWorkersSemaphore, cs, vInfoShim, &CollectionInfoShim{
+		CollectionAndLifecycleResources: newLifecycleValidation,
+		ChannelID:                       bundle.ConfigtxValidator().ChainID(),
+	}, sccp, pm, NewChannelPolicyManagerGetter())
+
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := protoutil.GetChainIDFromBlock(block)
 		if err != nil {
@@ -437,7 +452,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block,
 }
 
 // CreateChainFromBlock creates a new chain from config block
-func CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, legacyLifecycleValidation, newLifecycleValidation plugindispatcher.LifecycleResources) error {
+func CreateChainFromBlock(
+	cb *common.Block,
+	sccp sysccprovider.SystemChaincodeProvider,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
+) error {
 	cid, err := protoutil.GetChainIDFromBlock(cb)
 	if err != nil {
 		return err

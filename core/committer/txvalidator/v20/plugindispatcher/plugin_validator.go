@@ -63,6 +63,7 @@ type PluginValidator struct {
 	msp.IdentityDeserializer
 	capabilities Capabilities
 	policies.ChannelPolicyManagerGetter
+	CollectionResources
 }
 
 //go:generate mockery -dir ../../../../handlers/validation/api/capabilities/ -name Capabilities -case underscore -output mocks/
@@ -70,7 +71,7 @@ type PluginValidator struct {
 //go:generate mockery -dir ../../../../../common/policies/ -name ChannelPolicyManagerGetter -case underscore -output mocks/
 
 // NewPluginValidator creates a new PluginValidator
-func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities, cpmg policies.ChannelPolicyManagerGetter) *PluginValidator {
+func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp.IdentityDeserializer, capabilities Capabilities, cpmg policies.ChannelPolicyManagerGetter, cor CollectionResources) *PluginValidator {
 	return &PluginValidator{
 		capabilities:               capabilities,
 		pluginChannelMapping:       make(map[vp.Name]*pluginsByChannel),
@@ -78,6 +79,7 @@ func NewPluginValidator(pm vp.Mapper, qec QueryExecutorCreator, deserializer msp
 		QueryExecutorCreator:       qec,
 		IdentityDeserializer:       deserializer,
 		ChannelPolicyManagerGetter: cpmg,
+		CollectionResources:        cor,
 	}
 }
 
@@ -162,7 +164,7 @@ func (pbc *pluginsByChannel) initPlugin(plugin validation.Plugin, channel string
 
 	pe := &PolicyEvaluatorWrapper{IdentityDeserializer: pbc.pv.IdentityDeserializer, PolicyEvaluator: pp}
 	sf := &StateFetcherImpl{QueryExecutorCreator: pbc.pv}
-	if err := plugin.Init(pe, sf, pbc.pv.capabilities); err != nil {
+	if err := plugin.Init(pe, sf, pbc.pv.capabilities, pbc.pv.CollectionResources); err != nil {
 		return nil, errors.Wrap(err, "failed initializing plugin")
 	}
 	return plugin, nil

@@ -413,7 +413,7 @@ func testInvokeOK(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) {
 
 func TestInvokeNoRWSet(t *testing.T) {
 	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	t.Run("Pre-1.2Capability", func(t *testing.T) {
 		l, v := setupLedgerAndValidatorExplicit(t, preV12Capabilities(), plugin)
@@ -1864,7 +1864,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	factory := &mocks.PluginFactory{}
 	plugin := &mocks.Plugin{}
 	factory.On("New").Return(plugin)
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("invalid tx"))
 	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
 	validator := txvalidatorv14.NewTxValidator(
@@ -1924,7 +1924,7 @@ func createMockLedger(t *testing.T, ccID string) *mockLedger {
 
 func TestValidationPluginExecutionError(t *testing.T) {
 	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	l, v := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
 	defer ledgermgmt.CleanupTestEnv()

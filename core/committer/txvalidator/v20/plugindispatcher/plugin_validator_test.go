@@ -35,7 +35,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	mcpmg := &mocks.ChannelPolicyManagerGetter{}
 	mcpmg.On("Manager", "").Return(nil, true)
 
-	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg)
+	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg, nil)
 	ctx := &plugindispatcher.Context{
 		Namespace:  "mycc",
 		PluginName: "vscc",
@@ -48,7 +48,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	// Scenario II: The plugin initialization fails
 	factory := &mocks.PluginFactory{}
 	plugin := &mocks.Plugin{}
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("foo")).Once()
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("foo")).Once()
 	factory.On("New").Return(plugin)
 	pm["vscc"] = factory
 	err = v.ValidateWithPlugin(ctx)
@@ -56,7 +56,7 @@ func TestValidateWithPlugin(t *testing.T) {
 
 	// Scenario III: The plugin initialization succeeds but an execution error occurs.
 	// The plugin should pass the error as is.
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	validationErr := &validation.ExecutionFailureError{
 		Reason: "bar",
 	}
@@ -65,7 +65,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	assert.Equal(t, validationErr, err)
 
 	// Scenario IV: The plugin initialization succeeds and the validation passes
-	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	err = v.ValidateWithPlugin(ctx)
 	assert.NoError(t, err)
@@ -107,7 +107,7 @@ func TestSamplePlugin(t *testing.T) {
 
 	txnData, _ := proto.Marshal(&transaction)
 
-	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg)
+	v := plugindispatcher.NewPluginValidator(pm, qec, deserializer, capabilites, mcpmg, nil)
 	acceptAllPolicyBytes, _ := proto.Marshal(&peer.ApplicationPolicy{Type: &peer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.AcceptAllPolicy}})
 	ctx := &plugindispatcher.Context{
 		Namespace:  "mycc",

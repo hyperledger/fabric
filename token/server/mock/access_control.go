@@ -2,18 +2,18 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/protos/token"
-	"github.com/hyperledger/fabric/token/server"
+	token "github.com/hyperledger/fabric/protos/token"
+	server "github.com/hyperledger/fabric/token/server"
 )
 
 type PolicyChecker struct {
-	CheckStub        func(sc *token.SignedCommand, c *token.Command) error
+	CheckStub        func(*token.SignedCommand, *token.Command) error
 	checkMutex       sync.RWMutex
 	checkArgsForCall []struct {
-		sc *token.SignedCommand
-		c  *token.Command
+		arg1 *token.SignedCommand
+		arg2 *token.Command
 	}
 	checkReturns struct {
 		result1 error
@@ -25,22 +25,23 @@ type PolicyChecker struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PolicyChecker) Check(sc *token.SignedCommand, c *token.Command) error {
+func (fake *PolicyChecker) Check(arg1 *token.SignedCommand, arg2 *token.Command) error {
 	fake.checkMutex.Lock()
 	ret, specificReturn := fake.checkReturnsOnCall[len(fake.checkArgsForCall)]
 	fake.checkArgsForCall = append(fake.checkArgsForCall, struct {
-		sc *token.SignedCommand
-		c  *token.Command
-	}{sc, c})
-	fake.recordInvocation("Check", []interface{}{sc, c})
+		arg1 *token.SignedCommand
+		arg2 *token.Command
+	}{arg1, arg2})
+	fake.recordInvocation("Check", []interface{}{arg1, arg2})
 	fake.checkMutex.Unlock()
 	if fake.CheckStub != nil {
-		return fake.CheckStub(sc, c)
+		return fake.CheckStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.checkReturns.result1
+	fakeReturns := fake.checkReturns
+	return fakeReturns.result1
 }
 
 func (fake *PolicyChecker) CheckCallCount() int {
@@ -49,13 +50,22 @@ func (fake *PolicyChecker) CheckCallCount() int {
 	return len(fake.checkArgsForCall)
 }
 
+func (fake *PolicyChecker) CheckCalls(stub func(*token.SignedCommand, *token.Command) error) {
+	fake.checkMutex.Lock()
+	defer fake.checkMutex.Unlock()
+	fake.CheckStub = stub
+}
+
 func (fake *PolicyChecker) CheckArgsForCall(i int) (*token.SignedCommand, *token.Command) {
 	fake.checkMutex.RLock()
 	defer fake.checkMutex.RUnlock()
-	return fake.checkArgsForCall[i].sc, fake.checkArgsForCall[i].c
+	argsForCall := fake.checkArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *PolicyChecker) CheckReturns(result1 error) {
+	fake.checkMutex.Lock()
+	defer fake.checkMutex.Unlock()
 	fake.CheckStub = nil
 	fake.checkReturns = struct {
 		result1 error
@@ -63,6 +73,8 @@ func (fake *PolicyChecker) CheckReturns(result1 error) {
 }
 
 func (fake *PolicyChecker) CheckReturnsOnCall(i int, result1 error) {
+	fake.checkMutex.Lock()
+	defer fake.checkMutex.Unlock()
 	fake.CheckStub = nil
 	if fake.checkReturnsOnCall == nil {
 		fake.checkReturnsOnCall = make(map[int]struct {

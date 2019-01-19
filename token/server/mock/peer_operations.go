@@ -2,29 +2,29 @@
 package mock
 
 import (
-	"sync"
+	sync "sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
-	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
+	metrics "github.com/hyperledger/fabric/common/metrics"
+	policies "github.com/hyperledger/fabric/common/policies"
+	platforms "github.com/hyperledger/fabric/core/chaincode/platforms"
+	plugin "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	plugindispatcher "github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
+	sysccprovider "github.com/hyperledger/fabric/core/common/sysccprovider"
+	ledger "github.com/hyperledger/fabric/core/ledger"
+	common "github.com/hyperledger/fabric/protos/common"
+	peer "github.com/hyperledger/fabric/protos/peer"
 )
 
 type PeerOperations struct {
-	CreateChainFromBlockStub        func(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr, nr plugindispatcher.LifecycleResources) error
+	CreateChainFromBlockStub        func(*common.Block, sysccprovider.SystemChaincodeProvider, ledger.DeployedChaincodeInfoProvider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources) error
 	createChainFromBlockMutex       sync.RWMutex
 	createChainFromBlockArgsForCall []struct {
-		cb                     *common.Block
-		sccp                   sysccprovider.SystemChaincodeProvider
-		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-		lr                     plugindispatcher.LifecycleResources
-		nr                     plugindispatcher.LifecycleResources
+		arg1 *common.Block
+		arg2 sysccprovider.SystemChaincodeProvider
+		arg3 ledger.DeployedChaincodeInfoProvider
+		arg4 plugindispatcher.LifecycleResources
+		arg5 plugindispatcher.CollectionAndLifecycleResources
 	}
 	createChainFromBlockReturns struct {
 		result1 error
@@ -32,10 +32,10 @@ type PeerOperations struct {
 	createChainFromBlockReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetChannelConfigStub        func(cid string) channelconfig.Resources
+	GetChannelConfigStub        func(string) channelconfig.Resources
 	getChannelConfigMutex       sync.RWMutex
 	getChannelConfigArgsForCall []struct {
-		cid string
+		arg1 string
 	}
 	getChannelConfigReturns struct {
 		result1 channelconfig.Resources
@@ -43,30 +43,20 @@ type PeerOperations struct {
 	getChannelConfigReturnsOnCall map[int]struct {
 		result1 channelconfig.Resources
 	}
-	GetChannelsInfoStub        func() []*pb.ChannelInfo
+	GetChannelsInfoStub        func() []*peer.ChannelInfo
 	getChannelsInfoMutex       sync.RWMutex
-	getChannelsInfoArgsForCall []struct{}
-	getChannelsInfoReturns     struct {
-		result1 []*pb.ChannelInfo
+	getChannelsInfoArgsForCall []struct {
+	}
+	getChannelsInfoReturns struct {
+		result1 []*peer.ChannelInfo
 	}
 	getChannelsInfoReturnsOnCall map[int]struct {
-		result1 []*pb.ChannelInfo
+		result1 []*peer.ChannelInfo
 	}
-	GetStableChannelConfigStub        func(cid string) channelconfig.Resources
-	getStableChannelConfigMutex       sync.RWMutex
-	getStableChannelConfigArgsForCall []struct {
-		cid string
-	}
-	getStableChannelConfigReturns struct {
-		result1 channelconfig.Resources
-	}
-	getStableChannelConfigReturnsOnCall map[int]struct {
-		result1 channelconfig.Resources
-	}
-	GetCurrConfigBlockStub        func(cid string) *common.Block
+	GetCurrConfigBlockStub        func(string) *common.Block
 	getCurrConfigBlockMutex       sync.RWMutex
 	getCurrConfigBlockArgsForCall []struct {
-		cid string
+		arg1 string
 	}
 	getCurrConfigBlockReturns struct {
 		result1 *common.Block
@@ -74,10 +64,10 @@ type PeerOperations struct {
 	getCurrConfigBlockReturnsOnCall map[int]struct {
 		result1 *common.Block
 	}
-	GetLedgerStub        func(cid string) ledger.PeerLedger
+	GetLedgerStub        func(string) ledger.PeerLedger
 	getLedgerMutex       sync.RWMutex
 	getLedgerArgsForCall []struct {
-		cid string
+		arg1 string
 	}
 	getLedgerReturns struct {
 		result1 ledger.PeerLedger
@@ -85,10 +75,10 @@ type PeerOperations struct {
 	getLedgerReturnsOnCall map[int]struct {
 		result1 ledger.PeerLedger
 	}
-	GetMSPIDsStub        func(cid string) []string
+	GetMSPIDsStub        func(string) []string
 	getMSPIDsMutex       sync.RWMutex
 	getMSPIDsArgsForCall []struct {
-		cid string
+		arg1 string
 	}
 	getMSPIDsReturns struct {
 		result1 []string
@@ -96,10 +86,10 @@ type PeerOperations struct {
 	getMSPIDsReturnsOnCall map[int]struct {
 		result1 []string
 	}
-	GetPolicyManagerStub        func(cid string) policies.Manager
+	GetPolicyManagerStub        func(string) policies.Manager
 	getPolicyManagerMutex       sync.RWMutex
 	getPolicyManagerArgsForCall []struct {
-		cid string
+		arg1 string
 	}
 	getPolicyManagerReturns struct {
 		result1 policies.Manager
@@ -107,47 +97,59 @@ type PeerOperations struct {
 	getPolicyManagerReturnsOnCall map[int]struct {
 		result1 policies.Manager
 	}
-	InitChainStub        func(cid string)
+	GetStableChannelConfigStub        func(string) channelconfig.Resources
+	getStableChannelConfigMutex       sync.RWMutex
+	getStableChannelConfigArgsForCall []struct {
+		arg1 string
+	}
+	getStableChannelConfigReturns struct {
+		result1 channelconfig.Resources
+	}
+	getStableChannelConfigReturnsOnCall map[int]struct {
+		result1 channelconfig.Resources
+	}
+	InitChainStub        func(string)
 	initChainMutex       sync.RWMutex
 	initChainArgsForCall []struct {
-		cid string
+		arg1 string
 	}
-	InitializeStub        func(init func(string), sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, lr, nr plugindispatcher.LifecycleResources)
+	InitializeStub        func(func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources)
 	initializeMutex       sync.RWMutex
 	initializeArgsForCall []struct {
-		init                   func(string)
-		sccp                   sysccprovider.SystemChaincodeProvider
-		pm                     plugin.Mapper
-		pr                     *platforms.Registry
-		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-		membershipProvider     ledger.MembershipInfoProvider
-		metricsProvider        metrics.Provider
-		lr                     plugindispatcher.LifecycleResources
-		nr                     plugindispatcher.LifecycleResources
+		arg1 func(string)
+		arg2 sysccprovider.SystemChaincodeProvider
+		arg3 plugin.Mapper
+		arg4 *platforms.Registry
+		arg5 ledger.DeployedChaincodeInfoProvider
+		arg6 ledger.MembershipInfoProvider
+		arg7 metrics.Provider
+		arg8 plugindispatcher.LifecycleResources
+		arg9 plugindispatcher.CollectionAndLifecycleResources
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PeerOperations) CreateChainFromBlock(cb *common.Block, sccp sysccprovider.SystemChaincodeProvider, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.LifecycleResources) error {
+func (fake *PeerOperations) CreateChainFromBlock(arg1 *common.Block, arg2 sysccprovider.SystemChaincodeProvider, arg3 ledger.DeployedChaincodeInfoProvider, arg4 plugindispatcher.LifecycleResources, arg5 plugindispatcher.CollectionAndLifecycleResources) error {
 	fake.createChainFromBlockMutex.Lock()
 	ret, specificReturn := fake.createChainFromBlockReturnsOnCall[len(fake.createChainFromBlockArgsForCall)]
 	fake.createChainFromBlockArgsForCall = append(fake.createChainFromBlockArgsForCall, struct {
-		cb                     *common.Block
-		sccp                   sysccprovider.SystemChaincodeProvider
-		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-		lr                     plugindispatcher.LifecycleResources
-		nr                     plugindispatcher.LifecycleResources
-	}{cb, sccp, deployedCCInfoProvider, lr, nr})
-	fake.recordInvocation("CreateChainFromBlock", []interface{}{cb, sccp, deployedCCInfoProvider, lr, nr})
+		arg1 *common.Block
+		arg2 sysccprovider.SystemChaincodeProvider
+		arg3 ledger.DeployedChaincodeInfoProvider
+		arg4 plugindispatcher.LifecycleResources
+		arg5 plugindispatcher.CollectionAndLifecycleResources
+	}{arg1, arg2, arg3, arg4, arg5})
+	fake.recordInvocation("CreateChainFromBlock", []interface{}{arg1, arg2, arg3, arg4, arg5})
 	fake.createChainFromBlockMutex.Unlock()
 	if fake.CreateChainFromBlockStub != nil {
-		return fake.CreateChainFromBlockStub(cb, sccp, deployedCCInfoProvider, lr, nr)
+		return fake.CreateChainFromBlockStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.createChainFromBlockReturns.result1
+	fakeReturns := fake.createChainFromBlockReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) CreateChainFromBlockCallCount() int {
@@ -156,13 +158,22 @@ func (fake *PeerOperations) CreateChainFromBlockCallCount() int {
 	return len(fake.createChainFromBlockArgsForCall)
 }
 
-func (fake *PeerOperations) CreateChainFromBlockArgsForCall(i int) (*common.Block, sysccprovider.SystemChaincodeProvider, ledger.DeployedChaincodeInfoProvider, plugindispatcher.LifecycleResources, plugindispatcher.LifecycleResources) {
+func (fake *PeerOperations) CreateChainFromBlockCalls(stub func(*common.Block, sysccprovider.SystemChaincodeProvider, ledger.DeployedChaincodeInfoProvider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources) error) {
+	fake.createChainFromBlockMutex.Lock()
+	defer fake.createChainFromBlockMutex.Unlock()
+	fake.CreateChainFromBlockStub = stub
+}
+
+func (fake *PeerOperations) CreateChainFromBlockArgsForCall(i int) (*common.Block, sysccprovider.SystemChaincodeProvider, ledger.DeployedChaincodeInfoProvider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources) {
 	fake.createChainFromBlockMutex.RLock()
 	defer fake.createChainFromBlockMutex.RUnlock()
-	return fake.createChainFromBlockArgsForCall[i].cb, fake.createChainFromBlockArgsForCall[i].sccp, fake.createChainFromBlockArgsForCall[i].deployedCCInfoProvider, fake.createChainFromBlockArgsForCall[i].lr, fake.createChainFromBlockArgsForCall[i].nr
+	argsForCall := fake.createChainFromBlockArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *PeerOperations) CreateChainFromBlockReturns(result1 error) {
+	fake.createChainFromBlockMutex.Lock()
+	defer fake.createChainFromBlockMutex.Unlock()
 	fake.CreateChainFromBlockStub = nil
 	fake.createChainFromBlockReturns = struct {
 		result1 error
@@ -170,6 +181,8 @@ func (fake *PeerOperations) CreateChainFromBlockReturns(result1 error) {
 }
 
 func (fake *PeerOperations) CreateChainFromBlockReturnsOnCall(i int, result1 error) {
+	fake.createChainFromBlockMutex.Lock()
+	defer fake.createChainFromBlockMutex.Unlock()
 	fake.CreateChainFromBlockStub = nil
 	if fake.createChainFromBlockReturnsOnCall == nil {
 		fake.createChainFromBlockReturnsOnCall = make(map[int]struct {
@@ -181,21 +194,22 @@ func (fake *PeerOperations) CreateChainFromBlockReturnsOnCall(i int, result1 err
 	}{result1}
 }
 
-func (fake *PeerOperations) GetChannelConfig(cid string) channelconfig.Resources {
+func (fake *PeerOperations) GetChannelConfig(arg1 string) channelconfig.Resources {
 	fake.getChannelConfigMutex.Lock()
 	ret, specificReturn := fake.getChannelConfigReturnsOnCall[len(fake.getChannelConfigArgsForCall)]
 	fake.getChannelConfigArgsForCall = append(fake.getChannelConfigArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("GetChannelConfig", []interface{}{cid})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetChannelConfig", []interface{}{arg1})
 	fake.getChannelConfigMutex.Unlock()
 	if fake.GetChannelConfigStub != nil {
-		return fake.GetChannelConfigStub(cid)
+		return fake.GetChannelConfigStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getChannelConfigReturns.result1
+	fakeReturns := fake.getChannelConfigReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) GetChannelConfigCallCount() int {
@@ -204,13 +218,22 @@ func (fake *PeerOperations) GetChannelConfigCallCount() int {
 	return len(fake.getChannelConfigArgsForCall)
 }
 
+func (fake *PeerOperations) GetChannelConfigCalls(stub func(string) channelconfig.Resources) {
+	fake.getChannelConfigMutex.Lock()
+	defer fake.getChannelConfigMutex.Unlock()
+	fake.GetChannelConfigStub = stub
+}
+
 func (fake *PeerOperations) GetChannelConfigArgsForCall(i int) string {
 	fake.getChannelConfigMutex.RLock()
 	defer fake.getChannelConfigMutex.RUnlock()
-	return fake.getChannelConfigArgsForCall[i].cid
+	argsForCall := fake.getChannelConfigArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PeerOperations) GetChannelConfigReturns(result1 channelconfig.Resources) {
+	fake.getChannelConfigMutex.Lock()
+	defer fake.getChannelConfigMutex.Unlock()
 	fake.GetChannelConfigStub = nil
 	fake.getChannelConfigReturns = struct {
 		result1 channelconfig.Resources
@@ -218,6 +241,8 @@ func (fake *PeerOperations) GetChannelConfigReturns(result1 channelconfig.Resour
 }
 
 func (fake *PeerOperations) GetChannelConfigReturnsOnCall(i int, result1 channelconfig.Resources) {
+	fake.getChannelConfigMutex.Lock()
+	defer fake.getChannelConfigMutex.Unlock()
 	fake.GetChannelConfigStub = nil
 	if fake.getChannelConfigReturnsOnCall == nil {
 		fake.getChannelConfigReturnsOnCall = make(map[int]struct {
@@ -229,10 +254,11 @@ func (fake *PeerOperations) GetChannelConfigReturnsOnCall(i int, result1 channel
 	}{result1}
 }
 
-func (fake *PeerOperations) GetChannelsInfo() []*pb.ChannelInfo {
+func (fake *PeerOperations) GetChannelsInfo() []*peer.ChannelInfo {
 	fake.getChannelsInfoMutex.Lock()
 	ret, specificReturn := fake.getChannelsInfoReturnsOnCall[len(fake.getChannelsInfoArgsForCall)]
-	fake.getChannelsInfoArgsForCall = append(fake.getChannelsInfoArgsForCall, struct{}{})
+	fake.getChannelsInfoArgsForCall = append(fake.getChannelsInfoArgsForCall, struct {
+	}{})
 	fake.recordInvocation("GetChannelsInfo", []interface{}{})
 	fake.getChannelsInfoMutex.Unlock()
 	if fake.GetChannelsInfoStub != nil {
@@ -241,7 +267,8 @@ func (fake *PeerOperations) GetChannelsInfo() []*pb.ChannelInfo {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getChannelsInfoReturns.result1
+	fakeReturns := fake.getChannelsInfoReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) GetChannelsInfoCallCount() int {
@@ -250,88 +277,51 @@ func (fake *PeerOperations) GetChannelsInfoCallCount() int {
 	return len(fake.getChannelsInfoArgsForCall)
 }
 
-func (fake *PeerOperations) GetChannelsInfoReturns(result1 []*pb.ChannelInfo) {
+func (fake *PeerOperations) GetChannelsInfoCalls(stub func() []*peer.ChannelInfo) {
+	fake.getChannelsInfoMutex.Lock()
+	defer fake.getChannelsInfoMutex.Unlock()
+	fake.GetChannelsInfoStub = stub
+}
+
+func (fake *PeerOperations) GetChannelsInfoReturns(result1 []*peer.ChannelInfo) {
+	fake.getChannelsInfoMutex.Lock()
+	defer fake.getChannelsInfoMutex.Unlock()
 	fake.GetChannelsInfoStub = nil
 	fake.getChannelsInfoReturns = struct {
-		result1 []*pb.ChannelInfo
+		result1 []*peer.ChannelInfo
 	}{result1}
 }
 
-func (fake *PeerOperations) GetChannelsInfoReturnsOnCall(i int, result1 []*pb.ChannelInfo) {
+func (fake *PeerOperations) GetChannelsInfoReturnsOnCall(i int, result1 []*peer.ChannelInfo) {
+	fake.getChannelsInfoMutex.Lock()
+	defer fake.getChannelsInfoMutex.Unlock()
 	fake.GetChannelsInfoStub = nil
 	if fake.getChannelsInfoReturnsOnCall == nil {
 		fake.getChannelsInfoReturnsOnCall = make(map[int]struct {
-			result1 []*pb.ChannelInfo
+			result1 []*peer.ChannelInfo
 		})
 	}
 	fake.getChannelsInfoReturnsOnCall[i] = struct {
-		result1 []*pb.ChannelInfo
+		result1 []*peer.ChannelInfo
 	}{result1}
 }
 
-func (fake *PeerOperations) GetStableChannelConfig(cid string) channelconfig.Resources {
-	fake.getStableChannelConfigMutex.Lock()
-	ret, specificReturn := fake.getStableChannelConfigReturnsOnCall[len(fake.getStableChannelConfigArgsForCall)]
-	fake.getStableChannelConfigArgsForCall = append(fake.getStableChannelConfigArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("GetStableChannelConfig", []interface{}{cid})
-	fake.getStableChannelConfigMutex.Unlock()
-	if fake.GetStableChannelConfigStub != nil {
-		return fake.GetStableChannelConfigStub(cid)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.getStableChannelConfigReturns.result1
-}
-
-func (fake *PeerOperations) GetStableChannelConfigCallCount() int {
-	fake.getStableChannelConfigMutex.RLock()
-	defer fake.getStableChannelConfigMutex.RUnlock()
-	return len(fake.getStableChannelConfigArgsForCall)
-}
-
-func (fake *PeerOperations) GetStableChannelConfigArgsForCall(i int) string {
-	fake.getStableChannelConfigMutex.RLock()
-	defer fake.getStableChannelConfigMutex.RUnlock()
-	return fake.getStableChannelConfigArgsForCall[i].cid
-}
-
-func (fake *PeerOperations) GetStableChannelConfigReturns(result1 channelconfig.Resources) {
-	fake.GetStableChannelConfigStub = nil
-	fake.getStableChannelConfigReturns = struct {
-		result1 channelconfig.Resources
-	}{result1}
-}
-
-func (fake *PeerOperations) GetStableChannelConfigReturnsOnCall(i int, result1 channelconfig.Resources) {
-	fake.GetStableChannelConfigStub = nil
-	if fake.getStableChannelConfigReturnsOnCall == nil {
-		fake.getStableChannelConfigReturnsOnCall = make(map[int]struct {
-			result1 channelconfig.Resources
-		})
-	}
-	fake.getStableChannelConfigReturnsOnCall[i] = struct {
-		result1 channelconfig.Resources
-	}{result1}
-}
-
-func (fake *PeerOperations) GetCurrConfigBlock(cid string) *common.Block {
+func (fake *PeerOperations) GetCurrConfigBlock(arg1 string) *common.Block {
 	fake.getCurrConfigBlockMutex.Lock()
 	ret, specificReturn := fake.getCurrConfigBlockReturnsOnCall[len(fake.getCurrConfigBlockArgsForCall)]
 	fake.getCurrConfigBlockArgsForCall = append(fake.getCurrConfigBlockArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("GetCurrConfigBlock", []interface{}{cid})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetCurrConfigBlock", []interface{}{arg1})
 	fake.getCurrConfigBlockMutex.Unlock()
 	if fake.GetCurrConfigBlockStub != nil {
-		return fake.GetCurrConfigBlockStub(cid)
+		return fake.GetCurrConfigBlockStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getCurrConfigBlockReturns.result1
+	fakeReturns := fake.getCurrConfigBlockReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) GetCurrConfigBlockCallCount() int {
@@ -340,13 +330,22 @@ func (fake *PeerOperations) GetCurrConfigBlockCallCount() int {
 	return len(fake.getCurrConfigBlockArgsForCall)
 }
 
+func (fake *PeerOperations) GetCurrConfigBlockCalls(stub func(string) *common.Block) {
+	fake.getCurrConfigBlockMutex.Lock()
+	defer fake.getCurrConfigBlockMutex.Unlock()
+	fake.GetCurrConfigBlockStub = stub
+}
+
 func (fake *PeerOperations) GetCurrConfigBlockArgsForCall(i int) string {
 	fake.getCurrConfigBlockMutex.RLock()
 	defer fake.getCurrConfigBlockMutex.RUnlock()
-	return fake.getCurrConfigBlockArgsForCall[i].cid
+	argsForCall := fake.getCurrConfigBlockArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PeerOperations) GetCurrConfigBlockReturns(result1 *common.Block) {
+	fake.getCurrConfigBlockMutex.Lock()
+	defer fake.getCurrConfigBlockMutex.Unlock()
 	fake.GetCurrConfigBlockStub = nil
 	fake.getCurrConfigBlockReturns = struct {
 		result1 *common.Block
@@ -354,6 +353,8 @@ func (fake *PeerOperations) GetCurrConfigBlockReturns(result1 *common.Block) {
 }
 
 func (fake *PeerOperations) GetCurrConfigBlockReturnsOnCall(i int, result1 *common.Block) {
+	fake.getCurrConfigBlockMutex.Lock()
+	defer fake.getCurrConfigBlockMutex.Unlock()
 	fake.GetCurrConfigBlockStub = nil
 	if fake.getCurrConfigBlockReturnsOnCall == nil {
 		fake.getCurrConfigBlockReturnsOnCall = make(map[int]struct {
@@ -365,21 +366,22 @@ func (fake *PeerOperations) GetCurrConfigBlockReturnsOnCall(i int, result1 *comm
 	}{result1}
 }
 
-func (fake *PeerOperations) GetLedger(cid string) ledger.PeerLedger {
+func (fake *PeerOperations) GetLedger(arg1 string) ledger.PeerLedger {
 	fake.getLedgerMutex.Lock()
 	ret, specificReturn := fake.getLedgerReturnsOnCall[len(fake.getLedgerArgsForCall)]
 	fake.getLedgerArgsForCall = append(fake.getLedgerArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("GetLedger", []interface{}{cid})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetLedger", []interface{}{arg1})
 	fake.getLedgerMutex.Unlock()
 	if fake.GetLedgerStub != nil {
-		return fake.GetLedgerStub(cid)
+		return fake.GetLedgerStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getLedgerReturns.result1
+	fakeReturns := fake.getLedgerReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) GetLedgerCallCount() int {
@@ -388,13 +390,22 @@ func (fake *PeerOperations) GetLedgerCallCount() int {
 	return len(fake.getLedgerArgsForCall)
 }
 
+func (fake *PeerOperations) GetLedgerCalls(stub func(string) ledger.PeerLedger) {
+	fake.getLedgerMutex.Lock()
+	defer fake.getLedgerMutex.Unlock()
+	fake.GetLedgerStub = stub
+}
+
 func (fake *PeerOperations) GetLedgerArgsForCall(i int) string {
 	fake.getLedgerMutex.RLock()
 	defer fake.getLedgerMutex.RUnlock()
-	return fake.getLedgerArgsForCall[i].cid
+	argsForCall := fake.getLedgerArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PeerOperations) GetLedgerReturns(result1 ledger.PeerLedger) {
+	fake.getLedgerMutex.Lock()
+	defer fake.getLedgerMutex.Unlock()
 	fake.GetLedgerStub = nil
 	fake.getLedgerReturns = struct {
 		result1 ledger.PeerLedger
@@ -402,6 +413,8 @@ func (fake *PeerOperations) GetLedgerReturns(result1 ledger.PeerLedger) {
 }
 
 func (fake *PeerOperations) GetLedgerReturnsOnCall(i int, result1 ledger.PeerLedger) {
+	fake.getLedgerMutex.Lock()
+	defer fake.getLedgerMutex.Unlock()
 	fake.GetLedgerStub = nil
 	if fake.getLedgerReturnsOnCall == nil {
 		fake.getLedgerReturnsOnCall = make(map[int]struct {
@@ -413,21 +426,22 @@ func (fake *PeerOperations) GetLedgerReturnsOnCall(i int, result1 ledger.PeerLed
 	}{result1}
 }
 
-func (fake *PeerOperations) GetMSPIDs(cid string) []string {
+func (fake *PeerOperations) GetMSPIDs(arg1 string) []string {
 	fake.getMSPIDsMutex.Lock()
 	ret, specificReturn := fake.getMSPIDsReturnsOnCall[len(fake.getMSPIDsArgsForCall)]
 	fake.getMSPIDsArgsForCall = append(fake.getMSPIDsArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("GetMSPIDs", []interface{}{cid})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetMSPIDs", []interface{}{arg1})
 	fake.getMSPIDsMutex.Unlock()
 	if fake.GetMSPIDsStub != nil {
-		return fake.GetMSPIDsStub(cid)
+		return fake.GetMSPIDsStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getMSPIDsReturns.result1
+	fakeReturns := fake.getMSPIDsReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) GetMSPIDsCallCount() int {
@@ -436,13 +450,22 @@ func (fake *PeerOperations) GetMSPIDsCallCount() int {
 	return len(fake.getMSPIDsArgsForCall)
 }
 
+func (fake *PeerOperations) GetMSPIDsCalls(stub func(string) []string) {
+	fake.getMSPIDsMutex.Lock()
+	defer fake.getMSPIDsMutex.Unlock()
+	fake.GetMSPIDsStub = stub
+}
+
 func (fake *PeerOperations) GetMSPIDsArgsForCall(i int) string {
 	fake.getMSPIDsMutex.RLock()
 	defer fake.getMSPIDsMutex.RUnlock()
-	return fake.getMSPIDsArgsForCall[i].cid
+	argsForCall := fake.getMSPIDsArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PeerOperations) GetMSPIDsReturns(result1 []string) {
+	fake.getMSPIDsMutex.Lock()
+	defer fake.getMSPIDsMutex.Unlock()
 	fake.GetMSPIDsStub = nil
 	fake.getMSPIDsReturns = struct {
 		result1 []string
@@ -450,6 +473,8 @@ func (fake *PeerOperations) GetMSPIDsReturns(result1 []string) {
 }
 
 func (fake *PeerOperations) GetMSPIDsReturnsOnCall(i int, result1 []string) {
+	fake.getMSPIDsMutex.Lock()
+	defer fake.getMSPIDsMutex.Unlock()
 	fake.GetMSPIDsStub = nil
 	if fake.getMSPIDsReturnsOnCall == nil {
 		fake.getMSPIDsReturnsOnCall = make(map[int]struct {
@@ -461,21 +486,22 @@ func (fake *PeerOperations) GetMSPIDsReturnsOnCall(i int, result1 []string) {
 	}{result1}
 }
 
-func (fake *PeerOperations) GetPolicyManager(cid string) policies.Manager {
+func (fake *PeerOperations) GetPolicyManager(arg1 string) policies.Manager {
 	fake.getPolicyManagerMutex.Lock()
 	ret, specificReturn := fake.getPolicyManagerReturnsOnCall[len(fake.getPolicyManagerArgsForCall)]
 	fake.getPolicyManagerArgsForCall = append(fake.getPolicyManagerArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("GetPolicyManager", []interface{}{cid})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetPolicyManager", []interface{}{arg1})
 	fake.getPolicyManagerMutex.Unlock()
 	if fake.GetPolicyManagerStub != nil {
-		return fake.GetPolicyManagerStub(cid)
+		return fake.GetPolicyManagerStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getPolicyManagerReturns.result1
+	fakeReturns := fake.getPolicyManagerReturns
+	return fakeReturns.result1
 }
 
 func (fake *PeerOperations) GetPolicyManagerCallCount() int {
@@ -484,13 +510,22 @@ func (fake *PeerOperations) GetPolicyManagerCallCount() int {
 	return len(fake.getPolicyManagerArgsForCall)
 }
 
+func (fake *PeerOperations) GetPolicyManagerCalls(stub func(string) policies.Manager) {
+	fake.getPolicyManagerMutex.Lock()
+	defer fake.getPolicyManagerMutex.Unlock()
+	fake.GetPolicyManagerStub = stub
+}
+
 func (fake *PeerOperations) GetPolicyManagerArgsForCall(i int) string {
 	fake.getPolicyManagerMutex.RLock()
 	defer fake.getPolicyManagerMutex.RUnlock()
-	return fake.getPolicyManagerArgsForCall[i].cid
+	argsForCall := fake.getPolicyManagerArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *PeerOperations) GetPolicyManagerReturns(result1 policies.Manager) {
+	fake.getPolicyManagerMutex.Lock()
+	defer fake.getPolicyManagerMutex.Unlock()
 	fake.GetPolicyManagerStub = nil
 	fake.getPolicyManagerReturns = struct {
 		result1 policies.Manager
@@ -498,6 +533,8 @@ func (fake *PeerOperations) GetPolicyManagerReturns(result1 policies.Manager) {
 }
 
 func (fake *PeerOperations) GetPolicyManagerReturnsOnCall(i int, result1 policies.Manager) {
+	fake.getPolicyManagerMutex.Lock()
+	defer fake.getPolicyManagerMutex.Unlock()
 	fake.GetPolicyManagerStub = nil
 	if fake.getPolicyManagerReturnsOnCall == nil {
 		fake.getPolicyManagerReturnsOnCall = make(map[int]struct {
@@ -509,15 +546,75 @@ func (fake *PeerOperations) GetPolicyManagerReturnsOnCall(i int, result1 policie
 	}{result1}
 }
 
-func (fake *PeerOperations) InitChain(cid string) {
+func (fake *PeerOperations) GetStableChannelConfig(arg1 string) channelconfig.Resources {
+	fake.getStableChannelConfigMutex.Lock()
+	ret, specificReturn := fake.getStableChannelConfigReturnsOnCall[len(fake.getStableChannelConfigArgsForCall)]
+	fake.getStableChannelConfigArgsForCall = append(fake.getStableChannelConfigArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetStableChannelConfig", []interface{}{arg1})
+	fake.getStableChannelConfigMutex.Unlock()
+	if fake.GetStableChannelConfigStub != nil {
+		return fake.GetStableChannelConfigStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.getStableChannelConfigReturns
+	return fakeReturns.result1
+}
+
+func (fake *PeerOperations) GetStableChannelConfigCallCount() int {
+	fake.getStableChannelConfigMutex.RLock()
+	defer fake.getStableChannelConfigMutex.RUnlock()
+	return len(fake.getStableChannelConfigArgsForCall)
+}
+
+func (fake *PeerOperations) GetStableChannelConfigCalls(stub func(string) channelconfig.Resources) {
+	fake.getStableChannelConfigMutex.Lock()
+	defer fake.getStableChannelConfigMutex.Unlock()
+	fake.GetStableChannelConfigStub = stub
+}
+
+func (fake *PeerOperations) GetStableChannelConfigArgsForCall(i int) string {
+	fake.getStableChannelConfigMutex.RLock()
+	defer fake.getStableChannelConfigMutex.RUnlock()
+	argsForCall := fake.getStableChannelConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *PeerOperations) GetStableChannelConfigReturns(result1 channelconfig.Resources) {
+	fake.getStableChannelConfigMutex.Lock()
+	defer fake.getStableChannelConfigMutex.Unlock()
+	fake.GetStableChannelConfigStub = nil
+	fake.getStableChannelConfigReturns = struct {
+		result1 channelconfig.Resources
+	}{result1}
+}
+
+func (fake *PeerOperations) GetStableChannelConfigReturnsOnCall(i int, result1 channelconfig.Resources) {
+	fake.getStableChannelConfigMutex.Lock()
+	defer fake.getStableChannelConfigMutex.Unlock()
+	fake.GetStableChannelConfigStub = nil
+	if fake.getStableChannelConfigReturnsOnCall == nil {
+		fake.getStableChannelConfigReturnsOnCall = make(map[int]struct {
+			result1 channelconfig.Resources
+		})
+	}
+	fake.getStableChannelConfigReturnsOnCall[i] = struct {
+		result1 channelconfig.Resources
+	}{result1}
+}
+
+func (fake *PeerOperations) InitChain(arg1 string) {
 	fake.initChainMutex.Lock()
 	fake.initChainArgsForCall = append(fake.initChainArgsForCall, struct {
-		cid string
-	}{cid})
-	fake.recordInvocation("InitChain", []interface{}{cid})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("InitChain", []interface{}{arg1})
 	fake.initChainMutex.Unlock()
 	if fake.InitChainStub != nil {
-		fake.InitChainStub(cid)
+		fake.InitChainStub(arg1)
 	}
 }
 
@@ -527,29 +624,36 @@ func (fake *PeerOperations) InitChainCallCount() int {
 	return len(fake.initChainArgsForCall)
 }
 
+func (fake *PeerOperations) InitChainCalls(stub func(string)) {
+	fake.initChainMutex.Lock()
+	defer fake.initChainMutex.Unlock()
+	fake.InitChainStub = stub
+}
+
 func (fake *PeerOperations) InitChainArgsForCall(i int) string {
 	fake.initChainMutex.RLock()
 	defer fake.initChainMutex.RUnlock()
-	return fake.initChainArgsForCall[i].cid
+	argsForCall := fake.initChainArgsForCall[i]
+	return argsForCall.arg1
 }
 
-func (fake *PeerOperations) Initialize(init func(string), sccp sysccprovider.SystemChaincodeProvider, pm plugin.Mapper, pr *platforms.Registry, deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider, membershipProvider ledger.MembershipInfoProvider, metricsProvider metrics.Provider, lr plugindispatcher.LifecycleResources, nr plugindispatcher.LifecycleResources) {
+func (fake *PeerOperations) Initialize(arg1 func(string), arg2 sysccprovider.SystemChaincodeProvider, arg3 plugin.Mapper, arg4 *platforms.Registry, arg5 ledger.DeployedChaincodeInfoProvider, arg6 ledger.MembershipInfoProvider, arg7 metrics.Provider, arg8 plugindispatcher.LifecycleResources, arg9 plugindispatcher.CollectionAndLifecycleResources) {
 	fake.initializeMutex.Lock()
 	fake.initializeArgsForCall = append(fake.initializeArgsForCall, struct {
-		init                   func(string)
-		sccp                   sysccprovider.SystemChaincodeProvider
-		pm                     plugin.Mapper
-		pr                     *platforms.Registry
-		deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-		membershipProvider     ledger.MembershipInfoProvider
-		metricsProvider        metrics.Provider
-		lr                     plugindispatcher.LifecycleResources
-		nr                     plugindispatcher.LifecycleResources
-	}{init, sccp, pm, pr, deployedCCInfoProvider, membershipProvider, metricsProvider, lr, nr})
-	fake.recordInvocation("Initialize", []interface{}{init, sccp, pm, pr, deployedCCInfoProvider, membershipProvider, metricsProvider, lr, nr})
+		arg1 func(string)
+		arg2 sysccprovider.SystemChaincodeProvider
+		arg3 plugin.Mapper
+		arg4 *platforms.Registry
+		arg5 ledger.DeployedChaincodeInfoProvider
+		arg6 ledger.MembershipInfoProvider
+		arg7 metrics.Provider
+		arg8 plugindispatcher.LifecycleResources
+		arg9 plugindispatcher.CollectionAndLifecycleResources
+	}{arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9})
+	fake.recordInvocation("Initialize", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9})
 	fake.initializeMutex.Unlock()
 	if fake.InitializeStub != nil {
-		fake.InitializeStub(init, sccp, pm, pr, deployedCCInfoProvider, membershipProvider, metricsProvider, lr, nr)
+		fake.InitializeStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 	}
 }
 
@@ -559,10 +663,17 @@ func (fake *PeerOperations) InitializeCallCount() int {
 	return len(fake.initializeArgsForCall)
 }
 
-func (fake *PeerOperations) InitializeArgsForCall(i int) (func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.LifecycleResources) {
+func (fake *PeerOperations) InitializeCalls(stub func(func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources)) {
+	fake.initializeMutex.Lock()
+	defer fake.initializeMutex.Unlock()
+	fake.InitializeStub = stub
+}
+
+func (fake *PeerOperations) InitializeArgsForCall(i int) (func(string), sysccprovider.SystemChaincodeProvider, plugin.Mapper, *platforms.Registry, ledger.DeployedChaincodeInfoProvider, ledger.MembershipInfoProvider, metrics.Provider, plugindispatcher.LifecycleResources, plugindispatcher.CollectionAndLifecycleResources) {
 	fake.initializeMutex.RLock()
 	defer fake.initializeMutex.RUnlock()
-	return fake.initializeArgsForCall[i].init, fake.initializeArgsForCall[i].sccp, fake.initializeArgsForCall[i].pm, fake.initializeArgsForCall[i].pr, fake.initializeArgsForCall[i].deployedCCInfoProvider, fake.initializeArgsForCall[i].membershipProvider, fake.initializeArgsForCall[i].metricsProvider, fake.initializeArgsForCall[i].lr, fake.initializeArgsForCall[i].nr
+	argsForCall := fake.initializeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6, argsForCall.arg7, argsForCall.arg8, argsForCall.arg9
 }
 
 func (fake *PeerOperations) Invocations() map[string][][]interface{} {
@@ -574,8 +685,6 @@ func (fake *PeerOperations) Invocations() map[string][][]interface{} {
 	defer fake.getChannelConfigMutex.RUnlock()
 	fake.getChannelsInfoMutex.RLock()
 	defer fake.getChannelsInfoMutex.RUnlock()
-	fake.getStableChannelConfigMutex.RLock()
-	defer fake.getStableChannelConfigMutex.RUnlock()
 	fake.getCurrConfigBlockMutex.RLock()
 	defer fake.getCurrConfigBlockMutex.RUnlock()
 	fake.getLedgerMutex.RLock()
@@ -584,6 +693,8 @@ func (fake *PeerOperations) Invocations() map[string][][]interface{} {
 	defer fake.getMSPIDsMutex.RUnlock()
 	fake.getPolicyManagerMutex.RLock()
 	defer fake.getPolicyManagerMutex.RUnlock()
+	fake.getStableChannelConfigMutex.RLock()
+	defer fake.getStableChannelConfigMutex.RUnlock()
 	fake.initChainMutex.RLock()
 	defer fake.initChainMutex.RUnlock()
 	fake.initializeMutex.RLock()
