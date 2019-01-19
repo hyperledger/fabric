@@ -13,6 +13,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+// NewV13Evaluator returns a policy evaluator that checks
+// 2 kinds of policies:
+// 1) chaincode endorsement policies;
+// 2) state-based endorsement policies.
+func NewV13Evaluator(policySupport validation.PolicyEvaluator, vpmgr KeyLevelValidationParameterManager) *policyCheckerFactoryV13 {
+	return &policyCheckerFactoryV13{
+		policySupport: policySupport,
+		vpmgr:         vpmgr,
+	}
+}
+
 type policyCheckerFactoryV13 struct {
 	vpmgr         KeyLevelValidationParameterManager
 	policySupport validation.PolicyEvaluator

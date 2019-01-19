@@ -174,10 +174,7 @@ func NewKeyLevelValidator(policySupport validation.PolicyEvaluator, vpmgr KeyLev
 	return &KeyLevelValidator{
 		vpmgr:    vpmgr,
 		blockDep: blockDependency{},
-		pef: &policyCheckerFactoryV13{
-			policySupport: policySupport,
-			vpmgr:         vpmgr,
-		},
+		pef:      NewV13Evaluator(policySupport, vpmgr),
 	}
 }
 

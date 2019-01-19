@@ -14,6 +14,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+// NewV20Evaluator returns a policy evaluator that checks
+// 3 kinds of policies:
+// 1) chaincode endorsement policies;
+// 2) state-based endorsement policies;
+// 3) collection-level endorsement policies.
+func NewV20Evaluator(
+	vpmgr KeyLevelValidationParameterManager,
+	policySupport validation.PolicyEvaluator,
+	collRes CollectionResources,
+	StateFetcher s.StateFetcher,
+) *policyCheckerFactoryV20 {
+	return &policyCheckerFactoryV20{
+		vpmgr:         vpmgr,
+		policySupport: policySupport,
+		StateFetcher:  StateFetcher,
+		collRes:       collRes,
+	}
+}
+
 type policyCheckerFactoryV20 struct {
 	vpmgr         KeyLevelValidationParameterManager
 	policySupport validation.PolicyEvaluator

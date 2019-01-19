@@ -35,12 +35,7 @@ func Test0(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -70,12 +65,7 @@ func Test1(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -86,6 +76,37 @@ func Test1(t *testing.T) {
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+}
+
+func Test1Multiple(t *testing.T) {
+	t.Parallel()
+
+	// SCENARIO: only one write in the public namespace -> check the ccep
+
+	cc := "cc"
+	key := "key"
+	ccep := []byte("ccep")
+
+	ms := &mockStateFetcher{}
+
+	pm := &mocks.KeyLevelValidationParameterManager{}
+	pm.On("GetValidationParameterForKey", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+
+	pe := &mockPolicyEvaluator{EvaluateResByPolicy: map[string]error{string(ccep): nil}, EvaluateRV: errors.New("nope")}
+
+	cr := &mocks.CollectionResources{}
+
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
+
+	ev := pcf.Evaluator(ccep)
+
+	rwsb := rwsetutil.NewRWSetBuilder()
+	rwsb.AddToWriteSet(cc, key, []byte("value"))
+	rwsb.AddToWriteSet(cc, key+"1", []byte("value"))
+	rws := rwsb.GetTxReadWriteSet()
+
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	assert.NoError(t, err)
 }
 
 func Test1NoErr(t *testing.T) {
@@ -106,12 +127,7 @@ func Test1NoErr(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -142,12 +158,7 @@ func Test1Err1(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -178,12 +189,7 @@ func Test1Err2(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -214,12 +220,7 @@ func Test1Meta(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -230,6 +231,37 @@ func Test1Meta(t *testing.T) {
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+}
+
+func Test1MetaMultiple(t *testing.T) {
+	t.Parallel()
+
+	// SCENARIO: only one meta write in the public namespace -> check the ccep
+
+	cc := "cc"
+	key := "key"
+	ccep := []byte("ccep")
+
+	ms := &mockStateFetcher{}
+
+	pm := &mocks.KeyLevelValidationParameterManager{}
+	pm.On("GetValidationParameterForKey", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+
+	pe := &mockPolicyEvaluator{EvaluateResByPolicy: map[string]error{string(ccep): nil}, EvaluateRV: errors.New("nope")}
+
+	cr := &mocks.CollectionResources{}
+
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
+
+	ev := pcf.Evaluator(ccep)
+
+	rwsb := rwsetutil.NewRWSetBuilder()
+	rwsb.AddToMetadataWriteSet(cc, key, nil)
+	rwsb.AddToMetadataWriteSet(cc, key+"1", nil)
+	rws := rwsb.GetTxReadWriteSet()
+
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	assert.NoError(t, err)
 }
 
 func Test2(t *testing.T) {
@@ -251,12 +283,7 @@ func Test2(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -290,12 +317,7 @@ func Test3(t *testing.T) {
 	cr := &mocks.CollectionResources{}
 	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(nil, nil, nil)
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -329,12 +351,7 @@ func Test3Meta(t *testing.T) {
 	cr := &mocks.CollectionResources{}
 	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(nil, nil, nil)
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -369,12 +386,7 @@ func Test4(t *testing.T) {
 	cr := &mocks.CollectionResources{}
 	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(collep, nil, nil)
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -385,6 +397,40 @@ func Test4(t *testing.T) {
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
 	assert.Error(t, err)
 	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+}
+
+func Test4Multiple(t *testing.T) {
+	t.Parallel()
+
+	// SCENARIO: only one write in a collection with COLLEP -> check COLLEP
+
+	cc := "cc"
+	key := "key"
+	coll := "coll"
+	ccep := []byte("ccep")
+	collep := []byte("collep")
+
+	ms := &mockStateFetcher{FetchStateRv: &mockState{}}
+
+	pm := &mocks.KeyLevelValidationParameterManager{}
+	pm.On("GetValidationParameterForKey", cc, coll, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+
+	pe := &mockPolicyEvaluator{EvaluateResByPolicy: map[string]error{string(collep): nil}, EvaluateRV: errors.New("nope")}
+
+	cr := &mocks.CollectionResources{}
+	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(collep, nil, nil)
+
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
+
+	ev := pcf.Evaluator(ccep)
+
+	rwsb := rwsetutil.NewRWSetBuilder()
+	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key, []byte("As I was goin' over"))
+	rwsb.AddToPvtAndHashedWriteSet(cc, coll, key+"1", []byte("The Cork and Kerry Mountains"))
+	rws := rwsb.GetTxReadWriteSet()
+
+	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*common.SignedData{{}})
+	assert.NoError(t, err)
 }
 
 func Test4Err(t *testing.T) {
@@ -407,12 +453,7 @@ func Test4Err(t *testing.T) {
 
 	cr := &mocks.CollectionResources{}
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -448,12 +489,7 @@ func Test5(t *testing.T) {
 	cr := &mocks.CollectionResources{}
 	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(collep, nil, nil)
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -487,12 +523,7 @@ func Test6(t *testing.T) {
 	cr := &mocks.CollectionResources{}
 	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(nil, errors.New("two minutes to midnight"), nil)
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
@@ -526,12 +557,7 @@ func Test7(t *testing.T) {
 	cr := &mocks.CollectionResources{}
 	cr.On("CollectionValidationInfo", cc, coll, mock.Anything).Return(nil, nil, errors.New("nope"))
 
-	pcf := policyCheckerFactoryV20{
-		vpmgr:         pm,
-		policySupport: pe,
-		StateFetcher:  ms,
-		collRes:       cr,
-	}
+	pcf := NewV20Evaluator(pm, pe, cr, ms)
 
 	ev := pcf.Evaluator(ccep)
 
