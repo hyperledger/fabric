@@ -114,6 +114,7 @@ type Chain struct {
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
+	blockInflight        int  // number of in flight blocks
 
 	clock clock.Clock // Tests can inject a fake clock
 
@@ -415,6 +416,7 @@ func (c *Chain) serveRequest() {
 	var bc *blockCreator
 
 	becomeLeader := func() {
+		c.blockInflight = 0
 		c.justElected = true
 		submitC = nil
 
@@ -431,6 +433,7 @@ func (c *Chain) serveRequest() {
 	}
 
 	becomeFollower := func() {
+		c.blockInflight = 0
 		_ = c.support.BlockCutter().Cut()
 		stop()
 		submitC = c.submitC
@@ -468,7 +471,7 @@ func (c *Chain) serveRequest() {
 				}
 
 				c.propose(bc, batches...)
-				if c.configInflight {
+				if c.configInflight || c.blockInflight >= c.opts.MaxInflightMsgs {
 					submitC = nil // stop accepting new envelopes
 				}
 
@@ -541,7 +544,7 @@ func (c *Chain) serveRequest() {
 			} else if c.configInflight {
 				c.logger.Debugf("Config block or ConfChange in flight, pause accepting transaction")
 				submitC = nil
-			} else {
+			} else if c.blockInflight < c.opts.MaxInflightMsgs {
 				submitC = c.submitC
 			}
 
@@ -587,6 +590,10 @@ func (c *Chain) serveRequest() {
 }
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
+	if c.blockInflight > 0 {
+		c.blockInflight-- // only reduce on leader
+	}
+
 	if utils.IsConfigBlock(block) {
 		c.writeConfigBlock(block, index)
 		return
@@ -649,6 +656,8 @@ func (c *Chain) propose(bc *blockCreator, batches ...[]*common.Envelope) {
 		if utils.IsConfigBlock(b) {
 			c.configInflight = true
 		}
+
+		c.blockInflight++
 	}
 
 	return
