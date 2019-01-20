@@ -520,7 +520,10 @@ var _ = Describe("Server", func() {
 
 			BeforeEach(func() {
 				expectedErr = errors.New("gah!")
-				fakeEchoService.EchoStreamReturns(expectedErr)
+				fakeEchoService.EchoStreamStub = func(stream testpb.EchoService_EchoStreamServer) error {
+					stream.Recv()
+					return expectedErr
+				}
 
 				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
