@@ -101,11 +101,14 @@ type Chain struct {
 
 	submitC  chan *submit
 	applyC   chan apply
-	observeC chan<- uint64         // Notifies external observer on leader change (passed in optionally as an argument for tests)
+	observeC chan<- raft.SoftState // Notifies external observer on leader change (passed in optionally as an argument for tests)
 	haltC    chan struct{}         // Signals to goroutines that the chain is halting
 	doneC    chan struct{}         // Closes when the chain halts
 	startC   chan struct{}         // Closes when the node is started
 	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
+
+	errorCLock sync.RWMutex
+	errorC     chan struct{} // returned by Errored()
 
 	raftMetadataLock     sync.RWMutex
 	confChangeInProgress *raftpb.ConfChange
@@ -138,7 +141,7 @@ func NewChain(
 	conf Configurator,
 	rpc RPC,
 	puller BlockPuller,
-	observeC chan<- uint64) (*Chain, error) {
+	observeC chan<- raft.SoftState) (*Chain, error) {
 
 	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
 
@@ -172,6 +175,7 @@ func NewChain(
 		doneC:            make(chan struct{}),
 		startC:           make(chan struct{}),
 		snapC:            make(chan *raftpb.Snapshot),
+		errorC:           make(chan struct{}),
 		observeC:         observeC,
 		support:          support,
 		fresh:            fresh,
@@ -226,6 +230,7 @@ func (c *Chain) Start() {
 
 	c.node.start(c.fresh, c.support.Height() > 1)
 	close(c.startC)
+	close(c.errorC)
 
 	go c.serveRequest()
 }
@@ -297,7 +302,9 @@ func (c *Chain) WaitReady() error {
 
 // Errored returns a channel that closes when the chain stops.
 func (c *Chain) Errored() <-chan struct{} {
-	return c.doneC
+	c.errorCLock.RLock()
+	defer c.errorCLock.RUnlock()
+	return c.errorC
 }
 
 // Halt stops the chain.
@@ -374,6 +381,10 @@ type apply struct {
 	soft    *raft.SoftState
 }
 
+func isCandidate(state raft.StateType) bool {
+	return state == raft.StatePreCandidate || state == raft.StateCandidate
+}
+
 func (c *Chain) serveRequest() {
 	ticking := false
 	timer := c.clock.NewTimer(time.Second)
@@ -399,20 +410,13 @@ func (c *Chain) serveRequest() {
 		ticking = false
 	}
 
-	var leader uint64
+	var soft raft.SoftState
 	submitC := c.submitC
 	var bc *blockCreator
 
 	becomeLeader := func() {
 		c.justElected = true
 		submitC = nil
-
-		lastBlock := c.support.Block(c.support.Height() - 1)
-		bc = &blockCreator{
-			hash:   lastBlock.Header.Hash(),
-			number: lastBlock.Header.Number,
-			logger: c.logger,
-		}
 
 		// if there is unfinished ConfChange, we should resume the effort to propose it as
 		// new leader, and wait for it to be committed before start serving new requests.
@@ -441,8 +445,13 @@ func (c *Chain) serveRequest() {
 				continue
 			}
 
+			if soft.RaftState == raft.StatePreCandidate || soft.RaftState == raft.StateCandidate {
+				s.errC <- errors.Errorf("no Raft leader")
+				continue
+			}
+
 			var err error
-			switch leader {
+			switch soft.Lead {
 			case raft.None: // no Raft leader
 				c.logger.Debugf("Request is dropped because there is no Raft leader")
 				err = errors.Errorf("no Raft leader")
@@ -464,8 +473,8 @@ func (c *Chain) serveRequest() {
 				}
 
 			default: // this is follower
-				c.logger.Debugf("Forwarding submit request to raft leader %d", leader)
-				err = c.rpc.SendSubmit(leader, s.req)
+				c.logger.Debugf("Forwarding submit request to raft leader %d", soft.Lead)
+				err = c.rpc.SendSubmit(soft.Lead, s.req)
 			}
 
 			s.errC <- err // send error back to submitter
@@ -473,30 +482,66 @@ func (c *Chain) serveRequest() {
 		case app := <-c.applyC:
 			if app.soft != nil {
 				newLeader := atomic.LoadUint64(&app.soft.Lead) // etcdraft requires atomic access
-				if newLeader != leader {
-					c.logger.Infof("Raft leader changed: %d -> %d", leader, newLeader)
+				if newLeader != soft.Lead {
+					c.logger.Infof("Raft leader changed: %d -> %d", soft.Lead, newLeader)
 
 					if newLeader == c.raftID {
 						becomeLeader()
 					}
 
-					if leader == c.raftID {
+					if soft.Lead == c.raftID {
 						becomeFollower()
 					}
+				}
 
-					leader = newLeader
+				foundLeader := soft.Lead == raft.None && newLeader != raft.None
+				quitCandidate := isCandidate(soft.RaftState) && !isCandidate(app.soft.RaftState)
 
-					// notify external observer
+				if foundLeader || quitCandidate {
+					c.errorCLock.Lock()
+					c.errorC = make(chan struct{})
+					c.errorCLock.Unlock()
+				}
+
+				if isCandidate(app.soft.RaftState) || newLeader == raft.None {
 					select {
-					case c.observeC <- leader:
+					case <-c.errorC:
 					default:
+						close(c.errorC)
 					}
+				}
+
+				soft = raft.SoftState{Lead: newLeader, RaftState: app.soft.RaftState}
+
+				// notify external observer
+				select {
+				case c.observeC <- soft:
+				default:
 				}
 			}
 
 			c.apply(app.entries)
 
-			if !c.configInflight {
+			if c.justElected {
+				msgInflight := c.node.lastIndex() > c.appliedIndex
+				if msgInflight || c.configInflight {
+					c.logger.Debugf("There are in flight blocks, new leader should not serve requests")
+					continue
+				}
+
+				c.logger.Infof("Start accepting requests as Raft leader")
+				lastBlock := c.support.Block(c.support.Height() - 1)
+				bc = &blockCreator{
+					hash:   lastBlock.Header.Hash(),
+					number: lastBlock.Header.Number,
+					logger: c.logger,
+				}
+				submitC = c.submitC
+				c.justElected = false
+			} else if c.configInflight {
+				c.logger.Debugf("Config block or ConfChange in flight, pause accepting transaction")
+				submitC = nil
+			} else {
 				submitC = c.submitC
 			}
 
@@ -529,6 +574,12 @@ func (c *Chain) serveRequest() {
 			}
 
 		case <-c.doneC:
+			select {
+			case <-c.errorC: // avoid closing closed channel
+			default:
+				close(c.errorC)
+			}
+
 			c.logger.Infof("Stop serving requests")
 			return
 		}

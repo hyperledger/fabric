@@ -18,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -88,7 +89,7 @@ var _ = Describe("Chain", func() {
 			support           *consensusmocks.FakeConsenterSupport
 			cutter            *mockblockcutter.Receiver
 			storage           *raft.MemoryStorage
-			observeC          chan uint64
+			observeC          chan raft.SoftState
 			chain             *etcdraft.Chain
 			dataDir           string
 			walDir            string
@@ -107,7 +108,7 @@ var _ = Describe("Chain", func() {
 			walDir = path.Join(dataDir, "wal")
 			snapDir = path.Join(dataDir, "snapshot")
 
-			observeC = make(chan uint64, 1)
+			observeC = make(chan raft.SoftState, 1)
 
 			support = &consensusmocks.FakeConsenterSupport{}
 			support.ChainIDReturns(channelID)
@@ -149,12 +150,12 @@ var _ = Describe("Chain", func() {
 			}
 		})
 
-		campaign := func(clock *fakeclock.FakeClock, observeC <-chan uint64) {
+		campaign := func(clock *fakeclock.FakeClock, observeC <-chan raft.SoftState) {
 			Eventually(func() bool {
 				clock.Increment(interval)
 				select {
-				case <-observeC:
-					return true
+				case s := <-observeC:
+					return s.RaftState == raft.StateLeader
 				default:
 					return false
 				}
@@ -355,9 +356,10 @@ var _ = Describe("Chain", func() {
 			})
 
 			It("unblocks Errored if chain is halted", func() {
-				Expect(chain.Errored()).NotTo(Receive())
+				errorC := chain.Errored()
+				Expect(errorC).NotTo(BeClosed())
 				chain.Halt()
-				Expect(chain.Errored()).Should(BeClosed())
+				Eventually(errorC).Should(BeClosed())
 			})
 
 			Describe("Config updates", func() {
@@ -1406,10 +1408,10 @@ var _ = Describe("Chain", func() {
 					// to leader's node list right away. An immediate tick does not trigger a heartbeat
 					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
 					// the cluster successfully.
-					Eventually(func() <-chan uint64 {
+					Eventually(func() <-chan raft.SoftState {
 						c1.clock.Increment(interval)
 						return c4.observe
-					}, defaultTimeout).Should(Receive(Equal(uint64(1))))
+					}, defaultTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StateFollower})))
 
 					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
 					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
@@ -1465,10 +1467,10 @@ var _ = Describe("Chain", func() {
 					// to leader's node list right away. An immediate tick does not trigger a heartbeat
 					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
 					// the cluster successfully.
-					Eventually(func() <-chan uint64 {
+					Eventually(func() <-chan raft.SoftState {
 						c1.clock.Increment(interval)
 						return c4.observe
-					}).Should(Receive(Equal(uint64(1))))
+					}, defaultTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StateFollower})))
 
 					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
 					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
@@ -1485,10 +1487,10 @@ var _ = Describe("Chain", func() {
 					network.connect(2)
 
 					// make sure second node see 4th as a leader
-					Eventually(func() <-chan uint64 {
+					Eventually(func() <-chan raft.SoftState {
 						c4.clock.Increment(interval)
 						return c2.observe
-					}, defaultTimeout).Should(Receive(Equal(uint64(4))))
+					}, defaultTimeout).Should(Receive(Equal(raft.SoftState{Lead: 4, RaftState: raft.StateFollower})))
 
 					By("submitting new transaction to re-connected node")
 					c4.cutter.CutNext = true
@@ -1552,10 +1554,10 @@ var _ = Describe("Chain", func() {
 					// to leader's node list right away. An immediate tick does not trigger a heartbeat
 					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
 					// the cluster successfully.
-					Eventually(func() <-chan uint64 {
+					Eventually(func() <-chan raft.SoftState {
 						c2.clock.Increment(interval)
 						return c4.observe
-					}, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
+					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 2, RaftState: raft.StateFollower})))
 
 					Eventually(c4.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					Eventually(c4.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
@@ -1578,7 +1580,7 @@ var _ = Describe("Chain", func() {
 					c2.clock.Increment(interval)
 					// check that former leader didn't get stuck and actually got resign signal,
 					// and once connected capable of communicating with rest of the replicas set
-					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 2, RaftState: raft.StateFollower})))
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				})
 
@@ -1643,10 +1645,10 @@ var _ = Describe("Chain", func() {
 					network.elect(2)
 
 					By("confirm new node observed a leader node")
-					Eventually(func() <-chan uint64 {
+					Eventually(func() <-chan raft.SoftState {
 						c2.clock.Increment(interval)
 						return c4.observe
-					}, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
+					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 2, RaftState: raft.StateFollower})))
 
 					Eventually(c4.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					Eventually(c4.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
@@ -1737,6 +1739,7 @@ var _ = Describe("Chain", func() {
 
 					// Assert c1 has exited
 					Eventually(c1.Errored, LongEventualTimeout).Should(BeClosed())
+					close(c1.stopped)
 
 					By("making sure remaining two nodes will elect new leader")
 
@@ -1827,6 +1830,31 @@ var _ = Describe("Chain", func() {
 					})
 			})
 
+			When("follower is disconnected", func() {
+				It("should return error when receiving an env", func() {
+					network.disconnect(2)
+
+					errorC := c2.Errored()
+					Consistently(errorC).ShouldNot(BeClosed()) // assert that errorC is not closed
+
+					By("Ticking node 2 until it becomes pre-candidate")
+					Eventually(func() <-chan raft.SoftState {
+						c2.clock.Increment(interval)
+						return c2.observe
+					}, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StatePreCandidate})))
+
+					Eventually(errorC).Should(BeClosed())
+					err := c2.Order(env, 0)
+					Expect(err).To(HaveOccurred())
+
+					network.connect(2)
+					c1.clock.Increment(interval)
+					Expect(errorC).To(BeClosed())
+
+					Eventually(c2.Errored).ShouldNot(BeClosed())
+				})
+			})
+
 			It("leader retransmits lost messages", func() {
 				// This tests that heartbeats will trigger leader to retransmit lost MsgApp
 
@@ -1868,6 +1896,86 @@ var _ = Describe("Chain", func() {
 					func(c *chain) {
 						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(10))
 					})
+			})
+
+			It("new leader should wait for in-fight blocks to commit before accepting new env", func() {
+				// Scenario: when a node is elected as new leader and there are still in-flight blocks,
+				// it should not immediately start accepting new envelopes, instead it should wait for
+				// those in-flight blocks to be committed, otherwise we may create uncle block which
+				// forks and panicks chain.
+				//
+				// Steps:
+				// - start raft cluster with three nodes and genesis block0
+				// - order env1 on c1, which creates block1
+				// - drop MsgApp from 1 to 3
+				// - drop second round of MsgApp sent from 1 to 2, so that block1 is only committed on c1
+				// - disconnect c1 and elect c2
+				// - order env2 on c2. This env must NOT be immediately accepted, otherwise c2 would create
+				//   an uncle block1 based on block0.
+				// - c2 commits block1
+				// - c2 accepts env2, and creates block2
+				// - c2 commits block2
+				c1.cutter.CutNext = true
+				c2.cutter.CutNext = true
+
+				step := c1.rpc.StepStub
+				c1.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					stepMsg := &raftpb.Message{}
+					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+
+					if dest == 3 {
+						return nil, nil
+					}
+
+					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) == 0 {
+						return nil, nil
+					}
+
+					return step(dest, msg)
+				}
+
+				Expect(c1.Order(env, 0)).NotTo(HaveOccurred())
+
+				Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+				Consistently(c2.support.WriteBlockCallCount).Should(Equal(0))
+				Consistently(c3.support.WriteBlockCallCount).Should(Equal(0))
+
+				network.disconnect(1)
+
+				step = c2.rpc.StepStub
+				c2.rpc.StepStub = func(dest uint64, msg *orderer.StepRequest) (*orderer.StepResponse, error) {
+					stepMsg := &raftpb.Message{}
+					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+
+					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
+						for _, ent := range stepMsg.Entries {
+							if len(ent.Data) != 0 {
+								return nil, nil
+							}
+						}
+					}
+					return step(dest, msg)
+				}
+
+				network.elect(2)
+
+				go func() {
+					Expect(c2.Order(env, 0)).NotTo(HaveOccurred())
+				}()
+
+				Consistently(c2.support.WriteBlockCallCount).Should(Equal(0))
+				Consistently(c3.support.WriteBlockCallCount).Should(Equal(0))
+
+				c2.rpc.StepStub = step
+				c2.clock.Increment(interval)
+
+				Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+				Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+
+				b, _ := c2.support.WriteBlockArgsForCall(0)
+				Expect(b.Header.Number).To(Equal(uint64(1)))
+				b, _ = c2.support.WriteBlockArgsForCall(1)
+				Expect(b.Header.Number).To(Equal(uint64(2)))
 			})
 
 			Context("handling config blocks", func() {
@@ -2224,7 +2332,7 @@ var _ = Describe("Chain", func() {
 
 					c2.clock.Increment(interval)
 					// this check guarantees that signal on resignC is consumed in commitBatches method.
-					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(uint64(2))))
+					Eventually(c1.observe, LongEventualTimeout).Should(Receive(Equal(raft.SoftState{Lead: 2, RaftState: raft.StateFollower})))
 				})
 			})
 		})
@@ -2308,8 +2416,9 @@ type chain struct {
 	ledgerHeight uint64
 	ledgerLock   sync.RWMutex
 
-	observe   chan uint64
+	observe   chan raft.SoftState
 	unstarted chan struct{}
+	stopped   chan struct{}
 
 	*etcdraft.Chain
 }
@@ -2345,7 +2454,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 	// upon leader change, lead is reset to 0 before set to actual
 	// new leader, i.e. 1 -> 0 -> 2. Therefore 2 numbers will be
 	// sent on this chan, so we need size to be 2
-	observe := make(chan uint64, 2)
+	observe := make(chan raft.SoftState, 2)
 
 	configurator := &mocks.Configurator{}
 	configurator.On("Configure", mock.Anything, mock.Anything)
@@ -2365,6 +2474,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 		clock:        clock,
 		opts:         opts,
 		unstarted:    ch,
+		stopped:      make(chan struct{}),
 		configurator: configurator,
 		puller:       puller,
 		ledger: map[uint64]*common.Block{
@@ -2553,9 +2663,15 @@ func (n *network) stop(ids ...uint64) {
 		}
 	}
 
-	for _, c := range nodes {
-		n.chains[c].Halt()
-		<-n.chains[c].Errored()
+	for _, id := range nodes {
+		c := n.chains[id]
+		c.Halt()
+		<-c.Errored()
+		select {
+		case <-c.stopped:
+		default:
+			close(c.stopped)
+		}
 	}
 }
 
@@ -2580,7 +2696,7 @@ func (n *network) rejoin(id uint64, wasLeader bool) {
 	n.chains[n.leader].clock.Increment(interval)
 
 	if wasLeader {
-		Eventually(n.chains[id].observe).Should(Receive(Equal(n.leader)))
+		Eventually(n.chains[id].observe).Should(Receive(Equal(raft.SoftState{Lead: n.leader, RaftState: raft.StateFollower})))
 	} else {
 		Consistently(n.chains[id].observe).ShouldNot(Receive())
 	}
@@ -2614,21 +2730,11 @@ func (n *network) elect(id uint64) (tick int) {
 		select {
 		case <-time.After(t):
 			// this tick does not trigger leader change within t, continue
-		case n := <-c.observe: // leadership change occurs
-			if n == 0 {
-				// in etcd/raft, if there's already a leader,
-				// lead in softstate goes through X -> 0 -> Y.
-				// therefore, we might observe 0 first. In this
-				// situation, no more tick is needed because an
-				// leader election is already underway.
-				Eventually(c.observe, LongEventualTimeout).Should(Receive(Equal(id)))
-			} else {
-				// if there's no leader (fresh cluster), we have 0 -> Y
-				// therefore we should observe Y directly.
-				Expect(n).To(Equal(id))
+		case s := <-c.observe: // leadership change occurs
+			if s.RaftState == raft.StateLeader {
+				elected = true
+				break
 			}
-			elected = true
-			break
 		}
 	}
 
@@ -2641,11 +2747,11 @@ func (n *network) elect(id uint64) (tick int) {
 		}
 
 		select {
-		case <-c.Errored(): // skip if node is exit
+		case <-c.stopped: // skip check if node n is stopped
 		case <-n.connectivity[c.id]: // skip check if node n is disconnected
 		case <-c.unstarted: // skip check if node is not started yet
 		default:
-			Eventually(c.observe).Should(Receive(Equal(id)))
+			Eventually(c.observe).Should(Receive(Equal(raft.SoftState{Lead: id, RaftState: raft.StateFollower})))
 		}
 	}
 	n.connLock.RUnlock()
