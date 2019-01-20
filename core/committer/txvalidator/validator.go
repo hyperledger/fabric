@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -29,9 +30,13 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+)
+
+const (
+	IntermittentErrorCode = int32(503)
 )
 
 // Support provides all of the needed to evaluate the VSCC
@@ -342,11 +347,19 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			// Check duplicate transactions
 			txID = chdr.TxId
-			if _, err := v.support.Ledger().GetTransactionByID(txID); err == nil {
+			_, err := v.support.Ledger().GetTransactionByID(txID)
+			if err == nil {
 				logger.Error("Duplicate transaction found, ", txID, ", skipping")
 				results <- &blockValidationResult{
 					tIdx:           tIdx,
 					validationCode: peer.TxValidationCode_DUPLICATE_TXID,
+				}
+				return
+			}
+			if err != blkstorage.ErrNotFoundInIndex { // Any error other than blkstorage.ErrNotFoundInIndex is treated as intermittent
+				results <- &blockValidationResult{
+					tIdx: tIdx,
+					err:  &commonerrors.VSCCInfoLookupFailureError{Reason: fmt.Sprintf("Error while checking for duplicate txid: %s", err)},
 				}
 				return
 			}
@@ -852,6 +865,9 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 		return &commonerrors.VSCCExecutionFailureError{Reason: msg}
 	}
 	if res.Status != shim.OK {
+		if res.Status == IntermittentErrorCode {
+			return &commonerrors.VSCCExecutionFailureError{Reason: res.Message}
+		}
 		return &commonerrors.VSCCEndorsementPolicyError{Reason: fmt.Sprintf("%s", res.Message)}
 	}
 
@@ -866,7 +882,7 @@ func (v *vsccValidatorImpl) getCDataForCC(chid, ccid string) (resourcesconfig.Ch
 
 	qe, err := l.NewQueryExecutor()
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not retrieve QueryExecutor")
+		return nil, &commonerrors.VSCCInfoLookupFailureError{Reason: "could not retrieve QueryExecutor"}
 	}
 	defer qe.Done()
 

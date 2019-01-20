@@ -47,10 +47,16 @@ func TestCollectionStore(t *testing.T) {
 	assert.Error(t, err)
 
 	support.QErr = nil
+
+	_, err = cs.RetrieveCollection(common.CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "mycollection"})
+	_, ok := err.(*LedgerIOError)
+	assert.True(t, ok)
+
 	wState["lscc"] = make(map[string][]byte)
 
 	_, err = cs.RetrieveCollection(common.CollectionCriteria{})
-	assert.Error(t, err)
+	_, ok = err.(NoSuchCollectionError)
+	assert.True(t, ok)
 
 	ccr := common.CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "mycollection"}
 

@@ -1,17 +1,6 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 package vscc
 
@@ -30,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -41,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
@@ -263,45 +253,45 @@ func TestInvoke(t *testing.T) {
 
 	// Failed path: Invalid arguments
 	args := [][]byte{[]byte("dv")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// not enough args
 	args = [][]byte{[]byte("dv"), []byte("tx")}
 	args[1] = nil
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// nil args
 	args = [][]byte{nil, nil, nil}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// nil args
 	args = [][]byte{[]byte("a"), []byte("a"), nil}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// broken Envelope
 	args = [][]byte{[]byte("a"), []byte("a"), []byte("a")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// (still) broken Envelope
 	args = [][]byte{[]byte("a"), utils.MarshalOrPanic(&common.Envelope{Payload: []byte("barf")}), []byte("a")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// (still) broken Envelope
 	b := utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("barf")}})})
 	args = [][]byte{[]byte("a"), b, []byte("a")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -317,7 +307,7 @@ func TestInvoke(t *testing.T) {
 
 	// broken policy
 	args = [][]byte{[]byte("dv"), envBytes, []byte("barf")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -329,14 +319,14 @@ func TestInvoke(t *testing.T) {
 	// broken type
 	b = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
 	args = [][]byte{[]byte("dv"), b, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
 	// broken tx payload
 	b = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
 	args = [][]byte{[]byte("dv"), b, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -354,7 +344,7 @@ func TestInvoke(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -372,7 +362,7 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
 	}
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK || res.Message != DUPLICATED_IDENTITY_ERROR {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR || res.Message != DUPLICATED_IDENTITY_ERROR {
 		t.Fatalf("vscc invoke should have failed due to policy evaluation failure caused by duplicated identity")
 	}
 }
@@ -428,7 +418,7 @@ func TestInvalidFunction(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 }
@@ -497,7 +487,7 @@ func TestRWSetTooBig(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 }
@@ -554,7 +544,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -585,7 +575,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -613,7 +603,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -641,7 +631,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -669,7 +659,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -694,7 +684,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -721,7 +711,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -748,7 +738,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
@@ -786,7 +776,7 @@ func TestValidateDeployFail(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 }
@@ -865,7 +855,7 @@ func TestAlreadyDeployed(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invocation should have failed")
 	}
 }
@@ -923,7 +913,7 @@ func TestValidateDeployNoLedger(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 }
@@ -1069,7 +1059,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 }
@@ -1125,7 +1115,7 @@ func TestInvalidUpgrade(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invocation should have failed")
 	}
 }
@@ -1285,7 +1275,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invoke should have failed")
 	}
 }
@@ -1475,7 +1465,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	// execute the upgrade tx
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	if expecterr {
-		if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 			t.Fatalf("vscc invoke should have failed")
 		}
 	} else {
@@ -1563,7 +1553,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+	if res := stub.MockInvoke("1", args); res.Status != shim.ERROR {
 		t.Fatalf("vscc invocation should have failed")
 	}
 }
@@ -1617,38 +1607,38 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}, {Key: "c"}}}
 
 	err := v.validateDeployRWSetAndCollection(rwset, nil, nil, chid, ccid)
-	assert.Error(t, err)
+	assertNonIntermittentError(t, err)
 
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}}}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, nil, chid, ccid)
-	assert.Error(t, err)
+	assertNonIntermittentError(t, err)
 
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}}}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, nil, chid, ccid)
-	assert.NoError(t, err)
+	assertNonIntermittentError(t, err)
 
 	lsccargs := [][]byte{nil, nil, nil, nil, nil, nil}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.NoError(t, err)
+	assertNonIntermittentError(t, err)
 
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc")}}}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.NoError(t, err)
+	assertNonIntermittentError(t, err)
 
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	assertNonIntermittentError(t, err)
 
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	assertNonIntermittentError(t, err)
 
 	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
 	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
@@ -1660,17 +1650,19 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: ccpBytes}}}
 
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.NoError(t, err)
+	assertNonIntermittentError(t, err)
 
 	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = []byte("barf")
-
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	assertNonIntermittentError(t, err)
 
 	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = ccpBytes
-
 	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
-	assert.Error(t, err)
+	assertNonIntermittentError(t, err)
+
+	delete(State, "lscc") // missing namespace in this mock query executor causes to return an error
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
+	assertIntermittentError(t, err)
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"
@@ -1732,4 +1724,72 @@ func TestMain(m *testing.M) {
 	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChainID()))
 
 	os.Exit(m.Run())
+}
+
+func TestIntermittentErrorResponse(t *testing.T) {
+	v := new(ValidatorOneValidSignature)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	lccc := lscc.NewLifeCycleSysCC()
+	stublccc := shim.NewMockStub("lscc", lccc)
+
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+		Qe: lm.NewMockQueryExecutor(nil), // mock query executor causes an error if supplied with an empty state
+		ApplicationConfigBool: true,
+		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+	})
+	stub.MockPeerChaincode("lscc", stublccc)
+
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	r := stublccc.MockInit("1", [][]byte{})
+	if r.Status != shim.OK {
+		fmt.Println("Init failed", string(r.Message))
+		t.FailNow()
+	}
+
+	ccname := "mycc"
+	ccver := "1"
+
+	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
+	assert.NoError(t, err)
+
+	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args := [][]byte{[]byte("dv"), envBytes, policy}
+	shimRes := stub.MockInvoke("1", args)
+	t.Logf("shimRes = %#v", shimRes)
+	if res := stub.MockInvoke("1", args); res.Status != txvalidator.IntermittentErrorCode {
+		t.Fatalf("vscc invocation should have failed with an intermittent error response")
+	}
+}
+
+func assertIntermittentError(t *testing.T, err error) {
+	_, ok := err.(*intermittentError)
+	assert.True(t, ok)
+}
+
+func assertNonIntermittentError(t *testing.T, err error) {
+	_, ok := err.(*intermittentError)
+	assert.False(t, ok)
 }

@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/pkg/errors"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
@@ -31,7 +33,7 @@ import (
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -603,24 +605,69 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+	t.Run("Block storage not usable", func(t *testing.T) {
+		theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("error other than blkstorage.ErrNotFoundInIndex"))
 
-	queryExecutor := new(mockQueryExecutor)
-	queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
-	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+		queryExecutor := new(mockQueryExecutor)
+		queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, nil)
+		theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
 
-	b := &common.Block{
-		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
-		Header: &common.BlockHeader{},
-	}
+		b := &common.Block{
+			Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+			Header: &common.BlockHeader{},
+		}
 
-	err := validator.Validate(b)
+		err := validator.Validate(b)
 
-	assertion := assert.New(t)
-	// We suppose to get the error which indicates we cannot commit the block
-	assertion.Error(err)
-	// The error exptected to be of type VSCCInfoLookupFailureError
-	assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
+		assertion := assert.New(t)
+		// We suppose to get the error which indicates we cannot commit the block
+		assertion.Error(err)
+		// The error exptected to be of type VSCCInfoLookupFailureError
+		assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
+
+	})
+
+	t.Run("NewQueryExecutor returns error", func(t *testing.T) {
+		theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, blkstorage.ErrNotFoundInIndex)
+
+		queryExecutor := new(mockQueryExecutor)
+		queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, nil)
+		theLedger.On("NewQueryExecutor", mock.Anything).Return(nil, errors.New("NewQueryExecutor error"))
+
+		b := &common.Block{
+			Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+			Header: &common.BlockHeader{},
+		}
+
+		err := validator.Validate(b)
+
+		assertion := assert.New(t)
+		// We suppose to get the error which indicates we cannot commit the block
+		assertion.Error(err)
+		// The error exptected to be of type VSCCInfoLookupFailureError
+		assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
+	})
+
+	t.Run("GetState returns error", func(t *testing.T) {
+		theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, blkstorage.ErrNotFoundInIndex)
+
+		queryExecutor := new(mockQueryExecutor)
+		queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
+		theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+
+		b := &common.Block{
+			Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+			Header: &common.BlockHeader{},
+		}
+
+		err := validator.Validate(b)
+
+		assertion := assert.New(t)
+		// We suppose to get the error which indicates we cannot commit the block
+		assertion.Error(err)
+		// The error exptected to be of type VSCCInfoLookupFailureError
+		assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
+	})
 }
 
 func TestValidationInvalidEndorsing(t *testing.T) {
@@ -634,7 +681,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, blkstorage.ErrNotFoundInIndex)
 
 	cd := &ccp.ChaincodeData{
 		Name:    ccID,
@@ -678,7 +725,7 @@ func TestValidationResourceUpdate(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnvWithType(ccID, createRWset(t, ccID), common.HeaderType_PEER_RESOURCE_UPDATE, t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, blkstorage.ErrNotFoundInIndex)
 
 	cd := &ccp.ChaincodeData{
 		Name:    ccID,
@@ -714,6 +761,50 @@ func TestValidationResourceUpdate(t *testing.T) {
 	executeChaincodeProvider.setCallback(c)
 	assertInvalid(b1, t, peer.TxValidationCode_UNSUPPORTED_TX_PAYLOAD)
 	assertValid(b2, t)
+}
+
+func TestValidationIntermittentErrorCode(t *testing.T) {
+	theLedger := new(mockLedger)
+	vcs := struct {
+		*mocktxvalidator.Support
+		*semaphore.Weighted
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
+	validator := NewTxValidator("", vcs)
+
+	ccID := "mycc"
+	tx := getEnv(ccID, createRWset(t, ccID), t)
+
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, blkstorage.ErrNotFoundInIndex)
+
+	cd := &ccp.ChaincodeData{
+		Name:    ccID,
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"DEFAULT"}),
+	}
+
+	cdbytes := utils.MarshalOrPanic(cd)
+
+	queryExecutor := new(mockQueryExecutor)
+	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
+	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}},
+		Header: &common.BlockHeader{},
+	}
+
+	// Keep default callback
+	c := executeChaincodeProvider.getCallback()
+	executeChaincodeProvider.setCallback(func() (*peer.Response, *peer.ChaincodeEvent, error) {
+		return &peer.Response{Status: IntermittentErrorCode}, nil, nil
+	})
+	// Restore default callback
+	defer executeChaincodeProvider.setCallback(c)
+	err := validator.Validate(b)
+	assert.Error(t, err)
+	_, ok := err.(*commonerrors.VSCCExecutionFailureError)
+	assert.True(t, ok)
 }
 
 type ccResultCallback func() (*peer.Response, *peer.ChaincodeEvent, error)

@@ -1,17 +1,6 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package vscc
@@ -25,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -195,7 +185,11 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 			err = vscc.ValidateLSCCInvocation(stub, chdr.ChannelId, env, cap, payl, ac.Capabilities())
 			if err != nil {
 				logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
-				return shim.Error(err.Error())
+				response := shim.Error(err.Error())
+				if _, ok := err.(*intermittentError); ok {
+					response.Status = txvalidator.IntermittentErrorCode
+				}
+				return response
 			}
 		}
 	}
@@ -283,6 +277,12 @@ func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
 
 	ccp, err := vscc.collectionStore.RetrieveCollectionConfigPackage(common.CollectionCriteria{Channel: chid, Namespace: ccid})
 	if err != nil {
+		if _, ok := err.(*privdata.LedgerIOError); ok {
+			return &intermittentError{
+				msg: fmt.Sprintf("Ledger error while trying to retrieve collection config for chaincode %s:%s. Err:%s",
+					cdRWSet.Name, cdRWSet.Version, err),
+			}
+		}
 		// fail if we get any error other than NoSuchCollectionError
 		// because it means something went wrong while looking up the
 		// older collection
@@ -554,7 +554,9 @@ func (vscc *ValidatorOneValidSignature) getInstantiatedCC(chid, ccid string) (cd
 
 	bytes, err := qe.GetState("lscc", ccid)
 	if err != nil {
-		err = fmt.Errorf("Could not retrieve state for chaincode %s on channel %s, error %s", ccid, chid, err)
+		err = &intermittentError{
+			msg: fmt.Sprintf("Could not retrieve state for chaincode %s on channel %s, error %s", ccid, chid, err),
+		}
 		return
 	}
 
@@ -606,4 +608,12 @@ func (vscc *ValidatorOneValidSignature) deduplicateIdentity(cap *pb.ChaincodeAct
 
 	logger.Debugf("Signature set is of size %d out of %d endorsement(s)", len(signatureSet), len(cap.Action.Endorsements))
 	return signatureSet, nil
+}
+
+type intermittentError struct {
+	msg string
+}
+
+func (e *intermittentError) Error() string {
+	return e.msg
 }

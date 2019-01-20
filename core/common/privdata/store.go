@@ -31,6 +31,13 @@ type Support interface {
 }
 
 type NoSuchCollectionError common.CollectionCriteria
+type LedgerIOError struct {
+	msg string
+}
+
+func (e *LedgerIOError) Error() string {
+	return e.msg
+}
 
 func (f NoSuchCollectionError) Error() string {
 	return fmt.Sprintf("collection %s/%s/%s could not be found", f.Channel, f.Namespace, f.Collection)
@@ -57,7 +64,7 @@ func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.Collec
 
 	cb, err := qe.GetState("lscc", c.s.GetCollectionKVSKey(cc))
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error while retrieving collection for collection criteria %#v", cc))
+		return nil, &LedgerIOError{msg: fmt.Sprintf("error while retrieving collection for collection criteria %#v. Err=%s", cc, err)}
 	}
 	if cb == nil {
 		return nil, NoSuchCollectionError(cc)
